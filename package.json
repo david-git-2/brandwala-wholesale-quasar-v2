@@ -1,0 +1,20 @@
+{
+  "name": "brandwala-wholesale-quasar-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root scripts for web app and Supabase backend",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "lint": "npm --prefix web run lint",
+    "backend:init": "npx supabase init",
+    "backend:login": "npx supabase login",
+    "backend:link": "npx supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "backend:new-migration": "npx supabase migration new",
+    "backend:push": "npx supabase db push --linked",
+    "backend:push:all": "npx supabase db push --linked --include-all",
+    "backend:types": "sh -c 'mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
+    "deploy:backend": "npm run backend:push && npm run backend:types",
+    "backend:all": "npm run backend:push:all && npm run backend:types"
+  }
+}
