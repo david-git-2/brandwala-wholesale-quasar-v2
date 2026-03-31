@@ -1,44 +1,25 @@
 import type { RouteRecordRaw } from 'vue-router';
 import authRoutes from 'src/modules/auth/routes';
+import dashboardRoutes from 'src/modules/dashboard/routes';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/app/home',
+    redirect: '/app/dashboard',
   },
   {
     path: '/app/home',
-    name: 'app-home',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '',
-        component: () => import('pages/IndexPage.vue'),
-      },
-    ],
+    redirect: '/app/dashboard',
   },
   {
     path: '/platform/home',
-    name: 'platform-home',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '',
-        component: () => import('pages/IndexPage.vue'),
-      },
-    ],
+    redirect: '/platform/dashboard',
   },
   {
     path: '/shop/home',
-    name: 'shop-home',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '',
-        component: () => import('pages/IndexPage.vue'),
-      },
-    ],
+    redirect: '/shop/dashboard',
   },
+  ...dashboardRoutes,
   ...authRoutes,
 
   // Always leave this as last one

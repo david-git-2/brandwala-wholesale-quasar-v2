@@ -17,19 +17,19 @@ const scopeConfig: Record<
 > = {
   platform: {
     title: 'Platform Login',
-    homeRouteName: 'platform-home',
+    homeRouteName: 'superadmin-dashboard',
     loginRouteName: 'superadmin-login-page',
     loginPath: '/auth/platform/login',
   },
   app: {
     title: 'Admin Login',
-    homeRouteName: 'app-home',
+    homeRouteName: 'admin-dashboard',
     loginRouteName: 'login-page',
     loginPath: '/auth/add/login',
   },
   shop: {
     title: 'Shop Login',
-    homeRouteName: 'shop-home',
+    homeRouteName: 'customer-dashboard',
     loginRouteName: 'customer-login-page',
     loginPath: '/auth/shop/login',
   },
