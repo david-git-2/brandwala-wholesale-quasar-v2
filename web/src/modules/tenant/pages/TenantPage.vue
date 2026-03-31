@@ -2,12 +2,7 @@
   <q-page class="q-pa-lg">
     <div class="q-mb-md text-h5 text-weight-bold">Tenants</div>
 
-    <q-banner class="bg-grey-2 text-dark q-mb-md" rounded>
-      <div class="text-subtitle2 text-weight-medium q-mb-sm">Access debug</div>
-      <div class="text-body2">Session email: {{ debugSessionEmail }}</div>
-      <div class="text-body2">Store role: {{ debugMemberRole }}</div>
-      <div class="text-body2">Store scope: {{ debugScope }}</div>
-    </q-banner>
+
 
     <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
       {{ error }}
@@ -51,6 +46,17 @@
         </q-item>
       </q-list>
     </q-card>
+
+
+<q-page-sticky position="bottom-right" :offset="[18, 18]">
+  <q-fab color="primary" icon="add" @click="onClickAddTenant">
+  </q-fab>
+</q-page-sticky>
+
+<AddTenantDialog
+  v-model="openAddDialog"
+  @save="onSaveTenant"
+/>
   </q-page>
 </template>
 
@@ -61,6 +67,8 @@ import { storeToRefs } from 'pinia'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from '../stores/tenantStore'
+import AddTenantDialog from '../components/AddTenantDialog.vue'
+import type { TenantCreateInput } from '../types'
 
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
@@ -70,6 +78,7 @@ const authStore = useAuthStore()
 const debugSessionEmail = ref('unknown')
 const debugMemberRole = ref('unknown')
 const debugScope = ref('unknown')
+const openAddDialog = ref(false)
 
 const loadDebugState = async () => {
   const { data } = await supabase.auth.getSession()
@@ -77,6 +86,20 @@ const loadDebugState = async () => {
   debugMemberRole.value = authStore.member?.role ?? 'no-store-role'
   debugScope.value = authStore.scope ?? 'no-store-scope'
 }
+
+const onClickAddTenant = () => {
+  openAddDialog.value = true
+}
+
+const onSaveTenant = async (tenantData: TenantCreateInput) => {
+  try {
+    await tenantStore.createTenant(tenantData)
+    openAddDialog.value = false
+  } catch (err) {
+    console.error('Error creating tenant:', err)
+  }
+}
+
 
 onMounted(() => {
   void loadDebugState()

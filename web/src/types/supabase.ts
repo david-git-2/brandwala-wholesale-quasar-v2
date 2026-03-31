@@ -206,12 +206,50 @@ export type Database = {
           member_updated_at: string
         }[]
       }
+      create_tenant_for_superadmin: {
+        Args: { p_is_active?: boolean; p_name: string; p_slug: string }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
       current_profile_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      delete_tenant_for_superadmin: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
       list_tenants_for_superadmin: {
         Args: never
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
+      update_tenant_for_superadmin: {
+        Args: {
+          p_is_active: boolean
+          p_name: string
+          p_slug: string
+          p_tenant_id: number
+        }
         Returns: {
           created_at: string
           id: number
