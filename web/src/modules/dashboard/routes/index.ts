@@ -1,26 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router'
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-
-type DashboardRole = 'superadmin' | 'admin' | 'staff' | 'customer' | 'viewer'
-
-const createAccessGuard = (allowedRoles: DashboardRole[], loginRouteName: string) => {
-  return () => {
-    const authStore = useAuthStore()
-    const memberRole = authStore.member?.role
-
-    if (!authStore.isAuthenticated || !memberRole || !allowedRoles.includes(memberRole)) {
-      return { name: loginRouteName }
-    }
-
-    return true
-  }
-}
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
 const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/platform',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/AdminLayout.vue'),
     children: [
       {
         path: 'dashboard',
@@ -32,7 +17,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/app',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/AdminLayout.vue'),
     children: [
       {
         path: 'dashboard',
@@ -44,7 +29,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/AdminLayout.vue'),
     children: [
       {
         path: 'dashboard',

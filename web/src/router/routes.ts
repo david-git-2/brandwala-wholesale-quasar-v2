@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import authRoutes from 'src/modules/auth/routes';
 import dashboardRoutes from 'src/modules/dashboard/routes';
+import tenantRoutes from 'src/modules/tenant/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -20,6 +21,7 @@ const routes: RouteRecordRaw[] = [
     redirect: '/shop/dashboard',
   },
   ...dashboardRoutes,
+  ...tenantRoutes,
   ...authRoutes,
 
   // Always leave this as last one

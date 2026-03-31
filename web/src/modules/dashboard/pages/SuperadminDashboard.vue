@@ -1,7 +1,7 @@
 <template>
   <q-page class="row items-center justify-center">
     <div class="dashboard-word">Dashboard</div>
-    {{ authStore.user }}
+    {{ authStore.matchedRole }}
   </q-page>
 </template>
 
