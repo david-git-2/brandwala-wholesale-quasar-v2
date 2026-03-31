@@ -210,6 +210,17 @@ export type Database = {
       current_user_email: { Args: never; Returns: string }
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
+      list_tenants_for_superadmin: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       app_role: "superadmin" | "admin" | "staff" | "viewer" | "customer"
