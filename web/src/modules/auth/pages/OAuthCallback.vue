@@ -1,13 +1,12 @@
 <template>
-  <div class="q-pa-xl flex flex-center" style="min-height: 100vh;">
-    <q-card class="callback-card">
-      <q-card-section class="text-center">
-        <div class="text-h6">Finishing sign in...</div>
-        <div class="text-body2 text-grey-7 q-mt-sm">
-          Checking your access and sending you to the right place.
-        </div>
-      </q-card-section>
-    </q-card>
+  <div class="callback-stage">
+    <div class="callback-stage__card">
+      <q-spinner-ball color="primary" size="42px" />
+      <div class="callback-stage__title">Finishing sign-in</div>
+      <div class="callback-stage__copy">
+        Checking your access for the selected route and preparing the workspace.
+      </div>
+    </div>
   </div>
 </template>
 
@@ -27,9 +26,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.callback-card {
+.callback-stage {
   width: 100%;
-  max-width: 360px;
-  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.callback-stage__card {
+  width: min(100%, 28rem);
+  padding: 2rem;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(95, 70, 43, 0.12);
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.92), rgba(245, 236, 226, 0.82));
+  text-align: center;
+}
+
+.callback-stage__title {
+  margin-top: 1rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #281f17;
+}
+
+.callback-stage__copy {
+  margin-top: 0.55rem;
+  color: #6d5a48;
+  line-height: 1.6;
 }
 </style>

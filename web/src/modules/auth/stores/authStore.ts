@@ -2,6 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import type { AuthScope } from '../composables/useOAuthLogin'
+import type { AccessRole } from '../guards/accessGuard'
 
 export interface AuthUserSnapshot {
   id: string
@@ -14,7 +15,7 @@ export interface AuthUserSnapshot {
 export interface AuthMemberSnapshot {
   id: number
   email: string
-  role: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer'
+  role: AccessRole
   tenantId: number | null
   isActive: boolean
   createdAt: string

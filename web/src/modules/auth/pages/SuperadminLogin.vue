@@ -1,57 +1,21 @@
 <template>
-  <div class="q-pa-md flex flex-center" style="height: 100vh;">
-    <q-card class="my-card" style="width: 350px;">
-      <img src="https://cdn.quasar.dev/img/mountains.jpg" />
-
-      <q-card-section>
-        <q-banner
-          v-if="loginErrorMessage"
-          class="bg-negative text-white q-mb-md"
-          rounded
-          dense
-        >
-          {{ loginErrorMessage }}
-        </q-banner>
-
-        <div class="text-h6 text-center">{{ title }}</div>
-      </q-card-section>
-
-      <q-card-section>
-        <q-btn
-          color="primary"
-          :label="isLoading ? 'Connecting...' : 'Login with Google'"
-          class="full-width"
-          icon="login"
-          :loading="isLoading"
-          @click="handleGoogleLogin"
-        />
-      </q-card-section>
-    </q-card>
-  </div>
+  <AuthLoginPanel
+    scope="platform"
+    eyebrow="Platform Entry"
+    title="Enter the superadmin platform"
+    description="Use your platform-approved Google account to manage tenants, control enabled modules, and govern the system."
+    cta-label="Sign in as superadmin"
+    support-text="Platform access is reserved for the BrandWala core team."
+    :notes="notes"
+    tone="platform"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import AuthLoginPanel from '../components/AuthLoginPanel.vue'
 
-import { useOAuthLogin } from '../composables/useOAuthLogin'
-
-const route = useRoute()
-const { handleGoogleLogin, isLoading, title } = useOAuthLogin()
-
-const loginErrorMessage = computed(() => {
-  const error = route.query.login_error
-
-  if (error === 'no_membership') {
-    return 'We could not find access for this account. Please sign in with an approved Google account.'
-  }
-
-  return ''
-})
+const notes = [
+  'Superadmins can create tenants and control module availability.',
+  'This entry point governs the whole platform, not a single business.',
+]
 </script>
-
-<style scoped>
-.my-card {
-  border-radius: 16px;
-}
-</style>

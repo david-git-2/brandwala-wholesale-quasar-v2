@@ -60,7 +60,12 @@
       <div class="col-12 col-lg-7">
         <q-card flat bordered class="q-mb-lg">
           <q-card-section class="row items-center justify-between">
-            <div class="text-h6">Members</div>
+            <div>
+              <div class="text-h6">Internal Members</div>
+              <div class="text-caption text-grey-7">
+                Customer-side users now belong to customer groups, not tenant memberships.
+              </div>
+            </div>
 
             <div class="row q-gutter-sm">
               <q-btn
@@ -68,18 +73,6 @@
                 icon="person_add"
                 label="Add Staff"
                 @click="onClickAddMember('staff')"
-              />
-              <q-btn
-                color="secondary"
-                icon="person_add"
-                label="Add Customer"
-                @click="onClickAddMember('customer')"
-              />
-              <q-btn
-                color="accent"
-                icon="person_add"
-                label="Add Viewer"
-                @click="onClickAddMember('viewer')"
               />
             </div>
           </q-card-section>
@@ -96,7 +89,7 @@
 
           <q-card-section v-else>
             <div class="text-subtitle1 text-weight-bold q-mb-sm">Staff</div>
-            <q-list v-if="staffMembers.length" separator class="q-mb-md">
+            <q-list v-if="staffMembers.length" separator>
               <q-item v-for="member in staffMembers" :key="member.id">
                 <q-item-section>
                   <q-item-label>{{ member.email }}</q-item-label>
@@ -127,79 +120,7 @@
                 </q-item-section>
               </q-item>
             </q-list>
-            <div v-else class="text-grey-6 q-mb-md">No staff found.</div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="text-subtitle1 text-weight-bold q-mb-sm">Customers</div>
-            <q-list v-if="customerMembers.length" separator class="q-mb-md">
-              <q-item v-for="member in customerMembers" :key="member.id">
-                <q-item-section>
-                  <q-item-label>{{ member.email }}</q-item-label>
-                  <q-item-label caption>
-                    Role: {{ member.role }} ·
-                    {{ member.is_active ? 'Active' : 'Inactive' }}
-                  </q-item-label>
-                </q-item-section>
-
-                <q-item-section side>
-                  <div class="row items-center q-gutter-sm">
-                    <q-toggle
-                      v-model="member.is_active"
-                      :label="member.is_active ? 'Active' : 'Inactive'"
-                      color="positive"
-                      keep-color
-                      @update:model-value="(value) => onToggleMemberActive(member, value)"
-                    />
-
-                    <q-btn
-                      size="sm"
-                      color="negative"
-                      outline
-                      icon="delete"
-                      @click="onClickDeleteMember(member)"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="text-grey-6 q-mb-md">No customers found.</div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="text-subtitle1 text-weight-bold q-mb-sm">Viewers</div>
-            <q-list v-if="viewerMembers.length" separator>
-              <q-item v-for="member in viewerMembers" :key="member.id">
-                <q-item-section>
-                  <q-item-label>{{ member.email }}</q-item-label>
-                  <q-item-label caption>
-                    Role: {{ member.role }} ·
-                    {{ member.is_active ? 'Active' : 'Inactive' }}
-                  </q-item-label>
-                </q-item-section>
-
-                <q-item-section side>
-                  <div class="row items-center q-gutter-sm">
-                    <q-toggle
-                      v-model="member.is_active"
-                      :label="member.is_active ? 'Active' : 'Inactive'"
-                      color="positive"
-                      keep-color
-                      @update:model-value="(value) => onToggleMemberActive(member, value)"
-                    />
-
-                    <q-btn
-                      size="sm"
-                      color="negative"
-                      outline
-                      icon="delete"
-                      @click="onClickDeleteMember(member)"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="text-grey-6">No viewers found.</div>
+            <div v-else class="text-grey-6">No staff found.</div>
           </q-card-section>
         </q-card>
 
@@ -306,7 +227,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { useTenantStore } from '../stores/tenantStore'
-import { useMembershipStore } from 'src/modules/membership/store/membershipStore'
+import { useTenantModuleStore } from '../stores/tenantModuleStore'
+import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Tenant } from '../types'
 import type { Membership } from 'src/modules/membership/types'
 
@@ -314,8 +236,10 @@ const route = useRoute()
 const router = useRouter()
 
 const tenantStore = useTenantStore()
+const tenantModuleStore = useTenantModuleStore()
 const membershipStore = useMembershipStore()
-const { items, modules, modulesLoading } = storeToRefs(tenantStore)
+const { items } = storeToRefs(tenantStore)
+const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
 
 const openAddMemberDialog = ref(false)
 const openDeleteMemberDialog = ref(false)
@@ -324,7 +248,7 @@ const memberToDelete = ref<Membership | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
-const selectedMemberRole = ref<'staff' | 'customer' | 'viewer'>('staff')
+const selectedMemberRole = ref<'staff'>('staff')
 
 const tenantMembers = ref<Membership[]>([])
 const tenantMembersLoading = ref(false)
@@ -338,21 +262,11 @@ const tenant = computed<Tenant | null>(() => {
 })
 
 const selectedRoleLabel = computed(() => {
-  if (selectedMemberRole.value === 'staff') return 'Staff'
-  if (selectedMemberRole.value === 'customer') return 'Customer'
-  return 'Viewer'
+  return 'Staff'
 })
 
 const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff')
-)
-
-const customerMembers = computed(() =>
-  tenantMembers.value.filter((member) => member.role === 'customer')
-)
-
-const viewerMembers = computed(() =>
-  tenantMembers.value.filter((member) => member.role === 'viewer')
 )
 
 const loadTenantMembers = async () => {
@@ -369,8 +283,8 @@ const loadTenantMembers = async () => {
       return
     }
 
-    tenantMembers.value = (result.data ?? []).filter((item: Membership) =>
-      ['staff', 'customer', 'viewer'].includes(item.role)
+    tenantMembers.value = (result.data ?? []).filter(
+      (item: Membership) => item.role === 'staff'
     )
   } catch (err) {
     console.error(err)
@@ -384,7 +298,7 @@ const loadTenantMembers = async () => {
 const loadTenantModules = async () => {
   if (!tenant.value?.id) return
 
-  const result = await tenantStore.fetchTenantModules(tenant.value.id)
+  const result = await tenantModuleStore.fetchTenantModules(tenant.value.id)
 
   if (!result.success) {
     pageError.value = result.error || 'Failed to load module features.'
@@ -421,7 +335,7 @@ const goBack = () => {
   void router.push('/app/tenants')
 }
 
-const onClickAddMember = (role: 'staff' | 'customer' | 'viewer') => {
+const onClickAddMember = (role: 'staff') => {
   selectedMemberRole.value = role
   memberEmail.value = ''
   memberIsActive.value = true

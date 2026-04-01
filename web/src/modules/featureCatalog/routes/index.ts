@@ -2,12 +2,16 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
-const tenantRoutes: RouteRecordRaw[] = [
+const featureCatalogRoutes: RouteRecordRaw[] = [
   {
     path: '/platform/modules',
-    component: () => import('layouts/SuperAdminLayout.vue'),
+    component: () => import('layouts/PlatformLayout.vue'),
     name: 'platform-modules',
-    beforeEnter: createAccessGuard(['superadmin'], 'superadmin-login-page'),
+    beforeEnter: createAccessGuard({
+      loginRouteName: 'superadmin-login-page',
+      requiredScope: 'platform',
+      allowedRoles: ['superadmin'],
+    }),
     children: [
       {
         path: '',
@@ -17,4 +21,4 @@ const tenantRoutes: RouteRecordRaw[] = [
   },
 ]
 
-export default tenantRoutes
+export default featureCatalogRoutes

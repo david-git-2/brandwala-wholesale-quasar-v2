@@ -331,11 +331,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { useTenantStore } from '../stores/tenantStore'
-import { useMembershipStore } from 'src/modules/membership/store/membershipStore'
+import { useTenantModuleStore } from '../stores/tenantModuleStore'
+import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
 import type { Tenant, TenantModule, TenantUpdateInput } from '../types'
-import { useModuleStore } from 'src/modules/modules/stores/moduleStore'
+import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
 
 type TenantForm = {
   id?: number
@@ -348,8 +349,10 @@ const route = useRoute()
 const router = useRouter()
 
 const tenantStore = useTenantStore()
+const tenantModuleStore = useTenantModuleStore()
 const membershipStore = useMembershipStore()
-const { items, modules, modulesLoading } = storeToRefs(tenantStore)
+const { items } = storeToRefs(tenantStore)
+const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
 const moduleStore = useModuleStore()
 
 const openEditDialog = ref(false)
@@ -409,7 +412,7 @@ const loadTenantAdmins = async () => {
 const loadTenantModules = async () => {
   if (!tenant.value?.id) return
 
-  const result = await tenantStore.fetchTenantModules(tenant.value.id)
+  const result = await tenantModuleStore.fetchTenantModules(tenant.value.id)
 
   if (!result.success) {
     pageError.value = result.error || 'Failed to load module features.'
@@ -558,7 +561,7 @@ const onClickAddFeature = () => {
 const handleSaveFeature = async () => {
   if (!tenant.value?.id || !featureForm.value.module_key.trim()) return
 
-  const result = await tenantStore.createTenantModule({
+  const result = await tenantModuleStore.createTenantModule({
     tenant_id: tenant.value.id,
     module_key: featureForm.value.module_key.trim(),
     is_active: featureForm.value.is_active,
@@ -577,7 +580,7 @@ const onToggleModuleActive = async (module: TenantModule, value: boolean) => {
   const previousValue = module.is_active
   module.is_active = value
 
-  const result = await tenantStore.updateTenantModule({
+  const result = await tenantModuleStore.updateTenantModule({
     id: module.id,
     is_active: value,
   })
@@ -596,7 +599,7 @@ const onClickDeleteModule = (module: TenantModule) => {
 const confirmDeleteModule = async () => {
   if (!moduleToDelete.value) return
 
-  const result = await tenantStore.deleteTenantModule({
+  const result = await tenantModuleStore.deleteTenantModule({
     id: moduleToDelete.value.id,
   })
 
@@ -611,8 +614,7 @@ const confirmDeleteModule = async () => {
 }
 
 onMounted(async () => {
- await  moduleStore.fetchModules()
- console.log(moduleStore.items)
+  await moduleStore.fetchModules()
   void loadPageData()
 })
 </script>

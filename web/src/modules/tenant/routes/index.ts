@@ -5,9 +5,13 @@ const tenantRoutes: RouteRecordRaw[] = [
   // SUPERADMIN ROUTES
   {
     path: '/platform/tenants',
-    component: () => import('layouts/SuperAdminLayout.vue'),
+    component: () => import('layouts/PlatformLayout.vue'),
     name: 'platform-tenants',
-    beforeEnter: createAccessGuard(['superadmin'], 'superadmin-login-page'),
+    beforeEnter: createAccessGuard({
+      loginRouteName: 'superadmin-login-page',
+      requiredScope: 'platform',
+      allowedRoles: ['superadmin'],
+    }),
     children: [
       {
         path: '',
@@ -26,9 +30,13 @@ const tenantRoutes: RouteRecordRaw[] = [
   // ADMIN ROUTES
   {
     path: '/app/tenants',
-    component: () => import('layouts/AdminLayout.vue'),
+    component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
-    beforeEnter: createAccessGuard(['admin'], 'admin-login-page'),
+    beforeEnter: createAccessGuard({
+      loginRouteName: 'admin-login-page',
+      requiredScope: 'app',
+      allowedRoles: ['admin'],
+    }),
     children: [
       {
         path: '',

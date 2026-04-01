@@ -7,25 +7,13 @@ import type {
   TenantDeleteInput,
   TenantStoreState,
   TenantUpdateInput,
-  TenantModule,
-  TenantModuleCreateInput,
-  TenantModuleUpdateInput,
-  TenantModuleDeleteInput,
 } from '../types'
 
 export const useTenantStore = defineStore('tenant', {
-  state: (): TenantStoreState & {
-    modules: TenantModule[]
-    modulesLoading: boolean
-    modulesError: string | null
-  } => ({
+  state: (): TenantStoreState => ({
     items: [],
     loading: false,
     error: null,
-
-    modules: [],
-    modulesLoading: false,
-    modulesError: null,
   }),
 
   actions: {
@@ -64,7 +52,7 @@ export const useTenantStore = defineStore('tenant', {
           this.error = result.error ?? 'Failed to load tenants.'
           return result
         }
-console.log(result)
+
         this.items = result.data ?? []
         return result
       } finally {
@@ -134,149 +122,60 @@ console.log(result)
         this.loading = false
       }
     },
-
-
-
-    /* ---------------- TENANT MODULES ---------------- */
-
-    async fetchTenantModules(tenantId?: number) {
-      this.modulesLoading = true
-      this.modulesError = null
-
-      try {
-        const result = await tenantService.listTenantModules(tenantId)
-
-        if (!result.success) {
-          this.modulesError = result.error ?? 'Failed to load modules.'
-          return result
-        }
-
-        this.modules = result.data ?? []
-        return result
-      } finally {
-        this.modulesLoading = false
-      }
-    },
-
-
     async fetchTenantsByMembership(payload?: {
-  tenantId?: number | null
-  email?: string | null
-  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
-}) {
-  this.loading = true
-  this.error = null
-
-  try {
-    const result = await tenantService.listTenantsByMembership(payload)
-
-    if (!result.success) {
-      this.error = result.error ?? 'Failed to load tenants.'
-      return result
-    }
-
-    this.items = result.data ?? []
-    return result
-  } finally {
-    this.loading = false
-  }
-},
-
-async fetchTenantDetailsByMembership(payload: {
-  tenantId: number
-  email?: string | null
-  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
-}) {
-  this.loading = true
-  this.error = null
-
-  try {
-    const result = await tenantService.getTenantDetailsByMembership(payload)
-
-    if (!result.success) {
-      this.error = result.error ?? 'Failed to load tenant details.'
-      return result
-    }
-
-    const tenant = result.data
-
-    if (tenant) {
-      const index = this.items.findIndex((item) => item.id === tenant.id)
-
-      if (index >= 0) {
-        this.items.splice(index, 1, tenant)
-      } else {
-        this.items.push(tenant)
-      }
-    }
-
-    return result
-  } finally {
-    this.loading = false
-  }
-},
-
-
-    async createTenantModule(payload: TenantModuleCreateInput) {
-      this.modulesLoading = true
-      this.modulesError = null
+      tenantId?: number | null
+      email?: string | null
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+    }) {
+      this.loading = true
+      this.error = null
 
       try {
-        const result = await tenantService.createTenantModule(payload)
+        const result = await tenantService.listTenantsByMembership(payload)
 
         if (!result.success) {
-          this.modulesError = result.error ?? 'Failed to create module.'
+          this.error = result.error ?? 'Failed to load tenants.'
           return result
         }
 
-        this.modules.push(result.data!)
+        this.items = result.data ?? []
         return result
       } finally {
-        this.modulesLoading = false
+        this.loading = false
       }
     },
 
-    async updateTenantModule(payload: TenantModuleUpdateInput) {
-      this.modulesLoading = true
-      this.modulesError = null
+    async fetchTenantDetailsByMembership(payload: {
+      tenantId: number
+      email?: string | null
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+    }) {
+      this.loading = true
+      this.error = null
 
       try {
-        const result = await tenantService.updateTenantModule(payload)
+        const result = await tenantService.getTenantDetailsByMembership(payload)
 
         if (!result.success) {
-          this.modulesError = result.error ?? 'Failed to update module.'
+          this.error = result.error ?? 'Failed to load tenant details.'
           return result
         }
 
-        const updated = result.data!
-        const index = this.modules.findIndex((m) => m.id === updated.id)
+        const tenant = result.data
 
-        if (index >= 0) {
-          this.modules.splice(index, 1, updated)
+        if (tenant) {
+          const index = this.items.findIndex((item) => item.id === tenant.id)
+
+          if (index >= 0) {
+            this.items.splice(index, 1, tenant)
+          } else {
+            this.items.push(tenant)
+          }
         }
 
         return result
       } finally {
-        this.modulesLoading = false
-      }
-    },
-
-    async deleteTenantModule(payload: TenantModuleDeleteInput) {
-      this.modulesLoading = true
-      this.modulesError = null
-
-      try {
-        const result = await tenantService.deleteTenantModule(payload)
-
-        if (!result.success) {
-          this.modulesError = result.error ?? 'Failed to delete module.'
-          return result
-        }
-
-        this.modules = this.modules.filter((m) => m.id !== payload.id)
-        return result
-      } finally {
-        this.modulesLoading = false
+        this.loading = false
       }
     },
   },

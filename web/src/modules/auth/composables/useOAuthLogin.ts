@@ -9,29 +9,21 @@ export type AuthScope = 'platform' | 'app' | 'shop'
 const scopeConfig: Record<
   AuthScope,
   {
-    title: string
     homeRouteName: string
     loginRouteName: string
-    loginPath: string
   }
 > = {
   platform: {
-    title: 'Platform Login',
     homeRouteName: 'superadmin-dashboard',
     loginRouteName: 'superadmin-login-page',
-    loginPath: '/auth/platform/login',
   },
   app: {
-    title: 'Admin Login',
     homeRouteName: 'admin-dashboard',
-    loginRouteName: 'login-page',
-    loginPath: '/auth/add/login',
+    loginRouteName: 'admin-login-page',
   },
   shop: {
-    title: 'Shop Login',
     homeRouteName: 'customer-dashboard',
     loginRouteName: 'customer-login-page',
-    loginPath: '/auth/shop/login',
   },
 }
 
@@ -170,6 +162,5 @@ export function useOAuthLogin(scope?: AuthScope) {
     handleGoogleLogin,
     isLoading,
     processLoginResult,
-    title: currentScope.title,
   }
 }

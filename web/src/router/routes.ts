@@ -2,7 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import authRoutes from 'src/modules/auth/routes';
 import dashboardRoutes from 'src/modules/dashboard/routes';
 import tenantRoutes from 'src/modules/tenant/routes';
-import moduleRoutes from 'src/modules/modules/routes';
+import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
   ...dashboardRoutes,
   ...tenantRoutes,
   ...authRoutes,
-  ...moduleRoutes,
+  ...featureCatalogRoutes,
 
   // Always leave this as last one
   {

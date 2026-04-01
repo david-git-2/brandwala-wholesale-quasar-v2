@@ -60,7 +60,6 @@ const goToTenantDetails = (tenantId?: number) => {
 
 onMounted(() => {
   void refreshTenants()
-  console.log('Tenant list refreshed on mounted')
 })
 </script>
 

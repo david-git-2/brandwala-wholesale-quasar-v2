@@ -2,10 +2,12 @@
   <q-select
     v-model="selectedTenantId"
     :options="tenantOptions"
-    label="Standard"
-    filled
+    label="Tenant"
+    outlined
     emit-value
     map-options
+    dense
+    class="tenant-selector"
   />
 </template>
 
@@ -26,6 +28,17 @@ const tenantOptions = computed(() =>
 
 onMounted(() => {
   void tenantStore.fetchTenantsByMembership()
-  console.log('Tenants fetched in TenantSelector', tenantStore.items)
 })
 </script>
+
+<style scoped>
+.tenant-selector {
+  min-width: 180px;
+}
+
+@media (max-width: 599px) {
+  .tenant-selector {
+    min-width: 132px;
+  }
+}
+</style>

@@ -7,7 +7,7 @@ const authRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: { name: 'login-page' },
+        redirect: { name: 'admin-login-page' },
       },
       {
         path: 'callback',
@@ -21,7 +21,7 @@ const authRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/AdminLogin.vue'),
         meta: {
           authScope: 'app',
-          allowedRoles: ['admin', 'staff'],
+          requiredScope: 'app',
         },
       },
       {
@@ -30,7 +30,7 @@ const authRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/SuperadminLogin.vue'),
         meta: {
           authScope: 'platform',
-          allowedRoles: ['superadmin'],
+          requiredScope: 'platform',
         },
       },
       {
@@ -39,7 +39,7 @@ const authRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/CustomerLogin.vue'),
         meta: {
           authScope: 'shop',
-          allowedRoles: ['customer', 'viewer'],
+          requiredScope: 'shop',
         },
       },
       // {

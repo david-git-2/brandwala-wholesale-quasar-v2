@@ -1,17 +1,91 @@
 <template>
-  <q-page class="row items-center justify-center">
-    <div class="dashboard-word">Dashboard</div>
+  <q-page class="dashboard-page">
+    <section class="dashboard-hero">
+      <div class="dashboard-eyebrow">Internal workspace</div>
+      <h1>Run tenant operations without losing visibility.</h1>
+      <p>
+        This is where internal teams manage tenant access, customer organizations, and the
+        operational modules that power wholesale workflows.
+      </p>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="dashboard-card">
+        <div class="dashboard-card__label">Memberships</div>
+        <div class="dashboard-card__title">Internal users</div>
+        <p>Admins manage staff access here. Customer-side users will live in dedicated groups.</p>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="dashboard-card__label">Customer groups</div>
+        <div class="dashboard-card__title">External organizations</div>
+        <p>Customer organizations will place orders through the shop area using their own roles.</p>
+      </article>
+
+      <article class="dashboard-card dashboard-card--accent">
+        <div class="dashboard-card__label">Modules</div>
+        <div class="dashboard-card__title">Tenant-enabled features</div>
+        <p>Only superadmins assign modules, but internal teams work inside the enabled set.</p>
+      </article>
+    </section>
   </q-page>
 </template>
 
-<script setup lang="ts">
-</script>
-
 <style scoped>
-.dashboard-word {
-  font-size: clamp(2.5rem, 7vw, 5rem);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #24303d;
+.dashboard-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-hero,
+.dashboard-card {
+  border: 1px solid rgba(45, 104, 74, 0.12);
+  border-radius: 1.5rem;
+  background: rgba(247, 252, 248, 0.76);
+  padding: 1.25rem;
+}
+
+.dashboard-eyebrow,
+.dashboard-card__label {
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #587061;
+}
+
+.dashboard-hero h1,
+.dashboard-card__title {
+  margin: 0.5rem 0 0;
+  line-height: 1;
+  color: #18261d;
+}
+
+.dashboard-hero h1 {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  max-width: 14ch;
+}
+
+.dashboard-hero p,
+.dashboard-card p {
+  margin: 0.9rem 0 0;
+  max-width: 48ch;
+  color: #57685d;
+  line-height: 1.7;
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-card--accent {
+  background: linear-gradient(180deg, rgba(233, 245, 237, 0.9), rgba(215, 235, 223, 0.74));
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
