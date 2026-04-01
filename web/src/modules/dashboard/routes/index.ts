@@ -5,7 +5,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/platform',
-    component: () => import('layouts/AdminLayout.vue'),
+    component: () => import('layouts/SuperAdminLayout.vue'),
     children: [
       {
         path: 'dashboard',
@@ -29,7 +29,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop',
-    component: () => import('layouts/AdminLayout.vue'),
+    component: () => import('layouts/CustomerLayout.vue'),
     children: [
       {
         path: 'dashboard',

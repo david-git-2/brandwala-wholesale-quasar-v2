@@ -1,23 +1,17 @@
 import type { RouteRecordRaw } from 'vue-router'
+
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
 const tenantRoutes: RouteRecordRaw[] = [
   {
-    path: '/platform/tenants',
+    path: '/platform/modules',
     component: () => import('layouts/SuperAdminLayout.vue'),
-    name: 'platform-tenants',
+    name: 'platform-modules',
     beforeEnter: createAccessGuard(['superadmin'], 'superadmin-login-page'),
     children: [
       {
         path: '',
-        name: 'tenant-list',
-        component: () => import('../pages/TenantPage.vue'),
-      },
-      {
-        path: ':id',
-        name: 'tenant-details',
-        component: () => import('../pages/TenantDetailsPage.vue'),
-        props: true,
+        component: () => import('../pages/ModulesPage.vue'),
       },
     ],
   },

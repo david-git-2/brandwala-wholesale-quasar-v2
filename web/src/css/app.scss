@@ -1,1 +1,40 @@
-// app global css in SCSS form
+/* Soft app background */
+body {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(25, 118, 210, 0.08), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(156, 39, 176, 0.06), transparent 30%),
+    #f7f9fc;
+}
+
+/* Cards */
+.q-card {
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 12px 30px rgba(15, 23, 42, 0.08);
+  transition: all 0.25s ease;
+}
+
+.q-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+/* Buttons (pill style) */
+.q-btn {
+  border-radius: 9999px !important;
+  transition: all 0.2s ease;
+}
+
+.q-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Inputs */
+.q-field__control {
+  border-radius: 12px !important;
+}

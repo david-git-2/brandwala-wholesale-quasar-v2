@@ -1,19 +1,39 @@
 import { defineStore } from 'pinia'
 
 import { tenantService } from '../services/tenantService'
-import type { Tenant, TenantCreateInput, TenantDeleteInput, TenantStoreState, TenantUpdateInput } from '../types'
+import type {
+  Tenant,
+  TenantCreateInput,
+  TenantDeleteInput,
+  TenantStoreState,
+  TenantUpdateInput,
+  TenantModule,
+  TenantModuleCreateInput,
+  TenantModuleUpdateInput,
+  TenantModuleDeleteInput,
+} from '../types'
 
 export const useTenantStore = defineStore('tenant', {
-  state: (): TenantStoreState => ({
+  state: (): TenantStoreState & {
+    modules: TenantModule[]
+    modulesLoading: boolean
+    modulesError: string | null
+  } => ({
     items: [],
     loading: false,
     error: null,
+
+    modules: [],
+    modulesLoading: false,
+    modulesError: null,
   }),
 
   actions: {
     clearError() {
       this.error = null
     },
+
+    /* ---------------- TENANTS ---------------- */
 
     async fetchTenants() {
       this.loading = true
@@ -33,6 +53,7 @@ export const useTenantStore = defineStore('tenant', {
         this.loading = false
       }
     },
+
     async createTenant(tenant: TenantCreateInput) {
       this.loading = true
       this.error = null
@@ -51,6 +72,7 @@ export const useTenantStore = defineStore('tenant', {
         this.loading = false
       }
     },
+
     async updateTenant(tenant: TenantUpdateInput) {
       this.loading = true
       this.error = null
@@ -75,6 +97,7 @@ export const useTenantStore = defineStore('tenant', {
         this.loading = false
       }
     },
+
     async deleteTenant(tenant: TenantDeleteInput) {
       this.loading = true
       this.error = null
@@ -91,6 +114,90 @@ export const useTenantStore = defineStore('tenant', {
         return result
       } finally {
         this.loading = false
+      }
+    },
+
+    /* ---------------- TENANT MODULES ---------------- */
+
+    async fetchTenantModules(tenantId?: number) {
+      this.modulesLoading = true
+      this.modulesError = null
+
+      try {
+        const result = await tenantService.listTenantModules(tenantId)
+
+        if (!result.success) {
+          this.modulesError = result.error ?? 'Failed to load modules.'
+          return result
+        }
+
+        this.modules = result.data ?? []
+        return result
+      } finally {
+        this.modulesLoading = false
+      }
+    },
+
+    async createTenantModule(payload: TenantModuleCreateInput) {
+      this.modulesLoading = true
+      this.modulesError = null
+
+      try {
+        const result = await tenantService.createTenantModule(payload)
+
+        if (!result.success) {
+          this.modulesError = result.error ?? 'Failed to create module.'
+          return result
+        }
+
+        this.modules.push(result.data!)
+        return result
+      } finally {
+        this.modulesLoading = false
+      }
+    },
+
+    async updateTenantModule(payload: TenantModuleUpdateInput) {
+      this.modulesLoading = true
+      this.modulesError = null
+
+      try {
+        const result = await tenantService.updateTenantModule(payload)
+
+        if (!result.success) {
+          this.modulesError = result.error ?? 'Failed to update module.'
+          return result
+        }
+
+        const updated = result.data!
+        const index = this.modules.findIndex((m) => m.id === updated.id)
+
+        if (index >= 0) {
+          this.modules.splice(index, 1, updated)
+        }
+
+        return result
+      } finally {
+        this.modulesLoading = false
+      }
+    },
+
+    async deleteTenantModule(payload: TenantModuleDeleteInput) {
+      this.modulesLoading = true
+      this.modulesError = null
+
+      try {
+        const result = await tenantService.deleteTenantModule(payload)
+
+        if (!result.success) {
+          this.modulesError = result.error ?? 'Failed to delete module.'
+          return result
+        }
+
+        this.modules = this.modules.filter((m) => m.id !== payload.id)
+        return result
+      } finally {
+        this.modulesLoading = false
       }
     },
   },

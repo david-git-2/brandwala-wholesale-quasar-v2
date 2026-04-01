@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="admin-layout">
+  <q-layout view="hHh lpR fFf" class="customer-layout">
     <q-header class="glass-header">
       <q-toolbar class="q-px-md q-py-sm">
         <q-btn
@@ -12,11 +12,11 @@
         />
 
         <q-toolbar-title class="row items-center q-gutter-sm">
-          <div class="brand-mark">A</div>
+          <div class="brand-mark">C</div>
 
           <div>
-            <div class="brand-title">Admin App</div>
-            <div class="brand-subtitle">Management Console</div>
+            <div class="brand-title">Customer Portal</div>
+            <div class="brand-subtitle">Workspace</div>
           </div>
         </q-toolbar-title>
       </q-toolbar>
@@ -32,14 +32,14 @@
       <div class="drawer-inner">
         <div class="drawer-brand q-px-md q-py-lg">
           <div class="row items-center q-gutter-sm">
-            <div class="brand-mark brand-mark--drawer">A</div>
+            <div class="brand-mark brand-mark--drawer">C</div>
 
             <div>
               <div class="text-subtitle1 text-weight-bold text-primary">
-                Admin App
+                Customer Portal
               </div>
               <div class="text-caption drawer-subtitle">
-                Management Console
+                Workspace
               </div>
             </div>
           </div>
@@ -72,15 +72,15 @@ import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink
 const linksList: EssentialLinkProps[] = [
   {
     title: 'Dashboard',
-    caption: 'admin/dashboard',
+    caption: 'customer/dashboard',
     icon: 'space_dashboard',
-    to: '/admin/dashboard',
+    to: '/customer/dashboard',
   },
   {
     title: 'Tenants',
-    caption: 'admin/tenants',
+    caption: 'customer/tenants',
     icon: 'domain',
-    to: '/admin/tenants',
+    to: '/customer/tenants',
   },
 ]
 
@@ -92,12 +92,12 @@ function toggleLeftDrawer() {
 </script>
 
 <style scoped>
-.admin-layout {
+.customer-layout {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(25, 118, 210, 0.1), transparent 30%),
-    radial-gradient(circle at top right, rgba(156, 39, 176, 0.08), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(38, 166, 154, 0.08), transparent 28%),
+    radial-gradient(circle at top left, rgba(38, 166, 154, 0.1), transparent 30%),
+    radial-gradient(circle at top right, rgba(25, 118, 210, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(156, 39, 176, 0.06), transparent 28%),
     #f7f9fc;
 }
 
@@ -105,14 +105,14 @@ function toggleLeftDrawer() {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(25, 118, 210, 0.08);
+  border-bottom: 1px solid rgba(38, 166, 154, 0.08);
   box-shadow: 0 8px 30px rgba(17, 24, 39, 0.05);
 }
 
 .header-btn {
   color: var(--q-primary);
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(25, 118, 210, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(38, 166, 154, 0.1);
 }
 
 .brand-mark {
@@ -127,11 +127,11 @@ function toggleLeftDrawer() {
   color: white;
   background: linear-gradient(
     135deg,
-    var(--q-primary) 0%,
-    var(--q-secondary) 55%,
+    var(--q-secondary) 0%,
+    var(--q-primary) 55%,
     var(--q-accent) 100%
   );
-  box-shadow: 0 10px 22px rgba(25, 118, 210, 0.2);
+  box-shadow: 0 10px 22px rgba(38, 166, 154, 0.2);
 }
 
 .brand-mark--drawer {
@@ -157,17 +157,16 @@ function toggleLeftDrawer() {
   background: rgba(255, 255, 255, 0.76);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border-right: 1px solid rgba(25, 118, 210, 0.08);
+  border-right: 1px solid rgba(38, 166, 154, 0.08);
 }
 
 .drawer-inner {
   height: 100%;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.72) 0%,
-      rgba(255, 255, 255, 0.9) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.9) 100%
+  );
 }
 
 .drawer-brand {

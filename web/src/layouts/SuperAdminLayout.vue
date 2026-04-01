@@ -12,11 +12,11 @@
         />
 
         <q-toolbar-title class="row items-center q-gutter-sm">
-          <div class="brand-mark">A</div>
+          <div class="brand-mark">B</div>
 
           <div>
-            <div class="brand-title">Admin App</div>
-            <div class="brand-subtitle">Management Console</div>
+            <div class="brand-title">BrandWala</div>
+            <div class="brand-subtitle">Platform</div>
           </div>
         </q-toolbar-title>
       </q-toolbar>
@@ -32,14 +32,14 @@
       <div class="drawer-inner">
         <div class="drawer-brand q-px-md q-py-lg">
           <div class="row items-center q-gutter-sm">
-            <div class="brand-mark brand-mark--drawer">A</div>
+            <div class="brand-mark brand-mark--drawer">B</div>
 
             <div>
               <div class="text-subtitle1 text-weight-bold text-primary">
-                Admin App
+                BrandWala
               </div>
               <div class="text-caption drawer-subtitle">
-                Management Console
+                Admin Platform
               </div>
             </div>
           </div>
@@ -71,16 +71,22 @@ import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink
 
 const linksList: EssentialLinkProps[] = [
   {
-    title: 'Dashboard',
-    caption: 'admin/dashboard',
-    icon: 'space_dashboard',
-    to: '/admin/dashboard',
+    title: 'Platform Dashboard',
+    caption: 'platform/dashboard',
+    icon: 'admin_panel_settings',
+    to: '/platform/dashboard',
   },
   {
-    title: 'Tenants',
-    caption: 'admin/tenants',
+    title: 'Platform Tenants',
+    caption: 'platform/tenants',
     icon: 'domain',
-    to: '/admin/tenants',
+    to: '/platform/tenants',
+  },
+  {
+    title: 'Platform Modules',
+    caption: 'platform/modules',
+    icon: 'extension',
+    to: '/platform/modules',
   },
 ]
 

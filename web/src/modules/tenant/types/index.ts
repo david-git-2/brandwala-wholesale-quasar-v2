@@ -10,6 +10,16 @@ export type TenantUpdateInput = {
 }
 export type TenantDeleteInput = Pick<Tenant, 'id'>
 
+export type TenantModule = Tables<'tenant_modules'>
+export type TenantModuleCreateInput = Pick<TenantModule, 'tenant_id' | 'module_key' | 'is_active'>
+export type TenantModuleUpdateInput = {
+  id: TenantModule['id']
+  tenant_id?: TenantModule['tenant_id']
+  module_key?: TenantModule['module_key']
+  is_active?: TenantModule['is_active']
+}
+export type TenantModuleDeleteInput = Pick<TenantModule, 'id'>
+
 export interface TenantServiceResult<T = void> {
   success: boolean
   data?: T

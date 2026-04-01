@@ -23,3 +23,14 @@ $positive: #21ba45;
 $negative: #c10015;
 $info: #31ccec;
 $warning: #f2c037;
+
+// Global border radius
+$generic-border-radius: 14px;
+
+// Card specific radius
+$card-border-radius: 14px;
+
+// Shadow override (Quasar elevation system)
+$shadow-1: 0 3px 10px rgba(0, 0, 0, 0.06);
+$shadow-2: 0 6px 16px rgba(0, 0, 0, 0.08);
+$shadow-3: 0 10px 22px rgba(0, 0, 0, 0.12);

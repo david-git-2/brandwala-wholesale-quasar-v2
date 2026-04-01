@@ -5,6 +5,10 @@ import type {
   TenantDeleteInput,
   TenantServiceResult,
   TenantUpdateInput,
+  TenantModule,
+  TenantModuleCreateInput,
+  TenantModuleDeleteInput,
+  TenantModuleUpdateInput,
 } from '../types'
 
 const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
@@ -22,7 +26,10 @@ const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
     }
   }
 }
-const createTenant = async (tenant: TenantCreateInput): Promise<TenantServiceResult<Tenant>> => {
+
+const createTenant = async (
+  tenant: TenantCreateInput
+): Promise<TenantServiceResult<Tenant>> => {
   try {
     const data = await tenantRepository.createTenant(tenant)
 
@@ -37,7 +44,10 @@ const createTenant = async (tenant: TenantCreateInput): Promise<TenantServiceRes
     }
   }
 }
-const updateTenant = async (tenant: TenantUpdateInput): Promise<TenantServiceResult<Tenant>> => {
+
+const updateTenant = async (
+  tenant: TenantUpdateInput
+): Promise<TenantServiceResult<Tenant>> => {
   try {
     const data = await tenantRepository.updateTenant(tenant)
 
@@ -52,7 +62,10 @@ const updateTenant = async (tenant: TenantUpdateInput): Promise<TenantServiceRes
     }
   }
 }
-const deleteTenant = async (tenant: TenantDeleteInput): Promise<TenantServiceResult<Tenant>> => {
+
+const deleteTenant = async (
+  tenant: TenantDeleteInput
+): Promise<TenantServiceResult<Tenant>> => {
   try {
     const data = await tenantRepository.deleteTenant(tenant)
 
@@ -68,10 +81,86 @@ const deleteTenant = async (tenant: TenantDeleteInput): Promise<TenantServiceRes
   }
 }
 
+const listTenantModules = async (
+  tenantId?: number
+): Promise<TenantServiceResult<TenantModule[]>> => {
+  try {
+    const data = await tenantRepository.listTenantModules(tenantId)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load tenant modules.',
+    }
+  }
+}
+
+const createTenantModule = async (
+  payload: TenantModuleCreateInput
+): Promise<TenantServiceResult<TenantModule>> => {
+  try {
+    const data = await tenantRepository.createTenantModule(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create tenant module.',
+    }
+  }
+}
+
+const updateTenantModule = async (
+  payload: TenantModuleUpdateInput
+): Promise<TenantServiceResult<TenantModule>> => {
+  try {
+    const data = await tenantRepository.updateTenantModule(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update tenant module.',
+    }
+  }
+}
+
+const deleteTenantModule = async (
+  payload: TenantModuleDeleteInput
+): Promise<TenantServiceResult<null>> => {
+  try {
+    await tenantRepository.deleteTenantModule(payload)
+
+    return {
+      success: true,
+      data: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete tenant module.',
+    }
+  }
+}
+
 export const tenantService = {
   deleteTenant,
   listTenants,
   createTenant,
   updateTenant,
 
+  listTenantModules,
+  createTenantModule,
+  updateTenantModule,
+  deleteTenantModule,
 }
