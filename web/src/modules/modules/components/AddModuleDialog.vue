@@ -81,7 +81,6 @@ const localModelValue = computed({
 })
 
 const getDefaultForm = (): ModuleForm => ({
-  id: undefined,
   key: '',
   name: '',
   description: '',
@@ -107,13 +106,18 @@ const onCancel = () => {
 }
 
 const onSave = () => {
-  emit('save', {
-    id: form.id,
+  const payload: ModuleForm = {
     key: form.key,
     name: form.name,
     description: form.description,
     is_active: form.is_active,
-  })
+  }
+
+  if (form.id !== undefined) {
+    payload.id = form.id
+  }
+
+  emit('save', payload)
   localModelValue.value = false
 }
 </script>

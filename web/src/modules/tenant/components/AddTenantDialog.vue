@@ -60,7 +60,6 @@ const localModelValue = computed({
 })
 
 const getDefaultForm = (): TenantForm => ({
-  id: undefined,
   name: '',
   slug: '',
   is_active: true
@@ -85,12 +84,17 @@ const onCancel = () => {
 }
 
 const onSave = () => {
-  emit('save', {
-    id: form.id,
+  const payload: TenantForm = {
     name: form.name,
     slug: form.slug,
-    is_active: form.is_active
-  })
+    is_active: form.is_active,
+  }
+
+  if (form.id !== undefined) {
+    payload.id = form.id
+  }
+
+  emit('save', payload)
   localModelValue.value = false
 }
 </script>

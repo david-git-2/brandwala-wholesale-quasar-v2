@@ -95,6 +95,7 @@ import { storeToRefs } from 'pinia'
 
 import AddModuleDialog from '../components/AddModuleDialog.vue'
 import { useModuleStore } from '../stores/moduleStore'
+import type { Module, ModuleCreateInput, ModuleDeleteInput, ModuleUpdateInput } from '../types'
 
 type ModuleForm = {
   id?: number
@@ -111,34 +112,53 @@ const openAddDialog = ref(false)
 const openDeleteDialog = ref(false)
 
 const selectedModule = ref<ModuleForm | null>(null)
-const moduleToDelete = ref<ModuleForm | null>(null)
+const moduleToDelete = ref<Module | null>(null)
 
 const onClickAddModule = () => {
   selectedModule.value = null
   openAddDialog.value = true
 }
 
-const onClickEditModule = (module: ModuleForm) => {
+const onClickEditModule = (module: Module) => {
   selectedModule.value = { ...module }
   openAddDialog.value = true
 }
 
-const onClickDeleteModule = (module: ModuleForm) => {
+const onClickDeleteModule = (module: Module) => {
   moduleToDelete.value = module
   openDeleteDialog.value = true
 }
 
 const handleSaveModule = async (payload: ModuleForm) => {
-  if (payload.id) {
-    await moduleStore.updateModule(payload)
+  if (payload.id !== undefined) {
+    const updatePayload: ModuleUpdateInput = {
+      id: payload.id,
+      key: payload.key,
+      name: payload.name,
+      description: payload.description,
+      is_active: payload.is_active,
+    }
+
+    await moduleStore.updateModule(updatePayload)
   } else {
-    await moduleStore.createModule(payload)
+    const createPayload: ModuleCreateInput = {
+      key: payload.key,
+      name: payload.name,
+      description: payload.description,
+      is_active: payload.is_active,
+    }
+
+    await moduleStore.createModule(createPayload)
   }
 }
 
 const confirmDeleteModule = async () => {
   if (moduleToDelete.value) {
-    await moduleStore.deleteModule(moduleToDelete.value)
+    const deletePayload: ModuleDeleteInput = {
+      id: moduleToDelete.value.id,
+    }
+
+    await moduleStore.deleteModule(deletePayload)
   }
   openDeleteDialog.value = false
 }
