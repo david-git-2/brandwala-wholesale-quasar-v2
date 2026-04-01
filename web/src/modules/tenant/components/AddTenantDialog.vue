@@ -2,7 +2,7 @@
   <q-dialog v-model="localModelValue" persistent>
     <q-card style="min-width: 400px; max-width: 90vw;">
       <q-card-section>
-        <div class="text-h6">Add Tenant</div>
+        <div class="text-h6">{{ isEdit ? 'Edit Tenant' : 'Add Tenant' }}</div>
       </q-card-section>
 
       <q-card-section class="q-gutter-md">
@@ -27,8 +27,8 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" v-close-popup @click="onCancel" />
-        <q-btn color="primary" label="Save" @click="onSave" />
+        <q-btn flat label="Cancel" @click="onCancel" />
+        <q-btn color="primary" :label="isEdit ? 'Update' : 'Save'" @click="onSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -38,6 +38,7 @@
 import { computed, reactive, watch } from 'vue'
 
 type TenantForm = {
+  id?: number
   name: string
   slug: string
   is_active: boolean
@@ -45,6 +46,7 @@ type TenantForm = {
 
 const props = defineProps<{
   modelValue: boolean
+  initialData?: TenantForm | null
 }>()
 
 const emit = defineEmits<{
@@ -58,6 +60,7 @@ const localModelValue = computed({
 })
 
 const getDefaultForm = (): TenantForm => ({
+  id: undefined,
   name: '',
   slug: '',
   is_active: true
@@ -65,13 +68,16 @@ const getDefaultForm = (): TenantForm => ({
 
 const form = reactive<TenantForm>(getDefaultForm())
 
+const isEdit = computed(() => !!props.initialData?.id)
+
 watch(
-  () => props.modelValue,
-  (opened) => {
+  [() => props.modelValue, () => props.initialData],
+  ([opened, data]) => {
     if (opened) {
-      Object.assign(form, getDefaultForm())
+      Object.assign(form, data ?? getDefaultForm())
     }
-  }
+  },
+  { immediate: true }
 )
 
 const onCancel = () => {
@@ -80,6 +86,7 @@ const onCancel = () => {
 
 const onSave = () => {
   emit('save', {
+    id: form.id,
     name: form.name,
     slug: form.slug,
     is_active: form.is_active
