@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_group_members: {
+        Row: {
+          added_by: number | null
+          created_at: string
+          customer_group_id: number
+          email: string
+          id: number
+          is_active: boolean
+          name: string
+          role: Database["public"]["Enums"]["customer_group_role"]
+          updated_at: string
+        }
+        Insert: {
+          added_by?: number | null
+          created_at?: string
+          customer_group_id: number
+          email: string
+          id?: number
+          is_active?: boolean
+          name: string
+          role: Database["public"]["Enums"]["customer_group_role"]
+          updated_at?: string
+        }
+        Update: {
+          added_by?: number | null
+          created_at?: string
+          customer_group_id?: number
+          email?: string
+          id?: number
+          is_active?: boolean
+          name?: string
+          role?: Database["public"]["Enums"]["customer_group_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_group_members_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_groups: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_groups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -186,11 +265,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_customer_group: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_manage_customer_group_member: {
+        Args: { p_customer_group_id: number }
+        Returns: boolean
+      }
       can_manage_membership: {
         Args: {
           p_target_role: Database["public"]["Enums"]["app_role"]
           p_target_tenant_id: number
         }
+        Returns: boolean
+      }
+      can_view_tenant_modules: {
+        Args: { p_tenant_id: number }
         Returns: boolean
       }
       check_login_membership: {
@@ -206,6 +297,23 @@ export type Database = {
           member_updated_at: string
         }[]
       }
+      check_shop_login_access: {
+        Args: { p_email: string; p_tenant_id?: number }
+        Returns: {
+          customer_group_id: number
+          customer_group_is_active: boolean
+          customer_group_name: string
+          has_match: boolean
+          matched_role: Database["public"]["Enums"]["customer_group_role"]
+          member_created_at: string
+          member_email: string
+          member_id: number
+          member_is_active: boolean
+          member_name: string
+          member_tenant_id: number
+          member_updated_at: string
+        }[]
+      }
       create_tenant_for_superadmin: {
         Args: { p_is_active?: boolean; p_name: string; p_slug: string }
         Returns: {
@@ -214,6 +322,21 @@ export type Database = {
           is_active: boolean
           name: string
           slug: string
+          updated_at: string
+        }[]
+      }
+      create_tenant_module_for_superadmin: {
+        Args: {
+          p_is_active?: boolean
+          p_module_key: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          module_key: string
+          tenant_id: number
           updated_at: string
         }[]
       }
@@ -228,6 +351,57 @@ export type Database = {
           name: string
           slug: string
           updated_at: string
+        }[]
+      }
+      delete_tenant_module_for_superadmin: {
+        Args: { p_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          module_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
+      get_app_bootstrap_context: {
+        Args: {
+          p_email?: string
+          p_membership_id?: number
+          p_tenant_id?: number
+        }
+        Returns: {
+          active_module_keys: string[]
+          member_email: string
+          member_id: number
+          member_is_active: boolean
+          member_role: Database["public"]["Enums"]["app_role"]
+          tenant_id: number
+          tenant_is_active: boolean
+          tenant_name: string
+          tenant_slug: string
+        }[]
+      }
+      get_shop_bootstrap_context: {
+        Args: {
+          p_customer_group_member_id?: number
+          p_email?: string
+          p_tenant_id?: number
+        }
+        Returns: {
+          active_module_keys: string[]
+          customer_group_id: number
+          customer_group_is_active: boolean
+          customer_group_name: string
+          member_email: string
+          member_id: number
+          member_is_active: boolean
+          member_name: string
+          member_role: Database["public"]["Enums"]["customer_group_role"]
+          tenant_id: number
+          tenant_is_active: boolean
+          tenant_name: string
+          tenant_slug: string
         }[]
       }
       get_tenant_details_by_membership: {
@@ -270,7 +444,7 @@ export type Database = {
         }[]
       }
       list_tenant_modules_by_tenant: {
-        Args: { p_tenant_id: number }
+        Args: { p_tenant_id?: number }
         Returns: {
           created_at: string
           id: number
@@ -322,9 +496,26 @@ export type Database = {
           updated_at: string
         }[]
       }
+      update_tenant_module_for_superadmin: {
+        Args: {
+          p_id: number
+          p_is_active?: boolean
+          p_module_key?: string
+          p_tenant_id?: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          module_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       app_role: "superadmin" | "admin" | "staff" | "viewer" | "customer"
+      customer_group_role: "admin" | "negotiator" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -453,6 +644,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer", "customer"],
+      customer_group_role: ["admin", "negotiator", "staff"],
     },
   },
 } as const

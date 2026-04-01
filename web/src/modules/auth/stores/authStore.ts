@@ -16,10 +16,26 @@ export interface AuthMemberSnapshot {
   id: number
   email: string
   role: AccessRole
+  actorType: 'membership' | 'customer_group_member'
+  name: string | null
   tenantId: number | null
+  customerGroupId: number | null
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface AuthTenantSnapshot {
+  id: number
+  name: string
+  slug: string
+  isActive: boolean
+}
+
+export interface AuthCustomerGroupSnapshot {
+  id: number
+  name: string
+  isActive: boolean
 }
 
 export interface AuthAccessSnapshot {
@@ -27,14 +43,17 @@ export interface AuthAccessSnapshot {
   matchedRole: AuthMemberSnapshot['role']
   user: AuthUserSnapshot
   member: AuthMemberSnapshot
+  tenant: AuthTenantSnapshot | null
+  customerGroup: AuthCustomerGroupSnapshot | null
+  activeModuleKeys: string[]
   savedAt: string
 }
 
 type StoredAuthAccess = AuthAccessSnapshot & {
-  schemaVersion: 1
+  schemaVersion: 2
 }
 
-const STORAGE_KEY = 'brandwala.auth.access.v1'
+const STORAGE_KEY = 'brandwala.auth.access.v2'
 
 const readStorage = (): StoredAuthAccess | null => {
   if (typeof window === 'undefined') {
@@ -50,11 +69,12 @@ const readStorage = (): StoredAuthAccess | null => {
     const parsed = JSON.parse(rawValue) as Partial<StoredAuthAccess>
 
     if (
-      parsed?.schemaVersion !== 1 ||
+      parsed?.schemaVersion !== 2 ||
       !parsed?.scope ||
       !parsed?.matchedRole ||
       !parsed?.user ||
-      !parsed?.member
+      !parsed?.member ||
+      !Array.isArray(parsed?.activeModuleKeys)
     ) {
       return null
     }
@@ -84,15 +104,27 @@ export const useAuthStore = defineStore('auth', () => {
   const access = computed(() => snapshot.value)
   const user = computed(() => snapshot.value?.user ?? null)
   const member = computed(() => snapshot.value?.member ?? null)
+  const tenant = computed(() => snapshot.value?.tenant ?? null)
+  const customerGroup = computed(() => snapshot.value?.customerGroup ?? null)
+  const activeModuleKeys = computed(() => snapshot.value?.activeModuleKeys ?? [])
   const scope = computed(() => snapshot.value?.scope ?? null)
   const matchedRole = computed(() => snapshot.value?.matchedRole ?? null)
   const isAuthenticated = computed(() => Boolean(snapshot.value?.user))
   const hasAccess = computed(() => Boolean(snapshot.value?.member?.isActive))
+  const tenantId = computed(
+    () => snapshot.value?.tenant?.id ?? snapshot.value?.member?.tenantId ?? null,
+  )
+  const customerGroupId = computed(
+    () =>
+      snapshot.value?.customerGroup?.id ??
+      snapshot.value?.member?.customerGroupId ??
+      null,
+  )
 
   const saveAccess = (nextAccess: Omit<StoredAuthAccess, 'schemaVersion'>) => {
     snapshot.value = {
       ...nextAccess,
-      schemaVersion: 1,
+      schemaVersion: 2,
     }
     writeStorage(snapshot.value)
   }
@@ -105,13 +137,18 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     access,
     clearAccess,
+    customerGroup,
+    customerGroupId,
     hasAccess,
     isAuthenticated,
     member,
     matchedRole,
     saveAccess,
     scope,
+    tenant,
+    tenantId,
     user,
+    activeModuleKeys,
   }
 })
 
