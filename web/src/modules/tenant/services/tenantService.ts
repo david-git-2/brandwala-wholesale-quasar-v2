@@ -27,6 +27,73 @@ const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
   }
 }
 
+const listTenantsByMembership = async (
+  payload?: {
+    tenantId?: number | null
+    email?: string | null
+    role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+  }
+): Promise<TenantServiceResult<Tenant[]>> => {
+  try {
+    const data = await tenantRepository.listTenantsByMembership(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to load tenants.',
+    }
+  }
+}
+
+const getTenantDetailsByMembership = async (
+  payload: {
+    tenantId: number
+    email?: string | null
+    role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+  }
+): Promise<TenantServiceResult<Tenant | null>> => {
+  try {
+    const data = await tenantRepository.getTenantDetailsByMembership(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to load tenant details.',
+    }
+  }
+}
+
+
+const listAdminTenantsByEmail = async (): Promise<TenantServiceResult<Tenant[]>> => {
+  try {
+    const data = await tenantRepository.listAdminTenantsByEmail()
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load tenants.',
+    }
+  }
+}
+
 const createTenant = async (
   tenant: TenantCreateInput
 ): Promise<TenantServiceResult<Tenant>> => {
@@ -163,4 +230,7 @@ export const tenantService = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  listAdminTenantsByEmail,
+  listTenantsByMembership,
+  getTenantDetailsByMembership,
 }

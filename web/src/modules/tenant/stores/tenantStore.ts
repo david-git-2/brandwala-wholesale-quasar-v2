@@ -53,6 +53,24 @@ export const useTenantStore = defineStore('tenant', {
         this.loading = false
       }
     },
+    async fetchAdminTenantsByEmail() {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await tenantService.listAdminTenantsByEmail()
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load tenants.'
+          return result
+        }
+console.log(result)
+        this.items = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
 
     async createTenant(tenant: TenantCreateInput) {
       this.loading = true
@@ -117,6 +135,8 @@ export const useTenantStore = defineStore('tenant', {
       }
     },
 
+
+
     /* ---------------- TENANT MODULES ---------------- */
 
     async fetchTenantModules(tenantId?: number) {
@@ -137,6 +157,65 @@ export const useTenantStore = defineStore('tenant', {
         this.modulesLoading = false
       }
     },
+
+
+    async fetchTenantsByMembership(payload?: {
+  tenantId?: number | null
+  email?: string | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+}) {
+  this.loading = true
+  this.error = null
+
+  try {
+    const result = await tenantService.listTenantsByMembership(payload)
+
+    if (!result.success) {
+      this.error = result.error ?? 'Failed to load tenants.'
+      return result
+    }
+
+    this.items = result.data ?? []
+    return result
+  } finally {
+    this.loading = false
+  }
+},
+
+async fetchTenantDetailsByMembership(payload: {
+  tenantId: number
+  email?: string | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+}) {
+  this.loading = true
+  this.error = null
+
+  try {
+    const result = await tenantService.getTenantDetailsByMembership(payload)
+
+    if (!result.success) {
+      this.error = result.error ?? 'Failed to load tenant details.'
+      return result
+    }
+
+    const tenant = result.data
+
+    if (tenant) {
+      const index = this.items.findIndex((item) => item.id === tenant.id)
+
+      if (index >= 0) {
+        this.items.splice(index, 1, tenant)
+      } else {
+        this.items.push(tenant)
+      }
+    }
+
+    return result
+  } finally {
+    this.loading = false
+  }
+},
+
 
     async createTenantModule(payload: TenantModuleCreateInput) {
       this.modulesLoading = true

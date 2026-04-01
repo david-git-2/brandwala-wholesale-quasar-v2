@@ -39,6 +39,24 @@ export const useMembershipStore = defineStore('membership', {
         this.loading = false
       }
     },
+    async fetchMembershipsByTenantId(tenantId: number) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await membershipService.fetchMembershipsByTenantId(tenantId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load memberships for tenant.'
+          return result
+        }
+
+        this.items = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
 
     async createMembership(membership: MembershipCreateInput) {
       this.loading = true
@@ -52,7 +70,9 @@ export const useMembershipStore = defineStore('membership', {
           return result
         }
 
-        this.items.push(result.data!)
+        if (result.data) {
+          this.items.push(result.data)
+        }
         return result
       } finally {
         this.loading = false

@@ -1,6 +1,6 @@
 export type Membership = {
   id: number
-  user_id: string
+  email: string
   tenant_id: number
   role: string
   is_active: boolean
@@ -9,17 +9,16 @@ export type Membership = {
 }
 
 export type MembershipCreateInput = {
-  user_id: string
   tenant_id: number
+  email: string
   role: string
   is_active: boolean
-  email?: string
 }
 
 export type MembershipUpdateInput = {
   id: number
-  user_id?: string
   tenant_id?: number
+  email?: string
   role?: string
   is_active?: boolean
 }

@@ -22,6 +22,21 @@ const listMemberships = async (): Promise<MembershipServiceResult<Membership[]>>
     }
   }
 }
+const fetchMembershipsByTenantId = async (tenantId: number): Promise<MembershipServiceResult<Membership[]>> => {
+  try {
+    const data = await membershipRepository.fetchMembershipsByTenantId(tenantId)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load memberships for tenant.',
+    }
+  }
+}
 
 const createMembership = async (
   membership: MembershipCreateInput
@@ -61,13 +76,13 @@ const updateMembership = async (
 
 const deleteMembership = async (
   membership: MembershipDeleteInput
-): Promise<MembershipServiceResult<Membership>> => {
+): Promise<MembershipServiceResult<null>> => {
   try {
-    const data = await membershipRepository.deleteMembership(membership)
+    await membershipRepository.deleteMembership(membership)
 
     return {
       success: true,
-      data,
+      data: null,
     }
   } catch (error) {
     return {
@@ -97,6 +112,6 @@ export const membershipService = {
   createMembership,
   updateMembership,
   getTenantAdmins,
+  fetchMembershipsByTenantId,
 }
-
 

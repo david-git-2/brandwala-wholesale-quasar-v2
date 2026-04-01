@@ -332,8 +332,9 @@ import { storeToRefs } from 'pinia'
 
 import { useTenantStore } from '../stores/tenantStore'
 import { useMembershipStore } from 'src/modules/membership/store/membershipStore'
+import type { Membership } from 'src/modules/membership/types'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
-import type { TenantModule } from '../types'
+import type { Tenant, TenantModule, TenantUpdateInput } from '../types'
 import { useModuleStore } from 'src/modules/modules/stores/moduleStore'
 
 type TenantForm = {
@@ -341,16 +342,6 @@ type TenantForm = {
   name: string
   slug: string
   is_active: boolean
-}
-
-type MembershipItem = {
-  id: number
-  tenant_id: number
-  role: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  email: string
 }
 
 const route = useRoute()
@@ -369,7 +360,7 @@ const openAddFeatureDialog = ref(false)
 const openDeleteModuleDialog = ref(false)
 
 const selectedTenant = ref<TenantForm | null>(null)
-const adminToDelete = ref<MembershipItem | null>(null)
+const adminToDelete = ref<Membership | null>(null)
 const moduleToDelete = ref<TenantModule | null>(null)
 
 const adminEmail = ref('')
@@ -380,14 +371,14 @@ const featureForm = ref({
   is_active: true,
 })
 
-const tenantAdmins = ref<MembershipItem[]>([])
+const tenantAdmins = ref<Membership[]>([])
 const tenantAdminsLoading = ref(false)
 const pageLoading = ref(false)
 const pageError = ref('')
 
 const tenantId = computed(() => Number(route.params.id))
 
-const tenant = computed<TenantForm | null>(() => {
+const tenant = computed<Tenant | null>(() => {
   return items.value.find((item) => item.id === tenantId.value) ?? null
 })
 
@@ -467,9 +458,16 @@ const onClickEditTenant = () => {
 }
 
 const handleSaveTenant = async (payload: TenantForm) => {
-  if (!payload.id) return
+  if (payload.id === undefined) return
 
-  await tenantStore.updateTenant(payload)
+  const updatePayload: TenantUpdateInput = {
+    id: payload.id,
+    name: payload.name,
+    slug: payload.slug,
+    is_active: payload.is_active,
+  }
+
+  await tenantStore.updateTenant(updatePayload)
   openEditDialog.value = false
   await loadPageData()
 }
@@ -477,7 +475,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
 const confirmDeleteTenant = async () => {
   if (!tenant.value) return
 
-  await tenantStore.deleteTenant(tenant.value)
+  await tenantStore.deleteTenant({ id: tenant.value.id })
   openDeleteDialog.value = false
   void router.push('/platform/tenants')
 }
@@ -502,7 +500,7 @@ const handleSaveAdmin = async () => {
   await loadTenantAdmins()
 }
 
-const onToggleAdminActive = async (admin: MembershipItem, value: boolean) => {
+const onToggleAdminActive = async (admin: Membership, value: boolean) => {
   const previousValue = !value
 
   try {
@@ -521,7 +519,7 @@ const onToggleAdminActive = async (admin: MembershipItem, value: boolean) => {
   }
 }
 
-const onClickDeleteAdmin = (admin: MembershipItem) => {
+const onClickDeleteAdmin = (admin: Membership) => {
   adminToDelete.value = admin
   openDeleteAdminDialog.value = true
 }

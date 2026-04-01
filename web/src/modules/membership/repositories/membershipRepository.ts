@@ -20,6 +20,7 @@ export type MembershipCreateInput = {
 export type MembershipUpdateInput = {
   id: number
   tenant_id?: number
+  email?: string
   role?: string
   is_active?: boolean
 }
@@ -32,6 +33,19 @@ const listMemberships = async (): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from('memberships')
     .select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as Membership[] | null) ?? []
+}
+
+const fetchMembershipsByTenantId = async (tenantId: number): Promise<Membership[]> => {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('*')
+    .eq('tenant_id', tenantId)
 
   if (error) {
     throw error
@@ -71,14 +85,16 @@ const createMembership = async (
 const updateMembership = async (
   membership: MembershipUpdateInput
 ): Promise<Membership> => {
-  const updatePayload: Partial<MembershipUpdateInput> = {}
-
-  if (membership.email !== undefined) {
-    updatePayload.email = membership.email
-  }
+  const updatePayload: Partial<
+    Pick<MembershipUpdateInput, 'tenant_id' | 'email' | 'role' | 'is_active'>
+  > = {}
 
   if (membership.tenant_id !== undefined) {
     updatePayload.tenant_id = membership.tenant_id
+  }
+
+  if (membership.email !== undefined) {
+    updatePayload.email = membership.email
   }
 
   if (membership.role !== undefined) {
@@ -140,4 +156,5 @@ export const membershipRepository = {
   updateMembership,
   deleteMembership,
   getTenantAdmins,
+  fetchMembershipsByTenantId,
 }

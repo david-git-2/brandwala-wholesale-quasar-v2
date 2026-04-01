@@ -33,86 +33,34 @@
       No tenants found.
     </div>
 
-    <q-page-sticky position="top-right" :offset="[18, 18]">
-      <q-btn
-        color="primary"
-        outline
-        :loading="loading"
-        label="Refresh"
-        @click="refreshTenants"
-      />
-    </q-page-sticky>
 
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-fab color="primary" icon="add" @click="onClickAddTenant" />
-    </q-page-sticky>
 
-    <AddTenantDialog
-      v-model="openAddDialog"
-      :initial-data="selectedTenant"
-      @save="handleSaveTenant"
-    />
+
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
 import { useTenantStore } from '../stores/tenantStore'
-import AddTenantDialog from '../components/AddTenantDialog.vue'
-import type { TenantCreateInput, TenantUpdateInput } from '../types'
-
-type TenantForm = {
-  id?: number
-  name: string
-  slug: string
-  is_active: boolean
-}
 
 const router = useRouter()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
 
-const openAddDialog = ref(false)
-const selectedTenant = ref<TenantForm | null>(null)
+const refreshTenants = () => tenantStore.fetchAdminTenantsByEmail()
 
-const refreshTenants = () => tenantStore.fetchTenants()
-
-const onClickAddTenant = () => {
-  selectedTenant.value = null
-  openAddDialog.value = true
-}
-
-const handleSaveTenant = async (payload: TenantForm) => {
-  if (payload.id) {
-    const updatePayload: TenantUpdateInput = {
-      id: payload.id,
-      name: payload.name,
-      slug: payload.slug,
-      is_active: payload.is_active,
-    }
-
-    await tenantStore.updateTenant(updatePayload)
-  } else {
-    const createPayload: TenantCreateInput = {
-      name: payload.name,
-      slug: payload.slug,
-      is_active: payload.is_active,
-    }
-
-    await tenantStore.createTenant(createPayload)
-  }
-}
 
 const goToTenantDetails = (tenantId?: number) => {
   if (!tenantId) return
-  void router.push(`/platform/tenants/${tenantId}`)
+  void router.push(`/app/tenants/${tenantId}`)
 }
 
 onMounted(() => {
   void refreshTenants()
+  console.log('Tenant list refreshed on mounted')
 })
 </script>
 

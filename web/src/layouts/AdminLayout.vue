@@ -19,7 +19,10 @@
             <div class="brand-subtitle">Management Console</div>
           </div>
         </q-toolbar-title>
+              <TenantSelector />
+
       </q-toolbar>
+
     </q-header>
 
     <q-drawer
@@ -29,7 +32,7 @@
       :width="268"
       class="layout-drawer"
     >
-      <div class="drawer-inner">
+      <div class="drawer-inner column no-wrap">
         <div class="drawer-brand q-px-md q-py-lg">
           <div class="row items-center q-gutter-sm">
             <div class="brand-mark brand-mark--drawer">A</div>
@@ -45,17 +48,30 @@
           </div>
         </div>
 
-        <q-list padding class="q-pt-md">
-          <q-item-label header class="drawer-label">
-            Navigation
-          </q-item-label>
+        <q-scroll-area class="col">
+          <q-list padding class="q-pt-md">
+            <q-item-label header class="drawer-label">
+              Navigation
+            </q-item-label>
 
-          <EssentialLink
-            v-for="link in linksList"
-            :key="link.title"
-            v-bind="link"
+            <EssentialLink
+              v-for="link in linksList"
+              :key="link.title"
+              v-bind="link"
+            />
+          </q-list>
+        </q-scroll-area>
+
+        <div class="q-pa-md q-pb-lg border-top">
+          <q-btn
+            flat
+            class="full-width logout-btn"
+            color="negative"
+            icon="logout"
+            label="Log Out"
+            @click="confirmLogout"
           />
-        </q-list>
+        </div>
       </div>
     </q-drawer>
 
@@ -67,7 +83,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
+import TenantSelector from 'components/TenantSelector.vue'
+
+const $q = useQuasar()
+const router = useRouter()
+const authStore = useAuthStore()
 
 const linksList: EssentialLinkProps[] = [
   {
@@ -88,6 +113,34 @@ const leftDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+function confirmLogout() {
+  $q.dialog({
+    title: 'Confirm Logout',
+    message: 'Are you sure you want to log out?',
+    cancel: true,
+    persistent: true,
+    ok: {
+      flat: true,
+      color: 'negative',
+      label: 'Logout',
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await supabase.auth.signOut()
+        authStore.clearAccess()
+        await router.push('/admin/login')
+      } catch (error) {
+        console.error('Error during logout:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Logout failed. Please try again.',
+        })
+      }
+    })()
+  })
 }
 </script>
 
@@ -184,6 +237,17 @@ function toggleLeftDrawer() {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #94a3b8;
+}
+
+.border-top {
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.logout-btn {
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  font-weight: 600;
+  padding: 12px;
 }
 
 .page-container {

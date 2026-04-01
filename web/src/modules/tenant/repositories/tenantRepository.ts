@@ -10,7 +10,6 @@ export type TenantModule = {
   created_at: string
   updated_at: string
 }
-
 export type TenantModuleCreateInput = {
   tenant_id: number
   module_key: string
@@ -36,6 +35,56 @@ const listTenants = async (): Promise<Tenant[]> => {
   }
 
   return (data as Tenant[] | null) ?? []
+}
+
+
+const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
+  const { data, error } = await supabase.rpc('list_my_admin_tenants')
+
+  if (error) {
+    throw error
+  }
+
+
+  return data
+}
+
+const listTenantsByMembership = async (payload?: {
+  tenantId?: number | null
+  email?: string | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+}): Promise<Tenant[]> => {
+  const { data, error } = await supabase.rpc('list_tenants_by_membership', {
+    p_tenant_id: payload?.tenantId ?? null,
+    p_email: payload?.email ?? null,
+    p_role: payload?.role ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return (data as Tenant[] | null) ?? []
+}
+
+const getTenantDetailsByMembership = async (payload: {
+  tenantId: number
+  email?: string | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | 'customer' | null
+}): Promise<Tenant | null> => {
+  const { data, error } = await supabase.rpc('get_tenant_details_by_membership', {
+    p_tenant_id: payload.tenantId,
+    p_email: payload.email ?? null,
+    p_role: payload.role ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const tenant = Array.isArray(data) ? data[0] : data
+
+  return (tenant as Tenant | null) ?? null
 }
 
 const createTenant = async (tenant: TenantCreateInput): Promise<Tenant> => {
@@ -100,16 +149,10 @@ const deleteTenant = async (tenant: TenantDeleteInput): Promise<Tenant> => {
 /* -------------------- tenant_modules -------------------- */
 
 const listTenantModules = async (tenantId?: number): Promise<TenantModule[]> => {
-  let query = supabase
-    .from('tenant_modules')
-    .select('*')
-    .order('id', { ascending: true })
+const { data, error } = await supabase.rpc('list_tenant_modules_by_tenant', {
+    p_tenant_id: tenantId,
+  })
 
-  if (tenantId) {
-    query = query.eq('tenant_id', tenantId)
-  }
-
-  const { data, error } = await query
 
   if (error) {
     throw error
@@ -202,4 +245,7 @@ export const tenantRepository = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  listAdminTenantsByEmail,
+  listTenantsByMembership,
+  getTenantDetailsByMembership,
 }

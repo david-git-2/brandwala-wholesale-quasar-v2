@@ -230,8 +230,71 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_tenant_details_by_membership: {
+        Args: {
+          p_email?: string
+          p_role?: Database["public"]["Enums"]["app_role"]
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
+      get_tenant_module_by_id: {
+        Args: { p_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          module_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
+      list_my_admin_tenants: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
+      list_tenant_modules_by_tenant: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          module_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
+      list_tenants_by_membership: {
+        Args: {
+          p_email?: string
+          p_role?: Database["public"]["Enums"]["app_role"]
+          p_tenant_id?: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }[]
+      }
       list_tenants_for_superadmin: {
         Args: never
         Returns: {
