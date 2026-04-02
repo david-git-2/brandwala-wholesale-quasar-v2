@@ -77,6 +77,29 @@ const isInteractiveScope = (
   scope: AuthScope | null,
 ): scope is InteractiveScope => scope === 'app' || scope === 'shop'
 
+export const hasTenantContextForScope = ({
+  scope,
+  tenantId,
+}: {
+  scope: AuthScope | null
+  tenantId: number | null | undefined
+}) => {
+  if (!isInteractiveScope(scope)) {
+    return false
+  }
+
+  return typeof tenantId === 'number' && Number.isFinite(tenantId)
+}
+
+export type ModuleAccessResolution = {
+  allowed: boolean
+  hasScopeContext: boolean
+  hasTenantContext: boolean
+  moduleEnabled: boolean
+  roleAllowed: boolean
+  allowedActions: readonly ModuleAction[]
+}
+
 export const getAllowedModuleActions = (
   role: AccessRole | null | undefined,
   moduleKey: ModuleKey,
@@ -89,29 +112,69 @@ export const getAllowedModuleActions = (
 }
 
 export const canAccessModule = ({
+  scope,
+  tenantId,
   role,
   moduleKey,
   activeModuleKeys,
   action = 'view',
 }: {
+  scope: AuthScope | null
+  tenantId: number | null | undefined
   role: AccessRole | null | undefined
   moduleKey: ModuleKey
   activeModuleKeys: readonly string[]
   action?: ModuleAction
 }) => {
+  const hasScopeContext = isInteractiveScope(scope)
+  const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
   const tenantHasModule = activeModuleKeys.includes(moduleKey)
   const allowedActions = getAllowedModuleActions(role, moduleKey)
+  const roleAllowed = allowedActions.includes(action)
 
-  return tenantHasModule && allowedActions.includes(action)
+  return hasScopeContext && hasTenantContext && tenantHasModule && roleAllowed
+}
+
+export const resolveModuleAccess = ({
+  scope,
+  tenantId,
+  role,
+  moduleKey,
+  activeModuleKeys,
+  action = 'view',
+}: {
+  scope: AuthScope | null
+  tenantId: number | null | undefined
+  role: AccessRole | null | undefined
+  moduleKey: ModuleKey
+  activeModuleKeys: readonly string[]
+  action?: ModuleAction
+}): ModuleAccessResolution => {
+  const hasScopeContext = isInteractiveScope(scope)
+  const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
+  const allowedActions = getAllowedModuleActions(role, moduleKey)
+  const moduleEnabled = activeModuleKeys.includes(moduleKey)
+  const roleAllowed = allowedActions.includes(action)
+
+  return {
+    allowed: hasScopeContext && hasTenantContext && moduleEnabled && roleAllowed,
+    hasScopeContext,
+    hasTenantContext,
+    moduleEnabled,
+    roleAllowed,
+    allowedActions,
+  }
 }
 
 export const getAccessibleModuleRoutes = ({
   scope,
+  tenantId,
   role,
   activeModuleKeys,
   tenantSlug,
 }: {
   scope: AuthScope | null
+  tenantId: number | null | undefined
   role: AccessRole | null | undefined
   activeModuleKeys: readonly string[]
   tenantSlug?: string | null | undefined
@@ -121,12 +184,14 @@ export const getAccessibleModuleRoutes = ({
   }
 
   return getModuleRoutesForScope(scope, { tenantSlug }).filter((routeDefinition) =>
-    canAccessModule({
+    resolveModuleAccess({
+      scope,
+      tenantId,
       role,
       moduleKey: routeDefinition.moduleKey,
       activeModuleKeys,
       action: routeDefinition.requiredAction ?? 'view',
-    }),
+    }).allowed,
   )
 }
 
@@ -136,6 +201,7 @@ export const useModulePermissions = () => {
   const accessibleModuleRoutes = computed(() =>
     getAccessibleModuleRoutes({
       scope: authStore.scope,
+      tenantId: authStore.tenantId,
       role: authStore.matchedRole,
       activeModuleKeys: authStore.activeModuleKeys,
       tenantSlug: authStore.tenantSlug,
@@ -144,6 +210,18 @@ export const useModulePermissions = () => {
 
   const hasModuleAccess = (moduleKey: ModuleKey, action: ModuleAction = 'view') =>
     canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      action,
+    })
+
+  const getModuleAccess = (moduleKey: ModuleKey, action: ModuleAction = 'view') =>
+    resolveModuleAccess({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
       role: authStore.matchedRole,
       moduleKey,
       activeModuleKeys: authStore.activeModuleKeys,
@@ -152,6 +230,7 @@ export const useModulePermissions = () => {
 
   return {
     accessibleModuleRoutes,
+    getModuleAccess,
     hasModuleAccess,
   }
 }

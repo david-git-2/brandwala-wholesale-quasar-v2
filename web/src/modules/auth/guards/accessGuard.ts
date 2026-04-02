@@ -41,6 +41,8 @@ export const createAccessGuard = ({
       requiredModule === undefined
         ? true
         : canAccessModule({
+            scope: authStore.scope,
+            tenantId: authStore.tenantId,
             role: memberRole,
             moduleKey: requiredModule,
             activeModuleKeys: authStore.activeModuleKeys,
