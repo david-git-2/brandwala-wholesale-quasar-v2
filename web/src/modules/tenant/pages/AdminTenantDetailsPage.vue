@@ -71,7 +71,7 @@
 
           <q-list v-else separator>
             <q-item
-              v-for="group in customerGroups"
+              v-for="group in sortedCustomerGroups"
               :key="group.id"
               clickable
               :active="selectedCustomerGroupId === group.id"
@@ -87,7 +87,15 @@
               </q-item-section>
 
               <q-item-section>
-                <q-item-label>{{ group.name }}</q-item-label>
+                <q-item-label class="row items-center q-gutter-sm">
+                  <span>{{ group.name }}</span>
+                  <q-badge
+                    v-if="selectedCustomerGroupId === group.id"
+                    color="primary"
+                    outline
+                    label="Selected"
+                  />
+                </q-item-label>
                 <q-item-label caption>
                   #{{ group.id }} · {{ group.is_active ? 'Active' : 'Inactive' }}
                 </q-item-label>
@@ -221,6 +229,43 @@
               />
             </q-card-section>
 
+            <q-card-section class="q-pt-none">
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6 col-md-3">
+                  <div class="customer-group-stat">
+                    <div class="text-caption text-grey-7">Members</div>
+                    <div class="text-subtitle1 text-weight-bold">
+                      {{ selectedCustomerGroupMemberStats.total }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                  <div class="customer-group-stat">
+                    <div class="text-caption text-grey-7">Admins</div>
+                    <div class="text-subtitle1 text-weight-bold">
+                      {{ selectedCustomerGroupMemberStats.admin }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                  <div class="customer-group-stat">
+                    <div class="text-caption text-grey-7">Negotiators</div>
+                    <div class="text-subtitle1 text-weight-bold">
+                      {{ selectedCustomerGroupMemberStats.negotiator }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                  <div class="customer-group-stat">
+                    <div class="text-caption text-grey-7">Staff</div>
+                    <div class="text-subtitle1 text-weight-bold">
+                      {{ selectedCustomerGroupMemberStats.staff }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+
             <q-separator />
 
             <q-card-section v-if="customerGroupMembersLoading" class="text-grey-7">
@@ -235,12 +280,17 @@
             </q-card-section>
 
             <q-list v-else separator>
-              <q-item v-for="member in customerGroupMembers" :key="member.id">
+              <q-item v-for="member in sortedCustomerGroupMembers" :key="member.id">
                 <q-item-section>
-                  <q-item-label>{{ member.name }}</q-item-label>
+                  <q-item-label class="row items-center q-gutter-sm">
+                    <span>{{ member.name }}</span>
+                    <q-badge
+                      :color="member.is_active ? 'positive' : 'grey-6'"
+                      :label="member.is_active ? 'Active' : 'Inactive'"
+                    />
+                  </q-item-label>
                   <q-item-label caption>
-                    {{ member.email }} · {{ formatCustomerRole(member.role) }} ·
-                    {{ member.is_active ? 'Active' : 'Inactive' }}
+                    {{ member.email }} · {{ formatCustomerRole(member.role) }}
                   </q-item-label>
                 </q-item-section>
 
@@ -255,14 +305,22 @@
                         (value) => onToggleCustomerGroupMemberActive(member, value)
                       "
                     />
-                    <q-btn flat round dense icon="edit" @click="openEditCustomerMemberDialog(member)" />
                     <q-btn
                       flat
                       round
                       dense
-                      color="negative"
-                      icon="delete"
-                      @click="openDeleteCustomerMemberDialog(member)"
+                      icon="edit"
+                      @click="openEditCustomerMemberDialog(member)"
+                    />
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      :color="member.is_active ? 'warning' : 'positive'"
+                      :icon="member.is_active ? 'person_off' : 'person_add'"
+                      @click="
+                        onToggleCustomerGroupMemberActive(member, !member.is_active)
+                      "
                     />
                   </div>
                 </q-item-section>
@@ -360,13 +418,22 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="customerGroupForm.name" label="Group name" outlined dense />
+          <q-input
+            v-model="customerGroupForm.name"
+            label="Group name"
+            outlined
+            dense
+            :error="customerGroupNameError !== null"
+            :error-message="customerGroupNameError ?? undefined"
+          />
           <q-input
             v-model="customerGroupForm.accent_color"
             label="Accent color"
             outlined
             dense
             placeholder="#B45F34"
+            :error="customerGroupAccentError !== null"
+            :error-message="customerGroupAccentError ?? undefined"
           >
             <template #append>
               <q-icon
@@ -437,6 +504,8 @@
               type="email"
               outlined
               dense
+              :error="customerGroupAdminEmailError !== null"
+              :error-message="customerGroupAdminEmailError ?? undefined"
             />
             <div class="row items-center justify-between">
               <div class="text-subtitle2">Admin status</div>
@@ -452,7 +521,12 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="openCustomerGroupDialog = false" />
-          <q-btn color="primary" label="Save" @click="saveCustomerGroup" />
+          <q-btn
+            color="primary"
+            label="Save"
+            :disable="customerGroupFormInvalid"
+            @click="saveCustomerGroup"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -487,13 +561,22 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="customerGroupMemberForm.name" label="Name" outlined dense />
+          <q-input
+            v-model="customerGroupMemberForm.name"
+            label="Name"
+            outlined
+            dense
+            :error="customerGroupMemberNameError !== null"
+            :error-message="customerGroupMemberNameError ?? undefined"
+          />
           <q-input
             v-model="customerGroupMemberForm.email"
             label="Email"
             type="email"
             outlined
             dense
+            :error="customerGroupMemberEmailError !== null"
+            :error-message="customerGroupMemberEmailError ?? undefined"
           />
           <q-select
             v-model="customerGroupMemberForm.role"
@@ -517,24 +600,12 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="openCustomerMemberDialog = false" />
-          <q-btn color="primary" label="Save" @click="saveCustomerGroupMember" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="openDeleteCustomerMemberDialogOpen" persistent>
-      <q-card style="min-width: 360px">
-        <q-card-section>
-          <div class="text-h6">Delete Customer Group Member</div>
-        </q-card-section>
-
-        <q-card-section>
-          Delete customer member <strong>{{ customerGroupMemberToDelete?.email }}</strong>?
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteCustomerMemberDialogOpen = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroupMember" />
+          <q-btn
+            color="primary"
+            label="Save"
+            :disable="customerGroupMemberFormInvalid"
+            @click="saveCustomerGroupMember"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -581,11 +652,9 @@ const openDeleteMemberDialog = ref(false)
 const openCustomerGroupDialog = ref(false)
 const openDeleteCustomerGroupDialog = ref(false)
 const openCustomerMemberDialog = ref(false)
-const openDeleteCustomerMemberDialogOpen = ref(false)
 
 const memberToDelete = ref<Membership | null>(null)
 const customerGroupToDelete = ref<CustomerGroup | null>(null)
-const customerGroupMemberToDelete = ref<CustomerGroupMember | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
@@ -651,6 +720,36 @@ const selectedCustomerGroup = computed<CustomerGroup | null>(
     null,
 )
 
+const sortedCustomerGroups = computed(() =>
+  [...customerGroups.value].sort((left, right) => {
+    if (left.is_active !== right.is_active) {
+      return left.is_active ? -1 : 1
+    }
+
+    return left.name.localeCompare(right.name)
+  }),
+)
+
+const sortedCustomerGroupMembers = computed(() =>
+  [...customerGroupMembers.value].sort((left, right) => {
+    if (left.is_active !== right.is_active) {
+      return left.is_active ? -1 : 1
+    }
+
+    if (left.role !== right.role) {
+      const roleOrder: Record<CustomerGroupRole, number> = {
+        admin: 0,
+        negotiator: 1,
+        staff: 2,
+      }
+
+      return roleOrder[left.role] - roleOrder[right.role]
+    }
+
+    return left.name.localeCompare(right.name)
+  }),
+)
+
 const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff'),
 )
@@ -672,6 +771,83 @@ const customerGroupPreviewColor = computed(() => {
     ? color.toUpperCase()
     : defaultCustomerGroupAccent
 })
+
+const selectedCustomerGroupMemberStats = computed(() =>
+  customerGroupMembers.value.reduce(
+    (stats, member) => {
+      stats.total += 1
+      stats[member.role] += 1
+      return stats
+    },
+    {
+      total: 0,
+      admin: 0,
+      negotiator: 0,
+      staff: 0,
+    } satisfies Record<'total' | CustomerGroupRole, number>,
+  ),
+)
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const normalizeEmail = (value: string) => value.trim().toLowerCase()
+
+const normalizeAccentColor = (value: string) => value.trim().toUpperCase()
+
+const isValidEmail = (value: string) => emailPattern.test(normalizeEmail(value))
+
+const isValidHexColor = (value: string) =>
+  value.length === 0 || /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value)
+
+const customerGroupNameError = computed(() =>
+  customerGroupForm.value.name.trim() ? null : 'Group name is required.',
+)
+
+const customerGroupAccentError = computed(() => {
+  const color = normalizeAccentColor(customerGroupForm.value.accent_color)
+  return isValidHexColor(color) ? null : 'Use a hex color like #B45F34.'
+})
+
+const customerGroupAdminEmailError = computed(() => {
+  const hasAdminName = customerGroupAdminForm.value.name.trim().length > 0
+  const email = customerGroupAdminForm.value.email.trim()
+
+  if (!hasAdminName && !email) {
+    return null
+  }
+
+  if (!hasAdminName || !email) {
+    return 'Add both admin name and email, or leave both blank.'
+  }
+
+  return isValidEmail(email) ? null : 'Enter a valid admin email address.'
+})
+
+const customerGroupFormInvalid = computed(
+  () =>
+    customerGroupNameError.value !== null ||
+    customerGroupAccentError.value !== null ||
+    customerGroupAdminEmailError.value !== null,
+)
+
+const customerGroupMemberNameError = computed(() =>
+  customerGroupMemberForm.value.name.trim() ? null : 'Name is required.',
+)
+
+const customerGroupMemberEmailError = computed(() => {
+  const email = customerGroupMemberForm.value.email.trim()
+  if (!email) {
+    return 'Email is required.'
+  }
+
+  return isValidEmail(email) ? null : 'Enter a valid email address.'
+})
+
+const customerGroupMemberFormInvalid = computed(
+  () =>
+    customerGroupMemberNameError.value !== null ||
+    customerGroupMemberEmailError.value !== null,
+)
 
 const formatCustomerRole = (role: CustomerGroupRole) => {
   if (role === 'admin') return 'Customer Admin'
@@ -912,32 +1088,24 @@ const openEditGroupDialog = (group: CustomerGroup) => {
 }
 
 const saveCustomerGroup = async () => {
-  if (!tenant.value?.id || !customerGroupForm.value.name.trim()) return
+  if (!tenant.value?.id || customerGroupFormInvalid.value) return
 
   const shouldCreateFirstAdmin =
     !customerGroupForm.value.id &&
     (customerGroupAdminForm.value.name.trim() || customerGroupAdminForm.value.email.trim())
-
-  if (
-    shouldCreateFirstAdmin &&
-    (!customerGroupAdminForm.value.name.trim() ||
-      !customerGroupAdminForm.value.email.trim())
-  ) {
-    pageError.value = 'Add both admin name and email, or leave both blank.'
-    return
-  }
+  const normalizedAccentColor = normalizeAccentColor(customerGroupForm.value.accent_color)
 
   const result = customerGroupForm.value.id
     ? await customerGroupStore.updateCustomerGroup({
         id: customerGroupForm.value.id,
-        name: customerGroupForm.value.name,
-        accent_color: customerGroupForm.value.accent_color,
+        name: customerGroupForm.value.name.trim(),
+        accent_color: normalizedAccentColor,
         is_active: customerGroupForm.value.is_active,
       })
     : await customerGroupStore.createCustomerGroup({
         tenant_id: tenant.value.id,
-        name: customerGroupForm.value.name,
-        accent_color: customerGroupForm.value.accent_color,
+        name: customerGroupForm.value.name.trim(),
+        accent_color: normalizedAccentColor,
         is_active: customerGroupForm.value.is_active,
       })
 
@@ -951,8 +1119,8 @@ const saveCustomerGroup = async () => {
   if (shouldCreateFirstAdmin && savedGroupId) {
     const adminResult = await customerGroupStore.createCustomerGroupMember({
       customer_group_id: savedGroupId,
-      name: customerGroupAdminForm.value.name,
-      email: customerGroupAdminForm.value.email,
+      name: customerGroupAdminForm.value.name.trim(),
+      email: normalizeEmail(customerGroupAdminForm.value.email),
       role: 'admin',
       is_active: customerGroupAdminForm.value.is_active,
     })
@@ -1045,27 +1213,22 @@ const openEditCustomerMemberDialog = (member: CustomerGroupMember) => {
 }
 
 const saveCustomerGroupMember = async () => {
-  if (!selectedCustomerGroup.value) return
-
-  if (
-    !customerGroupMemberForm.value.name.trim() ||
-    !customerGroupMemberForm.value.email.trim()
-  ) {
+  if (!selectedCustomerGroup.value || customerGroupMemberFormInvalid.value) {
     return
   }
 
   const result = customerGroupMemberForm.value.id
     ? await customerGroupStore.updateCustomerGroupMember({
         id: customerGroupMemberForm.value.id,
-        name: customerGroupMemberForm.value.name,
-        email: customerGroupMemberForm.value.email,
+        name: customerGroupMemberForm.value.name.trim(),
+        email: normalizeEmail(customerGroupMemberForm.value.email),
         role: customerGroupMemberForm.value.role,
         is_active: customerGroupMemberForm.value.is_active,
       })
     : await customerGroupStore.createCustomerGroupMember({
         customer_group_id: selectedCustomerGroup.value.id,
-        name: customerGroupMemberForm.value.name,
-        email: customerGroupMemberForm.value.email,
+        name: customerGroupMemberForm.value.name.trim(),
+        email: normalizeEmail(customerGroupMemberForm.value.email),
         role: customerGroupMemberForm.value.role,
         is_active: customerGroupMemberForm.value.is_active,
       })
@@ -1095,28 +1258,6 @@ const onToggleCustomerGroupMemberActive = async (
     member.is_active = previousValue
     pageError.value = result.error ?? 'Failed to update customer member.'
   }
-}
-
-const openDeleteCustomerMemberDialog = (member: CustomerGroupMember) => {
-  customerGroupMemberToDelete.value = member
-  openDeleteCustomerMemberDialogOpen.value = true
-}
-
-const confirmDeleteCustomerGroupMember = async () => {
-  if (!customerGroupMemberToDelete.value || !selectedCustomerGroup.value) return
-
-  const result = await customerGroupStore.deleteCustomerGroupMember({
-    id: customerGroupMemberToDelete.value.id,
-  })
-
-  if (!result.success) {
-    pageError.value = result.error ?? 'Failed to delete customer member.'
-    return
-  }
-
-  openDeleteCustomerMemberDialogOpen.value = false
-  customerGroupMemberToDelete.value = null
-  await loadCustomerGroupMembers(selectedCustomerGroup.value.id)
 }
 
 onMounted(() => {
@@ -1159,6 +1300,13 @@ onMounted(() => {
 
 .customer-group-color-picker {
   border-radius: 16px;
+}
+
+.customer-group-stat {
+  padding: 0.75rem 0.875rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.8);
 }
 
 .customer-group-color-row {

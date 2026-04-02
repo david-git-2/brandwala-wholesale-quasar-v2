@@ -46,6 +46,7 @@ export const createAccessGuard = ({
         : canAccessModule({
             scope: authStore.scope,
             tenantId: authStore.tenantId,
+            customerGroupId: authStore.customerGroupId,
             role: memberRole,
             moduleKey: requiredModule,
             activeModuleKeys: authStore.activeModuleKeys,

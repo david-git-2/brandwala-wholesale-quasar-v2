@@ -69,6 +69,15 @@ const dashboardRoutes: RouteRecordRaw[] = [
             'customer_staff',
           ],
           validateAccess: ({ authStore, to }) => {
+            if (
+              authStore.actorType !== 'customer_group_member' ||
+              authStore.customerGroupId === null
+            ) {
+              return getShopLoginRouteLocation(to, {
+                login_error: 'no_membership',
+              })
+            }
+
             const routeTenantSlug = getTenantSlugFromRoute(to)
             const sessionTenantSlug = authStore.tenantSlug
 
