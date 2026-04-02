@@ -36,6 +36,14 @@ const dashboardRoutes: RouteRecordRaw[] = [
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['admin', 'staff'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore }) => {
+            if (authStore.selectedTenant) {
+              return true
+            }
+
+            return { name: 'admin-tenant-list' }
+          },
         }),
       },
     ],
@@ -54,6 +62,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
               redirect: to.fullPath,
             }),
           requiredScope: 'shop',
+          requireTenantContext: true,
           allowedRoles: [
             'customer_admin',
             'customer_negotiator',
@@ -61,9 +70,25 @@ const dashboardRoutes: RouteRecordRaw[] = [
           ],
           validateAccess: ({ authStore, to }) => {
             const routeTenantSlug = getTenantSlugFromRoute(to)
-            const sessionTenantSlug = authStore.tenant?.slug ?? null
+            const sessionTenantSlug = authStore.tenantSlug
 
-            if (!routeTenantSlug || !sessionTenantSlug || routeTenantSlug === sessionTenantSlug) {
+            if (!sessionTenantSlug) {
+              return getShopLoginRouteLocation(to, {
+                login_error: 'invalid_tenant',
+              })
+            }
+
+            if (!routeTenantSlug) {
+              return getShopDashboardRouteLocation({
+                ...to,
+                params: {
+                  ...(to.params ?? {}),
+                  tenantSlug: sessionTenantSlug,
+                },
+              })
+            }
+
+            if (routeTenantSlug === sessionTenantSlug) {
               return true
             }
 

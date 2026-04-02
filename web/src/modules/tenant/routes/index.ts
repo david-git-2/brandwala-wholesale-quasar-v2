@@ -52,6 +52,26 @@ const tenantRoutes: RouteRecordRaw[] = [
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (!Number.isFinite(routeTenantId) || routeTenantId === selectedTenantId) {
+              return true
+            }
+
+            return {
+              name: 'admin-tenant-details',
+              params: {
+                id: selectedTenantId,
+              },
+            }
+          },
         }),
       },
     ],

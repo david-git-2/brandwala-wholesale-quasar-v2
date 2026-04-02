@@ -19,6 +19,7 @@ export const createAccessGuard = ({
   allowedRoles,
   loginRoute,
   requiredScope,
+  requireTenantContext,
   requiredModule,
   requiredModuleAction,
   validateAccess,
@@ -26,6 +27,7 @@ export const createAccessGuard = ({
   allowedRoles?: AccessRole[]
   loginRoute: string | ((to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }) => RouteLocationRaw)
   requiredScope?: AuthScope
+  requireTenantContext?: boolean
   requiredModule?: ModuleKey
   requiredModuleAction?: ModuleAction
   validateAccess?: (context: {
@@ -37,6 +39,7 @@ export const createAccessGuard = ({
     const authStore = useAuthStore()
     const memberRole = authStore.member?.role
     const currentScope = authStore.scope
+    const hasTenantContext = authStore.tenantId !== null
     const hasRequiredModuleAccess =
       requiredModule === undefined
         ? true
@@ -53,6 +56,7 @@ export const createAccessGuard = ({
       !authStore.isAuthenticated ||
       !authStore.hasAccess ||
       (requiredScope !== undefined && currentScope !== requiredScope) ||
+      (requireTenantContext === true && !hasTenantContext) ||
       !memberRole ||
       (allowedRoles !== undefined && !allowedRoles.includes(memberRole)) ||
       !hasRequiredModuleAccess
