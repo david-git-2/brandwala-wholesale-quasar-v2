@@ -371,7 +371,7 @@ export type Database = {
         Args: {
           p_email?: string
           p_membership_id?: number
-          p_tenant_id?: number
+          p_tenant_id: number
         }
         Returns: {
           active_module_keys: string[]
@@ -389,7 +389,7 @@ export type Database = {
         Args: {
           p_customer_group_member_id?: number
           p_email?: string
-          p_tenant_id?: number
+          p_tenant_id: number
         }
         Returns: {
           active_module_keys: string[]

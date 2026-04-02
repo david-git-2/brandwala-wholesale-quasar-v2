@@ -27,9 +27,15 @@ export function useAdminTenantSelection() {
     selectingTenantId.value = tenant.id
 
     try {
+      const membershipId =
+        authStore.member?.actorType === 'membership' && authStore.member.tenantId === tenant.id
+          ? authStore.member.id
+          : null
+
       const { data, error } = await supabase.rpc('get_app_bootstrap_context', {
         p_email: authStore.user.email,
         p_tenant_id: tenant.id,
+        p_membership_id: membershipId,
       })
 
       if (error) {

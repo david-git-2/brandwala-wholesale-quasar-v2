@@ -44,11 +44,14 @@ const props = defineProps<{
   ctaLabel: string
   disabled?: boolean
   supportText?: string
+  tenantSlug?: string | null
   tone: 'platform' | 'app' | 'shop'
 }>()
 
 const route = useRoute()
-const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope)
+const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
+  tenantSlug: props.tenantSlug ?? null,
+})
 
 const panelBadge = computed(() => {
   switch (props.tone) {

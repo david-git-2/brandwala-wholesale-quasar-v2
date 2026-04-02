@@ -78,7 +78,12 @@ const getOAuthCallbackBaseUrl = () => {
   return productionUrl ?? window.location.origin
 }
 
-export function useOAuthLogin(scope?: AuthScope) {
+export function useOAuthLogin(
+  scope?: AuthScope,
+  options?: {
+    tenantSlug?: string | null
+  },
+) {
   const route = useRoute()
   const router = useRouter()
   const authStore = useAuthStore()
@@ -118,7 +123,7 @@ export function useOAuthLogin(scope?: AuthScope) {
   }
 
   const resolveShopTenantEntry = async () => {
-    const tenantSlug = getTenantSlugFromRoute(route)
+    const tenantSlug = options?.tenantSlug ?? getTenantSlugFromRoute(route)
     const hostname = getTenantHostnameForEntry()
     const result = await tenantService.resolveTenantForEntry({
       slug: tenantSlug,
