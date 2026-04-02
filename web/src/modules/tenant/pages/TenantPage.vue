@@ -1,57 +1,66 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="q-mb-md text-h5 text-weight-bold">Tenants</div>
-
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-      {{ error }}
-    </q-banner>
-
-    <div class="row q-col-gutter-md">
-      <div
-        v-for="tenant in items"
-        :key="tenant.id"
-        class="col-6 col-sm-4 col-md-3 col-lg-2"
+  <q-page class="bw-page">
+    <div class="bw-page__stack">
+      <AppPageHeader
+        eyebrow="Platform"
+        title="Tenants"
+        subtitle="Manage tenant workspaces with the shared page header, action area, and entity-card pattern."
       >
-        <q-card
-          class="tenant-card cursor-pointer"
-          @click="goToTenantDetails(tenant.id)"
+        <template #actions>
+          <div class="bw-inline-actions">
+            <q-btn
+              color="primary"
+              unelevated
+              icon="add"
+              label="Add Tenant"
+              @click="onClickAddTenant"
+            />
+          </div>
+        </template>
+      </AppPageHeader>
+
+      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+        {{ error }}
+      </q-banner>
+
+      <AppSectionCard
+        title="Tenant Directory"
+        caption="Use this shared card layout for master lists throughout the app, including modules and future admin resources."
+      >
+        <div v-if="items.length" class="bw-entity-grid">
+          <AppEntityCard
+            v-for="tenant in items"
+            :key="tenant.id"
+            clickable
+            :eyebrow="`Tenant #${tenant.id}`"
+            :title="tenant.name"
+            :meta="tenant.slug"
+            :status-label="tenant.is_active ? 'Active' : 'Inactive'"
+            :status-tone="tenant.is_active ? 'positive' : 'neutral'"
+            @click="goToTenantDetails(tenant.id)"
+          />
+        </div>
+
+        <AppEmptyState
+          v-else-if="!loading"
+          icon="apartment"
+          title="No tenants available"
+          message="Create your first tenant to start assigning modules, staff access, and customer groups."
         >
-          <q-card-section class="column items-center justify-center">
-            <div class="text-caption text-grey-6 q-mb-xs">
-              #{{ tenant.id }}
-            </div>
+          <template #actions>
+            <q-btn color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
+          </template>
+        </AppEmptyState>
 
-            <div class="text-subtitle2 text-weight-medium text-center ellipsis">
-              {{ tenant.name }}
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
+        <div v-else class="bw-text-muted">Loading tenants...</div>
+      </AppSectionCard>
 
-    <div v-if="!loading && items.length === 0" class="text-grey-7 q-mt-lg">
-      No tenants found.
-    </div>
-
-    <q-page-sticky position="top-right" :offset="[18, 18]">
-      <q-btn
-        color="primary"
-        outline
-        :loading="loading"
-        label="Refresh"
-        @click="refreshTenants"
+      <AddTenantDialog
+        v-model="openAddDialog"
+        :initial-data="selectedTenant"
+        @save="handleSaveTenant"
       />
-    </q-page-sticky>
-
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-fab color="primary" icon="add" @click="onClickAddTenant" />
-    </q-page-sticky>
-
-    <AddTenantDialog
-      v-model="openAddDialog"
-      :initial-data="selectedTenant"
-      @save="handleSaveTenant"
-    />
+    </div>
   </q-page>
 </template>
 
@@ -60,6 +69,10 @@ import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
+import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
+import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
 import type { TenantCreateInput, TenantUpdateInput } from '../types'
@@ -69,6 +82,8 @@ type TenantForm = {
   name: string
   slug: string
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 const router = useRouter()
@@ -115,16 +130,3 @@ onMounted(() => {
   void refreshTenants()
 })
 </script>
-
-<style scoped>
-.tenant-card {
-  min-height: 100px;
-}
-
-.ellipsis {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

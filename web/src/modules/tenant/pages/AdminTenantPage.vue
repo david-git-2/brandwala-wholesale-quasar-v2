@@ -1,41 +1,44 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="q-mb-md text-h5 text-weight-bold">Tenants</div>
+  <q-page class="bw-page">
+    <div class="bw-page__stack">
+      <AppPageHeader
+        eyebrow="Operations"
+        title="Tenants"
+        subtitle="Browse the workspaces connected to your admin access using the same card layout used across the app."
+      />
 
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-      {{ error }}
-    </q-banner>
+      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+        {{ error }}
+      </q-banner>
 
-    <div class="row q-col-gutter-md">
-      <div
-        v-for="tenant in items"
-        :key="tenant.id"
-        class="col-6 col-sm-4 col-md-3 col-lg-2"
+      <AppSectionCard
+        title="Tenant Directory"
+        caption="Each card uses the shared entity shell so future list pages stay visually aligned."
       >
-        <q-card
-          class="tenant-card cursor-pointer"
-          @click="goToTenantDetails(tenant.id)"
-        >
-          <q-card-section class="column items-center justify-center">
-            <div class="text-caption text-grey-6 q-mb-xs">
-              #{{ tenant.id }}
-            </div>
+        <div v-if="items.length" class="bw-entity-grid">
+          <AppEntityCard
+            v-for="tenant in items"
+            :key="tenant.id"
+            clickable
+            :eyebrow="`Tenant #${tenant.id}`"
+            :title="tenant.name"
+            :meta="tenant.slug"
+            :status-label="tenant.is_active ? 'Active' : 'Inactive'"
+            :status-tone="tenant.is_active ? 'positive' : 'neutral'"
+            @click="goToTenantDetails(tenant.id)"
+          />
+        </div>
 
-            <div class="text-subtitle2 text-weight-medium text-center ellipsis">
-              {{ tenant.name }}
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
+        <AppEmptyState
+          v-else-if="!loading"
+          icon="domain"
+          title="No tenants found"
+          message="When tenant access is assigned to this admin account, those workspaces will appear here."
+        />
+
+        <div v-else class="bw-text-muted">Loading tenants...</div>
+      </AppSectionCard>
     </div>
-
-    <div v-if="!loading && items.length === 0" class="text-grey-7 q-mt-lg">
-      No tenants found.
-    </div>
-
-
-
-
   </q-page>
 </template>
 
@@ -44,6 +47,10 @@ import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
+import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
+import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { useTenantStore } from '../stores/tenantStore'
 
 const router = useRouter()
@@ -62,16 +69,3 @@ onMounted(() => {
   void refreshTenants()
 })
 </script>
-
-<style scoped>
-.tenant-card {
-  min-height: 100px;
-}
-
-.ellipsis {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

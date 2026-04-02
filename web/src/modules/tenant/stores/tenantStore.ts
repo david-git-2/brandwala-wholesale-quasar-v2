@@ -16,7 +16,7 @@ import type {
 export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
-    loading: false,
+    loading: true,
     error: null,
   }),
 

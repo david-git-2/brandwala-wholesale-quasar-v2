@@ -343,6 +343,8 @@ type TenantForm = {
   name: string
   slug: string
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 const route = useRoute()
@@ -454,7 +456,9 @@ const onClickEditTenant = () => {
     id: tenant.value.id,
     name: tenant.value.name,
     slug: tenant.value.slug,
-    is_active: tenant.value.is_active
+    is_active: tenant.value.is_active,
+    created_at: tenant.value.created_at,
+    updated_at: tenant.value.updated_at,
   }
 
   openEditDialog.value = true

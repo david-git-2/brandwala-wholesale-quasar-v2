@@ -16,7 +16,7 @@ import type {
 export const useModuleStore = defineStore('module', {
   state: (): ModuleStoreState => ({
     items: [],
-    loading: false,
+    loading: true,
     error: null,
   }),
 
