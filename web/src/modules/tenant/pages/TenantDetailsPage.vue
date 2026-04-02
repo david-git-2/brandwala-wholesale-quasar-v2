@@ -57,6 +57,7 @@
             <div><strong>ID:</strong> #{{ tenant.id }}</div>
             <div><strong>Name:</strong> {{ tenant.name }}</div>
             <div><strong>Slug:</strong> {{ tenant.slug }}</div>
+            <div><strong>Public Domain:</strong> {{ tenant.public_domain || 'Not set' }}</div>
             <div>
               <strong>Status:</strong>
               {{ tenant.is_active ? 'Active' : 'Inactive' }}
@@ -342,6 +343,7 @@ type TenantForm = {
   id?: number
   name: string
   slug: string
+  public_domain: string | null
   is_active: boolean
   created_at?: string
   updated_at?: string
@@ -456,6 +458,7 @@ const onClickEditTenant = () => {
     id: tenant.value.id,
     name: tenant.value.name,
     slug: tenant.value.slug,
+    public_domain: tenant.value.public_domain,
     is_active: tenant.value.is_active,
     created_at: tenant.value.created_at,
     updated_at: tenant.value.updated_at,
@@ -471,6 +474,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
     id: payload.id,
     name: payload.name,
     slug: payload.slug,
+    public_domain: payload.public_domain,
     is_active: payload.is_active,
   }
 

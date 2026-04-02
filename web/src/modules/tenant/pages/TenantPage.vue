@@ -34,7 +34,7 @@
             clickable
             :eyebrow="`Tenant #${tenant.id}`"
             :title="tenant.name"
-            :meta="tenant.slug"
+            :meta="tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug"
             :status-label="tenant.is_active ? 'Active' : 'Inactive'"
             :status-tone="tenant.is_active ? 'positive' : 'neutral'"
             @click="goToTenantDetails(tenant.id)"
@@ -81,6 +81,7 @@ type TenantForm = {
   id?: number
   name: string
   slug: string
+  public_domain: string | null
   is_active: boolean
   created_at?: string
   updated_at?: string
@@ -106,6 +107,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
       id: payload.id,
       name: payload.name,
       slug: payload.slug,
+      public_domain: payload.public_domain,
       is_active: payload.is_active,
     }
 
@@ -114,6 +116,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
     const createPayload: TenantCreateInput = {
       name: payload.name,
       slug: payload.slug,
+      public_domain: payload.public_domain,
       is_active: payload.is_active,
     }
 

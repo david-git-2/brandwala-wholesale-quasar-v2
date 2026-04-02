@@ -215,6 +215,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string | null
           slug: string
           updated_at: string
         }
@@ -223,6 +224,7 @@ export type Database = {
           id?: number
           is_active?: boolean
           name: string
+          public_domain?: string | null
           slug: string
           updated_at?: string
         }
@@ -231,6 +233,7 @@ export type Database = {
           id?: number
           is_active?: boolean
           name?: string
+          public_domain?: string | null
           slug?: string
           updated_at?: string
         }
@@ -291,12 +294,18 @@ export type Database = {
         }[]
       }
       create_tenant_for_superadmin: {
-        Args: { p_is_active?: boolean; p_name: string; p_slug: string }
+        Args: {
+          p_is_active?: boolean
+          p_name: string
+          p_public_domain?: string
+          p_slug: string
+        }
         Returns: {
           created_at: string
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -324,6 +333,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -390,6 +400,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -414,6 +425,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -440,6 +452,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -451,6 +464,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -459,6 +473,7 @@ export type Database = {
         Args: {
           p_is_active: boolean
           p_name: string
+          p_public_domain?: string
           p_slug: string
           p_tenant_id: number
         }
@@ -467,6 +482,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          public_domain: string
           slug: string
           updated_at: string
         }[]

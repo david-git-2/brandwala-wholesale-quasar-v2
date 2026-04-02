@@ -29,6 +29,21 @@
           @update:model-value="onSlugInput"
         />
 
+        <q-input
+          v-model="form.public_domain"
+          label="Public Domain"
+          outlined
+          dense
+          hint="Optional. Example: wholesale.brandwala.com"
+          :rules="[
+            (value) =>
+              !String(value ?? '').trim() ||
+              /^[a-z0-9.-]+$/.test(normalizePublicDomain(String(value))) ||
+              'Use a valid hostname or domain'
+          ]"
+          @update:model-value="onPublicDomainInput"
+        />
+
         <q-toggle
           v-model="form.is_active"
           label="Is Active"
@@ -78,6 +93,7 @@ type TenantForm = {
   id?: number
   name: string
   slug: string
+  public_domain: string | null
   is_active: boolean
   created_at?: string
   updated_at?: string
@@ -101,6 +117,7 @@ const localModelValue = computed({
 const getDefaultForm = (): TenantForm => ({
   name: '',
   slug: '',
+  public_domain: null,
   is_active: true
 })
 
@@ -116,6 +133,14 @@ const slugify = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-')
+
+const normalizePublicDomain = (value: string): string =>
+  (value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .split('/')[0] ?? '')
+    .replace(/:\d+$/, '')
 
 watch(
   [() => props.modelValue, () => props.initialData],
@@ -145,6 +170,10 @@ const onSlugInput = () => {
   form.slug = slugify(form.slug)
 }
 
+const onPublicDomainInput = () => {
+  form.public_domain = normalizePublicDomain(form.public_domain ?? '') || null
+}
+
 const formatDate = (value?: string) => {
   if (!value) return ''
 
@@ -158,6 +187,7 @@ const onSave = () => {
   const payload: TenantForm = {
     name: form.name.trim(),
     slug: slugify(form.slug),
+    public_domain: normalizePublicDomain(form.public_domain ?? '') || null,
     is_active: form.is_active,
   }
 

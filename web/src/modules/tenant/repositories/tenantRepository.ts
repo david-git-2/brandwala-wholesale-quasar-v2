@@ -91,6 +91,7 @@ const createTenant = async (tenant: TenantCreateInput): Promise<Tenant> => {
   const { data, error } = await supabase.rpc('create_tenant_for_superadmin', {
     p_name: tenant.name,
     p_slug: tenant.slug,
+    p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
   })
 
@@ -112,6 +113,7 @@ const updateTenant = async (tenant: TenantUpdateInput): Promise<Tenant> => {
     p_tenant_id: tenant.id,
     p_name: tenant.name,
     p_slug: tenant.slug,
+    p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
   })
 
