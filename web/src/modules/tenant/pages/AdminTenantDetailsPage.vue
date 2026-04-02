@@ -545,6 +545,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { watch } from 'vue'
 
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
@@ -798,6 +799,21 @@ const loadPageData = async () => {
 const goBack = () => {
   void router.push('/app/tenants')
 }
+
+watch(
+  tenant,
+  (value) => {
+    if (!value) {
+      return
+    }
+
+    tenantStore.setSelectedTenant({
+      id: value.id,
+      slug: value.slug,
+    })
+  },
+  { immediate: true },
+)
 
 const onClickAddMember = (role: 'staff') => {
   selectedMemberRole.value = role

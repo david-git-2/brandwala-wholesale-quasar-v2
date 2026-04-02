@@ -69,6 +69,9 @@ export interface TenantServiceResult<T = void> {
 
 export interface TenantStoreState {
   items: Tenant[]
+  availableAdminTenants: Tenant[]
+  selectedTenantId: Tenant['id'] | null
+  selectedTenantSlug: Tenant['slug'] | null
   loading: boolean
   error: string | null
 }

@@ -10,6 +10,7 @@ import {
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext'
 import { tenantService } from 'src/modules/tenant/services/tenantService'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import {
   useAuthStore,
   type AuthAccessSnapshot,
@@ -81,6 +82,7 @@ export function useOAuthLogin(scope?: AuthScope) {
   const route = useRoute()
   const router = useRouter()
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
   const isLoading = ref(false)
   const resolvedScope =
     scope ?? (((route.meta as { authScope?: AuthScope }).authScope) ?? 'app')
@@ -163,6 +165,10 @@ export function useOAuthLogin(scope?: AuthScope) {
       ...payload,
       savedAt: new Date().toISOString(),
     })
+
+    if (payload.scope === 'app') {
+      tenantStore.hydrateSelectedTenantFromAuth(payload.tenant)
+    }
 
     const redirectPath =
       typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
@@ -296,6 +302,8 @@ export function useOAuthLogin(scope?: AuthScope) {
         activeModuleKeys: [],
         savedAt: new Date().toISOString(),
       })
+      tenantStore.setAvailableAdminTenants(availableTenants)
+      tenantStore.clearSelectedTenant()
 
       await router.replace({ name: 'admin-tenant-list' })
       return true

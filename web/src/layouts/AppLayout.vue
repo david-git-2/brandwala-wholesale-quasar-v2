@@ -18,12 +18,12 @@
 import { computed } from 'vue'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 
-const authStore = useAuthStore()
+const tenantStore = useTenantStore()
 const { links } = useAppWorkspaceLinks()
-const tenantName = computed(() => authStore.tenant?.name ?? '')
+const tenantName = computed(() => tenantStore.selectedTenant?.name ?? '')
 </script>
 
 <style scoped>

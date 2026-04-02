@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import type { AuthScope } from '../composables/useOAuthLogin'
 import type { AccessRole } from '../guards/accessGuard'
+import { clearTenantWorkspaceStorage } from 'src/modules/tenant/stores/tenantStore'
 
 export interface AuthUserSnapshot {
   id: string
@@ -132,6 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
   const clearAccess = () => {
     snapshot.value = null
     writeStorage(null)
+    clearTenantWorkspaceStorage()
   }
 
   return {

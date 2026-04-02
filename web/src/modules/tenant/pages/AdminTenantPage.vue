@@ -66,6 +66,15 @@ const refreshTenants = () =>
 
 const goToTenantDetails = (tenantId?: number) => {
   if (!tenantId) return
+  const tenant = items.value.find((item) => item.id === tenantId) ?? null
+
+  if (tenant) {
+    tenantStore.setSelectedTenant({
+      id: tenant.id,
+      slug: tenant.slug,
+    })
+  }
+
   void router.push(`/app/tenants/${tenantId}`)
 }
 

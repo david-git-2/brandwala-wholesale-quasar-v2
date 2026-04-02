@@ -53,10 +53,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 
-const authStore = useAuthStore()
-const selectedTenantName = computed(() => authStore.tenant?.name ?? '')
+const tenantStore = useTenantStore()
+const selectedTenantName = computed(() => tenantStore.selectedTenant?.name ?? '')
 </script>
 
 <style scoped>
