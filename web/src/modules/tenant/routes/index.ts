@@ -32,22 +32,27 @@ const tenantRoutes: RouteRecordRaw[] = [
     path: '/app/tenants',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
-    beforeEnter: createAccessGuard({
-      loginRoute: 'admin-login-page',
-      requiredScope: 'app',
-      allowedRoles: ['admin'],
-    }),
     children: [
       {
         path: '',
         name: 'admin-tenant-list',
         component: () => import('../pages/AdminTenantPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin', 'staff'],
+        }),
       },
       {
         path: ':id',
         name: 'admin-tenant-details',
         component: () => import('../pages/AdminTenantDetailsPage.vue'),
         props: true,
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+        }),
       },
     ],
   },

@@ -51,14 +51,18 @@ import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
 import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
 import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from '../stores/tenantStore'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
 
-const refreshTenants = () => tenantStore.fetchAdminTenantsByEmail()
-
+const refreshTenants = () =>
+  tenantStore.fetchTenantsByMembership({
+    email: authStore.user?.email ?? null,
+  })
 
 const goToTenantDetails = (tenantId?: number) => {
   if (!tenantId) return

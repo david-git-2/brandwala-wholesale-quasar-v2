@@ -1,20 +1,35 @@
 <template>
   <q-page class="dashboard-page theme-app">
+    <q-banner
+      v-if="!selectedTenantName"
+      rounded
+      class="dashboard-banner"
+    >
+      Choose a tenant from the tenant list to load a specific internal workspace.
+    </q-banner>
+
     <section class="dashboard-hero">
       <div class="dashboard-copy">
         <div class="dashboard-eyebrow">Admin</div>
-        <h1>Daily operations, without the clutter.</h1>
+        <h1>{{ selectedTenantName ? `${selectedTenantName} is ready for work.` : 'Daily operations, without the clutter.' }}</h1>
         <p>
-          This workspace is for internal teams handling tenant setup, member access, and the
-          operational pieces behind wholesale activity.
+          {{
+            selectedTenantName
+              ? `Use the tenant list to switch workspaces when this account belongs to more than one business.`
+              : 'This workspace is for internal teams handling tenant setup, member access, and the operational pieces behind wholesale activity.'
+          }}
         </p>
       </div>
 
       <div class="dashboard-panel">
         <div class="dashboard-panel__label">Workspace</div>
-        <div class="dashboard-panel__value">Internal operations</div>
+        <div class="dashboard-panel__value">{{ selectedTenantName || 'Internal operations' }}</div>
         <div class="dashboard-panel__meta">
-          Manage people, customer groups, and enabled tenant workflows.
+          {{
+            selectedTenantName
+              ? 'Tenant context is active for this internal workspace.'
+              : 'Manage people, customer groups, and enabled tenant workflows.'
+          }}
         </div>
       </div>
     </section>
@@ -35,7 +50,22 @@
   </q-page>
 </template>
 
+<script setup lang="ts">
+import { computed } from 'vue'
+
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
+
+const authStore = useAuthStore()
+const selectedTenantName = computed(() => authStore.tenant?.name ?? '')
+</script>
+
 <style scoped>
+.dashboard-banner {
+  background: rgb(var(--bw-theme-primary-rgb) / 0.1);
+  color: var(--bw-theme-ink);
+  border: 1px solid rgb(var(--bw-theme-primary-rgb) / 0.15);
+}
+
 .dashboard-page {
   --dashboard-border: var(--bw-theme-border);
   --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 94%, white 6%);

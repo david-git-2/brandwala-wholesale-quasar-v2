@@ -258,11 +258,56 @@ export function useOAuthLogin(scope?: AuthScope) {
       return false
     }
 
+    const tenantListResult = await tenantService.listTenantsByMembership({
+      email: userEmail,
+    })
+
+    if (!tenantListResult.success) {
+      await sendBackToLogin('App tenant list fetch failed', tenantListResult)
+      return false
+    }
+
+    const availableTenants = tenantListResult.data ?? []
+
+    if (availableTenants.length === 0) {
+      await sendBackToLogin('No internal tenant access found for this route', tenantListResult)
+      return false
+    }
+
+    if (availableTenants.length > 1) {
+      authStore.saveAccess({
+        scope: 'app',
+        matchedRole: result.matched_role,
+        user,
+        member: {
+          id: result.member_id,
+          email: result.member_email.trim().toLowerCase(),
+          role: result.matched_role,
+          actorType: 'membership',
+          name: null,
+          tenantId: null,
+          customerGroupId: null,
+          isActive: Boolean(result.member_is_active),
+          createdAt: result.member_created_at ?? null,
+          updatedAt: result.member_updated_at ?? null,
+        },
+        tenant: null,
+        customerGroup: null,
+        activeModuleKeys: [],
+        savedAt: new Date().toISOString(),
+      })
+
+      await router.replace({ name: 'admin-tenant-list' })
+      return true
+    }
+
+    const selectedTenantId = availableTenants[0]?.id ?? result.member_tenant_id
+
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
       'get_app_bootstrap_context',
       {
         p_email: userEmail,
-        p_tenant_id: result.member_tenant_id,
+        p_tenant_id: selectedTenantId,
         p_membership_id: result.member_id,
       },
     )
