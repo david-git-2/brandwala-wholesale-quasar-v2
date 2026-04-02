@@ -2,10 +2,12 @@ import { supabase } from 'src/boot/supabase'
 
 import type {
   CostingFileCreateInput,
+  CostingFileDeleteInput,
   CostingFileDetails,
   CostingFileListEntry,
   CostingFilePricingUpdateInput,
   CostingFileStatusUpdateInput,
+  CostingFileUpdateInput,
 } from '../types'
 
 const listCostingFilesForTenant = async (tenantId: number): Promise<CostingFileListEntry[]> => {
@@ -70,6 +72,37 @@ const createCostingFile = async (payload: CostingFileCreateInput): Promise<Costi
   return created as CostingFileDetails
 }
 
+const updateCostingFile = async (payload: CostingFileUpdateInput): Promise<CostingFileDetails> => {
+  const { data, error } = await supabase.rpc('update_costing_file', {
+    p_id: payload.id,
+    p_name: payload.name ?? null,
+    p_market: payload.market ?? null,
+    p_customer_group_id: payload.customerGroupId ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const updated = Array.isArray(data) ? data[0] : data
+
+  if (!updated) {
+    throw new Error('Costing file was not updated.')
+  }
+
+  return updated as CostingFileDetails
+}
+
+const deleteCostingFile = async (payload: CostingFileDeleteInput): Promise<CostingFileDeleteInput> => {
+  const { error } = await supabase.from('costing_files').delete().eq('id', payload.id)
+
+  if (error) {
+    throw error
+  }
+
+  return { id: payload.id }
+}
+
 const updateCostingFileStatus = async (
   payload: CostingFileStatusUpdateInput,
 ): Promise<Pick<CostingFileDetails, 'id' | 'status' | 'updated_at'>> => {
@@ -128,6 +161,8 @@ export const costingFileRepository = {
   listCostingFilesForCustomerGroup,
   getCostingFileById,
   createCostingFile,
+  updateCostingFile,
+  deleteCostingFile,
   updateCostingFileStatus,
   updateCostingFilePricing,
 }

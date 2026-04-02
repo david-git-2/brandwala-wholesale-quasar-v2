@@ -2,6 +2,7 @@ import { costingFileRepository } from '../repositories/costingFileRepository'
 import { costingFileItemService } from './costingFileItemService'
 import type {
   CostingFileCreateInput,
+  CostingFileDeleteInput,
   CostingFileDetails,
   CostingFileItem,
   CostingFileItemRequestCreateInput,
@@ -13,6 +14,7 @@ import type {
   CostingFilePricingUpdateInput,
   CostingFileServiceResult,
   CostingFileStatusUpdateInput,
+  CostingFileUpdateInput,
 } from '../types'
 
 const listCostingFilesForTenant = async (
@@ -73,6 +75,34 @@ const createCostingFile = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create costing file.',
+    }
+  }
+}
+
+const updateCostingFile = async (
+  payload: CostingFileUpdateInput,
+): Promise<CostingFileServiceResult<CostingFileDetails>> => {
+  try {
+    const data = await costingFileRepository.updateCostingFile(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update costing file.',
+    }
+  }
+}
+
+const deleteCostingFile = async (
+  payload: CostingFileDeleteInput,
+): Promise<CostingFileServiceResult<CostingFileDeleteInput>> => {
+  try {
+    const data = await costingFileRepository.deleteCostingFile(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete costing file.',
     }
   }
 }
@@ -161,6 +191,8 @@ export const costingFileService = {
   getCostingFileById,
   listCostingFileItems,
   createCostingFile,
+  updateCostingFile,
+  deleteCostingFile,
   createCostingFileItemRequest,
   updateCostingFileStatus,
   updateCostingFilePricing,

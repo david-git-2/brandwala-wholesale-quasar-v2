@@ -1,11 +1,14 @@
 import { costingFileItemRepository } from '../repositories/costingFileItemRepository'
 import type {
   CostingFileItem,
+  CostingFileItemCreateInput,
   CostingFileItemCustomerProfitUpdateInput,
+  CostingFileItemDeleteInput,
   CostingFileItemEnrichmentUpdateInput,
   CostingFileItemOfferUpdateInput,
   CostingFileItemRequestCreateInput,
   CostingFileItemStatusUpdateInput,
+  CostingFileItemUpdateInput,
   CostingFileServiceResult,
 } from '../types'
 
@@ -40,6 +43,20 @@ const createCostingFileItemRequest = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create request item.',
+    }
+  }
+}
+
+const createCostingFileItem = async (
+  payload: CostingFileItemCreateInput,
+): Promise<CostingFileServiceResult<CostingFileItem>> => {
+  try {
+    const data = await costingFileItemRepository.createCostingFileItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create costing file item.',
     }
   }
 }
@@ -106,11 +123,42 @@ const updateCostingFileItemOffer = async (
   }
 }
 
+const updateCostingFileItem = async (
+  payload: CostingFileItemUpdateInput,
+): Promise<CostingFileServiceResult<CostingFileItem>> => {
+  try {
+    const data = await costingFileItemRepository.updateCostingFileItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update costing file item.',
+    }
+  }
+}
+
+const deleteCostingFileItem = async (
+  payload: CostingFileItemDeleteInput,
+): Promise<CostingFileServiceResult<CostingFileItemDeleteInput>> => {
+  try {
+    const data = await costingFileItemRepository.deleteCostingFileItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete costing file item.',
+    }
+  }
+}
+
 export const costingFileItemService = {
   listCostingFileItems,
+  createCostingFileItem,
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,
   updateCostingFileItemCustomerProfit,
   updateCostingFileItemStatus,
   updateCostingFileItemOffer,
+  updateCostingFileItem,
+  deleteCostingFileItem,
 }

@@ -5,16 +5,21 @@ import { costingFileItemService } from '../services/costingFileItemService'
 import { costingFileService } from '../services/costingFileService'
 import type {
   CostingFileCreateInput,
+  CostingFileDeleteInput,
   CostingFileDetails,
   CostingFileItem,
+  CostingFileItemCreateInput,
   CostingFileItemCustomerProfitUpdateInput,
+  CostingFileItemDeleteInput,
   CostingFileItemEnrichmentUpdateInput,
   CostingFileItemOfferUpdateInput,
   CostingFileItemRequestCreateInput,
   CostingFileItemStatusUpdateInput,
+  CostingFileItemUpdateInput,
   CostingFileListEntry,
   CostingFilePricingUpdateInput,
   CostingFileStatusUpdateInput,
+  CostingFileUpdateInput,
 } from '../types'
 
 type CostingFileStoreState = {
@@ -28,6 +33,36 @@ type CostingFileStoreState = {
   mutationLoading: boolean
   error: string | null
 }
+
+const normalizeRequestItemToCostingFileItem = (
+  item: Pick<
+    CostingFileItem,
+    'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+  >,
+): CostingFileItem => ({
+  id: item.id,
+  costing_file_id: item.costing_file_id,
+  name: null,
+  image_url: null,
+  website_url: item.website_url,
+  quantity: item.quantity,
+  product_weight: null,
+  package_weight: null,
+  price_in_web_gbp: null,
+  delivery_price_gbp: null,
+  auxiliary_price_gbp: null,
+  item_price_gbp: null,
+  cargo_rate: null,
+  costing_price_gbp: null,
+  costing_price_bdt: null,
+  offer_price_override_bdt: null,
+  offer_price_bdt: null,
+  customer_profit_rate: null,
+  status: item.status,
+  created_by_email: item.created_by_email,
+  created_at: item.created_at,
+  updated_at: item.updated_at,
+})
 
 export const useCostingFileStore = defineStore('costingFile', {
   state: (): CostingFileStoreState => ({
@@ -184,6 +219,68 @@ export const useCostingFileStore = defineStore('costingFile', {
       }
     },
 
+    async updateCostingFile(payload: CostingFileUpdateInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileService.updateCostingFile(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update costing file.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          const index = this.items.findIndex((item) => item.id === result.data?.id)
+
+          if (index >= 0) {
+            this.items.splice(index, 1, { ...this.items[index]!, ...result.data })
+          }
+
+          if (this.selectedItem?.id === result.data.id) {
+            this.selectedItem = { ...this.selectedItem, ...result.data }
+          }
+        }
+
+        showSuccessNotification('Costing file updated successfully.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
+    async deleteCostingFile(payload: CostingFileDeleteInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileService.deleteCostingFile(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete costing file.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.items = this.items.filter((item) => item.id !== payload.id)
+
+        if (this.selectedItem?.id === payload.id) {
+          this.clearSelectedItem()
+        }
+
+        showSuccessNotification('Costing file deleted successfully.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
     async updateCostingFileStatus(payload: CostingFileStatusUpdateInput) {
       this.loading = true
       this.mutationLoading = true
@@ -257,7 +354,36 @@ export const useCostingFileStore = defineStore('costingFile', {
           return result
         }
 
-        await this.fetchCostingFileItems(payload.costingFileId)
+        if (result.data) {
+          this.costingFileItems.push(normalizeRequestItemToCostingFileItem(result.data))
+        }
+
+        showSuccessNotification('Costing file item created.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
+    async createCostingFileItem(payload: CostingFileItemCreateInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileItemService.createCostingFileItem(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create costing file item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.costingFileItems.push(result.data)
+        }
+
         showSuccessNotification('Costing file item created.')
         return result
       } finally {
@@ -273,6 +399,35 @@ export const useCostingFileStore = defineStore('costingFile', {
 
       try {
         const result = await costingFileItemService.updateCostingFileItemEnrichment(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update costing file item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          const index = this.costingFileItems.findIndex((item) => item.id === result.data?.id)
+          if (index >= 0) {
+            this.costingFileItems.splice(index, 1, result.data)
+          }
+        }
+
+        showSuccessNotification('Costing file item updated.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
+    async updateCostingFileItem(payload: CostingFileItemUpdateInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileItemService.updateCostingFileItem(payload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update costing file item.'
@@ -383,6 +538,29 @@ export const useCostingFileStore = defineStore('costingFile', {
         }
 
         showSuccessNotification('Offer price updated.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
+    async deleteCostingFileItem(payload: CostingFileItemDeleteInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileItemService.deleteCostingFileItem(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete costing file item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.costingFileItems = this.costingFileItems.filter((item) => item.id !== payload.id)
+        showSuccessNotification('Costing file item deleted.')
         return result
       } finally {
         this.loading = false

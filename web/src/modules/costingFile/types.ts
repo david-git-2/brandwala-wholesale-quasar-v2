@@ -58,10 +58,68 @@ export type CostingFileCreateInput = {
   market: string
 }
 
+export type CostingFileUpdateInput = {
+  id: number
+  name?: string
+  market?: string
+  customerGroupId?: number
+}
+
+export type CostingFileDeleteInput = {
+  id: number
+}
+
 export type CostingFileItemRequestCreateInput = {
   costingFileId: number
   websiteUrl: string
   quantity: number
+}
+
+export type CostingFileItemCreateInput = {
+  costingFileId: number
+  name?: string | null
+  imageUrl?: string | null
+  websiteUrl: string
+  quantity: number
+  productWeight?: number | null
+  packageWeight?: number | null
+  priceInWebGbp?: number | null
+  deliveryPriceGbp?: number | null
+  auxiliaryPriceGbp?: number | null
+  itemPriceGbp?: number | null
+  cargoRate?: number | null
+  costingPriceGbp?: number | null
+  costingPriceBdt?: number | null
+  offerPriceOverrideBdt?: number | null
+  offerPriceBdt?: number | null
+  customerProfitRate?: number | null
+  status?: CostingFileItemStatus
+}
+
+export type CostingFileItemUpdateInput = {
+  id: number
+  costingFileId?: number
+  name?: string | null
+  imageUrl?: string | null
+  websiteUrl?: string
+  quantity?: number
+  productWeight?: number | null
+  packageWeight?: number | null
+  priceInWebGbp?: number | null
+  deliveryPriceGbp?: number | null
+  auxiliaryPriceGbp?: number | null
+  itemPriceGbp?: number | null
+  cargoRate?: number | null
+  costingPriceGbp?: number | null
+  costingPriceBdt?: number | null
+  offerPriceOverrideBdt?: number | null
+  offerPriceBdt?: number | null
+  customerProfitRate?: number | null
+  status?: CostingFileItemStatus
+}
+
+export type CostingFileItemDeleteInput = {
+  id: number
 }
 
 export type CostingFilePricingUpdateInput = {

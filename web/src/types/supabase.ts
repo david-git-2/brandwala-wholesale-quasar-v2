@@ -774,6 +774,29 @@ export type Database = {
         Args: { p_value: number }
         Returns: number
       }
+      update_costing_file: {
+        Args: {
+          p_customer_group_id?: number
+          p_id: number
+          p_market?: string
+          p_name?: string
+        }
+        Returns: {
+          admin_profit_rate: number
+          cargo_rate_1kg: number
+          cargo_rate_2kg: number
+          conversion_rate: number
+          created_at: string
+          created_by_email: string
+          customer_group_id: number
+          id: number
+          market: string
+          name: string
+          status: Database["public"]["Enums"]["costing_file_status"]
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
       update_costing_file_item_customer_profit: {
         Args: { p_customer_profit_rate: number; p_id: number }
         Returns: {

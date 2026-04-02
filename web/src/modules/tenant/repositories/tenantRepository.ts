@@ -44,6 +44,14 @@ const listTenants = async (): Promise<Tenant[]> => {
   return (data as Tenant[] | null) ?? []
 }
 
+const normalizeSingleResult = <T>(value: unknown): T | null => {
+  if (Array.isArray(value)) {
+    return (value[0] as T | undefined) ?? null
+  }
+
+  return (value as T | null) ?? null
+}
+
 const resolveTenantForEntry = async (
   payload: TenantEntryResolveInput,
 ): Promise<TenantEntry | null> => {
@@ -56,9 +64,7 @@ const resolveTenantForEntry = async (
     throw error
   }
 
-  const tenant = Array.isArray(data) ? data[0] : data
-
-  return (tenant as TenantEntry | null) ?? null
+  return normalizeSingleResult<TenantEntry>(data)
 }
 
 const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
@@ -105,9 +111,7 @@ const getTenantDetailsByMembership = async (payload: {
     throw error
   }
 
-  const tenant = Array.isArray(data) ? data[0] : data
-
-  return (tenant as Tenant | null) ?? null
+  return normalizeSingleResult<Tenant>(data)
 }
 
 const createTenant = async (tenant: TenantCreateInput): Promise<Tenant> => {

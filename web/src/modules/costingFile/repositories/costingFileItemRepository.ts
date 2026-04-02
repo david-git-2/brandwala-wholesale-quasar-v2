@@ -1,24 +1,64 @@
 import { supabase } from 'src/boot/supabase'
 
 import type {
+  CostingFileItemCreateInput,
   CostingFileItem,
   CostingFileItemCustomerProfitUpdateInput,
+  CostingFileItemDeleteInput,
   CostingFileItemEnrichmentUpdateInput,
   CostingFileItemOfferUpdateInput,
   CostingFileItemRequestCreateInput,
   CostingFileItemStatusUpdateInput,
+  CostingFileItemUpdateInput,
 } from '../types'
 
 const listCostingFileItems = async (costingFileId: number): Promise<CostingFileItem[]> => {
-  const { data, error } = await supabase.rpc('list_costing_file_items', {
-    p_costing_file_id: costingFileId,
-  })
+  const { data, error } = await supabase
+    .from('costing_file_items')
+    .select('*')
+    .eq('costing_file_id', costingFileId)
+    .order('id', { ascending: true })
 
   if (error) {
     throw error
   }
 
   return (data as CostingFileItem[] | null) ?? []
+}
+
+const createCostingFileItem = async (
+  payload: CostingFileItemCreateInput,
+): Promise<CostingFileItem> => {
+  const { data, error } = await supabase
+    .from('costing_file_items')
+    .insert({
+      costing_file_id: payload.costingFileId,
+      name: payload.name ?? null,
+      image_url: payload.imageUrl ?? null,
+      website_url: payload.websiteUrl,
+      quantity: payload.quantity,
+      product_weight: payload.productWeight ?? null,
+      package_weight: payload.packageWeight ?? null,
+      price_in_web_gbp: payload.priceInWebGbp ?? null,
+      delivery_price_gbp: payload.deliveryPriceGbp ?? null,
+      auxiliary_price_gbp: payload.auxiliaryPriceGbp ?? null,
+      item_price_gbp: payload.itemPriceGbp ?? null,
+      cargo_rate: payload.cargoRate ?? null,
+      costing_price_gbp: payload.costingPriceGbp ?? null,
+      costing_price_bdt: payload.costingPriceBdt ?? null,
+      offer_price_override_bdt: payload.offerPriceOverrideBdt ?? null,
+      offer_price_bdt: payload.offerPriceBdt ?? null,
+      customer_profit_rate: payload.customerProfitRate ?? null,
+      status: payload.status ?? 'pending',
+    })
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as CostingFileItem
 }
 
 const createCostingFileItemRequest = async (
@@ -150,11 +190,66 @@ const updateCostingFileItemOffer = async (
   >
 }
 
+const updateCostingFileItem = async (
+  payload: CostingFileItemUpdateInput,
+): Promise<CostingFileItem> => {
+  const updateData: Record<string, unknown> = {}
+
+  if (payload.costingFileId !== undefined) updateData.costing_file_id = payload.costingFileId
+  if (payload.name !== undefined) updateData.name = payload.name
+  if (payload.imageUrl !== undefined) updateData.image_url = payload.imageUrl
+  if (payload.websiteUrl !== undefined) updateData.website_url = payload.websiteUrl
+  if (payload.quantity !== undefined) updateData.quantity = payload.quantity
+  if (payload.productWeight !== undefined) updateData.product_weight = payload.productWeight
+  if (payload.packageWeight !== undefined) updateData.package_weight = payload.packageWeight
+  if (payload.priceInWebGbp !== undefined) updateData.price_in_web_gbp = payload.priceInWebGbp
+  if (payload.deliveryPriceGbp !== undefined) updateData.delivery_price_gbp = payload.deliveryPriceGbp
+  if (payload.auxiliaryPriceGbp !== undefined) updateData.auxiliary_price_gbp = payload.auxiliaryPriceGbp
+  if (payload.itemPriceGbp !== undefined) updateData.item_price_gbp = payload.itemPriceGbp
+  if (payload.cargoRate !== undefined) updateData.cargo_rate = payload.cargoRate
+  if (payload.costingPriceGbp !== undefined) updateData.costing_price_gbp = payload.costingPriceGbp
+  if (payload.costingPriceBdt !== undefined) updateData.costing_price_bdt = payload.costingPriceBdt
+  if (payload.offerPriceOverrideBdt !== undefined) {
+    updateData.offer_price_override_bdt = payload.offerPriceOverrideBdt
+  }
+  if (payload.offerPriceBdt !== undefined) updateData.offer_price_bdt = payload.offerPriceBdt
+  if (payload.customerProfitRate !== undefined) updateData.customer_profit_rate = payload.customerProfitRate
+  if (payload.status !== undefined) updateData.status = payload.status
+
+  const { data, error } = await supabase
+    .from('costing_file_items')
+    .update(updateData)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as CostingFileItem
+}
+
+const deleteCostingFileItem = async (
+  payload: CostingFileItemDeleteInput,
+): Promise<CostingFileItemDeleteInput> => {
+  const { error } = await supabase.from('costing_file_items').delete().eq('id', payload.id)
+
+  if (error) {
+    throw error
+  }
+
+  return { id: payload.id }
+}
+
 export const costingFileItemRepository = {
   listCostingFileItems,
+  createCostingFileItem,
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,
   updateCostingFileItemCustomerProfit,
   updateCostingFileItemStatus,
   updateCostingFileItemOffer,
+  updateCostingFileItem,
+  deleteCostingFileItem,
 }

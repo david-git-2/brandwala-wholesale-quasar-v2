@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-lg">
+  <q-page class="q-pa-sm">
     <div class="q-mb-md row items-center justify-between">
       <div class="row items-center q-gutter-sm">
         <q-btn flat round icon="arrow_back" @click="goBack" />
@@ -143,38 +143,49 @@
           </q-card-section>
 
           <q-card-section v-else>
-            <div class="text-subtitle1 text-weight-bold q-mb-sm">Staff</div>
-            <q-list v-if="staffMembers.length" separator>
-              <q-item v-for="member in staffMembers" :key="member.id">
-                <q-item-section>
-                  <q-item-label>{{ member.email }}</q-item-label>
-                  <q-item-label caption>
-                    Role: {{ member.role }} ·
-                    {{ member.is_active ? 'Active' : 'Inactive' }}
-                  </q-item-label>
-                </q-item-section>
+            <q-table
+              v-if="staffMembers.length"
+              flat
+              bordered
+              row-key="id"
+              :rows="staffMembers"
+              :columns="internalMemberColumns"
+              :dense="$q.screen.lt.md"
+              hide-bottom
+              class="tenant-detail-card__table"
+            >
+              <template #body-cell-email="props">
+                <q-td :props="props">{{ props.row.email }}</q-td>
+              </template>
 
-                <q-item-section side>
-                  <div class="row items-center q-gutter-sm">
-                    <q-toggle
-                      v-model="member.is_active"
-                      :label="member.is_active ? 'Active' : 'Inactive'"
-                      color="positive"
-                      keep-color
-                      @update:model-value="(value) => onToggleMemberActive(member, value)"
-                    />
+              <template #body-cell-role="props">
+                <q-td :props="props">{{ props.row.role }}</q-td>
+              </template>
 
-                    <q-btn
-                      size="sm"
-                      color="negative"
-                      outline
-                      icon="delete"
-                      @click="onClickDeleteMember(member)"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
+              <template #body-cell-active="props">
+                <q-td :props="props">
+                  <q-toggle
+                    v-model="props.row.is_active"
+                    color="positive"
+                    keep-color
+                    @update:model-value="(value) => onToggleMemberActive(props.row, value)"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-delete="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="negative"
+                    flat
+                    round
+                    icon="delete"
+                    @click="onClickDeleteMember(props.row)"
+                  />
+                </q-td>
+              </template>
+            </q-table>
             <div v-else class="text-grey-6">No staff found.</div>
           </q-card-section>
         </q-card>
@@ -229,45 +240,6 @@
               />
             </q-card-section>
 
-            <q-card-section class="q-pt-none">
-              <div class="row q-col-gutter-sm">
-                <div class="col-12 col-sm-6 col-md-3">
-                  <div class="customer-group-stat">
-                    <div class="text-caption text-grey-7">Members</div>
-                    <div class="text-subtitle1 text-weight-bold">
-                      {{ selectedCustomerGroupMemberStats.total }}
-                    </div>
-                  </div>
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <div class="customer-group-stat">
-                    <div class="text-caption text-grey-7">Admins</div>
-                    <div class="text-subtitle1 text-weight-bold">
-                      {{ selectedCustomerGroupMemberStats.admin }}
-                    </div>
-                  </div>
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <div class="customer-group-stat">
-                    <div class="text-caption text-grey-7">Negotiators</div>
-                    <div class="text-subtitle1 text-weight-bold">
-                      {{ selectedCustomerGroupMemberStats.negotiator }}
-                    </div>
-                  </div>
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <div class="customer-group-stat">
-                    <div class="text-caption text-grey-7">Staff</div>
-                    <div class="text-subtitle1 text-weight-bold">
-                      {{ selectedCustomerGroupMemberStats.staff }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </q-card-section>
-
-            <q-separator />
-
             <q-card-section v-if="customerGroupMembersLoading" class="text-grey-7">
               Loading customer group members...
             </q-card-section>
@@ -279,58 +251,144 @@
               No members found for this customer group.
             </q-card-section>
 
-            <q-list v-else separator>
-              <q-item v-for="member in sortedCustomerGroupMembers" :key="member.id">
-                <q-item-section>
-                  <q-item-label class="row items-center q-gutter-sm">
-                    <span>{{ member.name }}</span>
-                    <q-badge
-                      :color="member.is_active ? 'positive' : 'grey-6'"
-                      :label="member.is_active ? 'Active' : 'Inactive'"
-                    />
-                  </q-item-label>
-                  <q-item-label caption>
-                    {{ member.email }} · {{ formatCustomerRole(member.role) }}
-                  </q-item-label>
-                </q-item-section>
+            <q-table
+              v-else
+              flat
+              bordered
+              row-key="id"
+              :rows="sortedCustomerGroupMembers"
+              :columns="customerGroupMemberColumns"
+              :dense="$q.screen.lt.md"
+              hide-bottom
+              class="tenant-detail-card__table"
+            >
+              <template #body-cell-name="props">
+                <q-td :props="props">{{ props.row.name }}</q-td>
+              </template>
 
-                <q-item-section side>
-                  <div class="row items-center q-gutter-xs">
-                    <q-toggle
-                      :model-value="member.is_active"
-                      :label="member.is_active ? 'Active' : 'Inactive'"
-                      color="positive"
-                      keep-color
-                      @update:model-value="
-                        (value) => onToggleCustomerGroupMemberActive(member, value)
-                      "
-                    />
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      icon="edit"
-                      @click="openEditCustomerMemberDialog(member)"
-                    />
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      :color="member.is_active ? 'warning' : 'positive'"
-                      :icon="member.is_active ? 'person_off' : 'person_add'"
-                      @click="
-                        onToggleCustomerGroupMemberActive(member, !member.is_active)
-                      "
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
+              <template #body-cell-email="props">
+                <q-td :props="props">{{ props.row.email }}</q-td>
+              </template>
+
+              <template #body-cell-role="props">
+                <q-td :props="props">{{ formatCustomerRole(props.row.role) }}</q-td>
+              </template>
+
+              <template #body-cell-active="props">
+                <q-td :props="props">
+                  <q-toggle
+                    :model-value="props.row.is_active"
+                    color="positive"
+                    keep-color
+                    @update:model-value="(value) => onToggleCustomerGroupMemberActive(props.row, value)"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-edit="props">
+                <q-td :props="props">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="edit"
+                    @click="openEditCustomerMemberDialog(props.row)"
+                  />
+                </q-td>
+              </template>
+            </q-table>
           </template>
         </q-card>
 
-        <q-card flat bordered>
-          <q-card-section class="row items-center justify-between">
+        <q-card flat bordered class="q-mb-lg tenant-detail-card">
+          <q-card-section class="row items-center justify-between tenant-detail-card__head">
+            <div>
+              <div class="text-h6">Costing Files</div>
+              <div class="text-caption text-grey-7">
+                Admins can create, edit, and delete costing files for this tenant.
+              </div>
+            </div>
+
+            <q-btn
+              color="primary"
+              icon="add"
+              label="Add Costing File"
+              :disable="customerGroups.length === 0"
+              @click="openCreateCostingFileDialog"
+            />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section v-if="costingFilesLoading" class="text-grey-7">
+            Loading costing files...
+          </q-card-section>
+
+          <q-card-section v-else-if="customerGroups.length === 0" class="text-grey-7">
+            Create a customer group first before adding costing files.
+          </q-card-section>
+
+          <q-card-section v-else-if="costingFiles.length === 0" class="text-grey-7">
+            No costing files found for this tenant.
+          </q-card-section>
+
+          <q-table
+            v-else
+            flat
+            bordered
+            row-key="id"
+            :rows="costingFiles"
+            :columns="costingFileColumns"
+            :dense="$q.screen.lt.md"
+            hide-bottom
+            class="tenant-detail-card__table"
+          >
+            <template #body-cell-customer_group_id="props">
+              <q-td :props="props">
+                {{ customerGroupNameById(props.row.customer_group_id) }}
+              </q-td>
+            </template>
+
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-badge color="primary" outline>
+                  {{ props.row.status }}
+                </q-badge>
+              </q-td>
+            </template>
+
+            <template #body-cell-updated_at="props">
+              <q-td :props="props">
+                {{ formatDateTime(props.row.updated_at) }}
+              </q-td>
+            </template>
+
+            <template #body-cell-actions="props">
+              <q-td :props="props">
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="edit"
+                    @click="openEditCostingFileDialog(props.row)"
+                  />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="delete"
+                    @click="openDeleteCostingFileDialog(props.row)"
+                  />
+                </div>
+              </q-td>
+            </template>
+          </q-table>
+        </q-card>
+
+        <q-card flat bordered class="tenant-detail-card">
+          <q-card-section class="row items-center justify-between tenant-detail-card__head">
             <div class="text-h6">Module Features</div>
           </q-card-section>
 
@@ -344,22 +402,29 @@
             No module features found.
           </q-card-section>
 
-          <q-list v-else separator>
-            <q-item v-for="module in modules" :key="module.id">
-              <q-item-section>
-                <q-item-label>{{ module.module_key }}</q-item-label>
-                <q-item-label caption>
-                  #{{ module.id }} · {{ module.is_active ? 'Active' : 'Inactive' }}
-                </q-item-label>
-              </q-item-section>
+          <q-table
+            v-else
+            flat
+            bordered
+            row-key="id"
+            :rows="modules"
+            :columns="moduleFeatureColumns"
+            :dense="$q.screen.lt.md"
+            hide-bottom
+            class="tenant-detail-card__table"
+          >
+            <template #body-cell-module_key="props">
+              <q-td :props="props">{{ props.row.module_key }}</q-td>
+            </template>
 
-              <q-item-section side>
-                <q-badge :color="module.is_active ? 'positive' : 'grey-6'">
-                  {{ module.is_active ? 'Active' : 'Inactive' }}
+            <template #body-cell-active="props">
+              <q-td :props="props">
+                <q-badge :color="props.row.is_active ? 'positive' : 'grey-6'">
+                  {{ props.row.is_active ? 'Active' : 'Inactive' }}
                 </q-badge>
-              </q-item-section>
-            </q-item>
-          </q-list>
+              </q-td>
+            </template>
+          </q-table>
         </q-card>
       </div>
     </div>
@@ -405,6 +470,73 @@
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="openDeleteMemberDialog = false" />
           <q-btn color="negative" label="Delete" @click="confirmDeleteMember" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openCostingFileDialog" persistent>
+      <q-card style="min-width: 460px">
+        <q-card-section>
+          <div class="text-h6">
+            {{ costingFileForm.id ? 'Edit Costing File' : 'Add Costing File' }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input
+            v-model="costingFileForm.name"
+            label="Name"
+            outlined
+            dense
+          />
+          <q-input
+            v-model="costingFileForm.market"
+            label="Market"
+            outlined
+            dense
+          />
+          <q-select
+            v-model="costingFileForm.customerGroupId"
+            :options="costingFileCustomerGroupOptions"
+            emit-value
+            map-options
+            label="Customer Group"
+            outlined
+            dense
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openCostingFileDialog = false" />
+          <q-btn
+            color="primary"
+            label="Save"
+            :loading="costingFileMutationLoading"
+            :disable="!canSaveCostingFile"
+            @click="saveCostingFile"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openDeleteCostingFileDialogModel" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Delete Costing File</div>
+        </q-card-section>
+
+        <q-card-section>
+          Delete costing file <strong>{{ costingFileToDelete?.name }}</strong>?
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openDeleteCostingFileDialogModel = false" />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="costingFileMutationLoading"
+            @click="confirmDeleteCostingFile"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -614,12 +746,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
 
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
+import type { CostingFileListEntry } from 'src/modules/costingFile/types'
 import { useCustomerGroupStore } from '../stores/customerGroupStore'
 import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useTenantStore } from '../stores/tenantStore'
@@ -632,14 +767,21 @@ import type {
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
 
 const tenantStore = useTenantStore()
 const tenantModuleStore = useTenantModuleStore()
 const membershipStore = useMembershipStore()
 const customerGroupStore = useCustomerGroupStore()
+const costingFileStore = useCostingFileStore()
 
 const { items } = storeToRefs(tenantStore)
 const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
+const {
+  items: costingFiles,
+  listLoading: costingFilesLoading,
+  mutationLoading: costingFileMutationLoading,
+} = storeToRefs(costingFileStore)
 const {
   groups: customerGroups,
   members: customerGroupMembers,
@@ -649,11 +791,14 @@ const {
 
 const openAddMemberDialog = ref(false)
 const openDeleteMemberDialog = ref(false)
+const openCostingFileDialog = ref(false)
+const openDeleteCostingFileDialogModel = ref(false)
 const openCustomerGroupDialog = ref(false)
 const openDeleteCustomerGroupDialog = ref(false)
 const openCustomerMemberDialog = ref(false)
 
 const memberToDelete = ref<Membership | null>(null)
+const costingFileToDelete = ref<CostingFileListEntry | null>(null)
 const customerGroupToDelete = ref<CustomerGroup | null>(null)
 
 const memberEmail = ref('')
@@ -665,6 +810,7 @@ const tenantMembersLoading = ref(false)
 const pageLoading = ref(false)
 const pageError = ref('')
 const selectedCustomerGroupId = ref<number | null>(null)
+const customerGroupMembersByGroupId = ref<Record<number, CustomerGroupMember[]>>({})
 
 const customerGroupForm = ref<{
   id: number | null
@@ -702,6 +848,18 @@ const customerGroupMemberForm = ref<{
   is_active: true,
 })
 
+const costingFileForm = ref<{
+  id: number | null
+  name: string
+  market: string
+  customerGroupId: number | null
+}>({
+  id: null,
+  name: '',
+  market: '',
+  customerGroupId: null,
+})
+
 const customerRoleOptions = [
   { label: 'Customer Admin', value: 'admin' },
   { label: 'Customer Negotiator', value: 'negotiator' },
@@ -720,6 +878,13 @@ const selectedCustomerGroup = computed<CustomerGroup | null>(
     null,
 )
 
+const costingFileCustomerGroupOptions = computed(() =>
+  customerGroups.value.map((group) => ({
+    label: group.name,
+    value: group.id,
+  })),
+)
+
 const sortedCustomerGroups = computed(() =>
   [...customerGroups.value].sort((left, right) => {
     if (left.is_active !== right.is_active) {
@@ -730,8 +895,14 @@ const sortedCustomerGroups = computed(() =>
   }),
 )
 
+const selectedCustomerGroupMembers = computed(() =>
+  selectedCustomerGroupId.value === null
+    ? []
+    : (customerGroupMembersByGroupId.value[selectedCustomerGroupId.value] ?? []),
+)
+
 const sortedCustomerGroupMembers = computed(() =>
-  [...customerGroupMembers.value].sort((left, right) => {
+  [...selectedCustomerGroupMembers.value].sort((left, right) => {
     if (left.is_active !== right.is_active) {
       return left.is_active ? -1 : 1
     }
@@ -754,6 +925,40 @@ const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff'),
 )
 
+const internalMemberColumns = [
+  { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
+  { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
+  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
+  { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
+]
+
+const costingFileColumns = [
+  { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
+  { name: 'market', label: 'Market', field: 'market', align: 'left' as const },
+  {
+    name: 'customer_group_id',
+    label: 'Customer Group',
+    field: 'customer_group_id',
+    align: 'left' as const,
+  },
+  { name: 'status', label: 'Status', field: 'status', align: 'left' as const },
+  { name: 'updated_at', label: 'Updated', field: 'updated_at', align: 'left' as const },
+  { name: 'actions', label: 'Actions', field: 'id', align: 'left' as const },
+]
+
+const moduleFeatureColumns = [
+  { name: 'module_key', label: 'Feature', field: 'module_key', align: 'left' as const },
+  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
+]
+
+const customerGroupMemberColumns = [
+  { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
+  { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
+  { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
+  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
+  { name: 'edit', label: 'Edit', field: 'id', align: 'left' as const },
+]
+
 const defaultCustomerGroupAccent = '#B45F34'
 
 const customerGroupAccentPresets = [
@@ -771,22 +976,6 @@ const customerGroupPreviewColor = computed(() => {
     ? color.toUpperCase()
     : defaultCustomerGroupAccent
 })
-
-const selectedCustomerGroupMemberStats = computed(() =>
-  customerGroupMembers.value.reduce(
-    (stats, member) => {
-      stats.total += 1
-      stats[member.role] += 1
-      return stats
-    },
-    {
-      total: 0,
-      admin: 0,
-      negotiator: 0,
-      staff: 0,
-    } satisfies Record<'total' | CustomerGroupRole, number>,
-  ),
-)
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -855,6 +1044,24 @@ const formatCustomerRole = (role: CustomerGroupRole) => {
   return 'Customer Staff'
 }
 
+const formatDateTime = (value: string | null) => {
+  if (!value) {
+    return '-'
+  }
+
+  return new Date(value).toLocaleString()
+}
+
+const customerGroupNameById = (customerGroupId: number) =>
+  customerGroups.value.find((group) => group.id === customerGroupId)?.name ?? `#${customerGroupId}`
+
+const canSaveCostingFile = computed(
+  () =>
+    costingFileForm.value.name.trim().length > 0 &&
+    costingFileForm.value.market.trim().length > 0 &&
+    costingFileForm.value.customerGroupId !== null,
+)
+
 const resetCustomerGroupForm = () => {
   customerGroupForm.value = {
     id: null,
@@ -867,6 +1074,15 @@ const resetCustomerGroupForm = () => {
     name: '',
     email: '',
     is_active: true,
+  }
+}
+
+const resetCostingFileForm = () => {
+  costingFileForm.value = {
+    id: null,
+    name: '',
+    market: '',
+    customerGroupId: costingFileCustomerGroupOptions.value[0]?.value ?? null,
   }
 }
 
@@ -906,6 +1122,19 @@ const loadTenantMembers = async () => {
   }
 }
 
+const loadCostingFiles = async () => {
+  if (!tenant.value?.id) {
+    costingFileStore.items = []
+    return
+  }
+
+  const result = await costingFileStore.fetchCostingFilesByTenant(tenant.value.id)
+
+  if (!result.success) {
+    pageError.value = result.error || 'Failed to load costing files.'
+  }
+}
+
 const loadTenantModules = async () => {
   if (!tenant.value?.id) return
 
@@ -936,16 +1165,28 @@ const loadCustomerGroups = async () => {
   if (nextSelectedId !== null) {
     await loadCustomerGroupMembers(nextSelectedId)
   } else {
+    customerGroupMembersByGroupId.value = {}
     customerGroupStore.members = []
   }
 }
 
-const loadCustomerGroupMembers = async (customerGroupId: number) => {
+const loadCustomerGroupMembers = async (customerGroupId: number, force = false) => {
+  if (!force && customerGroupMembersByGroupId.value[customerGroupId]) {
+    customerGroupStore.members = customerGroupMembersByGroupId.value[customerGroupId] ?? []
+    return
+  }
+
   const result =
     await customerGroupStore.fetchCustomerGroupMembersByGroup(customerGroupId)
 
   if (!result.success) {
     pageError.value = result.error || 'Failed to load customer group members.'
+    return
+  }
+
+  customerGroupMembersByGroupId.value = {
+    ...customerGroupMembersByGroupId.value,
+    [customerGroupId]: result.data ?? [],
   }
 }
 
@@ -963,7 +1204,12 @@ const loadPageData = async () => {
       return
     }
 
-    await Promise.all([loadTenantMembers(), loadTenantModules(), loadCustomerGroups()])
+    await Promise.all([
+      loadTenantMembers(),
+      loadTenantModules(),
+      loadCustomerGroups(),
+      loadCostingFiles(),
+    ])
   } catch (error) {
     console.error(error)
     pageError.value = 'Failed to load tenant details.'
@@ -1067,8 +1313,85 @@ const confirmDeleteMember = async () => {
   }
 }
 
+const openCreateCostingFileDialog = () => {
+  resetCostingFileForm()
+  openCostingFileDialog.value = true
+}
+
+const openEditCostingFileDialog = (file: CostingFileListEntry) => {
+  costingFileForm.value = {
+    id: file.id,
+    name: file.name,
+    market: file.market,
+    customerGroupId: file.customer_group_id,
+  }
+  openCostingFileDialog.value = true
+}
+
+const saveCostingFile = async () => {
+  const tenantId = tenant.value?.id
+  const customerGroupId = costingFileForm.value.customerGroupId
+
+  if (!tenantId || customerGroupId === null || !canSaveCostingFile.value) {
+    return
+  }
+
+  const result = costingFileForm.value.id
+    ? await costingFileStore.updateCostingFile({
+        id: costingFileForm.value.id,
+        name: costingFileForm.value.name.trim(),
+        market: costingFileForm.value.market.trim(),
+        customerGroupId,
+      })
+    : await costingFileStore.createCostingFile({
+        tenantId,
+        customerGroupId,
+        name: costingFileForm.value.name.trim(),
+        market: costingFileForm.value.market.trim(),
+      })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to save costing file.'
+    return
+  }
+
+  openCostingFileDialog.value = false
+  await loadCostingFiles()
+}
+
+const openDeleteCostingFileDialog = (file: CostingFileListEntry) => {
+  costingFileToDelete.value = file
+  openDeleteCostingFileDialogModel.value = true
+}
+
+const confirmDeleteCostingFile = async () => {
+  if (!costingFileToDelete.value) {
+    return
+  }
+
+  const result = await costingFileStore.deleteCostingFile({
+    id: costingFileToDelete.value.id,
+  })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to delete costing file.'
+    return
+  }
+
+  openDeleteCostingFileDialogModel.value = false
+  costingFileToDelete.value = null
+  await loadCostingFiles()
+}
+
 const selectCustomerGroup = (customerGroupId: number) => {
   selectedCustomerGroupId.value = customerGroupId
+
+  const cachedMembers = customerGroupMembersByGroupId.value[customerGroupId]
+  if (cachedMembers) {
+    customerGroupStore.members = cachedMembers
+    return
+  }
+
   void loadCustomerGroupMembers(customerGroupId)
 }
 
@@ -1130,7 +1453,7 @@ const saveCustomerGroup = async () => {
       selectedCustomerGroupId.value = savedGroupId
       openCustomerGroupDialog.value = false
       await loadCustomerGroups()
-      await loadCustomerGroupMembers(savedGroupId)
+      await loadCustomerGroupMembers(savedGroupId, true)
       return
     }
   }
@@ -1140,7 +1463,7 @@ const saveCustomerGroup = async () => {
 
   if (savedGroupId) {
     selectedCustomerGroupId.value = savedGroupId
-    await loadCustomerGroupMembers(savedGroupId)
+    await loadCustomerGroupMembers(savedGroupId, true)
   }
 }
 
@@ -1166,6 +1489,8 @@ const confirmDeleteCustomerGroup = async () => {
   if (selectedCustomerGroupId.value === deletedId) {
     selectedCustomerGroupId.value = customerGroups.value[0]?.id ?? null
   }
+
+  delete customerGroupMembersByGroupId.value[deletedId]
 
   if (selectedCustomerGroupId.value !== null) {
     await loadCustomerGroupMembers(selectedCustomerGroupId.value)
@@ -1239,7 +1564,7 @@ const saveCustomerGroupMember = async () => {
   }
 
   openCustomerMemberDialog.value = false
-  await loadCustomerGroupMembers(selectedCustomerGroup.value.id)
+  await loadCustomerGroupMembers(selectedCustomerGroup.value.id, true)
 }
 
 const onToggleCustomerGroupMemberActive = async (
@@ -1257,6 +1582,14 @@ const onToggleCustomerGroupMemberActive = async (
   if (!result.success) {
     member.is_active = previousValue
     pageError.value = result.error ?? 'Failed to update customer member.'
+    return
+  }
+
+  if (selectedCustomerGroup.value) {
+    customerGroupMembersByGroupId.value = {
+      ...customerGroupMembersByGroupId.value,
+      [selectedCustomerGroup.value.id]: [...customerGroupMembers.value],
+    }
   }
 }
 
@@ -1302,13 +1635,6 @@ onMounted(() => {
   border-radius: 16px;
 }
 
-.customer-group-stat {
-  padding: 0.75rem 0.875rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 14px;
-  background: rgba(248, 250, 252, 0.8);
-}
-
 .customer-group-color-row {
   display: grid;
   gap: 0.75rem;
@@ -1339,5 +1665,44 @@ onMounted(() => {
 .customer-group-swatch--active {
   border-color: rgba(31, 41, 55, 0.55);
   transform: scale(1.05);
+}
+
+.tenant-detail-card :deep(.q-btn) {
+  border-radius: 8px;
+}
+
+:deep(.q-btn) {
+  border-radius: 8px;
+}
+
+.tenant-detail-card__head {
+  gap: 0.75rem;
+}
+
+.tenant-detail-card__list-item {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.tenant-detail-card__table :deep(th),
+.tenant-detail-card__table :deep(td) {
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .tenant-detail-card__table :deep(th),
+  .tenant-detail-card__table :deep(td) {
+    padding: 0.35rem 0.45rem;
+    font-size: 0.875rem;
+  }
+
+  .tenant-detail-card__head {
+    align-items: flex-start;
+  }
+
+  .tenant-detail-card__side {
+    align-self: flex-start;
+    padding-top: 0.35rem;
+  }
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="q-mb-md row items-center justify-between">
-      <div class="row items-center q-gutter-sm">
+  <q-page class="bw-page tenant-details-page">
+    <section class="tenant-details-page__header row items-center justify-between">
+      <div class="row items-center q-gutter-sm tenant-details-page__header-main">
         <q-btn
           flat
           round
           icon="arrow_back"
           @click="goBack"
         />
-        <div>
+        <div class="min-w-0">
           <div class="text-h5 text-weight-bold">Tenant Details</div>
           <div v-if="tenant" class="text-grey-7">
             {{ tenant.name }} · {{ tenant.slug }}
@@ -16,14 +16,7 @@
         </div>
       </div>
 
-      <q-btn
-        color="primary"
-        outline
-        :loading="pageLoading"
-        label="Refresh"
-        @click="loadPageData"
-      />
-    </div>
+    </section>
 
     <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
       {{ pageError }}
@@ -37,10 +30,10 @@
       Tenant not found.
     </div>
 
-    <div v-else class="row q-col-gutter-lg">
+    <section v-else class="row q-col-gutter-md">
       <div class="col-12 col-lg-5">
-        <q-card flat bordered>
-          <q-card-section class="row items-start justify-between">
+        <q-card flat bordered class="tenant-details-page__card">
+          <q-card-section class="row items-start justify-between q-pa-md">
             <div>
               <div class="text-h6">{{ tenant.name }}</div>
               <div class="text-caption text-grey-7">{{ tenant.slug }}</div>
@@ -53,7 +46,7 @@
 
           <q-separator />
 
-          <q-card-section class="q-gutter-md">
+          <q-card-section class="q-pa-md q-gutter-sm">
             <div><strong>ID:</strong> #{{ tenant.id }}</div>
             <div><strong>Name:</strong> {{ tenant.name }}</div>
             <div><strong>Slug:</strong> {{ tenant.slug }}</div>
@@ -66,7 +59,7 @@
 
           <q-separator />
 
-          <q-card-actions align="right">
+          <q-card-actions align="right" class="q-pa-sm tenant-details-page__actions">
             <q-btn
               color="primary"
               outline
@@ -86,8 +79,8 @@
       </div>
 
       <div class="col-12 col-lg-7">
-        <q-card flat bordered class="q-mb-lg">
-          <q-card-section class="row items-center justify-between">
+        <q-card flat bordered class="q-mb-md tenant-details-page__card">
+          <q-card-section class="row items-center justify-between q-pa-md tenant-details-page__section-head">
             <div class="text-h6">Tenant Admins</div>
             <q-btn
               color="primary"
@@ -99,50 +92,65 @@
 
           <q-separator />
 
-          <q-card-section v-if="tenantAdminsLoading" class="text-grey-7">
+          <q-card-section v-if="tenantAdminsLoading" class="text-grey-7 q-pa-md">
             Loading admins...
           </q-card-section>
 
-          <q-card-section v-else-if="tenantAdmins.length === 0" class="text-grey-7">
+          <q-card-section v-else-if="tenantAdmins.length === 0" class="text-grey-7 q-pa-md">
             No admins found.
           </q-card-section>
 
-          <q-list v-else separator>
-            <q-item v-for="admin in tenantAdmins" :key="admin.id">
-              <q-item-section>
-                <q-item-label>{{ admin.email }}</q-item-label>
-                <q-item-label caption>
-                  Role: {{ admin.role }} ·
-                  {{ admin.is_active ? 'Active' : 'Inactive' }}
-                </q-item-label>
-              </q-item-section>
+          <q-table
+            v-else
+            flat
+            bordered
+            row-key="id"
+            :rows="tenantAdmins"
+            :columns="tenantAdminColumns"
+            :dense="$q.screen.lt.md"
+            hide-bottom
+            class="tenant-details-page__table"
+          >
+            <template #body-cell-email="props">
+              <q-td :props="props">
+                {{ props.row.email }}
+              </q-td>
+            </template>
 
-              <q-item-section side>
-                <div class="row items-center q-gutter-sm">
-                  <q-toggle
-                    v-model="admin.is_active"
-                    :label="admin.is_active ? 'Active' : 'Inactive'"
-                    color="positive"
-                    keep-color
-                    @update:model-value="(value) => onToggleAdminActive(admin, value)"
-                  />
+            <template #body-cell-role="props">
+              <q-td :props="props">
+                {{ props.row.role }}
+              </q-td>
+            </template>
 
-                  <q-btn
-                    size="sm"
-                    color="negative"
-                    outline
-                    icon="delete"
-                    label="Delete"
-                    @click="onClickDeleteAdmin(admin)"
-                  />
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
+            <template #body-cell-active="props">
+              <q-td :props="props">
+                <q-toggle
+                  v-model="props.row.is_active"
+                  color="positive"
+                  keep-color
+                  @update:model-value="(value) => onToggleAdminActive(props.row, value)"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-delete="props">
+              <q-td :props="props">
+                <q-btn
+                  size="sm"
+                  color="negative"
+                  flat
+                  round
+                  icon="delete"
+                  @click="onClickDeleteAdmin(props.row)"
+                />
+              </q-td>
+            </template>
+          </q-table>
         </q-card>
 
-        <q-card flat bordered>
-          <q-card-section class="row items-center justify-between">
+        <q-card flat bordered class="tenant-details-page__card">
+          <q-card-section class="row items-center justify-between q-pa-md tenant-details-page__section-head">
             <div class="text-h6">Module Features</div>
             <q-btn
               color="primary"
@@ -154,49 +162,58 @@
 
           <q-separator />
 
-          <q-card-section v-if="modulesLoading" class="text-grey-7">
+          <q-card-section v-if="modulesLoading" class="text-grey-7 q-pa-md">
             Loading module features...
           </q-card-section>
 
-          <q-card-section v-else-if="modules.length === 0" class="text-grey-7">
+          <q-card-section v-else-if="modules.length === 0" class="text-grey-7 q-pa-md">
             No module features found.
           </q-card-section>
 
-          <q-list v-else separator>
-            <q-item v-for="module in modules" :key="module.id">
-              <q-item-section>
-                <q-item-label>{{ module.module_key }}</q-item-label>
-                <q-item-label caption>
-                  #{{ module.id }} ·
-                  {{ module.is_active ? 'Active' : 'Inactive' }}
-                </q-item-label>
-              </q-item-section>
+          <q-table
+            v-else
+            flat
+            bordered
+            row-key="id"
+            :rows="modules"
+            :columns="moduleFeatureColumns"
+            :dense="$q.screen.lt.md"
+            hide-bottom
+            class="tenant-details-page__table"
+          >
+            <template #body-cell-module_key="props">
+              <q-td :props="props">
+                {{ props.row.module_key }}
+              </q-td>
+            </template>
 
-              <q-item-section side>
-                <div class="row items-center q-gutter-sm">
-                  <q-toggle
-                    :model-value="module.is_active"
-                    :label="module.is_active ? 'Active' : 'Inactive'"
-                    color="positive"
-                    keep-color
-                    @update:model-value="(value) => onToggleModuleActive(module, value)"
-                  />
+            <template #body-cell-active="props">
+              <q-td :props="props">
+                <q-toggle
+                  :model-value="props.row.is_active"
+                  color="positive"
+                  keep-color
+                  @update:model-value="(value) => onToggleModuleActive(props.row, value)"
+                />
+              </q-td>
+            </template>
 
-                  <q-btn
-                    size="sm"
-                    color="negative"
-                    outline
-                    icon="delete"
-                    label="Delete"
-                    @click="onClickDeleteModule(module)"
-                  />
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
+            <template #body-cell-delete="props">
+              <q-td :props="props">
+                <q-btn
+                  size="sm"
+                  color="negative"
+                  flat
+                  round
+                  icon="delete"
+                  @click="onClickDeleteModule(props.row)"
+                />
+              </q-td>
+            </template>
+          </q-table>
         </q-card>
       </div>
-    </div>
+    </section>
 
     <AddTenantDialog
       v-model="openEditDialog"
@@ -328,6 +345,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -351,6 +369,7 @@ type TenantForm = {
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
 
 const tenantStore = useTenantStore()
 const tenantModuleStore = useTenantModuleStore()
@@ -388,6 +407,19 @@ const tenantId = computed(() => Number(route.params.id))
 const tenant = computed<Tenant | null>(() => {
   return items.value.find((item) => item.id === tenantId.value) ?? null
 })
+
+const tenantAdminColumns = [
+  { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
+  { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
+  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
+  { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
+]
+
+const moduleFeatureColumns = [
+  { name: 'module_key', label: 'Feature', field: 'module_key', align: 'left' as const },
+  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
+  { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
+]
 
 const loadTenantAdmins = async () => {
   if (!tenant.value?.id) return
@@ -626,3 +658,88 @@ onMounted(async () => {
   void loadPageData()
 })
 </script>
+
+<style scoped>
+.tenant-details-page__header {
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tenant-details-page__header-main {
+  min-width: 0;
+}
+
+.tenant-details-page__card :deep(.q-btn) {
+  border-radius: 8px;
+}
+
+.tenant-details-page__card :deep(.q-card__section) {
+  padding: 0.75rem;
+}
+
+.tenant-details-page__actions {
+  gap: 0.5rem;
+}
+
+.tenant-details-page__list-item {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.tenant-details-page__item-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tenant-details-page__table :deep(th),
+.tenant-details-page__table :deep(td) {
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .tenant-details-page__section-head {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 599px) {
+  .tenant-details-page__table :deep(th),
+  .tenant-details-page__table :deep(td) {
+    padding: 0.35rem 0.45rem;
+    font-size: 0.875rem;
+  }
+
+  .tenant-details-page__header {
+    align-items: stretch;
+  }
+
+  .tenant-details-page__header-main {
+    width: 100%;
+  }
+
+  .tenant-details-page__actions,
+  .tenant-details-page__item-actions,
+  .tenant-details-page__section-head {
+    width: 100%;
+  }
+
+  .tenant-details-page__item-side {
+    width: 100%;
+    align-items: flex-start;
+    padding-top: 0.75rem;
+  }
+
+  .tenant-details-page__actions,
+  .tenant-details-page__item-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tenant-details-page__list-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding-bottom: 0.65rem;
+  }
+}
+</style>

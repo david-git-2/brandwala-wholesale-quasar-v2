@@ -5,7 +5,6 @@
         <div class="col">
           <div class="text-overline">Platform</div>
           <h1 class="text-h5 q-my-none">Tenants</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Manage tenant workspaces.</p>
         </div>
         <div class="col-auto">
           <q-btn color="primary" unelevated icon="add" label="Add Tenant" @click="onClickAddTenant" />
@@ -16,37 +15,33 @@
         {{ error }}
       </q-banner>
 
-      <q-card flat bordered>
-        <q-card-section>
-          <div class="text-subtitle1">Tenant Directory</div>
-        </q-card-section>
+      <section v-if="items.length" class="tenant-page__grid">
+        <q-card
+          v-for="tenant in items"
+          :key="tenant.id"
+          flat
+          bordered
+          class="tenant-page__card cursor-pointer"
+          @click="goToTenantDetails(tenant.id)"
+        >
+          <q-card-section>
+            <div class="text-overline">Tenant #{{ tenant.id }}</div>
+            <div class="text-subtitle1">{{ tenant.name }}</div>
+            <div class="text-body2 text-grey-7">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
+          </q-card-section>
+        </q-card>
+      </section>
 
-        <q-card-section v-if="items.length">
-          <div class="bw-entity-grid">
-            <q-card
-              v-for="tenant in items"
-              :key="tenant.id"
-              flat
-              bordered
-              class="cursor-pointer"
-              @click="goToTenantDetails(tenant.id)"
-            >
-              <q-card-section>
-                <div class="text-overline">Tenant #{{ tenant.id }}</div>
-                <div class="text-subtitle1">{{ tenant.name }}</div>
-                <div class="text-body2 text-grey-7">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </q-card-section>
-
-        <q-card-section v-else-if="!loading" class="text-center">
+      <q-card v-else-if="!loading" flat bordered>
+        <q-card-section class="text-center">
           <div class="text-subtitle1">No tenants available</div>
           <div class="text-body2 text-grey-7 q-mt-sm">Create your first tenant to get started.</div>
           <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
         </q-card-section>
+      </q-card>
 
-        <q-card-section v-else class="text-grey-7">Loading tenants...</q-card-section>
+      <q-card v-else flat bordered>
+        <q-card-section class="text-grey-7">Loading tenants...</q-card-section>
       </q-card>
 
       <AddTenantDialog
@@ -123,3 +118,21 @@ onMounted(() => {
   void refreshTenants()
 })
 </script>
+
+<style scoped>
+.tenant-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 0.75rem;
+}
+
+.tenant-page__card {
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .tenant-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

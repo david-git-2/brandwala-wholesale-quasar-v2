@@ -11,37 +11,35 @@
         {{ error }}
       </q-banner>
 
-      <q-card flat bordered>
-        <q-card-section>
-          <div class="text-subtitle1">Tenant Directory</div>
-        </q-card-section>
+      <section v-if="items.length" class="admin-tenant-page__grid">
+        <q-card
+          v-for="tenant in items"
+          :key="tenant.id"
+          flat
+          bordered
+          class="admin-tenant-page__card cursor-pointer"
+          @click="goToTenantDetails(tenant.id)"
+        >
+          <q-card-section class="admin-tenant-page__card-section">
+            <div class="text-overline">Tenant #{{ tenant.id }}</div>
+            <div class="text-subtitle2">{{ tenant.name }}</div>
+            <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
+            <div class="text-caption q-mt-xs">
+              {{ selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive' }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </section>
 
-        <q-card-section v-if="items.length">
-          <div class="bw-entity-grid">
-            <q-card
-              v-for="tenant in items"
-              :key="tenant.id"
-              flat
-              bordered
-              class="cursor-pointer"
-              @click="goToTenantDetails(tenant.id)"
-            >
-              <q-card-section>
-                <div class="text-overline">Tenant #{{ tenant.id }}</div>
-                <div class="text-subtitle1">{{ tenant.name }}</div>
-                <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
-                <div class="text-caption q-mt-sm">{{ selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive' }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </q-card-section>
-
-        <q-card-section v-else-if="!loading" class="text-center">
+      <q-card v-else-if="!loading" flat bordered>
+        <q-card-section class="text-center">
           <div class="text-subtitle1">No tenants found</div>
           <div class="text-body2 text-grey-7 q-mt-sm">When tenant access is assigned, workspaces will appear here.</div>
         </q-card-section>
+      </q-card>
 
-        <q-card-section v-else class="text-grey-7">Loading tenants...</q-card-section>
+      <q-card v-else flat bordered>
+        <q-card-section class="text-grey-7">Loading tenants...</q-card-section>
       </q-card>
     </section>
   </q-page>
@@ -78,3 +76,25 @@ onMounted(() => {
   void refreshTenants()
 })
 </script>
+
+<style scoped>
+.admin-tenant-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 0.75rem;
+}
+
+.admin-tenant-page__card {
+  width: 100%;
+}
+
+.admin-tenant-page__card-section {
+  padding: 0.75rem;
+}
+
+@media (max-width: 599px) {
+  .admin-tenant-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
