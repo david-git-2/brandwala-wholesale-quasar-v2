@@ -48,6 +48,6 @@ const supportText = computed(() => {
 })
 
 const isLoginDisabled = computed(
-  () => loading.value || !tenant.value || !tenant.value.is_active,
+  () => loading.value || !tenant.value,
 )
 </script>

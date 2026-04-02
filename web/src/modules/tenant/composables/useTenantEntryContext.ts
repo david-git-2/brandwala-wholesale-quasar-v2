@@ -2,14 +2,14 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { tenantService } from '../services/tenantService'
-import type { Tenant } from '../types'
+import type { TenantEntry } from '../types'
 import { getTenantLookupFromRoute } from '../utils/tenantRouteContext'
 
 export function useTenantEntryContext() {
   const route = useRoute()
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const tenant = ref<Tenant | null>(null)
+  const tenant = ref<TenantEntry | null>(null)
 
   const lookup = computed(() => getTenantLookupFromRoute(route))
 
@@ -37,15 +37,11 @@ export function useTenantEntryContext() {
 
       if (!result.data) {
         tenant.value = null
-        error.value = 'This shop link does not match any active tenant entry yet.'
+        error.value = 'This shop link does not match any active tenant entry.'
         return
       }
 
       tenant.value = result.data
-
-      if (!result.data.is_active) {
-        error.value = 'This tenant workspace is currently inactive.'
-      }
     } finally {
       loading.value = false
     }

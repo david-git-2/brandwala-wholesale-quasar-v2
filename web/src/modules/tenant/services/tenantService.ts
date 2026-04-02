@@ -3,6 +3,7 @@ import type {
   Tenant,
   TenantCreateInput,
   TenantDeleteInput,
+  TenantEntry,
   TenantEntryResolveInput,
   TenantServiceResult,
   TenantUpdateInput,
@@ -30,7 +31,7 @@ const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
 
 const resolveTenantForEntry = async (
   payload: TenantEntryResolveInput,
-): Promise<TenantServiceResult<Tenant | null>> => {
+): Promise<TenantServiceResult<TenantEntry | null>> => {
   try {
     const data = await tenantRepository.resolveTenantForEntry(payload)
 

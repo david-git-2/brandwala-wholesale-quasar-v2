@@ -4,6 +4,7 @@ import type {
   Tenant,
   TenantCreateInput,
   TenantDeleteInput,
+  TenantEntry,
   TenantEntryResolveInput,
   TenantUpdateInput,
 } from '../types'
@@ -45,7 +46,7 @@ const listTenants = async (): Promise<Tenant[]> => {
 
 const resolveTenantForEntry = async (
   payload: TenantEntryResolveInput,
-): Promise<Tenant | null> => {
+): Promise<TenantEntry | null> => {
   const { data, error } = await supabase.rpc('resolve_tenant_for_entry', {
     p_slug: payload.slug ?? null,
     p_hostname: payload.hostname ?? null,
@@ -57,7 +58,7 @@ const resolveTenantForEntry = async (
 
   const tenant = Array.isArray(data) ? data[0] : data
 
-  return (tenant as Tenant | null) ?? null
+  return (tenant as TenantEntry | null) ?? null
 }
 
 const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {

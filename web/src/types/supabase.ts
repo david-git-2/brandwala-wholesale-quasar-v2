@@ -469,16 +469,31 @@ export type Database = {
           updated_at: string
         }[]
       }
-      resolve_tenant_for_entry: {
-        Args: { p_hostname?: string; p_slug?: string }
+      find_active_tenant_by_public_domain: {
+        Args: { p_public_domain: string }
         Returns: {
-          created_at: string
           id: number
-          is_active: boolean
           name: string
           public_domain: string
           slug: string
-          updated_at: string
+        }[]
+      }
+      find_active_tenant_by_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          id: number
+          name: string
+          public_domain: string
+          slug: string
+        }[]
+      }
+      resolve_tenant_for_entry: {
+        Args: { p_hostname?: string; p_slug?: string }
+        Returns: {
+          id: number
+          name: string
+          public_domain: string
+          slug: string
         }[]
       }
       update_tenant_for_superadmin: {
