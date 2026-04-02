@@ -10,8 +10,6 @@ export type AccessRole =
   | 'superadmin'
   | 'admin'
   | 'staff'
-  | 'customer'
-  | 'viewer'
   | 'customer_admin'
   | 'customer_negotiator'
   | 'customer_staff'
