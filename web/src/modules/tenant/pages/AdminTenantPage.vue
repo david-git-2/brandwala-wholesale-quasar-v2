@@ -1,44 +1,49 @@
 <template>
   <q-page class="bw-page">
-    <div class="bw-page__stack">
-      <AppPageHeader
-        eyebrow="Operations"
-        title="Tenants"
-        subtitle="Browse the workspaces connected to your admin access using the same card layout used across the app."
-      />
+    <section class="bw-page__stack">
+      <section>
+        <div class="text-overline">Operations</div>
+        <h1 class="text-h5 q-my-none">Tenants</h1>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Browse the workspaces connected to your admin access.</p>
+      </section>
 
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
 
-      <AppSectionCard
-        title="Tenant Directory"
-        caption="Each card uses the shared entity shell so future list pages stay visually aligned."
-      >
-        <div v-if="items.length" class="bw-entity-grid">
-          <AppEntityCard
-            v-for="tenant in items"
-            :key="tenant.id"
-            clickable
-            :eyebrow="`Tenant #${tenant.id}`"
-            :title="tenant.name"
-            :meta="tenant.slug"
-            :status-label="selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive'"
-            :status-tone="selectingTenantId === tenant.id ? 'warning' : tenant.is_active ? 'positive' : 'neutral'"
-            @click="goToTenantDetails(tenant.id)"
-          />
-        </div>
+      <q-card flat bordered>
+        <q-card-section>
+          <div class="text-subtitle1">Tenant Directory</div>
+        </q-card-section>
 
-        <AppEmptyState
-          v-else-if="!loading"
-          icon="domain"
-          title="No tenants found"
-          message="When tenant access is assigned to this admin account, those workspaces will appear here."
-        />
+        <q-card-section v-if="items.length">
+          <div class="bw-entity-grid">
+            <q-card
+              v-for="tenant in items"
+              :key="tenant.id"
+              flat
+              bordered
+              class="cursor-pointer"
+              @click="goToTenantDetails(tenant.id)"
+            >
+              <q-card-section>
+                <div class="text-overline">Tenant #{{ tenant.id }}</div>
+                <div class="text-subtitle1">{{ tenant.name }}</div>
+                <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
+                <div class="text-caption q-mt-sm">{{ selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive' }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-card-section>
 
-        <div v-else class="bw-text-muted">Loading tenants...</div>
-      </AppSectionCard>
-    </div>
+        <q-card-section v-else-if="!loading" class="text-center">
+          <div class="text-subtitle1">No tenants found</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">When tenant access is assigned, workspaces will appear here.</div>
+        </q-card-section>
+
+        <q-card-section v-else class="text-grey-7">Loading tenants...</q-card-section>
+      </q-card>
+    </section>
   </q-page>
 </template>
 
@@ -46,10 +51,6 @@
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
-import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection'
 import { useTenantStore } from '../stores/tenantStore'

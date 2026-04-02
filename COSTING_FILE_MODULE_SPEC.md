@@ -162,6 +162,220 @@ Notes:
 
 ## Data Model
 
+## Backend Contract Finalized
+
+This section is the implementation contract for backend work.
+
+### Parent table
+
+Use table name:
+
+- `costing_files`
+
+### Child table
+
+Use table name:
+
+- `costing_file_items`
+
+### Real foreign key targets
+
+`costing_files` must reference:
+
+- `tenant_id -> public.tenants(id)`
+- `customer_group_id -> public.customer_groups(id)`
+
+`costing_file_items` must reference:
+
+- `costing_file_id -> public.costing_files(id)`
+
+### Actor linkage
+
+The current backend does not have one shared actor table for both app-side users and customer-side users.
+
+Because costing actions may come from:
+
+- `public.memberships`
+- `public.customer_group_members`
+
+the initial backend contract should store:
+
+- `created_by_email`
+
+This should default to `public.current_user_email()`.
+
+If stricter actor references are needed later, they can be added as separate actor-link fields in a later step.
+
+### File status contract
+
+Use a controlled backend enum or check constraint with these exact values:
+
+- `draft`
+- `customer_submitted`
+- `in_review`
+- `priced`
+- `offered`
+- `completed`
+- `cancelled`
+
+### Item status contract
+
+Use a controlled backend enum or check constraint with these exact values:
+
+- `pending`
+- `accepted`
+- `rejected`
+
+### Required fields on `costing_files`
+
+- `id`
+- `name`
+- `market`
+- `status`
+- `customer_group_id`
+- `tenant_id`
+- `created_by_email`
+- `created_at`
+- `updated_at`
+
+### Optional file-level pricing fields on `costing_files`
+
+- `cargo_rate_1kg`
+- `cargo_rate_2kg`
+- `conversion_rate`
+- `admin_profit_rate`
+
+These may start as nullable and become required when the file reaches pricing stages.
+
+### Required fields on `costing_file_items`
+
+- `id`
+- `costing_file_id`
+- `website_url`
+- `quantity`
+- `status`
+- `created_by_email`
+- `created_at`
+- `updated_at`
+
+### Optional enrichment and pricing fields on `costing_file_items`
+
+- `name`
+- `image_url`
+- `product_weight`
+- `package_weight`
+- `price_in_web_gbp`
+- `delivery_price_gbp`
+- `auxiliary_price_gbp`
+- `item_price_gbp`
+- `cargo_rate`
+- `costing_price_gbp`
+- `costing_price_bdt`
+- `offer_price_override_bdt`
+- `offer_price_bdt`
+- `customer_profit_rate`
+
+### Stored vs derived decision
+
+Store in database:
+
+- file-level pricing inputs
+- item request fields
+- item enrichment fields
+- final calculated pricing snapshots needed for workflow and audit:
+  - `auxiliary_price_gbp`
+  - `item_price_gbp`
+  - `cargo_rate`
+  - `costing_price_gbp`
+  - `costing_price_bdt`
+  - `offer_price_bdt`
+- manual override input:
+  - `offer_price_override_bdt`
+
+Do not store:
+
+- `total_weight`
+- `buyer_sell_price`
+
+These should be derived when needed.
+
+### Override decision
+
+- `offer_price_override_bdt` stores the manual override input when admin sets one
+- `offer_price_bdt` is the final saved offer value after calculation or override application
+- if `offer_price_override_bdt` is present, it replaces the calculated offer result for persisted `offer_price_bdt`
+
+### Normalization rules
+
+- `market` must be stored as uppercase
+- `website_url` should be stored trimmed
+- status fields should be stored in lowercase enum values
+- weight fields should be integers in grams
+- GBP fields should use numeric with 2-decimal precision
+- BDT fields should use integer values
+
+### Suggested data types
+
+`costing_files`
+
+- `id bigserial primary key`
+- `name text not null`
+- `market text not null`
+- `status text or enum not null`
+- `cargo_rate_1kg numeric(12,2)`
+- `cargo_rate_2kg numeric(12,2)`
+- `conversion_rate numeric(12,2)`
+- `admin_profit_rate numeric(12,2)`
+- `customer_group_id bigint not null references public.customer_groups(id) on delete cascade`
+- `tenant_id bigint not null references public.tenants(id) on delete cascade`
+- `created_by_email text not null default public.current_user_email()`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+`costing_file_items`
+
+- `id bigserial primary key`
+- `costing_file_id bigint not null references public.costing_files(id) on delete cascade`
+- `name text`
+- `image_url text`
+- `website_url text not null`
+- `quantity integer not null`
+- `product_weight integer`
+- `package_weight integer`
+- `price_in_web_gbp numeric(12,2)`
+- `delivery_price_gbp numeric(12,2)`
+- `auxiliary_price_gbp numeric(12,2)`
+- `item_price_gbp numeric(12,2)`
+- `cargo_rate numeric(12,2)`
+- `costing_price_gbp numeric(12,2)`
+- `costing_price_bdt integer`
+- `offer_price_override_bdt integer`
+- `offer_price_bdt integer`
+- `customer_profit_rate numeric(12,2)`
+- `status text or enum not null`
+- `created_by_email text not null default public.current_user_email()`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+### Required indexes
+
+- index on `costing_files(tenant_id)`
+- index on `costing_files(customer_group_id)`
+- index on `costing_files(status)`
+- index on `costing_file_items(costing_file_id)`
+- index on `costing_file_items(status)`
+
+### Backend scope decision for next step
+
+The next backend schema step should implement:
+
+- both tables
+- both status constraints
+- foreign keys
+- timestamps
+- `updated_at` triggers
+- normalization for `market`
+
 ## `costing_files`
 
 Recommended fields:

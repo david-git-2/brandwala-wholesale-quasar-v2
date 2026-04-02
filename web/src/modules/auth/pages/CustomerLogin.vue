@@ -1,35 +1,6 @@
 <template>
   <div class="customer-entry">
-    <section class="customer-entry__hero">
-      <div class="customer-entry__eyebrow">
-        {{ lookupLabel }}
-      </div>
 
-      <h1 class="customer-entry__headline">
-        {{ heroTitle }}
-      </h1>
-
-      <p class="customer-entry__copy">
-        {{ heroDescription }}
-      </p>
-
-      <div v-if="tenant" class="customer-entry__chips">
-        <div class="customer-entry__chip">
-          <span class="customer-entry__chip-label">Tenant</span>
-          <span class="customer-entry__chip-value">{{ tenant.name }}</span>
-        </div>
-
-        <div class="customer-entry__chip">
-          <span class="customer-entry__chip-label">Slug</span>
-          <span class="customer-entry__chip-value">{{ tenant.slug }}</span>
-        </div>
-
-        <div v-if="tenant.public_domain" class="customer-entry__chip">
-          <span class="customer-entry__chip-label">Public URL</span>
-          <span class="customer-entry__chip-value">{{ tenant.public_domain }}</span>
-        </div>
-      </div>
-    </section>
 
     <AuthLoginPanel
       scope="shop"
@@ -51,47 +22,7 @@ import { computed } from 'vue'
 import AuthLoginPanel from '../components/AuthLoginPanel.vue'
 import { useTenantEntryContext } from 'src/modules/tenant/composables/useTenantEntryContext'
 
-const { error, loading, lookup, tenant, resolvedTenantSlug } = useTenantEntryContext()
-
-const lookupLabel = computed(() => {
-  if (lookup.value.source === 'public_domain') {
-    return 'Tenant entry resolved from public domain'
-  }
-
-  if (lookup.value.source === 'slug') {
-    return 'Tenant entry resolved from shop link'
-  }
-
-  return 'Tenant entry required'
-})
-
-const heroTitle = computed(() => {
-  if (loading.value) {
-    return 'Checking your shop entry.'
-  }
-
-  if (tenant.value) {
-    return `${tenant.value.name} shop access`
-  }
-
-  return 'A valid tenant shop link is required.'
-})
-
-const heroDescription = computed(() => {
-  if (tenant.value?.public_domain) {
-    return `You are entering the customer workspace for ${tenant.value.name}. Continue with the Google account linked to your customer group for this tenant.`
-  }
-
-  if (tenant.value) {
-    return `You are entering the customer workspace for ${tenant.value.name}. Continue with the Google account linked to your customer group for this tenant.`
-  }
-
-  if (error.value) {
-    return error.value
-  }
-
-  return 'Open the tenant-specific shop link shared by your business to continue.'
-})
+const { error, loading, tenant, resolvedTenantSlug } = useTenantEntryContext()
 
 const title = computed(() =>
   tenant.value ? `Enter ${tenant.value.name}` : 'Enter the shop workspace',

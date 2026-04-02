@@ -1,23 +1,16 @@
 <template>
   <q-page class="bw-page">
-    <div class="bw-page__stack">
-      <AppPageHeader
-        eyebrow="Catalog"
-        title="Modules"
-        subtitle="Keep module management on the same page flow as tenants with shared actions, cards, and empty-state patterns."
-      >
-        <template #actions>
-          <div class="bw-inline-actions">
-            <q-btn
-              color="primary"
-              unelevated
-              icon="add"
-              label="Add Module"
-              @click="onClickAddModule"
-            />
-          </div>
-        </template>
-      </AppPageHeader>
+    <section class="bw-page__stack">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline">Catalog</div>
+          <h1 class="text-h5 q-my-none">Modules</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Manage the module catalog.</p>
+        </div>
+        <div class="col-auto">
+          <q-btn color="primary" unelevated icon="add" label="Add Module" @click="onClickAddModule" />
+        </div>
+      </section>
 
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>
         {{ error }}
@@ -33,49 +26,44 @@
         Push the Step 3 seed migration if this environment should already have the full master catalog.
       </q-banner>
 
-      <AppSectionCard
-        title="Module Catalog"
-        caption="The same entity-card shell is used here so cards, actions, and metadata feel consistent across the workspace."
-      >
-        <div v-if="items.length" class="bw-entity-grid">
-          <AppEntityCard
-            v-for="module in items"
-            :key="module.id"
-            :eyebrow="module.key"
-            :title="module.name"
-            :meta="buildModuleMeta(module)"
-            :description="module.description || 'No description provided yet.'"
-            :status-label="module.is_active ? 'Active' : 'Inactive'"
-            :status-tone="module.is_active ? 'positive' : isSeededModule(module.key) ? 'warning' : 'neutral'"
-          >
-            <template #actions>
-              <q-btn flat round icon="edit" @click.stop="onClickEditModule(module)" />
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                :disable="isSeededModule(module.key)"
-                @click.stop="onClickDeleteModule(module)"
-              />
-            </template>
-          </AppEntityCard>
-        </div>
+      <q-card flat bordered>
+        <q-card-section>
+          <div class="text-subtitle1">Module Catalog</div>
+        </q-card-section>
 
-        <AppEmptyState
-          v-else-if="!loading"
-          icon="widgets"
-          title="No modules found"
-          message="Create the first module to define features that can later be assigned to tenants."
-        >
-          <template #actions>
-            <q-btn color="primary" unelevated icon="add" label="Create Module" @click="onClickAddModule" />
-          </template>
-        </AppEmptyState>
+        <q-card-section v-if="items.length">
+          <div class="bw-entity-grid">
+            <q-card v-for="module in items" :key="module.id" flat bordered>
+              <q-card-section>
+                <div class="text-overline">{{ module.key }}</div>
+                <div class="text-subtitle1">{{ module.name }}</div>
+                <div class="text-body2 text-grey-7">{{ buildModuleMeta(module) }}</div>
+                <div class="text-body2 q-mt-sm">{{ module.description || 'No description provided yet.' }}</div>
+                <div class="row justify-end q-gutter-sm q-mt-md">
+                  <q-btn flat round icon="edit" @click.stop="onClickEditModule(module)" />
+                  <q-btn
+                    flat
+                    round
+                    icon="delete"
+                    color="negative"
+                    :disable="isSeededModule(module.key)"
+                    @click.stop="onClickDeleteModule(module)"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-card-section>
 
-        <div v-else class="bw-text-muted">Loading modules...</div>
-      </AppSectionCard>
-    </div>
+        <q-card-section v-else-if="!loading" class="text-center">
+          <div class="text-subtitle1">No modules found</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">Create the first module to define features.</div>
+          <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Module" @click="onClickAddModule" />
+        </q-card-section>
+
+        <q-card-section v-else class="text-grey-7">Loading modules...</q-card-section>
+      </q-card>
+    </section>
 
     <AddModuleDialog
       v-model="openAddDialog"
@@ -108,10 +96,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
-import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { showWarningDialog } from 'src/utils/appFeedback'
 import AddModuleDialog from '../components/AddModuleDialog.vue'
 import {

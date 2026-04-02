@@ -18,15 +18,7 @@ This guide should be used whenever a new admin, platform, app, or shop page is c
 
 Do not build raw page layouts from scratch if the page fits an existing shared pattern.
 
-Prefer shared UI building blocks first.
-
-Current shared UI components live in:
-
-- [`web/src/components/ui/AppPageHeader.vue`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/components/ui/AppPageHeader.vue)
-- [`web/src/components/ui/AppSectionCard.vue`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/components/ui/AppSectionCard.vue)
-- [`web/src/components/ui/AppEntityCard.vue`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/components/ui/AppEntityCard.vue)
-- [`web/src/components/ui/AppEmptyState.vue`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/components/ui/AppEmptyState.vue)
-- [`web/src/components/ui/AppDataTable.vue`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/components/ui/AppDataTable.vue)
+Prefer Quasar default components first.
 
 Global layout helpers and shared tokens live in:
 
@@ -38,96 +30,25 @@ For list, catalog, and management pages, use this order:
 
 1. `q-page` with class `bw-page`
 2. wrapper with class `bw-page__stack`
-3. `AppPageHeader`
+3. simple page heading
 4. optional `q-banner` for error state with class `bw-status-banner`
-5. `AppSectionCard`
+5. `q-card` when a section container is needed
 6. one of:
-   - `AppEntityCard` grid
-   - `AppDataTable`
-   - a section body built inside `AppSectionCard`
-7. `AppEmptyState` for no-data situations
+   - `q-card` grid
+   - `q-table`
+   - direct section content
+7. simple empty state text or a `q-card` empty section
 
 Do not scatter unrelated floating actions around the page unless there is a strong product reason.
 
 ## Shared Patterns
 
-### 1. Page Header
+Use Quasar defaults:
 
-Use `AppPageHeader` for:
-
-- page title
-- subtitle
-- eyebrow label
-- right-side actions
-
-Good use cases:
-
-- `Add Tenant`
-- `Add Module`
-- `Export`
-- `Filter`
-
-Avoid:
-
-- repeating the same title again inside the section card
-- large custom hero blocks for normal CRUD pages
-
-## 2. Section Card
-
-Use `AppSectionCard` as the main container for:
-
-- data grids
-- forms
-- table sections
-- grouped lists
-
-This is the default section shell for admin pages.
-
-Avoid raw `q-card` wrappers for standard management sections unless the layout is genuinely special.
-
-## 3. Entity Card
-
-Use `AppEntityCard` for compact list and catalog items like:
-
-- tenants
-- modules
-- customer groups
-- stores
-- users
-
-Entity cards should follow this structure:
-
-- eyebrow
-- title
-- meta
-- optional description
-- optional status badge
-- optional action row
-
-Do not create a different card layout for every page if the item is still just an entity in a collection.
-
-## 4. Empty State
-
-Use `AppEmptyState` instead of plain text like:
-
-- "No data found"
-- "No tenants found"
-
-Each empty state should teach the user what this area is for and what action they can take next.
-
-## 5. Table Pattern
-
-Use `AppDataTable` for pages that are better represented as rows instead of cards.
-
-Examples:
-
-- permissions
-- memberships
-- audit logs
-- reports
-- large operational datasets
-
-If a page starts with cards and later grows into many columns or bulk actions, switch it to the table pattern instead of forcing everything into cards.
+- page heading with normal text elements
+- `q-card` for grouped sections
+- `q-table` for row-based data
+- plain text empty states when enough
 
 ## Design Rules
 
@@ -138,6 +59,8 @@ If a page starts with cards and later grows into many columns or bulk actions, s
 - use `bw-entity-grid` for standard card grids
 - use `bw-inline-actions` for grouped action buttons
 - keep sections left-aligned and business-oriented
+- use fewer wrapper `div`s
+- prefer semantic tags or Quasar sections when they already fit
 
 ### Content Density
 
@@ -152,20 +75,31 @@ If a page starts with cards and later grows into many columns or bulk actions, s
 - use secondary buttons only when truly needed
 - for the app flow, do not add refresh buttons by default
 - do not add floating FABs if the same action can live clearly in the header
+- use default Quasar `q-btn` styles
+- keep button text short and action-based
 
 ### Cards
 
-- use the shared card shell first
-- status should use the built-in badge area
-- actions should sit in the bottom action row
-- keep titles and descriptions clamped instead of letting cards stretch unpredictably
+- use plain `q-card`
+- keep content simple
+- avoid custom card shells
 
 ### Tables
 
-- wrap tables in `AppDataTable`
+- use `q-table`
 - keep column labels short
 - prefer explicit operational actions
-- empty state should still use the shared empty-state pattern
+- keep empty handling simple
+
+### Simple Entry Screens
+
+For small input-plus-list screens:
+
+- prefer native Quasar building blocks like `q-card`, `q-input`, `q-btn`, and `q-markup-table`
+- keep only the important text
+- use theme colors instead of one-off colors
+- avoid decorative wrappers when a plain Quasar layout is enough
+- do not add custom visual styling if Quasar default already works
 
 ## Theme Rules
 
@@ -180,13 +114,14 @@ Follow these rules:
 - use `var(--bw-theme-...)` tokens
 - do not hardcode unrelated colors unless needed for status or domain-specific meaning
 - keep platform, app, and shop visually related but theme-aware
+- do not override Quasar defaults globally unless there is a real product need
 
 ## What AI Should Do
 
 When asked to build a new UI page, AI should:
 
 1. check whether the page is a list page, detail page, form page, or data table page
-2. reuse the shared components before creating new ones
+2. use Quasar defaults before creating new abstractions
 3. keep the page flow consistent with tenant and module pages
 4. add new shared UI only when the pattern is truly reusable
 5. avoid introducing new one-off card styles for common business entities
@@ -195,12 +130,13 @@ When asked to build a new UI page, AI should:
 
 Avoid these mistakes:
 
-- building a page with raw `q-card` blocks when `AppSectionCard` or `AppEntityCard` already fits
+- building custom wrapper components when plain Quasar components already fit
 - adding refresh buttons by default in app management pages
 - using floating sticky buttons for common create actions when header actions are enough
 - mixing multiple layout styles on similar CRUD pages
 - using plain text empty states without guidance
 - hardcoding colors that ignore the existing theme tokens
+- adding custom visual treatments when default Quasar UI is enough
 
 ## Reference Pages
 
@@ -212,10 +148,9 @@ Use these pages as the current reference implementation:
 
 These pages define the current standard for:
 
-- page header
-- section shell
-- entity grid
-- shared empty state
+- page heading
+- section layout
+- card grid
 - action placement
 
 ## Example Direction

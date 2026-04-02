@@ -3,6 +3,7 @@ import authRoutes from 'src/modules/auth/routes';
 import dashboardRoutes from 'src/modules/dashboard/routes';
 import tenantRoutes from 'src/modules/tenant/routes';
 import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
+import costingFileRoutes from 'src/modules/costingFile/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -31,6 +32,7 @@ const routes: RouteRecordRaw[] = [
   ...tenantRoutes,
   ...authRoutes,
   ...featureCatalogRoutes,
+  ...costingFileRoutes,
 
   // Always leave this as last one
   {

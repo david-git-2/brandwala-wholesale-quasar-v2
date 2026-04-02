@@ -58,7 +58,6 @@
 
                 <q-item-section>
                   <q-item-label>{{ link.title }}</q-item-label>
-                  <q-item-label caption>{{ link.caption }}</q-item-label>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -206,8 +205,8 @@ const handleLogout = async () => {
 }
 
 .workspace-shell__toolbar {
-  gap: 1rem;
-  padding: 0.9rem 1.1rem;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
 }
 
 .workspace-shell__menu {
@@ -223,7 +222,7 @@ const handleLogout = async () => {
 .workspace-shell__actions {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.5rem;
 }
 
 .workspace-shell__summary-label,
@@ -259,13 +258,13 @@ const handleLogout = async () => {
 
 .workspace-shell__drawer-top,
 .workspace-shell__drawer-bottom {
-  padding: 1.2rem;
+  padding: 0.75rem;
 }
 
 .workspace-shell__summary {
-  margin-top: 1.25rem;
-  padding: 1rem;
-  border-radius: 1.2rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.24));
   border: 1px solid var(--shell-border);
 }
@@ -275,17 +274,17 @@ const handleLogout = async () => {
 }
 
 .workspace-shell__nav {
-  padding: 0 0.9rem 1rem;
+  padding: 0 0.6rem 0.75rem;
 }
 
 .workspace-shell__nav-list {
-  margin-top: 0.7rem;
+  margin-top: 0.45rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 .workspace-shell__nav-item {
-  border-radius: 1rem;
+  border-radius: 0.65rem;
   color: var(--shell-ink);
 }
 
@@ -296,23 +295,23 @@ const handleLogout = async () => {
 
 .workspace-shell__logout {
   width: 100%;
-  padding: 0.9rem 1rem;
-  border-radius: 1rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.65rem;
   background: var(--shell-accent);
   color: #fffaf1;
 }
 
 .workspace-shell__page-container {
-  padding: clamp(0.75rem, 2vw, 1.4rem);
+  padding: clamp(0.5rem, 1.2vw, 0.9rem);
 }
 
 @media (max-width: 599px) {
   .workspace-shell__toolbar {
-    padding: 0.8rem;
+    padding: 0.5rem 0.6rem;
   }
 
   .workspace-shell__actions {
-    gap: 0.5rem;
+    gap: 0.35rem;
   }
 }
 </style>

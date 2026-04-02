@@ -58,53 +58,9 @@
   --bw-theme-primary-rgb: 47 111 184;
 }
 
-/* Soft app background */
 body {
-  background:
-    radial-gradient(
-      circle at 10% 10%,
-      rgb(var(--bw-brand-accent-rgb) / 0.08),
-      transparent 30%
-    ),
-    radial-gradient(circle at 90% 10%, rgb(180 95 52 / 0.06), transparent 30%),
-    #f8f4ee;
+  background: var(--bw-theme-base, var(--bw-brand-base));
   color: var(--bw-brand-ink);
-}
-
-/* Cards */
-.q-card {
-  border-radius: 14px !important;
-  background: var(--bw-theme-surface, var(--bw-brand-surface));
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, var(--bw-brand-border)) 92%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 1px 2px rgb(15 23 42 / 0.05),
-    0 14px 34px rgb(15 23 42 / 0.08);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease;
-}
-
-.q-card:hover {
-  box-shadow:
-    0 4px 14px rgb(15 23 42 / 0.07),
-    0 18px 44px rgb(15 23 42 / 0.1);
-}
-
-/* Buttons (pill style) */
-.q-btn {
-  border-radius: 9999px !important;
-  transition: all 0.2s ease;
-}
-
-.q-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* Inputs */
-.q-field__control {
-  border-radius: 12px !important;
 }
 
 .bw-page {
@@ -114,11 +70,6 @@ body {
 .bw-page__stack {
   display: grid;
   gap: 1.25rem;
-}
-
-.bw-status-banner {
-  border: 1px solid rgb(193 0 21 / 0.2);
-  background: linear-gradient(135deg, rgb(193 0 21 / 0.96), rgb(162 10 26 / 0.94));
 }
 
 .bw-entity-grid {

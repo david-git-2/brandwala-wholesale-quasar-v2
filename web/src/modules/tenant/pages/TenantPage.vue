@@ -1,66 +1,60 @@
 <template>
   <q-page class="bw-page">
-    <div class="bw-page__stack">
-      <AppPageHeader
-        eyebrow="Platform"
-        title="Tenants"
-        subtitle="Manage tenant workspaces with the shared page header, action area, and entity-card pattern."
-      >
-        <template #actions>
-          <div class="bw-inline-actions">
-            <q-btn
-              color="primary"
-              unelevated
-              icon="add"
-              label="Add Tenant"
-              @click="onClickAddTenant"
-            />
-          </div>
-        </template>
-      </AppPageHeader>
+    <section class="bw-page__stack">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline">Platform</div>
+          <h1 class="text-h5 q-my-none">Tenants</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Manage tenant workspaces.</p>
+        </div>
+        <div class="col-auto">
+          <q-btn color="primary" unelevated icon="add" label="Add Tenant" @click="onClickAddTenant" />
+        </div>
+      </section>
 
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
 
-      <AppSectionCard
-        title="Tenant Directory"
-        caption="Use this shared card layout for master lists throughout the app, including modules and future admin resources."
-      >
-        <div v-if="items.length" class="bw-entity-grid">
-          <AppEntityCard
-            v-for="tenant in items"
-            :key="tenant.id"
-            clickable
-            :eyebrow="`Tenant #${tenant.id}`"
-            :title="tenant.name"
-            :meta="tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug"
-            :status-label="tenant.is_active ? 'Active' : 'Inactive'"
-            :status-tone="tenant.is_active ? 'positive' : 'neutral'"
-            @click="goToTenantDetails(tenant.id)"
-          />
-        </div>
+      <q-card flat bordered>
+        <q-card-section>
+          <div class="text-subtitle1">Tenant Directory</div>
+        </q-card-section>
 
-        <AppEmptyState
-          v-else-if="!loading"
-          icon="apartment"
-          title="No tenants available"
-          message="Create your first tenant to start assigning modules, staff access, and customer groups."
-        >
-          <template #actions>
-            <q-btn color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
-          </template>
-        </AppEmptyState>
+        <q-card-section v-if="items.length">
+          <div class="bw-entity-grid">
+            <q-card
+              v-for="tenant in items"
+              :key="tenant.id"
+              flat
+              bordered
+              class="cursor-pointer"
+              @click="goToTenantDetails(tenant.id)"
+            >
+              <q-card-section>
+                <div class="text-overline">Tenant #{{ tenant.id }}</div>
+                <div class="text-subtitle1">{{ tenant.name }}</div>
+                <div class="text-body2 text-grey-7">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-card-section>
 
-        <div v-else class="bw-text-muted">Loading tenants...</div>
-      </AppSectionCard>
+        <q-card-section v-else-if="!loading" class="text-center">
+          <div class="text-subtitle1">No tenants available</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">Create your first tenant to get started.</div>
+          <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
+        </q-card-section>
+
+        <q-card-section v-else class="text-grey-7">Loading tenants...</q-card-section>
+      </q-card>
 
       <AddTenantDialog
         v-model="openAddDialog"
         :initial-data="selectedTenant"
         @save="handleSaveTenant"
       />
-    </div>
+    </section>
   </q-page>
 </template>
 
@@ -69,10 +63,6 @@ import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
-import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
-import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
 import type { TenantCreateInput, TenantUpdateInput } from '../types'
