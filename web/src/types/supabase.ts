@@ -60,6 +60,7 @@ export type Database = {
       }
       customer_groups: {
         Row: {
+          accent_color: string | null
           created_at: string
           id: number
           is_active: boolean
@@ -68,6 +69,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           created_at?: string
           id?: number
           is_active?: boolean
@@ -76,6 +78,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           created_at?: string
           id?: number
           is_active?: boolean
@@ -95,6 +98,7 @@ export type Database = {
       }
       memberships: {
         Row: {
+          accent_color: string | null
           created_at: string
           email: string
           id: number
@@ -104,6 +108,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           created_at?: string
           email: string
           id?: number
@@ -113,6 +118,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           created_at?: string
           email?: string
           id?: number

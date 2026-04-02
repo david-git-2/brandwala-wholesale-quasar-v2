@@ -7,15 +7,18 @@
     "dev": "npm --prefix web run dev",
     "build": "npm --prefix web run build",
     "lint": "npm --prefix web run lint",
-    "backend:init": "npx supabase init",
-    "backend:login": "npx supabase login",
-    "backend:link": "npx supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
-    "backend:link:push:types": "sh -c 'export npm_config_cache=/tmp/codex-npm-cache && npm run backend:link && npx --yes supabase db push --linked --include-all && mkdir -p web/src/types && npx --yes supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
-    "backend:new-migration": "npx supabase migration new",
-    "backend:push": "npx supabase db push --linked",
-    "backend:push:all": "npx supabase db push --linked --include-all",
-    "backend:types": "sh -c 'mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
+    "backend:init": "supabase init",
+    "backend:login": "supabase login",
+    "backend:link": "supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "backend:link:push:types": "sh -c 'npm run backend:link && supabase db push --linked --include-all && mkdir -p web/src/types && supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
+    "backend:new-migration": "supabase migration new",
+    "backend:push": "supabase db push --linked",
+    "backend:push:all": "supabase db push --linked --include-all",
+    "backend:types": "sh -c 'mkdir -p web/src/types && supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
     "deploy:backend": "npm run backend:push && npm run backend:types",
     "backend:all": "npm run backend:push:all && npm run backend:types"
+  },
+  "devDependencies": {
+    "supabase": "^2.84.6"
   }
 }

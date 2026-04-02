@@ -18,21 +18,9 @@
 </template>
 
 <script setup lang="ts">
-import WorkspaceShell, { type WorkspaceLink } from 'src/components/WorkspaceShell.vue'
+import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import TenantSelector from 'src/components/TenantSelector.vue'
+import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 
-const links: WorkspaceLink[] = [
-  {
-    title: 'Dashboard',
-    caption: 'Internal activity and quick actions',
-    icon: 'insights',
-    to: '/app/dashboard',
-  },
-  {
-    title: 'Tenants',
-    caption: 'Open tenant details and assignments',
-    icon: 'domain',
-    to: '/app/tenants',
-  },
-]
+const { links } = useAppWorkspaceLinks()
 </script>

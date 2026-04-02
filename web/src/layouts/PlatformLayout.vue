@@ -14,26 +14,8 @@
 </template>
 
 <script setup lang="ts">
-import WorkspaceShell, { type WorkspaceLink } from 'src/components/WorkspaceShell.vue'
+import WorkspaceShell from 'src/components/WorkspaceShell.vue'
+import { usePlatformWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 
-const links: WorkspaceLink[] = [
-  {
-    title: 'Dashboard',
-    caption: 'Platform pulse and rollout status',
-    icon: 'space_dashboard',
-    to: '/platform/dashboard',
-  },
-  {
-    title: 'Tenants',
-    caption: 'Create and govern businesses',
-    icon: 'apartment',
-    to: '/platform/tenants',
-  },
-  {
-    title: 'Feature Catalog',
-    caption: 'Control modules and activation',
-    icon: 'inventory_2',
-    to: '/platform/modules',
-  },
-]
+const { links } = usePlatformWorkspaceLinks()
 </script>

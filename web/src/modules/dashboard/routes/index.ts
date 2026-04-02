@@ -46,6 +46,11 @@ const dashboardRoutes: RouteRecordRaw[] = [
         beforeEnter: createAccessGuard({
           loginRouteName: 'customer-login-page',
           requiredScope: 'shop',
+          allowedRoles: [
+            'customer_admin',
+            'customer_negotiator',
+            'customer_staff',
+          ],
         }),
       },
     ],

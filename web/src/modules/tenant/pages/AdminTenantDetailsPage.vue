@@ -2,12 +2,7 @@
   <q-page class="q-pa-lg">
     <div class="q-mb-md row items-center justify-between">
       <div class="row items-center q-gutter-sm">
-        <q-btn
-          flat
-          round
-          icon="arrow_back"
-          @click="goBack"
-        />
+        <q-btn flat round icon="arrow_back" @click="goBack" />
         <div>
           <div class="text-h5 text-weight-bold">Tenant Details</div>
           <div v-if="tenant" class="text-grey-7">
@@ -21,17 +16,13 @@
       {{ pageError }}
     </q-banner>
 
-    <div v-if="pageLoading" class="text-grey-7">
-      Loading tenant details...
-    </div>
+    <div v-if="pageLoading" class="text-grey-7">Loading tenant details...</div>
 
-    <div v-else-if="!tenant" class="text-grey-7">
-      Tenant not found.
-    </div>
+    <div v-else-if="!tenant" class="text-grey-7">Tenant not found.</div>
 
     <div v-else class="row q-col-gutter-lg">
-      <div class="col-12 col-lg-5">
-        <q-card flat bordered>
+      <div class="col-12 col-lg-4">
+        <q-card flat bordered class="q-mb-lg">
           <q-card-section class="row items-start justify-between">
             <div>
               <div class="text-h6">{{ tenant.name }}</div>
@@ -55,9 +46,71 @@
             </div>
           </q-card-section>
         </q-card>
+
+        <q-card flat bordered class="q-mb-lg">
+          <q-card-section class="row items-center justify-between">
+            <div>
+              <div class="text-h6">Customer Groups</div>
+              <div class="text-caption text-grey-7">
+                Organize customer-side access by company or buying team.
+              </div>
+            </div>
+
+            <q-btn color="primary" icon="groups" label="Add Group" @click="openCreateGroupDialog" />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section v-if="customerGroupsLoading" class="text-grey-7">
+            Loading customer groups...
+          </q-card-section>
+
+          <q-card-section v-else-if="customerGroups.length === 0" class="text-grey-7">
+            No customer groups found.
+          </q-card-section>
+
+          <q-list v-else separator>
+            <q-item
+              v-for="group in customerGroups"
+              :key="group.id"
+              clickable
+              :active="selectedCustomerGroupId === group.id"
+              active-class="bg-primary text-white"
+              @click="selectCustomerGroup(group.id)"
+            >
+              <q-item-section avatar>
+                <div
+                  class="customer-group-chip"
+                  :style="{ backgroundColor: group.accent_color || '#B45F34' }"
+                />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ group.name }}</q-item-label>
+                <q-item-label caption>
+                  #{{ group.id }} · {{ group.is_active ? 'Active' : 'Inactive' }}
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn flat round dense icon="edit" @click.stop="openEditGroupDialog(group)" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="delete"
+                    @click.stop="openDeleteGroupDialog(group)"
+                  />
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
       </div>
 
-      <div class="col-12 col-lg-7">
+      <div class="col-12 col-lg-8">
         <q-card flat bordered class="q-mb-lg">
           <q-card-section class="row items-center justify-between">
             <div>
@@ -67,14 +120,7 @@
               </div>
             </div>
 
-            <div class="row q-gutter-sm">
-              <q-btn
-                color="primary"
-                icon="person_add"
-                label="Add Staff"
-                @click="onClickAddMember('staff')"
-              />
-            </div>
+            <q-btn color="primary" icon="person_add" label="Add Staff" @click="onClickAddMember('staff')" />
           </q-card-section>
 
           <q-separator />
@@ -124,6 +170,108 @@
           </q-card-section>
         </q-card>
 
+        <q-card flat bordered class="q-mb-lg">
+          <q-card-section class="row items-center justify-between">
+            <div>
+              <div class="text-h6">Customer Group Members</div>
+              <div class="text-caption text-grey-7">
+                Add customer admins, negotiators, and staff inside the selected group.
+              </div>
+            </div>
+
+            <q-btn
+              color="primary"
+              icon="person_add"
+              label="Add Customer User"
+              :disable="!selectedCustomerGroup"
+              @click="openCreateCustomerMemberDialog"
+            />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section v-if="!selectedCustomerGroup" class="text-grey-7">
+            Select a customer group to manage its members.
+          </q-card-section>
+
+          <template v-else>
+            <q-card-section class="row items-center justify-between">
+              <div class="row items-center q-gutter-sm">
+                <div
+                  class="customer-group-chip customer-group-chip--large"
+                  :style="{ backgroundColor: selectedCustomerGroup.accent_color || '#B45F34' }"
+                />
+                <div>
+                  <div class="text-subtitle1 text-weight-bold">
+                    {{ selectedCustomerGroup.name }}
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    Accent: {{ selectedCustomerGroup.accent_color || 'Not set' }}
+                  </div>
+                </div>
+              </div>
+
+              <q-toggle
+                :model-value="selectedCustomerGroup.is_active"
+                :label="selectedCustomerGroup.is_active ? 'Active' : 'Inactive'"
+                color="positive"
+                keep-color
+                @update:model-value="
+                  (value) => onToggleCustomerGroupActive(selectedCustomerGroup, value)
+                "
+              />
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-section v-if="customerGroupMembersLoading" class="text-grey-7">
+              Loading customer group members...
+            </q-card-section>
+
+            <q-card-section
+              v-else-if="customerGroupMembers.length === 0"
+              class="text-grey-7"
+            >
+              No members found for this customer group.
+            </q-card-section>
+
+            <q-list v-else separator>
+              <q-item v-for="member in customerGroupMembers" :key="member.id">
+                <q-item-section>
+                  <q-item-label>{{ member.name }}</q-item-label>
+                  <q-item-label caption>
+                    {{ member.email }} · {{ formatCustomerRole(member.role) }} ·
+                    {{ member.is_active ? 'Active' : 'Inactive' }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <div class="row items-center q-gutter-xs">
+                    <q-toggle
+                      :model-value="member.is_active"
+                      :label="member.is_active ? 'Active' : 'Inactive'"
+                      color="positive"
+                      keep-color
+                      @update:model-value="
+                        (value) => onToggleCustomerGroupMemberActive(member, value)
+                      "
+                    />
+                    <q-btn flat round dense icon="edit" @click="openEditCustomerMemberDialog(member)" />
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      icon="delete"
+                      @click="openDeleteCustomerMemberDialog(member)"
+                    />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </template>
+        </q-card>
+
         <q-card flat bordered>
           <q-card-section class="row items-center justify-between">
             <div class="text-h6">Module Features</div>
@@ -144,8 +292,7 @@
               <q-item-section>
                 <q-item-label>{{ module.module_key }}</q-item-label>
                 <q-item-label caption>
-                  #{{ module.id }} ·
-                  {{ module.is_active ? 'Active' : 'Inactive' }}
+                  #{{ module.id }} · {{ module.is_active ? 'Active' : 'Inactive' }}
                 </q-item-label>
               </q-item-section>
 
@@ -163,26 +310,12 @@
     <q-dialog v-model="openAddMemberDialog" persistent>
       <q-card style="min-width: 420px">
         <q-card-section>
-          <div class="text-h6">Add {{ selectedRoleLabel }}</div>
+          <div class="text-h6">Add Staff</div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input
-            v-model="memberEmail"
-            label="Email"
-            type="email"
-            outlined
-            dense
-          />
-
-          <q-input
-            :model-value="selectedMemberRole"
-            label="Role"
-            outlined
-            dense
-            readonly
-          />
-
+          <q-input v-model="memberEmail" label="Email" type="email" outlined dense />
+          <q-input :model-value="selectedMemberRole" label="Role" outlined dense readonly />
           <div class="row items-center justify-between">
             <div class="text-subtitle2">Status</div>
             <q-toggle
@@ -218,6 +351,130 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="openCustomerGroupDialog" persistent>
+      <q-card style="min-width: 460px">
+        <q-card-section>
+          <div class="text-h6">
+            {{ customerGroupForm.id ? 'Edit Customer Group' : 'Add Customer Group' }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input v-model="customerGroupForm.name" label="Group name" outlined dense />
+          <q-input
+            v-model="customerGroupForm.accent_color"
+            label="Accent color"
+            outlined
+            dense
+            placeholder="#B45F34"
+          >
+            <template #append>
+              <div
+                class="customer-group-chip"
+                :style="{ backgroundColor: customerGroupForm.accent_color || '#B45F34' }"
+              />
+            </template>
+          </q-input>
+          <div class="row items-center justify-between">
+            <div class="text-subtitle2">Status</div>
+            <q-toggle
+              v-model="customerGroupForm.is_active"
+              :label="customerGroupForm.is_active ? 'Active' : 'Inactive'"
+              color="positive"
+              keep-color
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openCustomerGroupDialog = false" />
+          <q-btn color="primary" label="Save" @click="saveCustomerGroup" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openDeleteCustomerGroupDialog" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Delete Customer Group</div>
+        </q-card-section>
+
+        <q-card-section>
+          Delete customer group <strong>{{ customerGroupToDelete?.name }}</strong>?
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openDeleteCustomerGroupDialog = false" />
+          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroup" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openCustomerMemberDialog" persistent>
+      <q-card style="min-width: 460px">
+        <q-card-section>
+          <div class="text-h6">
+            {{
+              customerGroupMemberForm.id
+                ? 'Edit Customer Group Member'
+                : 'Add Customer Group Member'
+            }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input v-model="customerGroupMemberForm.name" label="Name" outlined dense />
+          <q-input
+            v-model="customerGroupMemberForm.email"
+            label="Email"
+            type="email"
+            outlined
+            dense
+          />
+          <q-select
+            v-model="customerGroupMemberForm.role"
+            :options="customerRoleOptions"
+            emit-value
+            map-options
+            label="Role"
+            outlined
+            dense
+          />
+          <div class="row items-center justify-between">
+            <div class="text-subtitle2">Status</div>
+            <q-toggle
+              v-model="customerGroupMemberForm.is_active"
+              :label="customerGroupMemberForm.is_active ? 'Active' : 'Inactive'"
+              color="positive"
+              keep-color
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openCustomerMemberDialog = false" />
+          <q-btn color="primary" label="Save" @click="saveCustomerGroupMember" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openDeleteCustomerMemberDialogOpen" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Delete Customer Group Member</div>
+        </q-card-section>
+
+        <q-card-section>
+          Delete customer member <strong>{{ customerGroupMemberToDelete?.email }}</strong>?
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openDeleteCustomerMemberDialogOpen = false" />
+          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroupMember" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -226,11 +483,17 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
-import { useTenantStore } from '../stores/tenantStore'
-import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
-import type { Tenant } from '../types'
 import type { Membership } from 'src/modules/membership/types'
+import { useCustomerGroupStore } from '../stores/customerGroupStore'
+import { useTenantModuleStore } from '../stores/tenantModuleStore'
+import { useTenantStore } from '../stores/tenantStore'
+import type {
+  CustomerGroup,
+  CustomerGroupMember,
+  CustomerGroupRole,
+  Tenant,
+} from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -238,13 +501,27 @@ const router = useRouter()
 const tenantStore = useTenantStore()
 const tenantModuleStore = useTenantModuleStore()
 const membershipStore = useMembershipStore()
+const customerGroupStore = useCustomerGroupStore()
+
 const { items } = storeToRefs(tenantStore)
 const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
+const {
+  groups: customerGroups,
+  members: customerGroupMembers,
+  loading: customerGroupsLoading,
+  membersLoading: customerGroupMembersLoading,
+} = storeToRefs(customerGroupStore)
 
 const openAddMemberDialog = ref(false)
 const openDeleteMemberDialog = ref(false)
+const openCustomerGroupDialog = ref(false)
+const openDeleteCustomerGroupDialog = ref(false)
+const openCustomerMemberDialog = ref(false)
+const openDeleteCustomerMemberDialogOpen = ref(false)
 
 const memberToDelete = ref<Membership | null>(null)
+const customerGroupToDelete = ref<CustomerGroup | null>(null)
+const customerGroupMemberToDelete = ref<CustomerGroupMember | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
@@ -254,20 +531,80 @@ const tenantMembers = ref<Membership[]>([])
 const tenantMembersLoading = ref(false)
 const pageLoading = ref(false)
 const pageError = ref('')
+const selectedCustomerGroupId = ref<number | null>(null)
+
+const customerGroupForm = ref<{
+  id: number | null
+  name: string
+  accent_color: string
+  is_active: boolean
+}>({
+  id: null,
+  name: '',
+  accent_color: '',
+  is_active: true,
+})
+
+const customerGroupMemberForm = ref<{
+  id: number | null
+  name: string
+  email: string
+  role: CustomerGroupRole
+  is_active: boolean
+}>({
+  id: null,
+  name: '',
+  email: '',
+  role: 'staff',
+  is_active: true,
+})
+
+const customerRoleOptions = [
+  { label: 'Customer Admin', value: 'admin' },
+  { label: 'Customer Negotiator', value: 'negotiator' },
+  { label: 'Customer Staff', value: 'staff' },
+] satisfies { label: string; value: CustomerGroupRole }[]
 
 const tenantId = computed(() => Number(route.params.id))
 
-const tenant = computed<Tenant | null>(() => {
-  return items.value.find((item) => item.id === tenantId.value) ?? null
-})
+const tenant = computed<Tenant | null>(
+  () => items.value.find((item) => item.id === tenantId.value) ?? null,
+)
 
-const selectedRoleLabel = computed(() => {
-  return 'Staff'
-})
+const selectedCustomerGroup = computed<CustomerGroup | null>(
+  () =>
+    customerGroups.value.find((group) => group.id === selectedCustomerGroupId.value) ??
+    null,
+)
 
 const staffMembers = computed(() =>
-  tenantMembers.value.filter((member) => member.role === 'staff')
+  tenantMembers.value.filter((member) => member.role === 'staff'),
 )
+
+const formatCustomerRole = (role: CustomerGroupRole) => {
+  if (role === 'admin') return 'Customer Admin'
+  if (role === 'negotiator') return 'Customer Negotiator'
+  return 'Customer Staff'
+}
+
+const resetCustomerGroupForm = () => {
+  customerGroupForm.value = {
+    id: null,
+    name: '',
+    accent_color: '',
+    is_active: true,
+  }
+}
+
+const resetCustomerGroupMemberForm = () => {
+  customerGroupMemberForm.value = {
+    id: null,
+    name: '',
+    email: '',
+    role: 'staff',
+    is_active: true,
+  }
+}
 
 const loadTenantMembers = async () => {
   if (!tenant.value?.id) return
@@ -284,10 +621,10 @@ const loadTenantMembers = async () => {
     }
 
     tenantMembers.value = (result.data ?? []).filter(
-      (item: Membership) => item.role === 'staff'
+      (item: Membership) => item.role === 'staff',
     )
-  } catch (err) {
-    console.error(err)
+  } catch (error) {
+    console.error(error)
     pageError.value = 'Failed to load members.'
     tenantMembers.value = []
   } finally {
@@ -305,13 +642,46 @@ const loadTenantModules = async () => {
   }
 }
 
+const loadCustomerGroups = async () => {
+  if (!tenant.value?.id) return
+
+  const result = await customerGroupStore.fetchCustomerGroupsByTenant(tenant.value.id)
+
+  if (!result.success) {
+    pageError.value = result.error || 'Failed to load customer groups.'
+    return
+  }
+
+  const nextSelectedId =
+    customerGroups.value.find((group) => group.id === selectedCustomerGroupId.value)?.id ??
+    customerGroups.value[0]?.id ??
+    null
+
+  selectedCustomerGroupId.value = nextSelectedId
+
+  if (nextSelectedId !== null) {
+    await loadCustomerGroupMembers(nextSelectedId)
+  } else {
+    customerGroupStore.members = []
+  }
+}
+
+const loadCustomerGroupMembers = async (customerGroupId: number) => {
+  const result =
+    await customerGroupStore.fetchCustomerGroupMembersByGroup(customerGroupId)
+
+  if (!result.success) {
+    pageError.value = result.error || 'Failed to load customer group members.'
+  }
+}
+
 const loadPageData = async () => {
   pageLoading.value = true
   pageError.value = ''
 
   try {
     await tenantStore.fetchTenantDetailsByMembership({
-      tenantId: tenantId.value
+      tenantId: tenantId.value,
     })
 
     if (!tenant.value) {
@@ -319,12 +689,9 @@ const loadPageData = async () => {
       return
     }
 
-    await Promise.all([
-      loadTenantMembers(),
-      loadTenantModules(),
-    ])
-  } catch (err) {
-    console.error(err)
+    await Promise.all([loadTenantMembers(), loadTenantModules(), loadCustomerGroups()])
+  } catch (error) {
+    console.error(error)
     pageError.value = 'Failed to load tenant details.'
   } finally {
     pageLoading.value = false
@@ -343,7 +710,7 @@ const onClickAddMember = (role: 'staff') => {
 }
 
 const handleSaveMember = async () => {
-  if (!tenant.value?.id || !memberEmail.value) return
+  if (!tenant.value?.id || !memberEmail.value.trim()) return
 
   const result = await membershipStore.createMembership({
     tenant_id: tenant.value.id,
@@ -374,9 +741,9 @@ const onToggleMemberActive = async (member: Membership, value: boolean) => {
       member.is_active = previousValue
       pageError.value = result.error ?? 'Failed to update member status.'
     }
-  } catch (err) {
+  } catch (error) {
     member.is_active = previousValue
-    console.error(err)
+    console.error(error)
     pageError.value = 'Failed to update member status.'
   }
 }
@@ -400,18 +767,222 @@ const confirmDeleteMember = async () => {
     }
 
     tenantMembers.value = tenantMembers.value.filter(
-      (item) => item.id !== memberToDelete.value?.id
+      (item) => item.id !== memberToDelete.value?.id,
     )
 
     openDeleteMemberDialog.value = false
     memberToDelete.value = null
-  } catch (err) {
-    console.error(err)
+  } catch (error) {
+    console.error(error)
     pageError.value = 'Failed to delete member.'
   }
+}
+
+const selectCustomerGroup = (customerGroupId: number) => {
+  selectedCustomerGroupId.value = customerGroupId
+  void loadCustomerGroupMembers(customerGroupId)
+}
+
+const openCreateGroupDialog = () => {
+  resetCustomerGroupForm()
+  openCustomerGroupDialog.value = true
+}
+
+const openEditGroupDialog = (group: CustomerGroup) => {
+  customerGroupForm.value = {
+    id: group.id,
+    name: group.name,
+    accent_color: group.accent_color ?? '',
+    is_active: group.is_active,
+  }
+  openCustomerGroupDialog.value = true
+}
+
+const saveCustomerGroup = async () => {
+  if (!tenant.value?.id || !customerGroupForm.value.name.trim()) return
+
+  const result = customerGroupForm.value.id
+    ? await customerGroupStore.updateCustomerGroup({
+        id: customerGroupForm.value.id,
+        name: customerGroupForm.value.name,
+        accent_color: customerGroupForm.value.accent_color,
+        is_active: customerGroupForm.value.is_active,
+      })
+    : await customerGroupStore.createCustomerGroup({
+        tenant_id: tenant.value.id,
+        name: customerGroupForm.value.name,
+        accent_color: customerGroupForm.value.accent_color,
+        is_active: customerGroupForm.value.is_active,
+      })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to save customer group.'
+    return
+  }
+
+  openCustomerGroupDialog.value = false
+  await loadCustomerGroups()
+
+  const savedGroupId = result.data?.id ?? customerGroupForm.value.id
+  if (savedGroupId) {
+    selectedCustomerGroupId.value = savedGroupId
+    await loadCustomerGroupMembers(savedGroupId)
+  }
+}
+
+const openDeleteGroupDialog = (group: CustomerGroup) => {
+  customerGroupToDelete.value = group
+  openDeleteCustomerGroupDialog.value = true
+}
+
+const confirmDeleteCustomerGroup = async () => {
+  if (!customerGroupToDelete.value) return
+
+  const deletedId = customerGroupToDelete.value.id
+  const result = await customerGroupStore.deleteCustomerGroup({ id: deletedId })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to delete customer group.'
+    return
+  }
+
+  openDeleteCustomerGroupDialog.value = false
+  customerGroupToDelete.value = null
+
+  if (selectedCustomerGroupId.value === deletedId) {
+    selectedCustomerGroupId.value = customerGroups.value[0]?.id ?? null
+  }
+
+  if (selectedCustomerGroupId.value !== null) {
+    await loadCustomerGroupMembers(selectedCustomerGroupId.value)
+  }
+}
+
+const onToggleCustomerGroupActive = async (
+  group: CustomerGroup,
+  value: boolean,
+) => {
+  const previousValue = group.is_active
+  group.is_active = value
+
+  const result = await customerGroupStore.updateCustomerGroup({
+    id: group.id,
+    is_active: value,
+  })
+
+  if (!result.success) {
+    group.is_active = previousValue
+    pageError.value = result.error ?? 'Failed to update customer group.'
+  }
+}
+
+const openCreateCustomerMemberDialog = () => {
+  resetCustomerGroupMemberForm()
+  openCustomerMemberDialog.value = true
+}
+
+const openEditCustomerMemberDialog = (member: CustomerGroupMember) => {
+  customerGroupMemberForm.value = {
+    id: member.id,
+    name: member.name,
+    email: member.email,
+    role: member.role,
+    is_active: member.is_active,
+  }
+  openCustomerMemberDialog.value = true
+}
+
+const saveCustomerGroupMember = async () => {
+  if (!selectedCustomerGroup.value) return
+
+  if (
+    !customerGroupMemberForm.value.name.trim() ||
+    !customerGroupMemberForm.value.email.trim()
+  ) {
+    return
+  }
+
+  const result = customerGroupMemberForm.value.id
+    ? await customerGroupStore.updateCustomerGroupMember({
+        id: customerGroupMemberForm.value.id,
+        name: customerGroupMemberForm.value.name,
+        email: customerGroupMemberForm.value.email,
+        role: customerGroupMemberForm.value.role,
+        is_active: customerGroupMemberForm.value.is_active,
+      })
+    : await customerGroupStore.createCustomerGroupMember({
+        customer_group_id: selectedCustomerGroup.value.id,
+        name: customerGroupMemberForm.value.name,
+        email: customerGroupMemberForm.value.email,
+        role: customerGroupMemberForm.value.role,
+        is_active: customerGroupMemberForm.value.is_active,
+      })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to save customer group member.'
+    return
+  }
+
+  openCustomerMemberDialog.value = false
+  await loadCustomerGroupMembers(selectedCustomerGroup.value.id)
+}
+
+const onToggleCustomerGroupMemberActive = async (
+  member: CustomerGroupMember,
+  value: boolean,
+) => {
+  const previousValue = member.is_active
+  member.is_active = value
+
+  const result = await customerGroupStore.updateCustomerGroupMember({
+    id: member.id,
+    is_active: value,
+  })
+
+  if (!result.success) {
+    member.is_active = previousValue
+    pageError.value = result.error ?? 'Failed to update customer member.'
+  }
+}
+
+const openDeleteCustomerMemberDialog = (member: CustomerGroupMember) => {
+  customerGroupMemberToDelete.value = member
+  openDeleteCustomerMemberDialogOpen.value = true
+}
+
+const confirmDeleteCustomerGroupMember = async () => {
+  if (!customerGroupMemberToDelete.value || !selectedCustomerGroup.value) return
+
+  const result = await customerGroupStore.deleteCustomerGroupMember({
+    id: customerGroupMemberToDelete.value.id,
+  })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to delete customer member.'
+    return
+  }
+
+  openDeleteCustomerMemberDialogOpen.value = false
+  customerGroupMemberToDelete.value = null
+  await loadCustomerGroupMembers(selectedCustomerGroup.value.id)
 }
 
 onMounted(() => {
   void loadPageData()
 })
 </script>
+
+<style scoped>
+.customer-group-chip {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(31, 41, 55, 0.12);
+}
+
+.customer-group-chip--large {
+  width: 28px;
+  height: 28px;
+}
+</style>

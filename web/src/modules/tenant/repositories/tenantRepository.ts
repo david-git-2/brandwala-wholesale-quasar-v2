@@ -164,27 +164,23 @@ const { data, error } = await supabase.rpc('list_tenant_modules_by_tenant', {
 const createTenantModule = async (
   payload: TenantModuleCreateInput
 ): Promise<TenantModule> => {
-  const { data, error } = await supabase
-    .from('tenant_modules')
-    .insert([
-      {
-        tenant_id: payload.tenant_id,
-        module_key: payload.module_key,
-        is_active: payload.is_active,
-      },
-    ])
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('create_tenant_module_for_superadmin', {
+    p_tenant_id: payload.tenant_id,
+    p_module_key: payload.module_key,
+    p_is_active: payload.is_active,
+  })
 
   if (error) {
     throw error
   }
 
-  if (!data) {
+  const createdTenantModule = Array.isArray(data) ? data[0] : data
+
+  if (!createdTenantModule) {
     throw new Error('Tenant module was not created.')
   }
 
-  return data as TenantModule
+  return createdTenantModule as TenantModule
 }
 
 const updateTenantModule = async (
@@ -204,31 +200,32 @@ const updateTenantModule = async (
     updateData.is_active = payload.is_active
   }
 
-  const { data, error } = await supabase
-    .from('tenant_modules')
-    .update(updateData)
-    .eq('id', payload.id)
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('update_tenant_module_for_superadmin', {
+    p_id: payload.id,
+    p_tenant_id: updateData.tenant_id ?? null,
+    p_module_key: updateData.module_key ?? null,
+    p_is_active: updateData.is_active ?? null,
+  })
 
   if (error) {
     throw error
   }
 
-  if (!data) {
+  const updatedTenantModule = Array.isArray(data) ? data[0] : data
+
+  if (!updatedTenantModule) {
     throw new Error('Tenant module was not updated.')
   }
 
-  return data as TenantModule
+  return updatedTenantModule as TenantModule
 }
 
 const deleteTenantModule = async (
   payload: TenantModuleDeleteInput
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('tenant_modules')
-    .delete()
-    .eq('id', payload.id)
+  const { error } = await supabase.rpc('delete_tenant_module_for_superadmin', {
+    p_id: payload.id,
+  })
 
   if (error) {
     throw error
