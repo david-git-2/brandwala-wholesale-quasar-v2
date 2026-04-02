@@ -23,6 +23,16 @@
         {{ error }}
       </q-banner>
 
+      <q-banner
+        v-if="missingSeededModules.length"
+        class="bg-warning text-dark"
+        rounded
+      >
+        Missing seeded modules:
+        {{ missingSeededModules.map((module) => module.name).join(', ') }}.
+        Push the Step 3 seed migration if this environment should already have the full master catalog.
+      </q-banner>
+
       <AppSectionCard
         title="Module Catalog"
         caption="The same entity-card shell is used here so cards, actions, and metadata feel consistent across the workspace."
@@ -33,10 +43,10 @@
             :key="module.id"
             :eyebrow="module.key"
             :title="module.name"
-            :meta="`Module #${module.id}`"
+            :meta="buildModuleMeta(module)"
             :description="module.description || 'No description provided yet.'"
             :status-label="module.is_active ? 'Active' : 'Inactive'"
-            :status-tone="module.is_active ? 'positive' : 'neutral'"
+            :status-tone="module.is_active ? 'positive' : isSeededModule(module.key) ? 'warning' : 'neutral'"
           >
             <template #actions>
               <q-btn flat round icon="edit" @click.stop="onClickEditModule(module)" />
@@ -45,6 +55,7 @@
                 round
                 icon="delete"
                 color="negative"
+                :disable="isSeededModule(module.key)"
                 @click.stop="onClickDeleteModule(module)"
               />
             </template>
@@ -69,6 +80,7 @@
     <AddModuleDialog
       v-model="openAddDialog"
       :initial-data="selectedModule"
+      :existing-modules="items"
       @save="handleSaveModule"
     />
 
@@ -93,14 +105,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
 import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
 import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
+import { showWarningDialog } from 'src/utils/appFeedback'
 import AddModuleDialog from '../components/AddModuleDialog.vue'
+import {
+  SEEDED_MODULE_DEFINITIONS,
+  getSeededModuleDefinition,
+  isSeededModuleKey,
+} from '../catalogContract'
 import { useModuleStore } from '../stores/moduleStore'
 import type { Module, ModuleCreateInput, ModuleDeleteInput, ModuleUpdateInput } from '../types'
 
@@ -120,6 +138,11 @@ const openDeleteDialog = ref(false)
 
 const selectedModule = ref<ModuleForm | null>(null)
 const moduleToDelete = ref<Module | null>(null)
+const missingSeededModules = computed(() =>
+  SEEDED_MODULE_DEFINITIONS.filter(
+    (definition) => !items.value.some((module) => module.key === definition.key),
+  ),
+)
 
 const onClickAddModule = () => {
   selectedModule.value = null
@@ -132,11 +155,31 @@ const onClickEditModule = (module: Module) => {
 }
 
 const onClickDeleteModule = (module: Module) => {
+  if (isSeededModuleKey(module.key)) {
+    showWarningDialog(
+      'Seeded catalog modules stay protected because their keys are part of the shared module contract. Deactivate the module instead of deleting it.',
+      'Seeded module protected',
+    )
+    return
+  }
+
   moduleToDelete.value = module
   openDeleteDialog.value = true
 }
 
 const refreshModules = () => moduleStore.fetchModules()
+
+const isSeededModule = (moduleKey: string) => isSeededModuleKey(moduleKey)
+
+const buildModuleMeta = (module: Module) => {
+  const seededDefinition = getSeededModuleDefinition(module.key)
+
+  if (seededDefinition) {
+    return `Seeded catalog item | Module #${module.id}`
+  }
+
+  return `Custom module | Module #${module.id}`
+}
 
 const handleSaveModule = async (payload: ModuleForm) => {
   if (payload.id !== undefined) {

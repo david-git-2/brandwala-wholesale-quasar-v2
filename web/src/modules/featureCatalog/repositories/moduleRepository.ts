@@ -24,9 +24,9 @@ const createModule = async (module: ModuleCreateInput): Promise<Module> => {
     .from('modules')
     .insert([
       {
-        key: module.key,
-        name: module.name,
-        description: module.description,
+        key: module.key.trim().toLowerCase(),
+        name: module.name.trim(),
+        description: module.description.trim(),
         is_active: module.is_active,
       },
     ])
@@ -49,9 +49,9 @@ const updateModule = async (module: ModuleUpdateInput): Promise<Module> => {
   const { data, error } = await supabase
     .from('modules')
     .update({
-      key: module.key,
-      name: module.name,
-      description: module.description,
+      key: module.key.trim().toLowerCase(),
+      name: module.name.trim(),
+      description: module.description.trim(),
       is_active: module.is_active,
     })
     .eq('id', module.id)
