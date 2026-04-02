@@ -10,13 +10,14 @@ export type ModuleKey =
   | 'invoice'
 
 export type ModuleAction = 'view'
+export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
 
 export interface ModuleRouteDefinition {
-  scope: Extract<AuthScope, 'app' | 'shop'>
+  scope: InteractiveScope
   title: string
   caption: string
   icon: string
-  to: string
+  routeSegment: string
   requiredAction?: ModuleAction
 }
 
@@ -38,7 +39,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Orders',
         caption: 'Manage order intake and internal workflow',
         icon: 'receipt_long',
-        to: '/app/orders',
+        routeSegment: 'orders',
         requiredAction: 'view',
       },
       {
@@ -46,7 +47,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Orders',
         caption: 'Build carts, place orders, and follow negotiation',
         icon: 'shopping_bag',
-        to: '/shop/orders',
+        routeSegment: 'orders',
         requiredAction: 'view',
       },
     ],
@@ -61,7 +62,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Shipment',
         caption: 'Track dispatch, handoff, and delivery progress',
         icon: 'local_shipping',
-        to: '/app/shipment',
+        routeSegment: 'shipment',
         requiredAction: 'view',
       },
     ],
@@ -76,7 +77,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Inventory',
         caption: 'Review stock levels and inventory operations',
         icon: 'inventory_2',
-        to: '/app/inventory',
+        routeSegment: 'inventory',
         requiredAction: 'view',
       },
     ],
@@ -91,7 +92,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Shop Costing',
         caption: 'Open customer-facing costing references',
         icon: 'request_quote',
-        to: '/shop/costing',
+        routeSegment: 'costing',
         requiredAction: 'view',
       },
     ],
@@ -106,7 +107,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Costing',
         caption: 'Prepare internal costing files and price support',
         icon: 'price_change',
-        to: '/app/costing',
+        routeSegment: 'costing',
         requiredAction: 'view',
       },
     ],
@@ -121,7 +122,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Accounting',
         caption: 'Review accounting workflows and financial handoff',
         icon: 'account_balance',
-        to: '/app/accounting',
+        routeSegment: 'accounting',
         requiredAction: 'view',
       },
     ],
@@ -136,7 +137,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Invoices',
         caption: 'Create and review invoice activity',
         icon: 'description',
-        to: '/app/invoices',
+        routeSegment: 'invoices',
         requiredAction: 'view',
       },
       {
@@ -144,12 +145,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Invoices',
         caption: 'View customer-facing invoice records',
         icon: 'receipt',
-        to: '/shop/invoices',
+        routeSegment: 'invoices',
         requiredAction: 'view',
       },
     ],
   },
 ] as const
+
+export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definition.key)
 
 export const MODULE_REGISTRY_BY_KEY: Readonly<Record<ModuleKey, ModuleDefinition>> =
   Object.freeze(
@@ -165,8 +168,27 @@ export const MODULE_REGISTRY_BY_KEY: Readonly<Record<ModuleKey, ModuleDefinition
 export const getModuleDefinition = (moduleKey: ModuleKey) =>
   MODULE_REGISTRY_BY_KEY[moduleKey]
 
+export const buildModuleRoutePath = ({
+  scope,
+  routeSegment,
+  tenantSlug,
+}: {
+  scope: InteractiveScope
+  routeSegment: string
+  tenantSlug?: string | null | undefined
+}) => {
+  if (scope === 'shop') {
+    return tenantSlug ? `/shop/${tenantSlug}/${routeSegment}` : `/shop/${routeSegment}`
+  }
+
+  return `/app/${routeSegment}`
+}
+
 export const getModuleRoutesForScope = (
-  scope: Extract<AuthScope, 'app' | 'shop'>,
+  scope: InteractiveScope,
+  options?: {
+    tenantSlug?: string | null | undefined
+  },
 ) =>
   MODULE_REGISTRY.flatMap((definition) =>
     definition.routes
@@ -174,6 +196,11 @@ export const getModuleRoutesForScope = (
       .map((routeDefinition) => ({
         moduleKey: definition.key,
         moduleName: definition.name,
+        to: buildModuleRoutePath({
+          scope: routeDefinition.scope,
+          routeSegment: routeDefinition.routeSegment,
+          tenantSlug: options?.tenantSlug,
+        }),
         ...routeDefinition,
       })),
   )

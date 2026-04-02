@@ -1,14 +1,13 @@
 import {
   MODULE_REGISTRY,
+  MODULE_REGISTRY_KEYS,
   type ModuleDefinition,
   type ModuleKey,
 } from 'src/modules/navigation/moduleRegistry'
 
 export const SEEDED_MODULE_DEFINITIONS: readonly ModuleDefinition[] = MODULE_REGISTRY
 
-export const SEEDED_MODULE_KEYS = new Set<ModuleKey>(
-  SEEDED_MODULE_DEFINITIONS.map((definition) => definition.key),
-)
+export const SEEDED_MODULE_KEYS = new Set<ModuleKey>(MODULE_REGISTRY_KEYS)
 
 export const getSeededModuleDefinition = (moduleKey: string | null | undefined) =>
   SEEDED_MODULE_DEFINITIONS.find((definition) => definition.key === moduleKey) ?? null

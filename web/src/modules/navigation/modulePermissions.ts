@@ -5,6 +5,7 @@ import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import {
   getModuleRoutesForScope,
+  type InteractiveScope,
   type ModuleAction,
   type ModuleKey,
 } from './moduleRegistry'
@@ -74,7 +75,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
 
 const isInteractiveScope = (
   scope: AuthScope | null,
-): scope is Extract<AuthScope, 'app' | 'shop'> => scope === 'app' || scope === 'shop'
+): scope is InteractiveScope => scope === 'app' || scope === 'shop'
 
 export const getAllowedModuleActions = (
   role: AccessRole | null | undefined,
@@ -108,16 +109,18 @@ export const getAccessibleModuleRoutes = ({
   scope,
   role,
   activeModuleKeys,
+  tenantSlug,
 }: {
   scope: AuthScope | null
   role: AccessRole | null | undefined
   activeModuleKeys: readonly string[]
+  tenantSlug?: string | null | undefined
 }) => {
   if (!isInteractiveScope(scope)) {
     return []
   }
 
-  return getModuleRoutesForScope(scope).filter((routeDefinition) =>
+  return getModuleRoutesForScope(scope, { tenantSlug }).filter((routeDefinition) =>
     canAccessModule({
       role,
       moduleKey: routeDefinition.moduleKey,
@@ -135,6 +138,7 @@ export const useModulePermissions = () => {
       scope: authStore.scope,
       role: authStore.matchedRole,
       activeModuleKeys: authStore.activeModuleKeys,
+      tenantSlug: authStore.tenantSlug,
     }),
   )
 
