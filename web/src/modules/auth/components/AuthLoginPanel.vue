@@ -70,6 +70,14 @@ const loginErrorMessage = computed(() => {
     return 'This Google account does not have permission for this entry point yet.'
   }
 
+  if (error === 'wrong_tenant') {
+    return 'This Google account is not allowed for this tenant shop link.'
+  }
+
+  if (error === 'invalid_tenant') {
+    return 'This shop link is not connected to an active tenant.'
+  }
+
   return ''
 })
 </script>

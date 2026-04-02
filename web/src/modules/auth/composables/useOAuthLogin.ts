@@ -5,9 +5,11 @@ import { supabase } from 'src/boot/supabase'
 import type { AccessRole } from '../guards/accessGuard'
 import {
   getShopDashboardRouteLocation,
+  getTenantHostnameForEntry,
   getShopLoginRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext'
+import { tenantService } from 'src/modules/tenant/services/tenantService'
 import {
   useAuthStore,
   type AuthAccessSnapshot,
@@ -88,14 +90,18 @@ export function useOAuthLogin(scope?: AuthScope) {
     console.log(`[auth:${resolvedScope}] ${message}`, payload ?? '')
   }
 
-  const sendBackToLogin = async (message: string, payload?: unknown) => {
+  const sendBackToLogin = async (
+    message: string,
+    payload?: unknown,
+    loginError = 'no_membership',
+  ) => {
     logAuthContext(message, payload)
     authStore.clearAccess()
     await supabase.auth.signOut()
     if (resolvedScope === 'shop') {
       await router.replace(
         getShopLoginRouteLocation(route, {
-          login_error: 'no_membership',
+          login_error: loginError,
         }),
       )
       return
@@ -104,9 +110,33 @@ export function useOAuthLogin(scope?: AuthScope) {
     await router.replace({
       name: currentScope.loginRouteName,
       query: {
-        login_error: 'no_membership',
+        login_error: loginError,
       },
     })
+  }
+
+  const resolveShopTenantEntry = async () => {
+    const tenantSlug = getTenantSlugFromRoute(route)
+    const hostname = getTenantHostnameForEntry()
+    const result = await tenantService.resolveTenantForEntry({
+      slug: tenantSlug,
+      hostname,
+    })
+
+    if (!result.success || !result.data) {
+      await sendBackToLogin(
+        'Shop route could not be resolved to an active tenant',
+        {
+          tenantSlug,
+          hostname,
+          result,
+        },
+        'invalid_tenant',
+      )
+      return null
+    }
+
+    return result.data
   }
 
   const buildUserSnapshot = (
@@ -297,8 +327,15 @@ export function useOAuthLogin(scope?: AuthScope) {
     userEmail: string,
     user: AuthUserSnapshot,
   ) => {
+    const entryTenant = await resolveShopTenantEntry()
+
+    if (!entryTenant) {
+      return false
+    }
+
     const { data, error } = await supabase.rpc('check_shop_login_access', {
       p_email: userEmail,
+      p_tenant_id: entryTenant.id,
     })
 
     if (error) {
@@ -318,7 +355,15 @@ export function useOAuthLogin(scope?: AuthScope) {
       !result.member_email ||
       !matchedRole
     ) {
-      await sendBackToLogin('No matching customer access found for this route', result)
+      await sendBackToLogin(
+        'No matching customer access found for this tenant route',
+        {
+          result,
+          tenantId: entryTenant.id,
+          tenantSlug: entryTenant.slug,
+        },
+        'wrong_tenant',
+      )
       return false
     }
 
@@ -326,7 +371,7 @@ export function useOAuthLogin(scope?: AuthScope) {
       'get_shop_bootstrap_context',
       {
         p_email: userEmail,
-        p_tenant_id: result.member_tenant_id,
+        p_tenant_id: entryTenant.id,
         p_customer_group_member_id: result.member_id,
       },
     )
@@ -351,6 +396,18 @@ export function useOAuthLogin(scope?: AuthScope) {
       !bootstrapRole
     ) {
       await sendBackToLogin('Shop bootstrap returned no usable context', bootstrap)
+      return false
+    }
+
+    if (bootstrap.tenant_id !== entryTenant.id) {
+      await sendBackToLogin(
+        'Shop bootstrap tenant did not match the entry tenant',
+        {
+          bootstrap,
+          entryTenant,
+        },
+        'wrong_tenant',
+      )
       return false
     }
 
