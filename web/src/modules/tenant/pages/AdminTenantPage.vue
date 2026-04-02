@@ -23,8 +23,8 @@
             :eyebrow="`Tenant #${tenant.id}`"
             :title="tenant.name"
             :meta="tenant.slug"
-            :status-label="tenant.is_active ? 'Active' : 'Inactive'"
-            :status-tone="tenant.is_active ? 'positive' : 'neutral'"
+            :status-label="selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive'"
+            :status-tone="selectingTenantId === tenant.id ? 'warning' : tenant.is_active ? 'positive' : 'neutral'"
             @click="goToTenantDetails(tenant.id)"
           />
         </div>
@@ -45,19 +45,19 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
 
 import AppEmptyState from 'src/components/ui/AppEmptyState.vue'
 import AppEntityCard from 'src/components/ui/AppEntityCard.vue'
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
 import AppSectionCard from 'src/components/ui/AppSectionCard.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useAdminTenantSelection } from '../composables/useAdminTenantSelection'
 import { useTenantStore } from '../stores/tenantStore'
 
-const router = useRouter()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
+const { selectTenantWorkspace, selectingTenantId } = useAdminTenantSelection()
 
 const refreshTenants = () =>
   tenantStore.fetchTenantsByMembership({
@@ -69,13 +69,8 @@ const goToTenantDetails = (tenantId?: number) => {
   const tenant = items.value.find((item) => item.id === tenantId) ?? null
 
   if (tenant) {
-    tenantStore.setSelectedTenant({
-      id: tenant.id,
-      slug: tenant.slug,
-    })
+    void selectTenantWorkspace(tenant)
   }
-
-  void router.push(`/app/tenants/${tenantId}`)
 }
 
 onMounted(() => {
