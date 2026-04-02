@@ -367,6 +367,10 @@ export type Database = {
           slug: string
         }[]
       }
+      get_active_module_keys_for_tenant: {
+        Args: { p_tenant_id: number }
+        Returns: string[]
+      }
       get_app_bootstrap_context: {
         Args: {
           p_email?: string
