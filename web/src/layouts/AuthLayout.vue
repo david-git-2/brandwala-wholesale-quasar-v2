@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="auth-layout">
+  <q-layout view="hHh lpR fFf" class="auth-layout" :class="themeClass">
     <q-page-container>
       <q-page class="auth-page">
         <section class="auth-stage">
@@ -13,17 +13,46 @@
   </q-layout>
 </template>
 
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+const themeClass = computed(() => {
+  const authScope = (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope
+
+  switch (authScope) {
+    case 'platform':
+      return 'theme-platform'
+    case 'shop':
+      return 'theme-shop'
+    case 'app':
+    default:
+      return 'theme-app'
+  }
+})
+</script>
+
 <style scoped>
 .auth-layout {
-  --auth-stage-base: #f6f0e8;
-  --auth-stage-surface: rgb(255 251 246 / 0.84);
-  --auth-stage-border: rgb(84 61 35 / 0.1);
-  --auth-stage-accent: var(--bw-brand-accent, #8d5f2f);
+  --auth-stage-base: var(--bw-theme-base, #f6f0e8);
+  --auth-stage-surface: color-mix(in srgb, var(--bw-theme-surface, white) 88%, white 12%);
+  --auth-stage-border: var(--bw-theme-border, rgb(84 61 35 / 0.1));
+  --auth-stage-accent: var(--bw-theme-primary, var(--bw-brand-accent, #8d5f2f));
   min-height: 100vh;
   background:
     radial-gradient(circle at top center, rgb(255 255 255 / 0.84), transparent 28%),
-    radial-gradient(circle at bottom left, rgb(141 95 47 / 0.08), transparent 24%),
-    linear-gradient(180deg, rgb(255 255 255) 0%, var(--auth-stage-base) 100%);
+    radial-gradient(
+      circle at bottom left,
+      rgb(var(--bw-theme-primary-rgb, 141 95 47) / 0.1),
+      transparent 24%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--auth-stage-surface) 40%, white 60%) 0%,
+      var(--auth-stage-base) 100%
+    );
 }
 
 .auth-page {

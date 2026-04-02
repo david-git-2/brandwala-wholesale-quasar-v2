@@ -75,7 +75,8 @@
               :key="group.id"
               clickable
               :active="selectedCustomerGroupId === group.id"
-              active-class="bg-primary text-white"
+              active-class="customer-group-item--active"
+              class="customer-group-item"
               @click="selectCustomerGroup(group.id)"
             >
               <q-item-section avatar>
@@ -216,9 +217,7 @@
                 :label="selectedCustomerGroup.is_active ? 'Active' : 'Inactive'"
                 color="positive"
                 keep-color
-                @update:model-value="
-                  (value) => onToggleCustomerGroupActive(selectedCustomerGroup, value)
-                "
+                @update:model-value="onToggleSelectedCustomerGroupActive"
               />
             </q-card-section>
 
@@ -370,12 +369,51 @@
             placeholder="#B45F34"
           >
             <template #append>
-              <div
-                class="customer-group-chip"
-                :style="{ backgroundColor: customerGroupForm.accent_color || '#B45F34' }"
-              />
+              <q-icon
+                name="palette"
+                class="cursor-pointer"
+                :style="{ color: customerGroupPreviewColor }"
+              >
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-card flat bordered class="customer-group-color-picker">
+                    <q-card-section class="q-pa-sm">
+                      <q-color
+                        v-model="customerGroupForm.accent_color"
+                        default-view="palette"
+                        format-model="hex"
+                        no-header-tabs
+                        no-footer
+                      />
+                    </q-card-section>
+                  </q-card>
+                </q-popup-proxy>
+              </q-icon>
             </template>
           </q-input>
+          <div class="customer-group-color-row">
+            <div class="customer-group-color-preview">
+              <div
+                class="customer-group-chip customer-group-chip--large"
+                :style="{ backgroundColor: customerGroupPreviewColor }"
+              />
+              <div class="text-caption text-grey-7">
+                Preview: {{ customerGroupPreviewColor }}
+              </div>
+            </div>
+            <div class="customer-group-swatches">
+              <button
+                v-for="swatch in customerGroupAccentPresets"
+                :key="swatch"
+                type="button"
+                class="customer-group-swatch"
+                :class="{
+                  'customer-group-swatch--active': customerGroupPreviewColor === swatch,
+                }"
+                :style="{ backgroundColor: swatch }"
+                @click="customerGroupForm.accent_color = swatch"
+              />
+            </div>
+          </div>
           <div class="row items-center justify-between">
             <div class="text-subtitle2">Status</div>
             <q-toggle
@@ -615,6 +653,24 @@ const selectedCustomerGroup = computed<CustomerGroup | null>(
 const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff'),
 )
+
+const defaultCustomerGroupAccent = '#B45F34'
+
+const customerGroupAccentPresets = [
+  '#B45F34',
+  '#8E4B2B',
+  '#C46A3C',
+  '#6F7C4F',
+  '#2F6E73',
+  '#7D4E8B',
+] as const
+
+const customerGroupPreviewColor = computed(() => {
+  const color = customerGroupForm.value.accent_color.trim()
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)
+    ? color.toUpperCase()
+    : defaultCustomerGroupAccent
+})
 
 const formatCustomerRole = (role: CustomerGroupRole) => {
   if (role === 'admin') return 'Customer Admin'
@@ -950,6 +1006,12 @@ const onToggleCustomerGroupActive = async (
   }
 }
 
+const onToggleSelectedCustomerGroupActive = async (value: boolean) => {
+  if (!selectedCustomerGroup.value) return
+
+  await onToggleCustomerGroupActive(selectedCustomerGroup.value, value)
+}
+
 const openCreateCustomerMemberDialog = () => {
   resetCustomerGroupMemberForm()
   openCustomerMemberDialog.value = true
@@ -1052,6 +1114,20 @@ onMounted(() => {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.customer-group-item {
+  border-radius: 12px;
+  margin: 0.25rem 0.5rem;
+}
+
+.customer-group-item--active {
+  background: rgb(180 95 52 / 0.1);
+  color: inherit;
+}
+
+.customer-group-item--active :deep(.q-item__label--caption) {
+  color: rgba(31, 41, 55, 0.72);
+}
+
 .customer-group-chip {
   width: 18px;
   height: 18px;
@@ -1063,5 +1139,41 @@ onMounted(() => {
 .customer-group-chip--large {
   width: 28px;
   height: 28px;
+}
+
+.customer-group-color-picker {
+  border-radius: 16px;
+}
+
+.customer-group-color-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.customer-group-color-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.customer-group-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.customer-group-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid rgba(31, 41, 55, 0.08);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+}
+
+.customer-group-swatch--active {
+  border-color: rgba(31, 41, 55, 0.55);
+  transform: scale(1.05);
 }
 </style>

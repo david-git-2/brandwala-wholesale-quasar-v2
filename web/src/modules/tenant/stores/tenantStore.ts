@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
 import { tenantService } from '../services/tenantService'
 import type {
   Tenant,
@@ -32,6 +36,7 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load tenants.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -50,6 +55,7 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load tenants.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -69,10 +75,12 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create tenant.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items.push(result.data!)
+        showSuccessNotification('Tenant created successfully.')
         return result
       } finally {
         this.loading = false
@@ -88,6 +96,7 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update tenant.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -98,6 +107,7 @@ export const useTenantStore = defineStore('tenant', {
           this.items.splice(index, 1, updatedTenant)
         }
 
+        showSuccessNotification('Tenant updated successfully.')
         return result
       } finally {
         this.loading = false
@@ -113,10 +123,12 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete tenant.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items = this.items.filter((item: Tenant) => item.id !== tenant.id)
+        showSuccessNotification('Tenant deleted successfully.')
         return result
       } finally {
         this.loading = false
@@ -135,6 +147,7 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load tenants.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -158,6 +171,7 @@ export const useTenantStore = defineStore('tenant', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load tenant details.'
+          handleApiFailure(result, this.error)
           return result
         }
 

@@ -11,26 +11,14 @@
           @click="drawerOpen = !drawerOpen"
         />
 
-        <div class="workspace-shell__brand">
-          <div class="workspace-shell__badge">{{ badge }}</div>
-
-          <div class="workspace-shell__brand-copy">
-            <div class="workspace-shell__eyebrow">{{ eyebrow }}</div>
-            <div class="workspace-shell__title">{{ title }}</div>
-          </div>
+        <div class="workspace-shell__context">
+          <slot name="header-left" />
         </div>
 
         <q-space />
 
         <div class="workspace-shell__actions">
           <slot name="header-extra" />
-
-          <div class="workspace-shell__identity">
-            <div class="workspace-shell__identity-label">{{ scopeLabel }}</div>
-            <div class="workspace-shell__identity-value">
-              {{ userName }}
-            </div>
-          </div>
         </div>
       </q-toolbar>
     </q-header>
@@ -44,18 +32,6 @@
     >
       <div class="workspace-shell__drawer-inner">
         <div class="workspace-shell__drawer-top">
-          <div class="workspace-shell__brand workspace-shell__brand--stacked">
-            <div class="workspace-shell__badge workspace-shell__badge--large">
-              {{ badge }}
-            </div>
-
-            <div class="workspace-shell__brand-copy">
-              <div class="workspace-shell__eyebrow">{{ eyebrow }}</div>
-              <div class="workspace-shell__title">{{ title }}</div>
-              <div class="workspace-shell__subtitle">{{ subtitle }}</div>
-            </div>
-          </div>
-
           <div class="workspace-shell__summary">
             <div class="workspace-shell__summary-label">Signed in as</div>
             <div class="workspace-shell__summary-value">{{ userName }}</div>
@@ -108,11 +84,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { requestConfirmation } from 'src/utils/appFeedback'
 
 export interface WorkspaceLink {
   title: string
@@ -122,15 +99,12 @@ export interface WorkspaceLink {
 }
 
 const props = defineProps<{
-  badge: string
-  eyebrow: string
-  title: string
-  subtitle: string
-  scopeLabel: string
   logoutTo: string
   theme: 'platform' | 'app' | 'shop'
   links: WorkspaceLink[]
 }>()
+
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop']
 
 const drawerOpen = ref(false)
 const router = useRouter()
@@ -140,20 +114,45 @@ const themeClasses = computed(() => [
   `workspace-shell--${props.theme}`,
   `theme-${props.theme}`,
 ])
+
+const applyBodyThemeClass = (theme: 'platform' | 'app' | 'shop') => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
+  document.body.classList.add(`theme-${theme}`)
+}
+
+watch(
+  () => props.theme,
+  (theme) => {
+    applyBodyThemeClass(theme)
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
+})
 const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
 )
 const userEmail = computed(() => authStore.user?.email ?? 'No active session')
 
 const handleLogout = async () => {
-  if (typeof window !== 'undefined') {
-    const shouldSignOut = window.confirm(
-      'End your current session on this workspace?',
-    )
+  const shouldSignOut = await requestConfirmation(
+    'End your current session on this workspace?',
+    'Sign out',
+    'Sign out',
+  )
 
-    if (!shouldSignOut) {
-      return
-    }
+  if (!shouldSignOut) {
+    return
   }
 
   drawerOpen.value = false
@@ -216,59 +215,9 @@ const handleLogout = async () => {
   background: var(--shell-accent-soft);
 }
 
-.workspace-shell__brand {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
+.workspace-shell__context {
   min-width: 0;
-}
-
-.workspace-shell__brand--stacked {
-  align-items: flex-start;
-}
-
-.workspace-shell__badge {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 0.95rem;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(145deg, var(--shell-accent), color-mix(in srgb, var(--shell-accent) 48%, #f3d4ad 52%));
-  color: #fffaf1;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--shell-accent) 24%, transparent 76%);
-}
-
-.workspace-shell__badge--large {
-  width: 3.2rem;
-  height: 3.2rem;
-  border-radius: 1.1rem;
-}
-
-.workspace-shell__brand-copy {
-  min-width: 0;
-}
-
-.workspace-shell__eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--shell-muted);
-}
-
-.workspace-shell__title {
-  font-size: 1.08rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.workspace-shell__subtitle {
-  margin-top: 0.35rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--shell-muted);
+  flex: 1 1 auto;
 }
 
 .workspace-shell__actions {
@@ -277,15 +226,6 @@ const handleLogout = async () => {
   gap: 0.9rem;
 }
 
-.workspace-shell__identity {
-  padding: 0.7rem 0.95rem;
-  border: 1px solid var(--shell-border);
-  border-radius: 1.1rem;
-  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
-  min-width: 12rem;
-}
-
-.workspace-shell__identity-label,
 .workspace-shell__summary-label,
 .workspace-shell__nav-label {
   font-size: 0.72rem;
@@ -294,7 +234,6 @@ const handleLogout = async () => {
   color: var(--shell-muted);
 }
 
-.workspace-shell__identity-value,
 .workspace-shell__summary-value {
   margin-top: 0.22rem;
   font-weight: 600;
@@ -365,12 +304,6 @@ const handleLogout = async () => {
 
 .workspace-shell__page-container {
   padding: clamp(0.75rem, 2vw, 1.4rem);
-}
-
-@media (max-width: 1023px) {
-  .workspace-shell__identity {
-    display: none;
-  }
 }
 
 @media (max-width: 599px) {

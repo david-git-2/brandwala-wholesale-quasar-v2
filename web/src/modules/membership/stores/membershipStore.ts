@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
 import { membershipService } from '../services/membershipService'
 import type {
   Membership,
@@ -30,6 +34,7 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load memberships.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -48,6 +53,7 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load memberships for tenant.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -67,12 +73,14 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create membership.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         if (result.data) {
           this.items.push(result.data)
         }
+        showSuccessNotification('Member created successfully.')
         return result
       } finally {
         this.loading = false
@@ -88,6 +96,7 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update membership.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -98,6 +107,7 @@ export const useMembershipStore = defineStore('membership', {
           this.items.splice(index, 1, updatedMembership)
         }
 
+        showSuccessNotification('Member updated successfully.')
         return result
       } finally {
         this.loading = false
@@ -113,10 +123,12 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete membership.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items = this.items.filter((item: Membership) => item.id !== membership.id)
+        showSuccessNotification('Member deleted successfully.')
         return result
       } finally {
         this.loading = false
@@ -131,6 +143,7 @@ export const useMembershipStore = defineStore('membership', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load tenant admins.'
+          handleApiFailure(result, this.error)
           return result
         }
 

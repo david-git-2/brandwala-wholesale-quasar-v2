@@ -186,6 +186,30 @@ When creating an RPC:
 - use a CTE if Postgres complains about ambiguous output columns
 - do not reuse output names that can collide with table columns unless the query is fully qualified
 
+## Global API Feedback
+
+The frontend now has a shared API feedback helper at:
+
+- [`web/src/utils/appFeedback.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/utils/appFeedback.ts)
+
+Current behavior:
+
+- successful create, update, and delete actions show a Quasar `Notify` toast
+- failed API responses show a Quasar `Dialog` with the backend or fallback error message
+- the dialog includes a `Close` button so users can dismiss warnings cleanly
+
+Current wiring:
+
+- tenant, membership, module, tenant-module, and customer-group store actions call the shared helper
+- Quasar `Dialog` and `Notify` are enabled in [`web/quasar.config.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/quasar.config.ts)
+
+When adding new API actions:
+
+1. Keep returning the normalized `{ success, data, error }` shape from the service layer.
+2. In the store, call `handleApiFailure(result, fallbackMessage)` for failed responses.
+3. Call `showSuccessNotification(message)` after successful mutations.
+4. Avoid duplicating page-level warning dialogs unless the flow needs a special-case UX.
+
 ## Tenant Module Flow
 
 Frontend flow:

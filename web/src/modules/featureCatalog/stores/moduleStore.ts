@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
 import { moduleService } from '../services/moduleService'
 import type {
   Module,
@@ -30,6 +34,7 @@ export const useModuleStore = defineStore('module', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load modules.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -49,10 +54,12 @@ export const useModuleStore = defineStore('module', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items.push(result.data!)
+        showSuccessNotification('Module created successfully.')
         return result
       } finally {
         this.loading = false
@@ -68,6 +75,7 @@ export const useModuleStore = defineStore('module', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -78,6 +86,7 @@ export const useModuleStore = defineStore('module', {
           this.items.splice(index, 1, updatedModule)
         }
 
+        showSuccessNotification('Module updated successfully.')
         return result
       } finally {
         this.loading = false
@@ -93,10 +102,12 @@ export const useModuleStore = defineStore('module', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items = this.items.filter((item: Module) => item.id !== module.id)
+        showSuccessNotification('Module deleted successfully.')
         return result
       } finally {
         this.loading = false
