@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 import {
+  getAppRouteLocation,
   getShopDashboardRouteLocation,
   getShopLoginRouteLocation,
   getTenantSlugFromRoute,
@@ -25,7 +26,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/app',
+    path: '/app/:tenantSlug?',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -37,12 +38,19 @@ const dashboardRoutes: RouteRecordRaw[] = [
           requiredScope: 'app',
           allowedRoles: ['admin', 'staff'],
           requireTenantContext: true,
-          validateAccess: ({ authStore }) => {
-            if (authStore.selectedTenant) {
+          validateAccess: ({ authStore, to }) => {
+            if (!authStore.selectedTenant) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant.slug
+
+            if (routeTenantSlug === selectedTenantSlug) {
               return true
             }
 
-            return { name: 'admin-tenant-list' }
+            return getAppRouteLocation(to, selectedTenantSlug)
           },
         }),
       },

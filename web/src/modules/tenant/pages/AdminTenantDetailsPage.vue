@@ -1219,7 +1219,8 @@ const loadPageData = async () => {
 }
 
 const goBack = () => {
-  void router.push('/app/tenants')
+  const tenantSlug = tenantStore.selectedTenantSlug
+  void router.push(tenantSlug ? `/app/${tenantSlug}/tenants` : '/app/tenants')
 }
 
 watch(

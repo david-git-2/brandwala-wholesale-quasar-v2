@@ -1,9 +1,10 @@
-import type { RouteLocationRaw } from 'vue-router'
+import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router'
 
 type RouteLike = {
   fullPath?: string
-  params?: Record<string, unknown>
-  query?: Record<string, unknown>
+  name?: string | symbol | null | undefined
+  params?: Record<string, unknown> | undefined
+  query?: LocationQueryRaw | undefined
 }
 
 const normalizeRouteToken = (value: unknown): string | null => {
@@ -96,5 +97,23 @@ export const getShopDashboardRouteLocation = (route: RouteLike): RouteLocationRa
   return {
     name: 'customer-dashboard',
     params: tenantSlug ? { tenantSlug } : {},
+  }
+}
+
+export const getAppRouteLocation = (
+  route: RouteLike & {
+    name?: string | symbol | null
+  },
+  selectedTenantSlug: string | null | undefined,
+): RouteLocationRaw => {
+  const tenantSlug = selectedTenantSlug ?? undefined
+
+  return {
+    name: typeof route.name === 'string' ? route.name : undefined,
+    params: {
+      ...(route.params ?? {}),
+      ...(tenantSlug ? { tenantSlug } : {}),
+    },
+    query: route.query ?? {},
   }
 }

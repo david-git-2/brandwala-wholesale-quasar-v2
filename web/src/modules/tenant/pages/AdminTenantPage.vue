@@ -11,9 +11,9 @@
         {{ error }}
       </q-banner>
 
-      <section v-if="items.length" class="admin-tenant-page__grid">
+      <section v-if="visibleTenants.length" class="admin-tenant-page__grid">
         <q-card
-          v-for="tenant in items"
+          v-for="tenant in visibleTenants"
           :key="tenant.id"
           flat
           bordered
@@ -46,17 +46,30 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection'
 import { useTenantStore } from '../stores/tenantStore'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
 const { selectTenantWorkspace, selectingTenantId } = useAdminTenantSelection()
+
+const visibleTenants = computed(() => {
+  const routeTenantSlug = getTenantSlugFromRoute(route)
+
+  if (!routeTenantSlug) {
+    return items.value
+  }
+
+  return items.value.filter((tenant) => tenant.slug === routeTenantSlug)
+})
 
 const refreshTenants = () =>
   tenantStore.fetchTenantsByMembership({

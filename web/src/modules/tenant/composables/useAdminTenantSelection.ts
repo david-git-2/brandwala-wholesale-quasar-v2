@@ -96,9 +96,9 @@ export function useAdminTenantSelection() {
 
       if (options?.navigate !== false) {
         if (bootstrap.member_role === 'admin') {
-          await router.push(`/app/tenants/${bootstrap.tenant_id}`)
+          await router.push(`/app/${bootstrap.tenant_slug}/tenants/${bootstrap.tenant_id}`)
         } else {
-          await router.push('/app/dashboard')
+          await router.push(`/app/${bootstrap.tenant_slug}/dashboard`)
         }
       }
 

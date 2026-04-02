@@ -2,7 +2,7 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { getShopLoginRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext'
+import { getAppRouteLocation, getShopLoginRouteLocation, getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
 
 const resolveAppCostingLanding = () => {
   const authStore = useAuthStore()
@@ -16,7 +16,7 @@ const resolveAppCostingLanding = () => {
 
 const costingFileRoutes: RouteRecordRaw[] = [
   {
-    path: '/app/costing',
+    path: '/app/:tenantSlug?/costing',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -24,6 +24,21 @@ const costingFileRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'costing_file',
+      validateAccess: ({ authStore, to }) => {
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+        if (!selectedTenantSlug) {
+          return true
+        }
+
+        const routeTenantSlug = getTenantSlugFromRoute(to)
+
+        if (routeTenantSlug === selectedTenantSlug) {
+          return true
+        }
+
+        return getAppRouteLocation(to, selectedTenantSlug)
+      },
     }),
     children: [
       {

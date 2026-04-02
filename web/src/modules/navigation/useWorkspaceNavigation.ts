@@ -52,7 +52,8 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     icon: 'insights',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: () => '/app/dashboard',
+    route: ({ tenantSlug }) =>
+      tenantSlug ? `/app/${tenantSlug}/dashboard` : '/app/dashboard',
   },
   {
     title: 'Tenants',
@@ -60,7 +61,8 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     icon: 'domain',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: () => '/app/tenants',
+    route: ({ tenantSlug }) =>
+      tenantSlug ? `/app/${tenantSlug}/tenants` : '/app/tenants',
   },
   {
     title: 'Dashboard',

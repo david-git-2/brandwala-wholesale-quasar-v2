@@ -5,7 +5,14 @@ import {
   type ModuleAction,
   type ModuleKey,
 } from 'src/modules/navigation/modulePermissions'
-import type { RouteLocationRaw } from 'vue-router'
+import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router'
+
+type GuardRoute = {
+  name?: string | symbol | null | undefined
+  fullPath: string
+  params?: Record<string, unknown> | undefined
+  query?: LocationQueryRaw | undefined
+}
 
 export type AccessRole =
   | 'superadmin'
@@ -25,17 +32,17 @@ export const createAccessGuard = ({
   validateAccess,
 }: {
   allowedRoles?: AccessRole[]
-  loginRoute: string | ((to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }) => RouteLocationRaw)
+  loginRoute: string | ((to: GuardRoute) => RouteLocationRaw)
   requiredScope?: AuthScope
   requireTenantContext?: boolean
   requiredModule?: ModuleKey
   requiredModuleAction?: ModuleAction
   validateAccess?: (context: {
     authStore: ReturnType<typeof useAuthStore>
-    to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }
+    to: GuardRoute
   }) => boolean | RouteLocationRaw
 }) => {
-  return (to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }) => {
+  return (to: GuardRoute) => {
     const authStore = useAuthStore()
     const memberRole = authStore.member?.role
     const currentScope = authStore.scope

@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import { getAppRouteLocation, getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
 
 const tenantRoutes: RouteRecordRaw[] = [
   // SUPERADMIN ROUTES
@@ -29,7 +30,7 @@ const tenantRoutes: RouteRecordRaw[] = [
 
   // ADMIN ROUTES
   {
-    path: '/app/tenants',
+    path: '/app/:tenantSlug?/tenants',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
     children: [
@@ -41,6 +42,20 @@ const tenantRoutes: RouteRecordRaw[] = [
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['admin', 'staff'],
+          validateAccess: ({ authStore, to }) => {
+            if (!authStore.selectedTenant) {
+              return true
+            }
+
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant.slug
+
+            if (routeTenantSlug === selectedTenantSlug) {
+              return true
+            }
+
+            return getAppRouteLocation(to, selectedTenantSlug)
+          },
         }),
       },
       {
@@ -56,21 +71,32 @@ const tenantRoutes: RouteRecordRaw[] = [
           validateAccess: ({ authStore, to }) => {
             const selectedTenantId = authStore.selectedTenant?.id
             const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
 
             if (!selectedTenantId) {
               return { name: 'admin-tenant-list' }
             }
 
-            if (!Number.isFinite(routeTenantId) || routeTenantId === selectedTenantId) {
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
               return true
             }
 
-            return {
-              name: 'admin-tenant-details',
-              params: {
-                id: selectedTenantId,
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-details',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
               },
-            }
+              selectedTenantSlug,
+            )
           },
         }),
       },

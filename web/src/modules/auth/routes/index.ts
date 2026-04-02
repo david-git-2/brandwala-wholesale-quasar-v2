@@ -15,7 +15,7 @@ const authRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/OAuthCallback.vue'),
       },
       {
-        path: 'app/login',
+        path: 'app/:tenantSlug?/login',
         alias: 'app/login',
         name: 'admin-login-page',
         component: () => import('../pages/AdminLogin.vue'),

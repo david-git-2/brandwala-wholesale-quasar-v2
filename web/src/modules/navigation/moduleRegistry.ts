@@ -181,7 +181,7 @@ export const buildModuleRoutePath = ({
     return tenantSlug ? `/shop/${tenantSlug}/${routeSegment}` : `/shop/${routeSegment}`
   }
 
-  return `/app/${routeSegment}`
+  return tenantSlug ? `/app/${tenantSlug}/${routeSegment}` : `/app/${routeSegment}`
 }
 
 export const getModuleRoutesForScope = (

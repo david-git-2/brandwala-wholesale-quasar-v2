@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import type { AccessRole } from '../guards/accessGuard'
 import {
+  getAppRouteLocation,
   getShopDashboardRouteLocation,
   getTenantHostnameForEntry,
   getShopLoginRouteLocation,
@@ -65,6 +66,9 @@ const normalizeModuleKeys = (moduleKeys: string[] | null | undefined) =>
 const normalizeCallbackBaseUrl = (value: string | undefined) =>
   value?.trim().replace(/\/+$/, '') || null
 
+const normalizeTenantSlug = (value: string | null | undefined) =>
+  value?.trim().toLowerCase() || null
+
 const getOAuthCallbackBaseUrl = () => {
   const localUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_LOCAL_APP_URL)
   const productionUrl = normalizeCallbackBaseUrl(
@@ -111,6 +115,26 @@ export function useOAuthLogin(
           login_error: loginError,
         }),
       )
+      return
+    }
+
+    if (resolvedScope === 'app') {
+      const tenantSlug = getTenantSlugFromRoute(route)
+      const loginRouteLocation = getAppRouteLocation(
+        {
+          name: currentScope.loginRouteName,
+          params: tenantSlug ? { tenantSlug } : {},
+          query: {},
+        },
+        tenantSlug,
+      )
+
+      await router.replace({
+        ...(typeof loginRouteLocation === 'string' ? { path: loginRouteLocation } : loginRouteLocation),
+        query: {
+          login_error: loginError,
+        },
+      })
       return
     }
 
@@ -245,6 +269,9 @@ export function useOAuthLogin(
   }
 
   const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+    const requestedTenantSlug = normalizeTenantSlug(
+      options?.tenantSlug ?? getTenantSlugFromRoute(route),
+    )
     const { data, error } = await supabase.rpc('check_login_membership', {
       p_email: userEmail,
       p_scope: 'app',
@@ -262,7 +289,6 @@ export function useOAuthLogin(
       !result?.has_match ||
       result.member_id === null ||
       !result.member_email ||
-      result.member_tenant_id === null ||
       !result.matched_role
     ) {
       await sendBackToLogin('No matching membership found for this route', result)
@@ -285,7 +311,26 @@ export function useOAuthLogin(
       return false
     }
 
-    if (availableTenants.length > 1) {
+    tenantStore.setAvailableAdminTenants(availableTenants)
+
+    const requestedTenant =
+      requestedTenantSlug
+        ? availableTenants.find((tenant) => normalizeTenantSlug(tenant.slug) === requestedTenantSlug) ?? null
+        : null
+
+    if (requestedTenantSlug && !requestedTenant) {
+      await sendBackToLogin(
+        'Requested tenant slug was not available for this app user',
+        {
+          requestedTenantSlug,
+          availableTenants,
+        },
+        'invalid_tenant',
+      )
+      return false
+    }
+
+    if (!requestedTenant) {
       authStore.saveAccess({
         scope: 'app',
         matchedRole: result.matched_role,
@@ -307,21 +352,21 @@ export function useOAuthLogin(
         activeModuleKeys: [],
         savedAt: new Date().toISOString(),
       })
-      tenantStore.setAvailableAdminTenants(availableTenants)
       tenantStore.clearSelectedTenant()
 
       await router.replace({ name: 'admin-tenant-list' })
       return true
     }
 
-    const selectedTenantId = availableTenants[0]?.id ?? result.member_tenant_id
+    const selectedTenantId = requestedTenant.id
 
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
       'get_app_bootstrap_context',
       {
         p_email: userEmail,
         p_tenant_id: selectedTenantId,
-        p_membership_id: result.member_id,
+        p_membership_id:
+          result.member_tenant_id === selectedTenantId ? result.member_id : null,
       },
     )
 
@@ -568,7 +613,7 @@ export function useOAuthLogin(
       callbackSearchParams.set('redirect', redirectPath)
     }
 
-    if (resolvedScope === 'shop' && tenantSlug) {
+    if ((resolvedScope === 'shop' || resolvedScope === 'app') && tenantSlug) {
       callbackSearchParams.set('tenant_slug', tenantSlug)
     }
 

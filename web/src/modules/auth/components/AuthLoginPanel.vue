@@ -74,11 +74,15 @@ const loginErrorMessage = computed(() => {
   }
 
   if (error === 'wrong_tenant') {
-    return 'This Google account is not allowed for this tenant shop link.'
+    return props.scope === 'app'
+      ? 'This Google account is not allowed for the requested tenant workspace.'
+      : 'This Google account is not allowed for this tenant shop link.'
   }
 
   if (error === 'invalid_tenant') {
-    return 'This shop link is not connected to an active tenant.'
+    return props.scope === 'app'
+      ? 'The requested tenant workspace could not be found for this account.'
+      : 'This shop link is not connected to an active tenant.'
   }
 
   return ''
