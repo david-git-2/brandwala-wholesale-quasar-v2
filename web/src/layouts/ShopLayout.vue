@@ -1,6 +1,6 @@
 <template>
   <WorkspaceShell
-    logout-to="/auth/shop/login"
+    :logout-to="logoutTo"
     theme="shop"
     :links="links"
   >
@@ -25,6 +25,9 @@ const authStore = useAuthStore()
 const { links } = useShopWorkspaceLinks()
 
 const tenantName = computed(() => authStore.tenant?.name ?? '')
+const logoutTo = computed(() =>
+  authStore.tenant?.slug ? `/auth/shop/${authStore.tenant.slug}/login` : '/auth/shop/login',
+)
 </script>
 
 <style scoped>

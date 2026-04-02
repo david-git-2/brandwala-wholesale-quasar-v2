@@ -8,7 +8,7 @@ const tenantRoutes: RouteRecordRaw[] = [
     component: () => import('layouts/PlatformLayout.vue'),
     name: 'platform-tenants',
     beforeEnter: createAccessGuard({
-      loginRouteName: 'superadmin-login-page',
+      loginRoute: 'superadmin-login-page',
       requiredScope: 'platform',
       allowedRoles: ['superadmin'],
     }),
@@ -33,7 +33,7 @@ const tenantRoutes: RouteRecordRaw[] = [
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
     beforeEnter: createAccessGuard({
-      loginRouteName: 'admin-login-page',
+      loginRoute: 'admin-login-page',
       requiredScope: 'app',
       allowedRoles: ['admin'],
     }),

@@ -21,6 +21,7 @@
         class="auth-panel__cta"
         :label="isLoading ? 'Connecting to Google...' : ctaLabel"
         :loading="isLoading"
+        :disable="disabled"
         @click="handleGoogleLogin"
       />
 
@@ -41,6 +42,7 @@ const props = defineProps<{
   title: string
   description: string
   ctaLabel: string
+  disabled?: boolean
   supportText?: string
   tone: 'platform' | 'app' | 'shop'
 }>()

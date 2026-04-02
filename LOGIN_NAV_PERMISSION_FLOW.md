@@ -44,6 +44,34 @@ What changes by scope is:
 - which context is loaded
 - which routes and modules are visible
 
+## Route Model
+
+Use explicit route-owned tenant context.
+
+### `/platform`
+
+- login: `/auth/platform/login`
+- post-login area: `/platform/*`
+- tenant context is not part of the route
+
+### `/app`
+
+- login: `/auth/app/login`
+- post-login landing: `/app/dashboard`
+- tenant selection happens explicitly after login through `/app/tenants`
+- multi-tenant internal users must choose a tenant from the list instead of relying on "first membership"
+
+### `/shop`
+
+- login: `/auth/shop/:tenantSlug?/login`
+- post-login area: `/shop/:tenantSlug?/dashboard`
+- primary tenant-aware URL pattern is `/shop/:tenantSlug`
+- if the current hostname matches `tenants.public_domain`, hostname can also resolve the tenant when the slug is omitted
+
+Important rule:
+
+- customer entry must always resolve one tenant before login, either from `:tenantSlug` or from the mapped hostname
+
 ## Login Flow
 
 ### 1. User Enters a Scope

@@ -18,8 +18,14 @@ const routes: RouteRecordRaw[] = [
     redirect: '/platform/dashboard',
   },
   {
-    path: '/shop/home',
-    redirect: '/shop/dashboard',
+    path: '/shop/:tenantSlug?/home',
+    redirect: (to) => ({
+      name: 'customer-dashboard',
+      params: {
+        tenantSlug:
+          typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
+      },
+    }),
   },
   ...dashboardRoutes,
   ...tenantRoutes,

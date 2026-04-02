@@ -13,6 +13,7 @@ It follows the same `page -> store -> service -> repository` pattern as the exam
 | `id` | `bigserial` | Primary key |
 | `name` | `text` | Required |
 | `slug` | `text` | Required, unique |
+| `public_domain` | `text` | Optional, globally unique when present |
 | `is_active` | `boolean` | Defaults to `true` |
 | `created_at` | `timestamptz` | Defaults to `now()` |
 | `updated_at` | `timestamptz` | Defaults to `now()` |
@@ -34,12 +35,12 @@ Current access checks rely on `memberships.email`; the earlier `profiles` join i
 
 1. User clicks Google login on one of these routes:
    - `/auth/platform/login`
-   - `/auth/add/login`
-   - `/auth/shop/login`
+   - `/auth/app/login`
+   - `/auth/shop/:tenantSlug?/login`
 2. Supabase returns to:
    - `/auth/callback?scope=platform`
    - `/auth/callback?scope=app`
-   - `/auth/callback?scope=shop`
+   - `/auth/callback?scope=shop&tenant_slug=:tenantSlug`
 3. The callback page reads the Supabase session email.
 4. The callback calls `check_login_membership(p_email, p_scope)`.
 5. If a matching membership row exists:
@@ -47,12 +48,21 @@ Current access checks rely on `memberships.email`; the earlier `profiles` join i
    - the user is redirected to the matching dashboard
      - `platform/dashboard`
      - `app/dashboard`
-     - `shop/dashboard`
+     - `shop/:tenantSlug?/dashboard`
 6. If no matching membership row exists:
    - the session is cleared
    - the user goes back to the matching login page with an error message
 
 ## Tenant Data Flow
+
+## Tenant Entry Resolution
+
+Customer-side entry is now route-aware.
+
+1. Shop routes can carry tenant identity through `/shop/:tenantSlug/...`.
+2. If the slug is absent, the frontend can resolve tenant context from the current hostname by matching `tenants.public_domain`.
+3. The frontend loads that context through `resolve_tenant_for_entry(p_slug, p_hostname)` before shop login.
+4. Internal `/app` tenant selection stays explicit through `/app/tenants`.
 
 ### Read
 

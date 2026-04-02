@@ -1,6 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import {
+  getShopDashboardRouteLocation,
+  getShopLoginRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext'
 
 const dashboardRoutes: RouteRecordRaw[] = [
   {
@@ -12,7 +17,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
         name: 'superadmin-dashboard',
         component: () => import('../pages/SuperadminDashboard.vue'),
         beforeEnter: createAccessGuard({
-          loginRouteName: 'superadmin-login-page',
+          loginRoute: 'superadmin-login-page',
           requiredScope: 'platform',
           allowedRoles: ['superadmin'],
         }),
@@ -28,7 +33,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
         name: 'admin-dashboard',
         component: () => import('../pages/AdminDashboard.vue'),
         beforeEnter: createAccessGuard({
-          loginRouteName: 'admin-login-page',
+          loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['admin', 'staff'],
         }),
@@ -36,7 +41,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/shop',
+    path: '/shop/:tenantSlug?',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -44,13 +49,31 @@ const dashboardRoutes: RouteRecordRaw[] = [
         name: 'customer-dashboard',
         component: () => import('../pages/CustomerDashboard.vue'),
         beforeEnter: createAccessGuard({
-          loginRouteName: 'customer-login-page',
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
           requiredScope: 'shop',
           allowedRoles: [
             'customer_admin',
             'customer_negotiator',
             'customer_staff',
           ],
+          validateAccess: ({ authStore, to }) => {
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const sessionTenantSlug = authStore.tenant?.slug ?? null
+
+            if (!routeTenantSlug || !sessionTenantSlug || routeTenantSlug === sessionTenantSlug) {
+              return true
+            }
+
+            return getShopDashboardRouteLocation({
+              ...to,
+              query: {
+                tenant_slug: sessionTenantSlug,
+              },
+            })
+          },
         }),
       },
     ],

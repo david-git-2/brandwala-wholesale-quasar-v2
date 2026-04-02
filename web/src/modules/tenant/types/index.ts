@@ -2,6 +2,10 @@ import type { Enums, Tables } from 'src/types/supabase'
 
 export type Tenant = Tables<'tenants'>
 export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'public_domain' | 'is_active'>
+export type TenantEntryResolveInput = {
+  slug?: Tenant['slug'] | null
+  hostname?: string | null
+}
 export type TenantUpdateInput = {
   id: Tenant['id']
   name: Tenant['name']

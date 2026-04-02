@@ -4,6 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import type { AccessRole } from '../guards/accessGuard'
 import {
+  getShopDashboardRouteLocation,
+  getShopLoginRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext'
+import {
   useAuthStore,
   type AuthAccessSnapshot,
   type AuthCustomerGroupSnapshot,
@@ -87,6 +92,15 @@ export function useOAuthLogin(scope?: AuthScope) {
     logAuthContext(message, payload)
     authStore.clearAccess()
     await supabase.auth.signOut()
+    if (resolvedScope === 'shop') {
+      await router.replace(
+        getShopLoginRouteLocation(route, {
+          login_error: 'no_membership',
+        }),
+      )
+      return
+    }
+
     await router.replace({
       name: currentScope.loginRouteName,
       query: {
@@ -119,6 +133,20 @@ export function useOAuthLogin(scope?: AuthScope) {
       ...payload,
       savedAt: new Date().toISOString(),
     })
+
+    const redirectPath =
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+
+    if (redirectPath) {
+      await router.replace(redirectPath)
+      return
+    }
+
+    if (resolvedScope === 'shop') {
+      await router.replace(getShopDashboardRouteLocation(route))
+      return
+    }
+
     await router.replace({ name: currentScope.homeRouteName })
   }
 
@@ -414,11 +442,25 @@ export function useOAuthLogin(scope?: AuthScope) {
   const handleGoogleLogin = async () => {
     isLoading.value = true
     const callbackBaseUrl = getOAuthCallbackBaseUrl()
+    const callbackSearchParams = new URLSearchParams({
+      scope: resolvedScope,
+    })
+    const redirectPath =
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+    const tenantSlug = getTenantSlugFromRoute(route)
+
+    if (redirectPath) {
+      callbackSearchParams.set('redirect', redirectPath)
+    }
+
+    if (resolvedScope === 'shop' && tenantSlug) {
+      callbackSearchParams.set('tenant_slug', tenantSlug)
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${callbackBaseUrl}/auth/callback?scope=${resolvedScope}`,
+        redirectTo: `${callbackBaseUrl}/auth/callback?${callbackSearchParams.toString()}`,
       },
     })
 

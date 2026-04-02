@@ -5,6 +5,7 @@ import {
   type ModuleAction,
   type ModuleKey,
 } from 'src/modules/navigation/modulePermissions'
+import type { RouteLocationRaw } from 'vue-router'
 
 export type AccessRole =
   | 'superadmin'
@@ -16,18 +17,23 @@ export type AccessRole =
 
 export const createAccessGuard = ({
   allowedRoles,
-  loginRouteName,
+  loginRoute,
   requiredScope,
   requiredModule,
   requiredModuleAction,
+  validateAccess,
 }: {
   allowedRoles?: AccessRole[]
-  loginRouteName: string
+  loginRoute: string | ((to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }) => RouteLocationRaw)
   requiredScope?: AuthScope
   requiredModule?: ModuleKey
   requiredModuleAction?: ModuleAction
+  validateAccess?: (context: {
+    authStore: ReturnType<typeof useAuthStore>
+    to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }
+  }) => boolean | RouteLocationRaw
 }) => {
-  return (to: { fullPath: string }) => {
+  return (to: { fullPath: string; params?: Record<string, unknown>; query?: Record<string, unknown> }) => {
     const authStore = useAuthStore()
     const memberRole = authStore.member?.role
     const currentScope = authStore.scope
@@ -49,11 +55,26 @@ export const createAccessGuard = ({
       (allowedRoles !== undefined && !allowedRoles.includes(memberRole)) ||
       !hasRequiredModuleAccess
     ) {
+      if (typeof loginRoute === 'function') {
+        return loginRoute(to)
+      }
+
       return {
-        name: loginRouteName,
+        name: loginRoute,
         query: {
           redirect: to.fullPath,
         },
+      }
+    }
+
+    if (validateAccess) {
+      const validationResult = validateAccess({
+        authStore,
+        to,
+      })
+
+      if (validationResult !== true) {
+        return validationResult
       }
     }
 

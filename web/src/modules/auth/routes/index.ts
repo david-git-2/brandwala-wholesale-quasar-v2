@@ -34,7 +34,7 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'shop/login',
+        path: 'shop/:tenantSlug?/login',
         name: 'customer-login-page',
         component: () => import('../pages/CustomerLogin.vue'),
         meta: {

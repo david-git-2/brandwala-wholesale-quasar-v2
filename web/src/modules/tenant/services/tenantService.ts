@@ -3,6 +3,7 @@ import type {
   Tenant,
   TenantCreateInput,
   TenantDeleteInput,
+  TenantEntryResolveInput,
   TenantServiceResult,
   TenantUpdateInput,
   TenantModule,
@@ -23,6 +24,27 @@ const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load tenants.',
+    }
+  }
+}
+
+const resolveTenantForEntry = async (
+  payload: TenantEntryResolveInput,
+): Promise<TenantServiceResult<Tenant | null>> => {
+  try {
+    const data = await tenantRepository.resolveTenantForEntry(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to resolve tenant entry context.',
     }
   }
 }
@@ -223,6 +245,7 @@ const deleteTenantModule = async (
 export const tenantService = {
   deleteTenant,
   listTenants,
+  resolveTenantForEntry,
   createTenant,
   updateTenant,
 

@@ -1,6 +1,12 @@
 import { supabase } from 'src/boot/supabase'
 
-import type { Tenant, TenantCreateInput, TenantDeleteInput, TenantUpdateInput } from '../types'
+import type {
+  Tenant,
+  TenantCreateInput,
+  TenantDeleteInput,
+  TenantEntryResolveInput,
+  TenantUpdateInput,
+} from '../types'
 
 export type TenantModule = {
   id: number
@@ -37,6 +43,22 @@ const listTenants = async (): Promise<Tenant[]> => {
   return (data as Tenant[] | null) ?? []
 }
 
+const resolveTenantForEntry = async (
+  payload: TenantEntryResolveInput,
+): Promise<Tenant | null> => {
+  const { data, error } = await supabase.rpc('resolve_tenant_for_entry', {
+    p_slug: payload.slug ?? null,
+    p_hostname: payload.hostname ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const tenant = Array.isArray(data) ? data[0] : data
+
+  return (tenant as Tenant | null) ?? null
+}
 
 const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
   const { data, error } = await supabase.rpc('list_my_admin_tenants')
@@ -237,6 +259,7 @@ const deleteTenantModule = async (
 export const tenantRepository = {
   deleteTenant,
   listTenants,
+  resolveTenantForEntry,
   createTenant,
   updateTenant,
 
