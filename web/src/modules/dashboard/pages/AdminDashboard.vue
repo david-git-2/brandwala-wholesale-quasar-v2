@@ -1,5 +1,5 @@
 <template>
-  <q-page class="dashboard-page">
+  <q-page class="dashboard-page theme-app">
     <section class="dashboard-hero">
       <div class="dashboard-eyebrow">Internal workspace</div>
       <h1>Run tenant operations without losing visibility.</h1>
@@ -33,15 +33,20 @@
 
 <style scoped>
 .dashboard-page {
+  --dashboard-border: var(--bw-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 90%, white 10%);
+  --dashboard-ink: var(--bw-theme-ink);
+  --dashboard-muted: var(--bw-theme-muted);
+  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.12);
   display: grid;
   gap: 1rem;
 }
 
 .dashboard-hero,
 .dashboard-card {
-  border: 1px solid rgba(45, 104, 74, 0.12);
+  border: 1px solid var(--dashboard-border);
   border-radius: 1.5rem;
-  background: rgba(247, 252, 248, 0.76);
+  background: var(--dashboard-surface);
   padding: 1.25rem;
 }
 
@@ -50,14 +55,14 @@
   font-size: 0.74rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #587061;
+  color: var(--dashboard-muted);
 }
 
 .dashboard-hero h1,
 .dashboard-card__title {
   margin: 0.5rem 0 0;
   line-height: 1;
-  color: #18261d;
+  color: var(--dashboard-ink);
 }
 
 .dashboard-hero h1 {
@@ -69,7 +74,7 @@
 .dashboard-card p {
   margin: 0.9rem 0 0;
   max-width: 48ch;
-  color: #57685d;
+  color: var(--dashboard-muted);
   line-height: 1.7;
 }
 
@@ -80,7 +85,7 @@
 }
 
 .dashboard-card--accent {
-  background: linear-gradient(180deg, rgba(233, 245, 237, 0.9), rgba(215, 235, 223, 0.74));
+  background: linear-gradient(180deg, var(--dashboard-accent-soft), var(--dashboard-surface));
 }
 
 @media (max-width: 900px) {

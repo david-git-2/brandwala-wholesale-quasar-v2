@@ -1,5 +1,5 @@
 <template>
-  <q-page class="dashboard-page">
+  <q-page class="dashboard-page theme-shop">
     <section class="dashboard-hero">
       <div class="dashboard-eyebrow">Customer portal</div>
       <h1>{{ headline }}</h1>
@@ -128,15 +128,20 @@ const roleSummary = computed(() => {
 
 <style scoped>
 .dashboard-page {
+  --dashboard-border: var(--bw-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 90%, white 10%);
+  --dashboard-ink: var(--bw-theme-ink);
+  --dashboard-muted: var(--bw-theme-muted);
+  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.12);
   display: grid;
   gap: 1rem;
 }
 
 .dashboard-hero,
 .dashboard-card {
-  border: 1px solid rgba(156, 88, 52, 0.12);
+  border: 1px solid var(--dashboard-border);
   border-radius: 1.5rem;
-  background: rgba(255, 249, 243, 0.8);
+  background: var(--dashboard-surface);
   padding: 1.25rem;
 }
 
@@ -145,14 +150,14 @@ const roleSummary = computed(() => {
   font-size: 0.74rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8c6b56;
+  color: var(--dashboard-muted);
 }
 
 .dashboard-hero h1,
 .dashboard-card__title {
   margin: 0.5rem 0 0;
   line-height: 1;
-  color: #2f1d16;
+  color: var(--dashboard-ink);
 }
 
 .dashboard-hero h1 {
@@ -164,7 +169,7 @@ const roleSummary = computed(() => {
 .dashboard-card p {
   margin: 0.9rem 0 0;
   max-width: 54ch;
-  color: #6f5a49;
+  color: var(--dashboard-muted);
   line-height: 1.7;
 }
 
@@ -173,8 +178,8 @@ const roleSummary = computed(() => {
 }
 
 .dashboard-chip {
-  border: 1px solid rgba(156, 88, 52, 0.12);
-  box-shadow: 0 10px 18px rgba(156, 88, 52, 0.08);
+  border: 1px solid var(--dashboard-border);
+  box-shadow: 0 10px 18px rgb(var(--bw-theme-primary-rgb) / 0.08);
 }
 
 .dashboard-grid {
@@ -184,7 +189,7 @@ const roleSummary = computed(() => {
 }
 
 .dashboard-card--accent {
-  background: linear-gradient(180deg, rgba(250, 235, 224, 0.94), rgba(243, 220, 203, 0.76));
+  background: linear-gradient(180deg, var(--dashboard-accent-soft), var(--dashboard-surface));
 }
 
 @media (max-width: 900px) {

@@ -83,7 +83,7 @@ const scopeLabel = computed(() => {
 
 <style scoped>
 .shop-context__chip {
-  border: 1px solid rgba(136, 71, 37, 0.12);
-  box-shadow: 0 8px 18px rgba(136, 71, 37, 0.08);
+  border: 1px solid var(--bw-theme-border);
+  box-shadow: 0 8px 18px rgb(var(--bw-theme-primary-rgb) / 0.08);
 }
 </style>

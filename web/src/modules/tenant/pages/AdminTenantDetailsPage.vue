@@ -385,6 +385,31 @@
               keep-color
             />
           </div>
+          <div v-if="!customerGroupForm.id" class="customer-group-admin-block q-gutter-md">
+            <div>
+              <div class="text-subtitle2 text-weight-medium">First customer admin</div>
+              <div class="text-caption text-grey-7">
+                Add the first customer admin now, or leave this blank and add them later.
+              </div>
+            </div>
+            <q-input v-model="customerGroupAdminForm.name" label="Admin name" outlined dense />
+            <q-input
+              v-model="customerGroupAdminForm.email"
+              label="Admin email"
+              type="email"
+              outlined
+              dense
+            />
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2">Admin status</div>
+              <q-toggle
+                v-model="customerGroupAdminForm.is_active"
+                :label="customerGroupAdminForm.is_active ? 'Active' : 'Inactive'"
+                color="positive"
+                keep-color
+              />
+            </div>
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -545,6 +570,16 @@ const customerGroupForm = ref<{
   is_active: true,
 })
 
+const customerGroupAdminForm = ref<{
+  name: string
+  email: string
+  is_active: boolean
+}>({
+  name: '',
+  email: '',
+  is_active: true,
+})
+
 const customerGroupMemberForm = ref<{
   id: number | null
   name: string
@@ -592,6 +627,12 @@ const resetCustomerGroupForm = () => {
     id: null,
     name: '',
     accent_color: '',
+    is_active: true,
+  }
+
+  customerGroupAdminForm.value = {
+    name: '',
+    email: '',
     is_active: true,
   }
 }
@@ -801,6 +842,19 @@ const openEditGroupDialog = (group: CustomerGroup) => {
 const saveCustomerGroup = async () => {
   if (!tenant.value?.id || !customerGroupForm.value.name.trim()) return
 
+  const shouldCreateFirstAdmin =
+    !customerGroupForm.value.id &&
+    (customerGroupAdminForm.value.name.trim() || customerGroupAdminForm.value.email.trim())
+
+  if (
+    shouldCreateFirstAdmin &&
+    (!customerGroupAdminForm.value.name.trim() ||
+      !customerGroupAdminForm.value.email.trim())
+  ) {
+    pageError.value = 'Add both admin name and email, or leave both blank.'
+    return
+  }
+
   const result = customerGroupForm.value.id
     ? await customerGroupStore.updateCustomerGroup({
         id: customerGroupForm.value.id,
@@ -820,10 +874,30 @@ const saveCustomerGroup = async () => {
     return
   }
 
+  const savedGroupId = result.data?.id ?? customerGroupForm.value.id
+
+  if (shouldCreateFirstAdmin && savedGroupId) {
+    const adminResult = await customerGroupStore.createCustomerGroupMember({
+      customer_group_id: savedGroupId,
+      name: customerGroupAdminForm.value.name,
+      email: customerGroupAdminForm.value.email,
+      role: 'admin',
+      is_active: customerGroupAdminForm.value.is_active,
+    })
+
+    if (!adminResult.success) {
+      pageError.value = adminResult.error ?? 'Customer group was created, but the admin could not be added.'
+      selectedCustomerGroupId.value = savedGroupId
+      openCustomerGroupDialog.value = false
+      await loadCustomerGroups()
+      await loadCustomerGroupMembers(savedGroupId)
+      return
+    }
+  }
+
   openCustomerGroupDialog.value = false
   await loadCustomerGroups()
 
-  const savedGroupId = result.data?.id ?? customerGroupForm.value.id
   if (savedGroupId) {
     selectedCustomerGroupId.value = savedGroupId
     await loadCustomerGroupMembers(savedGroupId)
@@ -973,6 +1047,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.customer-group-admin-block {
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .customer-group-chip {
   width: 18px;
   height: 18px;

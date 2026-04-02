@@ -9,17 +9,12 @@
     theme="app"
     :links="links"
   >
-    <template #header-extra>
-      <TenantSelector />
-    </template>
-
     <router-view />
   </WorkspaceShell>
 </template>
 
 <script setup lang="ts">
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
-import TenantSelector from 'src/components/TenantSelector.vue'
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 
 const { links } = useAppWorkspaceLinks()

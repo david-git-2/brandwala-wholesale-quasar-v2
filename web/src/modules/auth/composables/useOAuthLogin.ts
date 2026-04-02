@@ -54,6 +54,22 @@ const normalizeModuleKeys = (moduleKeys: string[] | null | undefined) =>
         .filter((moduleKey): moduleKey is string => Boolean(moduleKey))
     : []
 
+const normalizeCallbackBaseUrl = (value: string | undefined) =>
+  value?.trim().replace(/\/+$/, '') || null
+
+const getOAuthCallbackBaseUrl = () => {
+  const localUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_LOCAL_APP_URL)
+  const productionUrl = normalizeCallbackBaseUrl(
+    import.meta.env.VITE_PRODUCTION_APP_URL,
+  )
+
+  if (import.meta.env.DEV) {
+    return localUrl ?? window.location.origin
+  }
+
+  return productionUrl ?? window.location.origin
+}
+
 export function useOAuthLogin(scope?: AuthScope) {
   const route = useRoute()
   const router = useRouter()
@@ -397,11 +413,12 @@ export function useOAuthLogin(scope?: AuthScope) {
 
   const handleGoogleLogin = async () => {
     isLoading.value = true
+    const callbackBaseUrl = getOAuthCallbackBaseUrl()
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/#/auth/callback?scope=${resolvedScope}`,
+        redirectTo: `${callbackBaseUrl}/auth/callback?scope=${resolvedScope}`,
       },
     })
 

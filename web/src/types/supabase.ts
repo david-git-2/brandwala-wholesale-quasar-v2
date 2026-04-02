@@ -167,36 +167,6 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
-        Row: {
-          auth_user_id: string
-          avatar_url: string | null
-          created_at: string
-          email: string
-          full_name: string | null
-          id: number
-          updated_at: string
-        }
-        Insert: {
-          auth_user_id: string
-          avatar_url?: string | null
-          created_at?: string
-          email: string
-          full_name?: string | null
-          id?: number
-          updated_at?: string
-        }
-        Update: {
-          auth_user_id?: string
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          full_name?: string | null
-          id?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       tenant_modules: {
         Row: {
           created_at: string
@@ -346,7 +316,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      current_profile_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
       delete_tenant_for_superadmin: {
         Args: { p_tenant_id: number }

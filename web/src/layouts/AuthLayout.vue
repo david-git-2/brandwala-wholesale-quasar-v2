@@ -3,41 +3,8 @@
     <q-page-container>
       <q-page class="auth-page">
         <section class="auth-stage">
-          <div class="auth-stage__story">
-            <div class="auth-stage__eyebrow">BrandWala Wholesale</div>
-            <h1 class="auth-stage__headline">
-              One system for platform control, tenant operations, and customer ordering.
-            </h1>
-            <p class="auth-stage__copy">
-              Use the correct login entry for your workspace. Each route shares the same Google
-              authentication flow, but access is verified by scope.
-            </p>
-
-            <div class="auth-stage__pillars">
-              <div class="auth-stage__pillar">
-                <div class="auth-stage__pillar-title">Platform</div>
-                <div class="auth-stage__pillar-copy">
-                  Superadmin controls tenants, modules, and rollout governance.
-                </div>
-              </div>
-
-              <div class="auth-stage__pillar">
-                <div class="auth-stage__pillar-title">App</div>
-                <div class="auth-stage__pillar-copy">
-                  Internal teams manage memberships, customer groups, and operations.
-                </div>
-              </div>
-
-              <div class="auth-stage__pillar">
-                <div class="auth-stage__pillar-title">Shop</div>
-                <div class="auth-stage__pillar-copy">
-                  Customer-side teams prepare carts, confirm orders, and negotiate.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="auth-stage__panel">
+          <div class="auth-stage__shell">
+            <div class="auth-stage__brand">BrandWala Wholesale</div>
             <router-view />
           </div>
         </section>
@@ -48,120 +15,65 @@
 
 <style scoped>
 .auth-layout {
+  --auth-stage-base: #f6f0e8;
+  --auth-stage-surface: rgb(255 251 246 / 0.84);
+  --auth-stage-border: rgb(84 61 35 / 0.1);
+  --auth-stage-accent: var(--bw-brand-accent, #8d5f2f);
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(194, 146, 92, 0.18), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(78, 115, 82, 0.12), transparent 32%),
-    linear-gradient(180deg, #f8f4ee 0%, #efe6db 100%);
+    radial-gradient(circle at top center, rgb(255 255 255 / 0.84), transparent 28%),
+    radial-gradient(circle at bottom left, rgb(141 95 47 / 0.08), transparent 24%),
+    linear-gradient(180deg, rgb(255 255 255) 0%, var(--auth-stage-base) 100%);
 }
 
 .auth-page {
+  min-height: 100vh;
   padding: clamp(1rem, 2vw, 1.5rem);
 }
 
 .auth-stage {
-  min-height: calc(100vh - 2rem);
+  min-height: calc(100vh - 3rem);
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 34rem);
-  gap: clamp(1.25rem, 3vw, 2.25rem);
+  place-items: center;
 }
 
-.auth-stage__story,
-.auth-stage__panel {
-  border: 1px solid rgba(91, 72, 49, 0.1);
+.auth-stage__shell {
+  width: min(100%, 29rem);
+  padding: clamp(1rem, 3vw, 1.35rem);
+  border: 1px solid var(--auth-stage-border);
   border-radius: 2rem;
-  background: rgba(255, 251, 246, 0.74);
-  backdrop-filter: blur(14px);
+  background: var(--auth-stage-surface);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 60px rgb(31 23 15 / 0.08);
 }
 
-.auth-stage__story {
-  padding: clamp(1.5rem, 4vw, 3rem);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background:
-    radial-gradient(circle at top left, rgba(194, 146, 92, 0.16), transparent 38%),
-    linear-gradient(180deg, rgba(255, 252, 248, 0.9), rgba(244, 236, 226, 0.82));
-}
-
-.auth-stage__eyebrow {
-  font-size: 0.8rem;
-  letter-spacing: 0.16em;
+.auth-stage__brand {
+  margin-bottom: 0.9rem;
+  text-align: center;
+  font-size: 0.76rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #7c644b;
-}
-
-.auth-stage__headline {
-  margin: 1rem 0 0;
-  max-width: 12ch;
-  font-size: clamp(2.4rem, 6vw, 5.4rem);
-  line-height: 0.95;
-  font-weight: 700;
-  color: #261b12;
-}
-
-.auth-stage__copy {
-  max-width: 44ch;
-  margin: 1.3rem 0 0;
-  font-size: 1rem;
-  line-height: 1.8;
-  color: #5f4e3e;
-}
-
-.auth-stage__pillars {
-  display: grid;
-  gap: 0.85rem;
-  margin-top: 2rem;
-}
-
-.auth-stage__pillar {
-  padding: 1rem 1.1rem;
-  border-radius: 1.15rem;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(91, 72, 49, 0.08);
-}
-
-.auth-stage__pillar-title {
-  font-size: 0.78rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #7c644b;
-}
-
-.auth-stage__pillar-copy {
-  margin-top: 0.4rem;
-  color: #2f2419;
-  line-height: 1.6;
-}
-
-.auth-stage__panel {
-  padding: clamp(1rem, 3vw, 1.4rem);
-  display: flex;
-  align-items: center;
+  color: var(--auth-stage-accent);
 }
 
 @media (max-width: 1023px) {
-  .auth-stage {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-stage__story {
-    min-height: auto;
+  .auth-stage__shell {
+    width: min(100%, 28rem);
   }
 }
 
 @media (max-width: 599px) {
   .auth-page {
-    padding: 0.75rem;
+    padding: 0.9rem;
   }
 
   .auth-stage {
-    min-height: calc(100vh - 1.5rem);
+    min-height: calc(100vh - 1.8rem);
   }
 
-  .auth-stage__story,
-  .auth-stage__panel {
+  .auth-stage__shell {
     border-radius: 1.5rem;
+    padding: 0.85rem;
   }
 }
 </style>

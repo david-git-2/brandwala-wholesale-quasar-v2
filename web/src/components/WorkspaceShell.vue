@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh Lpr lFf" class="workspace-shell" :class="themeClass">
+  <q-layout view="hHh Lpr lFf" class="workspace-shell" :class="themeClasses">
     <q-header class="workspace-shell__header">
       <q-toolbar class="workspace-shell__toolbar">
         <q-btn
@@ -110,7 +110,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -134,86 +133,71 @@ const props = defineProps<{
 }>()
 
 const drawerOpen = ref(false)
-const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const themeClass = computed(() => `workspace-shell--${props.theme}`)
+const themeClasses = computed(() => [
+  `workspace-shell--${props.theme}`,
+  `theme-${props.theme}`,
+])
 const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
 )
 const userEmail = computed(() => authStore.user?.email ?? 'No active session')
 
-const handleLogout = () => {
-  $q.dialog({
-    title: 'Sign out',
-    message: 'End your current session on this workspace?',
-    cancel: true,
-    persistent: true,
-    ok: {
-      color: 'primary',
-      unelevated: true,
-      label: 'Sign out',
-    },
-  }).onOk(() => {
-    void (async () => {
-      await supabase.auth.signOut()
-      authStore.clearAccess()
+const handleLogout = async () => {
+  if (typeof window !== 'undefined') {
+    const shouldSignOut = window.confirm(
+      'End your current session on this workspace?',
+    )
+
+    if (!shouldSignOut) {
+      return
+    }
+  }
+
+  drawerOpen.value = false
+
+  try {
+    await supabase.auth.signOut()
+  } catch (error) {
+    console.error('[auth] Failed to sign out from Supabase session', error)
+  } finally {
+    authStore.clearAccess()
+
+    try {
       await router.replace(props.logoutTo)
-    })()
-  })
+    } catch (error) {
+      console.error('[auth] Failed to redirect after sign out', error)
+    }
+  }
 }
 </script>
 
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
-  --shell-base: #f4f0e8;
-  --shell-surface: rgba(255, 252, 246, 0.86);
-  --shell-border: rgba(72, 58, 40, 0.12);
-  --shell-shadow: rgba(59, 46, 28, 0.14);
-  --shell-ink: #241d16;
-  --shell-muted: #7d6b58;
-  --shell-accent: #8a5b2b;
-  --shell-accent-soft: rgba(138, 91, 43, 0.12);
+  --shell-base: var(--bw-theme-base, #f4f0e8);
+  --shell-surface: var(--bw-theme-surface, rgb(255 252 246 / 0.86));
+  --shell-border: var(--bw-theme-border, rgb(72 58 40 / 0.12));
+  --shell-shadow: var(--bw-theme-shadow, rgb(59 46 28 / 0.14));
+  --shell-ink: var(--bw-theme-ink, #241d16);
+  --shell-muted: var(--bw-theme-muted, #7d6b58);
+  --shell-accent: var(--bw-theme-primary, #8a5b2b);
+  --shell-accent-soft: var(--bw-theme-primary-soft, rgb(138 91 43 / 0.12));
   background:
-    radial-gradient(circle at top left, rgba(199, 145, 84, 0.18), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(120, 95, 62, 0.12), transparent 30%),
-    linear-gradient(180deg, #f8f3ec 0%, var(--shell-base) 100%);
+    radial-gradient(
+      circle at top left,
+      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.18),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.12),
+      transparent 30%
+    ),
+    linear-gradient(180deg, var(--bw-theme-gradient-top, #f8f3ec) 0%, var(--shell-base) 100%);
   color: var(--shell-ink);
-}
-
-.workspace-shell--platform {
-  --shell-base: #f2ede6;
-  --shell-surface: rgba(252, 249, 243, 0.88);
-  --shell-border: rgba(78, 57, 31, 0.12);
-  --shell-shadow: rgba(95, 66, 31, 0.12);
-  --shell-ink: #271d14;
-  --shell-muted: #79624a;
-  --shell-accent: #8d5f2f;
-  --shell-accent-soft: rgba(141, 95, 47, 0.12);
-}
-
-.workspace-shell--app {
-  --shell-base: #edf3ef;
-  --shell-surface: rgba(247, 252, 248, 0.88);
-  --shell-border: rgba(33, 92, 63, 0.12);
-  --shell-shadow: rgba(33, 92, 63, 0.12);
-  --shell-ink: #15261d;
-  --shell-muted: #587061;
-  --shell-accent: #2f7d57;
-  --shell-accent-soft: rgba(47, 125, 87, 0.12);
-}
-
-.workspace-shell--shop {
-  --shell-base: #f5efe8;
-  --shell-surface: rgba(255, 249, 243, 0.88);
-  --shell-border: rgba(136, 71, 37, 0.12);
-  --shell-shadow: rgba(136, 71, 37, 0.12);
-  --shell-ink: #2f1d16;
-  --shell-muted: #7d6658;
-  --shell-accent: #b45f34;
-  --shell-accent-soft: rgba(180, 95, 52, 0.12);
 }
 
 .workspace-shell__header {

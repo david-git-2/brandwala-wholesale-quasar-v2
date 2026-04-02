@@ -1,5 +1,5 @@
 <template>
-  <q-page class="dashboard-page">
+  <q-page class="dashboard-page theme-platform">
     <section class="dashboard-hero">
       <div>
         <div class="dashboard-eyebrow">Platform overview</div>
@@ -43,15 +43,20 @@ const authStore = useAuthStore();
 
 <style scoped>
 .dashboard-page {
+  --dashboard-border: var(--bw-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 88%, white 12%);
+  --dashboard-ink: var(--bw-theme-ink);
+  --dashboard-muted: var(--bw-theme-muted);
+  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.12);
   display: grid;
   gap: 1rem;
 }
 
 .dashboard-hero,
 .dashboard-card {
-  border: 1px solid rgba(104, 77, 45, 0.12);
+  border: 1px solid var(--dashboard-border);
   border-radius: 1.5rem;
-  background: rgba(255, 251, 245, 0.72);
+  background: var(--dashboard-surface);
   padding: 1.25rem;
 }
 
@@ -67,14 +72,14 @@ const authStore = useAuthStore();
   font-size: 0.74rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7b644a;
+  color: var(--dashboard-muted);
 }
 
 .dashboard-hero h1,
 .dashboard-card__title {
   margin: 0.4rem 0 0;
   line-height: 1;
-  color: #281f17;
+  color: var(--dashboard-ink);
 }
 
 .dashboard-hero h1 {
@@ -86,15 +91,15 @@ const authStore = useAuthStore();
 .dashboard-card p {
   margin: 0.9rem 0 0;
   max-width: 48ch;
-  color: #665544;
+  color: var(--dashboard-muted);
   line-height: 1.7;
 }
 
 .dashboard-chip {
   padding: 0.7rem 0.95rem;
   border-radius: 999px;
-  background: rgba(141, 95, 47, 0.12);
-  color: #4f3820;
+  background: var(--dashboard-accent-soft);
+  color: var(--dashboard-ink);
   white-space: nowrap;
 }
 
@@ -105,7 +110,7 @@ const authStore = useAuthStore();
 }
 
 .dashboard-card--accent {
-  background: linear-gradient(180deg, rgba(250, 239, 223, 0.88), rgba(242, 224, 196, 0.7));
+  background: linear-gradient(180deg, var(--dashboard-accent-soft), var(--dashboard-surface));
 }
 
 @media (max-width: 900px) {

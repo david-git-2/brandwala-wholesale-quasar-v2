@@ -1,15 +1,80 @@
+:root {
+  --bw-brand-base: #f6f0e8;
+  --bw-brand-surface: rgb(255 251 246 / 0.9);
+  --bw-brand-border: rgb(84 61 35 / 0.1);
+  --bw-brand-ink: #2b2118;
+  --bw-brand-muted: #74604b;
+  --bw-brand-accent: #8d5f2f;
+  --bw-brand-accent-rgb: 141 95 47;
+}
+
+.theme-platform,
+.theme-app,
+.theme-shop {
+  --bw-theme-base: var(--bw-brand-base);
+  --bw-theme-surface: var(--bw-brand-surface);
+  --bw-theme-border: var(--bw-brand-border);
+  --bw-theme-shadow: rgb(59 46 28 / 0.14);
+  --bw-theme-ink: var(--bw-brand-ink);
+  --bw-theme-muted: var(--bw-brand-muted);
+  --bw-theme-primary: var(--bw-brand-accent);
+  --bw-theme-primary-rgb: var(--bw-brand-accent-rgb);
+  --bw-theme-primary-soft: rgb(var(--bw-theme-primary-rgb) / 0.12);
+  --bw-theme-gradient-top: color-mix(in srgb, var(--bw-theme-primary) 18%, white 82%);
+  --bw-theme-gradient-bottom: var(--bw-theme-base);
+  --q-primary: var(--bw-theme-primary);
+}
+
+.theme-platform {
+  --bw-theme-base: #f2ede6;
+  --bw-theme-surface: rgb(252 249 243 / 0.88);
+  --bw-theme-border: rgb(78 57 31 / 0.12);
+  --bw-theme-shadow: rgb(95 66 31 / 0.12);
+  --bw-theme-ink: #271d14;
+  --bw-theme-muted: #79624a;
+  --bw-theme-primary: #8d5f2f;
+  --bw-theme-primary-rgb: 141 95 47;
+}
+
+.theme-app {
+  --bw-theme-base: #edf3ef;
+  --bw-theme-surface: rgb(247 252 248 / 0.88);
+  --bw-theme-border: rgb(33 92 63 / 0.12);
+  --bw-theme-shadow: rgb(33 92 63 / 0.12);
+  --bw-theme-ink: #15261d;
+  --bw-theme-muted: #587061;
+  --bw-theme-primary: #2f7d57;
+  --bw-theme-primary-rgb: 47 125 87;
+}
+
+.theme-shop {
+  --bw-theme-base: #f5efe8;
+  --bw-theme-surface: rgb(255 249 243 / 0.88);
+  --bw-theme-border: rgb(136 71 37 / 0.12);
+  --bw-theme-shadow: rgb(136 71 37 / 0.12);
+  --bw-theme-ink: #2f1d16;
+  --bw-theme-muted: #7d6658;
+  --bw-theme-primary: #b45f34;
+  --bw-theme-primary-rgb: 180 95 52;
+}
+
 /* Soft app background */
 body {
   background:
-    radial-gradient(circle at 10% 10%, rgba(25, 118, 210, 0.08), transparent 30%),
-    radial-gradient(circle at 90% 10%, rgba(156, 39, 176, 0.06), transparent 30%),
-    #f7f9fc;
+    radial-gradient(
+      circle at 10% 10%,
+      rgb(var(--bw-brand-accent-rgb) / 0.08),
+      transparent 30%
+    ),
+    radial-gradient(circle at 90% 10%, rgb(180 95 52 / 0.06), transparent 30%),
+    #f8f4ee;
+  color: var(--bw-brand-ink);
 }
 
 /* Cards */
 .q-card {
   border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--bw-brand-surface);
   backdrop-filter: blur(10px);
   box-shadow:
     0 1px 3px rgba(15, 23, 42, 0.06),
