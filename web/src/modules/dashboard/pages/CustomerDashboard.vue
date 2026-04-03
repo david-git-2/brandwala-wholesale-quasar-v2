@@ -1,69 +1,34 @@
 <template>
-  <q-page class="dashboard-page">
+  <q-page class="dashboard-page theme-shop">
     <section class="dashboard-hero">
-      <div class="dashboard-eyebrow">Customer portal</div>
-      <h1>{{ headline }}</h1>
-      <p>{{ introCopy }}</p>
+      <div class="dashboard-copy">
+        <div class="dashboard-eyebrow">Customer</div>
+        <h1>{{ headline }}</h1>
+        <p>{{ introCopy }}</p>
+      </div>
 
-      <div class="dashboard-meta row q-col-gutter-sm">
-        <div class="col-auto">
-          <q-chip
-            dense
-            color="white"
-            text-color="dark"
-            icon="storefront"
-            class="dashboard-chip"
-          >
-            {{ tenantName }}
-          </q-chip>
-        </div>
-        <div class="col-auto" v-if="customerGroupName">
-          <q-chip
-            dense
-            color="white"
-            text-color="dark"
-            icon="groups"
-            class="dashboard-chip"
-          >
-            {{ customerGroupName }}
-          </q-chip>
-        </div>
-        <div class="col-auto">
-          <q-chip
-            dense
-            color="white"
-            text-color="dark"
-            icon="badge"
-            class="dashboard-chip"
-          >
-            {{ roleLabel }}
-          </q-chip>
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__label">Current access</div>
+        <div class="dashboard-panel__value">{{ roleLabel }}</div>
+        <div class="dashboard-panel__meta">
+          {{ customerGroupName || tenantName }}
         </div>
       </div>
     </section>
 
-    <section class="dashboard-grid">
-      <article class="dashboard-card">
-        <div class="dashboard-card__label">Your role</div>
-        <div class="dashboard-card__title">{{ roleLabel }}</div>
+    <section class="dashboard-strip">
+      <article class="dashboard-block">
+        <div class="dashboard-block__label">Role</div>
+        <h2>{{ roleLabel }}</h2>
         <p>{{ roleSummary }}</p>
       </article>
 
-      <article class="dashboard-card">
-        <div class="dashboard-card__label">Enabled modules</div>
-        <div class="dashboard-card__title">{{ enabledModuleCount }} active</div>
+      <article class="dashboard-block">
+        <div class="dashboard-block__label">Modules</div>
+        <h2>{{ enabledModuleCount }} active</h2>
         <p>
-          Navigation in this workspace is generated from your tenant's enabled modules plus your
-          customer-group role.
-        </p>
-      </article>
-
-      <article class="dashboard-card dashboard-card--accent">
-        <div class="dashboard-card__label">Access model</div>
-        <div class="dashboard-card__title">Customer-group controlled</div>
-        <p>
-          Shop access is now tied to customer-group membership, so internal tenant users do not
-          enter this area unless they are also assigned to this customer group.
+          Your navigation is built from the modules enabled for this tenant and your customer-group
+          access.
         </p>
       </article>
     </section>
@@ -98,10 +63,10 @@ const roleLabel = computed(() => {
 
 const headline = computed(() => {
   if (customerGroupName.value) {
-    return `Keep ${customerGroupName.value} moving.`
+    return `${customerGroupName.value} stays focused here.`
   }
 
-  return 'Prepare carts, confirm orders, and keep negotiation moving.'
+  return 'Keep ordering, approvals, and negotiation in one place.'
 })
 
 const introCopy = computed(() => {
@@ -128,67 +93,89 @@ const roleSummary = computed(() => {
 
 <style scoped>
 .dashboard-page {
+  --dashboard-border: var(--bw-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 94%, white 6%);
+  --dashboard-ink: var(--bw-theme-ink);
+  --dashboard-muted: var(--bw-theme-muted);
+  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.1);
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .dashboard-hero,
-.dashboard-card {
-  border: 1px solid rgba(156, 88, 52, 0.12);
-  border-radius: 1.5rem;
-  background: rgba(255, 249, 243, 0.8);
-  padding: 1.25rem;
+.dashboard-block,
+.dashboard-panel {
+  border: 1px solid var(--dashboard-border);
+  border-radius: 1.25rem;
+  background: var(--dashboard-surface);
+  padding: 1.35rem;
+}
+
+.dashboard-hero {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
+  align-items: stretch;
+}
+
+.dashboard-copy {
+  max-width: 46rem;
 }
 
 .dashboard-eyebrow,
-.dashboard-card__label {
+.dashboard-panel__label,
+.dashboard-block__label {
   font-size: 0.74rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8c6b56;
-}
-
-.dashboard-hero h1,
-.dashboard-card__title {
-  margin: 0.5rem 0 0;
-  line-height: 1;
-  color: #2f1d16;
+  color: var(--dashboard-muted);
 }
 
 .dashboard-hero h1 {
-  font-size: clamp(2rem, 5vw, 3.2rem);
+  margin: 0.45rem 0 0;
+  line-height: 1.02;
+  color: var(--dashboard-ink);
+  font-size: clamp(2rem, 4vw, 3rem);
   max-width: 14ch;
 }
 
 .dashboard-hero p,
-.dashboard-card p {
-  margin: 0.9rem 0 0;
-  max-width: 54ch;
-  color: #6f5a49;
-  line-height: 1.7;
+.dashboard-block p,
+.dashboard-panel__meta {
+  margin: 0.85rem 0 0;
+  color: var(--dashboard-muted);
+  line-height: 1.65;
 }
 
-.dashboard-meta {
-  margin-top: 1rem;
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--dashboard-accent-soft);
 }
 
-.dashboard-chip {
-  border: 1px solid rgba(156, 88, 52, 0.12);
-  box-shadow: 0 10px 18px rgba(156, 88, 52, 0.08);
+.dashboard-panel__value {
+  margin-top: 0.45rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--dashboard-ink);
 }
 
-.dashboard-grid {
+.dashboard-strip {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dashboard-card--accent {
-  background: linear-gradient(180deg, rgba(250, 235, 224, 0.94), rgba(243, 220, 203, 0.76));
+.dashboard-block h2 {
+  margin: 0.4rem 0 0;
+  font-size: 1.18rem;
+  color: var(--dashboard-ink);
 }
 
 @media (max-width: 900px) {
-  .dashboard-grid {
+  .dashboard-hero,
+  .dashboard-strip {
     grid-template-columns: 1fr;
   }
 }

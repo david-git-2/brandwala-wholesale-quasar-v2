@@ -3,6 +3,10 @@ import { computed, ref } from 'vue'
 
 import type { AuthScope } from '../composables/useOAuthLogin'
 import type { AccessRole } from '../guards/accessGuard'
+import {
+  clearTenantWorkspaceStorage,
+  useTenantStore,
+} from 'src/modules/tenant/stores/tenantStore'
 
 export interface AuthUserSnapshot {
   id: string
@@ -100,19 +104,48 @@ const writeStorage = (snapshot: StoredAuthAccess | null) => {
 
 export const useAuthStore = defineStore('auth', () => {
   const snapshot = ref<StoredAuthAccess | null>(readStorage())
+  const tenantStore = useTenantStore()
 
   const access = computed(() => snapshot.value)
   const user = computed(() => snapshot.value?.user ?? null)
   const member = computed(() => snapshot.value?.member ?? null)
   const tenant = computed(() => snapshot.value?.tenant ?? null)
+  const selectedTenant = computed(() =>
+    snapshot.value?.scope === 'app'
+      ? tenantStore.selectedTenant
+      : snapshot.value?.tenant ?? null,
+  )
+  const availableAdminTenants = computed(() => tenantStore.availableAdminTenants)
   const customerGroup = computed(() => snapshot.value?.customerGroup ?? null)
   const activeModuleKeys = computed(() => snapshot.value?.activeModuleKeys ?? [])
   const scope = computed(() => snapshot.value?.scope ?? null)
   const matchedRole = computed(() => snapshot.value?.matchedRole ?? null)
   const isAuthenticated = computed(() => Boolean(snapshot.value?.user))
   const hasAccess = computed(() => Boolean(snapshot.value?.member?.isActive))
+  const actorId = computed(() => snapshot.value?.member?.id ?? null)
+  const actorType = computed(() => snapshot.value?.member?.actorType ?? null)
+  const membershipId = computed(() =>
+    snapshot.value?.member?.actorType === 'membership'
+      ? snapshot.value.member.id
+      : null,
+  )
+  const customerGroupMemberId = computed(() =>
+    snapshot.value?.member?.actorType === 'customer_group_member'
+      ? snapshot.value.member.id
+      : null,
+  )
   const tenantId = computed(
-    () => snapshot.value?.tenant?.id ?? snapshot.value?.member?.tenantId ?? null,
+    () =>
+      selectedTenant.value?.id ??
+      snapshot.value?.tenant?.id ??
+      snapshot.value?.member?.tenantId ??
+      null,
+  )
+  const tenantSlug = computed(
+    () =>
+      selectedTenant.value?.slug ??
+      snapshot.value?.tenant?.slug ??
+      null,
   )
   const customerGroupId = computed(
     () =>
@@ -132,21 +165,29 @@ export const useAuthStore = defineStore('auth', () => {
   const clearAccess = () => {
     snapshot.value = null
     writeStorage(null)
+    clearTenantWorkspaceStorage()
   }
 
   return {
     access,
     clearAccess,
     customerGroup,
+    customerGroupMemberId,
     customerGroupId,
     hasAccess,
     isAuthenticated,
     member,
+    actorId,
+    actorType,
+    availableAdminTenants,
+    membershipId,
     matchedRole,
     saveAccess,
+    selectedTenant,
     scope,
     tenant,
     tenantId,
+    tenantSlug,
     user,
     activeModuleKeys,
   }

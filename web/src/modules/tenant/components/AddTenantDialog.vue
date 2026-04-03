@@ -11,6 +11,7 @@
           label="Name"
           outlined
           dense
+          :rules="[(value) => !!String(value ?? '').trim() || 'Name is required']"
         />
 
         <q-input
@@ -18,12 +19,63 @@
           label="Slug"
           outlined
           dense
+          hint="Used in URLs and tenant identification."
+          :rules="[
+            (value) => !!String(value ?? '').trim() || 'Slug is required',
+            (value) =>
+              /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(value ?? '').trim()) ||
+              'Use lowercase letters, numbers, and hyphens only'
+          ]"
+          @update:model-value="onSlugInput"
+        />
+
+        <q-input
+          v-model="form.public_domain"
+          label="Public Domain"
+          outlined
+          dense
+          hint="Optional. Example: wholesale.brandwala.com"
+          :rules="[
+            (value) =>
+              !String(value ?? '').trim() ||
+              /^[a-z0-9.-]+$/.test(normalizePublicDomain(String(value))) ||
+              'Use a valid hostname or domain'
+          ]"
+          @update:model-value="onPublicDomainInput"
         />
 
         <q-toggle
           v-model="form.is_active"
           label="Is Active"
         />
+
+        <div v-if="isEdit" class="tenant-meta">
+          <div class="text-subtitle2">Tenant Details</div>
+
+          <q-input
+            :model-value="form.id ?? ''"
+            label="Tenant ID"
+            outlined
+            dense
+            readonly
+          />
+
+          <q-input
+            :model-value="formatDate(form.created_at)"
+            label="Created At"
+            outlined
+            dense
+            readonly
+          />
+
+          <q-input
+            :model-value="formatDate(form.updated_at)"
+            label="Updated At"
+            outlined
+            dense
+            readonly
+          />
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -35,13 +87,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 type TenantForm = {
   id?: number
   name: string
   slug: string
+  public_domain: string | null
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 const props = defineProps<{
@@ -62,31 +117,77 @@ const localModelValue = computed({
 const getDefaultForm = (): TenantForm => ({
   name: '',
   slug: '',
+  public_domain: null,
   is_active: true
 })
 
 const form = reactive<TenantForm>(getDefaultForm())
+const slugEditedManually = ref(false)
 
 const isEdit = computed(() => !!props.initialData?.id)
+
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+
+const normalizePublicDomain = (value: string): string =>
+  (value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .split('/')[0] ?? '')
+    .replace(/:\d+$/, '')
 
 watch(
   [() => props.modelValue, () => props.initialData],
   ([opened, data]) => {
     if (opened) {
       Object.assign(form, data ?? getDefaultForm())
+      slugEditedManually.value = Boolean(data?.slug)
     }
   },
   { immediate: true }
+)
+
+watch(
+  () => form.name,
+  (value) => {
+    if (slugEditedManually.value) return
+    form.slug = slugify(value)
+  }
 )
 
 const onCancel = () => {
   localModelValue.value = false
 }
 
+const onSlugInput = () => {
+  slugEditedManually.value = true
+  form.slug = slugify(form.slug)
+}
+
+const onPublicDomainInput = () => {
+  form.public_domain = normalizePublicDomain(form.public_domain ?? '') || null
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return ''
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
 const onSave = () => {
   const payload: TenantForm = {
-    name: form.name,
-    slug: form.slug,
+    name: form.name.trim(),
+    slug: slugify(form.slug),
+    public_domain: normalizePublicDomain(form.public_domain ?? '') || null,
     is_active: form.is_active,
   }
 
@@ -98,3 +199,11 @@ const onSave = () => {
   localModelValue.value = false
 }
 </script>
+
+<style scoped>
+.tenant-meta {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+}
+</style>

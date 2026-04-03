@@ -1,61 +1,88 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="q-mb-md text-h5 text-weight-bold">Tenants</div>
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <section>
+        <div class="text-overline">Operations</div>
+        <h1 class="text-h5 q-my-none">Tenants</h1>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Browse the workspaces connected to your admin access.</p>
+      </section>
 
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-      {{ error }}
-    </q-banner>
+      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+        {{ error }}
+      </q-banner>
 
-    <div class="row q-col-gutter-md">
-      <div
-        v-for="tenant in items"
-        :key="tenant.id"
-        class="col-6 col-sm-4 col-md-3 col-lg-2"
-      >
+      <section v-if="visibleTenants.length" class="admin-tenant-page__grid">
         <q-card
-          class="tenant-card cursor-pointer"
+          v-for="tenant in visibleTenants"
+          :key="tenant.id"
+          flat
+          bordered
+          class="admin-tenant-page__card cursor-pointer"
           @click="goToTenantDetails(tenant.id)"
         >
-          <q-card-section class="column items-center justify-center">
-            <div class="text-caption text-grey-6 q-mb-xs">
-              #{{ tenant.id }}
-            </div>
-
-            <div class="text-subtitle2 text-weight-medium text-center ellipsis">
-              {{ tenant.name }}
+          <q-card-section class="admin-tenant-page__card-section">
+            <div class="text-overline">Tenant #{{ tenant.id }}</div>
+            <div class="text-subtitle2">{{ tenant.name }}</div>
+            <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
+            <div class="text-caption q-mt-xs">
+              {{ selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive' }}
             </div>
           </q-card-section>
         </q-card>
-      </div>
-    </div>
+      </section>
 
-    <div v-if="!loading && items.length === 0" class="text-grey-7 q-mt-lg">
-      No tenants found.
-    </div>
+      <q-card v-else-if="!loading" flat bordered>
+        <q-card-section class="text-center">
+          <div class="text-subtitle1">No tenants found</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">When tenant access is assigned, workspaces will appear here.</div>
+        </q-card-section>
+      </q-card>
 
-
-
-
+      <q-card v-else flat bordered>
+        <q-card-section class="text-grey-7">Loading tenants...</q-card-section>
+      </q-card>
+    </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
+import { useAdminTenantSelection } from '../composables/useAdminTenantSelection'
 import { useTenantStore } from '../stores/tenantStore'
 
-const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
+const { selectTenantWorkspace, selectingTenantId } = useAdminTenantSelection()
 
-const refreshTenants = () => tenantStore.fetchAdminTenantsByEmail()
+const visibleTenants = computed(() => {
+  const routeTenantSlug = getTenantSlugFromRoute(route)
 
+  if (!routeTenantSlug) {
+    return items.value
+  }
+
+  return items.value.filter((tenant) => tenant.slug === routeTenantSlug)
+})
+
+const refreshTenants = () =>
+  tenantStore.fetchTenantsByMembership({
+    email: authStore.user?.email ?? null,
+  })
 
 const goToTenantDetails = (tenantId?: number) => {
   if (!tenantId) return
-  void router.push(`/app/tenants/${tenantId}`)
+  const tenant = items.value.find((item) => item.id === tenantId) ?? null
+
+  if (tenant) {
+    void selectTenantWorkspace(tenant)
+  }
 }
 
 onMounted(() => {
@@ -64,14 +91,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tenant-card {
-  min-height: 100px;
+.admin-tenant-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 0.75rem;
 }
 
-.ellipsis {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.admin-tenant-page__card {
+  width: 100%;
+}
+
+.admin-tenant-page__card-section {
+  padding: 0.75rem;
+}
+
+@media (max-width: 599px) {
+  .admin-tenant-page__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

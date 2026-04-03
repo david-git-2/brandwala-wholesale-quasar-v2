@@ -1,6 +1,13 @@
 import { supabase } from 'src/boot/supabase'
 
-import type { Tenant, TenantCreateInput, TenantDeleteInput, TenantUpdateInput } from '../types'
+import type {
+  Tenant,
+  TenantCreateInput,
+  TenantDeleteInput,
+  TenantEntry,
+  TenantEntryResolveInput,
+  TenantUpdateInput,
+} from '../types'
 
 export type TenantModule = {
   id: number
@@ -37,6 +44,28 @@ const listTenants = async (): Promise<Tenant[]> => {
   return (data as Tenant[] | null) ?? []
 }
 
+const normalizeSingleResult = <T>(value: unknown): T | null => {
+  if (Array.isArray(value)) {
+    return (value[0] as T | undefined) ?? null
+  }
+
+  return (value as T | null) ?? null
+}
+
+const resolveTenantForEntry = async (
+  payload: TenantEntryResolveInput,
+): Promise<TenantEntry | null> => {
+  const { data, error } = await supabase.rpc('resolve_tenant_for_entry', {
+    p_slug: payload.slug ?? null,
+    p_hostname: payload.hostname ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return normalizeSingleResult<TenantEntry>(data)
+}
 
 const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
   const { data, error } = await supabase.rpc('list_my_admin_tenants')
@@ -82,15 +111,14 @@ const getTenantDetailsByMembership = async (payload: {
     throw error
   }
 
-  const tenant = Array.isArray(data) ? data[0] : data
-
-  return (tenant as Tenant | null) ?? null
+  return normalizeSingleResult<Tenant>(data)
 }
 
 const createTenant = async (tenant: TenantCreateInput): Promise<Tenant> => {
   const { data, error } = await supabase.rpc('create_tenant_for_superadmin', {
     p_name: tenant.name,
     p_slug: tenant.slug,
+    p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
   })
 
@@ -112,6 +140,7 @@ const updateTenant = async (tenant: TenantUpdateInput): Promise<Tenant> => {
     p_tenant_id: tenant.id,
     p_name: tenant.name,
     p_slug: tenant.slug,
+    p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
   })
 
@@ -235,6 +264,7 @@ const deleteTenantModule = async (
 export const tenantRepository = {
   deleteTenant,
   listTenants,
+  resolveTenantForEntry,
   createTenant,
   updateTenant,
 

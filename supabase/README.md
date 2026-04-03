@@ -40,6 +40,22 @@ npm run deploy:backend
 - `backend:push` -> applies pending migrations to the linked remote project
 - `backend:types` -> regenerates TypeScript DB types to `web/src/types/supabase.ts`
 
+## Module Catalog Seed
+
+The MVP module catalog is seeded through migrations, not through a separate script.
+
+Current seeded keys:
+
+- `order_management`
+- `shipment`
+- `inventory`
+- `shop_costing_file`
+- `costing_file`
+- `accounting`
+- `invoice`
+
+The seed migration is idempotent, so rerunning migrations updates the canonical name/description/active state for those keys without creating duplicates.
+
 ## Extra scripts
 
 - `npm run backend:push` (only apply migrations)

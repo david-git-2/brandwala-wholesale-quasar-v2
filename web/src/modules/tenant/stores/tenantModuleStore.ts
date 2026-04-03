@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
 import { tenantService } from '../services/tenantService'
 import type {
   TenantModule,
@@ -29,6 +33,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load modules.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -48,6 +53,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -55,6 +61,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
           this.items.push(result.data)
         }
 
+        showSuccessNotification('Feature added successfully.')
         return result
       } finally {
         this.loading = false
@@ -70,6 +77,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -83,6 +91,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
           }
         }
 
+        showSuccessNotification('Feature updated successfully.')
         return result
       } finally {
         this.loading = false
@@ -98,10 +107,12 @@ export const useTenantModuleStore = defineStore('tenantModule', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete module.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.items = this.items.filter((item) => item.id !== payload.id)
+        showSuccessNotification('Feature removed successfully.')
         return result
       } finally {
         this.loading = false

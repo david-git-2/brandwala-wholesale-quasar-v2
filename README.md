@@ -63,28 +63,11 @@ Enum values:
 - `viewer`
 - `customer`
 
-### `public.profiles`
-
-Current columns:
-
-- `id`
-- `auth_user_id`
-- `email`
-- `full_name`
-- `avatar_url`
-- `created_at`
-- `updated_at`
-
-Note:
-- `profiles` still exists in the schema
-- current access checks do not rely on `profiles` for tenant authorization
-
 ### `public.memberships`
 
 Current columns:
 
 - `id`
-- `profile_id`
 - `tenant_id`
 - `role`
 - `is_active`
@@ -136,7 +119,6 @@ Current columns:
 
 The project currently uses these public RPCs:
 
-- `current_profile_id()`
 - `current_user_email()`
 - `is_superadmin()`
 - `is_tenant_admin(p_tenant_id)`
@@ -168,6 +150,25 @@ Current pattern:
 For future tables, use this sequence:
 
 1. Create the table and indexes.
+
+## OAuth Redirect Config
+
+The frontend now chooses the Google OAuth callback base URL like this:
+
+- development: `VITE_LOCAL_APP_URL`
+- production build: `VITE_PRODUCTION_APP_URL`
+- fallback: `window.location.origin`
+
+The app uses history routing, so the OAuth callback URL is:
+
+- `/auth/callback?scope=...`
+
+Set these env vars in the `web` app:
+
+- `VITE_LOCAL_APP_URL=http://localhost:9000`
+- `VITE_PRODUCTION_APP_URL=https://your-production-domain.example`
+
+In Supabase Auth, make sure both callback hosts are included in Redirect URLs.
 2. Enable RLS.
 3. Add policies.
 4. Add helper functions if the policy needs cross-table access.
@@ -184,6 +185,30 @@ When creating an RPC:
 - set `search_path = public`
 - use a CTE if Postgres complains about ambiguous output columns
 - do not reuse output names that can collide with table columns unless the query is fully qualified
+
+## Global API Feedback
+
+The frontend now has a shared API feedback helper at:
+
+- [`web/src/utils/appFeedback.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/utils/appFeedback.ts)
+
+Current behavior:
+
+- successful create, update, and delete actions show a Quasar `Notify` toast
+- failed API responses show a Quasar `Dialog` with the backend or fallback error message
+- the dialog includes a `Close` button so users can dismiss warnings cleanly
+
+Current wiring:
+
+- tenant, membership, module, tenant-module, and customer-group store actions call the shared helper
+- Quasar `Dialog` and `Notify` are enabled in [`web/quasar.config.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/quasar.config.ts)
+
+When adding new API actions:
+
+1. Keep returning the normalized `{ success, data, error }` shape from the service layer.
+2. In the store, call `handleApiFailure(result, fallbackMessage)` for failed responses.
+3. Call `showSuccessNotification(message)` after successful mutations.
+4. Avoid duplicating page-level warning dialogs unless the flow needs a special-case UX.
 
 ## Tenant Module Flow
 

@@ -4,6 +4,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import type { AccessRole } from '../guards/accessGuard'
 import {
+  getAppRouteLocation,
+  getShopDashboardRouteLocation,
+  getTenantHostnameForEntry,
+  getShopLoginRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext'
+import { tenantService } from 'src/modules/tenant/services/tenantService'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import {
   useAuthStore,
   type AuthAccessSnapshot,
   type AuthCustomerGroupSnapshot,
@@ -54,10 +63,35 @@ const normalizeModuleKeys = (moduleKeys: string[] | null | undefined) =>
         .filter((moduleKey): moduleKey is string => Boolean(moduleKey))
     : []
 
-export function useOAuthLogin(scope?: AuthScope) {
+const normalizeCallbackBaseUrl = (value: string | undefined) =>
+  value?.trim().replace(/\/+$/, '') || null
+
+const normalizeTenantSlug = (value: string | null | undefined) =>
+  value?.trim().toLowerCase() || null
+
+const getOAuthCallbackBaseUrl = () => {
+  const localUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_LOCAL_APP_URL)
+  const productionUrl = normalizeCallbackBaseUrl(
+    import.meta.env.VITE_PRODUCTION_APP_URL,
+  )
+
+  if (import.meta.env.DEV) {
+    return localUrl ?? window.location.origin
+  }
+
+  return productionUrl ?? window.location.origin
+}
+
+export function useOAuthLogin(
+  scope?: AuthScope,
+  options?: {
+    tenantSlug?: string | null
+  },
+) {
   const route = useRoute()
   const router = useRouter()
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
   const isLoading = ref(false)
   const resolvedScope =
     scope ?? (((route.meta as { authScope?: AuthScope }).authScope) ?? 'app')
@@ -67,16 +101,73 @@ export function useOAuthLogin(scope?: AuthScope) {
     console.log(`[auth:${resolvedScope}] ${message}`, payload ?? '')
   }
 
-  const sendBackToLogin = async (message: string, payload?: unknown) => {
+  const sendBackToLogin = async (
+    message: string,
+    payload?: unknown,
+    loginError = 'no_membership',
+  ) => {
     logAuthContext(message, payload)
     authStore.clearAccess()
     await supabase.auth.signOut()
+    if (resolvedScope === 'shop') {
+      await router.replace(
+        getShopLoginRouteLocation(route, {
+          login_error: loginError,
+        }),
+      )
+      return
+    }
+
+    if (resolvedScope === 'app') {
+      const tenantSlug = getTenantSlugFromRoute(route)
+      const loginRouteLocation = getAppRouteLocation(
+        {
+          name: currentScope.loginRouteName,
+          params: tenantSlug ? { tenantSlug } : {},
+          query: {},
+        },
+        tenantSlug,
+      )
+
+      await router.replace({
+        ...(typeof loginRouteLocation === 'string' ? { path: loginRouteLocation } : loginRouteLocation),
+        query: {
+          login_error: loginError,
+        },
+      })
+      return
+    }
+
     await router.replace({
       name: currentScope.loginRouteName,
       query: {
-        login_error: 'no_membership',
+        login_error: loginError,
       },
     })
+  }
+
+  const resolveShopTenantEntry = async () => {
+    const tenantSlug = options?.tenantSlug ?? getTenantSlugFromRoute(route)
+    const hostname = getTenantHostnameForEntry()
+    const result = await tenantService.resolveTenantForEntry({
+      slug: tenantSlug,
+      hostname,
+    })
+
+    if (!result.success || !result.data) {
+      await sendBackToLogin(
+        'Shop route could not be resolved to an active tenant',
+        {
+          tenantSlug,
+          hostname,
+          result,
+        },
+        'invalid_tenant',
+      )
+      return null
+    }
+
+    return result.data
   }
 
   const buildUserSnapshot = (
@@ -103,6 +194,24 @@ export function useOAuthLogin(scope?: AuthScope) {
       ...payload,
       savedAt: new Date().toISOString(),
     })
+
+    if (payload.scope === 'app') {
+      tenantStore.hydrateSelectedTenantFromAuth(payload.tenant)
+    }
+
+    const redirectPath =
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+
+    if (redirectPath) {
+      await router.replace(redirectPath)
+      return
+    }
+
+    if (resolvedScope === 'shop') {
+      await router.replace(getShopDashboardRouteLocation(route))
+      return
+    }
+
     await router.replace({ name: currentScope.homeRouteName })
   }
 
@@ -160,6 +269,9 @@ export function useOAuthLogin(scope?: AuthScope) {
   }
 
   const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+    const requestedTenantSlug = normalizeTenantSlug(
+      options?.tenantSlug ?? getTenantSlugFromRoute(route),
+    )
     const { data, error } = await supabase.rpc('check_login_membership', {
       p_email: userEmail,
       p_scope: 'app',
@@ -177,19 +289,84 @@ export function useOAuthLogin(scope?: AuthScope) {
       !result?.has_match ||
       result.member_id === null ||
       !result.member_email ||
-      result.member_tenant_id === null ||
       !result.matched_role
     ) {
       await sendBackToLogin('No matching membership found for this route', result)
       return false
     }
 
+    const tenantListResult = await tenantService.listTenantsByMembership({
+      email: userEmail,
+    })
+
+    if (!tenantListResult.success) {
+      await sendBackToLogin('App tenant list fetch failed', tenantListResult)
+      return false
+    }
+
+    const availableTenants = tenantListResult.data ?? []
+
+    if (availableTenants.length === 0) {
+      await sendBackToLogin('No internal tenant access found for this route', tenantListResult)
+      return false
+    }
+
+    tenantStore.setAvailableAdminTenants(availableTenants)
+
+    const requestedTenant =
+      requestedTenantSlug
+        ? availableTenants.find((tenant) => normalizeTenantSlug(tenant.slug) === requestedTenantSlug) ?? null
+        : null
+
+    if (requestedTenantSlug && !requestedTenant) {
+      await sendBackToLogin(
+        'Requested tenant slug was not available for this app user',
+        {
+          requestedTenantSlug,
+          availableTenants,
+        },
+        'invalid_tenant',
+      )
+      return false
+    }
+
+    if (!requestedTenant) {
+      authStore.saveAccess({
+        scope: 'app',
+        matchedRole: result.matched_role,
+        user,
+        member: {
+          id: result.member_id,
+          email: result.member_email.trim().toLowerCase(),
+          role: result.matched_role,
+          actorType: 'membership',
+          name: null,
+          tenantId: null,
+          customerGroupId: null,
+          isActive: Boolean(result.member_is_active),
+          createdAt: result.member_created_at ?? null,
+          updatedAt: result.member_updated_at ?? null,
+        },
+        tenant: null,
+        customerGroup: null,
+        activeModuleKeys: [],
+        savedAt: new Date().toISOString(),
+      })
+      tenantStore.clearSelectedTenant()
+
+      await router.replace({ name: 'admin-tenant-list' })
+      return true
+    }
+
+    const selectedTenantId = requestedTenant.id
+
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
       'get_app_bootstrap_context',
       {
         p_email: userEmail,
-        p_tenant_id: result.member_tenant_id,
-        p_membership_id: result.member_id,
+        p_tenant_id: selectedTenantId,
+        p_membership_id:
+          result.member_tenant_id === selectedTenantId ? result.member_id : null,
       },
     )
 
@@ -253,8 +430,15 @@ export function useOAuthLogin(scope?: AuthScope) {
     userEmail: string,
     user: AuthUserSnapshot,
   ) => {
+    const entryTenant = await resolveShopTenantEntry()
+
+    if (!entryTenant) {
+      return false
+    }
+
     const { data, error } = await supabase.rpc('check_shop_login_access', {
       p_email: userEmail,
+      p_tenant_id: entryTenant.id,
     })
 
     if (error) {
@@ -274,7 +458,15 @@ export function useOAuthLogin(scope?: AuthScope) {
       !result.member_email ||
       !matchedRole
     ) {
-      await sendBackToLogin('No matching customer access found for this route', result)
+      await sendBackToLogin(
+        'No matching customer access found for this tenant route',
+        {
+          result,
+          tenantId: entryTenant.id,
+          tenantSlug: entryTenant.slug,
+        },
+        'wrong_tenant',
+      )
       return false
     }
 
@@ -282,7 +474,7 @@ export function useOAuthLogin(scope?: AuthScope) {
       'get_shop_bootstrap_context',
       {
         p_email: userEmail,
-        p_tenant_id: result.member_tenant_id,
+        p_tenant_id: entryTenant.id,
         p_customer_group_member_id: result.member_id,
       },
     )
@@ -307,6 +499,18 @@ export function useOAuthLogin(scope?: AuthScope) {
       !bootstrapRole
     ) {
       await sendBackToLogin('Shop bootstrap returned no usable context', bootstrap)
+      return false
+    }
+
+    if (bootstrap.tenant_id !== entryTenant.id) {
+      await sendBackToLogin(
+        'Shop bootstrap tenant did not match the entry tenant',
+        {
+          bootstrap,
+          entryTenant,
+        },
+        'wrong_tenant',
+      )
       return false
     }
 
@@ -397,11 +601,26 @@ export function useOAuthLogin(scope?: AuthScope) {
 
   const handleGoogleLogin = async () => {
     isLoading.value = true
+    const callbackBaseUrl = getOAuthCallbackBaseUrl()
+    const callbackSearchParams = new URLSearchParams({
+      scope: resolvedScope,
+    })
+    const redirectPath =
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+    const tenantSlug = getTenantSlugFromRoute(route)
+
+    if (redirectPath) {
+      callbackSearchParams.set('redirect', redirectPath)
+    }
+
+    if ((resolvedScope === 'shop' || resolvedScope === 'app') && tenantSlug) {
+      callbackSearchParams.set('tenant_slug', tenantSlug)
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/#/auth/callback?scope=${resolvedScope}`,
+        redirectTo: `${callbackBaseUrl}/auth/callback?${callbackSearchParams.toString()}`,
       },
     })
 

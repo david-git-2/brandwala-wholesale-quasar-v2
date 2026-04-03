@@ -1,11 +1,22 @@
 import type { Enums, Tables } from 'src/types/supabase'
 
 export type Tenant = Tables<'tenants'>
-export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'is_active'>
+export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'public_domain' | 'is_active'>
+export type TenantEntry = {
+  id: Tenant['id']
+  name: Tenant['name']
+  slug: Tenant['slug']
+  public_domain: Tenant['public_domain']
+}
+export type TenantEntryResolveInput = {
+  slug?: Tenant['slug'] | null
+  hostname?: string | null
+}
 export type TenantUpdateInput = {
   id: Tenant['id']
   name: Tenant['name']
   slug: Tenant['slug']
+  public_domain: Tenant['public_domain']
   is_active: Tenant['is_active']
 }
 export type TenantDeleteInput = Pick<Tenant, 'id'>
@@ -58,6 +69,9 @@ export interface TenantServiceResult<T = void> {
 
 export interface TenantStoreState {
   items: Tenant[]
+  availableAdminTenants: Tenant[]
+  selectedTenantId: Tenant['id'] | null
+  selectedTenantSlug: Tenant['slug'] | null
   loading: boolean
   error: string | null
 }

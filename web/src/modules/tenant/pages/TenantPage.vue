@@ -1,57 +1,55 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="q-mb-md text-h5 text-weight-bold">Tenants</div>
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline">Platform</div>
+          <h1 class="text-h5 q-my-none">Tenants</h1>
+        </div>
+        <div class="col-auto">
+          <q-btn color="primary" unelevated icon="add" label="Add Tenant" @click="onClickAddTenant" />
+        </div>
+      </section>
 
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-      {{ error }}
-    </q-banner>
+      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+        {{ error }}
+      </q-banner>
 
-    <div class="row q-col-gutter-md">
-      <div
-        v-for="tenant in items"
-        :key="tenant.id"
-        class="col-6 col-sm-4 col-md-3 col-lg-2"
-      >
+      <section v-if="items.length" class="tenant-page__grid">
         <q-card
-          class="tenant-card cursor-pointer"
+          v-for="tenant in items"
+          :key="tenant.id"
+          flat
+          bordered
+          class="tenant-page__card cursor-pointer"
           @click="goToTenantDetails(tenant.id)"
         >
-          <q-card-section class="column items-center justify-center">
-            <div class="text-caption text-grey-6 q-mb-xs">
-              #{{ tenant.id }}
-            </div>
-
-            <div class="text-subtitle2 text-weight-medium text-center ellipsis">
-              {{ tenant.name }}
-            </div>
+          <q-card-section>
+            <div class="text-overline">Tenant #{{ tenant.id }}</div>
+            <div class="text-subtitle1">{{ tenant.name }}</div>
+            <div class="text-body2 text-grey-7">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
           </q-card-section>
         </q-card>
-      </div>
-    </div>
+      </section>
 
-    <div v-if="!loading && items.length === 0" class="text-grey-7 q-mt-lg">
-      No tenants found.
-    </div>
+      <q-card v-else-if="!loading" flat bordered>
+        <q-card-section class="text-center">
+          <div class="text-subtitle1">No tenants available</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">Create your first tenant to get started.</div>
+          <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
+        </q-card-section>
+      </q-card>
 
-    <q-page-sticky position="top-right" :offset="[18, 18]">
-      <q-btn
-        color="primary"
-        outline
-        :loading="loading"
-        label="Refresh"
-        @click="refreshTenants"
+      <q-card v-else flat bordered>
+        <q-card-section class="text-grey-7">Loading tenants...</q-card-section>
+      </q-card>
+
+      <AddTenantDialog
+        v-model="openAddDialog"
+        :initial-data="selectedTenant"
+        @save="handleSaveTenant"
       />
-    </q-page-sticky>
-
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-fab color="primary" icon="add" @click="onClickAddTenant" />
-    </q-page-sticky>
-
-    <AddTenantDialog
-      v-model="openAddDialog"
-      :initial-data="selectedTenant"
-      @save="handleSaveTenant"
-    />
+    </section>
   </q-page>
 </template>
 
@@ -68,7 +66,10 @@ type TenantForm = {
   id?: number
   name: string
   slug: string
+  public_domain: string | null
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 const router = useRouter()
@@ -91,6 +92,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
       id: payload.id,
       name: payload.name,
       slug: payload.slug,
+      public_domain: payload.public_domain,
       is_active: payload.is_active,
     }
 
@@ -99,6 +101,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
     const createPayload: TenantCreateInput = {
       name: payload.name,
       slug: payload.slug,
+      public_domain: payload.public_domain,
       is_active: payload.is_active,
     }
 
@@ -117,14 +120,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tenant-card {
-  min-height: 100px;
+.tenant-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 0.75rem;
 }
 
-.ellipsis {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.tenant-page__card {
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .tenant-page__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

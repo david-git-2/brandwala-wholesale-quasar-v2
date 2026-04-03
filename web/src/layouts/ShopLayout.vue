@@ -1,36 +1,15 @@
 <template>
   <WorkspaceShell
-    badge="SHOP"
-    eyebrow="Customer Workspace"
-    :title="workspaceTitle"
-    :subtitle="workspaceSubtitle"
-    :scope-label="scopeLabel"
-    logout-to="/auth/shop/login"
+    :logout-to="logoutTo"
     theme="shop"
     :links="links"
   >
-    <template #header-extra>
-      <div v-if="tenantName || customerGroupName" class="shop-context row items-center q-gutter-sm">
-        <q-chip
-          v-if="tenantName"
-          dense
-          color="white"
-          text-color="dark"
-          icon="storefront"
-          class="shop-context__chip"
-        >
-          {{ tenantName }}
-        </q-chip>
-        <q-chip
-          v-if="customerGroupName"
-          dense
-          color="white"
-          text-color="dark"
-          icon="groups"
-          class="shop-context__chip"
-        >
-          {{ customerGroupName }}
-        </q-chip>
+    <template #header-left>
+      <div v-if="tenantName" class="shop-context">
+        <div class="shop-context__title">{{ tenantName }}</div>
+        <div v-if="customerGroupName" class="shop-context__meta">
+          {{ customerGroupName }} · {{ roleLabel }}
+        </div>
       </div>
     </template>
 
@@ -50,24 +29,7 @@ const { links } = useShopWorkspaceLinks()
 
 const tenantName = computed(() => authStore.tenant?.name ?? '')
 const customerGroupName = computed(() => authStore.customerGroup?.name ?? '')
-
-const workspaceTitle = computed(() =>
-  customerGroupName.value ? `${customerGroupName.value} Portal` : 'Ordering Portal',
-)
-
-const workspaceSubtitle = computed(() => {
-  if (tenantName.value && customerGroupName.value) {
-    return `Build carts, coordinate approvals, and manage order negotiation for ${customerGroupName.value} inside ${tenantName.value}.`
-  }
-
-  if (customerGroupName.value) {
-    return `Build carts, coordinate approvals, and manage order negotiation for ${customerGroupName.value}.`
-  }
-
-  return 'Build carts, coordinate approvals, and manage order negotiation with your team.'
-})
-
-const scopeLabel = computed(() => {
+const roleLabel = computed(() => {
   switch (authStore.matchedRole) {
     case 'customer_admin':
       return 'Customer Admin'
@@ -76,14 +38,35 @@ const scopeLabel = computed(() => {
     case 'customer_staff':
       return 'Customer Staff'
     default:
-      return 'Customer'
+      return 'Customer User'
   }
 })
+const logoutTo = computed(() =>
+  authStore.tenantSlug ? `/auth/${authStore.tenantSlug}/shop/login` : '/auth/shop/login',
+)
 </script>
 
 <style scoped>
-.shop-context__chip {
-  border: 1px solid rgba(136, 71, 37, 0.12);
-  box-shadow: 0 8px 18px rgba(136, 71, 37, 0.08);
+.shop-context {
+  min-width: 0;
+}
+
+.shop-context__title {
+  overflow: hidden;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--bw-theme-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-context__meta {
+  overflow: hidden;
+  margin-top: 0.2rem;
+  color: var(--bw-theme-muted);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

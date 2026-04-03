@@ -1,10 +1,5 @@
 <template>
   <WorkspaceShell
-    badge="BW"
-    eyebrow="BrandWala Core"
-    title="Platform Control"
-    subtitle="Configure tenants, modules, and platform-wide access from one place."
-    scope-label="Superadmin"
     logout-to="/auth/platform/login"
     theme="platform"
     :links="links"

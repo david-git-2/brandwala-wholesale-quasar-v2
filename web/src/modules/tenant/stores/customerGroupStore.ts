@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
 import { customerGroupService } from '../services/customerGroupService'
 import type {
   CustomerGroup,
@@ -35,6 +39,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load customer groups.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -54,6 +59,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create customer group.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -61,6 +67,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
           this.groups.push(result.data)
         }
 
+        showSuccessNotification('Customer group created successfully.')
         return result
       } finally {
         this.loading = false
@@ -76,6 +83,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update customer group.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -89,6 +97,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
           }
         }
 
+        showSuccessNotification('Customer group updated successfully.')
         return result
       } finally {
         this.loading = false
@@ -104,11 +113,13 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete customer group.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.groups = this.groups.filter((item) => item.id !== payload.id)
         this.members = []
+        showSuccessNotification('Customer group deleted successfully.')
         return result
       } finally {
         this.loading = false
@@ -125,6 +136,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load customer group members.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -144,6 +156,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to create customer group member.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -151,6 +164,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
           this.members.push(result.data)
         }
 
+        showSuccessNotification('Customer user created successfully.')
         return result
       } finally {
         this.membersLoading = false
@@ -166,6 +180,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update customer group member.'
+          handleApiFailure(result, this.error)
           return result
         }
 
@@ -179,6 +194,7 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
           }
         }
 
+        showSuccessNotification('Customer user updated successfully.')
         return result
       } finally {
         this.membersLoading = false
@@ -194,10 +210,12 @@ export const useCustomerGroupStore = defineStore('customerGroup', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete customer group member.'
+          handleApiFailure(result, this.error)
           return result
         }
 
         this.members = this.members.filter((item) => item.id !== payload.id)
+        showSuccessNotification('Customer user deleted successfully.')
         return result
       } finally {
         this.membersLoading = false

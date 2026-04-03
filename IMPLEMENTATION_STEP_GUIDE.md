@@ -1,405 +1,257 @@
-# Step-by-Step Implementation Guide
+# Costing File Implementation Steps
 
-This guide turns the master plan into an implementation sequence we can follow safely.
+This guide is now focused on the real implementation of the `Costing File` module.
 
-The working style for this project should be:
+Use [COSTING_FILE_MODULE_SPEC.md](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/COSTING_FILE_MODULE_SPEC.md) as the feature source of truth.
 
-1. implement one step
-2. verify that step
+## Goal
+
+Build the full feature in production order:
+
+1. backend first
+2. frontend second
+3. verify the full flow end to end
+
+This is not a mock plan.
+
+## Working Rule
+
+Do the work in small passes:
+
+1. complete one step
+2. verify it works
 3. move to the next step
 
-Use this file as the execution checklist.
+## UI Consistency Rule
 
-Use `MASTER_PLAN.md` as the product source of truth.
+For simple data entry and list screens across the app, prefer simple UI:
 
-Use `LOGIN_NAV_PERMISSION_FLOW.md` as the access-flow reference.
+- use a plain page header
+- use direct input fields and one clear primary action
+- use simple tables for row data
+- use icon actions for row edit and delete
+- avoid heavy cards, stacked helper sections, and decorative table wrappers unless they add real value
 
-## Guiding Rule
-
-Keep this rule throughout implementation:
-
-- database controls which modules exist for a tenant
-- code controls what each role can do inside those modules
-
-## Recommended Order
-
-### Step 1. Create Customer Access Tables
+## Step 1. Finalize Backend Data Contract
 
 Goal:
 
-Add the customer-side data model required by the master plan.
+Lock the exact backend shape before writing UI behavior.
 
 Scope:
 
-- create `customer_groups`
-- create `customer_group_members`
-- add required indexes
-- add basic constraints
-- add `updated_at` triggers if needed
+- confirm `costing_files` fields
+- confirm `costing_file_items` fields
+- confirm file status enum values
+- confirm item status enum values
+- confirm required foreign keys
+- confirm which calculated values are stored and which are derived
 
-Important rules from the master plan:
+Expected result:
 
-- `customer_groups` belongs to one tenant
-- `customer_group_members` belongs to one customer group
-- role must support:
-  - `admin`
-  - `negotiator`
-  - `staff`
-- email must be unique inside the same customer group
+- one clear backend contract exists for database, policies, RPC, and frontend integration
 
-Do not do yet:
-
-- login RPC changes
-- frontend changes
-- permission bootstrap
-
-Verify:
-
-- tables exist
-- constraints are correct
-- uniqueness rule works
-- tenant relationship works
-
-### Step 2. Add Customer Access RLS and Helper Functions
+## Step 2. Create Backend Schema
 
 Goal:
 
-Protect the new customer tables and define access rules.
+Implement the database layer for the feature.
 
 Scope:
 
-- enable RLS on `customer_groups`
-- enable RLS on `customer_group_members`
-- add helper functions needed for tenant admin checks
-- add read/write policies for:
-  - superadmin
-  - tenant admin
+- create `costing_files`
+- create `costing_file_items`
+- add constraints
+- add indexes
+- add file status constraint or enum
+- add item status constraint or enum
+- normalize `market` to uppercase
+- ensure `customer_group_id` and `tenant_id` are required on `costing_files`
+- ensure `costing_file_id` is required on `costing_file_items`
 
-Expected behavior:
+Expected result:
 
-- superadmin can manage all customer groups and members
-- tenant admin can manage customer groups and members only inside their tenant
-- staff should not manage customer access records unless the plan later says so
+- the database structure is ready for real feature usage
 
-Do not do yet:
-
-- shop login RPC
-- frontend integration
-
-Verify:
-
-- tenant admin can access only their own tenant data
-- cross-tenant access is blocked
-- superadmin access still works
-
-### Step 3. Implement `/shop` Login Check
+## Step 3. Add Backend Access Rules
 
 Goal:
 
-Make shop login follow the master plan instead of internal membership logic.
+Enforce the confirmed role behavior on the backend.
 
 Scope:
 
-- create or update login RPC for `/shop`
-- validate against `customer_group_members`
-- resolve tenant context through `customer_groups`
-- return the customer actor payload needed by frontend
+- add RLS policies for admin
+- add RLS policies for staff
+- add RLS policies for customer-side users
+- customer can create item requests
+- customer cannot update submitted `website_url` and `quantity`
+- customer can update `customer_profit_rate`
+- staff can update only enrichment fields
+- admin can manage all fields and workflow state
+- item status supports:
+  - `pending`
+  - `accepted`
+  - `rejected`
 
-Expected behavior:
+Expected result:
 
-- `/platform` still checks `memberships`
-- `/app` still checks `memberships`
-- `/shop` checks `customer_group_members`
+- the permission rules are enforced by backend, not only by UI
 
-Important rule:
-
-- internal tenant users cannot use `/shop` unless they also exist as a customer-group member
-
-Do not do yet:
-
-- navigation generation
-- module-aware route guards
-
-Verify:
-
-- valid customer member can log in to `/shop`
-- invalid email cannot log in
-- internal membership alone does not grant `/shop` access
-
-### Step 4. Add Tenant Module Management Backend
+## Step 4. Add Backend Write Helpers
 
 Goal:
 
-Make `tenant_modules` usable as the source of tenant feature enablement.
+Create a clean backend API for the frontend to call.
 
 Scope:
 
-- add any missing RPCs for tenant modules
-- support:
-  - list tenant modules
-  - assign module to tenant
-  - update active state
-  - remove module from tenant if needed
+- create costing file
+- list costing files by tenant and customer-group context
+- get costing file details
+- create costing file item request
+- update staff enrichment fields
+- update admin pricing fields
+- update customer profit rate
+- update item status
+- update file status
 
-Expected behavior:
+Expected result:
 
-- superadmin manages tenant module assignments
-- tenant users can read only what they are allowed to read
+- frontend can use stable backend entry points instead of writing raw logic everywhere
 
-Do not do yet:
-
-- role-action DB permissions
-- dynamic frontend navigation
-
-Verify:
-
-- superadmin can assign modules to a tenant
-- enabled/disabled state is returned correctly
-- duplicate tenant/module assignment is blocked
-
-### Step 5. Create Post-Login Bootstrap RPCs
+## Step 5. Add Centralized Calculation Logic
 
 Goal:
 
-Reduce frontend guesswork by returning session-ready context after login.
+Implement the pricing rules in one place.
 
 Scope:
 
-- create bootstrap RPC for `/app`
-- create bootstrap RPC for `/shop`
-- return:
-  - actor/member info
-  - tenant info
-  - active module keys
-  - any context required for shell rendering
+- create one dedicated JavaScript or TypeScript calculation file
+- calculate total weight
+- calculate auxiliary price GBP
+- calculate item price GBP
+- select cargo rate dynamically
+- calculate costing price GBP
+- calculate costing price BDT
+- calculate offer price BDT
+- calculate buyer sell price
+- apply GBP decimal rules
+- apply BDT round-up-to-0-or-5 rules
+- keep formulas out of page components
 
-Expected behavior:
+Expected result:
 
-- frontend does not need to manually stitch together many calls after login
+- all pricing logic is centralized and reusable
 
-Do not do yet:
-
-- full frontend shell rewrite
-
-Verify:
-
-- bootstrap returns correct tenant
-- bootstrap returns only active tenant modules
-- app and shop payloads match their own scope rules
-
-### Step 6. Update Frontend Auth Store for Scope Context
+## Step 6. Connect Backend Calculations To Data Flow
 
 Goal:
 
-Store enough actor/session context for the shell and guards.
+Make backend and calculation logic work together consistently.
 
 Scope:
 
-- extend auth/session store shape if needed
-- store:
-  - scope
-  - role
-  - tenant id
-  - membership id or customer-group-member id
-  - customer group id for `/shop`
+- decide when calculated values are recomputed
+- populate stored calculated fields if the schema requires them
+- ensure admin override replaces calculated offer price
+- ensure customer profit updates buyer sell price correctly
+- ensure total weight stays derived and is not stored
 
-Expected behavior:
+Expected result:
 
-- each scope has the minimum stable context needed after login
+- saved records and displayed values stay consistent
 
-Do not do yet:
-
-- dynamic nav rendering
-
-Verify:
-
-- login persists the right actor context
-- logout clears it
-- page refresh preserves valid context
-
-### Step 7. Implement Module Registry in Frontend Code
+## Step 7. Build Admin Frontend
 
 Goal:
 
-Define one frontend source of truth for possible navigation items and module routes.
+Implement the real admin UI on top of backend data.
 
 Scope:
 
-- create a module navigation registry
-- map each module key to:
-  - label
-  - route
-  - icon
-  - scope
-  - required action if needed
+- create costing file page with minimal create form:
+  - name
+  - market
+- show costing file list
+- open details on click
+- show product list in table format
+- allow admin editing for:
+  - workflow state
+  - enrichment fields
+  - pricing fields
+  - offer override
+  - customer profit rate
+  - item status
 
-Expected behavior:
+Expected result:
 
-- layouts no longer need hardcoded business-module links
+- admin can perform the full costing workflow from the real UI
 
-Do not do yet:
-
-- final dynamic filtering in layouts
-
-Verify:
-
-- every planned module has a registry entry
-- route mapping is consistent
-
-### Step 8. Implement Permission Resolution in Code
+## Step 8. Build Staff Frontend
 
 Goal:
 
-Apply the chosen rule:
-
-- DB decides whether module exists for tenant
-- code decides what role can do inside module
+Implement the real staff UI on top of backend data.
 
 Scope:
 
-- add code-based permission map for roles
-- calculate effective permissions using:
-  - scope
-  - role
-  - active tenant modules
+- show costing file list
+- open costing file details
+- show product list in table format
+- allow staff editing only for:
+  - name
+  - image URL
+  - product weight
+  - package weight
+  - web price GBP
+  - delivery price GBP
+- keep pricing controls and workflow controls unavailable
 
-Expected behavior:
+Expected result:
 
-- module access requires both:
-  - module enabled
-  - role allowed
+- staff can do enrichment only, with backend-backed restrictions
 
-Do not do yet:
-
-- per-action database-driven permission system
-
-Verify:
-
-- disabled module never appears as usable
-- enabled module is still blocked if role is not allowed
-
-### Step 9. Generate Navigation From Permissions
+## Step 9. Build Customer Frontend
 
 Goal:
 
-Replace hardcoded layout navigation with generated navigation.
+Implement the real customer UI on top of backend data.
 
 Scope:
 
-- create nav composable/store
-- build visible menu items from:
-  - scope
-  - active module keys
-  - role permission map
-- wire layouts to that generated list
+- show costing file list relevant to the customer group
+- open costing file details
+- show product list in table format
+- allow customer to create item request rows:
+  - website URL
+  - quantity
+- keep submitted `website_url` and `quantity` read-only later
+- allow customer to update `customer_profit_rate`
+- show offer and buyer sell calculations
 
-Expected behavior:
+Expected result:
 
-- `/platform`, `/app`, and `/shop` each show only allowed links
+- customer can submit requests and later use buyer profit planning on the real feature
 
-Verify:
-
-- changing tenant modules changes visible nav
-- changing role changes visible nav
-- layouts render correctly with no hardcoded business-module assumptions
-
-### Step 10. Upgrade Route Guards
+## Step 10. Verify End To End
 
 Goal:
 
-Protect routes using both auth and module access.
-
-Scope:
-
-- keep login/scope checks
-- add module-aware checks
-- block access when:
-  - module disabled
-  - role not allowed
-
-Expected behavior:
-
-- hidden nav item cannot still be opened directly by URL
+Confirm the real feature works across backend and frontend.
 
 Verify:
 
-- direct route access is blocked when permission fails
-- valid route access still works
+- admin can create a costing file
+- customer can add item requests
+- staff can enrich item data
+- admin can enter pricing inputs and finalize offer
+- customer can enter buyer profit rate later
+- calculated fields update correctly
+- backend restrictions block invalid updates
+- frontend matches backend permissions
 
-### Step 11. Build Customer Group Admin UI
+Expected result:
 
-Goal:
-
-Expose the new customer access model in `/app`.
-
-Scope:
-
-- customer group listing
-- create/edit customer group
-- customer group member listing
-- create/edit/deactivate customer group member
-
-Expected behavior:
-
-- tenant admin can manage customer-side access from internal app area
-
-Verify:
-
-- tenant admin sees only their tenant’s customer groups
-- create/update flows work
-- customer roles save correctly
-
-### Step 12. Finish Shop Area Integration
-
-Goal:
-
-Make `/shop` fully use customer-group login and permission context.
-
-Scope:
-
-- update shop login flow
-- update shop shell
-- update shop guards
-- ensure shop routes use customer actor context, not internal membership logic
-
-Verify:
-
-- shop login follows customer-group access only
-- shop nav respects enabled modules
-- customer roles behave correctly
-
-## Verification Style For Every Step
-
-For each step, verification should include:
-
-- schema check
-- permission check
-- negative case check
-- regression check on earlier scopes
-
-In plain language:
-
-- confirm the new thing works
-- confirm forbidden access is blocked
-- confirm older flows did not break
-
-## Suggested Working Loop
-
-Use this exact cycle:
-
-1. implement step N
-2. verify step N
-3. summarize what changed
-4. wait for approval
-5. move to step N+1
-
-## First Step To Start With
-
-Start with Step 1.
-
-Reason:
-
-- it is required by the master plan
-- it unlocks proper `/shop` login
-- it has low frontend impact
-- it gives us a clean backend base for later steps
+- the module is ready for refinement, testing, and rollout

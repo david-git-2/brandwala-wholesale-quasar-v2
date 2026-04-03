@@ -1,5 +1,6 @@
 <template>
-  <section class="auth-panel" :class="`auth-panel--${tone}`">
+  <section class="auth-panel" :class="[`auth-panel--${tone}`, `theme-${tone}`]">
+    <div class="auth-panel__icon">{{ panelBadge }}</div>
     <div class="auth-panel__eyebrow">{{ eyebrow }}</div>
     <h1 class="auth-panel__title">{{ title }}</h1>
     <p class="auth-panel__description">{{ description }}</p>
@@ -20,24 +21,11 @@
         class="auth-panel__cta"
         :label="isLoading ? 'Connecting to Google...' : ctaLabel"
         :loading="isLoading"
+        :disable="disabled"
         @click="handleGoogleLogin"
       />
 
-      <div class="auth-panel__security">
-        <q-icon name="verified_user" size="18px" />
-        <span>{{ supportText }}</span>
-      </div>
-    </div>
-
-    <div class="auth-panel__notes">
-      <div
-        v-for="item in notes"
-        :key="item"
-        class="auth-panel__note"
-      >
-        <q-icon name="done" size="16px" />
-        <span>{{ item }}</span>
-      </div>
+      <p v-if="supportText" class="auth-panel__support">{{ supportText }}</p>
     </div>
   </section>
 </template>
@@ -54,13 +42,29 @@ const props = defineProps<{
   title: string
   description: string
   ctaLabel: string
-  supportText: string
-  notes: string[]
+  disabled?: boolean
+  supportText?: string
+  tenantSlug?: string | null
   tone: 'platform' | 'app' | 'shop'
 }>()
 
 const route = useRoute()
-const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope)
+const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
+  tenantSlug: props.tenantSlug ?? null,
+})
+
+const panelBadge = computed(() => {
+  switch (props.tone) {
+    case 'platform':
+      return 'BW'
+    case 'app':
+      return 'APP'
+    case 'shop':
+      return 'SHOP'
+    default:
+      return 'BW'
+  }
+})
 
 const loginErrorMessage = computed(() => {
   const error = route.query.login_error
@@ -69,93 +73,108 @@ const loginErrorMessage = computed(() => {
     return 'This Google account does not have permission for this entry point yet.'
   }
 
+  if (error === 'wrong_tenant') {
+    return props.scope === 'app'
+      ? 'This Google account is not allowed for the requested tenant workspace.'
+      : 'This Google account is not allowed for this tenant shop link.'
+  }
+
+  if (error === 'invalid_tenant') {
+    return props.scope === 'app'
+      ? 'The requested tenant workspace could not be found for this account.'
+      : 'This shop link is not connected to an active tenant.'
+  }
+
   return ''
 })
 </script>
 
 <style scoped>
 .auth-panel {
+  --auth-panel-accent: var(--bw-theme-primary, var(--q-primary));
+  --auth-panel-soft: rgb(var(--bw-theme-primary-rgb, 141 95 47) / 0.08);
+  --auth-panel-bg: color-mix(in srgb, var(--bw-theme-surface, white) 92%, white 8%);
+  --auth-panel-border: var(--bw-theme-border, rgb(0 0 0 / 0.07));
+  --auth-panel-copy: var(--bw-theme-muted, #4b5563);
+  --auth-panel-title: var(--bw-theme-ink, #1f2937);
   padding: clamp(1.25rem, 4vw, 2rem);
-  border-radius: 1.75rem;
-  border: 1px solid rgba(95, 70, 43, 0.12);
-  background: rgba(255, 250, 242, 0.8);
-  box-shadow:
-    0 1rem 2.2rem rgba(68, 51, 31, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  border-radius: 1.4rem;
+  border: 1px solid var(--auth-panel-border);
+  background: var(--auth-panel-bg);
+  box-shadow: 0 1rem 2rem rgb(15 23 42 / 0.06);
 }
 
-.auth-panel--platform {
-  background: linear-gradient(180deg, rgba(255, 251, 245, 0.9), rgba(246, 237, 224, 0.86));
-}
-
-.auth-panel--app {
-  background: linear-gradient(180deg, rgba(247, 252, 248, 0.9), rgba(233, 245, 237, 0.86));
-}
-
-.auth-panel--shop {
-  background: linear-gradient(180deg, rgba(255, 249, 244, 0.92), rgba(250, 235, 224, 0.88));
+.auth-panel__icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: linear-gradient(
+    145deg,
+    var(--auth-panel-accent),
+    color-mix(in srgb, var(--auth-panel-accent) 62%, white 38%)
+  );
+  color: #fffaf5;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  box-shadow: 0 16px 28px rgb(var(--bw-theme-primary-rgb, 141 95 47) / 0.16);
 }
 
 .auth-panel__eyebrow {
   font-size: 0.75rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #7b6550;
+  color: var(--auth-panel-accent);
+  text-align: center;
 }
 
 .auth-panel__title {
   margin: 0.5rem 0 0;
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
-  line-height: 1;
+  font-size: clamp(1.8rem, 4vw, 2.2rem);
+  line-height: 1.05;
   font-weight: 700;
-  color: #2b2118;
+  color: var(--auth-panel-title);
+  text-align: center;
 }
 
 .auth-panel__description {
   margin: 0.9rem 0 0;
-  max-width: 38ch;
-  color: #6e5b49;
-  line-height: 1.65;
+  max-width: 34ch;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--auth-panel-copy);
+  line-height: 1.6;
+  text-align: center;
 }
 
 .auth-panel__error {
   margin-top: 1rem;
-  background: rgba(176, 52, 30, 0.12);
+  background: rgb(193 0 21 / 0.1);
   color: #7c2417;
-  border: 1px solid rgba(176, 52, 30, 0.2);
+  border: 1px solid rgb(193 0 21 / 0.16);
 }
 
 .auth-panel__actions {
   display: grid;
-  gap: 0.9rem;
-  margin-top: 1.4rem;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .auth-panel__cta {
   justify-content: center;
   min-height: 3.4rem;
-  border-radius: 1rem;
-  background: #2f2419;
-  color: #fff8f0;
+  border-radius: 0.95rem;
+  background: var(--auth-panel-accent);
+  color: #fffaf5;
 }
 
-.auth-panel__security {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: #6e5b49;
-}
-
-.auth-panel__notes {
-  display: grid;
-  gap: 0.8rem;
-  margin-top: 1.5rem;
-}
-
-.auth-panel__note {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #463628;
+.auth-panel__support {
+  margin: 0;
+  color: var(--auth-panel-copy);
+  line-height: 1.5;
+  text-align: center;
 }
 </style>

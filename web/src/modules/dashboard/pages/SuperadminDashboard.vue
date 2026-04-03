@@ -1,35 +1,33 @@
 <template>
-  <q-page class="dashboard-page">
+  <q-page class="dashboard-page theme-platform">
     <section class="dashboard-hero">
-      <div>
-        <div class="dashboard-eyebrow">Platform overview</div>
-        <h1>Keep tenants, features, and rollout controls aligned.</h1>
+      <div class="dashboard-copy">
+        <div class="dashboard-eyebrow">Platform</div>
+        <h1>Platform control stays here.</h1>
         <p>
-          This area is the command surface for superadmins. From here, BrandWala can shape how
-          each business enters the platform and which modules are available.
+          Use this workspace to keep tenants, modules, and access rules in sync without digging
+          through extra panels.
         </p>
       </div>
 
-      <div class="dashboard-chip">Signed in as {{ authStore.matchedRole }}</div>
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__label">Current access</div>
+        <div class="dashboard-panel__value">{{ authStore.matchedRole }}</div>
+        <div class="dashboard-panel__meta">Superadmin tools and rollout controls are available.</div>
+      </div>
     </section>
 
-    <section class="dashboard-grid">
-      <article class="dashboard-card">
-        <div class="dashboard-card__label">Tenants</div>
-        <div class="dashboard-card__title">Business rollout</div>
-        <p>Create tenants, verify domains, and keep activation status clean.</p>
+    <section class="dashboard-strip">
+      <article class="dashboard-block">
+        <div class="dashboard-block__label">Tenants</div>
+        <h2>Govern workspace rollout</h2>
+        <p>Create businesses, review their status, and keep platform access clean.</p>
       </article>
 
-      <article class="dashboard-card">
-        <div class="dashboard-card__label">Modules</div>
-        <div class="dashboard-card__title">Feature governance</div>
-        <p>Control what each tenant can see and keep navigation generated from enabled modules.</p>
-      </article>
-
-      <article class="dashboard-card dashboard-card--accent">
-        <div class="dashboard-card__label">Direction</div>
-        <div class="dashboard-card__title">Customer groups next</div>
-        <p>The next major slice is customer-group access and the shop-side ordering flow.</p>
+      <article class="dashboard-block">
+        <div class="dashboard-block__label">Modules</div>
+        <h2>Control feature exposure</h2>
+        <p>Decide which modules exist and which tenants are allowed to use them.</p>
       </article>
     </section>
   </q-page>
@@ -43,74 +41,90 @@ const authStore = useAuthStore();
 
 <style scoped>
 .dashboard-page {
+  --dashboard-border: var(--bw-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 94%, white 6%);
+  --dashboard-ink: var(--bw-theme-ink);
+  --dashboard-muted: var(--bw-theme-muted);
+  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.1);
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .dashboard-hero,
-.dashboard-card {
-  border: 1px solid rgba(104, 77, 45, 0.12);
-  border-radius: 1.5rem;
-  background: rgba(255, 251, 245, 0.72);
-  padding: 1.25rem;
+.dashboard-block,
+.dashboard-panel {
+  border: 1px solid var(--dashboard-border);
+  border-radius: 1.25rem;
+  background: var(--dashboard-surface);
+  padding: 1.35rem;
 }
 
 .dashboard-hero {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
+  align-items: stretch;
+}
+
+.dashboard-copy {
+  max-width: 44rem;
 }
 
 .dashboard-eyebrow,
-.dashboard-card__label {
+.dashboard-panel__label,
+.dashboard-block__label {
   font-size: 0.74rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7b644a;
-}
-
-.dashboard-hero h1,
-.dashboard-card__title {
-  margin: 0.4rem 0 0;
-  line-height: 1;
-  color: #281f17;
+  color: var(--dashboard-muted);
 }
 
 .dashboard-hero h1 {
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  max-width: 13ch;
+  margin: 0.45rem 0 0;
+  line-height: 1.02;
+  color: var(--dashboard-ink);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  max-width: 12ch;
 }
 
 .dashboard-hero p,
-.dashboard-card p {
-  margin: 0.9rem 0 0;
-  max-width: 48ch;
-  color: #665544;
-  line-height: 1.7;
+.dashboard-block p,
+.dashboard-panel__meta {
+  margin: 0.85rem 0 0;
+  color: var(--dashboard-muted);
+  line-height: 1.65;
 }
 
-.dashboard-chip {
-  padding: 0.7rem 0.95rem;
-  border-radius: 999px;
-  background: rgba(141, 95, 47, 0.12);
-  color: #4f3820;
-  white-space: nowrap;
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--dashboard-accent-soft);
 }
 
-.dashboard-grid {
+.dashboard-panel__value {
+  margin-top: 0.45rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--dashboard-ink);
+  text-transform: capitalize;
+}
+
+.dashboard-strip {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dashboard-card--accent {
-  background: linear-gradient(180deg, rgba(250, 239, 223, 0.88), rgba(242, 224, 196, 0.7));
+.dashboard-block h2 {
+  margin: 0.4rem 0 0;
+  font-size: 1.18rem;
+  color: var(--dashboard-ink);
 }
 
 @media (max-width: 900px) {
   .dashboard-hero,
-  .dashboard-grid {
+  .dashboard-strip {
     grid-template-columns: 1fr;
   }
 }

@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh Lpr lFf" class="workspace-shell" :class="themeClass">
+  <q-layout view="hHh Lpr lFf" class="workspace-shell" :class="themeClasses">
     <q-header class="workspace-shell__header">
       <q-toolbar class="workspace-shell__toolbar">
         <q-btn
@@ -11,26 +11,14 @@
           @click="drawerOpen = !drawerOpen"
         />
 
-        <div class="workspace-shell__brand">
-          <div class="workspace-shell__badge">{{ badge }}</div>
-
-          <div class="workspace-shell__brand-copy">
-            <div class="workspace-shell__eyebrow">{{ eyebrow }}</div>
-            <div class="workspace-shell__title">{{ title }}</div>
-          </div>
+        <div class="workspace-shell__context">
+          <slot name="header-left" />
         </div>
 
         <q-space />
 
         <div class="workspace-shell__actions">
           <slot name="header-extra" />
-
-          <div class="workspace-shell__identity">
-            <div class="workspace-shell__identity-label">{{ scopeLabel }}</div>
-            <div class="workspace-shell__identity-value">
-              {{ userName }}
-            </div>
-          </div>
         </div>
       </q-toolbar>
     </q-header>
@@ -44,18 +32,6 @@
     >
       <div class="workspace-shell__drawer-inner">
         <div class="workspace-shell__drawer-top">
-          <div class="workspace-shell__brand workspace-shell__brand--stacked">
-            <div class="workspace-shell__badge workspace-shell__badge--large">
-              {{ badge }}
-            </div>
-
-            <div class="workspace-shell__brand-copy">
-              <div class="workspace-shell__eyebrow">{{ eyebrow }}</div>
-              <div class="workspace-shell__title">{{ title }}</div>
-              <div class="workspace-shell__subtitle">{{ subtitle }}</div>
-            </div>
-          </div>
-
           <div class="workspace-shell__summary">
             <div class="workspace-shell__summary-label">Signed in as</div>
             <div class="workspace-shell__summary-value">{{ userName }}</div>
@@ -82,7 +58,6 @@
 
                 <q-item-section>
                   <q-item-label>{{ link.title }}</q-item-label>
-                  <q-item-label caption>{{ link.caption }}</q-item-label>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -108,12 +83,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { requestConfirmation } from 'src/utils/appFeedback'
 
 export interface WorkspaceLink {
   title: string
@@ -123,97 +98,104 @@ export interface WorkspaceLink {
 }
 
 const props = defineProps<{
-  badge: string
-  eyebrow: string
-  title: string
-  subtitle: string
-  scopeLabel: string
   logoutTo: string
   theme: 'platform' | 'app' | 'shop'
   links: WorkspaceLink[]
 }>()
 
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop']
+
 const drawerOpen = ref(false)
-const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const themeClass = computed(() => `workspace-shell--${props.theme}`)
+const themeClasses = computed(() => [
+  `workspace-shell--${props.theme}`,
+  `theme-${props.theme}`,
+])
+
+const applyBodyThemeClass = (theme: 'platform' | 'app' | 'shop') => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
+  document.body.classList.add(`theme-${theme}`)
+}
+
+watch(
+  () => props.theme,
+  (theme) => {
+    applyBodyThemeClass(theme)
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
+})
 const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
 )
 const userEmail = computed(() => authStore.user?.email ?? 'No active session')
 
-const handleLogout = () => {
-  $q.dialog({
-    title: 'Sign out',
-    message: 'End your current session on this workspace?',
-    cancel: true,
-    persistent: true,
-    ok: {
-      color: 'primary',
-      unelevated: true,
-      label: 'Sign out',
-    },
-  }).onOk(() => {
-    void (async () => {
-      await supabase.auth.signOut()
-      authStore.clearAccess()
+const handleLogout = async () => {
+  const shouldSignOut = await requestConfirmation(
+    'End your current session on this workspace?',
+    'Sign out',
+    'Sign out',
+  )
+
+  if (!shouldSignOut) {
+    return
+  }
+
+  drawerOpen.value = false
+
+  try {
+    await supabase.auth.signOut()
+  } catch (error) {
+    console.error('[auth] Failed to sign out from Supabase session', error)
+  } finally {
+    authStore.clearAccess()
+
+    try {
       await router.replace(props.logoutTo)
-    })()
-  })
+    } catch (error) {
+      console.error('[auth] Failed to redirect after sign out', error)
+    }
+  }
 }
 </script>
 
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
-  --shell-base: #f4f0e8;
-  --shell-surface: rgba(255, 252, 246, 0.86);
-  --shell-border: rgba(72, 58, 40, 0.12);
-  --shell-shadow: rgba(59, 46, 28, 0.14);
-  --shell-ink: #241d16;
-  --shell-muted: #7d6b58;
-  --shell-accent: #8a5b2b;
-  --shell-accent-soft: rgba(138, 91, 43, 0.12);
+  --shell-base: var(--bw-theme-base, #f4f0e8);
+  --shell-surface: var(--bw-theme-surface, rgb(255 252 246 / 0.86));
+  --shell-border: var(--bw-theme-border, rgb(72 58 40 / 0.12));
+  --shell-shadow: var(--bw-theme-shadow, rgb(59 46 28 / 0.14));
+  --shell-ink: var(--bw-theme-ink, #241d16);
+  --shell-muted: var(--bw-theme-muted, #7d6b58);
+  --shell-accent: var(--bw-theme-primary, #8a5b2b);
+  --shell-accent-soft: var(--bw-theme-primary-soft, rgb(138 91 43 / 0.12));
   background:
-    radial-gradient(circle at top left, rgba(199, 145, 84, 0.18), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(120, 95, 62, 0.12), transparent 30%),
-    linear-gradient(180deg, #f8f3ec 0%, var(--shell-base) 100%);
+    radial-gradient(
+      circle at top left,
+      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.18),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.12),
+      transparent 30%
+    ),
+    linear-gradient(180deg, var(--bw-theme-gradient-top, #f8f3ec) 0%, var(--shell-base) 100%);
   color: var(--shell-ink);
-}
-
-.workspace-shell--platform {
-  --shell-base: #f2ede6;
-  --shell-surface: rgba(252, 249, 243, 0.88);
-  --shell-border: rgba(78, 57, 31, 0.12);
-  --shell-shadow: rgba(95, 66, 31, 0.12);
-  --shell-ink: #271d14;
-  --shell-muted: #79624a;
-  --shell-accent: #8d5f2f;
-  --shell-accent-soft: rgba(141, 95, 47, 0.12);
-}
-
-.workspace-shell--app {
-  --shell-base: #edf3ef;
-  --shell-surface: rgba(247, 252, 248, 0.88);
-  --shell-border: rgba(33, 92, 63, 0.12);
-  --shell-shadow: rgba(33, 92, 63, 0.12);
-  --shell-ink: #15261d;
-  --shell-muted: #587061;
-  --shell-accent: #2f7d57;
-  --shell-accent-soft: rgba(47, 125, 87, 0.12);
-}
-
-.workspace-shell--shop {
-  --shell-base: #f5efe8;
-  --shell-surface: rgba(255, 249, 243, 0.88);
-  --shell-border: rgba(136, 71, 37, 0.12);
-  --shell-shadow: rgba(136, 71, 37, 0.12);
-  --shell-ink: #2f1d16;
-  --shell-muted: #7d6658;
-  --shell-accent: #b45f34;
-  --shell-accent-soft: rgba(180, 95, 52, 0.12);
 }
 
 .workspace-shell__header {
@@ -223,8 +205,8 @@ const handleLogout = () => {
 }
 
 .workspace-shell__toolbar {
-  gap: 1rem;
-  padding: 0.9rem 1.1rem;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
 }
 
 .workspace-shell__menu {
@@ -232,76 +214,17 @@ const handleLogout = () => {
   background: var(--shell-accent-soft);
 }
 
-.workspace-shell__brand {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
+.workspace-shell__context {
   min-width: 0;
-}
-
-.workspace-shell__brand--stacked {
-  align-items: flex-start;
-}
-
-.workspace-shell__badge {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 0.95rem;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(145deg, var(--shell-accent), color-mix(in srgb, var(--shell-accent) 48%, #f3d4ad 52%));
-  color: #fffaf1;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--shell-accent) 24%, transparent 76%);
-}
-
-.workspace-shell__badge--large {
-  width: 3.2rem;
-  height: 3.2rem;
-  border-radius: 1.1rem;
-}
-
-.workspace-shell__brand-copy {
-  min-width: 0;
-}
-
-.workspace-shell__eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--shell-muted);
-}
-
-.workspace-shell__title {
-  font-size: 1.08rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.workspace-shell__subtitle {
-  margin-top: 0.35rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--shell-muted);
+  flex: 1 1 auto;
 }
 
 .workspace-shell__actions {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.5rem;
 }
 
-.workspace-shell__identity {
-  padding: 0.7rem 0.95rem;
-  border: 1px solid var(--shell-border);
-  border-radius: 1.1rem;
-  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
-  min-width: 12rem;
-}
-
-.workspace-shell__identity-label,
 .workspace-shell__summary-label,
 .workspace-shell__nav-label {
   font-size: 0.72rem;
@@ -310,7 +233,6 @@ const handleLogout = () => {
   color: var(--shell-muted);
 }
 
-.workspace-shell__identity-value,
 .workspace-shell__summary-value {
   margin-top: 0.22rem;
   font-weight: 600;
@@ -336,13 +258,13 @@ const handleLogout = () => {
 
 .workspace-shell__drawer-top,
 .workspace-shell__drawer-bottom {
-  padding: 1.2rem;
+  padding: 0.75rem;
 }
 
 .workspace-shell__summary {
-  margin-top: 1.25rem;
-  padding: 1rem;
-  border-radius: 1.2rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.24));
   border: 1px solid var(--shell-border);
 }
@@ -352,17 +274,17 @@ const handleLogout = () => {
 }
 
 .workspace-shell__nav {
-  padding: 0 0.9rem 1rem;
+  padding: 0 0.6rem 0.75rem;
 }
 
 .workspace-shell__nav-list {
-  margin-top: 0.7rem;
+  margin-top: 0.45rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 .workspace-shell__nav-item {
-  border-radius: 1rem;
+  border-radius: 0.65rem;
   color: var(--shell-ink);
 }
 
@@ -373,29 +295,23 @@ const handleLogout = () => {
 
 .workspace-shell__logout {
   width: 100%;
-  padding: 0.9rem 1rem;
-  border-radius: 1rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.65rem;
   background: var(--shell-accent);
   color: #fffaf1;
 }
 
 .workspace-shell__page-container {
-  padding: clamp(0.75rem, 2vw, 1.4rem);
-}
-
-@media (max-width: 1023px) {
-  .workspace-shell__identity {
-    display: none;
-  }
+  padding: clamp(0.5rem, 1.2vw, 0.9rem);
 }
 
 @media (max-width: 599px) {
   .workspace-shell__toolbar {
-    padding: 0.8rem;
+    padding: 0.5rem 0.6rem;
   }
 
   .workspace-shell__actions {
-    gap: 0.5rem;
+    gap: 0.35rem;
   }
 }
 </style>
