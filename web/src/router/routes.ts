@@ -8,11 +8,29 @@ import costingFileRoutes from 'src/modules/costingFile/routes';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/app/dashboard',
+    redirect: '/platform/dashboard',
   },
   {
     path: '/app/home',
     redirect: '/app/dashboard',
+  },
+  {
+    path: '/app/:tenantSlug/:after(app|tenants|costing)/:rest(.*)*',
+    redirect: (to) => {
+      const tenantSlug =
+        typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const after =
+        typeof to.params.after === 'string' ? to.params.after : null
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : ''
+
+      return tenantSlug && after
+        ? `/${tenantSlug}/app/${after}${rest ? `/${rest}` : ''}`
+        : '/app/dashboard'
+    },
   },
   {
     path: '/platform/home',
@@ -27,6 +45,20 @@ const routes: RouteRecordRaw[] = [
           typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
       },
     }),
+  },
+  {
+    path: '/shop/:tenantSlug/:rest(.*)*',
+    redirect: (to) => {
+      const tenantSlug =
+        typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : ''
+
+      return tenantSlug ? `/${tenantSlug}/shop/${rest}` : '/shop/dashboard'
+    },
   },
   ...dashboardRoutes,
   ...tenantRoutes,

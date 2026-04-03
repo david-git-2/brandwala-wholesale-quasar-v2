@@ -30,7 +30,7 @@ const tenantRoutes: RouteRecordRaw[] = [
 
   // ADMIN ROUTES
   {
-    path: '/app/:tenantSlug?/tenants',
+    path: '/:tenantSlug?/app/tenants',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
     children: [

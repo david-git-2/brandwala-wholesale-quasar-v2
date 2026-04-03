@@ -42,7 +42,7 @@ const roleLabel = computed(() => {
   }
 })
 const logoutTo = computed(() =>
-  authStore.tenantSlug ? `/auth/shop/${authStore.tenantSlug}/login` : '/auth/shop/login',
+  authStore.tenantSlug ? `/auth/${authStore.tenantSlug}/shop/login` : '/auth/shop/login',
 )
 </script>
 

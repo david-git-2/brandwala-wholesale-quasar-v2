@@ -26,7 +26,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/app/:tenantSlug?',
+    path: '/:tenantSlug?/app',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -57,7 +57,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/shop/:tenantSlug?',
+    path: '/:tenantSlug?/shop',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {

@@ -53,7 +53,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
     route: ({ tenantSlug }) =>
-      tenantSlug ? `/app/${tenantSlug}/dashboard` : '/app/dashboard',
+      tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard',
   },
   {
     title: 'Tenants',
@@ -62,7 +62,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
     route: ({ tenantSlug }) =>
-      tenantSlug ? `/app/${tenantSlug}/tenants` : '/app/tenants',
+      tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants',
   },
   {
     title: 'Dashboard',
@@ -72,7 +72,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,
     route: ({ tenantSlug }) =>
-      tenantSlug ? `/shop/${tenantSlug}/dashboard` : '/shop/dashboard',
+      tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard',
   },
 ] as const
 

@@ -178,10 +178,10 @@ export const buildModuleRoutePath = ({
   tenantSlug?: string | null | undefined
 }) => {
   if (scope === 'shop') {
-    return tenantSlug ? `/shop/${tenantSlug}/${routeSegment}` : `/shop/${routeSegment}`
+    return tenantSlug ? `/${tenantSlug}/shop/${routeSegment}` : `/shop/${routeSegment}`
   }
 
-  return tenantSlug ? `/app/${tenantSlug}/${routeSegment}` : `/app/${routeSegment}`
+  return tenantSlug ? `/${tenantSlug}/app/${routeSegment}` : `/app/${routeSegment}`
 }
 
 export const getModuleRoutesForScope = (

@@ -1,6 +1,6 @@
 <template>
   <WorkspaceShell
-    logout-to="/auth/app/login"
+    :logout-to="logoutTo"
     theme="app"
     :links="links"
   >
@@ -44,6 +44,9 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { links } = useAppWorkspaceLinks()
+const logoutTo = computed(() =>
+  authStore.tenantSlug ? `/auth/${authStore.tenantSlug}/app/login` : '/auth/app/login',
+)
 const tenantName = computed(() => tenantStore.selectedTenant?.name ?? '')
 const selectedTenantId = computed(() => tenantStore.selectedTenantId)
 const tenantOptions = computed(() =>

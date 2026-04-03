@@ -16,7 +16,7 @@ const resolveAppCostingLanding = () => {
 
 const costingFileRoutes: RouteRecordRaw[] = [
   {
-    path: '/app/:tenantSlug?/costing',
+    path: '/:tenantSlug?/app/costing',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -85,7 +85,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/shop/:tenantSlug?/costing',
+    path: '/:tenantSlug?/shop/costing',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
