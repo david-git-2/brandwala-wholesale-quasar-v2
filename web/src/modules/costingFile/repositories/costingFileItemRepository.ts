@@ -3,6 +3,7 @@ import { supabase } from 'src/boot/supabase'
 import type {
   CostingFileItemCreateInput,
   CostingFileItem,
+  CostingFileItemsCustomerProfitBulkUpdateInput,
   CostingFileItemCustomerProfitUpdateInput,
   CostingFileItemDeleteInput,
   CostingFileItemEnrichmentUpdateInput,
@@ -138,6 +139,23 @@ const updateCostingFileItemCustomerProfit = async (
   return updated as Pick<CostingFileItem, 'id' | 'customer_profit_rate' | 'updated_at'>
 }
 
+const updateCostingFileItemsCustomerProfit = async (
+  payload: CostingFileItemsCustomerProfitBulkUpdateInput,
+): Promise<Array<Pick<CostingFileItem, 'id' | 'customer_profit_rate' | 'updated_at'>>> => {
+  const { data, error } = await supabase.rpc('update_costing_file_items_customer_profit', {
+    p_costing_file_id: payload.costingFileId,
+    p_customer_profit_rate: payload.customerProfitRate,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return ((Array.isArray(data) ? data : []) as Array<
+    Pick<CostingFileItem, 'id' | 'customer_profit_rate' | 'updated_at'>
+  >)
+}
+
 const updateCostingFileItemStatus = async (
   payload: CostingFileItemStatusUpdateInput,
 ): Promise<Pick<CostingFileItem, 'id' | 'status' | 'updated_at'>> => {
@@ -248,6 +266,7 @@ export const costingFileItemRepository = {
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,
   updateCostingFileItemCustomerProfit,
+  updateCostingFileItemsCustomerProfit,
   updateCostingFileItemStatus,
   updateCostingFileItemOffer,
   updateCostingFileItem,

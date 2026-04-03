@@ -1,37 +1,7 @@
 <template>
   <q-page class="dashboard-page theme-shop">
-    <section class="dashboard-hero">
-      <div class="dashboard-copy">
-        <div class="dashboard-eyebrow">Customer</div>
-        <h1>{{ headline }}</h1>
-        <p>{{ introCopy }}</p>
-      </div>
+    <div style="margin: auto;" class="text-bold text-h4" > {{ tenantName }} Dashboard</div>
 
-      <div class="dashboard-panel">
-        <div class="dashboard-panel__label">Current access</div>
-        <div class="dashboard-panel__value">{{ roleLabel }}</div>
-        <div class="dashboard-panel__meta">
-          {{ customerGroupName || tenantName }}
-        </div>
-      </div>
-    </section>
-
-    <section class="dashboard-strip">
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Role</div>
-        <h2>{{ roleLabel }}</h2>
-        <p>{{ roleSummary }}</p>
-      </article>
-
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Modules</div>
-        <h2>{{ enabledModuleCount }} active</h2>
-        <p>
-          Your navigation is built from the modules enabled for this tenant and your customer-group
-          access.
-        </p>
-      </article>
-    </section>
   </q-page>
 </template>
 
@@ -43,52 +13,13 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 const authStore = useAuthStore()
 
 const tenantName = computed(() => authStore.tenant?.name ?? 'Tenant workspace')
-const customerGroupName = computed(
-  () => authStore.customerGroup?.name ?? authStore.member?.name ?? '',
-)
-const enabledModuleCount = computed(() => authStore.activeModuleKeys.length)
 
-const roleLabel = computed(() => {
-  switch (authStore.matchedRole) {
-    case 'customer_admin':
-      return 'Customer Admin'
-    case 'customer_negotiator':
-      return 'Customer Negotiator'
-    case 'customer_staff':
-      return 'Customer Staff'
-    default:
-      return 'Customer User'
-  }
-})
 
-const headline = computed(() => {
-  if (customerGroupName.value) {
-    return `${customerGroupName.value} stays focused here.`
-  }
 
-  return 'Keep ordering, approvals, and negotiation in one place.'
-})
 
-const introCopy = computed(() => {
-  if (customerGroupName.value) {
-    return `${customerGroupName.value} is signed in to ${tenantName.value}. This shop workspace is scoped to your customer-group access and only shows the modules your tenant has enabled for you.`
-  }
 
-  return `This shop workspace is scoped to your customer-group access in ${tenantName.value} and only shows the modules your tenant has enabled for you.`
-})
 
-const roleSummary = computed(() => {
-  switch (authStore.matchedRole) {
-    case 'customer_admin':
-      return 'You can oversee the whole customer-side workflow and step across the enabled shop experience.'
-    case 'customer_negotiator':
-      return 'You can manage negotiation-focused work and confirm the next step inside the enabled shop flow.'
-    case 'customer_staff':
-      return 'You can prepare carts and keep order input moving inside the enabled shop flow.'
-    default:
-      return 'Your shop access is based on your customer-group membership.'
-  }
-})
+
 </script>
 
 <style scoped>

@@ -2,6 +2,7 @@ import { costingFileItemRepository } from '../repositories/costingFileItemReposi
 import type {
   CostingFileItem,
   CostingFileItemCreateInput,
+  CostingFileItemsCustomerProfitBulkUpdateInput,
   CostingFileItemCustomerProfitUpdateInput,
   CostingFileItemDeleteInput,
   CostingFileItemEnrichmentUpdateInput,
@@ -91,6 +92,22 @@ const updateCostingFileItemCustomerProfit = async (
   }
 }
 
+const updateCostingFileItemsCustomerProfit = async (
+  payload: CostingFileItemsCustomerProfitBulkUpdateInput,
+): Promise<
+  CostingFileServiceResult<Array<Pick<CostingFileItem, 'id' | 'customer_profit_rate' | 'updated_at'>>>
+> => {
+  try {
+    const data = await costingFileItemRepository.updateCostingFileItemsCustomerProfit(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update customer profit.',
+    }
+  }
+}
+
 const updateCostingFileItemStatus = async (
   payload: CostingFileItemStatusUpdateInput,
 ): Promise<CostingFileServiceResult<Pick<CostingFileItem, 'id' | 'status' | 'updated_at'>>> => {
@@ -157,6 +174,7 @@ export const costingFileItemService = {
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,
   updateCostingFileItemCustomerProfit,
+  updateCostingFileItemsCustomerProfit,
   updateCostingFileItemStatus,
   updateCostingFileItemOffer,
   updateCostingFileItem,

@@ -89,7 +89,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'shop',
-        title: 'Shop Costing',
+        title: 'Pre order',
         caption: 'Open customer-facing costing references',
         icon: 'request_quote',
         routeSegment: 'costing',
@@ -104,7 +104,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Costing',
+        title: 'Pre order',
         caption: 'Prepare internal costing files and price support',
         icon: 'price_change',
         routeSegment: 'costing',

@@ -40,6 +40,52 @@
             <div><strong>ID:</strong> #{{ tenant.id }}</div>
             <div><strong>Name:</strong> {{ tenant.name }}</div>
             <div><strong>Slug:</strong> {{ tenant.slug }}</div>
+            <div class="row items-center justify-between q-gutter-sm">
+              <div class="col min-w-0">
+                <strong>Admin Login:</strong>
+                <a
+                  :href="adminLoginUrl"
+                  class="text-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ adminLoginUrl }}
+                </a>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copy admin login URL"
+                  @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
+                />
+              </div>
+            </div>
+            <div class="row items-center justify-between q-gutter-sm">
+              <div class="col min-w-0">
+                <strong>Customer Login:</strong>
+                <a
+                  :href="customerLoginUrl"
+                  class="text-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ customerLoginUrl }}
+                </a>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copy customer login URL"
+                  @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
+                />
+              </div>
+            </div>
             <div>
               <strong>Status:</strong>
               {{ tenant.is_active ? 'Active' : 'Inactive' }}
@@ -240,6 +286,7 @@
               />
             </q-card-section>
 
+
             <q-card-section v-if="customerGroupMembersLoading" class="text-grey-7">
               Loading customer group members...
             </q-card-section>
@@ -287,20 +334,30 @@
 
               <template #body-cell-edit="props">
                 <q-td :props="props">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="edit"
-                    @click="openEditCustomerMemberDialog(props.row)"
-                  />
+                  <div class="row items-center q-gutter-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="edit"
+                      @click="openEditCustomerMemberDialog(props.row)"
+                    />
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      icon="delete"
+                      @click="openDeleteCustomerMemberDialog(props.row)"
+                    />
+                  </div>
                 </q-td>
               </template>
             </q-table>
           </template>
         </q-card>
 
-        <q-card flat bordered class="q-mb-lg tenant-detail-card">
+        <q-card v-if="showCostingFilesSection" flat bordered class="q-mb-lg tenant-detail-card">
           <q-card-section class="row items-center justify-between tenant-detail-card__head">
             <div>
               <div class="text-h6">Costing Files</div>
@@ -470,6 +527,24 @@
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="openDeleteMemberDialog = false" />
           <q-btn color="negative" label="Delete" @click="confirmDeleteMember" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="openDeleteCustomerMemberDialogModel" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Delete Customer User</div>
+        </q-card-section>
+
+        <q-card-section>
+          Delete customer user
+          <strong>{{ customerGroupMemberToDelete?.email }}</strong>?
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="openDeleteCustomerMemberDialogModel = false" />
+          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroupMember" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -746,7 +821,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
@@ -791,13 +866,16 @@ const {
 
 const openAddMemberDialog = ref(false)
 const openDeleteMemberDialog = ref(false)
+const openDeleteCustomerMemberDialogModel = ref(false)
 const openCostingFileDialog = ref(false)
 const openDeleteCostingFileDialogModel = ref(false)
 const openCustomerGroupDialog = ref(false)
 const openDeleteCustomerGroupDialog = ref(false)
 const openCustomerMemberDialog = ref(false)
+const showCostingFilesSection = false
 
 const memberToDelete = ref<Membership | null>(null)
+const customerGroupMemberToDelete = ref<CustomerGroupMember | null>(null)
 const costingFileToDelete = ref<CostingFileListEntry | null>(null)
 const customerGroupToDelete = ref<CustomerGroup | null>(null)
 
@@ -870,6 +948,18 @@ const tenantId = computed(() => Number(route.params.id))
 
 const tenant = computed<Tenant | null>(
   () => items.value.find((item) => item.id === tenantId.value) ?? null,
+)
+
+const baseUrl = computed(() =>
+  typeof window === 'undefined' ? '' : window.location.origin,
+)
+
+const adminLoginUrl = computed(() =>
+  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/app/login` : `${baseUrl.value}/app/login`,
+)
+
+const customerLoginUrl = computed(() =>
+  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/shop/login` : `${baseUrl.value}/shop/login`,
 )
 
 const selectedCustomerGroup = computed<CustomerGroup | null>(
@@ -956,7 +1046,7 @@ const customerGroupMemberColumns = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
   { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
   { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
-  { name: 'edit', label: 'Edit', field: 'id', align: 'left' as const },
+  { name: 'edit', label: 'Actions', field: 'id', align: 'left' as const },
 ]
 
 const defaultCustomerGroupAccent = '#B45F34'
@@ -1054,6 +1144,25 @@ const formatDateTime = (value: string | null) => {
 
 const customerGroupNameById = (customerGroupId: number) =>
   customerGroups.value.find((group) => group.id === customerGroupId)?.name ?? `#${customerGroupId}`
+
+const copyLoginUrl = async (url: string, successMessage: string) => {
+  if (!url) {
+    return
+  }
+
+  try {
+    await copyToClipboard(url)
+    $q.notify({
+      type: 'positive',
+      message: successMessage,
+    })
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to copy login URL.',
+    })
+  }
+}
 
 const canSaveCostingFile = computed(
   () =>
@@ -1538,6 +1647,11 @@ const openEditCustomerMemberDialog = (member: CustomerGroupMember) => {
   openCustomerMemberDialog.value = true
 }
 
+const openDeleteCustomerMemberDialog = (member: CustomerGroupMember) => {
+  customerGroupMemberToDelete.value = member
+  openDeleteCustomerMemberDialogModel.value = true
+}
+
 const saveCustomerGroupMember = async () => {
   if (!selectedCustomerGroup.value || customerGroupMemberFormInvalid.value) {
     return
@@ -1592,6 +1706,34 @@ const onToggleCustomerGroupMemberActive = async (
       [selectedCustomerGroup.value.id]: [...customerGroupMembers.value],
     }
   }
+}
+
+const confirmDeleteCustomerGroupMember = async () => {
+  if (!customerGroupMemberToDelete.value || !selectedCustomerGroup.value) {
+    return
+  }
+
+  const deletedId = customerGroupMemberToDelete.value.id
+
+  const result = await customerGroupStore.deleteCustomerGroupMember({
+    id: deletedId,
+  })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to delete customer group member.'
+    return
+  }
+
+  customerGroupStore.members = customerGroupMembers.value.filter(
+    (member) => member.id !== deletedId,
+  )
+  customerGroupMembersByGroupId.value = {
+    ...customerGroupMembersByGroupId.value,
+    [selectedCustomerGroup.value.id]: [...customerGroupStore.members],
+  }
+
+  openDeleteCustomerMemberDialogModel.value = false
+  customerGroupMemberToDelete.value = null
 }
 
 onMounted(() => {

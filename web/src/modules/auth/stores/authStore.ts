@@ -40,6 +40,7 @@ export interface AuthCustomerGroupSnapshot {
   id: number
   name: string
   isActive: boolean
+  accentColor: string | null
 }
 
 export interface AuthAccessSnapshot {

@@ -8,6 +8,7 @@ import type {
   CostingFileDeleteInput,
   CostingFileDetails,
   CostingFileItem,
+  CostingFileItemsCustomerProfitBulkUpdateInput,
   CostingFileItemCreateInput,
   CostingFileItemCustomerProfitUpdateInput,
   CostingFileItemDeleteInput,
@@ -115,13 +116,19 @@ export const useCostingFileStore = defineStore('costingFile', {
       }
     },
 
-    async fetchCostingFilesByCustomerGroup(customerGroupId: number) {
+    async fetchCostingFilesByCustomerGroup(
+      customerGroupId: number,
+      tenantId?: number | null,
+    ) {
       this.loading = true
       this.listLoading = true
       this.error = null
 
       try {
-        const result = await costingFileService.listCostingFilesForCustomerGroup(customerGroupId)
+        const result = await costingFileService.listCostingFilesForCustomerGroup(
+          customerGroupId,
+          tenantId,
+        )
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load costing files.'
@@ -472,6 +479,43 @@ export const useCostingFileStore = defineStore('costingFile', {
             updated_at: result.data?.updated_at ?? this.costingFileItems[index]!.updated_at,
           })
         }
+
+        showSuccessNotification('Customer profit updated.')
+        return result
+      } finally {
+        this.loading = false
+        this.mutationLoading = false
+      }
+    },
+
+    async updateCostingFileItemsCustomerProfit(payload: CostingFileItemsCustomerProfitBulkUpdateInput) {
+      this.loading = true
+      this.mutationLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileItemService.updateCostingFileItemsCustomerProfit(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update customer profit.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updatedById = new Map(
+          (result.data ?? []).map((item) => [item.id, item]),
+        )
+
+        this.costingFileItems = this.costingFileItems.map((item) => {
+          const updated = updatedById.get(item.id)
+          if (!updated) return item
+
+          return {
+            ...item,
+            customer_profit_rate: updated.customer_profit_rate,
+            updated_at: updated.updated_at,
+          }
+        })
 
         showSuccessNotification('Customer profit updated.')
         return result

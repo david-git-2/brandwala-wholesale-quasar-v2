@@ -19,7 +19,8 @@
           :key="file.id"
           flat
           bordered
-          class="cursor-pointer"
+          class="costing-page__card cursor-pointer"
+          :style="{ '--costing-card-accent': cardAccentColor }"
           @click="openFile(file.id)"
         >
           <q-card-section>
@@ -47,6 +48,10 @@ const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
 const { items: files, listLoading: loadingFiles } = storeToRefs(costingFileStore)
 
+const cardAccentColor = computed(
+  () => authStore.customerGroup?.accentColor?.trim() || 'var(--bw-theme-primary)',
+)
+
 const subtitle = computed(() =>
   authStore.customerGroup?.name
     ? `${authStore.customerGroup.name} can open costing files here.`
@@ -55,13 +60,14 @@ const subtitle = computed(() =>
 
 const loadFiles = async () => {
   const customerGroupId = authStore.customerGroupId
+  const tenantId = authStore.tenantId
 
-  if (!customerGroupId) {
+  if (!customerGroupId || !tenantId) {
     costingFileStore.items = []
     return
   }
 
-  await costingFileStore.fetchCostingFilesByCustomerGroup(customerGroupId)
+  await costingFileStore.fetchCostingFilesByCustomerGroup(customerGroupId, tenantId)
 }
 
 const openFile = async (id: number) => {
@@ -78,7 +84,15 @@ onMounted(async () => {
 
 <style scoped>
 .costing-page { display: grid; gap: 1.25rem; }
-.costing-page__card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.costing-page__card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 0.75rem;
+}
+.costing-page__card {
+  width: 100%;
+  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
+}
 .costing-page__empty { color: var(--bw-theme-muted); }
 @media (max-width: 900px) {
   .costing-page__card-grid { grid-template-columns: 1fr; }

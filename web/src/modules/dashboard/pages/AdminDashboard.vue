@@ -1,52 +1,7 @@
 <template>
   <q-page class="dashboard-page theme-app">
-    <q-banner
-      v-if="!selectedTenantName"
-      rounded
-      class="dashboard-banner"
-    >
-      Choose a tenant from the tenant list to load a specific internal workspace.
-    </q-banner>
+    <div style="margin: auto;" class="text-bold text-h4" > {{ selectedTenantName }} Dashboard</div>
 
-    <section class="dashboard-hero">
-      <div class="dashboard-copy">
-        <div class="dashboard-eyebrow">Admin</div>
-        <h1>{{ selectedTenantName ? `${selectedTenantName} is ready for work.` : 'Daily operations, without the clutter.' }}</h1>
-        <p>
-          {{
-            selectedTenantName
-              ? `Use the tenant list to switch workspaces when this account belongs to more than one business.`
-              : 'This workspace is for internal teams handling tenant setup, member access, and the operational pieces behind wholesale activity.'
-          }}
-        </p>
-      </div>
-
-      <div class="dashboard-panel">
-        <div class="dashboard-panel__label">Workspace</div>
-        <div class="dashboard-panel__value">{{ selectedTenantName || 'Internal operations' }}</div>
-        <div class="dashboard-panel__meta">
-          {{
-            selectedTenantName
-              ? 'Tenant context is active for this internal workspace.'
-              : 'Manage people, customer groups, and enabled tenant workflows.'
-          }}
-        </div>
-      </div>
-    </section>
-
-    <section class="dashboard-strip">
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Members</div>
-        <h2>Keep internal access tidy</h2>
-        <p>Staff memberships live here, so operational access stays simple and reviewable.</p>
-      </article>
-
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Customer groups</div>
-        <h2>Manage external buying teams</h2>
-        <p>Set up customer-side organizations and keep their access separate from staff users.</p>
-      </article>
-    </section>
   </q-page>
 </template>
 

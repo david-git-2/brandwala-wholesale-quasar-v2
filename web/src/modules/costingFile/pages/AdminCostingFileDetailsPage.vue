@@ -44,6 +44,7 @@
           row-key="id"
           :rows="productRows"
           :columns="productColumns"
+          :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
           class="costing-page__table"
@@ -274,31 +275,34 @@
         <div class="costing-page__pricing-grid">
           <div class="costing-page__field">
             <div class="costing-page__field-label">Cargo rate 1 KG</div>
-            <q-input v-model.number="pricingForm.cargoRate1Kg" type="number" outlined dense />
+            <q-input v-model.number="pricingForm.cargoRate1Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
             <div class="costing-page__field-label">Cargo rate 2 KG</div>
-            <q-input v-model.number="pricingForm.cargoRate2Kg" type="number" outlined dense />
+            <q-input v-model.number="pricingForm.cargoRate2Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
             <div class="costing-page__field-label">Conversion rate</div>
-            <q-input v-model.number="pricingForm.conversionRate" type="number" outlined dense />
+            <q-input v-model.number="pricingForm.conversionRate" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
             <div class="costing-page__field-label">Admin profit rate</div>
-            <q-input v-model.number="pricingForm.adminProfitRate" type="number" outlined dense />
+            <q-input v-model.number="pricingForm.adminProfitRate" type="number" outlined dense class="costing-page__pricing-input" />
+          </div>
+          <div class="costing-page__field costing-page__field--action">
+            <div class="costing-page__field-label costing-page__field-label--ghost">Action</div>
+            <q-btn
+              color="primary"
+              unelevated
+              label="Save pricing"
+              :loading="savingPricing"
+              :disable="!selectedFile"
+              @click="handleSavePricing"
+            />
           </div>
         </div>
 
         <div class="costing-page__pricing-actions">
-          <q-btn
-            color="primary"
-            unelevated
-            label="Save pricing"
-            :loading="savingPricing"
-            :disable="!selectedFile"
-            @click="handleSavePricing"
-          />
           <q-btn-toggle
             v-model="reviewTableMode"
             unelevated
@@ -319,6 +323,7 @@
           row-key="id"
           :rows="reviewRows"
           :columns="visibleReviewColumns"
+          :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
           class="costing-page__table"
@@ -598,8 +603,47 @@
               </div>
             </q-td>
           </template>
+
+          <template #body-cell-actions="props">
+            <q-td :props="props" auto-width>
+              <q-btn
+                flat
+                dense
+                color="negative"
+                icon="delete"
+                round
+                aria-label="Delete item"
+                :loading="deletingReviewItemId === props.row.id"
+                :disable="selectedFile?.status !== 'in_review' || deletingReviewItemId === props.row.id"
+                @click="openDeleteReviewItemDialog(props.row.id)"
+              />
+            </q-td>
+          </template>
         </q-table>
       </section>
+
+      <q-dialog v-model="deleteReviewItemDialogOpen" persistent>
+        <q-card style="min-width: 360px">
+          <q-card-section>
+            <div class="text-h6">Delete item</div>
+          </q-card-section>
+
+          <q-card-section>
+            Delete this costing item from the review table?
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" @click="deleteReviewItemDialogOpen = false" />
+            <q-btn
+              color="negative"
+              unelevated
+              label="Delete"
+              :loading="deletingReviewItemId !== null"
+              @click="confirmDeleteReviewItem"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
       <AdminCostingFileItemEditDialog
         v-model="editDialogOpen"
@@ -635,6 +679,9 @@ const savingPricing = ref(false)
 const savingOfferItemId = ref<number | null>(null)
 const savingQuantityItemId = ref<number | null>(null)
 const savingFieldKey = ref<string | null>(null)
+const deletingReviewItemId = ref<number | null>(null)
+const deleteReviewItemDialogOpen = ref(false)
+const reviewItemPendingDeleteId = ref<number | null>(null)
 const statusForm = ref<CostingFileStatus>('draft')
 const editDialogOpen = ref(false)
 const editingItemId = ref<number | null>(null)
@@ -770,30 +817,30 @@ const reviewColumns = [
   { name: 'websiteUrl', label: 'Web URL', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
   { name: 'quantity', label: 'Qty', field: 'quantity', align: 'left' as const, style: 'width: 56px; min-width: 56px;', headerStyle: 'width: 56px; min-width: 56px;' },
   { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'width: 280px; min-width: 280px; max-width: 280px;', headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;' },
-  { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'totalWeight', label: 'Total wt', field: 'totalWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
+  { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
+  { name: 'totalWeight', label: 'Total wt', field: 'totalWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
   {
     name: 'priceInWebGbp',
     label: 'Web price (GBP)',
     field: 'priceInWebGbp',
     align: 'left' as const,
-    style: 'width: 110px; min-width: 110px;',
-    headerStyle: 'width: 110px; min-width: 110px;',
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
-  { name: 'deliveryPriceGbp', label: 'Delivery price (GBP)', field: 'deliveryPriceGbp', align: 'left' as const, style: 'width: 116px; min-width: 116px;', headerStyle: 'width: 116px; min-width: 116px;' },
-  { name: 'auxiliaryPriceGbp', label: 'Auxiliary price (GBP)', field: 'auxiliaryPriceGbp', align: 'left' as const, style: 'width: 118px; min-width: 118px;', headerStyle: 'width: 118px; min-width: 118px;' },
-  { name: 'purchasePriceGbp', label: 'Purchase price (GBP)', field: 'purchasePriceGbp', align: 'left' as const, style: 'width: 122px; min-width: 122px;', headerStyle: 'width: 122px; min-width: 122px;' },
-  { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 118px; min-width: 118px;', headerStyle: 'width: 118px; min-width: 118px;' },
+  { name: 'deliveryPriceGbp', label: 'Delivery price (GBP)', field: 'deliveryPriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'auxiliaryPriceGbp', label: 'Auxiliary price (GBP)', field: 'auxiliaryPriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'purchasePriceGbp', label: 'Purchase price (GBP)', field: 'purchasePriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   {
     name: 'costingPriceGbp',
     label: 'Cost (GBP)',
     field: 'costingPriceGbp',
     align: 'left' as const,
-    style: 'width: 110px; min-width: 110px;',
-    headerStyle: 'width: 110px; min-width: 110px;',
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
@@ -802,8 +849,8 @@ const reviewColumns = [
     label: 'Cost (BDT)',
     field: 'costingPriceBdt',
     align: 'left' as const,
-    style: 'width: 110px; min-width: 110px;',
-    headerStyle: 'width: 110px; min-width: 110px;',
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-amber',
     headerClasses: 'costing-page__tone-amber',
   },
@@ -812,8 +859,8 @@ const reviewColumns = [
     label: 'Offer price (BDT)',
     field: 'offerPriceBdt',
     align: 'left' as const,
-    style: 'width: 110px; min-width: 110px;',
-    headerStyle: 'width: 110px; min-width: 110px;',
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
   },
@@ -822,8 +869,8 @@ const reviewColumns = [
     label: 'Total cost (BDT)',
     field: 'totalCostBdt',
     align: 'left' as const,
-    style: 'width: 128px; min-width: 128px;',
-    headerStyle: 'width: 128px; min-width: 128px;',
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-amber',
     headerClasses: 'costing-page__tone-amber',
   },
@@ -832,15 +879,16 @@ const reviewColumns = [
     label: 'Total offer (BDT)',
     field: 'totalOfferPriceBdt',
     align: 'left' as const,
-    style: 'width: 132px; min-width: 132px;',
-    headerStyle: 'width: 132px; min-width: 132px;',
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
   },
-  { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'profitAmount', label: 'Profit amount (BDT)', field: 'profitAmount', align: 'left' as const, style: 'width: 116px; min-width: 116px;', headerStyle: 'width: 116px; min-width: 116px;' },
-  { name: 'totalProfitBdt', label: 'Total profit (BDT)', field: 'totalProfitBdt', align: 'left' as const, style: 'width: 132px; min-width: 132px;', headerStyle: 'width: 132px; min-width: 132px;' },
-  { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 124px; min-width: 124px;', headerStyle: 'width: 124px; min-width: 124px;' },
+  { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 74px; min-width: 74px;', headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;' },
+  { name: 'profitAmount', label: 'Profit amount (BDT)', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'totalProfitBdt', label: 'Total profit (BDT)', field: 'totalProfitBdt', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;' },
+  { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 88px; min-width: 88px;', headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;' },
+  { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
 const compactReviewColumnNames = [
@@ -853,13 +901,21 @@ const compactReviewColumnNames = [
   'offerPriceBdt',
   'profitRate',
   'profitAmount',
+  'actions',
 ] as const
 
-const visibleReviewColumns = computed(() =>
-  reviewTableMode.value === 'compact'
-    ? reviewColumns.filter((column) => compactReviewColumnNames.includes(column.name as (typeof compactReviewColumnNames)[number]))
-    : reviewColumns,
-)
+const visibleReviewColumns = computed(() => {
+  const columns =
+    reviewTableMode.value === 'compact'
+      ? reviewColumns.filter((column) => compactReviewColumnNames.includes(column.name as (typeof compactReviewColumnNames)[number]))
+      : reviewColumns
+
+  if (selectedFile.value?.status === 'in_review') {
+    return columns
+  }
+
+  return columns.filter((column) => column.name !== 'actions')
+})
 
 const loadFile = async () => {
   const fileId = Number(route.params.id)
@@ -982,7 +1038,6 @@ const saveOfferPrice = async (itemId: number, value: number | null) => {
 const handleSaveEnrichment = async (payload: {
   id: number
   name: string | null
-  quantity: number
   productWeight: number | null
   packageWeight: number | null
   imageUrl: string | null
@@ -994,7 +1049,6 @@ const handleSaveEnrichment = async (payload: {
     const result = await costingFileStore.updateCostingFileItem({
       id: payload.id,
       name: payload.name,
-      quantity: payload.quantity,
       productWeight: payload.productWeight,
       packageWeight: payload.packageWeight,
       imageUrl: payload.imageUrl,
@@ -1007,6 +1061,36 @@ const handleSaveEnrichment = async (payload: {
     }
   } finally {
     savingItemId.value = null
+  }
+}
+
+const openDeleteReviewItemDialog = (itemId: number) => {
+  if (selectedFile.value?.status !== 'in_review') {
+    return
+  }
+
+  reviewItemPendingDeleteId.value = itemId
+  deleteReviewItemDialogOpen.value = true
+}
+
+const confirmDeleteReviewItem = async () => {
+  const itemId = reviewItemPendingDeleteId.value
+
+  if (selectedFile.value?.status !== 'in_review' || itemId == null) {
+    return
+  }
+
+  if (selectedFile.value?.status !== 'in_review') {
+    return
+  }
+
+  deletingReviewItemId.value = itemId
+  try {
+    await costingFileStore.deleteCostingFileItem({ id: itemId })
+    deleteReviewItemDialogOpen.value = false
+    reviewItemPendingDeleteId.value = null
+  } finally {
+    deletingReviewItemId.value = null
   }
 }
 
@@ -1102,13 +1186,18 @@ onMounted(async () => {
 
 .costing-page__pricing-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
+  align-items: end;
 }
 
 .costing-page__field {
   display: grid;
   gap: 0.4rem;
+}
+
+.costing-page__field--action {
+  align-self: end;
 }
 
 .costing-page__field-label {
@@ -1117,9 +1206,18 @@ onMounted(async () => {
   color: var(--bw-theme-ink);
 }
 
+.costing-page__pricing-input {
+  max-width: 140px;
+}
+
+.costing-page__field-label--ghost {
+  opacity: 0;
+  user-select: none;
+}
+
 .costing-page__pricing-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -1353,6 +1451,10 @@ onMounted(async () => {
 
   .costing-page__pricing-grid {
     grid-template-columns: 1fr;
+  }
+
+  .costing-page__field-label--ghost {
+    display: none;
   }
 
   .costing-page__pricing-actions > * {

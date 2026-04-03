@@ -155,6 +155,11 @@ export type CostingFileItemCustomerProfitUpdateInput = {
   customerProfitRate: number | null
 }
 
+export type CostingFileItemsCustomerProfitBulkUpdateInput = {
+  costingFileId: number
+  customerProfitRate: number | null
+}
+
 export type CostingFileItemStatusUpdateInput = {
   id: number
   status: CostingFileItemStatus

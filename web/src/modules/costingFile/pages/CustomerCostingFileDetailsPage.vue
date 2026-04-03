@@ -22,18 +22,7 @@
         </div>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__input-section">
-          <div class="costing-page__file-grid">
-            <q-input v-model="fileForm.name" label="File name" outlined dense color="primary" />
-            <q-input v-model="fileForm.market" label="Market" outlined dense color="primary" />
-            <q-btn
-              color="primary"
-              unelevated
-              label="Update file"
-              :loading="savingFileDetails"
-              :disable="!canSaveFileDetails"
-              @click="handleSaveFileDetails"
-            />
-          </div>
+
 
           <div class="costing-page__sticky-form">
             <div class="costing-page__request-grid">
@@ -63,12 +52,28 @@
             v-if="productRows.length"
             flat
             bordered
+            dense
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
+            :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table"
           >
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
+              </q-td>
+            </template>
+
             <template #body-cell-websiteUrl="props">
               <q-td :props="props" class="costing-page__url-cell">
                 <a
@@ -122,12 +127,28 @@
               v-if="productRows.length"
               flat
               bordered
+              dense
               row-key="id"
               :rows="productRows"
               :columns="visibleColumns"
+              :pagination="{ rowsPerPage: 0 }"
               hide-bottom
               class="costing-page__table"
             >
+              <template #body-cell-sl="props">
+                <q-td :props="props" class="costing-page__sl-cell">
+                  {{ props.row.sl }}
+                </q-td>
+              </template>
+
+              <template #body-cell-name="props">
+                <q-td :props="props" class="costing-page__name-cell">
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                </q-td>
+              </template>
+
               <template #body-cell-websiteUrl="props">
                 <q-td :props="props" class="costing-page__url-cell">
                   <a
@@ -172,12 +193,20 @@
             v-if="productRows.length"
             flat
             bordered
+            dense
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
+            :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table costing-page__table--offered"
           >
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
+
             <template #body-cell-image="props">
               <q-td :props="props" class="costing-page__image-table-cell">
                 <q-img
@@ -189,6 +218,14 @@
                 <div v-else class="costing-page__image costing-page__image--placeholder">
                   No image
                 </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
               </q-td>
             </template>
 
@@ -271,12 +308,28 @@
             v-if="productRows.length"
             flat
             bordered
+            dense
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
+            :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table"
           >
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
+              </q-td>
+            </template>
+
             <template #body-cell-websiteUrl="props">
               <q-td :props="props" class="costing-page__url-cell">
                 <a
@@ -345,7 +398,6 @@ const deletingItemId = ref<number | null>(null)
 const editingItemId = ref<number | null>(null)
 const submitDialog = ref(false)
 const submittingOrder = ref(false)
-const savingFileDetails = ref(false)
 const savingDecisionItemId = ref<number | null>(null)
 const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
 const savingProfitAll = ref(false)
@@ -365,16 +417,6 @@ const canCreateRequest = computed(
   () => requestForm.websiteUrl.trim().length > 0 && Number(requestForm.quantity) > 0,
 )
 
-const canSaveFileDetails = computed(
-  () =>
-    Boolean(selectedFile.value) &&
-    fileForm.name.trim().length > 0 &&
-    fileForm.market.trim().length > 0 &&
-    (
-      fileForm.name.trim() !== (selectedFile.value?.name ?? '') ||
-      fileForm.market.trim() !== (selectedFile.value?.market ?? '')
-    ),
-)
 
 const productRows = computed(() =>
   itemForms.value.map((item, index) => {
@@ -402,17 +444,33 @@ const productRows = computed(() =>
 )
 
 const allColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
-  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const },
-  { name: 'quantity', label: 'Qty', field: 'quantity', align: 'left' as const },
-  { name: 'status', label: 'Status', field: 'status', align: 'left' as const },
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center' as const },
+  { name: 'image', label: 'Image', field: 'imageUrl', align: 'center' as const },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'center' as const,
+    style: 'width: 320px; min-width: 320px;',
+    headerStyle: 'width: 320px; min-width: 320px; white-space: normal; line-height: 1.15;',
+  },
+  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'center' as const },
+  {
+    name: 'quantity',
+    label: 'Qty',
+    field: 'quantity',
+    align: 'center' as const,
+    style: 'width: 64px; min-width: 64px;',
+    headerStyle: 'width: 64px; min-width: 64px; white-space: normal; line-height: 1.15;',
+  },
+  { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
   {
     name: 'offerPriceBdt',
     label: 'Offer price (BDT)',
     field: 'offerPriceBdt',
-    align: 'left' as const,
+    align: 'center' as const,
+    style: 'width: 98px; min-width: 98px;',
+    headerStyle: 'width: 98px; min-width: 98px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
   },
@@ -420,7 +478,9 @@ const allColumns = [
     name: 'buyerSellingPriceBdt',
     label: 'Buyer selling (BDT)',
     field: 'buyerSellingPriceBdt',
-    align: 'left' as const,
+    align: 'center' as const,
+    style: 'width: 104px; min-width: 104px;',
+    headerStyle: 'width: 104px; min-width: 104px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
@@ -428,12 +488,21 @@ const allColumns = [
     name: 'customerProfitAmountBdt',
     label: 'Profit per item (BDT)',
     field: 'customerProfitAmountBdt',
-    align: 'left' as const,
+    align: 'center' as const,
+    style: 'width: 104px; min-width: 104px;',
+    headerStyle: 'width: 104px; min-width: 104px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-amber',
     headerClasses: 'costing-page__tone-amber',
   },
-  { name: 'customerProfitRateDisplay', label: 'Profit rate', field: 'customerProfitRateDisplay', align: 'left' as const },
-  { name: 'actions', label: '', field: 'actions', align: 'left' as const },
+  {
+    name: 'customerProfitRateDisplay',
+    label: 'Profit rate',
+    field: 'customerProfitRateDisplay',
+    align: 'center' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+  },
+  { name: 'actions', label: '', field: 'actions', align: 'center' as const },
 ]
 
 const visibleColumns = computed(() => {
@@ -550,29 +619,6 @@ const handleDelete = async (id: number) => {
   }
 }
 
-const handleSaveFileDetails = async () => {
-  if (!selectedFile.value || !canSaveFileDetails.value) {
-    return
-  }
-
-  savingFileDetails.value = true
-  try {
-    const result = await costingFileStore.updateCostingFile({
-      id: selectedFile.value.id,
-      name: fileForm.name.trim(),
-      market: fileForm.market.trim(),
-    })
-
-    if (!result.success) {
-      return
-    }
-
-    showSuccessNotification('Costing file updated.')
-    syncFileForm()
-  } finally {
-    savingFileDetails.value = false
-  }
-}
 
 const handleDecision = async (id: number, status: CostingFileItemStatus) => {
   savingDecisionItemId.value = id
@@ -592,7 +638,7 @@ const handleDecision = async (id: number, status: CostingFileItemStatus) => {
 }
 
 const handleSaveSharedProfitRate = async () => {
-  if (!itemForms.value.length) return
+  if (!itemForms.value.length || !selectedFile.value) return
 
   savingProfitAll.value = true
   try {
@@ -601,18 +647,14 @@ const handleSaveSharedProfitRate = async () => {
         ? null
         : Number(sharedProfitRate.value)
 
-    for (const item of itemForms.value) {
-      const result = await costingFileStore.updateCostingFileItemCustomerProfit({
-        id: item.id,
-        customerProfitRate: normalized,
-      })
+    const result = await costingFileStore.updateCostingFileItemsCustomerProfit({
+      costingFileId: selectedFile.value.id,
+      customerProfitRate: normalized,
+    })
 
-      if (!result.success) {
-        return
-      }
+    if (!result.success) {
+      return
     }
-
-    showSuccessNotification('Buyer profit rate updated.')
   } finally {
     savingProfitAll.value = false
   }
@@ -713,18 +755,42 @@ watch(
   align-items: start;
 }
 
-.costing-page :deep(th) {
-  text-align: left;
-}
-
 .costing-page :deep(.q-btn) {
   border-radius: 8px;
 }
 
-.costing-page__table--offered :deep(.q-table th),
-.costing-page__table--offered :deep(.q-table td) {
+.costing-page__table :deep(.q-table th),
+.costing-page__table :deep(.q-table td) {
   text-align: center;
   vertical-align: middle;
+}
+
+.costing-page__table :deep(.q-table th) {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.costing-page__sl-cell {
+  width: 3ch;
+  max-width: 3ch;
+  white-space: nowrap;
+}
+
+.costing-page__name-cell {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+}
+
+.costing-page__name-text {
+  display: inline-block;
+  max-width: 320px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .costing-page__table--offered :deep(.costing-page__tone-emerald) {
@@ -741,22 +807,23 @@ watch(
 }
 
 .costing-page__image-table-cell {
-  width: 92px;
+  width: 96px;
 }
 
 .costing-page__image {
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   border-radius: 8px;
   overflow: hidden;
+  background: var(--bw-theme-surface);
 }
 
 .costing-page__image--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bw-theme-surface, #f3f4f6);
-  color: var(--bw-theme-muted, #6b7280);
+  border: 1px dashed var(--bw-theme-border);
+  color: var(--bw-theme-muted);
   font-size: 0.75rem;
   text-align: center;
   padding: 0.5rem;
@@ -771,18 +838,19 @@ watch(
 }
 
 .costing-page__url-cell {
-  width: 280px;
-  max-width: 280px;
+  width: 144px;
+  max-width: 144px;
 }
 
 .costing-page__url-text {
   display: inline-block;
-  width: 100%;
-  max-width: 280px;
+  max-width: 144px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
+  color: var(--bw-theme-primary);
+  text-decoration: none;
 }
 
 .costing-page__icon-btn {
@@ -791,7 +859,7 @@ watch(
 
 .costing-page__decision-btn {
   border-radius: 8px;
-  min-width: 78px;
+  min-width: 66px;
 }
 
 .costing-page__decision-btn--accept {
@@ -877,13 +945,13 @@ watch(
     font-size: 1rem;
   }
 
-  .costing-page__url-cell {
-    width: 160px;
-    max-width: 160px;
+  .costing-page__image-table-cell {
+    width: 72px;
   }
 
-  .costing-page__url-text {
-    max-width: 160px;
+  .costing-page__image {
+    width: 72px;
+    height: 72px;
   }
 
   .costing-page__icon-btn {
