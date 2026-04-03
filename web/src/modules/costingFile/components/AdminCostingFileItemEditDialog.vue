@@ -9,32 +9,76 @@
       </q-card-section>
 
       <q-card-section class="costing-item-edit-dialog__grid">
-        <q-input v-model="form.name" label="Name" outlined dense clearable />
-        <q-input v-model.number="form.quantity" label="Quantity" type="number" outlined dense min="1" />
-        <q-input v-model.number="form.productWeight" label="Product weight" type="number" outlined dense clearable />
-        <q-input v-model.number="form.packageWeight" label="Package weight" type="number" outlined dense clearable />
-        <q-input v-model="form.imageUrl" label="Image URL" outlined dense clearable />
-        <q-input v-model.number="form.priceInWebGbp" label="Price in web" type="number" outlined dense clearable />
+        <a
+          v-if="externalWebsiteUrl"
+          :href="externalWebsiteUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="costing-item-edit-dialog__link"
+        >
+          {{ form.websiteUrl }}
+        </a>
+        <q-input
+          v-model="form.imageUrl"
+          label="Product image URL"
+          outlined
+          dense
+          :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
+        />
+        <div v-if="previewImageUrl" class="costing-item-edit-dialog__preview">
+          <q-img :src="previewImageUrl" fit="contain" class="costing-item-edit-dialog__preview-image" />
+        </div>
+        <q-input
+          v-model="form.name"
+          label="Name"
+          outlined
+          dense
+          :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
+        />
+        <q-input
+          v-model.number="form.priceInWebGbp"
+          label="Web price (GBP)"
+          type="number"
+          outlined
+          dense
+          :rules="[(value) => value !== null && value !== '' && !Number.isNaN(Number(value)) || 'Web price is required.']"
+        />
+        <q-input
+          v-model.number="form.productWeight"
+          label="Product weight"
+          type="number"
+          outlined
+          dense
+          :rules="[(value) => value !== null && value !== '' && !Number.isNaN(Number(value)) || 'Product weight is required.']"
+        />
+        <q-input
+          v-model.number="form.packageWeight"
+          label="Package weight"
+          type="number"
+          outlined
+          dense
+          :rules="[(value) => value !== null && value !== '' && !Number.isNaN(Number(value)) || 'Package weight is required.']"
+        />
         <q-input
           v-model.number="form.deliveryPriceGbp"
           label="Delivery charge"
           type="number"
           outlined
           dense
-          clearable
+          :rules="[(value) => value !== null && value !== '' && !Number.isNaN(Number(value)) || 'Delivery charge is required.']"
         />
       </q-card-section>
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" :disable="loading" @click="emit('update:modelValue', false)" />
-        <q-btn color="primary" unelevated label="Save" :loading="loading" @click="handleSave" />
+        <q-btn color="primary" unelevated label="Save" :loading="loading" :disable="isFormInvalid" @click="handleSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 
 import type { CostingFileItem } from 'src/modules/costingFile/types'
 
@@ -46,12 +90,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  save: [payload: { id: number; name: string | null; quantity: number; productWeight: number | null; packageWeight: number | null; imageUrl: string | null; priceInWebGbp: number | null; deliveryPriceGbp: number | null }]
+  save: [payload: { id: number; name: string | null; productWeight: number | null; packageWeight: number | null; imageUrl: string | null; priceInWebGbp: number | null; deliveryPriceGbp: number | null }]
 }>()
 
 const form = reactive({
   name: '',
-  quantity: 1,
+  websiteUrl: '',
   productWeight: null as number | null,
   packageWeight: null as number | null,
   imageUrl: '',
@@ -59,9 +103,33 @@ const form = reactive({
   deliveryPriceGbp: null as number | null,
 })
 
+const normalizeExternalUrl = (value: string) =>
+  /^https?:\/\//i.test(value) ? value : `https://${value}`
+
+const previewImageUrl = computed(() => {
+  const value = form.imageUrl.trim()
+  return value ? normalizeExternalUrl(value) : ''
+})
+
+const externalWebsiteUrl = computed(() => {
+  const value = form.websiteUrl.trim()
+  return value ? normalizeExternalUrl(value) : ''
+})
+
+const isFormInvalid = computed(() => {
+  if (!form.imageUrl.trim()) return true
+  if (!form.name.trim()) return true
+  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true
+  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true
+  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true
+  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true
+
+  return false
+})
+
 const syncForm = (item: CostingFileItem | null) => {
   form.name = item?.name ?? ''
-  form.quantity = item?.quantity ?? 1
+  form.websiteUrl = item?.website_url ?? ''
   form.productWeight = item?.product_weight ?? null
   form.packageWeight = item?.package_weight ?? null
   form.imageUrl = item?.image_url ?? ''
@@ -75,7 +143,6 @@ const handleSave = () => {
   emit('save', {
     id: props.item.id,
     name: form.name.trim() || null,
-    quantity: Math.max(1, Math.trunc(form.quantity || 1)),
     productWeight: form.productWeight,
     packageWeight: form.packageWeight,
     imageUrl: form.imageUrl.trim() || null,
@@ -109,13 +176,32 @@ watch(
 
 .costing-item-edit-dialog__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
-@media (max-width: 599px) {
-  .costing-item-edit-dialog__grid {
-    grid-template-columns: 1fr;
-  }
+.costing-item-edit-dialog__preview {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.costing-item-edit-dialog__link {
+  display: block;
+  overflow: hidden;
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.costing-item-edit-dialog__link:hover {
+  text-decoration: underline;
+}
+
+.costing-item-edit-dialog__preview-image {
+  height: 220px;
 }
 </style>

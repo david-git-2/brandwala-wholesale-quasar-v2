@@ -621,6 +621,7 @@ export type Database = {
         }
         Returns: {
           active_module_keys: string[]
+          customer_group_accent_color: string
           customer_group_id: number
           customer_group_is_active: boolean
           customer_group_name: string
@@ -857,6 +858,14 @@ export type Database = {
         Returns: {
           id: number
           status: Database["public"]["Enums"]["costing_file_item_status"]
+          updated_at: string
+        }[]
+      }
+      update_costing_file_items_customer_profit: {
+        Args: { p_costing_file_id: number; p_customer_profit_rate: number }
+        Returns: {
+          customer_profit_rate: number
+          id: number
           updated_at: string
         }[]
       }

@@ -530,6 +530,7 @@ export function useOAuthLogin(
       id: bootstrap.customer_group_id,
       name: bootstrap.customer_group_name,
       isActive: Boolean(bootstrap.customer_group_is_active),
+      accentColor: bootstrap.customer_group_accent_color?.trim() || null,
     }
 
     await saveAndRedirect({

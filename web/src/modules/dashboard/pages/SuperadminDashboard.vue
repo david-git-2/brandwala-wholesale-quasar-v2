@@ -1,42 +1,13 @@
 <template>
   <q-page class="dashboard-page theme-platform">
-    <section class="dashboard-hero">
-      <div class="dashboard-copy">
-        <div class="dashboard-eyebrow">Platform</div>
-        <h1>Platform control stays here.</h1>
-        <p>
-          Use this workspace to keep tenants, modules, and access rules in sync without digging
-          through extra panels.
-        </p>
-      </div>
+    <div style="margin: auto;" class="text-bold text-h4" > Dashboard</div>
 
-      <div class="dashboard-panel">
-        <div class="dashboard-panel__label">Current access</div>
-        <div class="dashboard-panel__value">{{ authStore.matchedRole }}</div>
-        <div class="dashboard-panel__meta">Superadmin tools and rollout controls are available.</div>
-      </div>
-    </section>
-
-    <section class="dashboard-strip">
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Tenants</div>
-        <h2>Govern workspace rollout</h2>
-        <p>Create businesses, review their status, and keep platform access clean.</p>
-      </article>
-
-      <article class="dashboard-block">
-        <div class="dashboard-block__label">Modules</div>
-        <h2>Control feature exposure</h2>
-        <p>Decide which modules exist and which tenants are allowed to use them.</p>
-      </article>
-    </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-const authStore = useAuthStore();
+
 </script>
 
 <style scoped>

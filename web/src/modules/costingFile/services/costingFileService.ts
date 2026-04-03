@@ -33,9 +33,13 @@ const listCostingFilesForTenant = async (
 
 const listCostingFilesForCustomerGroup = async (
   customerGroupId: number,
+  tenantId?: number | null,
 ): Promise<CostingFileServiceResult<CostingFileListEntry[]>> => {
   try {
-    const data = await costingFileRepository.listCostingFilesForCustomerGroup(customerGroupId)
+    const data = await costingFileRepository.listCostingFilesForCustomerGroup(
+      customerGroupId,
+      tenantId,
+    )
     return { success: true, data }
   } catch (error) {
     return {

@@ -1,6 +1,6 @@
 <template>
   <WorkspaceShell
-    logout-to="/auth/platform/login"
+    logout-to="/platform/login"
     theme="platform"
     :links="links"
   >

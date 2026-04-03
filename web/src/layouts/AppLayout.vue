@@ -45,7 +45,7 @@ const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { links } = useAppWorkspaceLinks()
 const logoutTo = computed(() =>
-  authStore.tenantSlug ? `/auth/${authStore.tenantSlug}/app/login` : '/auth/app/login',
+  authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 )
 const tenantName = computed(() => tenantStore.selectedTenant?.name ?? '')
 const selectedTenantId = computed(() => tenantStore.selectedTenantId)

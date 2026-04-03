@@ -25,9 +25,10 @@ const listCostingFilesForTenant = async (tenantId: number): Promise<CostingFileL
 
 const listCostingFilesForCustomerGroup = async (
   customerGroupId: number,
+  tenantId?: number | null,
 ): Promise<CostingFileListEntry[]> => {
   const { data, error } = await supabase.rpc('list_costing_files_for_actor', {
-    p_tenant_id: null,
+    p_tenant_id: tenantId ?? null,
     p_customer_group_id: customerGroupId,
   })
 

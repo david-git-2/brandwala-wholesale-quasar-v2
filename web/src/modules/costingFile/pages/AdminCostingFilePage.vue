@@ -34,6 +34,7 @@
           flat
           bordered
           class="costing-page__card cursor-pointer"
+          :style="{ '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id) }"
           @click="openFile(file.id)"
         >
           <q-card-section>
@@ -45,8 +46,8 @@
             </div>
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn flat dense label="Edit" @click.stop="openEditDialog(file.id)" />
-            <q-btn flat dense color="negative" label="Delete" @click.stop="openDeleteDialog(file.id)" />
+            <q-btn flat round dense icon="edit" aria-label="Edit costing file" @click.stop="openEditDialog(file.id)" />
+            <q-btn flat round dense color="negative" icon="delete" aria-label="Delete costing file" @click.stop="openDeleteDialog(file.id)" />
           </q-card-actions>
         </q-card>
       </section>
@@ -169,7 +170,7 @@ const deleteDialog = ref(false)
 const editingFileId = ref<number | null>(null)
 const deletingFileId = ref<number | null>(null)
 
-const customerGroupOptions = ref<{ label: string; value: number }[]>([])
+const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>([])
 
 const createForm = reactive({
   name: '',
@@ -201,6 +202,9 @@ const canEdit = computed(
 
 const customerGroupNameById = (customerGroupId: number) =>
   customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? `#${customerGroupId}`
+const customerGroupAccentColorById = (customerGroupId: number) =>
+  customerGroupOptions.value.find((option) => option.value === customerGroupId)?.accentColor?.trim() ||
+  'var(--bw-theme-primary)'
 
 const filePendingDelete = computed(
   () => files.value.find((file) => file.id === deletingFileId.value) ?? null,
@@ -239,6 +243,7 @@ const loadCustomerGroupContext = async () => {
   customerGroupOptions.value = (result.data ?? []).map((group) => ({
     label: group.name,
     value: group.id,
+    accentColor: group.accent_color ?? null,
   }))
   resetCreateForm()
   resetEditForm()
@@ -401,6 +406,7 @@ watch(
 
 .costing-page__card {
   width: 100%;
+  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
 }
 
 .costing-page__dialog {
