@@ -40,6 +40,52 @@
             <div><strong>ID:</strong> #{{ tenant.id }}</div>
             <div><strong>Name:</strong> {{ tenant.name }}</div>
             <div><strong>Slug:</strong> {{ tenant.slug }}</div>
+            <div class="row items-center justify-between q-gutter-sm">
+              <div class="col min-w-0">
+                <strong>Admin Login:</strong>
+                <a
+                  :href="adminLoginUrl"
+                  class="text-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ adminLoginUrl }}
+                </a>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copy admin login URL"
+                  @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
+                />
+              </div>
+            </div>
+            <div class="row items-center justify-between q-gutter-sm">
+              <div class="col min-w-0">
+                <strong>Customer Login:</strong>
+                <a
+                  :href="customerLoginUrl"
+                  class="text-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ customerLoginUrl }}
+                </a>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copy customer login URL"
+                  @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
+                />
+              </div>
+            </div>
             <div>
               <strong>Status:</strong>
               {{ tenant.is_active ? 'Active' : 'Inactive' }}
@@ -239,23 +285,7 @@
                 @update:model-value="onToggleSelectedCustomerGroupActive"
               />
             </q-card-section>
-            <q-card-section class="row items-center justify-between q-pt-none">
-              <div class="min-w-0">
-                <div class="text-subtitle2">Customer Login User</div>
-                <div class="text-caption text-grey-7 ellipsis">
-                  {{ selectedCustomerLoginEmail || 'No login user available yet.' }}
-                </div>
-              </div>
-              <q-btn
-                flat
-                round
-                dense
-                icon="content_copy"
-                aria-label="Copy customer login user"
-                :disable="!selectedCustomerLoginEmail"
-                @click="copyCustomerLoginEmail"
-              />
-            </q-card-section>
+
 
             <q-card-section v-if="customerGroupMembersLoading" class="text-grey-7">
               Loading customer group members...
@@ -920,6 +950,18 @@ const tenant = computed<Tenant | null>(
   () => items.value.find((item) => item.id === tenantId.value) ?? null,
 )
 
+const baseUrl = computed(() =>
+  typeof window === 'undefined' ? '' : window.location.origin,
+)
+
+const adminLoginUrl = computed(() =>
+  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/app/login` : `${baseUrl.value}/app/login`,
+)
+
+const customerLoginUrl = computed(() =>
+  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/shop/login` : `${baseUrl.value}/shop/login`,
+)
+
 const selectedCustomerGroup = computed<CustomerGroup | null>(
   () =>
     customerGroups.value.find((group) => group.id === selectedCustomerGroupId.value) ??
@@ -968,33 +1010,6 @@ const sortedCustomerGroupMembers = computed(() =>
     return left.name.localeCompare(right.name)
   }),
 )
-
-const selectedCustomerLoginEmail = computed(() => {
-  const members = [...selectedCustomerGroupMembers.value]
-  if (!members.length) {
-    return ''
-  }
-
-  const roleOrder: Record<CustomerGroupRole, number> = {
-    admin: 0,
-    negotiator: 1,
-    staff: 2,
-  }
-
-  members.sort((left, right) => {
-    if (left.is_active !== right.is_active) {
-      return left.is_active ? -1 : 1
-    }
-
-    if (left.role !== right.role) {
-      return roleOrder[left.role] - roleOrder[right.role]
-    }
-
-    return left.id - right.id
-  })
-
-  return members[0]?.email ?? ''
-})
 
 const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff'),
@@ -1130,21 +1145,21 @@ const formatDateTime = (value: string | null) => {
 const customerGroupNameById = (customerGroupId: number) =>
   customerGroups.value.find((group) => group.id === customerGroupId)?.name ?? `#${customerGroupId}`
 
-const copyCustomerLoginEmail = async () => {
-  if (!selectedCustomerLoginEmail.value) {
+const copyLoginUrl = async (url: string, successMessage: string) => {
+  if (!url) {
     return
   }
 
   try {
-    await copyToClipboard(selectedCustomerLoginEmail.value)
+    await copyToClipboard(url)
     $q.notify({
       type: 'positive',
-      message: 'Customer login user copied.',
+      message: successMessage,
     })
   } catch {
     $q.notify({
       type: 'negative',
-      message: 'Failed to copy customer login user.',
+      message: 'Failed to copy login URL.',
     })
   }
 }
