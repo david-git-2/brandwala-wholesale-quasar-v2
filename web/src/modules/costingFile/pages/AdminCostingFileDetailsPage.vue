@@ -260,7 +260,10 @@
         </q-table>
       </section>
 
-      <section v-else-if="selectedFile?.status === 'in_review'" class="costing-page__pricing-section">
+      <section
+        v-else-if="selectedFile?.status === 'in_review' || selectedFile?.status === 'offered'"
+        class="costing-page__pricing-section"
+      >
         <div>
           <div class="text-subtitle1">Pricing inputs</div>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
