@@ -10,10 +10,19 @@
 
       <q-card-section class="costing-item-edit-dialog__grid">
         <q-input v-model="form.name" label="Name" outlined dense clearable />
+        <q-input v-model.number="form.quantity" label="Quantity" type="number" outlined dense min="1" />
         <q-input v-model.number="form.productWeight" label="Product weight" type="number" outlined dense clearable />
         <q-input v-model.number="form.packageWeight" label="Package weight" type="number" outlined dense clearable />
         <q-input v-model="form.imageUrl" label="Image URL" outlined dense clearable />
         <q-input v-model.number="form.priceInWebGbp" label="Price in web" type="number" outlined dense clearable />
+        <q-input
+          v-model.number="form.deliveryPriceGbp"
+          label="Delivery charge"
+          type="number"
+          outlined
+          dense
+          clearable
+        />
       </q-card-section>
 
       <q-card-actions align="right">
@@ -37,23 +46,27 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  save: [payload: { id: number; name: string | null; productWeight: number | null; packageWeight: number | null; imageUrl: string | null; priceInWebGbp: number | null }]
+  save: [payload: { id: number; name: string | null; quantity: number; productWeight: number | null; packageWeight: number | null; imageUrl: string | null; priceInWebGbp: number | null; deliveryPriceGbp: number | null }]
 }>()
 
 const form = reactive({
   name: '',
+  quantity: 1,
   productWeight: null as number | null,
   packageWeight: null as number | null,
   imageUrl: '',
   priceInWebGbp: null as number | null,
+  deliveryPriceGbp: null as number | null,
 })
 
 const syncForm = (item: CostingFileItem | null) => {
   form.name = item?.name ?? ''
+  form.quantity = item?.quantity ?? 1
   form.productWeight = item?.product_weight ?? null
   form.packageWeight = item?.package_weight ?? null
   form.imageUrl = item?.image_url ?? ''
   form.priceInWebGbp = item?.price_in_web_gbp ?? null
+  form.deliveryPriceGbp = item?.delivery_price_gbp ?? null
 }
 
 const handleSave = () => {
@@ -62,10 +75,12 @@ const handleSave = () => {
   emit('save', {
     id: props.item.id,
     name: form.name.trim() || null,
+    quantity: Math.max(1, Math.trunc(form.quantity || 1)),
     productWeight: form.productWeight,
     packageWeight: form.packageWeight,
     imageUrl: form.imageUrl.trim() || null,
     priceInWebGbp: form.priceInWebGbp,
+    deliveryPriceGbp: form.deliveryPriceGbp,
   })
 }
 

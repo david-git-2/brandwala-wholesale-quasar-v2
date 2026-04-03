@@ -101,9 +101,7 @@ export const getShopDashboardRouteLocation = (route: RouteLike): RouteLocationRa
 }
 
 export const getAppRouteLocation = (
-  route: RouteLike & {
-    name?: string | symbol | null
-  },
+  route: RouteLike,
   selectedTenantSlug: string | null | undefined,
 ): RouteLocationRaw => {
   const tenantSlug = selectedTenantSlug ?? undefined
