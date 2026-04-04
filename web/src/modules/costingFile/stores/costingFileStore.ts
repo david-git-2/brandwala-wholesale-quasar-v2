@@ -25,6 +25,7 @@ import type {
 
 type CostingFileStoreState = {
   items: CostingFileListEntry[]
+  totalItems: number
   selectedItem: CostingFileDetails | null
   costingFileItems: CostingFileItem[]
   loading: boolean
@@ -68,6 +69,7 @@ const normalizeRequestItemToCostingFileItem = (
 export const useCostingFileStore = defineStore('costingFile', {
   state: (): CostingFileStoreState => ({
     items: [],
+    totalItems: 0,
     selectedItem: null,
     costingFileItems: [],
     loading: false,
@@ -94,12 +96,38 @@ export const useCostingFileStore = defineStore('costingFile', {
       this.costingFileItems = []
     },
 
-    async fetchCostingFilesByTenant(tenantId: number) {
+    async fetchCostingFilesByTenant(
+      tenantId: number,
+      options?: {
+        customerGroupId?: number | null
+        page?: number
+        pageSize?: number
+      },
+    ) {
       this.loading = true
       this.listLoading = true
       this.error = null
 
       try {
+        if (options) {
+          const result = await costingFileService.listCostingFilesForTenantPage(
+            tenantId,
+            options.customerGroupId ?? null,
+            options.page ?? 1,
+            options.pageSize ?? 20,
+          )
+
+          if (!result.success) {
+            this.error = result.error ?? 'Failed to load costing files.'
+            handleApiFailure(result, this.error)
+            return result
+          }
+
+          this.items = result.data?.items ?? []
+          this.totalItems = result.data?.total ?? 0
+          return result
+        }
+
         const result = await costingFileService.listCostingFilesForTenant(tenantId)
 
         if (!result.success) {
@@ -109,6 +137,7 @@ export const useCostingFileStore = defineStore('costingFile', {
         }
 
         this.items = result.data ?? []
+        this.totalItems = result.data?.length ?? 0
         return result
       } finally {
         this.loading = false
@@ -119,12 +148,35 @@ export const useCostingFileStore = defineStore('costingFile', {
     async fetchCostingFilesByCustomerGroup(
       customerGroupId: number,
       tenantId?: number | null,
+      options?: {
+        page?: number
+        pageSize?: number
+      },
     ) {
       this.loading = true
       this.listLoading = true
       this.error = null
 
       try {
+        if (options) {
+          const result = await costingFileService.listCostingFilesForCustomerGroupPage(
+            customerGroupId,
+            tenantId,
+            options.page ?? 1,
+            options.pageSize ?? 20,
+          )
+
+          if (!result.success) {
+            this.error = result.error ?? 'Failed to load costing files.'
+            handleApiFailure(result, this.error)
+            return result
+          }
+
+          this.items = result.data?.items ?? []
+          this.totalItems = result.data?.total ?? 0
+          return result
+        }
+
         const result = await costingFileService.listCostingFilesForCustomerGroup(
           customerGroupId,
           tenantId,
@@ -137,6 +189,7 @@ export const useCostingFileStore = defineStore('costingFile', {
         }
 
         this.items = result.data ?? []
+        this.totalItems = result.data?.length ?? 0
         return result
       } finally {
         this.loading = false
@@ -151,6 +204,28 @@ export const useCostingFileStore = defineStore('costingFile', {
 
       try {
         const result = await costingFileService.getCostingFileById(id)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load costing file details.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.selectedItem = result.data ?? null
+        return result
+      } finally {
+        this.loading = false
+        this.detailsLoading = false
+      }
+    },
+
+    async fetchCostingFileByIdForCustomer(id: number) {
+      this.loading = true
+      this.detailsLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileService.getCostingFileByIdForCustomer(id)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load costing file details.'
@@ -188,6 +263,28 @@ export const useCostingFileStore = defineStore('costingFile', {
       }
     },
 
+    async fetchCostingFileItemsForCustomer(costingFileId: number) {
+      this.loading = true
+      this.itemLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileService.listCostingFileItemsForCustomer(costingFileId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load costing file items.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.costingFileItems = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+        this.itemLoading = false
+      }
+    },
+
     async fetchCostingFileWithItems(id: number) {
       const fileResult = await this.fetchCostingFileById(id)
 
@@ -196,6 +293,17 @@ export const useCostingFileStore = defineStore('costingFile', {
       }
 
       await this.fetchCostingFileItems(id)
+      return fileResult
+    },
+
+    async fetchCostingFileWithItemsForCustomer(id: number) {
+      const fileResult = await this.fetchCostingFileByIdForCustomer(id)
+
+      if (!fileResult.success || !fileResult.data) {
+        return fileResult
+      }
+
+      await this.fetchCostingFileItemsForCustomer(id)
       return fileResult
     },
 

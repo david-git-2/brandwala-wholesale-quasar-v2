@@ -17,6 +17,24 @@
         </div>
       </section>
 
+      <section class="row items-end q-col-gutter-md">
+        <div class="col-12 col-sm-5 col-md-4">
+          <q-select
+            v-model="selectedCustomerGroupId"
+            label="Customer group"
+            outlined
+            dense
+            emit-value
+            map-options
+            :options="customerGroupFilterOptions"
+            @update:model-value="handleCustomerGroupFilterChange"
+          />
+        </div>
+        <div class="col-auto text-body2 text-grey-7">
+          Showing {{ files.length }} of {{ totalItems }} files
+        </div>
+      </section>
+
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
@@ -27,42 +45,67 @@
         </q-card-section>
       </q-card>
 
-      <section v-else-if="files.length" class="costing-page__grid">
-        <q-card
-          v-for="file in files"
-          :key="file.id"
-          flat
-          bordered
-          class="costing-page__card cursor-pointer"
-          :style="{ '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id) }"
-          @click="openFile(file.id)"
-        >
-          <q-card-section>
-            <div class="text-overline">Costing file #{{ file.id }}</div>
-            <div class="text-subtitle1">{{ file.name }}</div>
-            <div class="text-body2 text-grey-7">{{ file.market }}</div>
-            <div class="text-caption q-mt-xs text-grey-7">
-              {{ customerGroupNameById(file.customer_group_id) }}
-            </div>
-          </q-card-section>
-          <q-card-actions align="right">
-            <q-btn flat round dense icon="edit" aria-label="Edit costing file" @click.stop="openEditDialog(file.id)" />
-            <q-btn flat round dense color="negative" icon="delete" aria-label="Delete costing file" @click.stop="openDeleteDialog(file.id)" />
-          </q-card-actions>
-        </q-card>
-      </section>
+      <template v-if="files.length">
+        <section class="costing-page__grid">
+          <q-card
+            v-for="file in files"
+            :key="file.id"
+            flat
+            bordered
+            class="costing-page__card cursor-pointer"
+            :style="{ '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id) }"
+            @click="openFile(file.id)"
+          >
+            <q-card-section>
+              <div class="row items-start justify-between no-wrap">
+                <div class="text-overline">Costing file #{{ file.id }}</div>
+                <q-chip
+                  dense
+                  square
+                  :color="statusChipColor(file.status)"
+                  text-color="white"
+                  class="costing-page__status-chip"
+                >
+                  {{ file.status }}
+                </q-chip>
+              </div>
+              <div class="text-subtitle1">{{ file.name }}</div>
+              <div class="text-body2 text-grey-7">{{ file.market || 'Not set' }}</div>
+              <div class="text-caption q-mt-xs text-grey-7">
+                {{ customerGroupNameById(file.customer_group_id) }}
+              </div>
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat round dense icon="edit" aria-label="Edit costing file" @click.stop="openEditDialog(file.id)" />
+              <q-btn flat round dense color="negative" icon="delete" aria-label="Delete costing file" @click.stop="openDeleteDialog(file.id)" />
+            </q-card-actions>
+          </q-card>
+        </section>
 
-      <q-card v-else-if="!loadingFiles" flat bordered>
+        <div v-if="totalPages > 1" class="costing-page__pagination">
+          <q-pagination
+            v-model="page"
+            :max="totalPages"
+            boundary-links
+            direction-links
+            color="primary"
+            :max-pages="7"
+            @update:model-value="handlePageChange"
+          />
+        </div>
+      </template>
+
+      <q-card v-else-if="loadingFiles" flat bordered>
+        <q-card-section class="text-grey-7">Loading costing files...</q-card-section>
+      </q-card>
+
+      <q-card v-else flat bordered>
         <q-card-section class="text-center">
           <div class="text-subtitle1">No costing files found</div>
           <div class="text-body2 text-grey-7 q-mt-sm">
             Create a costing file to get started.
           </div>
         </q-card-section>
-      </q-card>
-
-      <q-card v-else flat bordered>
-        <q-card-section class="text-grey-7">Loading costing files...</q-card-section>
       </q-card>
 
       <q-dialog v-model="createDialog" persistent>
@@ -159,7 +202,7 @@ import { handleApiFailure } from 'src/utils/appFeedback'
 const router = useRouter()
 const tenantStore = useTenantStore()
 const costingFileStore = useCostingFileStore()
-const { items: files, listLoading: loadingFiles, error } = storeToRefs(costingFileStore)
+const { items: files, listLoading: loadingFiles, error, totalItems } = storeToRefs(costingFileStore)
 
 const creating = ref(false)
 const editing = ref(false)
@@ -169,8 +212,11 @@ const editDialog = ref(false)
 const deleteDialog = ref(false)
 const editingFileId = ref<number | null>(null)
 const deletingFileId = ref<number | null>(null)
+const page = ref(1)
+const pageSize = 20
 
 const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>([])
+const selectedCustomerGroupId = ref<number | null>(null)
 
 const createForm = reactive({
   name: '',
@@ -205,6 +251,20 @@ const customerGroupNameById = (customerGroupId: number) =>
 const customerGroupAccentColorById = (customerGroupId: number) =>
   customerGroupOptions.value.find((option) => option.value === customerGroupId)?.accentColor?.trim() ||
   'var(--bw-theme-primary)'
+const statusChipColor = (status: string) => {
+  if (status === 'draft') return 'grey-7'
+  if (status === 'customer_submitted') return 'indigo'
+  if (status === 'in_review') return 'amber-8'
+  if (status === 'offered') return 'positive'
+  return 'primary'
+}
+
+const customerGroupFilterOptions = computed(() => [
+  { label: 'All customer groups', value: null },
+  ...customerGroupOptions.value,
+])
+
+const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))
 
 const filePendingDelete = computed(
   () => files.value.find((file) => file.id === deletingFileId.value) ?? null,
@@ -254,14 +314,28 @@ const loadFiles = async () => {
 
   if (!tenantId) {
     costingFileStore.items = []
+    costingFileStore.totalItems = 0
     return
   }
 
-  await costingFileStore.fetchCostingFilesByTenant(tenantId)
+  await costingFileStore.fetchCostingFilesByTenant(tenantId, {
+    customerGroupId: selectedCustomerGroupId.value,
+    page: page.value,
+    pageSize,
+  })
 }
 
 const loadPageData = async () => {
   await loadCustomerGroupContext()
+  await loadFiles()
+}
+
+const handleCustomerGroupFilterChange = async () => {
+  page.value = 1
+  await loadFiles()
+}
+
+const handlePageChange = async () => {
   await loadFiles()
 }
 
@@ -281,7 +355,7 @@ const openEditDialog = (id: number) => {
 
   editingFileId.value = file.id
   editForm.name = file.name
-  editForm.market = file.market
+  editForm.market = file.market ?? ''
   editForm.customerGroupId = file.customer_group_id
   editDialog.value = true
 }
@@ -391,6 +465,8 @@ watch(
     createDialog.value = false
     closeEditDialog()
     closeDeleteDialog()
+    selectedCustomerGroupId.value = null
+    page.value = 1
     await loadPageData()
   },
   { immediate: true },
@@ -414,6 +490,12 @@ watch(
 }
 
 .costing-page__dialog-body { display: grid; gap: 1rem; }
+
+.costing-page__pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
 
 @media (max-width: 599px) {
   .costing-page__grid {

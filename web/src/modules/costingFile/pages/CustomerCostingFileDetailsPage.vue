@@ -8,7 +8,7 @@
       <div v-if="selectedFile">
         <div class="costing-page__summary">
           <p class="costing-page__summary-text q-my-none text-body2 text-grey-7">
-            {{ selectedFile.name }} | {{ selectedFile.market }}
+            {{ selectedFile.name }} | {{ selectedFile.market || 'Not set' }}
           </p>
           <q-chip
             dense
@@ -381,9 +381,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 
+import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
-import { calculateBuyerSellPrice } from 'src/modules/costingFile/utils/costingCalculations'
 import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
@@ -419,28 +419,7 @@ const canCreateRequest = computed(
 
 
 const productRows = computed(() =>
-  itemForms.value.map((item, index) => {
-    const offerPriceBdt = Number(item.offer_price_bdt ?? 0)
-    const effectiveProfitRate = sharedProfitRate.value ?? item.customer_profit_rate
-    const buyerSellingPriceBdt = calculateBuyerSellPrice(item.offer_price_bdt, effectiveProfitRate)
-    const customerProfitAmountBdt = buyerSellingPriceBdt - offerPriceBdt
-    const customerProfitRateDisplay =
-      offerPriceBdt > 0 ? `${((customerProfitAmountBdt / offerPriceBdt) * 100).toFixed(2)}%` : '-'
-
-    return {
-      id: item.id,
-      sl: index + 1,
-      imageUrl: item.image_url,
-      websiteUrl: item.website_url,
-      quantity: item.quantity,
-      name: item.name ?? '-',
-      offerPriceBdt: formatBdt(item.offer_price_bdt),
-      buyerSellingPriceBdt: formatBdt(buyerSellingPriceBdt),
-      customerProfitAmountBdt: formatBdt(customerProfitAmountBdt),
-      customerProfitRateDisplay,
-      status: item.status,
-    }
-  }),
+  buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
 )
 
 const allColumns = [
@@ -542,7 +521,6 @@ const visibleColumns = computed(() => {
   return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity', 'name', 'status', 'offerPriceBdt'].includes(column.name))
 })
 
-const formatBdt = (value: number | null) => (value == null ? '-' : String(value))
 const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
 
 const resetRequestForm = () => {
@@ -559,7 +537,7 @@ const syncFileForm = () => {
 const loadFile = async () => {
   const fileId = Number(route.params.id)
   if (!fileId) return
-  await costingFileStore.fetchCostingFileWithItems(fileId)
+  await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId)
 }
 
 const handleSubmitRequest = async () => {

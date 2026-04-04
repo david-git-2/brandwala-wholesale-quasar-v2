@@ -19,7 +19,13 @@
             :loading="savingStatus"
             @update:model-value="handleSaveStatus"
           />
-          <q-btn outline color="primary" label="Add item" :disable="!selectedFile" />
+          <q-btn
+            outline
+            color="primary"
+            label="Add item"
+            :disable="!selectedFile || selectedFile.status !== 'draft'"
+            @click="addItemDialogOpen = true"
+          />
         </div>
       </section>
 
@@ -274,11 +280,11 @@
 
         <div class="costing-page__pricing-grid">
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate 1 KG</div>
+            <div class="costing-page__field-label">Cargo rate less than 10 (per KG)</div>
             <q-input v-model.number="pricingForm.cargoRate1Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate 2 KG</div>
+            <div class="costing-page__field-label">Cargo rate greater than 10 (per KG)</div>
             <q-input v-model.number="pricingForm.cargoRate2Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
@@ -286,7 +292,7 @@
             <q-input v-model.number="pricingForm.conversionRate" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Admin profit rate</div>
+            <div class="costing-page__field-label">Admin profit rate (%)</div>
             <q-input v-model.number="pricingForm.adminProfitRate" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field costing-page__field--action">
@@ -651,6 +657,12 @@
         :loading="savingItemId === editingItem?.id"
         @save="handleSaveEnrichment"
       />
+
+      <AddCostingFileItemDialog
+        v-model="addItemDialogOpen"
+        :loading="creatingItem"
+        @save="handleCreateItem"
+      />
     </section>
   </q-page>
 </template>
@@ -660,10 +672,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 
+import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
+import {
+  buildAdminProductRows,
+  buildAdminReviewRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
-import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations'
 
 const route = useRoute()
 const costingFileStore = useCostingFileStore()
@@ -684,6 +700,8 @@ const deleteReviewItemDialogOpen = ref(false)
 const reviewItemPendingDeleteId = ref<number | null>(null)
 const statusForm = ref<CostingFileStatus>('draft')
 const editDialogOpen = ref(false)
+const addItemDialogOpen = ref(false)
+const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
 const reviewTableMode = ref<'detailed' | 'compact'>('detailed')
 const offerDrafts = reactive<Record<number, number | null>>({})
@@ -706,22 +724,7 @@ const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
 )
 
-const productRows = computed(() =>
-  costingFileItems.value.map((item, index) => ({
-    id: item.id,
-    sl: index + 1,
-    imageUrl: item.image_url,
-    websiteUrl: item.website_url,
-    name: item.name ?? '-',
-    priceInWebGbpValue: item.price_in_web_gbp,
-    priceInWebGbp: item.price_in_web_gbp == null ? '-' : Number(item.price_in_web_gbp).toFixed(2),
-    productWeightValue: item.product_weight,
-    productWeight: item.product_weight == null ? '-' : item.product_weight,
-    packageWeightValue: item.package_weight,
-    packageWeight: item.package_weight == null ? '-' : item.package_weight,
-    quantity: item.quantity,
-  })),
-)
+const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
 
 const productColumns = [
   { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
@@ -744,70 +747,12 @@ const productColumns = [
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
-const formatGbp = (value: number | null | undefined) => (value == null ? '-' : Number(value).toFixed(2))
-const formatBdt = (value: number | null | undefined) => (value == null ? '-' : String(value))
-
 const reviewRows = computed(() =>
-  costingFileItems.value.map((item, index) => {
-    const calculated = calculateCostingItem(
-      {
-        cargoRate1Kg: pricingForm.cargoRate1Kg,
-        cargoRate2Kg: pricingForm.cargoRate2Kg,
-        conversionRate: pricingForm.conversionRate,
-        adminProfitRate: pricingForm.adminProfitRate,
-        offerPriceOverrideBdt: item.offer_price_override_bdt,
-      },
-      {
-        productWeight: item.product_weight,
-        packageWeight: item.package_weight,
-        priceInWebGbp: item.price_in_web_gbp,
-        deliveryPriceGbp: item.delivery_price_gbp,
-        customerProfitRate: item.customer_profit_rate,
-      },
-    )
-    const profitAmount = calculated.offerPriceBdt - calculated.costingPriceBdt
-    const profitRate =
-      calculated.costingPriceBdt > 0
-        ? `${((profitAmount / calculated.costingPriceBdt) * 100).toFixed(2)}%`
-        : '-'
-    const quantity = Number(item.quantity ?? 0)
-    const totalCostBdt = calculated.costingPriceBdt * quantity
-    const totalOfferPriceBdt = calculated.offerPriceBdt * quantity
-    const totalProfitBdt = totalOfferPriceBdt - totalCostBdt
-    const averageProfitRate =
-      totalCostBdt > 0 ? `${((totalProfitBdt / totalCostBdt) * 100).toFixed(2)}%` : '-'
-
-    return {
-      id: item.id,
-      sl: index + 1,
-      imageUrl: item.image_url,
-      websiteUrl: item.website_url,
-      quantity,
-      name: item.name ?? '-',
-      productWeight: item.product_weight ?? '-',
-      productWeightValue: item.product_weight,
-      packageWeight: item.package_weight ?? '-',
-      packageWeightValue: item.package_weight,
-      totalWeight: calculated.totalWeight,
-      priceInWebGbpValue: item.price_in_web_gbp,
-      priceInWebGbp: formatGbp(item.price_in_web_gbp),
-      deliveryPriceGbpValue: item.delivery_price_gbp,
-      deliveryPriceGbp: formatGbp(item.delivery_price_gbp),
-      auxiliaryPriceGbp: formatGbp(calculated.auxiliaryPriceGbp),
-      purchasePriceGbp: formatGbp(calculated.itemPriceGbp),
-      cargoRateGbp: formatGbp(calculated.cargoRate),
-      costingPriceGbp: formatGbp(calculated.costingPriceGbp),
-      costingPriceBdt: formatBdt(calculated.costingPriceBdt),
-      offerPriceBdtValue: calculated.offerPriceBdt,
-      offerPriceBdt: formatBdt(calculated.offerPriceBdt),
-      offerPriceOverrideBdt: item.offer_price_override_bdt,
-      profitRate,
-      profitAmount: formatBdt(profitAmount),
-      totalCostBdt: formatBdt(totalCostBdt),
-      totalOfferPriceBdt: formatBdt(totalOfferPriceBdt),
-      totalProfitBdt: formatBdt(totalProfitBdt),
-      averageProfitRate,
-    }
+  buildAdminReviewRows(costingFileItems.value, {
+    cargoRate1Kg: pricingForm.cargoRate1Kg,
+    cargoRate2Kg: pricingForm.cargoRate2Kg,
+    conversionRate: pricingForm.conversionRate,
+    adminProfitRate: pricingForm.adminProfitRate,
   }),
 )
 
@@ -836,7 +781,7 @@ const reviewColumns = [
   { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   {
     name: 'costingPriceGbp',
-    label: 'Cost (GBP)',
+    label: 'Cost (GBP) per unit',
     field: 'costingPriceGbp',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
@@ -846,7 +791,7 @@ const reviewColumns = [
   },
   {
     name: 'costingPriceBdt',
-    label: 'Cost (BDT)',
+    label: 'Cost (BDT) per unit',
     field: 'costingPriceBdt',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
@@ -856,13 +801,23 @@ const reviewColumns = [
   },
   {
     name: 'offerPriceBdt',
-    label: 'Offer price (BDT)',
+    label: 'Offer price (BDT) per unit',
     field: 'offerPriceBdt',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
     headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
+  },
+  {
+    name: 'totalCostGbp',
+    label: 'Total cost (GBP)',
+    field: 'totalCostGbp',
+    align: 'left' as const,
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
   },
   {
     name: 'totalCostBdt',
@@ -885,7 +840,7 @@ const reviewColumns = [
     headerClasses: 'costing-page__tone-emerald',
   },
   { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 74px; min-width: 74px;', headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;' },
-  { name: 'profitAmount', label: 'Profit amount (BDT)', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'profitAmount', label: 'Profit amount (BDT) per unit', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   { name: 'totalProfitBdt', label: 'Total profit (BDT)', field: 'totalProfitBdt', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;' },
   { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 88px; min-width: 88px;', headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;' },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
@@ -1064,6 +1019,43 @@ const handleSaveEnrichment = async (payload: {
   }
 }
 
+const handleCreateItem = async (payload: {
+  websiteUrl: string
+  quantity: number
+  name: string
+  imageUrl: string
+  productWeight: number
+  packageWeight: number
+  priceInWebGbp: number
+  deliveryPriceGbp: number
+}) => {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+    return
+  }
+
+  creatingItem.value = true
+  try {
+    const result = await costingFileStore.createCostingFileItem({
+      costingFileId: selectedFile.value.id,
+      websiteUrl: payload.websiteUrl,
+      quantity: payload.quantity,
+      name: payload.name,
+      imageUrl: payload.imageUrl,
+      productWeight: payload.productWeight,
+      packageWeight: payload.packageWeight,
+      priceInWebGbp: payload.priceInWebGbp,
+      deliveryPriceGbp: payload.deliveryPriceGbp,
+      status: 'pending',
+    })
+
+    if (result.success) {
+      addItemDialogOpen.value = false
+    }
+  } finally {
+    creatingItem.value = false
+  }
+}
+
 const openDeleteReviewItemDialog = (itemId: number) => {
   if (selectedFile.value?.status !== 'in_review') {
     return
@@ -1128,6 +1120,12 @@ watch(
 watch(editDialogOpen, (isOpen) => {
   if (!isOpen) {
     editingItemId.value = null
+  }
+})
+
+watch(addItemDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    creatingItem.value = false
   }
 })
 
@@ -1201,7 +1199,7 @@ onMounted(async () => {
 }
 
 .costing-page__field-label {
-  font-size: 0.875rem;
+  font-size: 0.675rem;
   font-weight: 600;
   color: var(--bw-theme-ink);
 }

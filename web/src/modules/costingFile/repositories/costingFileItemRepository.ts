@@ -27,6 +27,62 @@ const listCostingFileItems = async (costingFileId: number): Promise<CostingFileI
   return (data as CostingFileItem[] | null) ?? []
 }
 
+const listCostingFileItemsForCustomer = async (
+  costingFileId: number,
+): Promise<CostingFileItem[]> => {
+  const { data, error } = await supabase
+    .from('costing_file_items')
+    .select(
+      'id, costing_file_id, name, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
+    )
+    .eq('costing_file_id', costingFileId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return ((data as Array<
+    Pick<
+      CostingFileItem,
+      | 'id'
+      | 'costing_file_id'
+      | 'name'
+      | 'image_url'
+      | 'website_url'
+      | 'quantity'
+      | 'offer_price_bdt'
+      | 'customer_profit_rate'
+      | 'status'
+      | 'created_at'
+      | 'updated_at'
+    >
+  > | null) ?? []).map((item) => ({
+    id: item.id,
+    costing_file_id: item.costing_file_id,
+    name: item.name,
+    image_url: item.image_url,
+    website_url: item.website_url,
+    quantity: item.quantity,
+    product_weight: null,
+    package_weight: null,
+    price_in_web_gbp: null,
+    delivery_price_gbp: null,
+    auxiliary_price_gbp: null,
+    item_price_gbp: null,
+    cargo_rate: null,
+    costing_price_gbp: null,
+    costing_price_bdt: null,
+    offer_price_override_bdt: null,
+    offer_price_bdt: item.offer_price_bdt,
+    customer_profit_rate: item.customer_profit_rate,
+    status: item.status,
+    created_by_email: '',
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }))
+}
+
 const createCostingFileItem = async (
   payload: CostingFileItemCreateInput,
 ): Promise<CostingFileItem> => {
@@ -262,6 +318,7 @@ const deleteCostingFileItem = async (
 
 export const costingFileItemRepository = {
   listCostingFileItems,
+  listCostingFileItemsForCustomer,
   createCostingFileItem,
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,

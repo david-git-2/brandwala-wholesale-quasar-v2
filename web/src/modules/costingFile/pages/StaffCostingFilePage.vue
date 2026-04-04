@@ -7,6 +7,24 @@
         <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
       </section>
 
+      <section class="row items-end q-col-gutter-md">
+        <div class="col-12 col-sm-5 col-md-4">
+          <q-select
+            v-model="selectedCustomerGroupId"
+            label="Customer group"
+            outlined
+            dense
+            emit-value
+            map-options
+            :options="customerGroupFilterOptions"
+            @update:model-value="handleFilterChange"
+          />
+        </div>
+        <div class="col-auto text-body2 text-grey-7">
+          Showing {{ files.length }} of {{ totalItems }} files
+        </div>
+      </section>
+
       <q-table flat bordered row-key="id" :rows="fileRows" :columns="fileColumns" :loading="loadingFiles" hide-bottom>
         <template #body-cell-open="props">
           <q-td :props="props">
@@ -15,17 +33,37 @@
         </template>
       </q-table>
 
+      <div v-if="totalPages > 1" class="costing-page__pagination">
+        <q-pagination
+          v-model="page"
+          :max="totalPages"
+          boundary-links
+          direction-links
+          color="primary"
+          :max-pages="7"
+          @update:model-value="handlePageChange"
+        />
+      </div>
+
       <q-card v-if="selectedFile" flat bordered>
         <q-card-section>
           <div class="text-subtitle1">Costing file details</div>
-          <div class="text-body2 text-grey-7">{{ selectedFile.name }} | {{ selectedFile.market }} | {{ customerGroupNameById(selectedFile.customer_group_id) }}</div>
+          <div class="text-body2 text-grey-7">{{ selectedFile.name }} | {{ selectedFile.market || 'Not set' }} | {{ customerGroupNameById(selectedFile.customer_group_id) }}</div>
         </q-card-section>
 
         <q-card-section v-if="selectedFile.status === 'draft'">
           <div class="costing-page__detail-grid">
             <q-input :model-value="selectedFile.name" label="File name" outlined dense readonly />
-            <q-input :model-value="selectedFile.market" label="Market" outlined dense readonly />
+            <q-input :model-value="selectedFile.market ?? ''" label="Market" outlined dense readonly />
             <q-input :model-value="customerGroupNameById(selectedFile.customer_group_id)" label="Customer group" outlined dense readonly />
+          </div>
+          <div class="costing-page__actions">
+            <q-btn
+              color="primary"
+              unelevated
+              label="Add item"
+              @click="addItemDialogOpen = true"
+            />
           </div>
         </q-card-section>
 
@@ -33,7 +71,7 @@
           <q-card-section v-if="selectedFile.status === 'customer_submitted'">
             <div class="costing-page__detail-grid">
               <q-input :model-value="selectedFile.name" label="File name" outlined dense readonly />
-              <q-input :model-value="selectedFile.market" label="Market" outlined dense readonly />
+              <q-input :model-value="selectedFile.market ?? ''" label="Market" outlined dense readonly />
               <q-input :model-value="customerGroupNameById(selectedFile.customer_group_id)" label="Customer group" outlined dense readonly />
             </div>
           </q-card-section>
@@ -154,6 +192,12 @@
         :loading="savingItemId === editingItem?.id"
         @save="handleSaveEnrichment"
       />
+
+      <AddCostingFileItemDialog
+        v-model="addItemDialogOpen"
+        :loading="creatingItem"
+        @save="handleCreateItem"
+      />
     </section>
   </q-page>
 </template>
@@ -162,7 +206,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
+import { buildStaffProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItem } from 'src/modules/costingFile/types'
 import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
@@ -172,6 +218,7 @@ const tenantStore = useTenantStore()
 const costingFileStore = useCostingFileStore()
 const {
   items: files,
+  totalItems,
   selectedItem: selectedFile,
   costingFileItems,
   listLoading: loadingFiles,
@@ -181,7 +228,12 @@ const {
 const openingFileId = ref<number | null>(null)
 const savingItemId = ref<number | null>(null)
 const editDialogOpen = ref(false)
+const addItemDialogOpen = ref(false)
+const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
+const selectedCustomerGroupId = ref<number | null>(null)
+const page = ref(1)
+const pageSize = 20
 
 const itemForms = ref<CostingFileItem[]>([])
 const customerGroupOptions = ref<{ label: string; value: number }[]>([])
@@ -202,19 +254,12 @@ const fileRows = computed(() =>
   })),
 )
 
-const productRows = computed(() =>
-  itemForms.value.map((item) => ({
-    id: item.id,
-    sl: itemForms.value.findIndex((entry) => entry.id === item.id) + 1,
-    imageUrl: item.image_url,
-    websiteUrl: item.website_url,
-    name: item.name ?? '-',
-    webPriceGbp: item.price_in_web_gbp == null ? '-' : `GBP ${item.price_in_web_gbp}`,
-    productWeight: item.product_weight == null ? '-' : item.product_weight,
-    packageWeight: item.package_weight == null ? '-' : item.package_weight,
-    quantity: item.quantity ?? '-',
-  })),
-)
+const productRows = computed(() => buildStaffProductRows(itemForms.value))
+const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))
+const customerGroupFilterOptions = computed(() => [
+  { label: 'All customer groups', value: null },
+  ...customerGroupOptions.value,
+])
 
 const editingItem = computed<CostingFileItem | null>(
   () => itemForms.value.find((item) => item.id === editingItemId.value) ?? null,
@@ -248,10 +293,64 @@ const loadFiles = async () => {
 
   if (!tenantId) {
     costingFileStore.items = []
+    costingFileStore.totalItems = 0
     return
   }
 
-  await costingFileStore.fetchCostingFilesByTenant(tenantId)
+  await costingFileStore.fetchCostingFilesByTenant(tenantId, {
+    customerGroupId: selectedCustomerGroupId.value,
+    page: page.value,
+    pageSize,
+  })
+}
+
+const getStaffListStateKey = (tenantId: number) =>
+  `costingFile.staff.listState.v1.tenant.${tenantId}`
+
+const saveStaffListState = () => {
+  const tenantId = tenantStore.selectedTenant?.id
+  if (!tenantId || typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(
+    getStaffListStateKey(tenantId),
+    JSON.stringify({
+      selectedCustomerGroupId: selectedCustomerGroupId.value,
+      page: page.value,
+    }),
+  )
+}
+
+const loadStaffListState = () => {
+  const tenantId = tenantStore.selectedTenant?.id
+  if (!tenantId || typeof window === 'undefined') {
+    selectedCustomerGroupId.value = null
+    page.value = 1
+    return
+  }
+
+  const raw = window.localStorage.getItem(getStaffListStateKey(tenantId))
+  if (!raw) {
+    selectedCustomerGroupId.value = null
+    page.value = 1
+    return
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      selectedCustomerGroupId?: number | null
+      page?: number
+    }
+    selectedCustomerGroupId.value =
+      typeof parsed.selectedCustomerGroupId === 'number'
+        ? parsed.selectedCustomerGroupId
+        : null
+    page.value = Number.isFinite(parsed.page) && Number(parsed.page) > 0 ? Number(parsed.page) : 1
+  } catch {
+    selectedCustomerGroupId.value = null
+    page.value = 1
+  }
 }
 
 const loadCustomerGroups = async () => {
@@ -345,6 +444,55 @@ const handleSaveItem = async (item: CostingFileItem) => {
   }
 }
 
+const handleCreateItem = async (payload: {
+  websiteUrl: string
+  quantity: number
+  name: string
+  imageUrl: string
+  productWeight: number
+  packageWeight: number
+  priceInWebGbp: number
+  deliveryPriceGbp: number
+}) => {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+    return
+  }
+
+  creatingItem.value = true
+  try {
+    const result = await costingFileStore.createCostingFileItem({
+      costingFileId: selectedFile.value.id,
+      websiteUrl: payload.websiteUrl,
+      quantity: payload.quantity,
+      name: payload.name,
+      imageUrl: payload.imageUrl,
+      productWeight: payload.productWeight,
+      packageWeight: payload.packageWeight,
+      priceInWebGbp: payload.priceInWebGbp,
+      deliveryPriceGbp: payload.deliveryPriceGbp,
+      status: 'pending',
+    })
+
+    if (result.success) {
+      addItemDialogOpen.value = false
+      await refreshSelectedFile()
+    }
+  } finally {
+    creatingItem.value = false
+  }
+}
+
+const handleFilterChange = async () => {
+  page.value = 1
+  saveStaffListState()
+  await loadFiles()
+}
+
+const handlePageChange = async () => {
+  saveStaffListState()
+  await loadFiles()
+}
+
 watch(
   costingFileItems,
   (items) => {
@@ -359,16 +507,37 @@ watch(editDialogOpen, (isOpen) => {
   }
 })
 
+watch(addItemDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    creatingItem.value = false
+  }
+})
+
 onMounted(async () => {
+  loadStaffListState()
   await loadCustomerGroups()
   await loadFiles()
 })
+
+watch(
+  () => tenantStore.selectedTenant?.id ?? null,
+  async () => {
+    loadStaffListState()
+    await loadCustomerGroups()
+    await loadFiles()
+  },
+)
 </script>
 
 <style scoped>
 .costing-page {
   display: grid;
   gap: 1.25rem;
+}
+
+.costing-page__pagination {
+  display: flex;
+  justify-content: center;
 }
 
 .costing-page__table {
