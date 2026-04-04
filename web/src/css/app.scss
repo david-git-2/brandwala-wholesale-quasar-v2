@@ -63,6 +63,12 @@ body {
   color: var(--bw-brand-ink);
 }
 
+.q-page {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
 .bw-page {
   padding: clamp(1rem, 2.4vw, 2rem);
 }

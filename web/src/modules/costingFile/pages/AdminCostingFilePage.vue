@@ -57,8 +57,7 @@
             @click="openFile(file.id)"
           >
             <q-card-section>
-              <div class="row items-start justify-between no-wrap">
-                <div class="text-overline">Costing file #{{ file.id }}</div>
+              <div class="row justify-end">
                 <q-chip
                   dense
                   square
@@ -66,13 +65,17 @@
                   text-color="white"
                   class="costing-page__status-chip"
                 >
-                  {{ file.status }}
+                  {{ formatStatusLabel(file.status) }}
                 </q-chip>
               </div>
-              <div class="text-subtitle1">{{ file.name }}</div>
+              <div class="text-overline q-mt-xs">Costing file #{{ file.id }}</div>
+              <div class="text-subtitle1">#{{ file.id }} {{ file.name }}</div>
               <div class="text-body2 text-grey-7">{{ file.market || 'Not set' }}</div>
               <div class="text-caption q-mt-xs text-grey-7">
                 {{ customerGroupNameById(file.customer_group_id) }}
+              </div>
+              <div class="text-caption q-mt-xs text-grey-7">
+                Created by: {{ file.created_by_label || file.created_by_email || 'Unknown' }}
               </div>
             </q-card-section>
             <q-card-actions align="right">
@@ -258,6 +261,10 @@ const statusChipColor = (status: string) => {
   if (status === 'offered') return 'positive'
   return 'primary'
 }
+const formatStatusLabel = (status: string) =>
+  status
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 
 const customerGroupFilterOptions = computed(() => [
   { label: 'All customer groups', value: null },
@@ -391,6 +398,7 @@ const handleCreate = async () => {
       customerGroupId,
       name: createForm.name.trim(),
       market: createForm.market.trim(),
+      status: 'customer_submitted',
     })
 
     if (!result.success || !result.data) {

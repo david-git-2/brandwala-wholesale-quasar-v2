@@ -47,7 +47,9 @@ export type CostingFileItem = {
 export type CostingFileListEntry = Pick<
   CostingFile,
   'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_by_email' | 'created_at' | 'updated_at'
->
+> & {
+  created_by_label?: string | null
+}
 
 export type CostingFileListPageResult = {
   items: CostingFileListEntry[]
@@ -61,6 +63,7 @@ export type CostingFileCreateInput = {
   customerGroupId: number
   name: string
   market: string | null
+  status?: CostingFileStatus
 }
 
 export type CostingFileUpdateInput = {

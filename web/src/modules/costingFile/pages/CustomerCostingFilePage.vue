@@ -36,8 +36,7 @@
           @click="openFile(file.id)"
         >
           <q-card-section>
-            <div class="row items-start justify-between no-wrap">
-              <div class="text-overline">Costing file</div>
+            <div class="row justify-end">
               <q-chip
                 dense
                 square
@@ -45,10 +44,11 @@
                 text-color="white"
                 class="costing-page__status-chip"
               >
-                {{ file.status }}
+                {{ formatStatusLabel(file.status) }}
               </q-chip>
             </div>
-            <div class="text-subtitle1">{{ file.name }}</div>
+            <div class="text-overline q-mt-xs">Costing file</div>
+            <div class="text-subtitle1">#{{ file.id }} {{ file.name }}</div>
             <div class="text-body2 text-grey-7">Market: {{ file.market || 'Not set' }}</div>
           </q-card-section>
           <q-card-actions v-if="file.status === 'draft'" align="right">
@@ -136,6 +136,10 @@ const statusChipColor = (status: string) => {
   if (status === 'offered') return 'positive'
   return 'primary'
 }
+const formatStatusLabel = (status: string) =>
+  status
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 const customerGroupName = computed(() => authStore.customerGroup?.name?.trim() || 'Customer group')
 const canCreate = computed(() => Boolean(authStore.customerGroupId && authStore.tenantId))
 const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))

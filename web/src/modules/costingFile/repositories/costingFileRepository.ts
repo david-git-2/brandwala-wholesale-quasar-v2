@@ -59,6 +59,7 @@ const listCostingFilesForTenantPage = async (
       customer_group_id: row.customer_group_id,
       tenant_id: row.tenant_id,
       created_by_email: row.created_by_email,
+      created_by_label: row.created_by_label ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     })),
@@ -119,6 +120,7 @@ const listCostingFilesForCustomerGroupPage = async (
       customer_group_id: row.customer_group_id,
       tenant_id: row.tenant_id,
       created_by_email: '',
+      created_by_label: row.created_by_label ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     })),
@@ -171,10 +173,11 @@ const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDet
 
 const createCostingFile = async (payload: CostingFileCreateInput): Promise<CostingFileDetails> => {
   const { data, error } = await supabase.rpc('create_costing_file', {
-    p_tenant_id: payload.tenantId,
     p_customer_group_id: payload.customerGroupId,
-    p_name: payload.name,
     p_market: payload.market,
+    p_name: payload.name,
+    p_status: payload.status ?? 'draft',
+    p_tenant_id: payload.tenantId,
   })
 
   if (error) {

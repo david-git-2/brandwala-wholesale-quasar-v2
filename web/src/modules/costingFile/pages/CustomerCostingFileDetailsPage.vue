@@ -52,7 +52,6 @@
             v-if="productRows.length"
             flat
             bordered
-            dense
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
@@ -186,6 +185,12 @@
               :loading="savingProfitAll"
               :disable="savingProfitAll"
               @click="handleSaveSharedProfitRate"
+            />
+            <q-btn
+              outline
+              color="primary"
+              label="Preview"
+              @click="openPreview"
             />
           </div>
 
@@ -379,7 +384,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
@@ -387,6 +392,7 @@ import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
 import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
+const router = useRouter()
 const costingFileStore = useCostingFileStore()
 const {
   selectedItem: selectedFile,
@@ -423,7 +429,14 @@ const productRows = computed(() =>
 )
 
 const allColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center' as const },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+  },
   { name: 'image', label: 'Image', field: 'imageUrl', align: 'center' as const },
   {
     name: 'name',
@@ -433,14 +446,21 @@ const allColumns = [
     style: 'width: 320px; min-width: 320px;',
     headerStyle: 'width: 320px; min-width: 320px; white-space: normal; line-height: 1.15;',
   },
-  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'center' as const },
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'center' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+  },
   {
     name: 'quantity',
     label: 'Qty',
     field: 'quantity',
     align: 'center' as const,
-    style: 'width: 64px; min-width: 64px;',
-    headerStyle: 'width: 64px; min-width: 64px; white-space: normal; line-height: 1.15;',
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px; white-space: normal; line-height: 1.15;',
   },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
   {
@@ -659,6 +679,19 @@ const handleSubmitOrder = async () => {
   } finally {
     submittingOrder.value = false
   }
+}
+
+const openPreview = () => {
+  if (!selectedFile.value || selectedFile.value.status !== 'offered') {
+    return
+  }
+
+  const targetRoute = router.resolve({
+    name: 'customer-costing-file-preview-page',
+    params: { id: String(selectedFile.value.id) },
+  })
+
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
 }
 
 onMounted(async () => {

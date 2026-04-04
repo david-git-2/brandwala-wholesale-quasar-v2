@@ -183,7 +183,9 @@ export function useOAuthLogin(
       (session.user.user_metadata?.name as string | undefined) ??
       null,
     avatarUrl:
-      (session.user.user_metadata?.avatar_url as string | undefined) ?? null,
+      (session.user.user_metadata?.avatar_url as string | undefined) ??
+      (session.user.user_metadata?.picture as string | undefined) ??
+      null,
     provider: session.user.app_metadata?.provider ?? null,
   })
 

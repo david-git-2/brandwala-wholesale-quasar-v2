@@ -23,7 +23,7 @@
             outline
             color="primary"
             label="Add item"
-            :disable="!selectedFile || selectedFile.status !== 'draft'"
+            :disable="!selectedFile || selectedFile.status !== 'customer_submitted'"
             @click="addItemDialogOpen = true"
           />
         </div>
@@ -678,10 +678,12 @@ import {
   buildAdminProductRows,
   buildAdminReviewRows,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
 const {
   selectedItem: selectedFile,
@@ -714,7 +716,23 @@ const pricingForm = reactive({
   adminProfitRate: null as number | null,
 })
 
-const fileStatuses: CostingFileStatus[] = ['draft', 'customer_submitted', 'in_review', 'offered', 'completed', 'cancelled']
+const fileStatuses = computed<CostingFileStatus[]>(() => {
+  if (authStore.matchedRole === 'staff') {
+    const currentStatus = selectedFile.value?.status
+
+    if (!currentStatus) {
+      return ['draft', 'in_review']
+    }
+
+    if (currentStatus === 'draft') {
+      return ['draft', 'in_review']
+    }
+
+    return [currentStatus]
+  }
+
+  return ['draft', 'customer_submitted', 'in_review', 'offered', 'completed', 'cancelled']
+})
 
 const subtitle = computed(() =>
   selectedFile.value ? `${selectedFile.value.name} items and pricing.` : 'Loading costing file details.'
@@ -1029,7 +1047,7 @@ const handleCreateItem = async (payload: {
   priceInWebGbp: number
   deliveryPriceGbp: number
 }) => {
-  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+  if (!selectedFile.value || selectedFile.value.status !== 'customer_submitted') {
     return
   }
 
