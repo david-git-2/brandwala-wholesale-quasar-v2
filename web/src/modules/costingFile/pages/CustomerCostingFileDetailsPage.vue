@@ -480,8 +480,8 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 104px; min-width: 104px;',
     headerStyle: 'width: 104px; min-width: 104px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__tone-indigo',
-    headerClasses: 'costing-page__tone-indigo',
+    classes: 'costing-page__tone-orange',
+    headerClasses: 'costing-page__tone-orange',
   },
   {
     name: 'customerProfitAmountBdt',
@@ -809,7 +809,16 @@ watch(
   color: #1f6a43;
 }
 
+.costing-page__table--offered :deep(.costing-page__tone-orange) {
+  background: #fdeccd;
+  color: #7a5313;
+}
+
 .costing-page__table--offered :deep(th.costing-page__tone-emerald) {
+  font-weight: 700;
+}
+
+.costing-page__table--offered :deep(th.costing-page__tone-orange) {
   font-weight: 700;
 }
 
