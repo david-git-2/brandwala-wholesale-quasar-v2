@@ -65,6 +65,26 @@
               </q-td>
             </template>
 
+            <template #body-cell-image="props">
+              <q-td :props="props" class="costing-page__image-table-cell">
+                <q-img
+                  v-if="props.row.imageUrl"
+                  :src="props.row.imageUrl"
+                  fit="cover"
+                  class="costing-page__image"
+                />
+                <div v-else class="costing-page__image costing-page__image--placeholder">
+                  No image
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                {{ props.row.quantity }}
+              </q-td>
+            </template>
+
             <template #body-cell-name="props">
               <q-td :props="props" class="costing-page__name-cell">
                 <span class="costing-page__name-text" :title="props.row.name">
@@ -137,6 +157,26 @@
               <template #body-cell-sl="props">
                 <q-td :props="props" class="costing-page__sl-cell">
                   {{ props.row.sl }}
+                </q-td>
+              </template>
+
+              <template #body-cell-image="props">
+                <q-td :props="props" class="costing-page__image-table-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="cover"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.quantity }}
                 </q-td>
               </template>
 
@@ -327,6 +367,26 @@
               </q-td>
             </template>
 
+            <template #body-cell-image="props">
+              <q-td :props="props" class="costing-page__image-table-cell">
+                <q-img
+                  v-if="props.row.imageUrl"
+                  :src="props.row.imageUrl"
+                  fit="cover"
+                  class="costing-page__image"
+                />
+                <div v-else class="costing-page__image costing-page__image--placeholder">
+                  No image
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                {{ props.row.quantity }}
+              </q-td>
+            </template>
+
             <template #body-cell-name="props">
               <q-td :props="props" class="costing-page__name-cell">
                 <span class="costing-page__name-text" :title="props.row.name">
@@ -436,23 +496,29 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 48px; min-width: 48px;',
     headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
   },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'center' as const },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'center' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+
   {
     name: 'name',
     label: 'Name',
     field: 'name',
     align: 'center' as const,
-    style: 'width: 320px; min-width: 320px;',
-    headerStyle: 'width: 320px; min-width: 320px; white-space: normal; line-height: 1.15;',
-  },
-  {
-    name: 'websiteUrl',
-    label: 'Web link',
-    field: 'websiteUrl',
-    align: 'center' as const,
-    style: 'width: 144px; min-width: 144px; max-width: 144px;',
-    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+    style: 'width: 280px; min-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   {
     name: 'quantity',
@@ -461,6 +527,16 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+  },
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'center' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
   },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
   {
@@ -510,14 +586,18 @@ const visibleColumns = computed(() => {
   }
 
   if (selectedFile.value.status === 'draft') {
-    return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity', 'actions'].includes(column.name))
+    return allColumns.filter((column) =>
+      ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'actions'].includes(column.name),
+    )
   }
 
   if (
     selectedFile.value.status === 'customer_submitted' ||
     selectedFile.value.status === 'in_review'
   ) {
-    return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity'].includes(column.name))
+    return allColumns.filter((column) =>
+      ['sl', 'image', 'quantity', 'name', 'websiteUrl'].includes(column.name),
+    )
   }
 
   if (selectedFile.value.status === 'offered') {
@@ -525,9 +605,9 @@ const visibleColumns = computed(() => {
       [
         'sl',
         'image',
+        'quantity',
         'name',
         'websiteUrl',
-        'quantity',
         'offerPriceBdt',
         'buyerSellingPriceBdt',
         'customerProfitAmountBdt',
@@ -538,7 +618,9 @@ const visibleColumns = computed(() => {
     )
   }
 
-  return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity', 'name', 'status', 'offerPriceBdt'].includes(column.name))
+  return allColumns.filter((column) =>
+    ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'status', 'offerPriceBdt'].includes(column.name),
+  )
 })
 
 const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
@@ -781,6 +863,36 @@ watch(
   line-height: 1.15;
 }
 
+.costing-page__table :deep(.costing-page__sticky-col) {
+  position: sticky;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col) {
+  z-index: 2;
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col) {
+  z-index: 3;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--sl) {
+  left: 0;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--image) {
+  left: 48px;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--quantity) {
+  left: 436px;
+  box-shadow: 1px 0 0 var(--bw-theme-border);
+}
+
 .costing-page__sl-cell {
   width: 3ch;
   max-width: 3ch;
@@ -788,14 +900,14 @@ watch(
 }
 
 .costing-page__name-cell {
-  width: 320px;
-  min-width: 320px;
-  max-width: 320px;
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
 }
 
 .costing-page__name-text {
   display: inline-block;
-  max-width: 320px;
+  max-width: 280px;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;

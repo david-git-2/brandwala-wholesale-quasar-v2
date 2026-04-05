@@ -53,7 +53,7 @@
           :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
-          class="costing-page__table"
+          class="costing-page__table costing-page__table--product"
         >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
@@ -332,7 +332,7 @@
           :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
-          class="costing-page__table"
+          class="costing-page__table costing-page__table--review"
         >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
@@ -669,7 +669,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
@@ -680,16 +679,14 @@ import {
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
+import type { CostingFileDetails, CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
-const {
-  selectedItem: selectedFile,
-  costingFileItems,
-  itemLoading: loadingItems,
-} = storeToRefs(costingFileStore)
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
+const loadingItems = computed(() => costingFileStore.itemLoading)
 
 const savingStatus = ref(false)
 const savingItemId = ref<number | null>(null)
@@ -745,10 +742,38 @@ const editingItem = computed<CostingFileItem | null>(
 const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
 
 const productColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 108px; min-width: 108px;', headerStyle: 'width: 108px; min-width: 108px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'width: 280px; min-width: 280px; max-width: 280px;', headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;' },
+
   {
     name: 'priceInWebGbp',
     label: 'Web price (GBP)',
@@ -761,7 +786,16 @@ const productColumns = [
   },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  {
+    name: 'quantity',
+    label: 'Quantity',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+  },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
@@ -775,11 +809,49 @@ const reviewRows = computed(() =>
 )
 
 const reviewColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 108px; min-width: 108px;', headerStyle: 'width: 108px; min-width: 108px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
+  {
+    name: 'quantity',
+    label: 'Qty',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 56px; min-width: 56px;',
+    headerStyle: 'width: 56px; min-width: 56px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+  },
+
   { name: 'websiteUrl', label: 'Web URL', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'quantity', label: 'Qty', field: 'quantity', align: 'left' as const, style: 'width: 56px; min-width: 56px;', headerStyle: 'width: 56px; min-width: 56px;' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'width: 280px; min-width: 280px; max-width: 280px;', headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;' },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
   { name: 'totalWeight', label: 'Total wt', field: 'totalWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
@@ -1047,7 +1119,7 @@ const handleCreateItem = async (payload: {
   priceInWebGbp: number
   deliveryPriceGbp: number
 }) => {
-  if (!selectedFile.value || selectedFile.value.status !== 'customer_submitted') {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
     return
   }
 
@@ -1249,6 +1321,45 @@ onMounted(async () => {
 .costing-page__table :deep(.q-table td) {
   text-align: center;
   vertical-align: middle;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col) {
+  position: sticky;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col) {
+  z-index: 2;
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col) {
+  z-index: 3;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--sl) {
+  left: 0;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--image) {
+  left: 48px;
+}
+
+.costing-page__table--product :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table--review :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table--product :deep(.costing-page__sticky-col--quantity) {
+  left: 436px;
+  box-shadow: 1px 0 0 var(--bw-theme-border);
+}
+
+.costing-page__table--review :deep(.costing-page__sticky-col--quantity) {
+  left: 436px;
+  box-shadow: 1px 0 0 var(--bw-theme-border);
 }
 
 .costing-page__sl-cell {

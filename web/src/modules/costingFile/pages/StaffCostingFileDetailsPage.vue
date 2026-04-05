@@ -169,24 +169,21 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue'
 import { buildAdminProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
+import type { CostingFileDetails, CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
 
 const route = useRoute()
 const router = useRouter()
 const costingFileStore = useCostingFileStore()
-const {
-  selectedItem: selectedFile,
-  costingFileItems,
-  detailsLoading,
-  itemLoading,
-} = storeToRefs(costingFileStore)
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
+const detailsLoading = computed(() => costingFileStore.detailsLoading)
+const itemLoading = computed(() => costingFileStore.itemLoading)
 
 const addItemDialogOpen = ref(false)
 const editDialogOpen = ref(false)
@@ -203,14 +200,51 @@ const editingItem = computed<CostingFileItem | null>(
 )
 
 const productColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 108px; min-width: 108px;', headerStyle: 'width: 108px; min-width: 108px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'min-width: 280px;',
+    headerStyle: 'min-width: 280px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
+  {
+    name: 'quantity',
+    label: 'Qty',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+  },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 220px; min-width: 220px;', headerStyle: 'width: 220px; min-width: 220px;' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'min-width: 340px;', headerStyle: 'min-width: 340px;' },
   { name: 'priceInWebGbp', label: 'Web price (GBP)', field: 'priceInWebGbp', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'quantity', label: 'Qty', field: 'quantity', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
@@ -431,16 +465,49 @@ watch(editDialogOpen, (isOpen) => {
   vertical-align: middle;
 }
 
-.costing-page__table :deep(.q-table th:nth-child(3)),
-.costing-page__table :deep(.q-table td:nth-child(3)),
 .costing-page__table :deep(.q-table th:nth-child(4)),
 .costing-page__table :deep(.q-table td:nth-child(4)) {
+  text-align: left;
+}
+
+.costing-page__table :deep(.q-table th:nth-child(5)),
+.costing-page__table :deep(.q-table td:nth-child(5)) {
   text-align: left;
 }
 
 .costing-page__table :deep(.q-table th:last-child),
 .costing-page__table :deep(.q-table td:last-child) {
   text-align: right;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col) {
+  position: sticky;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col) {
+  z-index: 2;
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col) {
+  z-index: 3;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--sl) {
+  left: 0;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--image) {
+  left: 48px;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--quantity) {
+  left: 496px;
+  box-shadow: 1px 0 0 var(--bw-theme-border);
 }
 
 .costing-page__sl-cell {
