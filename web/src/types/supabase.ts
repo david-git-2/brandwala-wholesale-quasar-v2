@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           auxiliary_price_gbp: number | null
           cargo_rate: number | null
+          color: string | null
           costing_file_id: number
           costing_price_bdt: number | null
           costing_price_gbp: number | null
@@ -25,6 +26,8 @@ export type Database = {
           created_by_email: string
           customer_profit_rate: number | null
           delivery_price_gbp: number | null
+          extra_information_1: string | null
+          extra_information_2: string | null
           id: number
           image_url: string | null
           item_price_gbp: number | null
@@ -35,6 +38,7 @@ export type Database = {
           price_in_web_gbp: number | null
           product_weight: number | null
           quantity: number
+          size: string | null
           status: Database["public"]["Enums"]["costing_file_item_status"]
           updated_at: string
           website_url: string
@@ -42,6 +46,7 @@ export type Database = {
         Insert: {
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
+          color?: string | null
           costing_file_id: number
           costing_price_bdt?: number | null
           costing_price_gbp?: number | null
@@ -49,6 +54,8 @@ export type Database = {
           created_by_email?: string
           customer_profit_rate?: number | null
           delivery_price_gbp?: number | null
+          extra_information_1?: string | null
+          extra_information_2?: string | null
           id?: number
           image_url?: string | null
           item_price_gbp?: number | null
@@ -59,6 +66,7 @@ export type Database = {
           price_in_web_gbp?: number | null
           product_weight?: number | null
           quantity: number
+          size?: string | null
           status?: Database["public"]["Enums"]["costing_file_item_status"]
           updated_at?: string
           website_url: string
@@ -66,6 +74,7 @@ export type Database = {
         Update: {
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
+          color?: string | null
           costing_file_id?: number
           costing_price_bdt?: number | null
           costing_price_gbp?: number | null
@@ -73,6 +82,8 @@ export type Database = {
           created_by_email?: string
           customer_profit_rate?: number | null
           delivery_price_gbp?: number | null
+          extra_information_1?: string | null
+          extra_information_2?: string | null
           id?: number
           image_url?: string | null
           item_price_gbp?: number | null
@@ -83,6 +94,7 @@ export type Database = {
           price_in_web_gbp?: number | null
           product_weight?: number | null
           quantity?: number
+          size?: string | null
           status?: Database["public"]["Enums"]["costing_file_item_status"]
           updated_at?: string
           website_url?: string

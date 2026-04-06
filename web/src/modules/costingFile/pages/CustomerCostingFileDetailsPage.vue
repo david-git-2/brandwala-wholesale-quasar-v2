@@ -22,29 +22,70 @@
         </div>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__input-section">
-
-
-          <div class="costing-page__sticky-form">
-            <div class="costing-page__request-grid">
-              <q-input v-model="requestForm.websiteUrl" label="Web link" outlined dense color="primary" />
-              <q-input v-model.number="requestForm.quantity" label="Qty" type="number" outlined dense color="primary" />
+          <q-banner v-if="!canCustomerMaintainDraftItems" rounded class="bg-blue-1 text-blue-10">
+            Item details are maintained by staff/admin for this file.
+          </q-banner>
+          <q-form
+            v-else
+            class="costing-page__request-grid"
+            @submit.prevent="handleSubmitRequest"
+          >
+            <q-input
+              v-model="requestForm.websiteUrl"
+              label="Web link"
+              outlined
+              dense
+              :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
+            />
+            <q-input
+              v-model.number="requestForm.quantity"
+              label="Quantity"
+              type="number"
+              outlined
+              dense
+              min="1"
+              :rules="[
+                (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+              ]"
+            />
+            <q-input
+              v-model="requestForm.size"
+              label="Size"
+              outlined
+              dense
+            />
+            <q-input
+              v-model="requestForm.color"
+              label="Color"
+              outlined
+              dense
+            />
+            <q-input
+              v-model="requestForm.extraInformation1"
+              label="Extra information 1"
+              type="textarea"
+              autogrow
+              outlined
+              dense
+            />
+            <q-input
+              v-model="requestForm.extraInformation2"
+              label="Extra information 2"
+              type="textarea"
+              autogrow
+              outlined
+              dense
+            />
+            <div class="costing-page__request-actions">
               <q-btn
+                type="submit"
                 color="primary"
                 unelevated
-                :label="editingItemId ? 'Update' : 'Save'"
+                label="Add item"
                 :loading="submittingRequest"
-                :disable="!canCreateRequest"
-                @click="handleSubmitRequest"
-              />
-              <q-btn
-                v-if="editingItemId"
-                flat
-                color="grey-7"
-                label="Cancel"
-                @click="resetRequestForm"
               />
             </div>
-          </div>
+          </q-form>
         </div>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__table-section">
@@ -124,19 +165,26 @@
             </template>
 
             <template #body-cell-actions="props">
-              <q-td :props="props" class="costing-page__actions-cell">
-                <q-btn flat dense color="primary" icon="edit" class="costing-page__icon-btn" @click="handleEdit(props.row.id)" />
+              <q-td
+                :props="props"
+                class="costing-page__actions-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-btn
+                  v-if="canCustomerMaintainDraftItems"
                   flat
                   dense
+                  round
                   color="negative"
                   icon="delete"
-                  class="costing-page__icon-btn"
+                  aria-label="Delete item"
                   :loading="deletingItemId === props.row.id"
-                  @click="handleDelete(props.row.id)"
+                  :disable="deletingItemId === props.row.id"
+                  @click="handleDeleteDraftItem(props.row.id)"
                 />
               </q-td>
             </template>
+
           </q-table>
           <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
         </div>
@@ -520,6 +568,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
@@ -527,36 +576,45 @@ import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
 const {
   selectedItem: selectedFile,
   costingFileItems: itemForms,
 } = storeToRefs(costingFileStore)
 
-const submittingRequest = ref(false)
-const deletingItemId = ref<number | null>(null)
-const editingItemId = ref<number | null>(null)
 const submitDialog = ref(false)
+const submittingRequest = ref(false)
 const submittingOrder = ref(false)
+const deletingItemId = ref<number | null>(null)
 const savingDecisionItemId = ref<number | null>(null)
 const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
 const savingProfitAll = ref(false)
 const sharedProfitRate = ref<number | null>(null)
-
-const requestForm = reactive({
-  websiteUrl: '',
-  quantity: 1,
-})
 
 const fileForm = reactive({
   name: '',
   market: '',
 })
 
-const canCreateRequest = computed(
-  () => requestForm.websiteUrl.trim().length > 0 && Number(requestForm.quantity) > 0,
-)
+const requestForm = reactive({
+  websiteUrl: '',
+  quantity: 1,
+  size: '',
+  color: '',
+  extraInformation1: '',
+  extraInformation2: '',
+})
 
+const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
+
+const canCustomerMaintainDraftItems = computed(() => {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+    return false
+  }
+
+  return normalizeEmail(selectedFile.value.created_by_email) === normalizeEmail(authStore.user?.email)
+})
 
 const productRows = computed(() =>
   buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
@@ -616,6 +674,38 @@ const allColumns = [
     style: 'width: 144px; min-width: 144px; max-width: 144px;',
     headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
   },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'center' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'center' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'center' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'center' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
   {
     name: 'offerPriceBdt',
@@ -665,7 +755,16 @@ const visibleColumns = computed(() => {
 
   if (selectedFile.value.status === 'draft') {
     return allColumns.filter((column) =>
-      ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'actions'].includes(column.name),
+      [
+        'sl',
+        'websiteUrl',
+        'quantity',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
+        'actions',
+      ].includes(column.name),
     )
   }
 
@@ -674,7 +773,7 @@ const visibleColumns = computed(() => {
     selectedFile.value.status === 'in_review'
   ) {
     return allColumns.filter((column) =>
-      ['sl', 'image', 'quantity', 'name', 'websiteUrl'].includes(column.name),
+      ['sl', 'websiteUrl', 'quantity', 'size', 'color', 'extraInformation1', 'extraInformation2'].includes(column.name),
     )
   }
 
@@ -703,12 +802,6 @@ const visibleColumns = computed(() => {
 
 const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
 
-const resetRequestForm = () => {
-  requestForm.websiteUrl = ''
-  requestForm.quantity = 1
-  editingItemId.value = null
-}
-
 const syncFileForm = () => {
   fileForm.name = selectedFile.value?.name ?? ''
   fileForm.market = selectedFile.value?.market ?? ''
@@ -720,57 +813,61 @@ const loadFile = async () => {
   await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId)
 }
 
+const resetRequestForm = () => {
+  requestForm.websiteUrl = ''
+  requestForm.quantity = 1
+  requestForm.size = ''
+  requestForm.color = ''
+  requestForm.extraInformation1 = ''
+  requestForm.extraInformation2 = ''
+}
+
 const handleSubmitRequest = async () => {
-  if (!selectedFile.value || !canCreateRequest.value) return
+  if (!selectedFile.value || !canCustomerMaintainDraftItems.value) {
+    return
+  }
+
+  const websiteUrl = requestForm.websiteUrl.trim()
+  const quantity = Number(requestForm.quantity)
+
+  if (!websiteUrl || Number.isNaN(quantity) || quantity <= 0) {
+    return
+  }
 
   submittingRequest.value = true
   try {
-    const result = editingItemId.value
-      ? await costingFileStore.updateCostingFileItem({
-          id: editingItemId.value,
-          websiteUrl: requestForm.websiteUrl.trim(),
-          quantity: Math.max(1, Number(requestForm.quantity || 1)),
-        })
-      : await costingFileStore.createCostingFileItemRequest({
-          costingFileId: selectedFile.value.id,
-          websiteUrl: requestForm.websiteUrl.trim(),
-          quantity: Math.max(1, Number(requestForm.quantity || 1)),
-        })
+    const result = await costingFileStore.createCostingFileItem({
+      costingFileId: selectedFile.value.id,
+      websiteUrl,
+      quantity: Math.max(1, Math.trunc(quantity)),
+      size: requestForm.size.trim() || null,
+      color: requestForm.color.trim() || null,
+      extraInformation1: requestForm.extraInformation1.trim() || null,
+      extraInformation2: requestForm.extraInformation2.trim() || null,
+      status: 'pending',
+    })
 
     if (!result.success) {
       return
     }
 
-    showSuccessNotification(editingItemId.value ? 'Item updated.' : 'Item saved.')
     resetRequestForm()
   } finally {
     submittingRequest.value = false
   }
 }
 
-const handleEdit = (id: number) => {
-  const item = itemForms.value.find((entry) => entry.id === id)
-
-  if (!item) {
+const handleDeleteDraftItem = async (itemId: number) => {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft' || !canCustomerMaintainDraftItems.value) {
     return
   }
 
-  editingItemId.value = id
-  requestForm.websiteUrl = item.website_url
-  requestForm.quantity = item.quantity
-}
-
-const handleDelete = async (id: number) => {
-  deletingItemId.value = id
+  deletingItemId.value = itemId
   try {
-    const result = await costingFileStore.deleteCostingFileItem({ id })
+    const result = await costingFileStore.deleteCostingFileItem({ id: itemId })
 
     if (!result.success) {
       return
-    }
-
-    if (editingItemId.value === id) {
-      resetRequestForm()
     }
   } finally {
     deletingItemId.value = null
@@ -921,9 +1018,15 @@ watch(
 
 .costing-page__request-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   align-items: start;
+}
+
+.costing-page__request-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .costing-page :deep(.q-btn) {
@@ -1162,7 +1265,10 @@ watch(
   }
 
   .costing-page__request-grid > :nth-child(3),
-  .costing-page__request-grid > :nth-child(4) {
+  .costing-page__request-grid > :nth-child(4),
+  .costing-page__request-grid > :nth-child(5),
+  .costing-page__request-grid > :nth-child(6),
+  .costing-page__request-grid > :nth-child(7) {
     grid-column: span 1;
   }
 }

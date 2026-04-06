@@ -23,6 +23,10 @@ export type CostingFileItem = {
   id: number
   costing_file_id: number
   name: string | null
+  size: string | null
+  color: string | null
+  extra_information_1: string | null
+  extra_information_2: string | null
   image_url: string | null
   website_url: string
   quantity: number
@@ -86,6 +90,10 @@ export type CostingFileItemRequestCreateInput = {
 export type CostingFileItemCreateInput = {
   costingFileId: number
   name?: string | null
+  size?: string | null
+  color?: string | null
+  extraInformation1?: string | null
+  extraInformation2?: string | null
   imageUrl?: string | null
   websiteUrl: string
   quantity: number
@@ -108,6 +116,10 @@ export type CostingFileItemUpdateInput = {
   id: number
   costingFileId?: number
   name?: string | null
+  size?: string | null
+  color?: string | null
+  extraInformation1?: string | null
+  extraInformation2?: string | null
   imageUrl?: string | null
   websiteUrl?: string
   quantity?: number

@@ -144,7 +144,7 @@ const getCostingFileById = async (id: number): Promise<CostingFileDetails | null
 const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDetails | null> => {
   const { data, error } = await supabase
     .from('costing_files')
-    .select('id, name, market, status, customer_group_id, tenant_id, created_at, updated_at')
+    .select('id, name, market, status, customer_group_id, tenant_id, created_by_email, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
 
@@ -158,7 +158,15 @@ const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDet
 
   const safe = data as Pick<
     CostingFile,
-    'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_at' | 'updated_at'
+    | 'id'
+    | 'name'
+    | 'market'
+    | 'status'
+    | 'customer_group_id'
+    | 'tenant_id'
+    | 'created_by_email'
+    | 'created_at'
+    | 'updated_at'
   >
 
   return {
@@ -167,7 +175,7 @@ const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDet
     cargo_rate_2kg: null,
     conversion_rate: null,
     admin_profit_rate: null,
-    created_by_email: '',
+    created_by_email: safe.created_by_email,
   }
 }
 

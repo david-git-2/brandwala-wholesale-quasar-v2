@@ -302,6 +302,10 @@ const handleCreateItem = async (payload: {
   websiteUrl: string
   quantity: number
   name: string
+  size: string | null
+  color: string | null
+  extraInformation1: string | null
+  extraInformation2: string | null
   imageUrl: string
   productWeight: number
   packageWeight: number
@@ -319,6 +323,10 @@ const handleCreateItem = async (payload: {
       websiteUrl: payload.websiteUrl,
       quantity: payload.quantity,
       name: payload.name,
+      size: payload.size,
+      color: payload.color,
+      extraInformation1: payload.extraInformation1,
+      extraInformation2: payload.extraInformation2,
       imageUrl: payload.imageUrl,
       productWeight: payload.productWeight,
       packageWeight: payload.packageWeight,

@@ -33,7 +33,7 @@ const listCostingFileItemsForCustomer = async (
   const { data, error } = await supabase
     .from('costing_file_items')
     .select(
-      'id, costing_file_id, name, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
+      'id, costing_file_id, name, size, color, extra_information_1, extra_information_2, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
     )
     .eq('costing_file_id', costingFileId)
     .order('id', { ascending: true })
@@ -48,6 +48,10 @@ const listCostingFileItemsForCustomer = async (
       | 'id'
       | 'costing_file_id'
       | 'name'
+      | 'size'
+      | 'color'
+      | 'extra_information_1'
+      | 'extra_information_2'
       | 'image_url'
       | 'website_url'
       | 'quantity'
@@ -61,6 +65,10 @@ const listCostingFileItemsForCustomer = async (
     id: item.id,
     costing_file_id: item.costing_file_id,
     name: item.name,
+    size: item.size,
+    color: item.color,
+    extra_information_1: item.extra_information_1,
+    extra_information_2: item.extra_information_2,
     image_url: item.image_url,
     website_url: item.website_url,
     quantity: item.quantity,
@@ -91,6 +99,10 @@ const createCostingFileItem = async (
     .insert({
       costing_file_id: payload.costingFileId,
       name: payload.name ?? null,
+      size: payload.size ?? null,
+      color: payload.color ?? null,
+      extra_information_1: payload.extraInformation1 ?? null,
+      extra_information_2: payload.extraInformation2 ?? null,
       image_url: payload.imageUrl ?? null,
       website_url: payload.websiteUrl,
       quantity: payload.quantity,
@@ -271,6 +283,14 @@ const updateCostingFileItem = async (
 
   if (payload.costingFileId !== undefined) updateData.costing_file_id = payload.costingFileId
   if (payload.name !== undefined) updateData.name = payload.name
+  if (payload.size !== undefined) updateData.size = payload.size
+  if (payload.color !== undefined) updateData.color = payload.color
+  if (payload.extraInformation1 !== undefined) {
+    updateData.extra_information_1 = payload.extraInformation1
+  }
+  if (payload.extraInformation2 !== undefined) {
+    updateData.extra_information_2 = payload.extraInformation2
+  }
   if (payload.imageUrl !== undefined) updateData.image_url = payload.imageUrl
   if (payload.websiteUrl !== undefined) updateData.website_url = payload.websiteUrl
   if (payload.quantity !== undefined) updateData.quantity = payload.quantity

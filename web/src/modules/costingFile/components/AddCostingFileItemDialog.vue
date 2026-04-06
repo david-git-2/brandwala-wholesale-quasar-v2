@@ -56,6 +56,35 @@
           :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
         />
         <q-input
+          v-model="form.size"
+          label="Size"
+          outlined
+          dense
+          hint="Example: XL, 250ml, 42"
+        />
+        <q-input
+          v-model="form.color"
+          label="Color"
+          outlined
+          dense
+        />
+        <q-input
+          v-model="form.extraInformation1"
+          label="Extra information 1"
+          outlined
+          dense
+          type="textarea"
+          autogrow
+        />
+        <q-input
+          v-model="form.extraInformation2"
+          label="Extra information 2"
+          outlined
+          dense
+          type="textarea"
+          autogrow
+        />
+        <q-input
           v-model.number="form.priceInWebGbp"
           label="Web price (GBP)"
           type="number"
@@ -144,6 +173,10 @@ const emit = defineEmits<{
       websiteUrl: string
       quantity: number
       name: string
+      size: string | null
+      color: string | null
+      extraInformation1: string | null
+      extraInformation2: string | null
       imageUrl: string
       productWeight: number
       packageWeight: number
@@ -157,6 +190,10 @@ const form = reactive({
   websiteUrl: '',
   quantity: 1,
   name: '',
+  size: '',
+  color: '',
+  extraInformation1: '',
+  extraInformation2: '',
   imageUrl: '',
   productWeight: null as number | null,
   packageWeight: null as number | null,
@@ -189,6 +226,10 @@ const resetForm = () => {
   form.websiteUrl = ''
   form.quantity = 1
   form.name = ''
+  form.size = ''
+  form.color = ''
+  form.extraInformation1 = ''
+  form.extraInformation2 = ''
   form.imageUrl = ''
   form.productWeight = null
   form.packageWeight = null
@@ -201,6 +242,10 @@ const handleSave = () => {
     websiteUrl: form.websiteUrl.trim(),
     quantity: Math.max(1, Number(form.quantity || 1)),
     name: form.name.trim(),
+    size: form.size.trim() || null,
+    color: form.color.trim() || null,
+    extraInformation1: form.extraInformation1.trim() || null,
+    extraInformation2: form.extraInformation2.trim() || null,
     imageUrl: form.imageUrl.trim(),
     productWeight: Number(form.productWeight),
     packageWeight: Number(form.packageWeight),
