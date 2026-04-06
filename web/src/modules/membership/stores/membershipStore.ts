@@ -44,6 +44,25 @@ export const useMembershipStore = defineStore('membership', {
         this.loading = false
       }
     },
+    async fetchSuperadmins() {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await membershipService.listSuperadmins()
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load superadmins.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.items = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
     async fetchMembershipsByTenantId(tenantId: number) {
       this.loading = true
       this.error = null

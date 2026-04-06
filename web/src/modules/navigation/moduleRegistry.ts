@@ -4,7 +4,7 @@ export type ModuleKey =
   | 'order_management'
   | 'shipment'
   | 'inventory'
-  | 'shop_costing_file'
+  | 'product_based_costing'
   | 'costing_file'
   | 'accounting'
   | 'invoice'
@@ -83,8 +83,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
-    key: 'shop_costing_file',
-    name: 'Shop Costing File',
+    key: 'product_based_costing',
+    name: 'Product Based Costing',
     description: 'Support customer-side costing visibility and pricing context.',
     routes: [
       {

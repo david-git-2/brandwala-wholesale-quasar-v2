@@ -4,6 +4,8 @@ import dashboardRoutes from 'src/modules/dashboard/routes';
 import tenantRoutes from 'src/modules/tenant/routes';
 import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
 import costingFileRoutes from 'src/modules/costingFile/routes';
+import membershipRoutes from 'src/modules/membership/routes';
+import marketRoutes from 'src/modules/market/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -64,7 +66,9 @@ const routes: RouteRecordRaw[] = [
   ...tenantRoutes,
   ...authRoutes,
   ...featureCatalogRoutes,
+  ...marketRoutes,
   ...costingFileRoutes,
+  ...membershipRoutes,
 
   // Always leave this as last one
   {
