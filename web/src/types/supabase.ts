@@ -242,6 +242,39 @@ export type Database = {
           },
         ]
       }
+      markets: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          name: string
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       memberships: {
         Row: {
           accent_color: string | null

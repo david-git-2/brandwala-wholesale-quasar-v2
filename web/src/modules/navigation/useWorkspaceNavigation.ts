@@ -47,6 +47,14 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/modules',
   },
   {
+    title: 'Markets',
+    caption: 'Manage ISO market catalog',
+    icon: 'public',
+    scopes: ['platform'],
+    allowedRoles: ['superadmin'],
+    route: () => '/platform/markets',
+  },
+  {
     title: 'Super Admins',
     caption: 'Manage platform superadmin access',
     icon: 'shield',
