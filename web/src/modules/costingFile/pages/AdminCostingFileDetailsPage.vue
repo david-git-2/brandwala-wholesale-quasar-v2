@@ -99,6 +99,19 @@
             </q-td>
           </template>
 
+          <template #body-cell-status="props">
+            <q-td :props="props" class="costing-page__status-cell">
+              <span
+                class="costing-page__status-pill"
+                :class="{
+                  'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                }"
+              >
+                {{ props.row.status }}
+              </span>
+            </q-td>
+          </template>
+
           <template #body-cell-priceInWebGbp="props">
             <q-td :props="props" class="costing-page__numeric-cell">
               <div class="costing-page__inline-edit-cell">
@@ -323,16 +336,17 @@
           />
         </div>
 
-        <q-table
-          flat
-          bordered
-          row-key="id"
-          :rows="reviewRows"
-          :columns="visibleReviewColumns"
-          :pagination="{ rowsPerPage: 0 }"
-          :loading="loadingItems"
-          hide-bottom
-          class="costing-page__table costing-page__table--review"
+          <q-table
+            flat
+            bordered
+            row-key="id"
+            :rows="reviewRows"
+            :columns="visibleReviewColumns"
+            :row-class="getReviewRowClass"
+            :pagination="{ rowsPerPage: 0 }"
+            :loading="loadingItems"
+            hide-bottom
+            class="costing-page__table costing-page__table--review"
         >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
@@ -611,8 +625,34 @@
           </template>
 
           <template #body-cell-actions="props">
-            <q-td :props="props" auto-width>
+            <q-td :props="props" class="costing-page__actions-cell">
+              <template v-if="selectedFile?.status === 'offered'">
+                <q-btn
+                  unelevated
+                  size="sm"
+                  dense
+                  color="positive"
+                  label="Accept"
+                  class="costing-page__decision-btn costing-page__decision-btn--accept"
+                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
+                  :disable="savingDecisionItemId === props.row.id"
+                  @click="handleDecision(props.row.id, 'accepted')"
+                />
+                <q-btn
+                  unelevated
+                  size="sm"
+                  dense
+                  color="negative"
+                  label="Reject"
+                  class="costing-page__decision-btn costing-page__decision-btn--reject"
+                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
+                  :disable="savingDecisionItemId === props.row.id"
+                  @click="handleDecision(props.row.id, 'rejected')"
+                />
+              </template>
+
               <q-btn
+                v-else
                 flat
                 dense
                 color="negative"
@@ -679,7 +719,8 @@ import {
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileDetails, CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
+import type { CostingFileDetails, CostingFileItem, CostingFileItemStatus, CostingFileStatus } from 'src/modules/costingFile/types'
+import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -694,6 +735,8 @@ const savingPricing = ref(false)
 const savingOfferItemId = ref<number | null>(null)
 const savingQuantityItemId = ref<number | null>(null)
 const savingFieldKey = ref<string | null>(null)
+const savingDecisionItemId = ref<number | null>(null)
+const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
 const deletingReviewItemId = ref<number | null>(null)
 const deleteReviewItemDialogOpen = ref(false)
 const reviewItemPendingDeleteId = ref<number | null>(null)
@@ -793,8 +836,6 @@ const productColumns = [
     align: 'left' as const,
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
   },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
@@ -847,8 +888,14 @@ const reviewColumns = [
     align: 'left' as const,
     style: 'width: 56px; min-width: 56px;',
     headerStyle: 'width: 56px; min-width: 56px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
+  },
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
   },
 
   { name: 'websiteUrl', label: 'Web URL', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
@@ -941,6 +988,7 @@ const compactReviewColumnNames = [
   'image',
   'name',
   'priceInWebGbp',
+  'status',
   'costingPriceGbp',
   'costingPriceBdt',
   'offerPriceBdt',
@@ -961,6 +1009,9 @@ const visibleReviewColumns = computed(() => {
 
   return columns.filter((column) => column.name !== 'actions')
 })
+
+const getReviewRowClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
 
 const loadFile = async () => {
   const fileId = Number(route.params.id)
@@ -1143,6 +1194,27 @@ const handleCreateItem = async (payload: {
     }
   } finally {
     creatingItem.value = false
+  }
+}
+
+const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
+  if (selectedFile.value?.status !== 'offered') {
+    return
+  }
+
+  savingDecisionItemId.value = itemId
+  savingDecisionStatus.value = status
+  try {
+    const result = await costingFileStore.updateCostingFileItemStatus({ id: itemId, status })
+
+    if (!result.success) {
+      return
+    }
+
+    showSuccessNotification(`Item ${status}.`)
+  } finally {
+    savingDecisionItemId.value = null
+    savingDecisionStatus.value = null
   }
 }
 
@@ -1352,14 +1424,62 @@ onMounted(async () => {
   left: 156px;
 }
 
-.costing-page__table--product :deep(.costing-page__sticky-col--quantity) {
-  left: 436px;
-  box-shadow: 1px 0 0 var(--bw-theme-border);
+.costing-page__table--review :deep(.costing-page__rejected-row > td) {
+  background: #fff7f8;
+  border-top: 1px solid #efb2bc;
+  border-bottom: 1px solid #efb2bc;
 }
 
-.costing-page__table--review :deep(.costing-page__sticky-col--quantity) {
-  left: 436px;
-  box-shadow: 1px 0 0 var(--bw-theme-border);
+.costing-page__table--review :deep(.costing-page__rejected-row > td:first-child) {
+  border-left: 1px solid #efb2bc;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td:last-child) {
+  border-right: 1px solid #efb2bc;
+}
+
+.costing-page__status-cell {
+  width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
+  color: var(--bw-theme-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.costing-page__status-pill--rejected {
+  background: #fbe3e6;
+  color: #a33b49;
+}
+
+.costing-page__actions-cell {
+  white-space: nowrap;
+}
+
+.costing-page__decision-btn {
+  border-radius: 8px;
+  min-width: 66px;
+}
+
+.costing-page__decision-btn--accept {
+  background: #ddf4e7 !important;
+  color: #1f6a43 !important;
+}
+
+.costing-page__decision-btn--reject {
+  background: #fbe3e6 !important;
+  color: #a33b49 !important;
 }
 
 .costing-page__sl-cell {

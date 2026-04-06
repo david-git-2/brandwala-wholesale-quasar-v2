@@ -60,13 +60,21 @@
             class="costing-page__table"
           >
             <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
+              <q-td
+                :props="props"
+                class="costing-page__sl-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.sl }}
               </q-td>
             </template>
 
             <template #body-cell-image="props">
-              <q-td :props="props" class="costing-page__image-table-cell">
+              <q-td
+                :props="props"
+                class="costing-page__image-table-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
@@ -86,7 +94,11 @@
             </template>
 
             <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
+              <q-td
+                :props="props"
+                class="costing-page__name-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <span class="costing-page__name-text" :title="props.row.name">
                   {{ props.row.name }}
                 </span>
@@ -94,7 +106,11 @@
             </template>
 
             <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__url-cell">
+              <q-td
+                :props="props"
+                class="costing-page__url-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <a
                   class="costing-page__url-text"
                   :href="toExternalUrl(props.row.websiteUrl)"
@@ -242,18 +258,27 @@
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
+            :row-class="getOfferedRowClass"
             :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table costing-page__table--offered"
           >
             <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
+              <q-td
+                :props="props"
+                class="costing-page__sl-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.sl }}
               </q-td>
             </template>
 
             <template #body-cell-image="props">
-              <q-td :props="props" class="costing-page__image-table-cell">
+              <q-td
+                :props="props"
+                class="costing-page__image-table-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
@@ -267,7 +292,11 @@
             </template>
 
             <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
+              <q-td
+                :props="props"
+                class="costing-page__name-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <span class="costing-page__name-text" :title="props.row.name">
                   {{ props.row.name }}
                 </span>
@@ -275,7 +304,11 @@
             </template>
 
             <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__url-cell">
+              <q-td
+                :props="props"
+                class="costing-page__url-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <a
                   class="costing-page__url-text"
                   :href="toExternalUrl(props.row.websiteUrl)"
@@ -289,37 +322,78 @@
             </template>
 
             <template #body-cell-quantity="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.quantity }}
               </q-td>
             </template>
 
             <template #body-cell-offerPriceBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.offerPriceBdt }}
               </q-td>
             </template>
 
             <template #body-cell-buyerSellingPriceBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-indigo">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell costing-page__tone-indigo"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.buyerSellingPriceBdt }}
               </q-td>
             </template>
 
             <template #body-cell-customerProfitAmountBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-amber">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell costing-page__tone-amber"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.customerProfitAmountBdt }}
               </q-td>
             </template>
 
             <template #body-cell-customerProfitRateDisplay="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.customerProfitRateDisplay }}
               </q-td>
             </template>
 
+            <template #body-cell-status="props">
+              <q-td
+                :props="props"
+                class="costing-page__status-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
+                <span
+                  class="costing-page__status-pill"
+                  :class="{
+                    'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                  }"
+                >
+                  {{ props.row.status }}
+                </span>
+              </q-td>
+            </template>
+
             <template #body-cell-actions="props">
-              <q-td :props="props" class="costing-page__actions-cell">
+              <q-td
+                :props="props"
+                class="costing-page__actions-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-btn
                   unelevated
                   size="sm"
@@ -488,6 +562,12 @@ const productRows = computed(() =>
   buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
 )
 
+const getOfferedRowClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
+
+const getOfferedCellClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-cell' : ''
+
 const allColumns = [
   {
     name: 'sl',
@@ -527,8 +607,6 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
   },
   {
     name: 'websiteUrl',
@@ -888,11 +966,6 @@ watch(
   left: 156px;
 }
 
-.costing-page__table :deep(.costing-page__sticky-col--quantity) {
-  left: 436px;
-  box-shadow: 1px 0 0 var(--bw-theme-border);
-}
-
 .costing-page__sl-cell {
   width: 3ch;
   max-width: 3ch;
@@ -934,6 +1007,20 @@ watch(
   font-weight: 700;
 }
 
+.costing-page__table--offered :deep(.costing-page__rejected-cell) {
+  background: #fff7f8;
+  border-top: 1px solid #efb2bc;
+  border-bottom: 1px solid #efb2bc;
+}
+
+.costing-page__table--offered :deep(.costing-page__rejected-cell:first-child) {
+  border-left: 1px solid #efb2bc;
+}
+
+.costing-page__table--offered :deep(.costing-page__rejected-cell:last-child) {
+  border-right: 1px solid #efb2bc;
+}
+
 .costing-page__actions-cell {
   white-space: nowrap;
 }
@@ -967,6 +1054,36 @@ watch(
   line-height: 1.35;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.costing-page__status-cell {
+  width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
+  color: var(--bw-theme-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.costing-page__status-cell--rejected {
+  background: #fdecef;
+  box-shadow: inset 0 0 0 1px #f3b7c0;
+}
+
+.costing-page__status-pill--rejected {
+  background: #fbe3e6;
+  color: #a33b49;
 }
 
 .costing-page__url-cell {

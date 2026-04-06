@@ -84,6 +84,7 @@ export const buildAdminReviewRows = (
       priceInWebGbp: formatGbp(item.price_in_web_gbp),
       deliveryPriceGbpValue: item.delivery_price_gbp,
       deliveryPriceGbp: formatGbp(item.delivery_price_gbp),
+      status: item.status,
       auxiliaryPriceGbp: formatGbp(calculated.auxiliaryPriceGbp),
       purchasePriceGbp: formatGbp(calculated.itemPriceGbp),
       cargoRateGbp: formatGbp(calculated.cargoRate),

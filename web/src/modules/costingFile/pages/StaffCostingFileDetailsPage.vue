@@ -238,8 +238,6 @@ const productColumns = [
     align: 'left' as const,
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--quantity',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--quantity',
   },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 220px; min-width: 220px;', headerStyle: 'width: 220px; min-width: 220px;' },
   { name: 'priceInWebGbp', label: 'Web price (GBP)', field: 'priceInWebGbp', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
@@ -503,11 +501,6 @@ watch(editDialogOpen, (isOpen) => {
 
 .costing-page__table :deep(.costing-page__sticky-col--name) {
   left: 156px;
-}
-
-.costing-page__table :deep(.costing-page__sticky-col--quantity) {
-  left: 496px;
-  box-shadow: 1px 0 0 var(--bw-theme-border);
 }
 
 .costing-page__sl-cell {
