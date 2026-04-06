@@ -7,7 +7,7 @@
     "dev": "npm --prefix web run dev",
     "build": "npm --prefix web run build",
     "lint": "npm --prefix web run lint",
-    "deploy:frontend": "sh -c 'set -a; [ -f web/.env ] && . web/.env; set +a; : \"${CF_PAGES_PROJECT_NAME:?Set CF_PAGES_PROJECT_NAME in web/.env}\" && npx wrangler login && rm -rf node_modules web/node_modules && npm cache clean --force && npm install && npm --prefix web install && npm --prefix web run build && npx wrangler pages deploy web/dist/spa --project-name \"$CF_PAGES_PROJECT_NAME\"'",
+    "deploy:frontend": "sh -c 'set -a; [ -f web/.env ] && . web/.env; set +a; : \"${CF_PAGES_PROJECT_NAME:?Set CF_PAGES_PROJECT_NAME in web/.env}\" && npx wrangler login && rm -rf web/node_modules web/.quasar web/dist && npm cache clean --force && npm --prefix web install && npm --prefix web run build && npx wrangler pages deploy web/dist/spa --project-name \"$CF_PAGES_PROJECT_NAME\"'",
     "backend:init": "supabase init",
     "backend:login": "supabase login",
     "backend:link": "supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
