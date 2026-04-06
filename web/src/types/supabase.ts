@@ -388,6 +388,35 @@ export type Database = {
           },
         ]
       }
+      tenant_vendor_access_settings: {
+        Row: {
+          allow_global_vendor_access: boolean
+          created_at: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          allow_global_vendor_access?: boolean
+          created_at?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          allow_global_vendor_access?: boolean
+          created_at?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_vendor_access_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -417,6 +446,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          code: string
+          created_at: string
+          email: string | null
+          id: number
+          market_code: string
+          name: string
+          phone: string | null
+          tenant_id: number | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          market_code: string
+          name: string
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          market_code?: string
+          name?: string
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_market_code_fkey"
+            columns: ["market_code"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "vendors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -721,6 +807,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_tenant_vendor_access_setting: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          allow_global_vendor_access: boolean
+          tenant_id: number
+        }[]
+      }
       is_customer_group_member: {
         Args: { p_customer_group_id: number }
         Returns: boolean
@@ -732,6 +825,14 @@ export type Database = {
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
       is_tenant_staff: { Args: { p_tenant_id: number }; Returns: boolean }
+      is_vendor_code_available: {
+        Args: { p_code: string; p_exclude_id?: number }
+        Returns: boolean
+      }
+      is_vendor_module_enabled: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
       list_costing_file_items: {
         Args: { p_costing_file_id: number }
         Returns: {
@@ -846,6 +947,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_vendor_markets: {
+        Args: never
+        Returns: {
+          code: string
+          name: string
+          region: string
+        }[]
+      }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -866,6 +975,13 @@ export type Database = {
       round_bdt_up_to_zero_or_five: {
         Args: { p_value: number }
         Returns: number
+      }
+      set_tenant_vendor_access_setting: {
+        Args: { p_allow_global_vendor_access: boolean; p_tenant_id: number }
+        Returns: {
+          allow_global_vendor_access: boolean
+          tenant_id: number
+        }[]
       }
       update_costing_file: {
         Args: {

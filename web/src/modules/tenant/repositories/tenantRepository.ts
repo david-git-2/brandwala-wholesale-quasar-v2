@@ -34,6 +34,11 @@ export type TenantModuleDeleteInput = {
   id: number
 }
 
+export type TenantVendorAccessSetting = {
+  tenant_id: number
+  allow_global_vendor_access: boolean
+}
+
 const listTenants = async (): Promise<Tenant[]> => {
   const { data, error } = await supabase.rpc('list_tenants_for_superadmin')
 
@@ -261,6 +266,43 @@ const deleteTenantModule = async (
   }
 }
 
+const getTenantVendorAccessSetting = async (
+  tenantId: number,
+): Promise<TenantVendorAccessSetting | null> => {
+  const { data, error } = await supabase.rpc('get_tenant_vendor_access_setting', {
+    p_tenant_id: tenantId,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const normalized = Array.isArray(data) ? data[0] : data
+  return (normalized as TenantVendorAccessSetting | null) ?? null
+}
+
+const setTenantVendorAccessSetting = async (payload: {
+  tenant_id: number
+  allow_global_vendor_access: boolean
+}): Promise<TenantVendorAccessSetting> => {
+  const { data, error } = await supabase.rpc('set_tenant_vendor_access_setting', {
+    p_tenant_id: payload.tenant_id,
+    p_allow_global_vendor_access: payload.allow_global_vendor_access,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const normalized = Array.isArray(data) ? data[0] : data
+
+  if (!normalized) {
+    throw new Error('Vendor access setting was not updated.')
+  }
+
+  return normalized as TenantVendorAccessSetting
+}
+
 export const tenantRepository = {
   deleteTenant,
   listTenants,
@@ -275,4 +317,6 @@ export const tenantRepository = {
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,
+  getTenantVendorAccessSetting,
+  setTenantVendorAccessSetting,
 }

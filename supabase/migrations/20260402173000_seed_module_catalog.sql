@@ -29,6 +29,12 @@ values
     true
   ),
   (
+    'vendor',
+    'Vendor',
+    'Manage vendor records, sourcing, and supplier collaboration.',
+    true
+  ),
+  (
     'product_based_costing',
     'Product Based Costing',
     'Support customer-side costing visibility and pricing context.',

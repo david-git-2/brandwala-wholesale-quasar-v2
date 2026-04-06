@@ -4,6 +4,7 @@ export type ModuleKey =
   | 'order_management'
   | 'shipment'
   | 'inventory'
+  | 'vendor'
   | 'product_based_costing'
   | 'costing_file'
   | 'accounting'
@@ -78,6 +79,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Review stock levels and inventory operations',
         icon: 'inventory_2',
         routeSegment: 'inventory',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'vendor',
+    name: 'Vendor',
+    description: 'Manage vendor records, sourcing, and supplier collaboration.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Vendors',
+        caption: 'Manage suppliers and vendor operations',
+        icon: 'storefront',
+        routeSegment: 'vendors',
         requiredAction: 'view',
       },
     ],

@@ -75,3 +75,13 @@ export interface TenantStoreState {
   loading: boolean
   error: string | null
 }
+
+export type TenantVendorAccessSetting = {
+  tenant_id: number
+  allow_global_vendor_access: boolean
+}
+
+export type TenantVendorAccessUpdateInput = {
+  tenant_id: number
+  allow_global_vendor_access: boolean
+}
