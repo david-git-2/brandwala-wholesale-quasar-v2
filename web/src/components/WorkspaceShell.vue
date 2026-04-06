@@ -33,9 +33,27 @@
       <div class="workspace-shell__drawer-inner">
         <div class="workspace-shell__drawer-top">
           <div class="workspace-shell__summary">
+            <div class="workspace-shell__profile-row">
+              <q-avatar size="42px" class="workspace-shell__avatar">
+                <img
+                  v-if="userAvatarUrl"
+                  :src="userAvatarUrl"
+                  class="workspace-shell__avatar-image"
+                  referrerpolicy="no-referrer"
+                  alt=""
+                >
+                <span v-else class="workspace-shell__avatar-fallback">{{ userInitials }}</span>
+              </q-avatar>
+            </div>
             <div class="workspace-shell__summary-label">Signed in as</div>
             <div class="workspace-shell__summary-value">{{ userName }}</div>
             <div class="workspace-shell__summary-meta">{{ userEmail }}</div>
+            <div v-if="currentRoleLabel" class="workspace-shell__summary-meta">
+              Role: {{ currentRoleLabel }}
+            </div>
+            <div v-if="contextLabel && contextValue" class="workspace-shell__summary-meta">
+              {{ contextLabel }}: {{ contextValue }}
+            </div>
           </div>
         </div>
 
@@ -142,6 +160,51 @@ const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
 )
 const userEmail = computed(() => authStore.user?.email ?? 'No active session')
+const userAvatarUrl = computed(() => authStore.user?.avatarUrl ?? null)
+const currentRoleLabel = computed(() => {
+  const role = authStore.matchedRole
+  if (!role) {
+    return ''
+  }
+
+  return role
+    .split('_')
+    .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : ''))
+    .join(' ')
+})
+const contextLabel = computed(() => {
+  if (authStore.scope === 'shop') {
+    return 'Customer group'
+  }
+
+  if (authStore.scope === 'app') {
+    return 'Tenant'
+  }
+
+  return ''
+})
+const contextValue = computed(() => {
+  if (authStore.scope === 'shop') {
+    return authStore.customerGroup?.name ?? ''
+  }
+
+  if (authStore.scope === 'app') {
+    return authStore.selectedTenant?.name ?? authStore.tenant?.name ?? ''
+  }
+
+  return ''
+})
+const userInitials = computed(() => {
+  const source = userName.value?.trim() || userEmail.value?.trim()
+  if (!source) return '?'
+
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase()
+  }
+
+  return source.slice(0, 2).toUpperCase()
+})
 
 const handleLogout = async () => {
   const shouldSignOut = await requestConfirmation(
@@ -267,6 +330,31 @@ const handleLogout = async () => {
   border-radius: 0.75rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.24));
   border: 1px solid var(--shell-border);
+}
+
+.workspace-shell__profile-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
+.workspace-shell__avatar {
+  overflow: hidden;
+  border: 1px solid var(--shell-border);
+  background: color-mix(in srgb, var(--shell-accent) 18%, white 82%);
+}
+
+.workspace-shell__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.workspace-shell__avatar-fallback {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--shell-ink);
 }
 
 .workspace-shell__drawer-scroll {

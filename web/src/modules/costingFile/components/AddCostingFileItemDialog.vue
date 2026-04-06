@@ -4,24 +4,35 @@
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <q-card class="costing-item-edit-dialog">
+    <q-card class="costing-item-add-dialog">
       <q-card-section>
-        <div class="text-h6">Edit item</div>
+        <div class="text-h6">Add item</div>
         <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-          Update product details for item #{{ item?.id }}.
+          Add a new costing item with complete product details.
         </p>
       </q-card-section>
 
-      <q-card-section class="costing-item-edit-dialog__grid">
-        <a
-          v-if="externalWebsiteUrl"
-          :href="externalWebsiteUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="costing-item-edit-dialog__link"
-        >
-          {{ form.websiteUrl }}
-        </a>
+      <q-card-section class="costing-item-add-dialog__grid">
+        <q-input
+          v-model="form.websiteUrl"
+          label="Website URL"
+          outlined
+          dense
+          :rules="[(value) => !!String(value ?? '').trim() || 'Website URL is required.']"
+        />
+        <q-input
+          v-model.number="form.quantity"
+          label="Quantity"
+          type="number"
+          outlined
+          dense
+          min="1"
+          :rules="[
+            (value) =>
+              (value !== null && value !== '' && Number(value) > 0) ||
+              'Quantity is required.',
+          ]"
+        />
         <q-input
           v-model="form.imageUrl"
           label="Product image URL"
@@ -29,11 +40,11 @@
           dense
           :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
         />
-        <div v-if="previewImageUrl" class="costing-item-edit-dialog__preview">
+        <div v-if="previewImageUrl" class="costing-item-add-dialog__preview">
           <q-img
             :src="previewImageUrl"
             fit="contain"
-            class="costing-item-edit-dialog__preview-image"
+            class="costing-item-add-dialog__preview-image"
           />
         </div>
         <q-input
@@ -50,6 +61,7 @@
           type="number"
           outlined
           dense
+          min="0"
           :rules="[
             (value) =>
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
@@ -62,6 +74,7 @@
           type="number"
           outlined
           dense
+          min="0"
           :rules="[
             (value) =>
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
@@ -74,6 +87,7 @@
           type="number"
           outlined
           dense
+          min="0"
           :rules="[
             (value) =>
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
@@ -86,6 +100,7 @@
           type="number"
           outlined
           dense
+          min="0"
           :rules="[
             (value) =>
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
@@ -95,11 +110,16 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" :disable="loading" @click="emit('update:modelValue', false)" />
+        <q-btn
+          flat
+          label="Cancel"
+          :disable="loading"
+          @click="emit('update:modelValue', false)"
+        />
         <q-btn
           color="primary"
           unelevated
-          label="Save"
+          label="Add item"
           :loading="loading"
           :disable="isFormInvalid"
           @click="handleSave"
@@ -110,140 +130,114 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
-
-import type { CostingFileItem } from 'src/modules/costingFile/types';
+import { computed, reactive, watch } from 'vue'
 
 const props = defineProps<{
-  modelValue: boolean;
-  item: CostingFileItem | null;
-  loading?: boolean;
-}>();
+  modelValue: boolean
+  loading?: boolean
+}>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean];
+  'update:modelValue': [value: boolean]
   save: [
     payload: {
-      id: number;
-      name: string | null;
-      productWeight: number | null;
-      packageWeight: number | null;
-      imageUrl: string | null;
-      priceInWebGbp: number | null;
-      deliveryPriceGbp: number | null;
+      websiteUrl: string
+      quantity: number
+      name: string
+      imageUrl: string
+      productWeight: number
+      packageWeight: number
+      priceInWebGbp: number
+      deliveryPriceGbp: number
     },
-  ];
-}>();
+  ]
+}>()
 
 const form = reactive({
-  name: '',
   websiteUrl: '',
+  quantity: 1,
+  name: '',
+  imageUrl: '',
   productWeight: null as number | null,
   packageWeight: null as number | null,
-  imageUrl: '',
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
-});
+})
 
 const normalizeExternalUrl = (value: string) =>
-  /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  /^https?:\/\//i.test(value) ? value : `https://${value}`
 
 const previewImageUrl = computed(() => {
-  const value = form.imageUrl.trim();
-  return value ? normalizeExternalUrl(value) : '';
-});
-
-const externalWebsiteUrl = computed(() => {
-  const value = form.websiteUrl.trim();
-  return value ? normalizeExternalUrl(value) : '';
-});
+  const value = form.imageUrl.trim()
+  return value ? normalizeExternalUrl(value) : ''
+})
 
 const isFormInvalid = computed(() => {
-  if (!form.imageUrl.trim()) return true;
-  if (!form.name.trim()) return true;
-  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true;
-  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true;
-  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true;
-  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true;
+  if (!form.websiteUrl.trim()) return true
+  if (!form.imageUrl.trim()) return true
+  if (!form.name.trim()) return true
+  if (form.quantity == null || Number.isNaN(Number(form.quantity)) || Number(form.quantity) <= 0) return true
+  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true
+  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true
+  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true
+  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true
 
-  return false;
-});
+  return false
+})
 
-const syncForm = (item: CostingFileItem | null) => {
-  form.name = item?.name ?? '';
-  form.websiteUrl = item?.website_url ?? '';
-  form.productWeight = item?.product_weight ?? null;
-  form.packageWeight = item?.package_weight ?? null;
-  form.imageUrl = item?.image_url ?? '';
-  form.priceInWebGbp = item?.price_in_web_gbp ?? null;
-  form.deliveryPriceGbp = item?.delivery_price_gbp ?? null;
-};
+const resetForm = () => {
+  form.websiteUrl = ''
+  form.quantity = 1
+  form.name = ''
+  form.imageUrl = ''
+  form.productWeight = null
+  form.packageWeight = null
+  form.priceInWebGbp = null
+  form.deliveryPriceGbp = null
+}
 
 const handleSave = () => {
-  if (!props.item) return;
-
   emit('save', {
-    id: props.item.id,
-    name: form.name.trim() || null,
-    productWeight: form.productWeight,
-    packageWeight: form.packageWeight,
-    imageUrl: form.imageUrl.trim() || null,
-    priceInWebGbp: form.priceInWebGbp,
-    deliveryPriceGbp: form.deliveryPriceGbp,
-  });
-};
-
-watch(
-  () => props.item,
-  (item) => {
-    syncForm(item);
-  },
-  { immediate: true },
-);
+    websiteUrl: form.websiteUrl.trim(),
+    quantity: Math.max(1, Number(form.quantity || 1)),
+    name: form.name.trim(),
+    imageUrl: form.imageUrl.trim(),
+    productWeight: Number(form.productWeight),
+    packageWeight: Number(form.packageWeight),
+    priceInWebGbp: Number(form.priceInWebGbp),
+    deliveryPriceGbp: Number(form.deliveryPriceGbp),
+  })
+}
 
 watch(
   () => props.modelValue,
   (isOpen) => {
     if (isOpen) {
-      syncForm(props.item);
+      resetForm()
     }
   },
-);
+)
 </script>
 
 <style scoped>
-.costing-item-edit-dialog {
+.costing-item-add-dialog {
   width: min(560px, 92vw);
 }
 
-.costing-item-edit-dialog__grid {
+.costing-item-add-dialog__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
-.costing-item-edit-dialog__preview {
+.costing-item-add-dialog__preview {
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 16px;
   background: rgba(248, 250, 252, 0.9);
 }
 
-.costing-item-edit-dialog__link {
-  display: block;
-  overflow: hidden;
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.costing-item-edit-dialog__link:hover {
-  text-decoration: underline;
-}
-
-.costing-item-edit-dialog__preview-image {
+.costing-item-add-dialog__preview-image {
   height: 180px;
 }
 </style>

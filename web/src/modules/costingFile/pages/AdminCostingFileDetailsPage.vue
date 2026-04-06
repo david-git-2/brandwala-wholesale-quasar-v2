@@ -19,7 +19,13 @@
             :loading="savingStatus"
             @update:model-value="handleSaveStatus"
           />
-          <q-btn outline color="primary" label="Add item" :disable="!selectedFile" />
+          <q-btn
+            outline
+            color="primary"
+            label="Add item"
+            :disable="!selectedFile || selectedFile.status !== 'customer_submitted'"
+            @click="addItemDialogOpen = true"
+          />
         </div>
       </section>
 
@@ -47,7 +53,7 @@
           :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
-          class="costing-page__table"
+          class="costing-page__table costing-page__table--product"
         >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
@@ -89,6 +95,19 @@
             <q-td :props="props" class="costing-page__name-cell">
               <span class="costing-page__name-text" :title="props.row.name">
                 {{ props.row.name }}
+              </span>
+            </q-td>
+          </template>
+
+          <template #body-cell-status="props">
+            <q-td :props="props" class="costing-page__status-cell">
+              <span
+                class="costing-page__status-pill"
+                :class="{
+                  'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                }"
+              >
+                {{ props.row.status }}
               </span>
             </q-td>
           </template>
@@ -274,11 +293,11 @@
 
         <div class="costing-page__pricing-grid">
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate 1 KG</div>
+            <div class="costing-page__field-label">Cargo rate less than 10 (per KG)</div>
             <q-input v-model.number="pricingForm.cargoRate1Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate 2 KG</div>
+            <div class="costing-page__field-label">Cargo rate greater than 10 (per KG)</div>
             <q-input v-model.number="pricingForm.cargoRate2Kg" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
@@ -286,7 +305,7 @@
             <q-input v-model.number="pricingForm.conversionRate" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field">
-            <div class="costing-page__field-label">Admin profit rate</div>
+            <div class="costing-page__field-label">Admin profit rate (%)</div>
             <q-input v-model.number="pricingForm.adminProfitRate" type="number" outlined dense class="costing-page__pricing-input" />
           </div>
           <div class="costing-page__field costing-page__field--action">
@@ -317,16 +336,17 @@
           />
         </div>
 
-        <q-table
-          flat
-          bordered
-          row-key="id"
-          :rows="reviewRows"
-          :columns="visibleReviewColumns"
-          :pagination="{ rowsPerPage: 0 }"
-          :loading="loadingItems"
-          hide-bottom
-          class="costing-page__table"
+          <q-table
+            flat
+            bordered
+            row-key="id"
+            :rows="reviewRows"
+            :columns="visibleReviewColumns"
+            :row-class="getReviewRowClass"
+            :pagination="{ rowsPerPage: 0 }"
+            :loading="loadingItems"
+            hide-bottom
+            class="costing-page__table costing-page__table--review"
         >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
@@ -605,8 +625,34 @@
           </template>
 
           <template #body-cell-actions="props">
-            <q-td :props="props" auto-width>
+            <q-td :props="props" class="costing-page__actions-cell">
+              <template v-if="selectedFile?.status === 'offered'">
+                <q-btn
+                  unelevated
+                  size="sm"
+                  dense
+                  color="positive"
+                  label="Accept"
+                  class="costing-page__decision-btn costing-page__decision-btn--accept"
+                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
+                  :disable="savingDecisionItemId === props.row.id"
+                  @click="handleDecision(props.row.id, 'accepted')"
+                />
+                <q-btn
+                  unelevated
+                  size="sm"
+                  dense
+                  color="negative"
+                  label="Reject"
+                  class="costing-page__decision-btn costing-page__decision-btn--reject"
+                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
+                  :disable="savingDecisionItemId === props.row.id"
+                  @click="handleDecision(props.row.id, 'rejected')"
+                />
+              </template>
+
               <q-btn
+                v-else
                 flat
                 dense
                 color="negative"
@@ -651,27 +697,37 @@
         :loading="savingItemId === editingItem?.id"
         @save="handleSaveEnrichment"
       />
+
+      <AddCostingFileItemDialog
+        v-model="addItemDialogOpen"
+        :loading="creatingItem"
+        @save="handleCreateItem"
+      />
     </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 
+import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
+import {
+  buildAdminProductRows,
+  buildAdminReviewRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
-import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations'
+import type { CostingFileDetails, CostingFileItem, CostingFileItemStatus, CostingFileStatus } from 'src/modules/costingFile/types'
+import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
-const {
-  selectedItem: selectedFile,
-  costingFileItems,
-  itemLoading: loadingItems,
-} = storeToRefs(costingFileStore)
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
+const loadingItems = computed(() => costingFileStore.itemLoading)
 
 const savingStatus = ref(false)
 const savingItemId = ref<number | null>(null)
@@ -679,11 +735,15 @@ const savingPricing = ref(false)
 const savingOfferItemId = ref<number | null>(null)
 const savingQuantityItemId = ref<number | null>(null)
 const savingFieldKey = ref<string | null>(null)
+const savingDecisionItemId = ref<number | null>(null)
+const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
 const deletingReviewItemId = ref<number | null>(null)
 const deleteReviewItemDialogOpen = ref(false)
 const reviewItemPendingDeleteId = ref<number | null>(null)
 const statusForm = ref<CostingFileStatus>('draft')
 const editDialogOpen = ref(false)
+const addItemDialogOpen = ref(false)
+const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
 const reviewTableMode = ref<'detailed' | 'compact'>('detailed')
 const offerDrafts = reactive<Record<number, number | null>>({})
@@ -696,7 +756,23 @@ const pricingForm = reactive({
   adminProfitRate: null as number | null,
 })
 
-const fileStatuses: CostingFileStatus[] = ['draft', 'customer_submitted', 'in_review', 'offered', 'completed', 'cancelled']
+const fileStatuses = computed<CostingFileStatus[]>(() => {
+  if (authStore.matchedRole === 'staff') {
+    const currentStatus = selectedFile.value?.status
+
+    if (!currentStatus) {
+      return ['draft', 'in_review']
+    }
+
+    if (currentStatus === 'draft') {
+      return ['draft', 'in_review']
+    }
+
+    return [currentStatus]
+  }
+
+  return ['draft', 'customer_submitted', 'in_review', 'offered', 'completed', 'cancelled']
+})
 
 const subtitle = computed(() =>
   selectedFile.value ? `${selectedFile.value.name} items and pricing.` : 'Loading costing file details.'
@@ -706,28 +782,41 @@ const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
 )
 
-const productRows = computed(() =>
-  costingFileItems.value.map((item, index) => ({
-    id: item.id,
-    sl: index + 1,
-    imageUrl: item.image_url,
-    websiteUrl: item.website_url,
-    name: item.name ?? '-',
-    priceInWebGbpValue: item.price_in_web_gbp,
-    priceInWebGbp: item.price_in_web_gbp == null ? '-' : Number(item.price_in_web_gbp).toFixed(2),
-    productWeightValue: item.product_weight,
-    productWeight: item.product_weight == null ? '-' : item.product_weight,
-    packageWeightValue: item.package_weight,
-    packageWeight: item.package_weight == null ? '-' : item.package_weight,
-    quantity: item.quantity,
-  })),
-)
+const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
 
 const productColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 108px; min-width: 108px;', headerStyle: 'width: 108px; min-width: 108px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'width: 280px; min-width: 280px; max-width: 280px;', headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;' },
+
   {
     name: 'priceInWebGbp',
     label: 'Web price (GBP)',
@@ -740,83 +829,76 @@ const productColumns = [
   },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  {
+    name: 'quantity',
+    label: 'Quantity',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
-const formatGbp = (value: number | null | undefined) => (value == null ? '-' : Number(value).toFixed(2))
-const formatBdt = (value: number | null | undefined) => (value == null ? '-' : String(value))
-
 const reviewRows = computed(() =>
-  costingFileItems.value.map((item, index) => {
-    const calculated = calculateCostingItem(
-      {
-        cargoRate1Kg: pricingForm.cargoRate1Kg,
-        cargoRate2Kg: pricingForm.cargoRate2Kg,
-        conversionRate: pricingForm.conversionRate,
-        adminProfitRate: pricingForm.adminProfitRate,
-        offerPriceOverrideBdt: item.offer_price_override_bdt,
-      },
-      {
-        productWeight: item.product_weight,
-        packageWeight: item.package_weight,
-        priceInWebGbp: item.price_in_web_gbp,
-        deliveryPriceGbp: item.delivery_price_gbp,
-        customerProfitRate: item.customer_profit_rate,
-      },
-    )
-    const profitAmount = calculated.offerPriceBdt - calculated.costingPriceBdt
-    const profitRate =
-      calculated.costingPriceBdt > 0
-        ? `${((profitAmount / calculated.costingPriceBdt) * 100).toFixed(2)}%`
-        : '-'
-    const quantity = Number(item.quantity ?? 0)
-    const totalCostBdt = calculated.costingPriceBdt * quantity
-    const totalOfferPriceBdt = calculated.offerPriceBdt * quantity
-    const totalProfitBdt = totalOfferPriceBdt - totalCostBdt
-    const averageProfitRate =
-      totalCostBdt > 0 ? `${((totalProfitBdt / totalCostBdt) * 100).toFixed(2)}%` : '-'
-
-    return {
-      id: item.id,
-      sl: index + 1,
-      imageUrl: item.image_url,
-      websiteUrl: item.website_url,
-      quantity,
-      name: item.name ?? '-',
-      productWeight: item.product_weight ?? '-',
-      productWeightValue: item.product_weight,
-      packageWeight: item.package_weight ?? '-',
-      packageWeightValue: item.package_weight,
-      totalWeight: calculated.totalWeight,
-      priceInWebGbpValue: item.price_in_web_gbp,
-      priceInWebGbp: formatGbp(item.price_in_web_gbp),
-      deliveryPriceGbpValue: item.delivery_price_gbp,
-      deliveryPriceGbp: formatGbp(item.delivery_price_gbp),
-      auxiliaryPriceGbp: formatGbp(calculated.auxiliaryPriceGbp),
-      purchasePriceGbp: formatGbp(calculated.itemPriceGbp),
-      cargoRateGbp: formatGbp(calculated.cargoRate),
-      costingPriceGbp: formatGbp(calculated.costingPriceGbp),
-      costingPriceBdt: formatBdt(calculated.costingPriceBdt),
-      offerPriceBdtValue: calculated.offerPriceBdt,
-      offerPriceBdt: formatBdt(calculated.offerPriceBdt),
-      offerPriceOverrideBdt: item.offer_price_override_bdt,
-      profitRate,
-      profitAmount: formatBdt(profitAmount),
-      totalCostBdt: formatBdt(totalCostBdt),
-      totalOfferPriceBdt: formatBdt(totalOfferPriceBdt),
-      totalProfitBdt: formatBdt(totalProfitBdt),
-      averageProfitRate,
-    }
+  buildAdminReviewRows(costingFileItems.value, {
+    cargoRate1Kg: pricingForm.cargoRate1Kg,
+    cargoRate2Kg: pricingForm.cargoRate2Kg,
+    conversionRate: pricingForm.conversionRate,
+    adminProfitRate: pricingForm.adminProfitRate,
   }),
 )
 
 const reviewColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 48px; min-width: 48px;', headerStyle: 'width: 48px; min-width: 48px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 108px; min-width: 108px;', headerStyle: 'width: 108px; min-width: 108px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
+  {
+    name: 'quantity',
+    label: 'Qty',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 56px; min-width: 56px;',
+    headerStyle: 'width: 56px; min-width: 56px;',
+  },
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+
   { name: 'websiteUrl', label: 'Web URL', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'quantity', label: 'Qty', field: 'quantity', align: 'left' as const, style: 'width: 56px; min-width: 56px;', headerStyle: 'width: 56px; min-width: 56px;' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, style: 'width: 280px; min-width: 280px; max-width: 280px;', headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;' },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
   { name: 'totalWeight', label: 'Total wt', field: 'totalWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
@@ -836,7 +918,7 @@ const reviewColumns = [
   { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   {
     name: 'costingPriceGbp',
-    label: 'Cost (GBP)',
+    label: 'Cost (GBP) per unit',
     field: 'costingPriceGbp',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
@@ -846,7 +928,7 @@ const reviewColumns = [
   },
   {
     name: 'costingPriceBdt',
-    label: 'Cost (BDT)',
+    label: 'Cost (BDT) per unit',
     field: 'costingPriceBdt',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
@@ -856,13 +938,23 @@ const reviewColumns = [
   },
   {
     name: 'offerPriceBdt',
-    label: 'Offer price (BDT)',
+    label: 'Offer price (BDT) per unit',
     field: 'offerPriceBdt',
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
     headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
+  },
+  {
+    name: 'totalCostGbp',
+    label: 'Total cost (GBP)',
+    field: 'totalCostGbp',
+    align: 'left' as const,
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
   },
   {
     name: 'totalCostBdt',
@@ -885,7 +977,7 @@ const reviewColumns = [
     headerClasses: 'costing-page__tone-emerald',
   },
   { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 74px; min-width: 74px;', headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;' },
-  { name: 'profitAmount', label: 'Profit amount (BDT)', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  { name: 'profitAmount', label: 'Profit amount (BDT) per unit', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   { name: 'totalProfitBdt', label: 'Total profit (BDT)', field: 'totalProfitBdt', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;' },
   { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 88px; min-width: 88px;', headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;' },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
@@ -896,6 +988,7 @@ const compactReviewColumnNames = [
   'image',
   'name',
   'priceInWebGbp',
+  'status',
   'costingPriceGbp',
   'costingPriceBdt',
   'offerPriceBdt',
@@ -916,6 +1009,9 @@ const visibleReviewColumns = computed(() => {
 
   return columns.filter((column) => column.name !== 'actions')
 })
+
+const getReviewRowClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
 
 const loadFile = async () => {
   const fileId = Number(route.params.id)
@@ -1064,6 +1160,64 @@ const handleSaveEnrichment = async (payload: {
   }
 }
 
+const handleCreateItem = async (payload: {
+  websiteUrl: string
+  quantity: number
+  name: string
+  imageUrl: string
+  productWeight: number
+  packageWeight: number
+  priceInWebGbp: number
+  deliveryPriceGbp: number
+}) => {
+  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+    return
+  }
+
+  creatingItem.value = true
+  try {
+    const result = await costingFileStore.createCostingFileItem({
+      costingFileId: selectedFile.value.id,
+      websiteUrl: payload.websiteUrl,
+      quantity: payload.quantity,
+      name: payload.name,
+      imageUrl: payload.imageUrl,
+      productWeight: payload.productWeight,
+      packageWeight: payload.packageWeight,
+      priceInWebGbp: payload.priceInWebGbp,
+      deliveryPriceGbp: payload.deliveryPriceGbp,
+      status: 'pending',
+    })
+
+    if (result.success) {
+      addItemDialogOpen.value = false
+    }
+  } finally {
+    creatingItem.value = false
+  }
+}
+
+const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
+  if (selectedFile.value?.status !== 'offered') {
+    return
+  }
+
+  savingDecisionItemId.value = itemId
+  savingDecisionStatus.value = status
+  try {
+    const result = await costingFileStore.updateCostingFileItemStatus({ id: itemId, status })
+
+    if (!result.success) {
+      return
+    }
+
+    showSuccessNotification(`Item ${status}.`)
+  } finally {
+    savingDecisionItemId.value = null
+    savingDecisionStatus.value = null
+  }
+}
+
 const openDeleteReviewItemDialog = (itemId: number) => {
   if (selectedFile.value?.status !== 'in_review') {
     return
@@ -1128,6 +1282,12 @@ watch(
 watch(editDialogOpen, (isOpen) => {
   if (!isOpen) {
     editingItemId.value = null
+  }
+})
+
+watch(addItemDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    creatingItem.value = false
   }
 })
 
@@ -1201,7 +1361,7 @@ onMounted(async () => {
 }
 
 .costing-page__field-label {
-  font-size: 0.875rem;
+  font-size: 0.675rem;
   font-weight: 600;
   color: var(--bw-theme-ink);
 }
@@ -1233,6 +1393,93 @@ onMounted(async () => {
 .costing-page__table :deep(.q-table td) {
   text-align: center;
   vertical-align: middle;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col) {
+  position: sticky;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col) {
+  z-index: 2;
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col) {
+  z-index: 3;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--sl) {
+  left: 0;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--image) {
+  left: 48px;
+}
+
+.costing-page__table--product :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table--review :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td) {
+  background: #fff7f8;
+  border-top: 1px solid #efb2bc;
+  border-bottom: 1px solid #efb2bc;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td:first-child) {
+  border-left: 1px solid #efb2bc;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td:last-child) {
+  border-right: 1px solid #efb2bc;
+}
+
+.costing-page__status-cell {
+  width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
+  color: var(--bw-theme-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.costing-page__status-pill--rejected {
+  background: #fbe3e6;
+  color: #a33b49;
+}
+
+.costing-page__actions-cell {
+  white-space: nowrap;
+}
+
+.costing-page__decision-btn {
+  border-radius: 8px;
+  min-width: 66px;
+}
+
+.costing-page__decision-btn--accept {
+  background: #ddf4e7 !important;
+  color: #1f6a43 !important;
+}
+
+.costing-page__decision-btn--reject {
+  background: #fbe3e6 !important;
+  color: #a33b49 !important;
 }
 
 .costing-page__sl-cell {

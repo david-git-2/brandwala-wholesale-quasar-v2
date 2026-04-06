@@ -107,7 +107,7 @@ export type Database = {
           created_by_email: string
           customer_group_id: number
           id: number
-          market: string
+          market: string | null
           name: string
           status: Database["public"]["Enums"]["costing_file_status"]
           tenant_id: number
@@ -122,7 +122,7 @@ export type Database = {
           created_by_email?: string
           customer_group_id: number
           id?: number
-          market: string
+          market?: string | null
           name: string
           status?: Database["public"]["Enums"]["costing_file_status"]
           tenant_id: number
@@ -137,7 +137,7 @@ export type Database = {
           created_by_email?: string
           customer_group_id?: number
           id?: number
-          market?: string
+          market?: string | null
           name?: string
           status?: Database["public"]["Enums"]["costing_file_status"]
           tenant_id?: number
@@ -459,25 +459,50 @@ export type Database = {
           member_updated_at: string
         }[]
       }
-      create_costing_file: {
-        Args: {
-          p_customer_group_id: number
-          p_market: string
-          p_name: string
-          p_tenant_id: number
-        }
-        Returns: {
-          created_at: string
-          created_by_email: string
-          customer_group_id: number
-          id: number
-          market: string
-          name: string
-          status: Database["public"]["Enums"]["costing_file_status"]
-          tenant_id: number
-          updated_at: string
-        }[]
+      count_costing_files_for_actor: {
+        Args: { p_customer_group_id?: number; p_tenant_id?: number }
+        Returns: number
       }
+      create_costing_file:
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_market: string
+              p_name: string
+              p_status?: Database["public"]["Enums"]["costing_file_status"]
+              p_tenant_id?: number
+            }
+            Returns: {
+              created_at: string
+              created_by_email: string
+              customer_group_id: number
+              id: number
+              market: string
+              name: string
+              status: Database["public"]["Enums"]["costing_file_status"]
+              tenant_id: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_market: string
+              p_name: string
+              p_tenant_id: number
+            }
+            Returns: {
+              created_at: string
+              created_by_email: string
+              customer_group_id: number
+              id: number
+              market: string
+              name: string
+              status: Database["public"]["Enums"]["costing_file_status"]
+              tenant_id: number
+              updated_at: string
+            }[]
+          }
       create_costing_file_item_request: {
         Args: {
           p_costing_file_id: number
@@ -667,6 +692,10 @@ export type Database = {
         Args: { p_customer_group_id: number }
         Returns: boolean
       }
+      is_internal_costing_file_creator: {
+        Args: { p_email: string; p_tenant_id: number }
+        Returns: boolean
+      }
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
       is_tenant_staff: { Args: { p_tenant_id: number }; Returns: boolean }
@@ -697,20 +726,42 @@ export type Database = {
           website_url: string
         }[]
       }
-      list_costing_files_for_actor: {
-        Args: { p_customer_group_id?: number; p_tenant_id?: number }
-        Returns: {
-          created_at: string
-          created_by_email: string
-          customer_group_id: number
-          id: number
-          market: string
-          name: string
-          status: Database["public"]["Enums"]["costing_file_status"]
-          tenant_id: number
-          updated_at: string
-        }[]
-      }
+      list_costing_files_for_actor:
+        | {
+            Args: { p_customer_group_id?: number; p_tenant_id?: number }
+            Returns: {
+              created_at: string
+              created_by_email: string
+              customer_group_id: number
+              id: number
+              market: string
+              name: string
+              status: Database["public"]["Enums"]["costing_file_status"]
+              tenant_id: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_customer_group_id?: number
+              p_limit?: number
+              p_offset?: number
+              p_tenant_id?: number
+            }
+            Returns: {
+              created_at: string
+              created_by_email: string
+              created_by_label: string
+              customer_group_id: number
+              id: number
+              market: string
+              name: string
+              status: Database["public"]["Enums"]["costing_file_status"]
+              tenant_id: number
+              total_count: number
+              updated_at: string
+            }[]
+          }
       list_my_admin_tenants: {
         Args: never
         Returns: {
@@ -761,6 +812,14 @@ export type Database = {
           slug: string
           updated_at: string
         }[]
+      }
+      resolve_costing_file_creator_label: {
+        Args: {
+          p_created_by_email: string
+          p_customer_group_id: number
+          p_tenant_id: number
+        }
+        Returns: string
       }
       resolve_tenant_for_entry: {
         Args: { p_hostname?: string; p_slug?: string }

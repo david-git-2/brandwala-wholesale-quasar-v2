@@ -11,6 +11,7 @@ import type {
   CostingFileItemOfferUpdateInput,
   CostingFileItemStatusUpdateInput,
   CostingFileListEntry,
+  CostingFileListPageResult,
   CostingFilePricingUpdateInput,
   CostingFileServiceResult,
   CostingFileStatusUpdateInput,
@@ -22,6 +23,29 @@ const listCostingFilesForTenant = async (
 ): Promise<CostingFileServiceResult<CostingFileListEntry[]>> => {
   try {
     const data = await costingFileRepository.listCostingFilesForTenant(tenantId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load costing files.',
+    }
+  }
+}
+
+const listCostingFilesForTenantPage = async (
+  tenantId: number,
+  customerGroupId: number | null,
+  page: number,
+  pageSize: number,
+): Promise<CostingFileServiceResult<CostingFileListPageResult>> => {
+  try {
+    const data = await costingFileRepository.listCostingFilesForTenantPage(
+      tenantId,
+      customerGroupId,
+      page,
+      pageSize,
+    )
+
     return { success: true, data }
   } catch (error) {
     return {
@@ -49,6 +73,28 @@ const listCostingFilesForCustomerGroup = async (
   }
 }
 
+const listCostingFilesForCustomerGroupPage = async (
+  customerGroupId: number,
+  tenantId: number | null | undefined,
+  page: number,
+  pageSize: number,
+): Promise<CostingFileServiceResult<CostingFileListPageResult>> => {
+  try {
+    const data = await costingFileRepository.listCostingFilesForCustomerGroupPage(
+      customerGroupId,
+      tenantId,
+      page,
+      pageSize,
+    )
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load costing files.',
+    }
+  }
+}
+
 const getCostingFileById = async (
   id: number,
 ): Promise<CostingFileServiceResult<CostingFileDetails | null>> => {
@@ -63,10 +109,30 @@ const getCostingFileById = async (
   }
 }
 
+const getCostingFileByIdForCustomer = async (
+  id: number,
+): Promise<CostingFileServiceResult<CostingFileDetails | null>> => {
+  try {
+    const data = await costingFileRepository.getCostingFileByIdForCustomer(id)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load costing file details.',
+    }
+  }
+}
+
 const listCostingFileItems = async (
   costingFileId: number,
 ): Promise<CostingFileServiceResult<CostingFileItem[]>> => {
   return costingFileItemService.listCostingFileItems(costingFileId)
+}
+
+const listCostingFileItemsForCustomer = async (
+  costingFileId: number,
+): Promise<CostingFileServiceResult<CostingFileItem[]>> => {
+  return costingFileItemService.listCostingFileItemsForCustomer(costingFileId)
 }
 
 const createCostingFile = async (
@@ -191,9 +257,13 @@ const updateCostingFileItemOffer = async (
 
 export const costingFileService = {
   listCostingFilesForTenant,
+  listCostingFilesForTenantPage,
   listCostingFilesForCustomerGroup,
+  listCostingFilesForCustomerGroupPage,
   getCostingFileById,
+  getCostingFileByIdForCustomer,
   listCostingFileItems,
+  listCostingFileItemsForCustomer,
   createCostingFile,
   updateCostingFile,
   deleteCostingFile,

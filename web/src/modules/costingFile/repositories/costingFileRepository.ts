@@ -1,10 +1,12 @@
 import { supabase } from 'src/boot/supabase'
 
 import type {
+  CostingFile,
   CostingFileCreateInput,
   CostingFileDeleteInput,
   CostingFileDetails,
   CostingFileListEntry,
+  CostingFileListPageResult,
   CostingFilePricingUpdateInput,
   CostingFileStatusUpdateInput,
   CostingFileUpdateInput,
@@ -23,6 +25,48 @@ const listCostingFilesForTenant = async (tenantId: number): Promise<CostingFileL
   return (data as CostingFileListEntry[] | null) ?? []
 }
 
+const listCostingFilesForTenantPage = async (
+  tenantId: number,
+  customerGroupId: number | null,
+  page: number,
+  pageSize: number,
+): Promise<CostingFileListPageResult> => {
+  const safePage = Math.max(1, Math.floor(page || 1))
+  const safePageSize = Math.max(1, Math.floor(pageSize || 20))
+  const offset = (safePage - 1) * safePageSize
+
+  const listResult = await supabase.rpc('list_costing_files_for_actor', {
+    p_tenant_id: tenantId,
+    p_customer_group_id: customerGroupId,
+    p_limit: safePageSize,
+    p_offset: offset,
+  })
+
+  if (listResult.error) {
+    throw listResult.error
+  }
+
+  const rows =
+    ((listResult.data as Array<CostingFileListEntry & { total_count?: number | null }> | null) ??
+      [])
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      market: row.market,
+      status: row.status,
+      customer_group_id: row.customer_group_id,
+      tenant_id: row.tenant_id,
+      created_by_email: row.created_by_email,
+      created_by_label: row.created_by_label ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    })),
+    total: Number(rows[0]?.total_count ?? 0),
+  }
+}
+
 const listCostingFilesForCustomerGroup = async (
   customerGroupId: number,
   tenantId?: number | null,
@@ -36,7 +80,52 @@ const listCostingFilesForCustomerGroup = async (
     throw error
   }
 
-  return (data as CostingFileListEntry[] | null) ?? []
+  return ((data as CostingFileListEntry[] | null) ?? []).map((item) => ({
+    ...item,
+    created_by_email: '',
+  }))
+}
+
+const listCostingFilesForCustomerGroupPage = async (
+  customerGroupId: number,
+  tenantId: number | null | undefined,
+  page: number,
+  pageSize: number,
+): Promise<CostingFileListPageResult> => {
+  const safePage = Math.max(1, Math.floor(page || 1))
+  const safePageSize = Math.max(1, Math.floor(pageSize || 20))
+  const offset = (safePage - 1) * safePageSize
+
+  const listResult = await supabase.rpc('list_costing_files_for_actor', {
+    p_tenant_id: tenantId ?? null,
+    p_customer_group_id: customerGroupId,
+    p_limit: safePageSize,
+    p_offset: offset,
+  })
+
+  if (listResult.error) {
+    throw listResult.error
+  }
+
+  const rows =
+    ((listResult.data as Array<CostingFileListEntry & { total_count?: number | null }> | null) ??
+      [])
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      market: row.market,
+      status: row.status,
+      customer_group_id: row.customer_group_id,
+      tenant_id: row.tenant_id,
+      created_by_email: '',
+      created_by_label: row.created_by_label ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    })),
+    total: Number(rows[0]?.total_count ?? 0),
+  }
 }
 
 const getCostingFileById = async (id: number): Promise<CostingFileDetails | null> => {
@@ -52,12 +141,43 @@ const getCostingFileById = async (id: number): Promise<CostingFileDetails | null
   return (costingFile as CostingFileDetails | null) ?? null
 }
 
+const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDetails | null> => {
+  const { data, error } = await supabase
+    .from('costing_files')
+    .select('id, name, market, status, customer_group_id, tenant_id, created_at, updated_at')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    return null
+  }
+
+  const safe = data as Pick<
+    CostingFile,
+    'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_at' | 'updated_at'
+  >
+
+  return {
+    ...safe,
+    cargo_rate_1kg: null,
+    cargo_rate_2kg: null,
+    conversion_rate: null,
+    admin_profit_rate: null,
+    created_by_email: '',
+  }
+}
+
 const createCostingFile = async (payload: CostingFileCreateInput): Promise<CostingFileDetails> => {
   const { data, error } = await supabase.rpc('create_costing_file', {
-    p_tenant_id: payload.tenantId,
     p_customer_group_id: payload.customerGroupId,
-    p_name: payload.name,
     p_market: payload.market,
+    p_name: payload.name,
+    p_status: payload.status ?? 'draft',
+    p_tenant_id: payload.tenantId,
   })
 
   if (error) {
@@ -159,8 +279,11 @@ const updateCostingFilePricing = async (
 
 export const costingFileRepository = {
   listCostingFilesForTenant,
+  listCostingFilesForTenantPage,
   listCostingFilesForCustomerGroup,
+  listCostingFilesForCustomerGroupPage,
   getCostingFileById,
+  getCostingFileByIdForCustomer,
   createCostingFile,
   updateCostingFile,
   deleteCostingFile,

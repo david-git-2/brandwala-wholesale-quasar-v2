@@ -27,6 +27,20 @@ const listCostingFileItems = async (
   }
 }
 
+const listCostingFileItemsForCustomer = async (
+  costingFileId: number,
+): Promise<CostingFileServiceResult<CostingFileItem[]>> => {
+  try {
+    const data = await costingFileItemRepository.listCostingFileItemsForCustomer(costingFileId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load costing file items.',
+    }
+  }
+}
+
 const createCostingFileItemRequest = async (
   payload: CostingFileItemRequestCreateInput,
 ): Promise<
@@ -170,6 +184,7 @@ const deleteCostingFileItem = async (
 
 export const costingFileItemService = {
   listCostingFileItems,
+  listCostingFileItemsForCustomer,
   createCostingFileItem,
   createCostingFileItemRequest,
   updateCostingFileItemEnrichment,

@@ -82,6 +82,18 @@ const costingFileRoutes: RouteRecordRaw[] = [
           requiredModule: 'costing_file',
         }),
       },
+      {
+        path: 'staff/:id',
+        name: 'staff-costing-file-details-page',
+        component: () => import('../pages/StaffCostingFileDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['staff'],
+          requireTenantContext: true,
+          requiredModule: 'costing_file',
+        }),
+      },
     ],
   },
   {
@@ -111,6 +123,31 @@ const costingFileRoutes: RouteRecordRaw[] = [
         path: ':id',
         name: 'customer-costing-file-details-page',
         component: () => import('../pages/CustomerCostingFileDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
+          requiredScope: 'shop',
+          requireTenantContext: true,
+          allowedRoles: [
+            'customer_admin',
+            'customer_negotiator',
+            'customer_staff',
+          ],
+          requiredModule: 'shop_costing_file',
+        }),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/shop/costing/:id/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'customer-costing-file-preview-page',
+        component: () => import('../pages/CustomerCostingFilePreviewPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: (to) =>
             getShopLoginRouteLocation(to, {

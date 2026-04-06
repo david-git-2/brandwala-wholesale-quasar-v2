@@ -1232,6 +1232,10 @@ const loadTenantMembers = async () => {
 }
 
 const loadCostingFiles = async () => {
+  if (!showCostingFilesSection) {
+    return
+  }
+
   if (!tenant.value?.id) {
     costingFileStore.items = []
     return
@@ -1317,8 +1321,9 @@ const loadPageData = async () => {
       loadTenantMembers(),
       loadTenantModules(),
       loadCustomerGroups(),
-      loadCostingFiles(),
     ])
+
+    await loadCostingFiles()
   } catch (error) {
     console.error(error)
     pageError.value = 'Failed to load tenant details.'
@@ -1432,7 +1437,7 @@ const openEditCostingFileDialog = (file: CostingFileListEntry) => {
   costingFileForm.value = {
     id: file.id,
     name: file.name,
-    market: file.market,
+    market: file.market ?? '',
     customerGroupId: file.customer_group_id,
   }
   openCostingFileDialog.value = true

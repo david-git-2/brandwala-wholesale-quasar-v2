@@ -8,7 +8,7 @@
       <div v-if="selectedFile">
         <div class="costing-page__summary">
           <p class="costing-page__summary-text q-my-none text-body2 text-grey-7">
-            {{ selectedFile.name }} | {{ selectedFile.market }}
+            {{ selectedFile.name }} | {{ selectedFile.market || 'Not set' }}
           </p>
           <q-chip
             dense
@@ -52,7 +52,6 @@
             v-if="productRows.length"
             flat
             bordered
-            dense
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
@@ -61,13 +60,45 @@
             class="costing-page__table"
           >
             <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
+              <q-td
+                :props="props"
+                class="costing-page__sl-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.sl }}
               </q-td>
             </template>
 
+            <template #body-cell-image="props">
+              <q-td
+                :props="props"
+                class="costing-page__image-table-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
+                <q-img
+                  v-if="props.row.imageUrl"
+                  :src="props.row.imageUrl"
+                  fit="cover"
+                  class="costing-page__image"
+                />
+                <div v-else class="costing-page__image costing-page__image--placeholder">
+                  No image
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                {{ props.row.quantity }}
+              </q-td>
+            </template>
+
             <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
+              <q-td
+                :props="props"
+                class="costing-page__name-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <span class="costing-page__name-text" :title="props.row.name">
                   {{ props.row.name }}
                 </span>
@@ -75,7 +106,11 @@
             </template>
 
             <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__url-cell">
+              <q-td
+                :props="props"
+                class="costing-page__url-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <a
                   class="costing-page__url-text"
                   :href="toExternalUrl(props.row.websiteUrl)"
@@ -141,6 +176,26 @@
                 </q-td>
               </template>
 
+              <template #body-cell-image="props">
+                <q-td :props="props" class="costing-page__image-table-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="cover"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.quantity }}
+                </q-td>
+              </template>
+
               <template #body-cell-name="props">
                 <q-td :props="props" class="costing-page__name-cell">
                   <span class="costing-page__name-text" :title="props.row.name">
@@ -187,6 +242,12 @@
               :disable="savingProfitAll"
               @click="handleSaveSharedProfitRate"
             />
+            <q-btn
+              outline
+              color="primary"
+              label="Preview"
+              @click="openPreview"
+            />
           </div>
 
           <q-table
@@ -197,18 +258,27 @@
             row-key="id"
             :rows="productRows"
             :columns="visibleColumns"
+            :row-class="getOfferedRowClass"
             :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table costing-page__table--offered"
           >
             <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
+              <q-td
+                :props="props"
+                class="costing-page__sl-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.sl }}
               </q-td>
             </template>
 
             <template #body-cell-image="props">
-              <q-td :props="props" class="costing-page__image-table-cell">
+              <q-td
+                :props="props"
+                class="costing-page__image-table-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
@@ -222,7 +292,11 @@
             </template>
 
             <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
+              <q-td
+                :props="props"
+                class="costing-page__name-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <span class="costing-page__name-text" :title="props.row.name">
                   {{ props.row.name }}
                 </span>
@@ -230,7 +304,11 @@
             </template>
 
             <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__url-cell">
+              <q-td
+                :props="props"
+                class="costing-page__url-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <a
                   class="costing-page__url-text"
                   :href="toExternalUrl(props.row.websiteUrl)"
@@ -244,37 +322,78 @@
             </template>
 
             <template #body-cell-quantity="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.quantity }}
               </q-td>
             </template>
 
             <template #body-cell-offerPriceBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.offerPriceBdt }}
               </q-td>
             </template>
 
             <template #body-cell-buyerSellingPriceBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-indigo">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell costing-page__tone-indigo"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.buyerSellingPriceBdt }}
               </q-td>
             </template>
 
             <template #body-cell-customerProfitAmountBdt="props">
-              <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-amber">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell costing-page__tone-amber"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.customerProfitAmountBdt }}
               </q-td>
             </template>
 
             <template #body-cell-customerProfitRateDisplay="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
+              <q-td
+                :props="props"
+                class="costing-page__numeric-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 {{ props.row.customerProfitRateDisplay }}
               </q-td>
             </template>
 
+            <template #body-cell-status="props">
+              <q-td
+                :props="props"
+                class="costing-page__status-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
+                <span
+                  class="costing-page__status-pill"
+                  :class="{
+                    'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                  }"
+                >
+                  {{ props.row.status }}
+                </span>
+              </q-td>
+            </template>
+
             <template #body-cell-actions="props">
-              <q-td :props="props" class="costing-page__actions-cell">
+              <q-td
+                :props="props"
+                class="costing-page__actions-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
                 <q-btn
                   unelevated
                   size="sm"
@@ -319,6 +438,26 @@
             <template #body-cell-sl="props">
               <q-td :props="props" class="costing-page__sl-cell">
                 {{ props.row.sl }}
+              </q-td>
+            </template>
+
+            <template #body-cell-image="props">
+              <q-td :props="props" class="costing-page__image-table-cell">
+                <q-img
+                  v-if="props.row.imageUrl"
+                  :src="props.row.imageUrl"
+                  fit="cover"
+                  class="costing-page__image"
+                />
+                <div v-else class="costing-page__image costing-page__image--placeholder">
+                  No image
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                {{ props.row.quantity }}
               </q-td>
             </template>
 
@@ -379,14 +518,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
+import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
-import { calculateBuyerSellPrice } from 'src/modules/costingFile/utils/costingCalculations'
 import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
+const router = useRouter()
 const costingFileStore = useCostingFileStore()
 const {
   selectedItem: selectedFile,
@@ -419,49 +559,62 @@ const canCreateRequest = computed(
 
 
 const productRows = computed(() =>
-  itemForms.value.map((item, index) => {
-    const offerPriceBdt = Number(item.offer_price_bdt ?? 0)
-    const effectiveProfitRate = sharedProfitRate.value ?? item.customer_profit_rate
-    const buyerSellingPriceBdt = calculateBuyerSellPrice(item.offer_price_bdt, effectiveProfitRate)
-    const customerProfitAmountBdt = buyerSellingPriceBdt - offerPriceBdt
-    const customerProfitRateDisplay =
-      offerPriceBdt > 0 ? `${((customerProfitAmountBdt / offerPriceBdt) * 100).toFixed(2)}%` : '-'
-
-    return {
-      id: item.id,
-      sl: index + 1,
-      imageUrl: item.image_url,
-      websiteUrl: item.website_url,
-      quantity: item.quantity,
-      name: item.name ?? '-',
-      offerPriceBdt: formatBdt(item.offer_price_bdt),
-      buyerSellingPriceBdt: formatBdt(buyerSellingPriceBdt),
-      customerProfitAmountBdt: formatBdt(customerProfitAmountBdt),
-      customerProfitRateDisplay,
-      status: item.status,
-    }
-  }),
+  buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
 )
 
+const getOfferedRowClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
+
+const getOfferedCellClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-cell' : ''
+
 const allColumns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center' as const },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'center' as const },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center' as const,
+    style: 'width: 48px; min-width: 48px;',
+    headerStyle: 'width: 48px; min-width: 48px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'center' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
+  },
+
   {
     name: 'name',
     label: 'Name',
     field: 'name',
     align: 'center' as const,
-    style: 'width: 320px; min-width: 320px;',
-    headerStyle: 'width: 320px; min-width: 320px; white-space: normal; line-height: 1.15;',
+    style: 'width: 280px; min-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
+    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
-  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'center' as const },
   {
     name: 'quantity',
     label: 'Qty',
     field: 'quantity',
     align: 'center' as const,
-    style: 'width: 64px; min-width: 64px;',
-    headerStyle: 'width: 64px; min-width: 64px; white-space: normal; line-height: 1.15;',
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'center' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
   },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
   {
@@ -481,8 +634,8 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 104px; min-width: 104px;',
     headerStyle: 'width: 104px; min-width: 104px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__tone-indigo',
-    headerClasses: 'costing-page__tone-indigo',
+    classes: 'costing-page__tone-orange',
+    headerClasses: 'costing-page__tone-orange',
   },
   {
     name: 'customerProfitAmountBdt',
@@ -511,14 +664,18 @@ const visibleColumns = computed(() => {
   }
 
   if (selectedFile.value.status === 'draft') {
-    return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity', 'actions'].includes(column.name))
+    return allColumns.filter((column) =>
+      ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'actions'].includes(column.name),
+    )
   }
 
   if (
     selectedFile.value.status === 'customer_submitted' ||
     selectedFile.value.status === 'in_review'
   ) {
-    return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity'].includes(column.name))
+    return allColumns.filter((column) =>
+      ['sl', 'image', 'quantity', 'name', 'websiteUrl'].includes(column.name),
+    )
   }
 
   if (selectedFile.value.status === 'offered') {
@@ -526,9 +683,9 @@ const visibleColumns = computed(() => {
       [
         'sl',
         'image',
+        'quantity',
         'name',
         'websiteUrl',
-        'quantity',
         'offerPriceBdt',
         'buyerSellingPriceBdt',
         'customerProfitAmountBdt',
@@ -539,10 +696,11 @@ const visibleColumns = computed(() => {
     )
   }
 
-  return allColumns.filter((column) => ['sl', 'websiteUrl', 'quantity', 'name', 'status', 'offerPriceBdt'].includes(column.name))
+  return allColumns.filter((column) =>
+    ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'status', 'offerPriceBdt'].includes(column.name),
+  )
 })
 
-const formatBdt = (value: number | null) => (value == null ? '-' : String(value))
 const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
 
 const resetRequestForm = () => {
@@ -559,7 +717,7 @@ const syncFileForm = () => {
 const loadFile = async () => {
   const fileId = Number(route.params.id)
   if (!fileId) return
-  await costingFileStore.fetchCostingFileWithItems(fileId)
+  await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId)
 }
 
 const handleSubmitRequest = async () => {
@@ -683,6 +841,19 @@ const handleSubmitOrder = async () => {
   }
 }
 
+const openPreview = () => {
+  if (!selectedFile.value || selectedFile.value.status !== 'offered') {
+    return
+  }
+
+  const targetRoute = router.resolve({
+    name: 'customer-costing-file-preview-page',
+    params: { id: String(selectedFile.value.id) },
+  })
+
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
+}
+
 onMounted(async () => {
   await loadFile()
 })
@@ -770,6 +941,31 @@ watch(
   line-height: 1.15;
 }
 
+.costing-page__table :deep(.costing-page__sticky-col) {
+  position: sticky;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col) {
+  z-index: 2;
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col) {
+  z-index: 3;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--sl) {
+  left: 0;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--image) {
+  left: 48px;
+}
+
+.costing-page__table :deep(.costing-page__sticky-col--name) {
+  left: 156px;
+}
+
 .costing-page__sl-cell {
   width: 3ch;
   max-width: 3ch;
@@ -777,14 +973,14 @@ watch(
 }
 
 .costing-page__name-cell {
-  width: 320px;
-  min-width: 320px;
-  max-width: 320px;
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
 }
 
 .costing-page__name-text {
   display: inline-block;
-  max-width: 320px;
+  max-width: 280px;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
@@ -798,8 +994,31 @@ watch(
   color: #1f6a43;
 }
 
+.costing-page__table--offered :deep(.costing-page__tone-orange) {
+  background: #fdeccd;
+  color: #7a5313;
+}
+
 .costing-page__table--offered :deep(th.costing-page__tone-emerald) {
   font-weight: 700;
+}
+
+.costing-page__table--offered :deep(th.costing-page__tone-orange) {
+  font-weight: 700;
+}
+
+.costing-page__table--offered :deep(.costing-page__rejected-cell) {
+  background: #fff7f8;
+  border-top: 1px solid #efb2bc;
+  border-bottom: 1px solid #efb2bc;
+}
+
+.costing-page__table--offered :deep(.costing-page__rejected-cell:first-child) {
+  border-left: 1px solid #efb2bc;
+}
+
+.costing-page__table--offered :deep(.costing-page__rejected-cell:last-child) {
+  border-right: 1px solid #efb2bc;
 }
 
 .costing-page__actions-cell {
@@ -835,6 +1054,36 @@ watch(
   line-height: 1.35;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.costing-page__status-cell {
+  width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
+  color: var(--bw-theme-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.costing-page__status-cell--rejected {
+  background: #fdecef;
+  box-shadow: inset 0 0 0 1px #f3b7c0;
+}
+
+.costing-page__status-pill--rejected {
+  background: #fbe3e6;
+  color: #a33b49;
 }
 
 .costing-page__url-cell {

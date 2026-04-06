@@ -11,7 +11,7 @@ export type CostingFile = {
   conversion_rate: number | null
   admin_profit_rate: number | null
   status: CostingFileStatus
-  market: string
+  market: string | null
   customer_group_id: number
   tenant_id: number
   created_by_email: string
@@ -47,7 +47,14 @@ export type CostingFileItem = {
 export type CostingFileListEntry = Pick<
   CostingFile,
   'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_by_email' | 'created_at' | 'updated_at'
->
+> & {
+  created_by_label?: string | null
+}
+
+export type CostingFileListPageResult = {
+  items: CostingFileListEntry[]
+  total: number
+}
 
 export type CostingFileDetails = CostingFile
 
@@ -55,13 +62,14 @@ export type CostingFileCreateInput = {
   tenantId: number
   customerGroupId: number
   name: string
-  market: string
+  market: string | null
+  status?: CostingFileStatus
 }
 
 export type CostingFileUpdateInput = {
   id: number
   name?: string
-  market?: string
+  market?: string | null
   customerGroupId?: number
 }
 
