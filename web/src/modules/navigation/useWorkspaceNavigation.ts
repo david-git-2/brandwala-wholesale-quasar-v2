@@ -47,6 +47,14 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/modules',
   },
   {
+    title: 'Super Admins',
+    caption: 'Manage platform superadmin access',
+    icon: 'shield',
+    scopes: ['platform'],
+    allowedRoles: ['superadmin'],
+    route: () => '/platform/superadmins',
+  },
+  {
     title: 'Dashboard',
     caption: 'Internal activity and quick actions',
     icon: 'insights',

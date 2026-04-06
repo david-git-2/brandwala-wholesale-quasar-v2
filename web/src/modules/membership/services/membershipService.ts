@@ -22,6 +22,22 @@ const listMemberships = async (): Promise<MembershipServiceResult<Membership[]>>
     }
   }
 }
+
+const listSuperadmins = async (): Promise<MembershipServiceResult<Membership[]>> => {
+  try {
+    const data = await membershipRepository.listSuperadmins()
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load superadmins.',
+    }
+  }
+}
 const fetchMembershipsByTenantId = async (tenantId: number): Promise<MembershipServiceResult<Membership[]>> => {
   try {
     const data = await membershipRepository.fetchMembershipsByTenantId(tenantId)
@@ -109,9 +125,9 @@ const getTenantAdmins = async (tenantId: number): Promise<MembershipServiceResul
 export const membershipService = {
   deleteMembership,
   listMemberships,
+  listSuperadmins,
   createMembership,
   updateMembership,
   getTenantAdmins,
   fetchMembershipsByTenantId,
 }
-

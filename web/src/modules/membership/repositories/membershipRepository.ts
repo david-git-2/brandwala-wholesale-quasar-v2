@@ -3,7 +3,7 @@ import { supabase } from 'src/boot/supabase'
 export type Membership = {
   id: number
   email: string
-  tenant_id: number
+  tenant_id: number | null
   role: string
   is_active: boolean
   created_at?: string
@@ -11,7 +11,7 @@ export type Membership = {
 }
 
 export type MembershipCreateInput = {
-  tenant_id: number
+  tenant_id: number | null
   email: string
   role: string
   is_active: boolean
@@ -19,7 +19,7 @@ export type MembershipCreateInput = {
 
 export type MembershipUpdateInput = {
   id: number
-  tenant_id?: number
+  tenant_id?: number | null
   email?: string
   role?: string
   is_active?: boolean
@@ -33,6 +33,20 @@ const listMemberships = async (): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from('memberships')
     .select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as Membership[] | null) ?? []
+}
+
+const listSuperadmins = async (): Promise<Membership[]> => {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('*')
+    .eq('role', 'superadmin')
+    .order('created_at', { ascending: false })
 
   if (error) {
     throw error
@@ -152,6 +166,7 @@ const getTenantAdmins = async (tenantId: number): Promise<Membership[]> => {
 
 export const membershipRepository = {
   listMemberships,
+  listSuperadmins,
   createMembership,
   updateMembership,
   deleteMembership,
