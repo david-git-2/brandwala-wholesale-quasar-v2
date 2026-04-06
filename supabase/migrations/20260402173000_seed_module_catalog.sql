@@ -29,8 +29,8 @@ values
     true
   ),
   (
-    'shop_costing_file',
-    'Shop Costing File',
+    'product_based_costing',
+    'Product Based Costing',
     'Support customer-side costing visibility and pricing context.',
     true
   ),
