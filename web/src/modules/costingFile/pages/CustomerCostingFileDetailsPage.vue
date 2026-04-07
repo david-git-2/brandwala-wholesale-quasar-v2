@@ -693,8 +693,6 @@ const allColumns = [
     align: 'center' as const,
     style: 'width: 280px; min-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   {
     name: 'itemType',
@@ -1158,10 +1156,6 @@ watch(
 
 .costing-page__table :deep(.costing-page__sticky-col--image) {
   left: 48px;
-}
-
-.costing-page__table :deep(.costing-page__sticky-col--name) {
-  left: 156px;
 }
 
 .costing-page__sl-cell {

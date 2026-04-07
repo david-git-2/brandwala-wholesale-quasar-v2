@@ -159,8 +159,6 @@ const viewerReviewColumns = [
     align: 'left' as const,
     style: 'width: 280px; min-width: 280px; max-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
-    classes: 'viewer-page__sticky-col viewer-page__sticky-col--name',
-    headerClasses: 'viewer-page__sticky-col viewer-page__sticky-col--name',
   },
   { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
@@ -321,10 +319,6 @@ onMounted(async () => {
 
 .viewer-page__table :deep(.viewer-page__sticky-col--image) {
   left: 48px;
-}
-
-.viewer-page__table :deep(.viewer-page__sticky-col--name) {
-  left: 156px;
 }
 
 .viewer-page :deep(.viewer-page__tone-indigo) {

@@ -834,8 +834,6 @@ const productColumns = [
     align: 'left' as const,
     style: 'width: 280px; min-width: 280px; max-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
@@ -904,8 +902,6 @@ const reviewColumns = [
     align: 'left' as const,
     style: 'width: 280px; min-width: 280px; max-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
@@ -1475,14 +1471,6 @@ onMounted(async () => {
 
 .costing-page__table :deep(.costing-page__sticky-col--image) {
   left: 48px;
-}
-
-.costing-page__table--product :deep(.costing-page__sticky-col--name) {
-  left: 156px;
-}
-
-.costing-page__table--review :deep(.costing-page__sticky-col--name) {
-  left: 156px;
 }
 
 .costing-page__table--review :deep(.costing-page__rejected-row > td) {

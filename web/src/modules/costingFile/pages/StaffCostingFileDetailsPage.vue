@@ -229,8 +229,6 @@ const productColumns = [
     align: 'left' as const,
     style: 'min-width: 280px;',
     headerStyle: 'min-width: 280px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--name',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   {
@@ -514,10 +512,6 @@ watch(editDialogOpen, (isOpen) => {
 
 .costing-page__table :deep(.costing-page__sticky-col--image) {
   left: 48px;
-}
-
-.costing-page__table :deep(.costing-page__sticky-col--name) {
-  left: 156px;
 }
 
 .costing-page__sl-cell {
