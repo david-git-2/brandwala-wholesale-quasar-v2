@@ -268,7 +268,7 @@ export const useTenantStore = defineStore('tenant', {
     async fetchTenantsByMembership(payload?: {
       tenantId?: number | null
       email?: string | null
-      role?: 'superadmin' | 'admin' | 'staff' | null
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
     }) {
       this.loading = true
       this.error = null
@@ -293,7 +293,7 @@ export const useTenantStore = defineStore('tenant', {
     async fetchTenantDetailsByMembership(payload: {
       tenantId: number
       email?: string | null
-      role?: 'superadmin' | 'admin' | 'staff' | null
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
     }) {
       this.loading = true
       this.error = null

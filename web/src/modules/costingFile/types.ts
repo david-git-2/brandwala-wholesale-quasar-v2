@@ -2,6 +2,7 @@ import type { Database } from 'src/types/supabase'
 
 export type CostingFileStatus = Database['public']['Enums']['costing_file_status']
 export type CostingFileItemStatus = Database['public']['Enums']['costing_file_item_status']
+export type AppRole = Database['public']['Enums']['app_role']
 
 export type CostingFile = {
   id: number
@@ -23,6 +24,7 @@ export type CostingFileItem = {
   id: number
   costing_file_id: number
   name: string | null
+  item_type: string | null
   size: string | null
   color: string | null
   extra_information_1: string | null
@@ -62,6 +64,39 @@ export type CostingFileListPageResult = {
 
 export type CostingFileDetails = CostingFile
 
+export type CostingFileViewer = {
+  costing_file_viewer_id: number
+  costing_file_id: number
+  membership_id: number
+  name: string
+  email: string
+  role: AppRole
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type TenantViewer = {
+  membership_id: number
+  tenant_id: number
+  name: string
+  email: string
+  role: AppRole
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type CostingFileViewerGrantInput = {
+  costingFileId: number
+  membershipId: number
+}
+
+export type CostingFileViewerRevokeInput = {
+  costingFileId: number
+  membershipId: number
+}
+
 export type CostingFileCreateInput = {
   tenantId: number
   customerGroupId: number
@@ -85,11 +120,13 @@ export type CostingFileItemRequestCreateInput = {
   costingFileId: number
   websiteUrl: string
   quantity: number
+  itemType?: string | null
 }
 
 export type CostingFileItemCreateInput = {
   costingFileId: number
   name?: string | null
+  itemType?: string | null
   size?: string | null
   color?: string | null
   extraInformation1?: string | null
@@ -116,6 +153,7 @@ export type CostingFileItemUpdateInput = {
   id: number
   costingFileId?: number
   name?: string | null
+  itemType?: string | null
   size?: string | null
   color?: string | null
   extraInformation1?: string | null
@@ -158,6 +196,7 @@ export type CostingFileStatusUpdateInput = {
 export type CostingFileItemEnrichmentUpdateInput = {
   id: number
   name?: string | null
+  itemType?: string | null
   imageUrl?: string | null
   productWeight?: number | null
   packageWeight?: number | null

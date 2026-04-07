@@ -171,11 +171,25 @@
             <div>
               <div class="text-h6">Internal Members</div>
               <div class="text-caption text-grey-7">
-                Customer-side users now belong to customer groups, not tenant memberships.
+                Manage staff and viewer memberships that belong to this tenant.
               </div>
             </div>
 
-            <q-btn color="primary" icon="person_add" label="Add Staff" @click="onClickAddMember('staff')" />
+            <div class="row items-center q-gutter-sm">
+              <q-btn
+                outline
+                color="primary"
+                icon="visibility"
+                label="Add Viewer"
+                @click="onClickAddMember('viewer')"
+              />
+              <q-btn
+                color="primary"
+                icon="person_add"
+                label="Add Staff"
+                @click="onClickAddMember('staff')"
+              />
+            </div>
           </q-card-section>
 
           <q-separator />
@@ -233,6 +247,62 @@
               </template>
             </q-table>
             <div v-else class="text-grey-6">No staff found.</div>
+
+            <q-separator class="q-my-lg" />
+
+            <div class="row items-center justify-between q-mb-sm">
+              <div>
+                <div class="text-subtitle1">Viewers</div>
+                <div class="text-caption text-grey-7">
+                  Viewers can access assigned costing files with read-only access.
+                </div>
+              </div>
+            </div>
+
+            <q-table
+              v-if="viewerMembers.length"
+              flat
+              bordered
+              row-key="id"
+              :rows="viewerMembers"
+              :columns="internalMemberColumns"
+              :dense="$q.screen.lt.md"
+              hide-bottom
+              class="tenant-detail-card__table"
+            >
+              <template #body-cell-email="props">
+                <q-td :props="props">{{ props.row.email }}</q-td>
+              </template>
+
+              <template #body-cell-role="props">
+                <q-td :props="props">{{ props.row.role }}</q-td>
+              </template>
+
+              <template #body-cell-active="props">
+                <q-td :props="props">
+                  <q-toggle
+                    v-model="props.row.is_active"
+                    color="positive"
+                    keep-color
+                    @update:model-value="(value) => onToggleMemberActive(props.row, value)"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-delete="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="negative"
+                    flat
+                    round
+                    icon="delete"
+                    @click="onClickDeleteMember(props.row)"
+                  />
+                </q-td>
+              </template>
+            </q-table>
+            <div v-else class="text-grey-6">No viewers found.</div>
           </q-card-section>
         </q-card>
 
@@ -489,7 +559,9 @@
     <q-dialog v-model="openAddMemberDialog" persistent>
       <q-card style="min-width: 420px">
         <q-card-section>
-          <div class="text-h6">Add Staff</div>
+          <div class="text-h6">
+            {{ selectedMemberRole === 'viewer' ? 'Add Viewer' : 'Add Staff' }}
+          </div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
@@ -881,7 +953,7 @@ const customerGroupToDelete = ref<CustomerGroup | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
-const selectedMemberRole = ref<'staff'>('staff')
+const selectedMemberRole = ref<'staff' | 'viewer'>('staff')
 
 const tenantMembers = ref<Membership[]>([])
 const tenantMembersLoading = ref(false)
@@ -1013,6 +1085,10 @@ const sortedCustomerGroupMembers = computed(() =>
 
 const staffMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'staff'),
+)
+
+const viewerMembers = computed(() =>
+  tenantMembers.value.filter((member) => member.role === 'viewer'),
 )
 
 const internalMemberColumns = [
@@ -1219,9 +1295,7 @@ const loadTenantMembers = async () => {
       return
     }
 
-    tenantMembers.value = (result.data ?? []).filter(
-      (item: Membership) => item.role === 'staff',
-    )
+    tenantMembers.value = result.data ?? []
   } catch (error) {
     console.error(error)
     pageError.value = 'Failed to load members.'
@@ -1352,7 +1426,7 @@ watch(
   { immediate: true },
 )
 
-const onClickAddMember = (role: 'staff') => {
+const onClickAddMember = (role: 'staff' | 'viewer') => {
   selectedMemberRole.value = role
   memberEmail.value = ''
   memberIsActive.value = true

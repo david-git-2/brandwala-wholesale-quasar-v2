@@ -7,6 +7,7 @@ export type CostingFileCalculationInput = {
 }
 
 export type CostingItemCalculationInput = {
+  itemType: string | null | undefined
   productWeight: number | null | undefined
   packageWeight: number | null | undefined
   priceInWebGbp: number | null | undefined
@@ -49,6 +50,11 @@ export const calculateAuxiliaryPriceGbp = (
   }
 
   return roundGbp(2 + Math.ceil((basePriceGbp - 100) / 50))
+}
+
+export const calculateItemTypeSurchargeGbp = (itemType: string | null | undefined) => {
+  const normalizedType = itemType?.trim().toLowerCase()
+  return normalizedType === 'watch' || normalizedType === 'perfume' ? 3 : 0
 }
 
 export const calculateItemPriceGbp = (
@@ -102,7 +108,10 @@ export const calculateCostingItem = (
   item: CostingItemCalculationInput,
 ) => {
   const totalWeight = calculateTotalWeight(item.productWeight, item.packageWeight)
-  const auxiliaryPriceGbp = calculateAuxiliaryPriceGbp(item.priceInWebGbp, item.deliveryPriceGbp)
+  const auxiliaryPriceGbp = roundGbp(
+    calculateAuxiliaryPriceGbp(item.priceInWebGbp, item.deliveryPriceGbp) +
+      calculateItemTypeSurchargeGbp(item.itemType),
+  )
   const itemPriceGbp = calculateItemPriceGbp(
     item.priceInWebGbp,
     item.deliveryPriceGbp,

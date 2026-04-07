@@ -4,7 +4,7 @@
       <section>
         <div class="text-overline">Operations</div>
         <h1 class="text-h5 q-my-none">Tenants</h1>
-        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Browse the workspaces connected to your admin access.</p>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Browse the workspaces connected to your access.</p>
       </section>
 
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>

@@ -6,7 +6,8 @@ The goal of this document is to give a future developer or AI enough context to 
 
 For the current role model and the repeatable schema/RLS/RPC pattern, also see:
 
-- [`document/role-access-pattern.md`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/document/role-access-pattern.md)
+- [`document/core-backend-architecture.md`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/document/core-backend-architecture.md)
+- [`document/costing-backend-architecture.md`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/document/costing-backend-architecture.md)
 
 ## Project Layout
 

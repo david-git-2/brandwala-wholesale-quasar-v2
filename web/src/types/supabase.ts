@@ -31,6 +31,7 @@ export type Database = {
           id: number
           image_url: string | null
           item_price_gbp: number | null
+          item_type: string | null
           name: string | null
           offer_price_bdt: number | null
           offer_price_override_bdt: number | null
@@ -59,6 +60,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           item_price_gbp?: number | null
+          item_type?: string | null
           name?: string | null
           offer_price_bdt?: number | null
           offer_price_override_bdt?: number | null
@@ -87,6 +89,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           item_price_gbp?: number | null
+          item_type?: string | null
           name?: string | null
           offer_price_bdt?: number | null
           offer_price_override_bdt?: number | null
@@ -105,6 +108,48 @@ export type Database = {
             columns: ["costing_file_id"]
             isOneToOne: false
             referencedRelation: "costing_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      costing_file_viewers: {
+        Row: {
+          costing_file_id: number
+          created_at: string
+          created_by_email: string
+          id: number
+          membership_id: number
+          updated_at: string
+        }
+        Insert: {
+          costing_file_id: number
+          created_at?: string
+          created_by_email?: string
+          id?: number
+          membership_id: number
+          updated_at?: string
+        }
+        Update: {
+          costing_file_id?: number
+          created_at?: string
+          created_by_email?: string
+          id?: number
+          membership_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costing_file_viewers_costing_file_id_fkey"
+            columns: ["costing_file_id"]
+            isOneToOne: false
+            referencedRelation: "costing_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "costing_file_viewers_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
@@ -525,12 +570,20 @@ export type Database = {
         Args: { p_delivery_price_gbp: number; p_price_in_web_gbp: number }
         Returns: number
       }
+      calculate_costing_item_type_surcharge_gbp: {
+        Args: { p_item_type: string }
+        Returns: number
+      }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
       can_customer_access_costing_file: {
         Args: { p_customer_group_id: number }
+        Returns: boolean
+      }
+      can_manage_costing_file_viewers: {
+        Args: { p_tenant_id: number }
         Returns: boolean
       }
       can_manage_customer_group: {
@@ -552,7 +605,15 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      can_tenant_view_costing_file_viewer: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
       can_view_costing_file: {
+        Args: { p_costing_file_id: number }
+        Returns: boolean
+      }
+      can_view_costing_file_items: {
         Args: { p_costing_file_id: number }
         Returns: boolean
       }
@@ -634,23 +695,43 @@ export type Database = {
               updated_at: string
             }[]
           }
-      create_costing_file_item_request: {
-        Args: {
-          p_costing_file_id: number
-          p_quantity: number
-          p_website_url: string
-        }
-        Returns: {
-          costing_file_id: number
-          created_at: string
-          created_by_email: string
-          id: number
-          quantity: number
-          status: Database["public"]["Enums"]["costing_file_item_status"]
-          updated_at: string
-          website_url: string
-        }[]
-      }
+      create_costing_file_item_request:
+        | {
+            Args: {
+              p_costing_file_id: number
+              p_quantity: number
+              p_website_url: string
+            }
+            Returns: {
+              costing_file_id: number
+              created_at: string
+              created_by_email: string
+              id: number
+              quantity: number
+              status: Database["public"]["Enums"]["costing_file_item_status"]
+              updated_at: string
+              website_url: string
+            }[]
+          }
+        | {
+            Args: {
+              p_costing_file_id: number
+              p_item_type?: string
+              p_quantity: number
+              p_website_url: string
+            }
+            Returns: {
+              costing_file_id: number
+              created_at: string
+              created_by_email: string
+              id: number
+              item_type: string
+              quantity: number
+              status: Database["public"]["Enums"]["costing_file_item_status"]
+              updated_at: string
+              website_url: string
+            }[]
+          }
       create_tenant_for_superadmin: {
         Args: {
           p_is_active?: boolean
@@ -683,6 +764,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
         Returns: string
@@ -803,7 +885,6 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
-          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -825,6 +906,24 @@ export type Database = {
           allow_global_vendor_access: boolean
           tenant_id: number
         }[]
+      }
+      grant_costing_file_viewer: {
+        Args: { p_costing_file_id: number; p_membership_id: number }
+        Returns: {
+          costing_file_id: number
+          costing_file_viewer_id: number
+          created_at: string
+          email: string
+          is_active: boolean
+          membership_id: number
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }[]
+      }
+      is_assigned_costing_file_viewer: {
+        Args: { p_costing_file_id: number }
+        Returns: boolean
       }
       is_customer_group_member: {
         Args: { p_customer_group_id: number }
@@ -860,6 +959,7 @@ export type Database = {
           id: number
           image_url: string
           item_price_gbp: number
+          item_type: string
           name: string
           offer_price_bdt: number
           offer_price_override_bdt: number
@@ -870,6 +970,20 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_item_status"]
           updated_at: string
           website_url: string
+        }[]
+      }
+      list_costing_file_viewers: {
+        Args: { p_costing_file_id: number }
+        Returns: {
+          costing_file_id: number
+          costing_file_viewer_id: number
+          created_at: string
+          email: string
+          is_active: boolean
+          membership_id: number
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
         }[]
       }
       list_costing_files_for_actor:
@@ -931,6 +1045,19 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_tenant_viewers: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          created_at: string
+          email: string
+          is_active: boolean
+          membership_id: number
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
       list_tenants_by_membership: {
         Args: {
           p_email?: string
@@ -942,7 +1069,6 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
-          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -982,6 +1108,16 @@ export type Database = {
           name: string
           public_domain: string
           slug: string
+        }[]
+      }
+      revoke_costing_file_viewer: {
+        Args: { p_costing_file_id: number; p_membership_id: number }
+        Returns: {
+          costing_file_id: number
+          costing_file_viewer_id: number
+          created_at: string
+          membership_id: number
+          updated_at: string
         }[]
       }
       round_bdt_up_to_zero_or_five: {
@@ -1026,28 +1162,53 @@ export type Database = {
           updated_at: string
         }[]
       }
-      update_costing_file_item_enrichment: {
-        Args: {
-          p_delivery_price_gbp?: number
-          p_id: number
-          p_image_url?: string
-          p_name?: string
-          p_package_weight?: number
-          p_price_in_web_gbp?: number
-          p_product_weight?: number
-        }
-        Returns: {
-          costing_file_id: number
-          delivery_price_gbp: number
-          id: number
-          image_url: string
-          name: string
-          package_weight: number
-          price_in_web_gbp: number
-          product_weight: number
-          updated_at: string
-        }[]
-      }
+      update_costing_file_item_enrichment:
+        | {
+            Args: {
+              p_delivery_price_gbp?: number
+              p_id: number
+              p_image_url?: string
+              p_name?: string
+              p_package_weight?: number
+              p_price_in_web_gbp?: number
+              p_product_weight?: number
+            }
+            Returns: {
+              costing_file_id: number
+              delivery_price_gbp: number
+              id: number
+              image_url: string
+              name: string
+              package_weight: number
+              price_in_web_gbp: number
+              product_weight: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_delivery_price_gbp?: number
+              p_id: number
+              p_image_url?: string
+              p_item_type?: string
+              p_name?: string
+              p_package_weight?: number
+              p_price_in_web_gbp?: number
+              p_product_weight?: number
+            }
+            Returns: {
+              costing_file_id: number
+              delivery_price_gbp: number
+              id: number
+              image_url: string
+              item_type: string
+              name: string
+              package_weight: number
+              price_in_web_gbp: number
+              product_weight: number
+              updated_at: string
+            }[]
+          }
       update_costing_file_item_offer: {
         Args: {
           p_auxiliary_price_gbp?: number
@@ -1153,7 +1314,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "staff"
+      app_role: "superadmin" | "admin" | "staff" | "viewer"
       costing_file_item_status: "pending" | "accepted" | "rejected"
       costing_file_status:
         | "draft"
@@ -1291,7 +1452,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "staff"],
+      app_role: ["superadmin", "admin", "staff", "viewer"],
       costing_file_item_status: ["pending", "accepted", "rejected"],
       costing_file_status: [
         "draft",

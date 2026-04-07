@@ -55,6 +55,15 @@
           dense
           :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
         />
+        <q-select
+          v-model="form.itemType"
+          :options="itemTypeOptions"
+          label="Type"
+          outlined
+          dense
+          clearable
+          hint="Pick the closest product type."
+        />
         <q-input
           v-model="form.size"
           label="Size"
@@ -168,15 +177,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  save: [
-    payload: {
-      websiteUrl: string
-      quantity: number
-      name: string
-      size: string | null
-      color: string | null
-      extraInformation1: string | null
-      extraInformation2: string | null
+      save: [
+        payload: {
+          websiteUrl: string
+          quantity: number
+          name: string
+          itemType: string | null
+          size: string | null
+          color: string | null
+          extraInformation1: string | null
+          extraInformation2: string | null
       imageUrl: string
       productWeight: number
       packageWeight: number
@@ -190,6 +200,7 @@ const form = reactive({
   websiteUrl: '',
   quantity: 1,
   name: '',
+  itemType: '' as string | null,
   size: '',
   color: '',
   extraInformation1: '',
@@ -200,6 +211,8 @@ const form = reactive({
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
 })
+
+const itemTypeOptions = ['Watch', 'Perfume', 'Others']
 
 const normalizeExternalUrl = (value: string) =>
   /^https?:\/\//i.test(value) ? value : `https://${value}`
@@ -226,6 +239,7 @@ const resetForm = () => {
   form.websiteUrl = ''
   form.quantity = 1
   form.name = ''
+  form.itemType = ''
   form.size = ''
   form.color = ''
   form.extraInformation1 = ''
@@ -242,6 +256,7 @@ const handleSave = () => {
     websiteUrl: form.websiteUrl.trim(),
     quantity: Math.max(1, Number(form.quantity || 1)),
     name: form.name.trim(),
+    itemType: form.itemType?.trim() || null,
     size: form.size.trim() || null,
     color: form.color.trim() || null,
     extraInformation1: form.extraInformation1.trim() || null,

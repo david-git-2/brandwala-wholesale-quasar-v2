@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
+import { costingFileAccessService } from '../services/costingFileAccessService'
 import { costingFileItemService } from '../services/costingFileItemService'
 import { costingFileService } from '../services/costingFileService'
 import type {
@@ -19,8 +20,12 @@ import type {
   CostingFileItemUpdateInput,
   CostingFileListEntry,
   CostingFilePricingUpdateInput,
+  CostingFileViewer,
+  CostingFileViewerGrantInput,
+  CostingFileViewerRevokeInput,
   CostingFileStatusUpdateInput,
   CostingFileUpdateInput,
+  TenantViewer,
 } from '../types'
 
 type CostingFileStoreState = {
@@ -28,10 +33,13 @@ type CostingFileStoreState = {
   totalItems: number
   selectedItem: CostingFileDetails | null
   costingFileItems: CostingFileItem[]
+  costingFileViewers: CostingFileViewer[]
+  tenantViewers: TenantViewer[]
   loading: boolean
   listLoading: boolean
   detailsLoading: boolean
   itemLoading: boolean
+  viewerLoading: boolean
   mutationLoading: boolean
   error: string | null
 }
@@ -39,12 +47,21 @@ type CostingFileStoreState = {
 const normalizeRequestItemToCostingFileItem = (
   item: Pick<
     CostingFileItem,
-    'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+    | 'id'
+    | 'costing_file_id'
+    | 'item_type'
+    | 'website_url'
+    | 'quantity'
+    | 'status'
+    | 'created_by_email'
+    | 'created_at'
+    | 'updated_at'
   >,
 ): CostingFileItem => ({
   id: item.id,
   costing_file_id: item.costing_file_id,
   name: null,
+  item_type: item.item_type ?? null,
   size: null,
   color: null,
   extra_information_1: null,
@@ -76,10 +93,13 @@ export const useCostingFileStore = defineStore('costingFile', {
     totalItems: 0,
     selectedItem: null,
     costingFileItems: [],
+    costingFileViewers: [],
+    tenantViewers: [],
     loading: false,
     listLoading: false,
     detailsLoading: false,
     itemLoading: false,
+    viewerLoading: false,
     mutationLoading: false,
     error: null,
   }),
@@ -98,6 +118,7 @@ export const useCostingFileStore = defineStore('costingFile', {
     clearSelectedItem() {
       this.selectedItem = null
       this.costingFileItems = []
+      this.costingFileViewers = []
     },
 
     async fetchCostingFilesByTenant(
@@ -289,6 +310,50 @@ export const useCostingFileStore = defineStore('costingFile', {
       }
     },
 
+    async fetchTenantViewers(tenantId: number) {
+      this.loading = true
+      this.viewerLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileAccessService.listTenantViewers(tenantId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load tenant viewers.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.tenantViewers = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+        this.viewerLoading = false
+      }
+    },
+
+    async fetchCostingFileViewers(costingFileId: number) {
+      this.loading = true
+      this.viewerLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileAccessService.listCostingFileViewers(costingFileId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load costing file viewers.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.costingFileViewers = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+        this.viewerLoading = false
+      }
+    },
+
     async fetchCostingFileWithItems(id: number) {
       const fileResult = await this.fetchCostingFileById(id)
 
@@ -309,6 +374,58 @@ export const useCostingFileStore = defineStore('costingFile', {
 
       await this.fetchCostingFileItemsForCustomer(id)
       return fileResult
+    },
+
+    async grantCostingFileViewer(payload: CostingFileViewerGrantInput) {
+      this.loading = true
+      this.viewerLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileAccessService.grantCostingFileViewer(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to add viewer.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.costingFileViewers.push(result.data)
+        }
+
+        showSuccessNotification('Viewer added successfully.')
+        return result
+      } finally {
+        this.loading = false
+        this.viewerLoading = false
+      }
+    },
+
+    async revokeCostingFileViewer(payload: CostingFileViewerRevokeInput) {
+      this.loading = true
+      this.viewerLoading = true
+      this.error = null
+
+      try {
+        const result = await costingFileAccessService.revokeCostingFileViewer(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to remove viewer.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.costingFileViewers = this.costingFileViewers.filter(
+          (item) => item.membership_id !== payload.membershipId,
+        )
+
+        showSuccessNotification('Viewer removed successfully.')
+        return result
+      } finally {
+        this.loading = false
+        this.viewerLoading = false
+      }
     },
 
     async createCostingFile(payload: CostingFileCreateInput) {
@@ -474,7 +591,10 @@ export const useCostingFileStore = defineStore('costingFile', {
         }
 
         if (result.data) {
-          this.costingFileItems.push(normalizeRequestItemToCostingFileItem(result.data))
+          this.costingFileItems.push({
+            ...normalizeRequestItemToCostingFileItem(result.data),
+            item_type: result.data.item_type ?? payload.itemType ?? null,
+          })
         }
 
         showSuccessNotification('Costing file item created.')
@@ -500,7 +620,10 @@ export const useCostingFileStore = defineStore('costingFile', {
         }
 
         if (result.data) {
-          this.costingFileItems.push(result.data)
+          this.costingFileItems.push({
+            ...result.data,
+            item_type: result.data.item_type ?? payload.itemType ?? null,
+          })
         }
 
         showSuccessNotification('Costing file item created.')
@@ -528,7 +651,10 @@ export const useCostingFileStore = defineStore('costingFile', {
         if (result.data) {
           const index = this.costingFileItems.findIndex((item) => item.id === result.data?.id)
           if (index >= 0) {
-            this.costingFileItems.splice(index, 1, result.data)
+            this.costingFileItems.splice(index, 1, {
+              ...result.data,
+              item_type: result.data.item_type ?? payload.itemType ?? this.costingFileItems[index]!.item_type,
+            })
           }
         }
 
@@ -557,7 +683,10 @@ export const useCostingFileStore = defineStore('costingFile', {
         if (result.data) {
           const index = this.costingFileItems.findIndex((item) => item.id === result.data?.id)
           if (index >= 0) {
-            this.costingFileItems.splice(index, 1, result.data)
+            this.costingFileItems.splice(index, 1, {
+              ...result.data,
+              item_type: result.data.item_type ?? payload.itemType ?? this.costingFileItems[index]!.item_type,
+            })
           }
         }
 

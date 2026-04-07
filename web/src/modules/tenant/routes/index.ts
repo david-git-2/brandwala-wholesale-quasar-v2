@@ -41,7 +41,7 @@ const tenantRoutes: RouteRecordRaw[] = [
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
-          allowedRoles: ['admin', 'staff'],
+          allowedRoles: ['admin', 'staff', 'viewer'],
           validateAccess: ({ authStore, to }) => {
             if (!authStore.selectedTenant) {
               return true

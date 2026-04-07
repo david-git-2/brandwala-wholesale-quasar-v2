@@ -23,8 +23,19 @@
             outline
             color="primary"
             label="Add item"
-            :disable="!selectedFile || selectedFile.status !== 'customer_submitted'"
+            :disable="
+              !selectedFile ||
+              (selectedFile.status !== 'draft' && selectedFile.status !== 'customer_submitted')
+            "
             @click="addItemDialogOpen = true"
+          />
+          <q-btn
+            outline
+            color="primary"
+            icon="people"
+            label="Manage viewers"
+            :disable="!selectedFile"
+            @click="goToViewerManagement"
           />
         </div>
       </section>
@@ -281,7 +292,11 @@
       </section>
 
       <section
-        v-else-if="selectedFile?.status === 'in_review' || selectedFile?.status === 'offered'"
+        v-else-if="
+          selectedFile?.status === 'in_review' ||
+          selectedFile?.status === 'offered' ||
+          selectedFile?.status === 'completed'
+        "
         class="costing-page__pricing-section"
       >
         <div>
@@ -621,7 +636,12 @@
 
           <template #body-cell-actions="props">
             <q-td :props="props" class="costing-page__actions-cell">
-              <template v-if="selectedFile?.status === 'offered'">
+              <template
+                v-if="
+                  selectedFile?.status === 'offered' ||
+                  selectedFile?.status === 'completed'
+                "
+              >
                 <q-btn
                   unelevated
                   size="sm"
@@ -704,7 +724,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
@@ -714,10 +734,16 @@ import {
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileDetails, CostingFileItem, CostingFileItemStatus, CostingFileStatus } from 'src/modules/costingFile/types'
+import type {
+  CostingFileDetails,
+  CostingFileItem,
+  CostingFileItemStatus,
+  CostingFileStatus,
+} from 'src/modules/costingFile/types'
 import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
 const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
@@ -780,6 +806,7 @@ const editingItem = computed<CostingFileItem | null>(
 const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
 
 const productColumns = [
+  { name: 'actions', label: '', field: 'actions', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   {
     name: 'sl',
     label: 'SL',
@@ -810,6 +837,7 @@ const productColumns = [
     classes: 'costing-page__sticky-col costing-page__sticky-col--name',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
+  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
   { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
   { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
@@ -836,7 +864,6 @@ const productColumns = [
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px;',
   },
-  { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
 const reviewRows = computed(() =>
@@ -880,6 +907,7 @@ const reviewColumns = [
     classes: 'costing-page__sticky-col costing-page__sticky-col--name',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
+  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
   { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
   { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
@@ -990,6 +1018,7 @@ const compactReviewColumnNames = [
   'sl',
   'image',
   'name',
+  'itemType',
   'priceInWebGbp',
   'status',
   'costingPriceGbp',
@@ -1021,6 +1050,17 @@ const loadFile = async () => {
   if (!fileId) return
 
   await costingFileStore.fetchCostingFileWithItems(fileId)
+}
+
+const goToViewerManagement = async () => {
+  if (!selectedFile.value) {
+    return
+  }
+
+  await router.push({
+    name: 'admin-costing-file-viewers-page',
+    params: { id: String(selectedFile.value.id) },
+  })
 }
 
 const handleSaveStatus = async (value: CostingFileStatus | null = statusForm.value) => {
@@ -1137,6 +1177,7 @@ const saveOfferPrice = async (itemId: number, value: number | null) => {
 const handleSaveEnrichment = async (payload: {
   id: number
   name: string | null
+  itemType: string | null
   productWeight: number | null
   packageWeight: number | null
   imageUrl: string | null
@@ -1148,6 +1189,7 @@ const handleSaveEnrichment = async (payload: {
     const result = await costingFileStore.updateCostingFileItem({
       id: payload.id,
       name: payload.name,
+      itemType: payload.itemType,
       productWeight: payload.productWeight,
       packageWeight: payload.packageWeight,
       imageUrl: payload.imageUrl,
@@ -1167,6 +1209,7 @@ const handleCreateItem = async (payload: {
   websiteUrl: string
   quantity: number
   name: string
+  itemType: string | null
   size: string | null
   color: string | null
   extraInformation1: string | null
@@ -1177,7 +1220,10 @@ const handleCreateItem = async (payload: {
   priceInWebGbp: number
   deliveryPriceGbp: number
 }) => {
-  if (!selectedFile.value || selectedFile.value.status !== 'draft') {
+  if (
+    !selectedFile.value ||
+    (selectedFile.value.status !== 'draft' && selectedFile.value.status !== 'customer_submitted')
+  ) {
     return
   }
 
@@ -1188,6 +1234,7 @@ const handleCreateItem = async (payload: {
       websiteUrl: payload.websiteUrl,
       quantity: payload.quantity,
       name: payload.name,
+      itemType: payload.itemType,
       size: payload.size,
       color: payload.color,
       extraInformation1: payload.extraInformation1,
@@ -1209,7 +1256,10 @@ const handleCreateItem = async (payload: {
 }
 
 const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
-  if (selectedFile.value?.status !== 'offered') {
+  if (
+    selectedFile.value?.status !== 'offered' &&
+    selectedFile.value?.status !== 'completed'
+  ) {
     return
   }
 

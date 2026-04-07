@@ -200,6 +200,7 @@ const editingItem = computed<CostingFileItem | null>(
 )
 
 const productColumns = [
+  { name: 'actions', label: '', field: 'actions', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   {
     name: 'sl',
     label: 'SL',
@@ -231,6 +232,7 @@ const productColumns = [
     classes: 'costing-page__sticky-col costing-page__sticky-col--name',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
+  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   {
     name: 'quantity',
     label: 'Qty',
@@ -247,7 +249,6 @@ const productColumns = [
   { name: 'priceInWebGbp', label: 'Web price (GBP)', field: 'priceInWebGbp', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
 const subtitle = computed(() =>
@@ -306,6 +307,7 @@ const handleCreateItem = async (payload: {
   websiteUrl: string
   quantity: number
   name: string
+  itemType: string | null
   size: string | null
   color: string | null
   extraInformation1: string | null
@@ -327,6 +329,7 @@ const handleCreateItem = async (payload: {
       websiteUrl: payload.websiteUrl,
       quantity: payload.quantity,
       name: payload.name,
+      itemType: payload.itemType,
       size: payload.size,
       color: payload.color,
       extraInformation1: payload.extraInformation1,
@@ -350,6 +353,7 @@ const handleCreateItem = async (payload: {
 const handleSaveItem = async (payload: {
   id: number
   name: string
+  itemType: string | null
   imageUrl: string
   productWeight: number
   packageWeight: number
@@ -365,6 +369,7 @@ const handleSaveItem = async (payload: {
     const result = await costingFileStore.updateCostingFileItemEnrichment({
       id: payload.id,
       name: payload.name,
+      itemType: payload.itemType,
       imageUrl: payload.imageUrl,
       productWeight: payload.productWeight,
       packageWeight: payload.packageWeight,

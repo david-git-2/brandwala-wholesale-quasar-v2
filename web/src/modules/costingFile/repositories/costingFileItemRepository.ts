@@ -33,7 +33,7 @@ const listCostingFileItemsForCustomer = async (
   const { data, error } = await supabase
     .from('costing_file_items')
     .select(
-      'id, costing_file_id, name, size, color, extra_information_1, extra_information_2, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
+      'id, costing_file_id, name, item_type, size, color, extra_information_1, extra_information_2, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
     )
     .eq('costing_file_id', costingFileId)
     .order('id', { ascending: true })
@@ -48,6 +48,7 @@ const listCostingFileItemsForCustomer = async (
       | 'id'
       | 'costing_file_id'
       | 'name'
+      | 'item_type'
       | 'size'
       | 'color'
       | 'extra_information_1'
@@ -65,6 +66,7 @@ const listCostingFileItemsForCustomer = async (
     id: item.id,
     costing_file_id: item.costing_file_id,
     name: item.name,
+    item_type: item.item_type,
     size: item.size,
     color: item.color,
     extra_information_1: item.extra_information_1,
@@ -99,6 +101,7 @@ const createCostingFileItem = async (
     .insert({
       costing_file_id: payload.costingFileId,
       name: payload.name ?? null,
+      item_type: payload.itemType ?? null,
       size: payload.size ?? null,
       color: payload.color ?? null,
       extra_information_1: payload.extraInformation1 ?? null,
@@ -135,13 +138,22 @@ const createCostingFileItemRequest = async (
 ): Promise<
   Pick<
     CostingFileItem,
-    'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+    | 'id'
+    | 'costing_file_id'
+    | 'item_type'
+    | 'website_url'
+    | 'quantity'
+    | 'status'
+    | 'created_by_email'
+    | 'created_at'
+    | 'updated_at'
   >
 > => {
   const { data, error } = await supabase.rpc('create_costing_file_item_request', {
     p_costing_file_id: payload.costingFileId,
     p_website_url: payload.websiteUrl,
     p_quantity: payload.quantity,
+    p_item_type: payload.itemType ?? null,
   })
 
   if (error) {
@@ -156,7 +168,15 @@ const createCostingFileItemRequest = async (
 
   return created as Pick<
     CostingFileItem,
-    'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+    | 'id'
+    | 'costing_file_id'
+    | 'item_type'
+    | 'website_url'
+    | 'quantity'
+    | 'status'
+    | 'created_by_email'
+    | 'created_at'
+    | 'updated_at'
   >
 }
 
@@ -166,6 +186,7 @@ const updateCostingFileItemEnrichment = async (
   const { data, error } = await supabase.rpc('update_costing_file_item_enrichment', {
     p_id: payload.id,
     p_name: payload.name ?? null,
+    p_item_type: payload.itemType ?? null,
     p_image_url: payload.imageUrl ?? null,
     p_product_weight: payload.productWeight ?? null,
     p_package_weight: payload.packageWeight ?? null,
@@ -283,6 +304,7 @@ const updateCostingFileItem = async (
 
   if (payload.costingFileId !== undefined) updateData.costing_file_id = payload.costingFileId
   if (payload.name !== undefined) updateData.name = payload.name
+  if (payload.itemType !== undefined) updateData.item_type = payload.itemType
   if (payload.size !== undefined) updateData.size = payload.size
   if (payload.color !== undefined) updateData.color = payload.color
   if (payload.extraInformation1 !== undefined) {

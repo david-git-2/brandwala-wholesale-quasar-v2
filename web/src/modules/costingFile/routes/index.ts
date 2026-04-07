@@ -7,6 +7,10 @@ import { getAppRouteLocation, getShopLoginRouteLocation, getTenantSlugFromRoute 
 const resolveAppCostingLanding = () => {
   const authStore = useAuthStore()
 
+  if (authStore.matchedRole === 'viewer') {
+    return { name: 'viewer-costing-file-page' }
+  }
+
   if (authStore.matchedRole === 'staff') {
     return { name: 'staff-costing-file-page' }
   }
@@ -21,7 +25,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
       requiredScope: 'app',
-      allowedRoles: ['admin', 'staff'],
+      allowedRoles: ['admin', 'staff', 'viewer'],
       requireTenantContext: true,
       requiredModule: 'costing_file',
       validateAccess: ({ authStore, to }) => {
@@ -71,6 +75,18 @@ const costingFileRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: 'admin/:id/viewers',
+        name: 'admin-costing-file-viewers-page',
+        component: () => import('../pages/AdminCostingFileViewersPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          requiredModule: 'costing_file',
+        }),
+      },
+      {
         path: 'staff',
         name: 'staff-costing-file-page',
         component: () => import('../pages/StaffCostingFilePage.vue'),
@@ -90,6 +106,30 @@ const costingFileRoutes: RouteRecordRaw[] = [
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['staff'],
+          requireTenantContext: true,
+          requiredModule: 'costing_file',
+        }),
+      },
+      {
+        path: 'viewer',
+        name: 'viewer-costing-file-page',
+        component: () => import('../pages/ViewerCostingFilePage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['viewer'],
+          requireTenantContext: true,
+          requiredModule: 'costing_file',
+        }),
+      },
+      {
+        path: 'viewer/:id',
+        name: 'viewer-costing-file-details-page',
+        component: () => import('../pages/ViewerCostingFileDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['viewer'],
           requireTenantContext: true,
           requiredModule: 'costing_file',
         }),

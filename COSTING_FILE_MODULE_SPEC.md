@@ -23,6 +23,7 @@ The module supports:
 - create costing file items by submitting:
   - website URL
   - quantity
+  - type
 - cannot edit submitted link or quantity later
 - can later enter or update buyer profit rate for their own resale estimate
 
@@ -31,6 +32,7 @@ The module supports:
 Staff can update product enrichment fields only:
 
 - name
+- type
 - image URL
 - product weight
 - package weight
@@ -73,6 +75,7 @@ Customer can submit:
 
 - website URL
 - quantity
+- type
 
 Rules:
 
@@ -84,6 +87,7 @@ Rules:
 Staff or admin adds missing product details:
 
 - name
+- type
 - image URL
 - product weight
 - package weight

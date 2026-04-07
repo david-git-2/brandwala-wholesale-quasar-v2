@@ -47,7 +47,15 @@ const createCostingFileItemRequest = async (
   CostingFileServiceResult<
     Pick<
       CostingFileItem,
-      'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+      | 'id'
+      | 'costing_file_id'
+      | 'item_type'
+      | 'website_url'
+      | 'quantity'
+      | 'status'
+      | 'created_by_email'
+      | 'created_at'
+      | 'updated_at'
     >
   >
 > => {

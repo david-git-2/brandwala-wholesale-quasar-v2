@@ -1,4 +1,5 @@
 import { costingFileRepository } from '../repositories/costingFileRepository'
+import { costingFileAccessService } from './costingFileAccessService'
 import { costingFileItemService } from './costingFileItemService'
 import type {
   CostingFileCreateInput,
@@ -13,9 +14,13 @@ import type {
   CostingFileListEntry,
   CostingFileListPageResult,
   CostingFilePricingUpdateInput,
+  CostingFileViewer,
+  CostingFileViewerGrantInput,
+  CostingFileViewerRevokeInput,
   CostingFileServiceResult,
   CostingFileStatusUpdateInput,
   CostingFileUpdateInput,
+  TenantViewer,
 } from '../types'
 
 const listCostingFilesForTenant = async (
@@ -183,7 +188,15 @@ const createCostingFileItemRequest = async (
   CostingFileServiceResult<
     Pick<
       CostingFileItem,
-      'id' | 'costing_file_id' | 'website_url' | 'quantity' | 'status' | 'created_by_email' | 'created_at' | 'updated_at'
+      | 'id'
+      | 'costing_file_id'
+      | 'item_type'
+      | 'website_url'
+      | 'quantity'
+      | 'status'
+      | 'created_by_email'
+      | 'created_at'
+      | 'updated_at'
     >
   >
 > => {
@@ -255,6 +268,32 @@ const updateCostingFileItemOffer = async (
   return costingFileItemService.updateCostingFileItemOffer(payload)
 }
 
+const listTenantViewers = async (
+  tenantId: number,
+): Promise<CostingFileServiceResult<TenantViewer[]>> => {
+  return costingFileAccessService.listTenantViewers(tenantId)
+}
+
+const listCostingFileViewers = async (
+  costingFileId: number,
+): Promise<CostingFileServiceResult<CostingFileViewer[]>> => {
+  return costingFileAccessService.listCostingFileViewers(costingFileId)
+}
+
+const grantCostingFileViewer = async (
+  payload: CostingFileViewerGrantInput,
+): Promise<CostingFileServiceResult<CostingFileViewer>> => {
+  return costingFileAccessService.grantCostingFileViewer(payload)
+}
+
+const revokeCostingFileViewer = async (
+  payload: CostingFileViewerRevokeInput,
+): Promise<
+  CostingFileServiceResult<Pick<CostingFileViewer, 'costing_file_viewer_id' | 'costing_file_id' | 'membership_id'>>
+> => {
+  return costingFileAccessService.revokeCostingFileViewer(payload)
+}
+
 export const costingFileService = {
   listCostingFilesForTenant,
   listCostingFilesForTenantPage,
@@ -274,4 +313,8 @@ export const costingFileService = {
   updateCostingFileItemCustomerProfit,
   updateCostingFileItemStatus,
   updateCostingFileItemOffer,
+  listTenantViewers,
+  listCostingFileViewers,
+  grantCostingFileViewer,
+  revokeCostingFileViewer,
 }

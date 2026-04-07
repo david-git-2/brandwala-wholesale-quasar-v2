@@ -214,6 +214,11 @@ export function useOAuthLogin(
       return
     }
 
+    if (resolvedScope === 'app' && payload.matchedRole === 'viewer') {
+      await router.replace({ name: 'viewer-costing-file-page' })
+      return
+    }
+
     await router.replace({ name: currentScope.homeRouteName })
   }
 
@@ -270,7 +275,7 @@ export function useOAuthLogin(
     return true
   }
 
-  const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     const requestedTenantSlug = normalizeTenantSlug(
       options?.tenantSlug ?? getTenantSlugFromRoute(route),
     )
@@ -309,7 +314,7 @@ export function useOAuthLogin(
     const availableTenants = tenantListResult.data ?? []
 
     if (availableTenants.length === 0) {
-      await sendBackToLogin('No internal tenant access found for this route', tenantListResult)
+      await sendBackToLogin('No tenant access found for this route', tenantListResult)
       return false
     }
 

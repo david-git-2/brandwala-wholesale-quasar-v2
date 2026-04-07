@@ -86,7 +86,7 @@ const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
 const listTenantsByMembership = async (payload?: {
   tenantId?: number | null
   email?: string | null
-  role?: 'superadmin' | 'admin' | 'staff' | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
 }): Promise<Tenant[]> => {
   const { data, error } = await supabase.rpc('list_tenants_by_membership', {
     p_tenant_id: payload?.tenantId ?? null,
@@ -104,7 +104,7 @@ const listTenantsByMembership = async (payload?: {
 const getTenantDetailsByMembership = async (payload: {
   tenantId: number
   email?: string | null
-  role?: 'superadmin' | 'admin' | 'staff' | null
+  role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
 }): Promise<Tenant | null> => {
   const { data, error } = await supabase.rpc('get_tenant_details_by_membership', {
     p_tenant_id: payload.tenantId,

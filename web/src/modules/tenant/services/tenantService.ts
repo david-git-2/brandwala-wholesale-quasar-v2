@@ -56,7 +56,7 @@ const listTenantsByMembership = async (
   payload?: {
     tenantId?: number | null
     email?: string | null
-    role?: 'superadmin' | 'admin' | 'staff' | null
+    role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
   }
 ): Promise<TenantServiceResult<Tenant[]>> => {
   try {
@@ -81,7 +81,7 @@ const getTenantDetailsByMembership = async (
   payload: {
     tenantId: number
     email?: string | null
-    role?: 'superadmin' | 'admin' | 'staff' | null
+    role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
   }
 ): Promise<TenantServiceResult<Tenant | null>> => {
   try {

@@ -47,6 +47,16 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     accounting: NO_ACCESS,
     invoice: ['view'],
   },
+  viewer: {
+    order_management: NO_ACCESS,
+    shipment: NO_ACCESS,
+    inventory: NO_ACCESS,
+    vendor: NO_ACCESS,
+    product_based_costing: NO_ACCESS,
+    costing_file: ['view'],
+    accounting: NO_ACCESS,
+    invoice: NO_ACCESS,
+  },
   customer_admin: {
     order_management: ['view'],
     shipment: NO_ACCESS,

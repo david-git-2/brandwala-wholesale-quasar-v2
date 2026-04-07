@@ -25,68 +25,14 @@
           <q-banner v-if="!canCustomerMaintainDraftItems" rounded class="bg-blue-1 text-blue-10">
             Item details are maintained by staff/admin for this file.
           </q-banner>
-          <q-form
-            v-else
-            class="costing-page__request-grid"
-            @submit.prevent="handleSubmitRequest"
-          >
-            <q-input
-              v-model="requestForm.websiteUrl"
-              label="Web link"
-              outlined
-              dense
-              :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
+          <div v-else class="costing-page__request-actions">
+            <q-btn
+              color="primary"
+              unelevated
+              label="Add item"
+              @click="addItemDialogOpen = true"
             />
-            <q-input
-              v-model.number="requestForm.quantity"
-              label="Quantity"
-              type="number"
-              outlined
-              dense
-              min="1"
-              :rules="[
-                (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
-              ]"
-            />
-            <q-input
-              v-model="requestForm.size"
-              label="Size"
-              outlined
-              dense
-            />
-            <q-input
-              v-model="requestForm.color"
-              label="Color"
-              outlined
-              dense
-            />
-            <q-input
-              v-model="requestForm.extraInformation1"
-              label="Extra information 1"
-              type="textarea"
-              autogrow
-              outlined
-              dense
-            />
-            <q-input
-              v-model="requestForm.extraInformation2"
-              label="Extra information 2"
-              type="textarea"
-              autogrow
-              outlined
-              dense
-            />
-            <div class="costing-page__request-actions">
-              <q-btn
-              class="q-mb-sm"
-                type="submit"
-                color="primary"
-                unelevated
-                label="Add item"
-                :loading="submittingRequest"
-              />
-            </div>
-          </q-form>
+          </div>
         </div>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__table-section">
@@ -560,12 +506,99 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+
+      <q-dialog
+        v-model="addItemDialogOpen"
+        persistent
+      >
+        <q-card class="costing-page__dialog">
+          <q-card-section>
+            <div class="text-h6">Add item</div>
+            <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+              Add a new item for this costing file.
+            </p>
+          </q-card-section>
+
+          <q-form @submit.prevent="handleSubmitRequest">
+            <q-card-section class="costing-page__request-grid">
+              <q-input
+                v-model="requestForm.websiteUrl"
+                label="Web link"
+                outlined
+                dense
+                :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
+              />
+              <q-input
+                v-model.number="requestForm.quantity"
+                label="Quantity"
+                type="number"
+                outlined
+                dense
+                min="1"
+                :rules="[
+                  (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+                ]"
+              />
+              <q-input
+                v-model="requestForm.size"
+                label="Size"
+                outlined
+                dense
+              />
+              <q-input
+                v-model="requestForm.color"
+                label="Color"
+                outlined
+                dense
+              />
+              <q-select
+                v-model="requestForm.itemType"
+                :options="itemTypeOptions"
+                label="Type"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+                hint="Pick the closest product type."
+              />
+              <q-input
+                v-model="requestForm.extraInformation1"
+                label="Extra information 1"
+                type="textarea"
+                autogrow
+                outlined
+                dense
+              />
+              <q-input
+                v-model="requestForm.extraInformation2"
+                label="Extra information 2"
+                type="textarea"
+                autogrow
+                outlined
+                dense
+              />
+            </q-card-section>
+
+            <q-card-actions align="right">
+              <q-btn flat label="Cancel" @click="addItemDialogOpen = false" />
+              <q-btn
+                color="primary"
+                unelevated
+                label="Add item"
+                type="submit"
+                :loading="submittingRequest"
+              />
+            </q-card-actions>
+          </q-form>
+        </q-card>
+      </q-dialog>
     </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -585,6 +618,7 @@ const {
 } = storeToRefs(costingFileStore)
 
 const submitDialog = ref(false)
+const addItemDialogOpen = ref(false)
 const submittingRequest = ref(false)
 const submittingOrder = ref(false)
 const deletingItemId = ref<number | null>(null)
@@ -603,9 +637,12 @@ const requestForm = reactive({
   quantity: 1,
   size: '',
   color: '',
+  itemType: '' as string | null,
   extraInformation1: '',
   extraInformation2: '',
 })
+
+const itemTypeOptions = ['Watch', 'Perfume', 'Others']
 
 const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
 
@@ -658,6 +695,14 @@ const allColumns = [
     headerStyle: 'width: 280px; min-width: 280px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__sticky-col costing-page__sticky-col--name',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
+  },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'center' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
   },
   {
     name: 'quantity',
@@ -758,7 +803,7 @@ const visibleColumns = computed(() => {
     return allColumns.filter((column) =>
       [
         'sl',
-        'image',
+        'itemType',
         'websiteUrl',
         'quantity',
         'size',
@@ -770,16 +815,29 @@ const visibleColumns = computed(() => {
     )
   }
 
-  if (
-    selectedFile.value.status === 'customer_submitted' ||
-    selectedFile.value.status === 'in_review'
-  ) {
+  if (selectedFile.value.status === 'customer_submitted') {
+    return allColumns.filter((column) =>
+      [
+        'sl',
+        'itemType',
+        'websiteUrl',
+        'quantity',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
+      ].includes(column.name),
+    )
+  }
+
+  if (selectedFile.value.status === 'in_review') {
     return allColumns.filter((column) =>
       [
         'sl',
         'image',
         'websiteUrl',
         'quantity',
+        'itemType',
         'size',
         'color',
         'extraInformation1',
@@ -796,6 +854,7 @@ const visibleColumns = computed(() => {
         'name',
         'websiteUrl',
         'quantity',
+        'itemType',
         'size',
         'color',
         'extraInformation1',
@@ -816,6 +875,7 @@ const visibleColumns = computed(() => {
       'image',
       'websiteUrl',
       'quantity',
+      'itemType',
       'size',
       'color',
       'extraInformation1',
@@ -844,6 +904,7 @@ const resetRequestForm = () => {
   requestForm.quantity = 1
   requestForm.size = ''
   requestForm.color = ''
+  requestForm.itemType = null
   requestForm.extraInformation1 = ''
   requestForm.extraInformation2 = ''
 }
@@ -866,6 +927,7 @@ const handleSubmitRequest = async () => {
       costingFileId: selectedFile.value.id,
       websiteUrl,
       quantity: Math.max(1, Math.trunc(quantity)),
+      itemType: requestForm.itemType?.trim() || null,
       size: requestForm.size.trim() || null,
       color: requestForm.color.trim() || null,
       extraInformation1: requestForm.extraInformation1.trim() || null,
@@ -878,6 +940,7 @@ const handleSubmitRequest = async () => {
     }
 
     resetRequestForm()
+    addItemDialogOpen.value = false
   } finally {
     submittingRequest.value = false
   }
@@ -977,13 +1040,19 @@ const openPreview = () => {
   window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
 }
 
-onMounted(async () => {
-  await loadFile()
-})
-
 watch(selectedFile, () => {
   syncFileForm()
 }, { immediate: true })
+
+watch(
+  () => route.params.id,
+  async () => {
+    addItemDialogOpen.value = false
+    submitDialog.value = false
+    await loadFile()
+  },
+  { immediate: true },
+)
 
 watch(
   itemForms,

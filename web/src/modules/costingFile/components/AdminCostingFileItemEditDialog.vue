@@ -44,6 +44,15 @@
           dense
           :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
         />
+        <q-select
+          v-model="form.itemType"
+          :options="itemTypeOptions"
+          label="Type"
+          outlined
+          dense
+          clearable
+          hint="Pick the closest product type."
+        />
         <q-input
           v-model.number="form.priceInWebGbp"
           label="Web price (GBP)"
@@ -122,13 +131,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
-  save: [
-    payload: {
-      id: number;
-      name: string | null;
-      productWeight: number | null;
-      packageWeight: number | null;
-      imageUrl: string | null;
+      save: [
+        payload: {
+          id: number;
+          name: string | null;
+          itemType: string | null;
+          productWeight: number | null;
+          packageWeight: number | null;
+          imageUrl: string | null;
       priceInWebGbp: number | null;
       deliveryPriceGbp: number | null;
     },
@@ -138,12 +148,15 @@ const emit = defineEmits<{
 const form = reactive({
   name: '',
   websiteUrl: '',
+  itemType: '' as string | null,
   productWeight: null as number | null,
   packageWeight: null as number | null,
   imageUrl: '',
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
 });
+
+const itemTypeOptions = ['Watch', 'Perfume', 'Others'];
 
 const normalizeExternalUrl = (value: string) =>
   /^https?:\/\//i.test(value) ? value : `https://${value}`;
@@ -172,6 +185,7 @@ const isFormInvalid = computed(() => {
 const syncForm = (item: CostingFileItem | null) => {
   form.name = item?.name ?? '';
   form.websiteUrl = item?.website_url ?? '';
+  form.itemType = item?.item_type ?? null;
   form.productWeight = item?.product_weight ?? null;
   form.packageWeight = item?.package_weight ?? null;
   form.imageUrl = item?.image_url ?? '';
@@ -185,6 +199,7 @@ const handleSave = () => {
   emit('save', {
     id: props.item.id,
     name: form.name.trim() || null,
+    itemType: form.itemType?.trim() || null,
     productWeight: form.productWeight,
     packageWeight: form.packageWeight,
     imageUrl: form.imageUrl.trim() || null,

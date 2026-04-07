@@ -35,6 +35,15 @@
           dense
           :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
         />
+        <q-select
+          v-model="form.itemType"
+          :options="itemTypeOptions"
+          label="Type"
+          outlined
+          dense
+          clearable
+          hint="Pick the closest product type."
+        />
         <q-input
           v-model.number="form.priceInWebGbp"
           label="Web price (GBP)"
@@ -117,13 +126,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  save: [
-    payload: {
-      id: number
-      name: string
-      imageUrl: string
-      productWeight: number
-      packageWeight: number
+      save: [
+        payload: {
+          id: number
+          name: string
+          itemType: string | null
+          imageUrl: string
+          productWeight: number
+          packageWeight: number
       priceInWebGbp: number
       deliveryPriceGbp: number
     },
@@ -132,12 +142,15 @@ const emit = defineEmits<{
 
 const form = reactive({
   name: '',
+  itemType: '' as string | null,
   imageUrl: '',
   productWeight: null as number | null,
   packageWeight: null as number | null,
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
 })
+
+const itemTypeOptions = ['Watch', 'Perfume', 'Others']
 
 const normalizeExternalUrl = (value: string) =>
   /^https?:\/\//i.test(value) ? value : `https://${value}`
@@ -160,6 +173,7 @@ const isFormInvalid = computed(() => {
 
 const syncForm = (item: CostingFileItem | null) => {
   form.name = item?.name ?? ''
+  form.itemType = item?.item_type ?? null
   form.imageUrl = item?.image_url ?? ''
   form.productWeight = item?.product_weight ?? null
   form.packageWeight = item?.package_weight ?? null
@@ -175,6 +189,7 @@ const handleSave = () => {
   emit('save', {
     id: props.item.id,
     name: form.name.trim(),
+    itemType: form.itemType?.trim() || null,
     imageUrl: form.imageUrl.trim(),
     productWeight: Number(form.productWeight),
     packageWeight: Number(form.packageWeight),
