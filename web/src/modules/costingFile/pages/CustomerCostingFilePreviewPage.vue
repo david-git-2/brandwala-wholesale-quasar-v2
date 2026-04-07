@@ -5,22 +5,25 @@
         <div class="text-subtitle1">Offer Preview</div>
         <div class="preview-page__header-actions">
           <q-btn
-            flat
-            dense
-            color="primary"
+            v-if="0"
+            icon="image"
+            color="blue-8"
+            text-color="white"
             :loading="exporting"
             :disable="!rows.length || exporting"
             :label="exporting ? 'Preparing ZIP...' : 'Download ZIP'"
             class="preview-page__print-btn"
             @click="downloadZip"
+            style="border-radius: 8px"
           />
           <q-btn
-            flat
-            dense
-            color="primary"
+            icon="print"
+            color="blue-8"
+            text-color="white"
             label="Print"
             class="preview-page__print-btn"
             @click="printPage"
+            style="border-radius: 8px"
           />
         </div>
       </div>
@@ -46,9 +49,10 @@
           <template #body-cell-image="props">
             <q-td :props="props" class="preview-page__image-cell">
               <q-img
-                v-if="props.row.imageUrl"
-                :src="props.row.imageUrl"
+                v-if="props.row.imageUrl && !exportWithoutImages"
+                :src="resolvePreviewImageUrl(props.row.imageUrl)"
                 fit="contain"
+                :img-attrs="{ crossorigin: 'anonymous' }"
                 class="preview-page__image"
               />
               <div v-else class="preview-page__image preview-page__image--placeholder">
@@ -79,25 +83,40 @@
 </template>
 
 <script setup lang="ts">
-import { toBlob } from 'html-to-image'
-import JSZip from 'jszip'
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
+import { toBlob } from 'html-to-image';
+import JSZip from 'jszip';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRoute, useRouter } from 'vue-router';
 
-import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
+import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
 
-const route = useRoute()
-const router = useRouter()
-const costingFileStore = useCostingFileStore()
-const { costingFileItems, selectedItem } = storeToRefs(costingFileStore)
-const captureRef = ref<HTMLElement | null>(null)
-const exporting = ref(false)
+const route = useRoute();
+const router = useRouter();
+const costingFileStore = useCostingFileStore();
+const { costingFileItems, selectedItem } = storeToRefs(costingFileStore);
+const captureRef = ref<HTMLElement | null>(null);
+const exporting = ref(false);
+const exportWithoutImages = ref(false);
 
 const columns = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left' as const, style: 'width: 40px; min-width: 40px;', headerStyle: 'width: 40px; min-width: 40px;' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'left' as const, style: 'width: 64px; min-width: 64px;', headerStyle: 'width: 64px; min-width: 64px;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 40px; min-width: 40px;',
+    headerStyle: 'width: 40px; min-width: 40px;',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 64px; min-width: 64px;',
+    headerStyle: 'width: 64px; min-width: 64px;',
+  },
   { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
   {
     name: 'buyerSellingPriceBdt',
@@ -109,26 +128,45 @@ const columns = [
     classes: 'preview-page__tone-orange',
     headerClasses: 'preview-page__tone-orange',
   },
-]
+];
 
-const rows = computed(() => buildCustomerProductRows(costingFileItems.value, null))
+const rows = computed(() => buildCustomerProductRows(costingFileItems.value, null));
+
+const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
+
+const buildExportProxyUrl = (value: string) => {
+  const baseUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '');
+  const targetUrl = toExternalUrl(value);
+
+  if (!baseUrl) {
+    return targetUrl;
+  }
+
+  return `${baseUrl}/functions/v1/image-proxy?url=${encodeURIComponent(targetUrl)}`;
+};
+
+const resolvePreviewImageUrl = (value: string) =>
+  exporting.value ? buildExportProxyUrl(value) : toExternalUrl(value);
 
 const loadFile = async () => {
-  const fileId = Number(route.params.id)
+  const fileId = Number(route.params.id);
   if (!Number.isFinite(fileId) || fileId <= 0) {
-    await router.replace({ name: 'customer-costing-file-page' })
-    return
+    await router.replace({ name: 'customer-costing-file-page' });
+    return;
   }
 
-  const result = await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId)
+  const result = await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId);
   if (!result.success || !result.data || result.data.status !== 'offered') {
-    await router.replace({ name: 'customer-costing-file-details-page', params: { id: String(fileId) } })
+    await router.replace({
+      name: 'customer-costing-file-details-page',
+      params: { id: String(fileId) },
+    });
   }
-}
+};
 
 const printPage = () => {
-  window.print()
-}
+  window.print();
+};
 
 const fileSafe = (value: string) =>
   String(value || 'costing')
@@ -136,62 +174,82 @@ const fileSafe = (value: string) =>
     .replace(/[^a-z0-9_-]+/gi, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
-    .toLowerCase() || 'costing'
+    .toLowerCase() || 'costing';
 
 const buildZipBaseName = () => {
-  const fileId = selectedItem.value?.id ? String(selectedItem.value.id) : 'file'
-  const name = selectedItem.value?.name ?? 'costing'
-  return `${fileSafe(name)}-${fileSafe(fileId)}`
-}
+  const fileId = selectedItem.value?.id ? String(selectedItem.value.id) : 'file';
+  const name = selectedItem.value?.name ?? 'costing';
+  return `${fileSafe(name)}-${fileSafe(fileId)}`;
+};
 
 const downloadBlob = (blob: Blob, filename: string) => {
-  const link = document.createElement('a')
-  const url = URL.createObjectURL(blob)
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
 
 const downloadZip = async () => {
   if (!rows.value.length || !captureRef.value || exporting.value) {
-    return
+    return;
   }
 
-  exporting.value = true
+  exporting.value = true;
 
   try {
-    const blob = await toBlob(captureRef.value, {
-      cacheBust: true,
-      pixelRatio: 2,
-      backgroundColor: '#ffffff',
-    })
+    const captureBlob = async (withoutImages: boolean) => {
+      exportWithoutImages.value = withoutImages;
+      await nextTick();
 
-    if (!blob) {
-      throw new Error('capture-failed')
+      const blob = await toBlob(captureRef.value as HTMLElement, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+      });
+
+      if (!blob) {
+        throw new Error('capture-failed');
+      }
+
+      return blob;
+    };
+
+    let blob: Blob;
+
+    try {
+      blob = await captureBlob(false);
+    } catch {
+      // Fallback for CORS-blocked remote images: export table without images.
+      blob = await captureBlob(true);
     }
 
-    const zip = new JSZip()
-    const base = buildZipBaseName()
-    zip.file(`${base}-01.png`, blob)
+    exportWithoutImages.value = false;
+
+    const zip = new JSZip();
+    const base = buildZipBaseName();
+    zip.file(`${base}-01.png`, blob);
     const zipBlob = await zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
       compressionOptions: { level: 6 },
-    })
-    downloadBlob(zipBlob, `${base}.zip`)
+    });
+    downloadBlob(zipBlob, `${base}.zip`);
   } catch {
-    window.alert('Could not export preview image ZIP. Try again.')
+    exportWithoutImages.value = false;
+    window.alert('Could not export preview image ZIP. Try again.');
   } finally {
-    exporting.value = false
+    exportWithoutImages.value = false;
+    exporting.value = false;
   }
-}
+};
 
 onMounted(async () => {
-  await loadFile()
-})
+  await loadFile();
+});
 </script>
 
 <style scoped>
@@ -222,7 +280,7 @@ onMounted(async () => {
 
 .preview-page__table :deep(.q-table th),
 .preview-page__table :deep(.q-table td) {
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .preview-page__table :deep(.q-table tr) {

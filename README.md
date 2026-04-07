@@ -4,6 +4,10 @@ This repo contains the Quasar SPA plus the Supabase backend migrations for the p
 
 The goal of this document is to give a future developer or AI enough context to generate correct SQL, RLS, and RPCs in one pass without having to rediscover the architecture.
 
+For the current role model and the repeatable schema/RLS/RPC pattern, also see:
+
+- [`document/role-access-pattern.md`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/document/role-access-pattern.md)
+
 ## Project Layout
 
 ```text
@@ -19,7 +23,7 @@ Current route scopes:
 
 - `platform` for superadmin
 - `app` for admin and staff
-- `shop` for customer and viewer
+- `shop` for customer-side access
 
 The login callback flow is:
 
@@ -44,12 +48,13 @@ The key idea is:
 - the role must match the selected scope
 - the membership must be active
 - for superadmin, `tenant_id` must be `null`
+- shop access is resolved through customer-group membership in the current model
 
 Current role mapping:
 
 - `platform` -> `superadmin`
 - `app` -> `admin`, `staff`
-- `shop` -> `customer`, `viewer`
+- `shop` -> customer-side roles from `public.customer_group_members`, mapped in the frontend to normalized access roles
 
 ## Current Database Shape
 
@@ -60,8 +65,8 @@ Enum values:
 - `superadmin`
 - `admin`
 - `staff`
-- `viewer`
-- `customer`
+
+Legacy customer-side roles are now represented by `public.customer_group_role` on `public.customer_group_members`.
 
 ### `public.memberships`
 

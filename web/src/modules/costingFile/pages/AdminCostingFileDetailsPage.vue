@@ -591,12 +591,7 @@
                   @click="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
                 >
                   {{ props.row.offerPriceBdt }}
-                  <span
-                    v-if="props.row.offerPriceOverrideBdt != null"
-                    class="costing-page__offer-badge"
-                  >
-                    Manual
-                  </span>
+
                 </button>
 
                 <q-popup-edit
@@ -816,6 +811,10 @@ const productColumns = [
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
   { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
+  { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
+  { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
+  { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
+  { name: 'extraInformation2', label: 'Extra info 2', field: 'extraInformation2', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
 
   {
     name: 'priceInWebGbp',
@@ -881,6 +880,10 @@ const reviewColumns = [
     classes: 'costing-page__sticky-col costing-page__sticky-col--name',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--name',
   },
+  { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
+  { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
+  { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
+  { name: 'extraInformation2', label: 'Extra info 2', field: 'extraInformation2', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
   {
     name: 'quantity',
     label: 'Qty',

@@ -7,6 +7,7 @@ It is meant to help developers, reviewers, and AI assistants understand the data
 
 - `costing-file-structure.md`: tables, fields, statuses, and frontend flow
 - `costing-file-rls.md`: row-level security rules, RPC access rules, and actor permissions
+- `role-access-pattern.md`: access design blueprint for roles, tenants, modules, RLS, RPCs, and new feature patterns
 
 ## Quick mental model
 

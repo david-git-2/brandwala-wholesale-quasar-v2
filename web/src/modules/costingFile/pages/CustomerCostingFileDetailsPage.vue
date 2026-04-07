@@ -78,6 +78,7 @@
             />
             <div class="costing-page__request-actions">
               <q-btn
+              class="q-mb-sm"
                 type="submit"
                 color="primary"
                 unelevated
@@ -757,6 +758,7 @@ const visibleColumns = computed(() => {
     return allColumns.filter((column) =>
       [
         'sl',
+        'image',
         'websiteUrl',
         'quantity',
         'size',
@@ -773,7 +775,16 @@ const visibleColumns = computed(() => {
     selectedFile.value.status === 'in_review'
   ) {
     return allColumns.filter((column) =>
-      ['sl', 'websiteUrl', 'quantity', 'size', 'color', 'extraInformation1', 'extraInformation2'].includes(column.name),
+      [
+        'sl',
+        'image',
+        'websiteUrl',
+        'quantity',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
+      ].includes(column.name),
     )
   }
 
@@ -782,9 +793,13 @@ const visibleColumns = computed(() => {
       [
         'sl',
         'image',
-        'quantity',
         'name',
         'websiteUrl',
+        'quantity',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
         'offerPriceBdt',
         'buyerSellingPriceBdt',
         'customerProfitAmountBdt',
@@ -796,7 +811,18 @@ const visibleColumns = computed(() => {
   }
 
   return allColumns.filter((column) =>
-    ['sl', 'image', 'quantity', 'name', 'websiteUrl', 'status', 'offerPriceBdt'].includes(column.name),
+    [
+      'sl',
+      'image',
+      'websiteUrl',
+      'quantity',
+      'size',
+      'color',
+      'extraInformation1',
+      'extraInformation2',
+      'status',
+      'offerPriceBdt',
+    ].includes(column.name),
   )
 })
 

@@ -13,3 +13,6 @@ port = 54322
 [studio]
 enabled = true
 port = 54323
+
+[functions.image-proxy]
+verify_jwt = false
