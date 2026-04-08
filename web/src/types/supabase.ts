@@ -445,35 +445,6 @@ export type Database = {
           },
         ]
       }
-      tenant_vendor_access_settings: {
-        Row: {
-          allow_global_vendor_access: boolean
-          created_at: string
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          allow_global_vendor_access?: boolean
-          created_at?: string
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          allow_global_vendor_access?: boolean
-          created_at?: string
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tenant_vendor_access_settings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: true
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tenants: {
         Row: {
           created_at: string
@@ -900,13 +871,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_tenant_vendor_access_setting: {
-        Args: { p_tenant_id: number }
-        Returns: {
-          allow_global_vendor_access: boolean
-          tenant_id: number
-        }[]
-      }
       grant_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -938,10 +902,6 @@ export type Database = {
       is_tenant_staff: { Args: { p_tenant_id: number }; Returns: boolean }
       is_vendor_code_available: {
         Args: { p_code: string; p_exclude_id?: number }
-        Returns: boolean
-      }
-      is_vendor_module_enabled: {
-        Args: { p_tenant_id: number }
         Returns: boolean
       }
       list_costing_file_items: {
@@ -1123,13 +1083,6 @@ export type Database = {
       round_bdt_up_to_zero_or_five: {
         Args: { p_value: number }
         Returns: number
-      }
-      set_tenant_vendor_access_setting: {
-        Args: { p_allow_global_vendor_access: boolean; p_tenant_id: number }
-        Returns: {
-          allow_global_vendor_access: boolean
-          tenant_id: number
-        }[]
       }
       update_costing_file: {
         Args: {

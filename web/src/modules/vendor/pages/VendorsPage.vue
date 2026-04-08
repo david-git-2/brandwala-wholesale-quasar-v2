@@ -71,7 +71,6 @@
       v-model="openEditDialog"
       :initial-data="selectedVendor"
       :tenant-id="resolvedTenantId"
-      :allow-global-option="canUseGlobalVendors"
       :markets="markets"
       :check-code-availability="checkVendorCodeAvailability"
       @save="handleSaveVendor"
@@ -102,7 +101,6 @@ import { storeToRefs } from 'pinia'
 import type { QTableColumn } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { tenantService } from 'src/modules/tenant/services/tenantService'
 import AddVendorDialog from '../components/AddVendorDialog.vue'
 import { useVendorStore } from '../stores/vendorStore'
 import type { Vendor, VendorCreateInput, VendorDeleteInput, VendorUpdateInput } from '../types'
@@ -115,7 +113,6 @@ const openEditDialog = ref(false)
 const openDeleteDialog = ref(false)
 const selectedVendor = ref<Vendor | null>(null)
 const vendorToDelete = ref<Vendor | null>(null)
-const canUseGlobalVendors = ref(false)
 
 const resolvedTenantId = computed(() =>
   authStore.scope === 'platform' ? null : authStore.tenantId,
@@ -123,14 +120,10 @@ const resolvedTenantId = computed(() =>
 
 const descriptionText = computed(() => {
   if (authStore.scope === 'platform') {
-    return 'Manage global vendors managed by superadmin.'
+    return 'Manage global vendors created by superadmin.'
   }
 
-  if (canUseGlobalVendors.value) {
-    return 'Manage tenant vendors and permitted global vendors.'
-  }
-
-  return 'Manage vendors for your tenant.'
+  return 'Manage vendors created for your tenant.'
 })
 
 const columns: QTableColumn[] = [
@@ -144,26 +137,8 @@ const columns: QTableColumn[] = [
   { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
 ]
 
-const loadAccessSettings = async () => {
-  if (authStore.scope === 'platform') {
-    canUseGlobalVendors.value = true
-    return
-  }
-
-  if (!authStore.tenantId) {
-    canUseGlobalVendors.value = false
-    return
-  }
-
-  const settingResult = await tenantService.getTenantVendorAccessSetting({
-    tenantId: authStore.tenantId,
-  })
-
-  canUseGlobalVendors.value = Boolean(settingResult.success && settingResult.data?.allow_global_vendor_access)
-}
-
 const refresh = async () => {
-  await Promise.all([vendorStore.fetchMarkets(), vendorStore.fetchVendors(), loadAccessSettings()])
+  await Promise.all([vendorStore.fetchMarkets(), vendorStore.fetchVendors()])
 }
 
 const onClickAddVendor = () => {

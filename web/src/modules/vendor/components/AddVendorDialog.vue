@@ -50,14 +50,6 @@
           :options="marketOptions"
         />
 
-        <q-toggle
-          v-if="allowGlobalOption"
-          v-model="isGlobalVendor"
-          :disable="isEdit && form.tenant_id !== null"
-          label="Global vendor (tenant_id = null)"
-          color="primary"
-        />
-
         <q-input v-model="form.email" label="Email" outlined dense />
         <q-input v-model="form.phone" label="Phone" outlined dense />
         <q-input v-model="form.website" label="Website" outlined dense />
@@ -99,7 +91,6 @@ const props = defineProps<{
   initialData?: Vendor | null
   markets: VendorMarket[]
   tenantId: number | null
-  allowGlobalOption: boolean
   checkCodeAvailability: (code: string, excludeId?: number | null) => Promise<boolean>
 }>()
 
@@ -131,12 +122,6 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const isEdit = computed(() => typeof form.id === 'number')
 const normalizedCode = computed(() => form.code.trim().toUpperCase())
-const isGlobalVendor = computed({
-  get: () => form.tenant_id === null,
-  set: (value: boolean) => {
-    form.tenant_id = value ? null : props.tenantId
-  },
-})
 
 const marketOptions = computed(() =>
   props.markets.map((market) => ({
@@ -149,9 +134,6 @@ const validationMessage = computed(() => {
   if (!form.name.trim()) return 'Name is required.'
   if (!normalizedCode.value) return 'Code is required.'
   if (!form.market_code.trim()) return 'Market is required.'
-  if (form.tenant_id === null && !props.allowGlobalOption) {
-    return 'Global vendor access is not enabled for this tenant.'
-  }
   return ''
 })
 

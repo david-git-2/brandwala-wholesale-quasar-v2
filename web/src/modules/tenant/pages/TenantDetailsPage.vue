@@ -212,22 +212,6 @@
             </template>
           </q-table>
 
-          <q-separator />
-
-          <q-card-section>
-            <div class="text-subtitle1">Vendor Global Access</div>
-            <div class="text-caption text-grey-7 q-mb-sm">
-              Requires vendor module enabled. Allows tenant admins to manage global vendors.
-            </div>
-            <q-toggle
-              :model-value="vendorGlobalAccessEnabled"
-              :disable="!vendorModuleEnabled"
-              color="primary"
-              keep-color
-              :label="vendorGlobalAccessEnabled ? 'Enabled' : 'Disabled'"
-              @update:model-value="onToggleVendorGlobalAccess"
-            />
-          </q-card-section>
         </q-card>
       </div>
     </section>
@@ -368,7 +352,6 @@ import { storeToRefs } from 'pinia'
 
 import { useTenantStore } from '../stores/tenantStore'
 import { useTenantModuleStore } from '../stores/tenantModuleStore'
-import { tenantService } from '../services/tenantService'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
@@ -419,17 +402,12 @@ const tenantAdmins = ref<Membership[]>([])
 const tenantAdminsLoading = ref(false)
 const pageLoading = ref(false)
 const pageError = ref('')
-const vendorGlobalAccessEnabled = ref(false)
 
 const tenantId = computed(() => Number(route.params.id))
 
 const tenant = computed<Tenant | null>(() => {
   return items.value.find((item) => item.id === tenantId.value) ?? null
 })
-
-const vendorModuleEnabled = computed(() =>
-  modules.value.some((module) => module.module_key === 'vendor' && module.is_active),
-)
 
 const tenantAdminColumns = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
@@ -476,26 +454,6 @@ const loadTenantModules = async () => {
   if (!result.success) {
     pageError.value = result.error || 'Failed to load module features.'
   }
-
-  await loadVendorAccessSetting()
-}
-
-const loadVendorAccessSetting = async () => {
-  if (!tenant.value?.id) {
-    vendorGlobalAccessEnabled.value = false
-    return
-  }
-
-  const result = await tenantService.getTenantVendorAccessSetting({
-    tenantId: tenant.value.id,
-  })
-
-  if (!result.success) {
-    vendorGlobalAccessEnabled.value = false
-    return
-  }
-
-  vendorGlobalAccessEnabled.value = Boolean(result.data?.allow_global_vendor_access)
 }
 
 const loadPageData = async () => {
@@ -673,30 +631,6 @@ const onToggleModuleActive = async (module: TenantModule, value: boolean) => {
     pageError.value = result.error ?? 'Failed to update feature.'
     return
   }
-
-  await loadVendorAccessSetting()
-}
-
-const onToggleVendorGlobalAccess = async (value: boolean) => {
-  if (!tenant.value?.id || !vendorModuleEnabled.value) {
-    return
-  }
-
-  const previousValue = vendorGlobalAccessEnabled.value
-  vendorGlobalAccessEnabled.value = value
-
-  const result = await tenantService.setTenantVendorAccessSetting({
-    tenant_id: tenant.value.id,
-    allow_global_vendor_access: value,
-  })
-
-  if (!result.success) {
-    vendorGlobalAccessEnabled.value = previousValue
-    pageError.value = result.error ?? 'Failed to update vendor global access.'
-    return
-  }
-
-  vendorGlobalAccessEnabled.value = Boolean(result.data?.allow_global_vendor_access)
 }
 
 const onClickDeleteModule = (module: TenantModule) => {

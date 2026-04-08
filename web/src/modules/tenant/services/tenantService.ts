@@ -11,8 +11,6 @@ import type {
   TenantModuleCreateInput,
   TenantModuleDeleteInput,
   TenantModuleUpdateInput,
-  TenantVendorAccessSetting,
-  TenantVendorAccessUpdateInput,
 } from '../types'
 
 const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
@@ -245,48 +243,6 @@ const deleteTenantModule = async (
   }
 }
 
-const getTenantVendorAccessSetting = async (payload: {
-  tenantId: number
-}): Promise<TenantServiceResult<TenantVendorAccessSetting | null>> => {
-  try {
-    const data = await tenantRepository.getTenantVendorAccessSetting(payload.tenantId)
-
-    return {
-      success: true,
-      data,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load vendor access setting.',
-    }
-  }
-}
-
-const setTenantVendorAccessSetting = async (
-  payload: TenantVendorAccessUpdateInput
-): Promise<TenantServiceResult<TenantVendorAccessSetting>> => {
-  try {
-    const data = await tenantRepository.setTenantVendorAccessSetting(payload)
-
-    return {
-      success: true,
-      data,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update vendor access setting.',
-    }
-  }
-}
-
 export const tenantService = {
   deleteTenant,
   listTenants,
@@ -301,6 +257,4 @@ export const tenantService = {
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,
-  getTenantVendorAccessSetting,
-  setTenantVendorAccessSetting,
 }
