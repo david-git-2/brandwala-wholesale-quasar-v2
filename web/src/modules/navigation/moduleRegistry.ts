@@ -117,8 +117,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'product_based_costing',
     name: 'Product Based Costing',
-    description: 'Support customer-side costing visibility and pricing context.',
+    description: 'Support product-based costing files for internal and customer workflows.',
     routes: [
+      {
+        scope: 'app',
+        title: 'Product Based Costing',
+        caption: 'Manage product based costing files',
+        icon: 'request_quote',
+        routeSegment: 'product-based-costing',
+        requiredAction: 'view',
+      },
       {
         scope: 'shop',
         title: 'Pre order',

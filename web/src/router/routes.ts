@@ -6,6 +6,7 @@ import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
 import costingFileRoutes from 'src/modules/costingFile/routes';
 import membershipRoutes from 'src/modules/membership/routes';
 import marketRoutes from 'src/modules/market/routes';
+import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
 import productRoutes from 'src/modules/products/routes';
 import vendorRoutes from 'src/modules/vendor/routes';
 
@@ -19,7 +20,7 @@ const routes: RouteRecordRaw[] = [
     redirect: '/app/dashboard',
   },
   {
-    path: '/app/:tenantSlug/:after(app|tenants|costing|products)/:rest(.*)*',
+    path: '/app/:tenantSlug/:after(app|tenants|costing|products|product-based-costing)/:rest(.*)*',
     redirect: (to) => {
       const tenantSlug =
         typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
@@ -69,6 +70,7 @@ const routes: RouteRecordRaw[] = [
   ...authRoutes,
   ...featureCatalogRoutes,
   ...marketRoutes,
+  ...productBasedCostingRoutes,
   ...productRoutes,
   ...vendorRoutes,
   ...costingFileRoutes,

@@ -403,6 +403,118 @@ export type Database = {
         }
         Relationships: []
       }
+      product_based_costing_files: {
+        Row: {
+          cargo_rate_kg_gbp: number | null
+          conversion_rate: number | null
+          created_at: string
+          id: number
+          name: string | null
+          note: string | null
+          order_for: string | null
+          profit_rate: number | null
+          status: string | null
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          cargo_rate_kg_gbp?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          id?: number
+          name?: string | null
+          note?: string | null
+          order_for?: string | null
+          profit_rate?: number | null
+          status?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cargo_rate_kg_gbp?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          id?: number
+          name?: string | null
+          note?: string | null
+          order_for?: string | null
+          profit_rate?: number | null
+          status?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_based_costing_files_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_based_costing_items: {
+        Row: {
+          barcode: string | null
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string | null
+          offer_price: number | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_based_costing_file_id: number | null
+          product_code: string | null
+          product_weight: number | null
+          quantity: number | null
+          status: string | null
+          updated_at: string
+          web_link: string | null
+        }
+        Insert: {
+          barcode?: string | null
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          name?: string | null
+          offer_price?: number | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_based_costing_file_id?: number | null
+          product_code?: string | null
+          product_weight?: number | null
+          quantity?: number | null
+          status?: string | null
+          updated_at?: string
+          web_link?: string | null
+        }
+        Update: {
+          barcode?: string | null
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          name?: string | null
+          offer_price?: number | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_based_costing_file_id?: number | null
+          product_code?: string | null
+          product_weight?: number | null
+          quantity?: number | null
+          status?: string | null
+          updated_at?: string
+          web_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_based_costing_items_product_based_costing_file_id_fkey"
+            columns: ["product_based_costing_file_id"]
+            isOneToOne: false
+            referencedRelation: "product_based_costing_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           available_units: number | null
@@ -660,10 +772,12 @@ export type Database = {
         Args: { p_customer_group_id: number }
         Returns: boolean
       }
+      can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      can_manage_costing_item: { Args: { p_file_id: number }; Returns: boolean }
       can_manage_customer_group: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -703,6 +817,11 @@ export type Database = {
         Args: { p_costing_file_id: number }
         Returns: boolean
       }
+      can_view_costing_internal: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_view_costing_item: { Args: { p_file_id: number }; Returns: boolean }
       can_view_products_customer: {
         Args: { p_tenant_id: number }
         Returns: boolean
