@@ -24,7 +24,7 @@ It follows the same `page -> store -> service -> repository` pattern as the exam
 | --- | --- | --- |
 | `id` | `bigserial` | Primary key |
 | `tenant_id` | `bigint` | Null for `superadmin` |
-| `role` | `app_role` | `superadmin`, `admin`, `staff`, `viewer`, `customer` |
+| `role` | `app_role` | `superadmin`, `admin`, `staff`, `viewer` |
 | `is_active` | `boolean` | Defaults to `true` |
 | `created_at` | `timestamptz` | Defaults to `now()` |
 | `updated_at` | `timestamptz` | Defaults to `now()` |

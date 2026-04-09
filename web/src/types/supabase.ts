@@ -549,6 +549,13 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      can_assign_membership_role: {
+        Args: {
+          p_target_role: Database["public"]["Enums"]["app_role"]
+          p_target_tenant_id: number
+        }
+        Returns: boolean
+      }
       can_customer_access_costing_file: {
         Args: { p_customer_group_id: number }
         Returns: boolean
@@ -578,6 +585,13 @@ export type Database = {
       }
       can_tenant_view_costing_file_viewer: {
         Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_update_membership_row: {
+        Args: {
+          p_existing_role: Database["public"]["Enums"]["app_role"]
+          p_existing_tenant_id: number
+        }
         Returns: boolean
       }
       can_view_costing_file: {

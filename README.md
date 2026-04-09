@@ -54,7 +54,7 @@ The key idea is:
 Current role mapping:
 
 - `platform` -> `superadmin`
-- `app` -> `admin`, `staff`
+- `app` -> `admin`, `staff`, `viewer`
 - `shop` -> customer-side roles from `public.customer_group_members`, mapped in the frontend to normalized access roles
 
 ## Current Database Shape
@@ -66,6 +66,7 @@ Enum values:
 - `superadmin`
 - `admin`
 - `staff`
+- `viewer`
 
 Legacy customer-side roles are now represented by `public.customer_group_role` on `public.customer_group_members`.
 
