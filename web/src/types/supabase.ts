@@ -403,6 +403,106 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          available_units: number | null
+          barcode: string | null
+          batch_code_manufacture_date: string | null
+          brand: string | null
+          category: string | null
+          country_of_origin: string | null
+          created_at: string
+          expire_date: string | null
+          id: number
+          image_url: string | null
+          is_available: boolean | null
+          languages: string | null
+          market_code: string | null
+          minimum_order_quantity: number | null
+          name: string | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_weight: number | null
+          tariff_code: string | null
+          tenant_id: number | null
+          updated_at: string
+          vendor_code: string | null
+        }
+        Insert: {
+          available_units?: number | null
+          barcode?: string | null
+          batch_code_manufacture_date?: string | null
+          brand?: string | null
+          category?: string | null
+          country_of_origin?: string | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          image_url?: string | null
+          is_available?: boolean | null
+          languages?: string | null
+          market_code?: string | null
+          minimum_order_quantity?: number | null
+          name?: string | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_weight?: number | null
+          tariff_code?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Update: {
+          available_units?: number | null
+          barcode?: string | null
+          batch_code_manufacture_date?: string | null
+          brand?: string | null
+          category?: string | null
+          country_of_origin?: string | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          image_url?: string | null
+          is_available?: boolean | null
+          languages?: string | null
+          market_code?: string | null
+          minimum_order_quantity?: number | null
+          name?: string | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_weight?: number | null
+          tariff_code?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_market_code_fkey"
+            columns: ["market_code"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vendor_code_fkey"
+            columns: ["vendor_code"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       tenant_modules: {
         Row: {
           created_at: string
@@ -579,6 +679,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_manage_products: { Args: { p_tenant_id: number }; Returns: boolean }
       can_staff_access_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -600,6 +701,14 @@ export type Database = {
       }
       can_view_costing_file_items: {
         Args: { p_costing_file_id: number }
+        Returns: boolean
+      }
+      can_view_products_customer: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_view_products_internal: {
+        Args: { p_tenant_id: number }
         Returns: boolean
       }
       can_view_tenant_modules: {

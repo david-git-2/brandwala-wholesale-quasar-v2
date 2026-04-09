@@ -35,6 +35,12 @@ values
     true
   ),
   (
+    'products',
+    'Products',
+    'Manage the product catalog and product-level records.',
+    true
+  ),
+  (
     'product_based_costing',
     'Product Based Costing',
     'Support customer-side costing visibility and pricing context.',

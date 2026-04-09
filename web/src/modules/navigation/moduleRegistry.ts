@@ -5,6 +5,7 @@ export type ModuleKey =
   | 'shipment'
   | 'inventory'
   | 'vendor'
+  | 'products'
   | 'product_based_costing'
   | 'costing_file'
   | 'accounting'
@@ -94,6 +95,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage suppliers and vendor operations',
         icon: 'storefront',
         routeSegment: 'vendors',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'products',
+    name: 'Products',
+    description: 'Manage the product catalog and product-level records.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Products',
+        caption: 'Manage tenant product catalog',
+        icon: 'inventory_2',
+        routeSegment: 'products',
         requiredAction: 'view',
       },
     ],

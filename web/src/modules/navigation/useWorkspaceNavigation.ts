@@ -55,14 +55,6 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/markets',
   },
   {
-    title: 'Vendors',
-    caption: 'Manage global vendors',
-    icon: 'storefront',
-    scopes: ['platform'],
-    allowedRoles: ['superadmin'],
-    route: () => '/platform/vendors',
-  },
-  {
     title: 'Super Admins',
     caption: 'Manage platform superadmin access',
     icon: 'shield',
