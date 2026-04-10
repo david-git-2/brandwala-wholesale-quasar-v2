@@ -33,22 +33,13 @@
             dense
           />
 
-          <div v-if="form.image_url" class="q-mt-sm">
+          <div v-if="form.image_url" class="q-mt-sm" >
             <div class="text-subtitle2 q-mb-sm">Image Preview</div>
-
-            <q-img
-              :src="form.image_url"
-              fit="contain"
-              style="max-width: 220px; height: 220px;"
-              class="rounded-borders border"
-            >
-              <template #error>
-                <div class="full-width full-height flex flex-center bg-grey-3 text-grey-7">
-                  Failed to load image
-                </div>
-              </template>
-            </q-img>
+            <div style="margin: 0 auto; width: fit-content;">
+          <SmartImage :src="form.image_url" style="max-width: 150px;" />
+</div>
           </div>
+
 
           <q-input
             v-model.number="form.quantity"
@@ -113,6 +104,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
+import SmartImage from 'src/components/SmartImage.vue'
 
 interface ProductBasedCostingItemFormData {
   id?: number

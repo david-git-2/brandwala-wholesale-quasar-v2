@@ -138,8 +138,9 @@ const handleConsole = () => {
     package_weight: props.product.package_weight || 0,
     status: 'pending',
     product_based_costing_file_id: route.params.id ? Number(route.params.id) : null,
+    product_id: props.product.id,
   })
-  console.log('Image candidates:', imageCandidates.value)
+  console.log('Image candidates:', props.product.id)
   console.log('Current image src:', currentImageSrc.value)
 }
 

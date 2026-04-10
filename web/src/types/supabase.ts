@@ -465,6 +465,7 @@ export type Database = {
           price_gbp: number | null
           product_based_costing_file_id: number | null
           product_code: string | null
+          product_id: number | null
           product_weight: number | null
           quantity: number | null
           status: string | null
@@ -482,6 +483,7 @@ export type Database = {
           price_gbp?: number | null
           product_based_costing_file_id?: number | null
           product_code?: string | null
+          product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
           status?: string | null
@@ -499,6 +501,7 @@ export type Database = {
           price_gbp?: number | null
           product_based_costing_file_id?: number | null
           product_code?: string | null
+          product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
           status?: string | null
@@ -506,6 +509,13 @@ export type Database = {
           web_link?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_product_based_costing_items_product"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_based_costing_items_product_based_costing_file_id_fkey"
             columns: ["product_based_costing_file_id"]

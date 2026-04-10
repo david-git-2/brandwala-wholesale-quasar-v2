@@ -17,7 +17,7 @@ const normalizeText = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : null
 }
 
-const buildProductPayload = (payload: ProductCreateInput | ProductUpdateInput) => ({
+const buildProductPayload = (payload: ProductCreateInput) => ({
   tenant_id: payload.tenant_id ?? null,
   product_code: normalizeText(payload.product_code),
   barcode: normalizeText(payload.barcode),
@@ -39,6 +39,92 @@ const buildProductPayload = (payload: ProductCreateInput | ProductUpdateInput) =
   market_code: normalizeText(payload.market_code)?.toUpperCase() ?? null,
   is_available: payload.is_available ?? null,
 })
+
+const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
+  const updateData: Record<string, unknown> = {}
+
+  if ('tenant_id' in payload) {
+    updateData.tenant_id = payload.tenant_id ?? null
+  }
+
+  if ('product_code' in payload) {
+    updateData.product_code = normalizeText(payload.product_code)
+  }
+
+  if ('barcode' in payload) {
+    updateData.barcode = normalizeText(payload.barcode)
+  }
+
+  if ('name' in payload) {
+    updateData.name = normalizeText(payload.name)
+  }
+
+  if ('price_gbp' in payload) {
+    updateData.price_gbp = payload.price_gbp ?? null
+  }
+
+  if ('country_of_origin' in payload) {
+    updateData.country_of_origin = normalizeText(payload.country_of_origin)
+  }
+
+  if ('brand' in payload) {
+    updateData.brand = normalizeText(payload.brand)
+  }
+
+  if ('category' in payload) {
+    updateData.category = normalizeText(payload.category)
+  }
+
+  if ('available_units' in payload) {
+    updateData.available_units = payload.available_units ?? null
+  }
+
+  if ('tariff_code' in payload) {
+    updateData.tariff_code = normalizeText(payload.tariff_code)
+  }
+
+  if ('languages' in payload) {
+    updateData.languages = normalizeText(payload.languages)
+  }
+
+  if ('batch_code_manufacture_date' in payload) {
+    updateData.batch_code_manufacture_date = payload.batch_code_manufacture_date ?? null
+  }
+
+  if ('image_url' in payload) {
+    updateData.image_url = normalizeText(payload.image_url)
+  }
+
+  if ('expire_date' in payload) {
+    updateData.expire_date = payload.expire_date ?? null
+  }
+
+  if ('minimum_order_quantity' in payload) {
+    updateData.minimum_order_quantity = payload.minimum_order_quantity ?? null
+  }
+
+  if ('product_weight' in payload) {
+    updateData.product_weight = payload.product_weight ?? null
+  }
+
+  if ('package_weight' in payload) {
+    updateData.package_weight = payload.package_weight ?? null
+  }
+
+  if ('vendor_code' in payload) {
+    updateData.vendor_code = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+  }
+
+  if ('market_code' in payload) {
+    updateData.market_code = normalizeText(payload.market_code)?.toUpperCase() ?? null
+  }
+
+  if ('is_available' in payload) {
+    updateData.is_available = payload.is_available ?? null
+  }
+
+  return updateData
+}
 
 type PaginatedProducts = {
   data: Product[]
@@ -75,6 +161,7 @@ const listBrands = async (): Promise<string[]> => {
     .filter((brand) => brand.length > 0)
     .filter((brand) => {
       const key = brand.toLowerCase()
+
       if (seen.has(key)) {
         return false
       }
@@ -102,6 +189,7 @@ const listCategories = async (): Promise<string[]> => {
     .filter((category) => category.length > 0)
     .filter((category) => {
       const key = category.toLowerCase()
+
       if (seen.has(key)) {
         return false
       }
@@ -184,9 +272,11 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
 const updateProduct = async (payload: ProductUpdateInput): Promise<Product> => {
   const { id, ...rest } = payload
 
+  const updatePayload = buildProductUpdatePayload(rest)
+
   const { data, error } = await supabase
     .from('products')
-    .update(buildProductPayload(rest))
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single()

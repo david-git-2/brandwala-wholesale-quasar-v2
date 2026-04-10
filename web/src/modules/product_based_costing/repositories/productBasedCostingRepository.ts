@@ -19,10 +19,8 @@ const normalizeText = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : null
 }
 
-const buildProductBasedCostingFilePayload = (
-  payload:
-    | ProductBasedCostingFileCreateInput
-    | Omit<ProductBasedCostingFileUpdateInput, 'id'>,
+const buildProductBasedCostingFileCreatePayload = (
+  payload: ProductBasedCostingFileCreateInput,
 ) => ({
   tenant_id: payload.tenant_id ?? null,
   name: normalizeText(payload.name),
@@ -34,10 +32,48 @@ const buildProductBasedCostingFilePayload = (
   status: normalizeText(payload.status),
 })
 
-const buildProductBasedCostingItemPayload = (
-  payload:
-    | ProductBasedCostingItemCreateInput
-    | Omit<ProductBasedCostingItemUpdateInput, 'id'>,
+const buildProductBasedCostingFileUpdatePayload = (
+  payload: Omit<ProductBasedCostingFileUpdateInput, 'id'>,
+) => {
+  const updatePayload: Record<string, unknown> = {}
+
+  if (payload.tenant_id !== undefined) {
+    updatePayload.tenant_id = payload.tenant_id
+  }
+
+  if (payload.name !== undefined) {
+    updatePayload.name = normalizeText(payload.name)
+  }
+
+  if (payload.order_for !== undefined) {
+    updatePayload.order_for = normalizeText(payload.order_for)
+  }
+
+  if (payload.note !== undefined) {
+    updatePayload.note = normalizeText(payload.note)
+  }
+
+  if (payload.cargo_rate_kg_gbp !== undefined) {
+    updatePayload.cargo_rate_kg_gbp = payload.cargo_rate_kg_gbp
+  }
+
+  if (payload.profit_rate !== undefined) {
+    updatePayload.profit_rate = payload.profit_rate
+  }
+
+  if (payload.conversion_rate !== undefined) {
+    updatePayload.conversion_rate = payload.conversion_rate
+  }
+
+  if (payload.status !== undefined) {
+    updatePayload.status = normalizeText(payload.status)
+  }
+
+  return updatePayload
+}
+
+const buildProductBasedCostingItemCreatePayload = (
+  payload: ProductBasedCostingItemCreateInput,
 ) => ({
   product_based_costing_file_id: payload.product_based_costing_file_id ?? null,
   name: normalizeText(payload.name),
@@ -51,7 +87,64 @@ const buildProductBasedCostingItemPayload = (
   package_weight: payload.package_weight ?? null,
   offer_price: payload.offer_price ?? null,
   status: normalizeText(payload.status),
+  product_id: payload.product_id,
 })
+
+const buildProductBasedCostingItemUpdatePayload = (
+  payload: Omit<ProductBasedCostingItemUpdateInput, 'id'>,
+) => {
+  const updatePayload: Record<string, unknown> = {}
+
+  if (payload.product_based_costing_file_id !== undefined) {
+    updatePayload.product_based_costing_file_id = payload.product_based_costing_file_id
+  }
+
+  if (payload.name !== undefined) {
+    updatePayload.name = normalizeText(payload.name)
+  }
+
+  if (payload.image_url !== undefined) {
+    updatePayload.image_url = normalizeText(payload.image_url)
+  }
+
+  if (payload.quantity !== undefined) {
+    updatePayload.quantity = payload.quantity
+  }
+
+  if (payload.barcode !== undefined) {
+    updatePayload.barcode = normalizeText(payload.barcode)
+  }
+
+  if (payload.product_code !== undefined) {
+    updatePayload.product_code = normalizeText(payload.product_code)
+  }
+
+  if (payload.web_link !== undefined) {
+    updatePayload.web_link = normalizeText(payload.web_link)
+  }
+
+  if (payload.price_gbp !== undefined) {
+    updatePayload.price_gbp = payload.price_gbp
+  }
+
+  if (payload.product_weight !== undefined) {
+    updatePayload.product_weight = payload.product_weight
+  }
+
+  if (payload.package_weight !== undefined) {
+    updatePayload.package_weight = payload.package_weight
+  }
+
+  if (payload.offer_price !== undefined) {
+    updatePayload.offer_price = payload.offer_price
+  }
+
+  if (payload.status !== undefined) {
+    updatePayload.status = normalizeText(payload.status)
+  }
+
+  return updatePayload
+}
 
 const listProductBasedCostingFiles = async (): Promise<ProductBasedCostingFile[]> => {
   const { data, error } = await supabase
@@ -71,7 +164,7 @@ const createProductBasedCostingFile = async (
 ): Promise<ProductBasedCostingFile> => {
   const { data, error } = await supabase
     .from('product_based_costing_files')
-    .insert([buildProductBasedCostingFilePayload(payload)])
+    .insert([buildProductBasedCostingFileCreatePayload(payload)])
     .select()
     .single()
 
@@ -93,7 +186,7 @@ const updateProductBasedCostingFile = async (
 
   const { data, error } = await supabase
     .from('product_based_costing_files')
-    .update(buildProductBasedCostingFilePayload(rest))
+    .update(buildProductBasedCostingFileUpdatePayload(rest))
     .eq('id', id)
     .select()
     .single()
@@ -150,11 +243,6 @@ const getProductBasedCostingFileById = async (
   return data as ProductBasedCostingFile
 }
 
-/**
- * item list api
- * takes productBasedCostingFileId as argument
- * returns item list only for that file id
- */
 const listProductBasedCostingItems = async (
   productBasedCostingFileId: number,
 ): Promise<ProductBasedCostingItem[]> => {
@@ -176,7 +264,7 @@ const createProductBasedCostingItem = async (
 ): Promise<ProductBasedCostingItem> => {
   const { data, error } = await supabase
     .from('product_based_costing_items')
-    .insert([buildProductBasedCostingItemPayload(payload)])
+    .insert([buildProductBasedCostingItemCreatePayload(payload)])
     .select()
     .single()
 
@@ -198,7 +286,7 @@ const updateProductBasedCostingItem = async (
 
   const { data, error } = await supabase
     .from('product_based_costing_items')
-    .update(buildProductBasedCostingItemPayload(rest))
+    .update(buildProductBasedCostingItemUpdatePayload(rest))
     .eq('id', id)
     .select()
     .single()

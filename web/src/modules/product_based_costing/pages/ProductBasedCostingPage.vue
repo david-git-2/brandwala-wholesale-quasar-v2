@@ -73,10 +73,10 @@ function openEditDialog(row: CostingFileForm) {
   dialogOpen.value = true
 }
 
-function handleDialogSubmit(payload: CostingFileForm) {
+async function handleDialogSubmit(payload: CostingFileForm) {
   if (payload.id) {
     console.log('Edit mode payload:', payload)
-    store.updateProductBasedCostingFile(
+    await store.updateProductBasedCostingFile(
       {id: payload.id,
       name: payload.name,
       order_for: payload.order_for,
@@ -84,7 +84,7 @@ function handleDialogSubmit(payload: CostingFileForm) {
     )
   } else {
     console.log('Create mode payload:', payload)
-    store.createProductBasedCostingFile({
+    await store.createProductBasedCostingFile({
       name: payload.name,
       order_for: payload.order_for,
       note: payload.note
@@ -92,10 +92,10 @@ function handleDialogSubmit(payload: CostingFileForm) {
   }
 }
 
-const onSelect = (item) => {
+const onSelect = async (item) => {
   const tenantSlug = route.params.tenantSlug
 
-  router.push({
+  await router.push({
     name: 'product-based-costing-file-details-page',
     params: {
       tenantSlug,
@@ -106,8 +106,8 @@ const onSelect = (item) => {
 
 
 
-const onDelete = (item) => {
+const onDelete = async (item) => {
   console.log('delete', item)
-  store.deleteProductBasedCostingFile(item.id)
+  await store.deleteProductBasedCostingFile(item.id)
 }
 </script>

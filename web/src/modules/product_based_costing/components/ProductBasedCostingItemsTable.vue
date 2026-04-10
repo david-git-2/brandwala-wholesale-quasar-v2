@@ -16,14 +16,14 @@
             {{ slotProps.row.sl }}
           </q-td>
 
-  <q-td key="image" :props="slotProps" class="col-image text-center">
-  <SmartImage
-    :src="slotProps.row.imageUrl"
-    :alt="slotProps.row.name || 'Product image'"
-    img-class="table-image"
-    fallback-class="table-image-placeholder"
-  />
-</q-td>
+          <q-td key="image" :props="slotProps" class="col-image text-center">
+            <SmartImage
+              :src="slotProps.row.imageUrl"
+              :alt="slotProps.row.name || 'Product image'"
+              img-class="table-image"
+              fallback-class="table-image-placeholder"
+            />
+          </q-td>
 
           <q-td key="name" :props="slotProps" class="col-name">
             {{ slotProps.row.name }}
@@ -34,27 +34,27 @@
               {{ slotProps.row.qty }}
             </div>
 
-       <q-popup-edit
-  v-slot="scope"
-  :model-value="slotProps.row.qty"
-  buttons
-  persistent
-  label-set="Save"
-  label-cancel="Cancel"
-  @save="(value) => {
-    slotProps.row.qty = toNumber(value)
-    onQtySave(slotProps.row)
-  }"
->
-  <q-input
-    v-model.number="scope.value"
-    type="number"
-    dense
-    outlined
-    autofocus
-    min="0"
-  />
-</q-popup-edit>
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.qty"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="(value) => {
+                slotProps.row.qty = toNumber(value)
+                onQtySave(slotProps.row)
+              }"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
           </q-td>
 
           <q-td key="barcodeText" :props="slotProps" class="col-barcode">
@@ -77,12 +77,60 @@
             {{ formatNumber(slotProps.row.priceGbp) }}
           </q-td>
 
-          <q-td key="productWeight" :props="slotProps" class="col-product-weight text-right">
-            {{ formatNumber(slotProps.row.productWeight) }}
+          <q-td key="productWeight" :props="slotProps" class="col-product-weight text-right editable-cell">
+            <div class="editable-value">
+              {{ formatNumber(slotProps.row.productWeight) }}
+            </div>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.productWeight"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="(value) => {
+                slotProps.row.productWeight = toNumber(value)
+                onProductWeightSave(slotProps.row)
+              }"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
           </q-td>
 
-          <q-td key="packageWeight" :props="slotProps" class="col-package-weight text-right">
-            {{ formatNumber(slotProps.row.packageWeight) }}
+          <q-td key="packageWeight" :props="slotProps" class="col-package-weight text-right editable-cell">
+            <div class="editable-value">
+              {{ formatNumber(slotProps.row.packageWeight) }}
+            </div>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.packageWeight"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="(value) => {
+                slotProps.row.packageWeight = toNumber(value)
+                onPackageWeightSave(slotProps.row)
+              }"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
           </q-td>
 
           <q-td key="totalWeight" :props="slotProps" class="col-total-weight text-right">
@@ -114,27 +162,27 @@
               {{ formatNumber(slotProps.row.offerPriceBdt) }}
             </div>
 
-    <q-popup-edit
-  v-slot="scope"
-  :model-value="slotProps.row.offerPriceBdt"
-  buttons
-  persistent
-  label-set="Save"
-  label-cancel="Cancel"
-  @save="(value) => {
-    slotProps.row.offerPriceBdt = toNumber(value)
-    onOfferPriceBdtSave(slotProps.row)
-  }"
->
-  <q-input
-    v-model.number="scope.value"
-    type="number"
-    dense
-    outlined
-    autofocus
-    min="0"
-  />
-</q-popup-edit>
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.offerPriceBdt"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="(value) => {
+                slotProps.row.offerPriceBdt = toNumber(value)
+                onOfferPriceBdtSave(slotProps.row)
+              }"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
           </q-td>
 
           <q-td key="totalBdt" :props="slotProps" class="col-total-bdt text-right">
@@ -156,28 +204,29 @@
             >
               {{ slotProps.row.status }}
             </q-badge>
-<q-popup-edit
-  v-slot="scope"
-  :model-value="slotProps.row.status"
-  buttons
-  persistent
-  label-set="Save"
-  label-cancel="Cancel"
-  @save="(value) => {
-    slotProps.row.status = toText(value, 'pending').toLowerCase()
-    onStatusSave(slotProps.row)
-  }"
->
-  <q-select
-    v-model="scope.value"
-    :options="statusOptions"
-    dense
-    outlined
-    emit-value
-    map-options
-    autofocus
-  />
-</q-popup-edit>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.status"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="(value) => {
+                slotProps.row.status = toText(value, 'pending').toLowerCase()
+                onStatusSave(slotProps.row)
+              }"
+            >
+              <q-select
+                v-model="scope.value"
+                :options="statusOptions"
+                dense
+                outlined
+                emit-value
+                map-options
+                autofocus
+              />
+            </q-popup-edit>
           </q-td>
 
           <q-td key="action" :props="slotProps" class="col-action">
@@ -215,7 +264,6 @@
 import { computed, ref, watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
-
 
 interface ProductBasedCostingItem {
   id: number
@@ -275,6 +323,16 @@ const emit = defineEmits<{
     item: ProductBasedCostingItem
     row: ProductBasedCostingTableRow
     field: 'quantity' | 'offer_price' | 'status'
+  }): void
+  (e: 'product-weight-change', payload: {
+    item: ProductBasedCostingItem
+    row: ProductBasedCostingTableRow
+    field: 'product_weight'
+  }): void
+  (e: 'package-weight-change', payload: {
+    item: ProductBasedCostingItem
+    row: ProductBasedCostingTableRow
+    field: 'package_weight'
   }): void
 }>()
 
@@ -349,18 +407,21 @@ const columns = computed<QTableColumn[]>(() => [
   { name: 'qty', label: 'Qty', field: 'qty', align: 'center' },
   { name: 'barcodeText', label: 'Barcode / Code / Product ID', field: 'barcodeText', align: 'left' },
   { name: 'website', label: 'Website', field: 'website', align: 'left' },
-  { name: 'priceGbp', label: 'Price (GBP)', field: 'priceGbp', align: 'right' },
+
+  { name: 'priceGbp', label: 'Price (GBP)', field: 'priceGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
   { name: 'productWeight', label: 'Product Wt (g)', field: 'productWeight', align: 'right' },
   { name: 'packageWeight', label: 'Package Wt (g)', field: 'packageWeight', align: 'right' },
   { name: 'totalWeight', label: 'Total Wt (g)', field: 'totalWeight', align: 'right' },
   { name: 'cargoRate', label: 'Cargo Rate', field: 'cargoRate', align: 'right' },
-  { name: 'cargoCostGbp', label: 'Cargo Cost (GBP)', field: 'cargoCostGbp', align: 'right' },
-  { name: 'totalCostGbp', label: 'Total Cost (GBP)', field: 'totalCostGbp', align: 'right' },
-  { name: 'costBdt', label: 'Cost (BDT)', field: 'costBdt', align: 'right' },
-  { name: 'totalCostBdt', label: 'Total Cost (BDT)', field: 'totalCostBdt', align: 'right' },
-  { name: 'offerPriceBdt', label: 'Offer Price (BDT)', field: 'offerPriceBdt', align: 'right' },
-  { name: 'totalBdt', label: 'Total (BDT)', field: 'totalBdt', align: 'right' },
-  { name: 'profitBdt', label: 'Profit (BDT)', field: 'profitBdt', align: 'right' },
+  { name: 'cargoCostGbp', label: 'Cargo Cost (GBP)', field: 'cargoCostGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
+  { name: 'totalCostGbp', label: 'Total Cost (GBP)', field: 'totalCostGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
+
+  { name: 'costBdt', label: 'Cost (BDT)', field: 'costBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
+  { name: 'totalCostBdt', label: 'Total Cost (BDT)', field: 'totalCostBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
+  { name: 'offerPriceBdt', label: 'Offer Price (BDT)', field: 'offerPriceBdt', align: 'right', classes: 'bg-offer', headerClasses: 'bg-offer' },
+  { name: 'totalBdt', label: 'Total (BDT)', field: 'totalBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
+  { name: 'profitBdt', label: 'Profit (BDT)', field: 'profitBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
+
   { name: 'profitRate', label: 'Profit Rate (%)', field: 'profitRate', align: 'right' },
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
   { name: 'action', label: 'Action', field: 'action', align: 'center' },
@@ -403,15 +464,55 @@ const emitRowChange = (
     quantity: row.qty,
     offer_price: row.offerPriceBdt,
     status: row.status,
+    product_weight: row.productWeight,
+    package_weight: row.packageWeight,
   }
 
   row.raw = updatedItem
 
   emit('row-change', {
-  item: updatedItem,
-  row: { ...row, raw: updatedItem },
-  field,
-})
+    item: updatedItem,
+    row: { ...row, raw: updatedItem },
+    field,
+  })
+}
+
+const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
+  const updatedItem: ProductBasedCostingItem = {
+    ...row.raw,
+    quantity: row.qty,
+    offer_price: row.offerPriceBdt,
+    status: row.status,
+    product_weight: row.productWeight,
+    package_weight: row.packageWeight,
+  }
+
+  row.raw = updatedItem
+
+  emit('product-weight-change', {
+    item: updatedItem,
+    row: { ...row, raw: updatedItem },
+    field: 'product_weight',
+  })
+}
+
+const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
+  const updatedItem: ProductBasedCostingItem = {
+    ...row.raw,
+    quantity: row.qty,
+    offer_price: row.offerPriceBdt,
+    status: row.status,
+    product_weight: row.productWeight,
+    package_weight: row.packageWeight,
+  }
+
+  row.raw = updatedItem
+
+  emit('package-weight-change', {
+    item: updatedItem,
+    row: { ...row, raw: updatedItem },
+    field: 'package_weight',
+  })
 }
 
 const onQtySave = (row: ProductBasedCostingTableRow) => {
@@ -429,10 +530,18 @@ const onStatusSave = (row: ProductBasedCostingTableRow) => {
   emitRowChange(row, 'status')
 }
 
+const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
+  row.productWeight = toNumber(row.productWeight)
+  emitProductWeightChange(row)
+}
+
+const onPackageWeightSave = (row: ProductBasedCostingTableRow) => {
+  row.packageWeight = toNumber(row.packageWeight)
+  emitPackageWeightChange(row)
+}
+
 const onEdit = (row: ProductBasedCostingTableRow) => {
-
-    emit('edit', row.raw)
-
+  emit('edit', row.raw)
 }
 
 const onDelete = (row: ProductBasedCostingTableRow) => {
@@ -613,5 +722,17 @@ const getStatusColor = (status: string | null) => {
 .col-action {
   min-width: 100px;
   background: #ffffff;
+}
+
+:deep(.bg-gbp) {
+  background-color: #e6f4ea !important;
+}
+
+:deep(.bg-bdt) {
+  background-color: #fff8e1 !important;
+}
+
+:deep(.bg-offer) {
+  background-color: #f3e5f5 !important;
 }
 </style>

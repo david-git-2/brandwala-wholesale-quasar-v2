@@ -52,6 +52,7 @@ export interface ProductBasedCostingItemCreateInput {
   package_weight?: number | null
   offer_price?: number | null
   status?: string | null
+  product_id?: number | null
 }
 
 export interface ProductBasedCostingItemUpdateInput

@@ -61,19 +61,29 @@
   </q-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue'
 
-const props = defineProps({
-  modelValue: Boolean,
-  data: Object
-})
+interface CostingFileForm {
+  id: number | null
+  name: string
+  order_for: string
+  note: string
+}
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const props = defineProps<{
+  modelValue: boolean
+  data: CostingFileForm | null
+}>()
+
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: boolean): void
+  (event: 'submit', value: CostingFileForm): void
+}>()
 
 const formRef = ref(null)
 
-const emptyForm = () => ({
+const emptyForm = (): CostingFileForm => ({
   id: null,
   name: '',
   order_for: '',
@@ -89,7 +99,7 @@ const localOpen = computed({
   set: (v) => emit('update:modelValue', v)
 })
 
-function fillForm(source) {
+function fillForm(source: CostingFileForm | null) {
   const values = source || emptyForm()
 
   form.id = values.id ?? null
