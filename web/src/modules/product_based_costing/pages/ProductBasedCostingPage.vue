@@ -11,11 +11,13 @@
     <div v-else>
       <p>Product Based Costing Data</p>
 
-      <div class="row q-gutter-sm">
+      <div class="row justify-end q-mb-md">
         <q-btn
           color="primary"
+          no-caps
           label="Create Costing File"
           @click="openCreateDialog"
+
         />
 
 
@@ -40,6 +42,7 @@ import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFile
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import CostingFileCard from '../components/CostingFileCard.vue'
 import { useRouter, useRoute } from 'vue-router'
+import type { ProductBasedCostingFile } from '../types'
 
 
 const store = useProductBasedCostingStore()
@@ -68,8 +71,13 @@ function openCreateDialog() {
   dialogOpen.value = true
 }
 
-function openEditDialog(row: CostingFileForm) {
-  selectedRow.value = { ...row }
+function openEditDialog(row: ProductBasedCostingFile) {
+  selectedRow.value = {
+    id: row.id,
+    name: row.name ?? '',
+    order_for: row.order_for ?? '',
+    note: row.note ?? '',
+  }
   dialogOpen.value = true
 }
 
@@ -92,7 +100,7 @@ async function handleDialogSubmit(payload: CostingFileForm) {
   }
 }
 
-const onSelect = async (item) => {
+const onSelect = async (item: ProductBasedCostingFile) => {
   const tenantSlug = route.params.tenantSlug
 
   await router.push({
@@ -106,7 +114,7 @@ const onSelect = async (item) => {
 
 
 
-const onDelete = async (item) => {
+const onDelete = async (item: ProductBasedCostingFile) => {
   console.log('delete', item)
   await store.deleteProductBasedCostingFile(item.id)
 }

@@ -16,10 +16,11 @@ type FetchProductsParams = {
   page?: number
   pageSize?: number
   search?: string
-  category?: string | null
-  brand?: string | null
+  category?: string | null | undefined
+  brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'
-  tenantId?: number
+  tenantId?: number | null | undefined
+  vendorCode?: string | null | undefined
 }
 
 type ProductStoreState = {
@@ -34,7 +35,8 @@ type ProductStoreState = {
   category: string
   brand: string
   sortPrice: 'asc' | 'desc'
-  tenantId?: number
+  tenantId: number | undefined
+  vendorCode: string | undefined
 }
 
 export const useProductStore = defineStore('product', {
@@ -51,6 +53,7 @@ export const useProductStore = defineStore('product', {
     brand: '',
     sortPrice: 'asc',
     tenantId: undefined,
+    vendorCode: undefined,
   }),
 
   actions: {
@@ -65,7 +68,8 @@ export const useProductStore = defineStore('product', {
       if (params.category !== undefined) this.category = params.category ?? ''
       if (params.brand !== undefined) this.brand = params.brand ?? ''
       if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
-      if (params.tenantId !== undefined) this.tenantId = params.tenantId
+      if (params.tenantId !== undefined) this.tenantId = params.tenantId ?? undefined
+      if (params.vendorCode !== undefined) this.vendorCode = params.vendorCode ?? undefined
     },
 
     resetFilters() {
@@ -76,6 +80,7 @@ export const useProductStore = defineStore('product', {
       this.brand = ''
       this.sortPrice = 'asc'
       this.tenantId = undefined
+      this.vendorCode = undefined
     },
 
     async fetchProducts(params?: FetchProductsParams) {
@@ -91,10 +96,11 @@ export const useProductStore = defineStore('product', {
           page: this.page,
           pageSize: this.pageSize,
           search: this.search,
-          category: this.category || undefined,
-          brand: this.brand || undefined,
+          category: this.category || null,
+          brand: this.brand || null,
           sortPrice: this.sortPrice,
-          tenantId: this.tenantId,
+          tenantId: this.tenantId ?? null,
+          vendorCode: this.vendorCode || null,
         })
 
         if (!result.success) {
@@ -136,7 +142,8 @@ export const useProductStore = defineStore('product', {
           category: this.category,
           brand: this.brand,
           sortPrice: this.sortPrice,
-          tenantId: this.tenantId,
+          tenantId: this.tenantId ?? null,
+          vendorCode: this.vendorCode ?? null,
         })
 
         return result
@@ -158,12 +165,16 @@ export const useProductStore = defineStore('product', {
           return result
         }
 
-        if (result.data) {
-          const index = this.items.findIndex((item) => item.id === result.data.id)
+        const updatedProduct = result.data
 
-          if (index >= 0) {
-            this.items.splice(index, 1, result.data)
-          }
+        if (!updatedProduct) {
+          return result
+        }
+
+        const index = this.items.findIndex((item) => item.id === updatedProduct.id)
+
+        if (index >= 0) {
+          this.items.splice(index, 1, updatedProduct)
         }
 
         showSuccessNotification('Product updated successfully.')

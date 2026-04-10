@@ -24,6 +24,7 @@ export type ProductBasedCostingServiceResult<T> = {
 export interface ProductBasedCostingItem {
   id: number
   product_based_costing_file_id: number | null
+  product_id?: number | null
   name: string | null
   image_url: string | null
   quantity: number | null

@@ -18,6 +18,16 @@
 
       <q-btn
         color="primary"
+        outline
+        icon="visibility"
+        no-caps
+        label="Preview"
+        @click="openPreview"
+        style="border-radius: 8px"
+      />
+
+      <q-btn
+        color="primary"
         icon="shopping_cart"
         no-caps
         label="Cart"
@@ -51,15 +61,21 @@
     </q-card>
 
     <div class="row q-gutter-sm">
-      <q-input v-model="conversion_rate" dense outlined type="number" label="Conversion Rate" />
       <q-input
-        v-model="cargo_rate_kg_gbp"
+        v-model.number="conversion_rate"
+        dense
+        outlined
+        type="number"
+        label="Conversion Rate"
+      />
+      <q-input
+        v-model.number="cargo_rate_kg_gbp"
         dense
         outlined
         type="number"
         label="Cargo Rate (kg/GBP)"
       />
-      <q-input v-model="profit_rate" dense outlined type="number" label="Profit Rate" />
+      <q-input v-model.number="profit_rate" dense outlined type="number" label="Profit Rate" />
       <q-btn
         color="primary"
         label="save rates"
@@ -79,9 +95,10 @@
       <div v-else class="row q-col-gutter-md">
         <ProductBasedCostingItemsTable
           :items="store.costingItems"
-          :cargo-rate="650"
-          :conversion-rate="140"
-          :profit-rate="25"
+          :cargo-rate="cargoRateValue"
+          :conversion-rate="conversionRateValue"
+          :profit-rate="profitRateValue"
+          :status="store.item?.status??'pending'"
           @edit="onEdit"
           @delete="onDelete"
           @row-change="onRowChange"
@@ -113,19 +130,30 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
+import type { ProductBasedCostingItem } from '../types';
 const productStore = useProductStore();
 
 const route = useRoute();
 const router = useRouter();
 const store = useProductBasedCostingStore();
 
-const cargo_rate_kg_gbp = ref();
-const conversion_rate = ref();
-const profit_rate = ref();
-const status = ref();
-const fileId = computed(() => Number(route.params.id));
+const cargo_rate_kg_gbp = ref<number | null>(null);
+const conversion_rate = ref<number | null>(null);
+const profit_rate = ref<number | null>(null);
+const status = ref<string>('pending');
+const cargoRateValue = computed(() => cargo_rate_kg_gbp.value ?? 0);
+const conversionRateValue = computed(() => conversion_rate.value ?? 140);
+const profitRateValue = computed(() => profit_rate.value ?? 25);
+const fileId = computed(() => {
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
 
 const onStatusChange = async () => {
+  if (!fileId.value) {
+    return;
+  }
+
   await store.updateProductBasedCostingFile({
     id: fileId.value,
     status: status.value,
@@ -146,15 +174,19 @@ const loadData = async () => {
 const statusOptions = ['pending', 'offered', 'cancelled'];
 
 const handleCreated = async () => {
+  if (!fileId.value) {
+    return;
+  }
+
   await store.fetchProductBasedCostingItems(fileId.value);
 };
 
 onMounted(async () => {
   await loadData();
 
-  cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp || null;
-  conversion_rate.value = store.item?.conversion_rate || null;
-  profit_rate.value = store.item?.profit_rate || null;
+  cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp ?? null;
+  conversion_rate.value = store.item?.conversion_rate ?? null;
+  profit_rate.value = store.item?.profit_rate ?? null;
   status.value = store.item?.status || 'pending';
 });
 
@@ -165,23 +197,35 @@ watch(
   },
 );
 
-const onEdit = (item: unknown) => {
+const onEdit = (item: ProductBasedCostingItem) => {
   console.log('edit', item);
   openEditDialog(item);
 };
 
-const onDelete = async (item: unknown) => {
+const onDelete = async (item: ProductBasedCostingItem) => {
   console.log('delete', item);
   await store.deleteProductBasedCostingItem(item.id);
 };
 
-const onRowChange = async (payload) => {
+type RowChangePayload = {
+  item: ProductBasedCostingItem
+  row: unknown
+  field: 'quantity' | 'offer_price' | 'status'
+}
+
+type WeightChangePayload = {
+  item: ProductBasedCostingItem
+  row: unknown
+  field: 'product_weight' | 'package_weight'
+}
+
+const onRowChange = async (payload: RowChangePayload) => {
   await store.updateProductBasedCostingItem(payload.item);
   console.log('Row changed:', payload);
 };
 
 const showItemDialog = ref(false);
-const selectedItem = ref(null);
+const selectedItem = ref<ProductBasedCostingItem | null>(null);
 
 const openCreateDialog = () => {
   console.log('Opening create dialog');
@@ -189,16 +233,35 @@ const openCreateDialog = () => {
   showItemDialog.value = true;
 };
 
-const openEditDialog = (item) => {
+const openPreview = () => {
+  if (!fileId.value) {
+    return
+  }
+
+  void router.push({
+    name: 'product-based-costing-file-preview-page',
+    params: { id: fileId.value },
+  })
+}
+
+const openEditDialog = (item: ProductBasedCostingItem) => {
   selectedItem.value = item;
   showItemDialog.value = true;
 };
 
 const handleUpdated = async () => {
+  if (!fileId.value) {
+    return;
+  }
+
   await store.fetchProductBasedCostingItems(fileId.value);
 };
 
 const onRateSave = async () => {
+  if (!store.item || !fileId.value) {
+    return;
+  }
+
   console.log('Saving rates:', {
     conversion_rate: conversion_rate.value,
     cargo_rate_kg_gbp: cargo_rate_kg_gbp.value,
@@ -206,20 +269,15 @@ const onRateSave = async () => {
   });
   const payload = {
     id: store.item.id,
-
-    name: store.item.name,
-    order_for: store.item.order_for,
-    note: store.item.note,
-    conversion_rate: conversion_rate.value,
-    cargo_rate_kg_gbp: cargo_rate_kg_gbp.value,
-    profit_rate: profit_rate.value,
-    status: status.value,
+    conversion_rate: conversion_rate.value ||0,
+    cargo_rate_kg_gbp: cargo_rate_kg_gbp.value||0,
+    profit_rate: profit_rate.value ||0,
   };
 
   await store.updateProductBasedCostingFile(payload);
 };
 
-const onProductWeightChange = async (payload) => {
+const onProductWeightChange = async (payload: WeightChangePayload) => {
   console.log('Product weight changed:', payload.item.product_id);
   if (payload.item.product_id) {
     await productStore.updateProduct({
@@ -233,7 +291,7 @@ const onProductWeightChange = async (payload) => {
   });
 };
 
-const onPackageWeightChange = async (payload) => {
+const onPackageWeightChange = async (payload: WeightChangePayload) => {
   console.log('Package weight changed:', payload);
   if (payload.item.product_id) {
     await productStore.updateProduct({

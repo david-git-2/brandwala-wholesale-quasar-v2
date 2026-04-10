@@ -81,7 +81,11 @@ const emit = defineEmits<{
   (event: 'submit', value: CostingFileForm): void
 }>()
 
-const formRef = ref(null)
+type FormRef = {
+  validate: () => boolean | Promise<boolean>
+}
+
+const formRef = ref<FormRef | null>(null)
 
 const emptyForm = (): CostingFileForm => ({
   id: null,

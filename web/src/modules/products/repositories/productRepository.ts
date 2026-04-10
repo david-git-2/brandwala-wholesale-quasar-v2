@@ -137,10 +137,11 @@ type ListProductsParams = {
   page?: number
   pageSize?: number
   search?: string
-  category?: string
-  brand?: string
+  category?: string | null | undefined
+  brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'
-  tenantId?: number
+  tenantId?: number | null | undefined
+  vendorCode?: string | null | undefined
 }
 
 const listBrands = async (): Promise<string[]> => {
@@ -198,15 +199,14 @@ const listCategories = async (): Promise<string[]> => {
       return true
     })
 }
-
 const listProducts = async ({
   page = 1,
   pageSize = 20,
   search = '',
   category,
   brand,
-  sortPrice = 'asc',
   tenantId,
+  vendorCode,
 }: ListProductsParams): Promise<PaginatedProducts> => {
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -217,6 +217,10 @@ const listProducts = async ({
 
   if (tenantId != null) {
     query = query.eq('tenant_id', tenantId)
+  }
+
+  if (vendorCode) {
+    query = query.eq('vendor_code', vendorCode)
   }
 
   if (search.trim()) {
@@ -234,7 +238,7 @@ const listProducts = async ({
   }
 
   query = query
-    .order('price_gbp', { ascending: sortPrice === 'asc', nullsFirst: false })
+    .order('name', { ascending: true })
     .range(from, to)
 
   const { data, error, count } = await query

@@ -9,7 +9,6 @@
           dense
           type="text"
           label="Search"
-          debounce="300"
         />
       </div>
 
@@ -86,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import ProductCard from '../components/ProductCard.vue'
 import { productService } from 'src/modules/products/services/productService'
@@ -117,6 +116,8 @@ const allCategoryOption: FilterOption = {
 const search = ref('')
 const category = ref<string | null>(null)
 const brand = ref<string | null>(null)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
+const suppressFilterWatch = ref(false)
 
 const brandNames = ref<string[]>([])
 const categoryNames = ref<string[]>([])
@@ -126,22 +127,6 @@ const filteredCategoryNames = ref<string[]>([])
 
 const brandLoading = ref(false)
 const categoryLoading = ref(false)
-
-const brandOptions = computed<FilterOption[]>(() => [
-  allBrandOption,
-  ...brandNames.value.map((item) => ({
-    label: item,
-    value: item,
-  })),
-])
-
-const categoryOptions = computed<FilterOption[]>(() => [
-  allCategoryOption,
-  ...categoryNames.value.map((item) => ({
-    label: item,
-    value: item,
-  })),
-])
 
 const filteredBrandOptions = computed<FilterOption[]>(() => [
   allBrandOption,
@@ -165,6 +150,7 @@ const loadProducts = async () => {
     search: search.value,
     category: category.value,
     brand: brand.value,
+    vendorCode: "PC",
   })
 }
 
@@ -226,7 +212,29 @@ const filterCategories = (val: string, update: (fn: () => void) => void) => {
   })
 }
 
-watch([search, category, brand], () => {
+const scheduleSearchLoad = () => {
+  if (suppressFilterWatch.value) {
+    return
+  }
+
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+
+  searchDebounceTimer = setTimeout(() => {
+    void loadProducts()
+  }, 400)
+}
+
+watch(search, () => {
+  scheduleSearchLoad()
+})
+
+watch([category, brand], () => {
+  if (suppressFilterWatch.value) {
+    return
+  }
+
   void loadProducts()
 })
 
@@ -247,28 +255,47 @@ const onPaginationClick = async () => {
 }
 
 const onResetFilters = async () => {
-  search.value = ''
-  brand.value = null
-  category.value = null
+  suppressFilterWatch.value = true
 
-  filteredBrandNames.value = [...brandNames.value]
-  filteredCategoryNames.value = [...categoryNames.value]
+  try {
+    search.value = ''
+    brand.value = null
+    category.value = null
 
-  await productStore.fetchProducts({
-    page: 1,
-    search: '',
-    category: null,
-    brand: null,
-  })
+    filteredBrandNames.value = [...brandNames.value]
+    filteredCategoryNames.value = [...categoryNames.value]
+
+    await productStore.fetchProducts({
+      page: 1,
+      search: '',
+      category: null,
+      brand: null,
+    })
+  } finally {
+    suppressFilterWatch.value = false
+  }
 }
 
+const fileId = computed(() => {
+  const parsed = Number(route.params.id)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+})
 
-const loadCostingFileItems=async ()=>{
-        await costingFileStore.fetchProductBasedCostingItems(route.params.id)
+const loadCostingFileItems = async () => {
+  if (!fileId.value) {
+    return
+  }
 
+  await costingFileStore.fetchProductBasedCostingItems(fileId.value)
 }
 onMounted(() => {
   void Promise.all([loadBrands(), loadCategories(), loadProducts(), loadCostingFileItems()])
+})
+
+onBeforeUnmount(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
 })
 </script>
 

@@ -45,18 +45,20 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
+import type { ProductBasedCostingFile } from '../types'
 
-defineProps({
-  items: {
-    type: Array,
-    required: true
-  }
-})
+defineProps<{
+  items: ProductBasedCostingFile[]
+}>()
 
-const emit = defineEmits(['select', 'edit', 'delete'])
+const emit = defineEmits<{
+  (event: 'select', item: ProductBasedCostingFile): void
+  (event: 'edit', item: ProductBasedCostingFile): void
+  (event: 'delete', item: ProductBasedCostingFile): void
+}>()
 
 const $q = useQuasar()
 
@@ -64,15 +66,15 @@ const colClass = computed(() => {
   return $q.screen.gt.md ? 'col-6' : 'col-12'
 })
 
-const handleSelect = (item) => {
+const handleSelect = (item: ProductBasedCostingFile) => {
   emit('select', item)
 }
 
-const handleEdit = (item) => {
+const handleEdit = (item: ProductBasedCostingFile) => {
   emit('edit', item)
 }
 
-const handleDelete = (item) => {
+const handleDelete = (item: ProductBasedCostingFile) => {
   $q.dialog({
     title: 'Confirm Delete',
     message: `Are you sure you want to delete #${item.id} ${item.name}?`,

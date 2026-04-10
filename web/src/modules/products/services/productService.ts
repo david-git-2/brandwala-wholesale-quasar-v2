@@ -10,10 +10,11 @@ type ListProductsParams = {
   page?: number
   pageSize?: number
   search?: string
-  category?: string
-  brand?: string
+  category?: string | null | undefined
+  brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'
-  tenantId?: number
+  tenantId?: number | null | undefined
+  vendorCode?: string | null | undefined
 }
 
 type ProductServiceResult<T> = {

@@ -41,10 +41,12 @@
               persistent
               label-set="Save"
               label-cancel="Cancel"
-              @save="(value) => {
-                slotProps.row.qty = toNumber(value)
-                onQtySave(slotProps.row)
-              }"
+              @save="
+                (value) => {
+                  slotProps.row.qty = toNumber(value);
+                  onQtySave(slotProps.row);
+                }
+              "
             >
               <q-input
                 v-model.number="scope.value"
@@ -77,7 +79,11 @@
             {{ formatNumber(slotProps.row.priceGbp) }}
           </q-td>
 
-          <q-td key="productWeight" :props="slotProps" class="col-product-weight text-right editable-cell">
+          <q-td
+            key="productWeight"
+            :props="slotProps"
+            class="col-product-weight text-right editable-cell"
+          >
             <div class="editable-value">
               {{ formatNumber(slotProps.row.productWeight) }}
             </div>
@@ -89,10 +95,12 @@
               persistent
               label-set="Save"
               label-cancel="Cancel"
-              @save="(value) => {
-                slotProps.row.productWeight = toNumber(value)
-                onProductWeightSave(slotProps.row)
-              }"
+              @save="
+                (value) => {
+                  slotProps.row.productWeight = toNumber(value);
+                  onProductWeightSave(slotProps.row);
+                }
+              "
             >
               <q-input
                 v-model.number="scope.value"
@@ -105,7 +113,11 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td key="packageWeight" :props="slotProps" class="col-package-weight text-right editable-cell">
+          <q-td
+            key="packageWeight"
+            :props="slotProps"
+            class="col-package-weight text-right editable-cell"
+          >
             <div class="editable-value">
               {{ formatNumber(slotProps.row.packageWeight) }}
             </div>
@@ -117,10 +129,12 @@
               persistent
               label-set="Save"
               label-cancel="Cancel"
-              @save="(value) => {
-                slotProps.row.packageWeight = toNumber(value)
-                onPackageWeightSave(slotProps.row)
-              }"
+              @save="
+                (value) => {
+                  slotProps.row.packageWeight = toNumber(value);
+                  onPackageWeightSave(slotProps.row);
+                }
+              "
             >
               <q-input
                 v-model.number="scope.value"
@@ -157,7 +171,11 @@
             {{ formatNumber(getTotalCostBdt(slotProps.row)) }}
           </q-td>
 
-          <q-td key="offerPriceBdt" :props="slotProps" class="col-offer-price-bdt text-right editable-cell">
+          <q-td
+            key="offerPriceBdt"
+            :props="slotProps"
+            class="col-offer-price-bdt text-right editable-cell"
+          >
             <div class="editable-value">
               {{ formatNumber(slotProps.row.offerPriceBdt) }}
             </div>
@@ -169,10 +187,12 @@
               persistent
               label-set="Save"
               label-cancel="Cancel"
-              @save="(value) => {
-                slotProps.row.offerPriceBdt = toNumber(value)
-                onOfferPriceBdtSave(slotProps.row)
-              }"
+              @save="
+                (value) => {
+                  slotProps.row.offerPriceBdt = toNumber(value);
+                  onOfferPriceBdtSave(slotProps.row);
+                }
+              "
             >
               <q-input
                 v-model.number="scope.value"
@@ -194,14 +214,11 @@
           </q-td>
 
           <q-td key="profitRate" :props="slotProps" class="col-profit-rate text-right">
-            {{ formatNumber(slotProps.row.profitRate) }}
+            {{ formatNumber(getProfitRate(slotProps.row)) }}
           </q-td>
 
           <q-td key="status" :props="slotProps" class="col-status text-center editable-cell">
-            <q-badge
-              :color="getStatusColor(slotProps.row.status)"
-              outline
-            >
+            <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
             </q-badge>
 
@@ -212,10 +229,12 @@
               persistent
               label-set="Save"
               label-cancel="Cancel"
-              @save="(value) => {
-                slotProps.row.status = toText(value, 'pending').toLowerCase()
-                onStatusSave(slotProps.row)
-              }"
+              @save="
+                (value) => {
+                  slotProps.row.status = toText(value, 'pending').toLowerCase();
+                  onStatusSave(slotProps.row);
+                }
+              "
             >
               <q-select
                 v-model="scope.value"
@@ -236,224 +255,452 @@
                 flat
                 round
                 dense
+                :disable="props.status !== 'pending'"
+                :color="props.status == 'pending' ? 'blue-10' : 'grey'"
                 @click="onEdit(slotProps.row)"
+                class="col"
               />
               <q-btn
                 icon="delete"
                 flat
                 round
                 dense
-                color="negative"
+                :color="props.status == 'pending' ? 'negative' : 'grey'"
+                :disable="props.status !== 'pending'"
                 @click="onDelete(slotProps.row)"
+                class="col"
               />
             </div>
           </q-td>
         </q-tr>
       </template>
 
+      <template #bottom-row>
+        <q-tr class="totals-row">
+          <q-td class="totals-row__cell col-sl text-center">Total</q-td>
+          <q-td class="totals-row__cell col-image" />
+          <q-td class="totals-row__cell col-name">
+            {{ tableRows.length }} Items
+          </q-td>
+          <q-td class="totals-row__cell col-qty text-center">
+            {{ formatNumber(totals.qty) }}
+          </q-td>
+          <q-td class="totals-row__cell col-barcode" />
+          <q-td class="totals-row__cell col-website" />
+          <q-td class="totals-row__cell col-price-gbp text-right">
+            {{ formatNumber(totals.priceGbp) }}
+          </q-td>
+          <q-td class="totals-row__cell col-product-weight text-right">
+            {{ formatNumber(totals.productWeight) }}
+          </q-td>
+          <q-td class="totals-row__cell col-package-weight text-right">
+            {{ formatNumber(totals.packageWeight) }}
+          </q-td>
+          <q-td class="totals-row__cell col-total-weight text-right">
+            {{ formatNumber(totals.totalWeight) }}
+          </q-td>
+          <q-td class="totals-row__cell col-cargo-rate text-right">
+            {{ formatNumber(totals.cargoRate) }}
+          </q-td>
+          <q-td class="totals-row__cell col-cargo-cost-gbp text-right">
+            {{ formatNumber(totals.cargoCostGbp) }}
+          </q-td>
+          <q-td class="totals-row__cell col-total-cost-gbp text-right">
+            {{ formatNumber(totals.totalCostGbp) }}
+          </q-td>
+          <q-td class="totals-row__cell col-cost-bdt text-right">
+            {{ formatNumber(totals.costBdt) }}
+          </q-td>
+          <q-td class="totals-row__cell col-total-cost-bdt text-right">
+            {{ formatNumber(totals.totalCostBdt) }}
+          </q-td>
+          <q-td class="totals-row__cell col-offer-price-bdt text-right">
+            {{ formatNumber(totals.offerPriceBdt) }}
+          </q-td>
+          <q-td class="totals-row__cell col-total-bdt text-right">
+            {{ formatNumber(totals.totalBdt) }}
+          </q-td>
+          <q-td class="totals-row__cell col-profit-bdt text-right">
+            {{ formatNumber(totals.profitBdt) }}
+          </q-td>
+          <q-td class="totals-row__cell col-profit-rate text-right">
+            {{ formatNumber(totals.profitRate) }}
+          </q-td>
+          <q-td class="totals-row__cell col-status" />
+          <q-td class="totals-row__cell col-action" />
+        </q-tr>
+      </template>
+
       <template #no-data>
-        <div class="full-width row flex-center q-pa-md text-grey-7">
-          No items found
-        </div>
+        <div class="full-width row flex-center q-pa-md text-grey-7">No items found</div>
       </template>
     </q-table>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useQuasar, type QTableColumn } from 'quasar'
-import SmartImage from 'src/components/SmartImage.vue'
+import { computed, ref, watch } from 'vue';
+import { useQuasar, type QTableColumn } from 'quasar';
+import SmartImage from 'src/components/SmartImage.vue';
+import { roundBdtUpToZeroOrFive } from 'src/modules/costingFile/utils/costingCalculations';
 
 interface ProductBasedCostingItem {
-  id: number
-  product_based_costing_file_id: number | null
-  name: string | null
-  image_url: string | null
-  quantity: number | null
-  barcode: string | null
-  product_code: string | null
-  web_link: string | null
-  price_gbp: number | null
-  product_weight: number | null
-  package_weight: number | null
-  offer_price: number | null
-  status: string | null
-  created_at: string
-  updated_at: string
+  id: number;
+  product_based_costing_file_id: number | null;
+  product_id?: number | null;
+  name: string | null;
+  image_url: string | null;
+  quantity: number | null;
+  barcode: string | null;
+  product_code: string | null;
+  web_link: string | null;
+  price_gbp: number | null;
+  product_weight: number | null;
+  package_weight: number | null;
+  offer_price: number | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ProductBasedCostingTableRow {
-  id: number
-  sl: number
-  name: string
-  imageUrl: string | null
-  qty: number
-  barcodeText: string
-  website: string | null
-  priceGbp: number
-  productWeight: number
-  packageWeight: number
-  cargoRate: number
-  conversionRate: number
-  profitRate: number
-  offerPriceBdt: number
-  status: string
-  raw: ProductBasedCostingItem
+  id: number;
+  sl: number;
+  name: string;
+  imageUrl: string | null;
+  qty: number;
+  barcodeText: string;
+  website: string | null;
+  priceGbp: number;
+  productWeight: number;
+  packageWeight: number;
+  cargoRate: number;
+  conversionRate: number;
+  profitRate: number;
+  offerPriceBdt: number;
+  status: string;
+  raw: ProductBasedCostingItem;
 }
 
 const props = withDefaults(
   defineProps<{
-    items: ProductBasedCostingItem[]
-    cargoRate?: number
-    conversionRate?: number
-    profitRate?: number
+    items: ProductBasedCostingItem[];
+    cargoRate?: number;
+    conversionRate?: number;
+    profitRate?: number;
+    status?: string | undefined;
   }>(),
   {
     cargoRate: 0,
     conversionRate: 0,
     profitRate: 0,
+    status: 'pending',
   },
-)
+);
 
 const emit = defineEmits<{
-  (e: 'edit', item: ProductBasedCostingItem): void
-  (e: 'delete', item: ProductBasedCostingItem): void
-  (e: 'row-change', payload: {
-    item: ProductBasedCostingItem
-    row: ProductBasedCostingTableRow
-    field: 'quantity' | 'offer_price' | 'status'
-  }): void
-  (e: 'product-weight-change', payload: {
-    item: ProductBasedCostingItem
-    row: ProductBasedCostingTableRow
-    field: 'product_weight'
-  }): void
-  (e: 'package-weight-change', payload: {
-    item: ProductBasedCostingItem
-    row: ProductBasedCostingTableRow
-    field: 'package_weight'
-  }): void
-}>()
+  (e: 'edit', item: ProductBasedCostingItem): void;
+  (e: 'delete', item: ProductBasedCostingItem): void;
+  (
+    e: 'row-change',
+    payload: {
+      item: ProductBasedCostingItem;
+      row: ProductBasedCostingTableRow;
+      field: 'quantity' | 'offer_price' | 'status';
+    },
+  ): void;
+  (
+    e: 'product-weight-change',
+    payload: {
+      item: ProductBasedCostingItem;
+      row: ProductBasedCostingTableRow;
+      field: 'product_weight';
+    },
+  ): void;
+  (
+    e: 'package-weight-change',
+    payload: {
+      item: ProductBasedCostingItem;
+      row: ProductBasedCostingTableRow;
+      field: 'package_weight';
+    },
+  ): void;
+}>();
 
-const $q = useQuasar()
+const $q = useQuasar();
 
 const statusOptions = [
   { label: 'Pending', value: 'pending' },
   { label: 'Accepted', value: 'accepted' },
   { label: 'Rejected', value: 'rejected' },
-]
+];
 
 const toNumber = (value: unknown) => {
-  const num = Number(value ?? 0)
-  return Number.isNaN(num) ? 0 : num
-}
+  const num = Number(value ?? 0);
+  return Number.isNaN(num) ? 0 : num;
+};
 
 const toText = (value: unknown, fallback = '-') => {
-  if (typeof value !== 'string') return fallback
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : fallback
-}
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+};
 
 const formatNumber = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '-'
+    return '-';
   }
 
-  return Number(value).toFixed(2)
-}
+  return Number(value).toFixed(2);
+};
 
 const buildRows = (): ProductBasedCostingTableRow[] => {
   return (props.items ?? []).map((item, index) => {
-    const barcode = toText(item.barcode, '')
-    const productCode = toText(item.product_code, '')
-    const barcodeParts = [barcode, productCode, String(item.id)].filter(Boolean)
+    const barcode = toText(item.barcode, '');
+    const productCode = toText(item.product_code, '');
+    const barcodeParts = [barcode, productCode, String(item.id)].filter(Boolean);
+    const qty = toNumber(item.quantity);
+    const priceGbp = toNumber(item.price_gbp);
+    const productWeight = toNumber(item.product_weight);
+    const packageWeight = toNumber(item.package_weight);
+    const cargoRate = toNumber(props.cargoRate);
+    const conversionRate = toNumber(props.conversionRate);
+    const profitRate = toNumber(props.profitRate);
+    const cargoCostGbp = (((productWeight + packageWeight) * qty) / 1000) * cargoRate;
+    const totalCostGbp = priceGbp + cargoCostGbp;
+    const costBdt = roundBdtUpToZeroOrFive(totalCostGbp * conversionRate);
+    const calculatedOfferPriceBdt = roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate) / 100);
 
     return {
       id: item.id,
       sl: index + 1,
       name: toText(item.name),
       imageUrl: item.image_url ?? null,
-      qty: toNumber(item.quantity),
+      qty,
       barcodeText: barcodeParts.length ? barcodeParts.join(' / ') : '-',
       website: item.web_link ?? null,
-      priceGbp: toNumber(item.price_gbp),
-      productWeight: toNumber(item.product_weight),
-      packageWeight: toNumber(item.package_weight),
-      cargoRate: toNumber(props.cargoRate),
-      conversionRate: toNumber(props.conversionRate),
-      profitRate: toNumber(props.profitRate),
-      offerPriceBdt: toNumber(item.offer_price),
+      priceGbp,
+      productWeight,
+      packageWeight,
+      cargoRate,
+      conversionRate,
+      profitRate,
+      offerPriceBdt:
+        item.offer_price == null ? calculatedOfferPriceBdt : toNumber(item.offer_price),
       status: toText(item.status, 'pending').toLowerCase(),
       raw: { ...item },
-    }
-  })
-}
+    };
+  });
+};
 
-const tableRows = ref<ProductBasedCostingTableRow[]>([])
+const tableRows = ref<ProductBasedCostingTableRow[]>([]);
 
 watch(
   () => [props.items, props.cargoRate, props.conversionRate, props.profitRate],
   () => {
-    tableRows.value = buildRows()
+    tableRows.value = buildRows();
   },
   { immediate: true, deep: true },
-)
+);
 
 const columns = computed<QTableColumn[]>(() => [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center' },
-  { name: 'image', label: 'Image', field: 'imageUrl', align: 'center' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' },
-  { name: 'qty', label: 'Qty', field: 'qty', align: 'center' },
-  { name: 'barcodeText', label: 'Barcode / Code / Product ID', field: 'barcodeText', align: 'left' },
-  { name: 'website', label: 'Website', field: 'website', align: 'left' },
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left',
+    classes: 'col-name-wrap',
+    headerClasses: 'col-name-wrap',
+    style: 'text-align: center;',
+  },
+  { name: 'qty', label: 'Qty', field: 'qty', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'barcodeText',
+    label: 'Barcode / Code / Product ID',
+    field: 'barcodeText',
+    align: 'left',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'website',
+    label: 'Website',
+    field: 'website',
+    align: 'left',
+    style: 'text-align: center;',
+  },
 
-  { name: 'priceGbp', label: 'Price (GBP)', field: 'priceGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
-  { name: 'productWeight', label: 'Product Wt (g)', field: 'productWeight', align: 'right' },
-  { name: 'packageWeight', label: 'Package Wt (g)', field: 'packageWeight', align: 'right' },
-  { name: 'totalWeight', label: 'Total Wt (g)', field: 'totalWeight', align: 'right' },
-  { name: 'cargoRate', label: 'Cargo Rate', field: 'cargoRate', align: 'right' },
-  { name: 'cargoCostGbp', label: 'Cargo Cost (GBP)', field: 'cargoCostGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
-  { name: 'totalCostGbp', label: 'Total Cost (GBP)', field: 'totalCostGbp', align: 'right', classes: 'bg-gbp', headerClasses: 'bg-gbp' },
+  {
+    name: 'priceGbp',
+    label: 'Price (GBP)',
+    field: 'priceGbp',
+    align: 'center',
+    classes: 'bg-gbp',
+    headerClasses: 'bg-gbp',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'productWeight',
+    label: 'Product Wt (g)',
+    field: 'productWeight',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package Wt (g)',
+    field: 'packageWeight',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'totalWeight',
+    label: 'Total Wt (g)',
+    field: 'totalWeight',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'cargoRate',
+    label: 'Cargo Rate',
+    field: 'cargoRate',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'cargoCostGbp',
+    label: 'Cargo Cost (GBP)',
+    field: 'cargoCostGbp',
+    align: 'center',
+    classes: 'bg-gbp',
+    headerClasses: 'bg-gbp',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'totalCostGbp',
+    label: 'Total Cost (GBP)',
+    field: 'totalCostGbp',
+    align: 'center',
+    classes: 'bg-gbp',
+    headerClasses: 'bg-gbp',
+    style: 'text-align: center;',
+  },
 
-  { name: 'costBdt', label: 'Cost (BDT)', field: 'costBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
-  { name: 'totalCostBdt', label: 'Total Cost (BDT)', field: 'totalCostBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
-  { name: 'offerPriceBdt', label: 'Offer Price (BDT)', field: 'offerPriceBdt', align: 'right', classes: 'bg-offer', headerClasses: 'bg-offer' },
-  { name: 'totalBdt', label: 'Total (BDT)', field: 'totalBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
-  { name: 'profitBdt', label: 'Profit (BDT)', field: 'profitBdt', align: 'right', classes: 'bg-bdt', headerClasses: 'bg-bdt' },
+  {
+    name: 'costBdt',
+    label: 'Cost (BDT)',
+    field: 'costBdt',
+    align: 'center',
+    classes: 'bg-bdt',
+    headerClasses: 'bg-bdt',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'totalCostBdt',
+    label: 'Total Cost (BDT)',
+    field: 'totalCostBdt',
+    align: 'center',
+    classes: 'bg-bdt',
+    headerClasses: 'bg-bdt',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'offerPriceBdt',
+    label: 'Offer Price (BDT)',
+    field: 'offerPriceBdt',
+    align: 'center',
+    classes: 'bg-offer',
+    headerClasses: 'bg-offer',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'totalBdt',
+    label: 'Row Total (BDT)',
+    field: 'totalBdt',
+    align: 'center',
+    classes: 'bg-bdt',
+    headerClasses: 'bg-bdt',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'profitBdt',
+    label: 'Profit (BDT)',
+    field: 'profitBdt',
+    align: 'center',
+    classes: 'bg-bdt',
+    headerClasses: 'bg-bdt',
+    style: 'text-align: center;',
+  },
 
-  { name: 'profitRate', label: 'Profit Rate (%)', field: 'profitRate', align: 'right' },
-  { name: 'status', label: 'Status', field: 'status', align: 'center' },
-  { name: 'action', label: 'Action', field: 'action', align: 'center' },
-])
+  {
+    name: 'profitRate',
+    label: 'Profit Rate (%)',
+    field: 'profitRate',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'center',
+    style: 'text-align： center;',
+  },
+  {
+    name: 'action',
+    label: 'Action',
+    field: 'action',
+    align: 'center',
+    style: 'text-align： center;',
+  },
+]);
 
 const getTotalWeight = (row: ProductBasedCostingTableRow) => {
-  return (row.productWeight + row.packageWeight) * row.qty
-}
+  return (row.productWeight + row.packageWeight) * row.qty;
+};
 
 const getCargoCostGbp = (row: ProductBasedCostingTableRow) => {
-  return (getTotalWeight(row) / 1000) * row.cargoRate
-}
+  return (getTotalWeight(row) / 1000) * row.cargoRate;
+};
 
 const getTotalCostGbp = (row: ProductBasedCostingTableRow) => {
-  return row.priceGbp + getCargoCostGbp(row)
-}
+  return row.priceGbp + getCargoCostGbp(row);
+};
 
 const getCostBdt = (row: ProductBasedCostingTableRow) => {
-  return getTotalCostGbp(row) * row.conversionRate
-}
+  return roundBdtUpToZeroOrFive(getTotalCostGbp(row) * row.conversionRate);
+};
 
 const getTotalCostBdt = (row: ProductBasedCostingTableRow) => {
-  return getCostBdt(row) * row.qty
-}
+  return getCostBdt(row) * row.qty;
+};
 
 const getTotalBdt = (row: ProductBasedCostingTableRow) => {
-  return row.offerPriceBdt > 0 ? row.offerPriceBdt * row.qty : getTotalCostBdt(row)
-}
+  return row.offerPriceBdt * row.qty;
+};
+
+const getProfitPerUnit = (row: ProductBasedCostingTableRow) => {
+  return row.offerPriceBdt - getCostBdt(row);
+};
 
 const getProfitBdt = (row: ProductBasedCostingTableRow) => {
-  return getTotalBdt(row) * (row.profitRate / 100)
-}
+  return getProfitPerUnit(row) * row.qty;
+};
+
+const getProfitRate = (row: ProductBasedCostingTableRow) => {
+  const costBdt = getCostBdt(row);
+
+  if (costBdt <= 0) return 0;
+
+  return (getProfitPerUnit(row) / costBdt) * 100;
+};
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
@@ -466,16 +713,16 @@ const emitRowChange = (
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
-  }
+  };
 
-  row.raw = updatedItem
+  row.raw = updatedItem;
 
   emit('row-change', {
     item: updatedItem,
     row: { ...row, raw: updatedItem },
     field,
-  })
-}
+  });
+};
 
 const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
   const updatedItem: ProductBasedCostingItem = {
@@ -485,16 +732,16 @@ const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
-  }
+  };
 
-  row.raw = updatedItem
+  row.raw = updatedItem;
 
   emit('product-weight-change', {
     item: updatedItem,
     row: { ...row, raw: updatedItem },
     field: 'product_weight',
-  })
-}
+  });
+};
 
 const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
   const updatedItem: ProductBasedCostingItem = {
@@ -504,45 +751,45 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
-  }
+  };
 
-  row.raw = updatedItem
+  row.raw = updatedItem;
 
   emit('package-weight-change', {
     item: updatedItem,
     row: { ...row, raw: updatedItem },
     field: 'package_weight',
-  })
-}
+  });
+};
 
 const onQtySave = (row: ProductBasedCostingTableRow) => {
-  row.qty = toNumber(row.qty)
-  emitRowChange(row, 'quantity')
-}
+  row.qty = toNumber(row.qty);
+  emitRowChange(row, 'quantity');
+};
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
-  row.offerPriceBdt = toNumber(row.offerPriceBdt)
-  emitRowChange(row, 'offer_price')
-}
+  row.offerPriceBdt = toNumber(row.offerPriceBdt);
+  emitRowChange(row, 'offer_price');
+};
 
 const onStatusSave = (row: ProductBasedCostingTableRow) => {
-  row.status = toText(row.status, 'pending').toLowerCase()
-  emitRowChange(row, 'status')
-}
+  row.status = toText(row.status, 'pending').toLowerCase();
+  emitRowChange(row, 'status');
+};
 
 const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
-  row.productWeight = toNumber(row.productWeight)
-  emitProductWeightChange(row)
-}
+  row.productWeight = toNumber(row.productWeight);
+  emitProductWeightChange(row);
+};
 
 const onPackageWeightSave = (row: ProductBasedCostingTableRow) => {
-  row.packageWeight = toNumber(row.packageWeight)
-  emitPackageWeightChange(row)
-}
+  row.packageWeight = toNumber(row.packageWeight);
+  emitPackageWeightChange(row);
+};
 
 const onEdit = (row: ProductBasedCostingTableRow) => {
-  emit('edit', row.raw)
-}
+  emit('edit', row.raw);
+};
 
 const onDelete = (row: ProductBasedCostingTableRow) => {
   $q.dialog({
@@ -551,22 +798,60 @@ const onDelete = (row: ProductBasedCostingTableRow) => {
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    emit('delete', row.raw)
-  })
-}
+    emit('delete', row.raw);
+  });
+};
 
 const getStatusColor = (status: string | null) => {
   switch ((status || '').toLowerCase()) {
     case 'pending':
-      return 'warning'
+      return 'warning';
     case 'accepted':
-      return 'positive'
+      return 'positive';
     case 'rejected':
-      return 'negative'
+      return 'negative';
     default:
-      return 'grey'
+      return 'grey';
   }
-}
+};
+
+const totals = computed(() => {
+  const initial = {
+    qty: 0,
+    priceGbp: 0,
+    productWeight: 0,
+    packageWeight: 0,
+    totalWeight: 0,
+    cargoRate: 0,
+    cargoCostGbp: 0,
+    totalCostGbp: 0,
+    costBdt: 0,
+    totalCostBdt: 0,
+    offerPriceBdt: 0,
+    totalBdt: 0,
+    profitBdt: 0,
+    profitRate: 0,
+  };
+
+  return tableRows.value.reduce((sum, row) => {
+    sum.qty += row.qty;
+    sum.priceGbp += row.priceGbp;
+    sum.productWeight += row.productWeight;
+    sum.packageWeight += row.packageWeight;
+    sum.totalWeight += getTotalWeight(row);
+    sum.cargoRate += row.cargoRate;
+    sum.cargoCostGbp += getCargoCostGbp(row);
+    sum.totalCostGbp += getTotalCostGbp(row);
+    sum.costBdt += getCostBdt(row);
+    sum.totalCostBdt += getTotalCostBdt(row);
+    sum.offerPriceBdt += row.offerPriceBdt;
+    sum.totalBdt += getTotalBdt(row);
+    sum.profitBdt += getProfitBdt(row);
+    sum.profitRate += getProfitRate(row);
+
+    return sum;
+  }, initial);
+});
 </script>
 
 <style scoped>
@@ -724,6 +1009,17 @@ const getStatusColor = (status: string | null) => {
   background: #ffffff;
 }
 
+.totals-row {
+  background: inherit;
+}
+
+.totals-row__cell {
+  font-weight: 700;
+  color: inherit;
+  white-space: normal;
+  word-break: break-word;
+}
+
 :deep(.bg-gbp) {
   background-color: #e6f4ea !important;
 }
@@ -734,5 +1030,12 @@ const getStatusColor = (status: string | null) => {
 
 :deep(.bg-offer) {
   background-color: #f3e5f5 !important;
+}
+.col-name-wrap {
+  min-width: 150px;
+  max-width: 200px;
+  white-space: normal; /* allow wrapping */
+  word-break: break-word; /* break long words */
+  line-height: 1.3;
 }
 </style>

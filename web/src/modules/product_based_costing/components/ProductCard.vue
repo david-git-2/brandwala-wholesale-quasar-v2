@@ -18,7 +18,7 @@
     </div>
 
     <q-card-section>
-      <div class="text-subtitle1 text-weight-bold ellipsis-2-lines">
+      <div class="text-weight-bold" style="font-size: 12px; height: 70px;">
         {{ product.name || 'Unnamed Product' }}
       </div>
 
@@ -52,20 +52,15 @@ import { computed, ref, watch } from 'vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import { useRoute } from 'vue-router'
 import SmartImage from 'src/components/SmartImage.vue'
+import type { Product } from 'src/modules/products/types'
 const route = useRoute()
-type Product = {
-  id: number
-  image_url: string | null
-  name: string | null
-  price_gbp: number | null
-  brand: string | null
-  country_of_origin: string | null
-  barcode: string | null
-  product_code: string | null
+type ProductCardProduct = Product & {
+  product_weight?: number | null
+  package_weight?: number | null
 }
 
 const props = defineProps<{
-  product: Product
+  product: ProductCardProduct
 }>()
 
 const fallbackImage =
@@ -114,19 +109,11 @@ watch(
   { immediate: true }
 )
 
-const handleImageError = () => {
-  if (imageAttempt.value < imageCandidates.value.length - 1) {
-    imageAttempt.value += 1
-    return
-  }
-
-  imageHidden.value = true
-}
 const costingFileStore = useProductBasedCostingStore()
 
 const handleConsole = () => {
   console.log('Product:', props.product)
-  costingFileStore.createProductBasedCostingItem({
+  void costingFileStore.createProductBasedCostingItem({
     name: props.product.name || '',
     image_url: props.product.image_url || '',
     quantity: 1,
@@ -156,7 +143,8 @@ const matchedCostingItem = computed(() => {
 const isAlreadyAdded = computed(() => !!matchedCostingItem.value)
 
 const handleDelete = () => {
-  costingFileStore.deleteProductBasedCostingItem(matchedCostingItem.value!.id)
+  if (!matchedCostingItem.value) return
+  void costingFileStore.deleteProductBasedCostingItem(matchedCostingItem.value.id)
 }
 </script>
 
@@ -197,10 +185,5 @@ const handleDelete = () => {
   font-size: 0.95rem;
 }
 
-.ellipsis-2-lines {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+
 </style>
