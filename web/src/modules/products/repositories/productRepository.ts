@@ -40,17 +40,127 @@ const buildProductPayload = (payload: ProductCreateInput | ProductUpdateInput) =
   is_available: payload.is_available ?? null,
 })
 
-const listProducts = async (): Promise<Product[]> => {
+type PaginatedProducts = {
+  data: Product[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+type ListProductsParams = {
+  page?: number
+  pageSize?: number
+  search?: string
+  category?: string
+  brand?: string
+  sortPrice?: 'asc' | 'desc'
+  tenantId?: number
+}
+
+const listBrands = async (): Promise<string[]> => {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
-    .order('id', { ascending: true })
+    .select('brand')
+    .order('brand', { ascending: true })
 
   if (error) {
     throw error
   }
 
-  return (data as Product[] | null) ?? []
+  const seen = new Set<string>()
+  const rows = (data as Array<{ brand: string | null }> | null) ?? []
+
+  return rows
+    .map((row) => row.brand?.trim() ?? '')
+    .filter((brand) => brand.length > 0)
+    .filter((brand) => {
+      const key = brand.toLowerCase()
+      if (seen.has(key)) {
+        return false
+      }
+
+      seen.add(key)
+      return true
+    })
+}
+
+const listCategories = async (): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('category')
+    .order('category', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  const seen = new Set<string>()
+  const rows = (data as Array<{ category: string | null }> | null) ?? []
+
+  return rows
+    .map((row) => row.category?.trim() ?? '')
+    .filter((category) => category.length > 0)
+    .filter((category) => {
+      const key = category.toLowerCase()
+      if (seen.has(key)) {
+        return false
+      }
+
+      seen.add(key)
+      return true
+    })
+}
+
+const listProducts = async ({
+  page = 1,
+  pageSize = 20,
+  search = '',
+  category,
+  brand,
+  sortPrice = 'asc',
+  tenantId,
+}: ListProductsParams): Promise<PaginatedProducts> => {
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('products')
+    .select('*', { count: 'exact' })
+
+  if (tenantId != null) {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  if (search.trim()) {
+    query = query.or(
+      `name.ilike.%${search}%,product_code.ilike.%${search}%,barcode.ilike.%${search}%`
+    )
+  }
+
+  if (category) {
+    query = query.eq('category', category)
+  }
+
+  if (brand) {
+    query = query.eq('brand', brand)
+  }
+
+  query = query
+    .order('price_gbp', { ascending: sortPrice === 'asc', nullsFirst: false })
+    .range(from, to)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    throw error
+  }
+
+  return {
+    data: (data as Product[] | null) ?? [],
+    total: count ?? 0,
+    page,
+    pageSize,
+  }
 }
 
 const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
@@ -112,6 +222,8 @@ const deleteProduct = async (payload: ProductDeleteInput): Promise<Product> => {
 }
 
 export const productRepository = {
+  listBrands,
+  listCategories,
   listProducts,
   createProduct,
   updateProduct,

@@ -3,8 +3,10 @@ import { supabase } from 'src/boot/supabase'
 import type {
   ProductBasedCostingFile,
   ProductBasedCostingFileCreateInput,
-  ProductBasedCostingFileDeleteInput,
   ProductBasedCostingFileUpdateInput,
+  ProductBasedCostingItem,
+  ProductBasedCostingItemCreateInput,
+  ProductBasedCostingItemUpdateInput,
 } from '../types'
 
 const normalizeText = (value: string | null | undefined) => {
@@ -17,8 +19,10 @@ const normalizeText = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : null
 }
 
-const buildPayload = (
-  payload: ProductBasedCostingFileCreateInput | ProductBasedCostingFileUpdateInput,
+const buildProductBasedCostingFilePayload = (
+  payload:
+    | ProductBasedCostingFileCreateInput
+    | Omit<ProductBasedCostingFileUpdateInput, 'id'>,
 ) => ({
   tenant_id: payload.tenant_id ?? null,
   name: normalizeText(payload.name),
@@ -27,6 +31,25 @@ const buildPayload = (
   cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp ?? null,
   profit_rate: payload.profit_rate ?? null,
   conversion_rate: payload.conversion_rate ?? null,
+  status: normalizeText(payload.status),
+})
+
+const buildProductBasedCostingItemPayload = (
+  payload:
+    | ProductBasedCostingItemCreateInput
+    | Omit<ProductBasedCostingItemUpdateInput, 'id'>,
+) => ({
+  product_based_costing_file_id: payload.product_based_costing_file_id ?? null,
+  name: normalizeText(payload.name),
+  image_url: normalizeText(payload.image_url),
+  quantity: payload.quantity ?? null,
+  barcode: normalizeText(payload.barcode),
+  product_code: normalizeText(payload.product_code),
+  web_link: normalizeText(payload.web_link),
+  price_gbp: payload.price_gbp ?? null,
+  product_weight: payload.product_weight ?? null,
+  package_weight: payload.package_weight ?? null,
+  offer_price: payload.offer_price ?? null,
   status: normalizeText(payload.status),
 })
 
@@ -48,7 +71,7 @@ const createProductBasedCostingFile = async (
 ): Promise<ProductBasedCostingFile> => {
   const { data, error } = await supabase
     .from('product_based_costing_files')
-    .insert([buildPayload(payload)])
+    .insert([buildProductBasedCostingFilePayload(payload)])
     .select()
     .single()
 
@@ -70,7 +93,7 @@ const updateProductBasedCostingFile = async (
 
   const { data, error } = await supabase
     .from('product_based_costing_files')
-    .update(buildPayload(rest))
+    .update(buildProductBasedCostingFilePayload(rest))
     .eq('id', id)
     .select()
     .single()
@@ -87,12 +110,12 @@ const updateProductBasedCostingFile = async (
 }
 
 const deleteProductBasedCostingFile = async (
-  payload: ProductBasedCostingFileDeleteInput,
+  id: number,
 ): Promise<ProductBasedCostingFile> => {
   const { data, error } = await supabase
     .from('product_based_costing_files')
     .delete()
-    .eq('id', payload.id)
+    .eq('id', id)
     .select()
     .single()
 
@@ -107,9 +130,141 @@ const deleteProductBasedCostingFile = async (
   return data as ProductBasedCostingFile
 }
 
+const getProductBasedCostingFileById = async (
+  id: number,
+): Promise<ProductBasedCostingFile> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_files')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product based costing file not found.')
+  }
+
+  return data as ProductBasedCostingFile
+}
+
+/**
+ * item list api
+ * takes productBasedCostingFileId as argument
+ * returns item list only for that file id
+ */
+const listProductBasedCostingItems = async (
+  productBasedCostingFileId: number,
+): Promise<ProductBasedCostingItem[]> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .select('*')
+    .eq('product_based_costing_file_id', productBasedCostingFileId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return (data as ProductBasedCostingItem[] | null) ?? []
+}
+
+const createProductBasedCostingItem = async (
+  payload: ProductBasedCostingItemCreateInput,
+): Promise<ProductBasedCostingItem> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .insert([buildProductBasedCostingItemPayload(payload)])
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product based costing item was not created.')
+  }
+
+  return data as ProductBasedCostingItem
+}
+
+const updateProductBasedCostingItem = async (
+  payload: ProductBasedCostingItemUpdateInput,
+): Promise<ProductBasedCostingItem> => {
+  const { id, ...rest } = payload
+
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .update(buildProductBasedCostingItemPayload(rest))
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product based costing item was not updated.')
+  }
+
+  return data as ProductBasedCostingItem
+}
+
+const deleteProductBasedCostingItem = async (
+  id: number,
+): Promise<ProductBasedCostingItem> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product based costing item was not deleted.')
+  }
+
+  return data as ProductBasedCostingItem
+}
+
+const getProductBasedCostingItemById = async (
+  id: number,
+): Promise<ProductBasedCostingItem> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product based costing item not found.')
+  }
+
+  return data as ProductBasedCostingItem
+}
+
 export const productBasedCostingRepository = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
   updateProductBasedCostingFile,
   deleteProductBasedCostingFile,
+  getProductBasedCostingFileById,
+
+  listProductBasedCostingItems,
+  createProductBasedCostingItem,
+  updateProductBasedCostingItem,
+  deleteProductBasedCostingItem,
+  getProductBasedCostingItemById,
 }

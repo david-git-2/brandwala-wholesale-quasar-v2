@@ -6,11 +6,36 @@ import {
 } from 'src/utils/appFeedback'
 import { productService } from '../services/productService'
 import type {
+  Product,
   ProductCreateInput,
   ProductDeleteInput,
-  ProductStoreState,
   ProductUpdateInput,
 } from '../types'
+
+type FetchProductsParams = {
+  page?: number
+  pageSize?: number
+  search?: string
+  category?: string | null
+  brand?: string | null
+  sortPrice?: 'asc' | 'desc'
+  tenantId?: number
+}
+
+type ProductStoreState = {
+  items: Product[]
+  loading: boolean
+  saving: boolean
+  error: string | null
+  total: number
+  page: number
+  pageSize: number
+  search: string
+  category: string
+  brand: string
+  sortPrice: 'asc' | 'desc'
+  tenantId?: number
+}
 
 export const useProductStore = defineStore('product', {
   state: (): ProductStoreState => ({
@@ -18,6 +43,14 @@ export const useProductStore = defineStore('product', {
     loading: false,
     saving: false,
     error: null,
+    total: 0,
+    page: 1,
+    pageSize: 20,
+    search: '',
+    category: '',
+    brand: '',
+    sortPrice: 'asc',
+    tenantId: undefined,
   }),
 
   actions: {
@@ -25,12 +58,44 @@ export const useProductStore = defineStore('product', {
       this.error = null
     },
 
-    async fetchProducts() {
+    setFilters(params: FetchProductsParams) {
+      if (params.page !== undefined) this.page = params.page
+      if (params.pageSize !== undefined) this.pageSize = params.pageSize
+      if (params.search !== undefined) this.search = params.search
+      if (params.category !== undefined) this.category = params.category ?? ''
+      if (params.brand !== undefined) this.brand = params.brand ?? ''
+      if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
+      if (params.tenantId !== undefined) this.tenantId = params.tenantId
+    },
+
+    resetFilters() {
+      this.page = 1
+      this.pageSize = 20
+      this.search = ''
+      this.category = ''
+      this.brand = ''
+      this.sortPrice = 'asc'
+      this.tenantId = undefined
+    },
+
+    async fetchProducts(params?: FetchProductsParams) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await productService.listProducts()
+        if (params) {
+          this.setFilters(params)
+        }
+
+        const result = await productService.listProducts({
+          page: this.page,
+          pageSize: this.pageSize,
+          search: this.search,
+          category: this.category || undefined,
+          brand: this.brand || undefined,
+          sortPrice: this.sortPrice,
+          tenantId: this.tenantId,
+        })
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load products.'
@@ -39,6 +104,10 @@ export const useProductStore = defineStore('product', {
         }
 
         this.items = result.data ?? []
+        this.total = result.total ?? 0
+        this.page = result.page ?? this.page
+        this.pageSize = result.pageSize ?? this.pageSize
+
         return result
       } finally {
         this.loading = false
@@ -58,11 +127,18 @@ export const useProductStore = defineStore('product', {
           return result
         }
 
-        if (result.data) {
-          this.items.push(result.data)
-        }
-
         showSuccessNotification('Product created successfully.')
+
+        await this.fetchProducts({
+          page: this.page,
+          pageSize: this.pageSize,
+          search: this.search,
+          category: this.category,
+          brand: this.brand,
+          sortPrice: this.sortPrice,
+          tenantId: this.tenantId,
+        })
+
         return result
       } finally {
         this.saving = false
@@ -83,7 +159,7 @@ export const useProductStore = defineStore('product', {
         }
 
         if (result.data) {
-          const index = this.items.findIndex((item) => item.id === result.data?.id)
+          const index = this.items.findIndex((item) => item.id === result.data.id)
 
           if (index >= 0) {
             this.items.splice(index, 1, result.data)
@@ -111,6 +187,8 @@ export const useProductStore = defineStore('product', {
         }
 
         this.items = this.items.filter((item) => item.id !== payload.id)
+        this.total = Math.max(0, this.total - 1)
+
         showSuccessNotification('Product deleted successfully.')
         return result
       } finally {

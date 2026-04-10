@@ -3,13 +3,31 @@ import type {
   Product,
   ProductCreateInput,
   ProductDeleteInput,
-  ProductServiceResult,
   ProductUpdateInput,
 } from '../types'
 
-const listProducts = async (): Promise<ProductServiceResult<Product[]>> => {
+type ListProductsParams = {
+  page?: number
+  pageSize?: number
+  search?: string
+  category?: string
+  brand?: string
+  sortPrice?: 'asc' | 'desc'
+  tenantId?: number
+}
+
+type ProductServiceResult<T> = {
+  success: boolean
+  data?: T
+  error?: string
+  total?: number
+  page?: number
+  pageSize?: number
+}
+
+const listBrands = async (): Promise<ProductServiceResult<string[]>> => {
   try {
-    const data = await productRepository.listProducts()
+    const data = await productRepository.listBrands()
 
     return {
       success: true,
@@ -18,7 +36,47 @@ const listProducts = async (): Promise<ProductServiceResult<Product[]>> => {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to load products.',
+      error: error instanceof Error ? error.message : 'Failed to load brands.',
+    }
+  }
+}
+
+const listCategories = async (): Promise<ProductServiceResult<string[]>> => {
+  try {
+    const data = await productRepository.listCategories()
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load categories.',
+    }
+  }
+}
+
+const listProducts = async (
+  params: ListProductsParams
+): Promise<ProductServiceResult<Product[]>> => {
+  try {
+    const result = await productRepository.listProducts(params)
+
+    return {
+      success: true,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to load products.',
     }
   }
 }
@@ -78,6 +136,8 @@ const deleteProduct = async (
 }
 
 export const productService = {
+  listBrands,
+  listCategories,
   listProducts,
   createProduct,
   updateProduct,
