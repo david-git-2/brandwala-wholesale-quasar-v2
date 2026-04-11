@@ -5,7 +5,9 @@
         <div class="text-h5 text-weight-bold">Product Based Costing File Details</div>
       </div>
     </div>
-
+<div>
+  <q-btn flat color="primary" icon="keyboard_backspace" label="Back to Files" @click="router.push({ name: 'product-based-costing-page' })" />
+</div>
     <div class="row justify-end q-gutter-sm q-mb-md">
       <q-btn
         color="primary"
@@ -17,6 +19,7 @@
       />
 
       <q-btn
+      :disable="status==='pending'"
         color="primary"
         outline
         icon="visibility"

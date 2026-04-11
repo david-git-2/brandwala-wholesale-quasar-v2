@@ -296,7 +296,9 @@
           <q-td class="totals-row__cell col-barcode" />
           <q-td class="totals-row__cell col-website" />
           <q-td class="totals-row__cell col-price-gbp text-right">
+            <div class="totals-row__value bg-gbp">
             {{ formatNumber(totals.priceGbp) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-product-weight text-right">
             {{ formatNumber(totals.productWeight) }}
@@ -311,31 +313,49 @@
             {{ formatNumber(totals.cargoRate) }}
           </q-td>
           <q-td class="totals-row__cell col-cargo-cost-gbp text-right">
+            <div class="totals-row__value bg-gbp">
             {{ formatNumber(totals.cargoCostGbp) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-total-cost-gbp text-right">
+            <div class="totals-row__value bg-gbp">
             {{ formatNumber(totals.totalCostGbp) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-row-total-cost-gbp text-right">
+            <div class="totals-row__value bg-gbp">
             {{ formatNumber(totals.rowTotalCostGbp) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-cost-bdt text-right">
+            <div class="totals-row__value bg-bdt">
             {{ formatNumber(totals.costBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-total-cost-bdt text-right">
+            <div class="totals-row__value bg-bdt">
             {{ formatNumber(totals.totalCostBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-offer-price-bdt text-right">
+            <div class="totals-row__value bg-offer">
             {{ formatNumber(totals.offerPriceBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-total-bdt text-right">
+            <div class="totals-row__value bg-offer">
             {{ formatNumber(totals.totalBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-profit-per-unit-bdt text-right">
+            <div class="totals-row__value bg-bdt">
             {{ formatNumber(totals.profitPerUnitBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-profit-bdt text-right">
+            <div class="totals-row__value bg-bdt">
             {{ formatNumber(totals.profitBdt) }}
+            </div>
           </q-td>
           <q-td class="totals-row__cell col-profit-rate text-right">
             {{ formatNumber(totals.averageProfitRate) }}
@@ -1116,6 +1136,16 @@ const totals = computed(() => {
   color: inherit;
   white-space: normal;
   word-break: break-word;
+  padding: 0;
+  text-align: center;
+}
+
+.totals-row__value {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  padding: 8px 16px;
+  text-align: center;
 }
 
 :deep(.bg-gbp) {
