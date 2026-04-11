@@ -163,6 +163,10 @@
             {{ formatNumber(getTotalCostGbp(slotProps.row)) }}
           </q-td>
 
+          <q-td key="rowTotalCostGbp" :props="slotProps" class="col-row-total-cost-gbp text-right">
+            {{ formatNumber(getRowTotalCostGbp(slotProps.row)) }}
+          </q-td>
+
           <q-td key="costBdt" :props="slotProps" class="col-cost-bdt text-right">
             {{ formatNumber(getCostBdt(slotProps.row)) }}
           </q-td>
@@ -207,6 +211,10 @@
 
           <q-td key="totalBdt" :props="slotProps" class="col-total-bdt text-right">
             {{ formatNumber(getTotalBdt(slotProps.row)) }}
+          </q-td>
+
+          <q-td key="profitPerUnitBdt" :props="slotProps" class="col-profit-per-unit-bdt text-right">
+            {{ formatNumber(getProfitPerUnit(slotProps.row)) }}
           </q-td>
 
           <q-td key="profitBdt" :props="slotProps" class="col-profit-bdt text-right">
@@ -308,6 +316,9 @@
           <q-td class="totals-row__cell col-total-cost-gbp text-right">
             {{ formatNumber(totals.totalCostGbp) }}
           </q-td>
+          <q-td class="totals-row__cell col-row-total-cost-gbp text-right">
+            {{ formatNumber(totals.rowTotalCostGbp) }}
+          </q-td>
           <q-td class="totals-row__cell col-cost-bdt text-right">
             {{ formatNumber(totals.costBdt) }}
           </q-td>
@@ -320,11 +331,14 @@
           <q-td class="totals-row__cell col-total-bdt text-right">
             {{ formatNumber(totals.totalBdt) }}
           </q-td>
+          <q-td class="totals-row__cell col-profit-per-unit-bdt text-right">
+            {{ formatNumber(totals.profitPerUnitBdt) }}
+          </q-td>
           <q-td class="totals-row__cell col-profit-bdt text-right">
             {{ formatNumber(totals.profitBdt) }}
           </q-td>
           <q-td class="totals-row__cell col-profit-rate text-right">
-            {{ formatNumber(totals.profitRate) }}
+            {{ formatNumber(totals.averageProfitRate) }}
           </q-td>
           <q-td class="totals-row__cell col-status" />
           <q-td class="totals-row__cell col-action" />
@@ -454,6 +468,32 @@ const formatNumber = (value: number | null | undefined) => {
   return Number(value).toFixed(2);
 };
 
+const getUnitWeight = (productWeight: number, packageWeight: number) =>
+  productWeight + packageWeight;
+
+const getUnitCargoCostGbp = (
+  productWeight: number,
+  packageWeight: number,
+  cargoRate: number,
+) => (getUnitWeight(productWeight, packageWeight) / 1000) * cargoRate;
+
+const getUnitTotalCostGbp = (
+  priceGbp: number,
+  productWeight: number,
+  packageWeight: number,
+  cargoRate: number,
+) => priceGbp + getUnitCargoCostGbp(productWeight, packageWeight, cargoRate);
+
+const getUnitCostBdt = (
+  priceGbp: number,
+  productWeight: number,
+  packageWeight: number,
+  cargoRate: number,
+  conversionRate: number,
+) => Math.ceil(
+  getUnitTotalCostGbp(priceGbp, productWeight, packageWeight, cargoRate) * conversionRate,
+);
+
 const buildRows = (): ProductBasedCostingTableRow[] => {
   return (props.items ?? []).map((item, index) => {
     const barcode = toText(item.barcode, '');
@@ -466,9 +506,13 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const cargoRate = toNumber(props.cargoRate);
     const conversionRate = toNumber(props.conversionRate);
     const profitRate = toNumber(props.profitRate);
-    const cargoCostGbp = (((productWeight + packageWeight) * qty) / 1000) * cargoRate;
-    const totalCostGbp = priceGbp + cargoCostGbp;
-    const costBdt = roundBdtUpToZeroOrFive(totalCostGbp * conversionRate);
+    const costBdt = getUnitCostBdt(
+      priceGbp,
+      productWeight,
+      packageWeight,
+      cargoRate,
+      conversionRate,
+    );
     const calculatedOfferPriceBdt = roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate) / 100);
 
     return {
@@ -539,7 +583,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'priceGbp',
-    label: 'Price (GBP)',
+    label: 'Price (GBP)/Unit',
     field: 'priceGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -548,21 +592,21 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'productWeight',
-    label: 'Product Wt (g)',
+    label: 'Product Wt (g/Unit)',
     field: 'productWeight',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'packageWeight',
-    label: 'Package Wt (g)',
+    label: 'Package Wt (g/Unit)',
     field: 'packageWeight',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'totalWeight',
-    label: 'Total Wt (g)',
+    label: 'Total Wt (g/Unit)',
     field: 'totalWeight',
     align: 'center',
     style: 'text-align: center;',
@@ -576,7 +620,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'cargoCostGbp',
-    label: 'Cargo Cost (GBP)',
+    label: 'Cargo Cost (GBP/Unit)',
     field: 'cargoCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -585,8 +629,17 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostGbp',
-    label: 'Total Cost (GBP)',
+    label: 'Total Cost (GBP/Unit)',
     field: 'totalCostGbp',
+    align: 'center',
+    classes: 'bg-gbp',
+    headerClasses: 'bg-gbp',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'rowTotalCostGbp',
+    label: 'Row Total Cost (GBP)',
+    field: 'rowTotalCostGbp',
     align: 'center',
     classes: 'bg-gbp',
     headerClasses: 'bg-gbp',
@@ -595,7 +648,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'costBdt',
-    label: 'Cost (BDT)',
+    label: 'Cost (BDT/Unit)',
     field: 'costBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -604,7 +657,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostBdt',
-    label: 'Total Cost (BDT)',
+    label: 'Row Total Cost (BDT)',
     field: 'totalCostBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -613,7 +666,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'offerPriceBdt',
-    label: 'Offer Price (BDT)',
+    label: 'Offer Price (BDT/Unit)',
     field: 'offerPriceBdt',
     align: 'center',
     classes: 'bg-offer',
@@ -622,8 +675,17 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalBdt',
-    label: 'Row Total (BDT)',
+    label: 'Row Offer Total (BDT)',
     field: 'totalBdt',
+    align: 'center',
+    classes: 'bg-offer',
+    headerClasses: 'bg-offer',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'profitPerUnitBdt',
+    label: 'Profit (BDT/Unit)',
+    field: 'profitPerUnitBdt',
     align: 'center',
     classes: 'bg-bdt',
     headerClasses: 'bg-bdt',
@@ -631,7 +693,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'profitBdt',
-    label: 'Profit (BDT)',
+    label: 'Row Total Profit (BDT)',
     field: 'profitBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -663,19 +725,34 @@ const columns = computed<QTableColumn[]>(() => [
 ]);
 
 const getTotalWeight = (row: ProductBasedCostingTableRow) => {
-  return (row.productWeight + row.packageWeight) * row.qty;
+  return getUnitWeight(row.productWeight, row.packageWeight);
 };
 
 const getCargoCostGbp = (row: ProductBasedCostingTableRow) => {
-  return (getTotalWeight(row) / 1000) * row.cargoRate;
+  return getUnitCargoCostGbp(row.productWeight, row.packageWeight, row.cargoRate);
 };
 
 const getTotalCostGbp = (row: ProductBasedCostingTableRow) => {
-  return row.priceGbp + getCargoCostGbp(row);
+  return getUnitTotalCostGbp(
+    row.priceGbp,
+    row.productWeight,
+    row.packageWeight,
+    row.cargoRate,
+  );
+};
+
+const getRowTotalCostGbp = (row: ProductBasedCostingTableRow) => {
+  return getTotalCostGbp(row) * row.qty;
 };
 
 const getCostBdt = (row: ProductBasedCostingTableRow) => {
-  return roundBdtUpToZeroOrFive(getTotalCostGbp(row) * row.conversionRate);
+  return getUnitCostBdt(
+    row.priceGbp,
+    row.productWeight,
+    row.packageWeight,
+    row.cargoRate,
+    row.conversionRate,
+  );
 };
 
 const getTotalCostBdt = (row: ProductBasedCostingTableRow) => {
@@ -825,32 +902,40 @@ const totals = computed(() => {
     cargoRate: 0,
     cargoCostGbp: 0,
     totalCostGbp: 0,
+    rowTotalCostGbp: 0,
     costBdt: 0,
     totalCostBdt: 0,
     offerPriceBdt: 0,
     totalBdt: 0,
+    profitPerUnitBdt: 0,
     profitBdt: 0,
-    profitRate: 0,
+    averageProfitRate: 0,
   };
 
-  return tableRows.value.reduce((sum, row) => {
-    sum.qty += row.qty;
-    sum.priceGbp += row.priceGbp;
-    sum.productWeight += row.productWeight;
-    sum.packageWeight += row.packageWeight;
-    sum.totalWeight += getTotalWeight(row);
-    sum.cargoRate += row.cargoRate;
-    sum.cargoCostGbp += getCargoCostGbp(row);
-    sum.totalCostGbp += getTotalCostGbp(row);
-    sum.costBdt += getCostBdt(row);
-    sum.totalCostBdt += getTotalCostBdt(row);
-    sum.offerPriceBdt += row.offerPriceBdt;
-    sum.totalBdt += getTotalBdt(row);
-    sum.profitBdt += getProfitBdt(row);
-    sum.profitRate += getProfitRate(row);
+  const sum = tableRows.value.reduce((acc, row) => {
+    acc.qty += row.qty;
+    acc.priceGbp += row.priceGbp;
+    acc.productWeight += row.productWeight;
+    acc.packageWeight += row.packageWeight;
+    acc.totalWeight += getTotalWeight(row);
+    acc.cargoRate += row.cargoRate;
+    acc.cargoCostGbp += getCargoCostGbp(row);
+    acc.totalCostGbp += getTotalCostGbp(row);
+    acc.rowTotalCostGbp += getRowTotalCostGbp(row);
+    acc.costBdt += getCostBdt(row);
+    acc.totalCostBdt += getTotalCostBdt(row);
+    acc.offerPriceBdt += row.offerPriceBdt;
+    acc.totalBdt += getTotalBdt(row);
+    acc.profitPerUnitBdt += getProfitPerUnit(row);
+    acc.profitBdt += getProfitBdt(row);
 
-    return sum;
+    return acc;
   }, initial);
+
+  sum.averageProfitRate =
+    sum.totalCostBdt > 0 ? (sum.profitBdt / sum.totalCostBdt) * 100 : 0;
+
+  return sum;
 });
 </script>
 
@@ -870,10 +955,13 @@ const totals = computed(() => {
 .table-image {
   width: 96px;
   height: 96px;
+  display: block;
   margin: 0 auto;
   border: 1px solid #ddd;
   border-radius: 6px;
   background: #fff;
+  object-fit: contain;
+  object-position: center;
 }
 
 .table-image-placeholder {
@@ -969,6 +1057,11 @@ const totals = computed(() => {
   background: #ffffff;
 }
 
+.col-row-total-cost-gbp {
+  min-width: 150px;
+  background: #f8f9fa;
+}
+
 .col-cost-bdt {
   min-width: 110px;
   background: #f8f9fa;
@@ -987,6 +1080,11 @@ const totals = computed(() => {
 .col-total-bdt {
   min-width: 110px;
   background: #ffffff;
+}
+
+.col-profit-per-unit-bdt {
+  min-width: 130px;
+  background: #f8f9fa;
 }
 
 .col-profit-bdt {

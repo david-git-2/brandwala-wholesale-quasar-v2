@@ -203,8 +203,20 @@ export function useOAuthLogin(
 
     const redirectPath =
       typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+    const resolvedRedirectRoute = redirectPath ? router.resolve(redirectPath) : null
+    const redirectTenantSlug = resolvedRedirectRoute
+      ? getTenantSlugFromRoute(resolvedRedirectRoute)
+      : null
 
-    if (redirectPath) {
+    if (
+      redirectPath &&
+      !(
+        payload.scope === 'shop' &&
+        payload.tenant?.slug &&
+        redirectTenantSlug &&
+        redirectTenantSlug !== payload.tenant.slug
+      )
+    ) {
       await router.replace(redirectPath)
       return
     }

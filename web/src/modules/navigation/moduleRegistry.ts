@@ -117,7 +117,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'product_based_costing',
     name: 'Product Based Costing',
-    description: 'Support product-based costing files for internal and customer workflows.',
+    description: 'Support product-based costing files for internal workflows.',
     routes: [
       {
         scope: 'app',
@@ -125,14 +125,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage product based costing files',
         icon: 'request_quote',
         routeSegment: 'product-based-costing',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'shop',
-        title: 'Pre order',
-        caption: 'Open customer-facing costing references',
-        icon: 'request_quote',
-        routeSegment: 'costing',
         requiredAction: 'view',
       },
     ],
@@ -147,6 +139,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Pre order',
         caption: 'Prepare internal costing files and price support',
         icon: 'price_change',
+        routeSegment: 'costing',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Pre order',
+        caption: 'Open customer-facing costing references',
+        icon: 'request_quote',
         routeSegment: 'costing',
         requiredAction: 'view',
       },
