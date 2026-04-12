@@ -132,6 +132,19 @@
               </q-td>
             </template>
 
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getTotalsCellClass(column.name)"
+                >
+                  {{ getTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+
           </q-table>
           <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
         </div>
@@ -208,10 +221,23 @@
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {{ props.row.websiteUrl }}
-                  </a>
+                  {{ props.row.websiteUrl }}
+                </a>
+              </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getTotalsCellClass(column.name)"
+                >
+                  {{ getTotalsValue(column.name) }}
                 </q-td>
-              </template>
+              </q-tr>
+            </template>
             </q-table>
             <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
           </div>
@@ -329,7 +355,7 @@
             <template #body-cell-offerPriceBdt="props">
               <q-td
                 :props="props"
-                class="costing-page__numeric-cell"
+                class="costing-page__numeric-cell costing-page__tone-emerald"
                 :class="getOfferedCellClass(props.row)"
               >
                 {{ props.row.offerPriceBdt }}
@@ -339,7 +365,7 @@
             <template #body-cell-buyerSellingPriceBdt="props">
               <q-td
                 :props="props"
-                class="costing-page__numeric-cell costing-page__tone-indigo"
+                class="costing-page__numeric-cell costing-page__tone-amber"
                 :class="getOfferedCellClass(props.row)"
               >
                 {{ props.row.buyerSellingPriceBdt }}
@@ -413,6 +439,19 @@
                 />
               </q-td>
             </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getTotalsCellClass(column.name)"
+                >
+                  {{ getTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
           </q-table>
           <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
         </div>
@@ -476,6 +515,19 @@
                   {{ props.row.websiteUrl }}
                 </a>
               </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getTotalsCellClass(column.name)"
+                >
+                  {{ getTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
             </template>
           </q-table>
           <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
@@ -625,7 +677,10 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
+import {
+  buildCustomerProductRows,
+  summarizeCustomerProductRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
 import { showSuccessNotification } from 'src/utils/appFeedback'
@@ -666,6 +721,11 @@ const requestForm = reactive({
 
 const itemTypeOptions = ['Watch', 'Perfume', 'Others']
 
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)))
+
+const formatPercent = (value: number | null | undefined) =>
+  value == null ? '' : `${Number(value).toFixed(2)}%`
 
 const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
 
@@ -680,6 +740,7 @@ const canCustomerMaintainDraftItems = computed(() => {
 const productRows = computed(() =>
   buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
 )
+const productTotals = computed(() => summarizeCustomerProductRows(productRows.value))
 
 const getOfferedRowClass = (row: { status?: string | null }) =>
   row.status === 'rejected' ? 'costing-page__rejected-row' : ''
@@ -906,6 +967,43 @@ const visibleColumns = computed(() => {
     ].includes(column.name),
   )
 })
+
+const getTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'sl':
+      return 'Total'
+    case 'name':
+      return `${productRows.value.length} Items`
+    case 'quantity':
+      return formatWhole(productTotals.value.quantity)
+    case 'offerPriceBdt':
+      return formatWhole(productTotals.value.offerPriceBdt)
+    case 'buyerSellingPriceBdt':
+      return formatWhole(productTotals.value.buyerSellingPriceBdt)
+    case 'customerProfitAmountBdt':
+      return formatWhole(productTotals.value.customerProfitAmountBdt)
+    case 'customerProfitRateDisplay':
+      return formatPercent(productTotals.value.customerProfitRate)
+    default:
+      return ''
+  }
+}
+
+const getTotalsCellClass = (columnName: string) => {
+  if (columnName === 'offerPriceBdt') {
+    return 'costing-page__tone-emerald'
+  }
+
+  if (columnName === 'buyerSellingPriceBdt') {
+    return 'costing-page__tone-orange'
+  }
+
+  if (columnName === 'customerProfitAmountBdt') {
+    return 'costing-page__tone-amber'
+  }
+
+  return ''
+}
 
 const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
 
@@ -1257,16 +1355,34 @@ watch(
 }
 
 .costing-page__table--offered :deep(.costing-page__tone-emerald) {
-  background: #ddf4e7;
-  color: #1f6a43;
+  background: #f3e5f5;
+  color: #6b2f7a;
 }
 
 .costing-page__table--offered :deep(.costing-page__tone-orange) {
-  background: #fdeccd;
+  background: #fff8e1;
   color: #7a5313;
 }
 
+.costing-page__table--offered :deep(.costing-page__tone-amber) {
+  background: #fff8e1;
+  color: #7a5313;
+}
+
+.costing-page__table--offered :deep(.costing-page__tone-indigo) {
+  background: #e6f4ea;
+  color: #1f6a43;
+}
+
 .costing-page__table--offered :deep(th.costing-page__tone-emerald) {
+  font-weight: 700;
+}
+
+.costing-page__table--offered :deep(th.costing-page__tone-amber) {
+  font-weight: 700;
+}
+
+.costing-page__table--offered :deep(th.costing-page__tone-indigo) {
   font-weight: 700;
 }
 
@@ -1413,6 +1529,16 @@ watch(
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.costing-page__totals-row {
+  background: inherit;
+}
+
+.costing-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
 }
 
 @media (max-width: 900px) {

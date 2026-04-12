@@ -63,7 +63,7 @@
             </template>
 
             <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="viewer-page__link-cell viewer-page__tone-indigo">
+              <q-td :props="props" class="viewer-page__link-cell">
                 <a
                   :href="props.row.websiteUrl"
                   :title="props.row.websiteUrl"
@@ -84,6 +84,19 @@
               </q-td>
             </template>
 
+            <template #bottom-row>
+              <q-tr class="viewer-page__totals-row">
+                <q-td
+                  v-for="column in viewerReviewColumns"
+                  :key="column.name"
+                  class="viewer-page__totals-cell"
+                  :class="getViewerTotalsCellClass(column.name)"
+                >
+                  {{ getViewerTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+
           </q-table>
         </q-card>
       </section>
@@ -101,7 +114,10 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import { buildAdminReviewRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
+import {
+  buildAdminReviewRows,
+  summarizeAdminReviewRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 
 const route = useRoute()
 const router = useRouter()
@@ -122,6 +138,12 @@ const statusChipColor = (status: string) => {
   return 'secondary'
 }
 
+const formatFixed = (value: number | null | undefined) =>
+  value == null ? '' : Number(value).toFixed(2)
+
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)))
+
 const viewerReviewRows = computed(() =>
   buildAdminReviewRows(
     costingFileItems.value.filter((item) => item.status === 'accepted'),
@@ -133,6 +155,7 @@ const viewerReviewRows = computed(() =>
     },
   ),
 )
+const viewerTotals = computed(() => summarizeAdminReviewRows(viewerReviewRows.value))
 
 const viewerReviewColumns = [
   {
@@ -197,8 +220,8 @@ const viewerReviewColumns = [
     align: 'left' as const,
     style: 'width: 92px; min-width: 92px;',
     headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
-    classes: 'viewer-page__tone-amber',
-    headerClasses: 'viewer-page__tone-amber',
+    classes: 'viewer-page__tone-indigo',
+    headerClasses: 'viewer-page__tone-indigo',
   },
   {
     name: 'purchasePriceGbp',
@@ -217,8 +240,6 @@ const viewerReviewColumns = [
     align: 'left' as const,
     style: 'width: 92px; min-width: 92px;',
     headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
-    classes: 'viewer-page__tone-emerald',
-    headerClasses: 'viewer-page__tone-emerald',
   },
   {
     name: 'costingPriceGbp',
@@ -237,10 +258,53 @@ const viewerReviewColumns = [
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
     headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
-    classes: 'viewer-page__tone-amber',
-    headerClasses: 'viewer-page__tone-amber',
+    classes: 'viewer-page__tone-indigo',
+    headerClasses: 'viewer-page__tone-indigo',
   },
 ]
+
+const getViewerTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'sl':
+      return 'Total'
+    case 'name':
+      return `${viewerReviewRows.value.length} Items`
+    case 'quantity':
+      return formatWhole(viewerTotals.value.quantity)
+    case 'productWeight':
+      return formatWhole(viewerTotals.value.productWeight)
+    case 'packageWeight':
+      return formatWhole(viewerTotals.value.packageWeight)
+    case 'totalWeight':
+      return formatWhole(viewerTotals.value.totalWeight)
+    case 'priceInWebGbp':
+      return formatFixed(viewerTotals.value.priceInWebGbp)
+    case 'deliveryPriceGbp':
+      return formatFixed(viewerTotals.value.deliveryPriceGbp)
+    case 'purchasePriceGbp':
+      return formatFixed(viewerTotals.value.purchasePriceGbp)
+    case 'cargoRateGbp':
+      return formatFixed(viewerTotals.value.cargoRateGbp)
+    case 'costingPriceGbp':
+      return formatFixed(viewerTotals.value.costingPriceGbp)
+    case 'auxiliaryPriceGbp':
+      return formatFixed(viewerTotals.value.auxiliaryPriceGbp)
+    default:
+      return ''
+  }
+}
+
+const getViewerTotalsCellClass = (columnName: string) => {
+  if (
+    ['priceInWebGbp', 'deliveryPriceGbp', 'purchasePriceGbp', 'costingPriceGbp', 'auxiliaryPriceGbp'].includes(
+      columnName,
+    )
+  ) {
+    return 'viewer-page__tone-indigo'
+  }
+
+  return ''
+}
 
 const loadFile = async () => {
   const fileId = Number(route.params.id)
@@ -325,18 +389,18 @@ onMounted(async () => {
 }
 
 .viewer-page :deep(.viewer-page__tone-indigo) {
-  background: #eceffd;
-  color: #34408f;
+  background: #e6f4ea;
+  color: #1f6a43;
 }
 
 .viewer-page :deep(.viewer-page__tone-amber) {
-  background: #fbefc4;
+  background: #fff8e1;
   color: #7a5313;
 }
 
 .viewer-page :deep(.viewer-page__tone-emerald) {
-  background: #ddf4e7;
-  color: #1f6a43;
+  background: #f3e5f5;
+  color: #6b2f7a;
 }
 
 .viewer-page :deep(th.viewer-page__tone-indigo),
@@ -380,5 +444,15 @@ onMounted(async () => {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.viewer-page__totals-row {
+  background: inherit;
+}
+
+.viewer-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
 }
 </style>

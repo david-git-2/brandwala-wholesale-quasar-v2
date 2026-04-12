@@ -3,22 +3,12 @@
     <section class="bw-page__stack costing-page">
       <section class="costing-page__header">
         <div class="costing-page__heading">
-          <div class="text-overline">Costing File</div>
           <h1 class="text-h5 q-my-none">Costing file details</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
         </div>
 
         <div class="costing-page__toolbar">
-          <q-select
-            v-model="statusForm"
-            :options="fileStatuses"
-            label="File status"
-            outlined
-            dense
-            :disable="!selectedFile || savingStatus"
-            :loading="savingStatus"
-            @update:model-value="handleSaveStatus"
-          />
+
           <q-btn
             outline
             color="primary"
@@ -38,7 +28,21 @@
             @click="goToViewerManagement"
           />
         </div>
+
       </section>
+      <div class="row justify-end">
+           <q-select
+            v-model="statusForm"
+            :options="fileStatuses"
+            label="File status"
+            outlined
+            dense
+            :disable="!selectedFile || savingStatus"
+            :loading="savingStatus"
+            style="width: 200px;"
+            @update:model-value="handleSaveStatus"
+          />
+        </div>
 
       <section v-if="selectedFile?.status === 'draft'" class="costing-page__draft-state">
         <div class="text-subtitle1">Items not added yet</div>
@@ -288,6 +292,19 @@
               />
             </q-td>
           </template>
+
+          <template #bottom-row>
+            <q-tr class="costing-page__totals-row">
+              <q-td
+                v-for="column in productColumns"
+                :key="column.name"
+                class="costing-page__totals-cell"
+                :class="getProductTotalsCellClass(column.name)"
+              >
+                {{ getProductTotalsValue(column.name) }}
+              </q-td>
+            </q-tr>
+          </template>
         </q-table>
       </section>
 
@@ -299,12 +316,6 @@
         "
         class="costing-page__pricing-section"
       >
-        <div>
-          <div class="text-subtitle1">Pricing inputs</div>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Enter pricing values for this costing file.
-          </p>
-        </div>
 
         <div class="costing-page__pricing-grid">
           <div class="costing-page__field">
@@ -718,6 +729,19 @@
               />
             </q-td>
           </template>
+
+          <template #bottom-row>
+            <q-tr class="costing-page__totals-row">
+              <q-td
+                v-for="column in visibleReviewColumns"
+                :key="column.name"
+                class="costing-page__totals-cell"
+                :class="getReviewTotalsCellClass(column.name)"
+              >
+                {{ getReviewTotalsValue(column.name) }}
+              </q-td>
+            </q-tr>
+          </template>
         </q-table>
       </section>
 
@@ -769,6 +793,8 @@ import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/A
 import {
   buildAdminProductRows,
   buildAdminReviewRows,
+  summarizeAdminProductRows,
+  summarizeAdminReviewRows,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
@@ -841,7 +867,17 @@ const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
 )
 
+const formatFixed = (value: number | null | undefined) =>
+  value == null ? '' : Number(value).toFixed(2)
+
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)))
+
+const formatPercent = (value: number | null | undefined) =>
+  value == null ? '' : `${Number(value).toFixed(2)}%`
+
 const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
+const productTotals = computed(() => summarizeAdminProductRows(productRows.value))
 
 const productColumns = [
   { name: 'actions', label: '', field: 'actions', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
@@ -910,6 +946,7 @@ const reviewRows = computed(() =>
     adminProfitRate: pricingForm.adminProfitRate,
   }),
 )
+const reviewTotals = computed(() => summarizeAdminReviewRows(reviewRows.value))
 
 const reviewColumns = [
   {
@@ -977,9 +1014,36 @@ const reviewColumns = [
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
-  { name: 'deliveryPriceGbp', label: 'Delivery price (GBP)', field: 'deliveryPriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
-  { name: 'auxiliaryPriceGbp', label: 'Auxiliary price (GBP)', field: 'auxiliaryPriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
-  { name: 'purchasePriceGbp', label: 'Purchase price (GBP)', field: 'purchasePriceGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  {
+    name: 'deliveryPriceGbp',
+    label: 'Delivery price (GBP)',
+    field: 'deliveryPriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'auxiliaryPriceGbp',
+    label: 'Auxiliary price (GBP)',
+    field: 'auxiliaryPriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'purchasePriceGbp',
+    label: 'Purchase price (GBP)',
+    field: 'purchasePriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
   { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
   {
     name: 'costingPriceGbp',
@@ -988,6 +1052,16 @@ const reviewColumns = [
     align: 'left' as const,
     style: 'width: 88px; min-width: 88px;',
     headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+   {
+    name: 'totalCostGbp',
+    label: 'Total cost (GBP)',
+    field: 'totalCostGbp',
+    align: 'left' as const,
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
@@ -1001,26 +1075,7 @@ const reviewColumns = [
     classes: 'costing-page__tone-amber',
     headerClasses: 'costing-page__tone-amber',
   },
-  {
-    name: 'offerPriceBdt',
-    label: 'Offer price (BDT) per unit',
-    field: 'offerPriceBdt',
-    align: 'left' as const,
-    style: 'width: 88px; min-width: 88px;',
-    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__tone-emerald',
-    headerClasses: 'costing-page__tone-emerald',
-  },
-  {
-    name: 'totalCostGbp',
-    label: 'Total cost (GBP)',
-    field: 'totalCostGbp',
-    align: 'left' as const,
-    style: 'width: 94px; min-width: 94px;',
-    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
-    classes: 'costing-page__tone-indigo',
-    headerClasses: 'costing-page__tone-indigo',
-  },
+
   {
     name: 'totalCostBdt',
     label: 'Total cost (BDT)',
@@ -1032,6 +1087,17 @@ const reviewColumns = [
     headerClasses: 'costing-page__tone-amber',
   },
   {
+    name: 'offerPriceBdt',
+    label: 'Offer price (BDT) per unit',
+    field: 'offerPriceBdt',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-emerald',
+    headerClasses: 'costing-page__tone-emerald',
+  },
+
+  {
     name: 'totalOfferPriceBdt',
     label: 'Total offer (BDT)',
     field: 'totalOfferPriceBdt',
@@ -1042,8 +1108,26 @@ const reviewColumns = [
     headerClasses: 'costing-page__tone-emerald',
   },
   { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 74px; min-width: 74px;', headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;' },
-  { name: 'profitAmount', label: 'Profit amount (BDT) per unit', field: 'profitAmount', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
-  { name: 'totalProfitBdt', label: 'Total profit (BDT)', field: 'totalProfitBdt', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;' },
+  {
+    name: 'profitAmount',
+    label: 'Profit amount (BDT) per unit',
+    field: 'profitAmount',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
+  {
+    name: 'totalProfitBdt',
+    label: 'Total profit (BDT)',
+    field: 'totalProfitBdt',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
   { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 88px; min-width: 88px;', headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;' },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
@@ -1075,6 +1159,105 @@ const visibleReviewColumns = computed(() => {
 
   return columns.filter((column) => column.name !== 'actions')
 })
+
+const getProductTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'actions':
+    case 'image':
+      return ''
+    case 'sl':
+      return 'Total'
+    case 'name':
+      return `${productRows.value.length} Items`
+    case 'priceInWebGbp':
+      return formatFixed(productTotals.value.priceInWebGbp)
+    case 'productWeight':
+      return formatWhole(productTotals.value.productWeight)
+    case 'packageWeight':
+      return formatWhole(productTotals.value.packageWeight)
+    case 'quantity':
+      return formatWhole(productTotals.value.quantity)
+    default:
+      return ''
+  }
+}
+
+const getReviewTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'sl':
+      return 'Total'
+    case 'name':
+      return `${reviewRows.value.length} Items`
+    case 'quantity':
+      return formatWhole(reviewTotals.value.quantity)
+    case 'productWeight':
+      return formatWhole(reviewTotals.value.productWeight)
+    case 'packageWeight':
+      return formatWhole(reviewTotals.value.packageWeight)
+    case 'totalWeight':
+      return formatWhole(reviewTotals.value.totalWeight)
+    case 'priceInWebGbp':
+      return formatFixed(reviewTotals.value.priceInWebGbp)
+    case 'deliveryPriceGbp':
+      return formatFixed(reviewTotals.value.deliveryPriceGbp)
+    case 'auxiliaryPriceGbp':
+      return formatFixed(reviewTotals.value.auxiliaryPriceGbp)
+    case 'purchasePriceGbp':
+      return formatFixed(reviewTotals.value.purchasePriceGbp)
+    case 'cargoRateGbp':
+      return formatFixed(reviewTotals.value.cargoRateGbp)
+    case 'costingPriceGbp':
+      return formatFixed(reviewTotals.value.costingPriceGbp)
+    case 'costingPriceBdt':
+      return formatWhole(reviewTotals.value.costingPriceBdt)
+    case 'offerPriceBdt':
+      return formatWhole(reviewTotals.value.offerPriceBdt)
+    case 'totalCostGbp':
+      return formatFixed(reviewTotals.value.totalCostGbp)
+    case 'totalCostBdt':
+      return formatWhole(reviewTotals.value.totalCostBdt)
+    case 'totalOfferPriceBdt':
+      return formatWhole(reviewTotals.value.totalOfferPriceBdt)
+    case 'profitRate':
+      return formatPercent(reviewTotals.value.profitRate)
+    case 'profitAmount':
+      return formatWhole(reviewTotals.value.profitAmount)
+    case 'totalProfitBdt':
+      return formatWhole(reviewTotals.value.totalProfitBdt)
+    case 'averageProfitRate':
+      return formatPercent(reviewTotals.value.averageProfitRate)
+    default:
+      return ''
+  }
+}
+
+const getProductTotalsCellClass = (columnName: string) => {
+  if (columnName === 'priceInWebGbp') {
+    return 'costing-page__tone-indigo'
+  }
+
+  return ''
+}
+
+const getReviewTotalsCellClass = (columnName: string) => {
+  if (
+    ['priceInWebGbp', 'deliveryPriceGbp', 'auxiliaryPriceGbp', 'purchasePriceGbp', 'costingPriceGbp', 'totalCostGbp'].includes(
+      columnName,
+    )
+  ) {
+    return 'costing-page__tone-indigo'
+  }
+
+  if (['costingPriceBdt', 'totalCostBdt', 'profitAmount', 'totalProfitBdt'].includes(columnName)) {
+    return 'costing-page__tone-amber'
+  }
+
+  if (['offerPriceBdt', 'totalOfferPriceBdt'].includes(columnName)) {
+    return 'costing-page__tone-emerald'
+  }
+
+  return ''
+}
 
 const getReviewRowClass = (row: { status?: string | null }) =>
   row.status === 'rejected' ? 'costing-page__rejected-row' : ''
@@ -1737,7 +1920,6 @@ onMounted(async () => {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--bw-theme-primary);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -1765,24 +1947,34 @@ onMounted(async () => {
 }
 
 .costing-page :deep(.costing-page__tone-indigo) {
-  background: #eceffd;
-  color: #34408f;
+  background: #e6f4ea;
+  color: #1f6a43;
 }
 
 .costing-page :deep(.costing-page__tone-amber) {
-  background: #fbefc4;
+  background: #fff8e1;
   color: #7a5313;
 }
 
 .costing-page :deep(.costing-page__tone-emerald) {
-  background: #ddf4e7;
-  color: #1f6a43;
+  background: #f3e5f5;
+  color: #6b2f7a;
 }
 
 .costing-page :deep(th.costing-page__tone-indigo),
 .costing-page :deep(th.costing-page__tone-amber),
 .costing-page :deep(th.costing-page__tone-emerald) {
   font-weight: 700;
+}
+
+.costing-page__totals-row {
+  background: inherit;
+}
+
+.costing-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .costing-page :deep(.q-table th:nth-child(4)),

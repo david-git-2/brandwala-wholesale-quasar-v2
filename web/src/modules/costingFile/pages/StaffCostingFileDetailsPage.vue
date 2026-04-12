@@ -138,6 +138,19 @@
                 />
               </q-td>
             </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in productColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getProductTotalsCellClass(column.name)"
+                >
+                  {{ getProductTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
           </q-table>
 
           <q-card v-else flat bordered>
@@ -173,7 +186,10 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue'
-import { buildAdminProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
+import {
+  buildAdminProductRows,
+  summarizeAdminProductRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileDetails, CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
 
@@ -194,7 +210,14 @@ const editingItemId = ref<number | null>(null)
 
 const editableStatuses: CostingFileStatus[] = ['customer_submitted']
 
+const formatFixed = (value: number | null | undefined) =>
+  value == null ? '' : Number(value).toFixed(2)
+
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)))
+
 const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
+const productTotals = computed(() => summarizeAdminProductRows(productRows.value))
 const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
 )
@@ -262,6 +285,31 @@ const canEditFile = computed(() =>
 const canSendToReview = computed(
   () => Boolean(selectedFile.value && editableStatuses.includes(selectedFile.value.status)),
 )
+
+const getProductTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'actions':
+    case 'image':
+      return ''
+    case 'sl':
+      return 'Total'
+    case 'name':
+      return `${productRows.value.length} Items`
+    case 'priceInWebGbp':
+      return formatFixed(productTotals.value.priceInWebGbp)
+    case 'productWeight':
+      return formatWhole(productTotals.value.productWeight)
+    case 'packageWeight':
+      return formatWhole(productTotals.value.packageWeight)
+    case 'quantity':
+      return formatWhole(productTotals.value.quantity)
+    default:
+      return ''
+  }
+}
+
+const getProductTotalsCellClass = (columnName: string) =>
+  columnName === 'priceInWebGbp' ? 'costing-page__tone-indigo' : ''
 
 const statusChipColor = (status: CostingFileStatus) => {
   if (status === 'draft') return 'grey-7'
@@ -583,6 +631,21 @@ watch(editDialogOpen, (isOpen) => {
   line-height: 1.35;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.costing-page :deep(.costing-page__tone-indigo) {
+  background: #e6f4ea;
+  color: #1f6a43;
+}
+
+.costing-page__totals-row {
+  background: inherit;
+}
+
+.costing-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
 }
 
 @media (max-width: 900px) {

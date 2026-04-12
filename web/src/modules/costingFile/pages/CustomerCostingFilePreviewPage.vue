@@ -74,6 +74,19 @@
               {{ props.row.buyerSellingPriceBdt }}
             </q-td>
           </template>
+
+          <template #bottom-row>
+            <q-tr class="preview-page__totals-row">
+              <q-td
+                v-for="column in columns"
+                :key="column.name"
+                class="preview-page__totals-cell"
+                :class="column.name === 'buyerSellingPriceBdt' ? 'preview-page__tone-orange' : ''"
+              >
+                {{ getTotalsValue(column.name) }}
+              </q-td>
+            </q-tr>
+          </template>
         </q-table>
 
         <div v-else class="text-body2 text-grey-7">No items to preview.</div>
@@ -89,7 +102,10 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 
-import { buildCustomerProductRows } from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import {
+  buildCustomerProductRows,
+  summarizeCustomerProductRows,
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
 
 const route = useRoute();
@@ -147,6 +163,9 @@ const buildExportProxyUrl = (value: string) => {
 
 const resolvePreviewImageUrl = (value: string) =>
   exporting.value ? buildExportProxyUrl(value) : toExternalUrl(value);
+
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)));
 
 const loadFile = async () => {
   const fileId = Number(route.params.id);
@@ -250,6 +269,21 @@ const downloadZip = async () => {
 onMounted(async () => {
   await loadFile();
 });
+
+const totals = computed(() => summarizeCustomerProductRows(rows.value));
+
+const getTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'sl':
+      return 'Total';
+    case 'name':
+      return `${rows.value.length} Items`;
+    case 'buyerSellingPriceBdt':
+      return formatWhole(totals.value.buyerSellingPriceBdt);
+    default:
+      return '';
+  }
+};
 </script>
 
 <style scoped>
@@ -319,6 +353,16 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.preview-page__totals-row {
+  background: inherit;
+}
+
+.preview-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
 .preview-page__name-text {
   display: inline-block;
   max-width: 100%;
@@ -330,11 +374,12 @@ onMounted(async () => {
 .preview-page__price-cell {
   white-space: nowrap;
   font-weight: 700;
-  background: #fdeccd;
+  background: #fff8e1;
+  color: #7a5313;
 }
 
 .preview-page__table :deep(.preview-page__tone-orange) {
-  background: #fdeccd;
+  background: #fff8e1;
   color: #7a5313;
 }
 
