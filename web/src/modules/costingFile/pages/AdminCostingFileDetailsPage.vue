@@ -559,6 +559,44 @@
             </q-td>
           </template>
 
+          <template #body-cell-cargoRateGbp="props">
+            <q-td :props="props" class="costing-page__numeric-cell">
+              <div class="costing-page__inline-edit-cell">
+                <button
+                  type="button"
+                  class="costing-page__inline-edit-trigger"
+                  :disabled="savingFieldKey === `cargoRate:${props.row.id}`"
+                  @click="primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)"
+                >
+                  {{ props.row.cargoRateGbp }}
+                </button>
+
+                <q-popup-edit
+                  v-model="itemFieldDrafts[`cargoRate:${props.row.id}`]"
+                  buttons
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  :validate="validateNullableNumber"
+                  @before-show="primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)"
+                  @save="saveItemField(props.row.id, 'cargoRate', $event)"
+                  v-slot="scope"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    dense
+                    autofocus
+                    outlined
+                    min="0"
+                    step="0.01"
+                    label="Cargo per KG (GBP)"
+                    hint="Leave empty to use auto rate."
+                  />
+                </q-popup-edit>
+              </div>
+            </q-td>
+          </template>
+
           <template #body-cell-quantity="props">
             <q-td :props="props" class="costing-page__numeric-cell">
               <div class="costing-page__quantity-cell">
@@ -1096,12 +1134,22 @@ const primeQuantityEditor = (itemId: number, fallbackValue: number | string) => 
 
 const itemFieldKey = (
   itemId: number,
-  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp',
+  field:
+    | 'productWeight'
+    | 'packageWeight'
+    | 'priceInWebGbp'
+    | 'deliveryPriceGbp'
+    | 'cargoRate',
 ) => `${field}:${itemId}`
 
 const primeItemFieldEditor = (
   itemId: number,
-  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp',
+  field:
+    | 'productWeight'
+    | 'packageWeight'
+    | 'priceInWebGbp'
+    | 'deliveryPriceGbp'
+    | 'cargoRate',
   fallbackValue: number | null,
 ) => {
   const key = itemFieldKey(itemId, field)
@@ -1112,6 +1160,7 @@ const primeItemFieldEditor = (
   if (field === 'packageWeight') itemFieldDrafts[key] = item?.package_weight ?? fallbackValue ?? null
   if (field === 'priceInWebGbp') itemFieldDrafts[key] = item?.price_in_web_gbp ?? fallbackValue ?? null
   if (field === 'deliveryPriceGbp') itemFieldDrafts[key] = item?.delivery_price_gbp ?? fallbackValue ?? null
+  if (field === 'cargoRate') itemFieldDrafts[key] = item?.cargo_rate ?? fallbackValue ?? null
 }
 
 const validateQuantity = (value: number | string | null) => {
@@ -1139,7 +1188,12 @@ const saveQuantity = async (itemId: number, value: number | string | null) => {
 
 const saveItemField = async (
   itemId: number,
-  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp',
+  field:
+    | 'productWeight'
+    | 'packageWeight'
+    | 'priceInWebGbp'
+    | 'deliveryPriceGbp'
+    | 'cargoRate',
   value: number | null,
 ) => {
   const key = itemFieldKey(itemId, field)
