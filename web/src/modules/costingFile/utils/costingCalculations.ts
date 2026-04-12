@@ -1,6 +1,8 @@
 export type CostingFileCalculationInput = {
   cargoRate1Kg: number | null | undefined
   cargoRate2Kg: number | null | undefined
+  cargoRateOverride?: number | null
+  cargoRateIsManual?: boolean | null
   conversionRate: number | null | undefined
   adminProfitRate: number | null | undefined
   offerPriceOverrideBdt?: number | null | undefined
@@ -67,7 +69,13 @@ export const selectCargoRate = (
   itemPriceGbp: number | null | undefined,
   cargoRate1Kg: number | null | undefined,
   cargoRate2Kg: number | null | undefined,
+  cargoRateOverride?: number | null,
+  cargoRateIsManual?: boolean | null,
 ) => {
+  if (cargoRateIsManual && cargoRateOverride != null) {
+    return roundGbp(toSafeNumber(cargoRateOverride))
+  }
+
   const normalizedItemPrice = toSafeNumber(itemPriceGbp)
   const selectedRate = normalizedItemPrice > 10 ? cargoRate2Kg : cargoRate1Kg
 
@@ -117,7 +125,13 @@ export const calculateCostingItem = (
     item.deliveryPriceGbp,
     auxiliaryPriceGbp,
   )
-  const cargoRate = selectCargoRate(itemPriceGbp, file.cargoRate1Kg, file.cargoRate2Kg)
+  const cargoRate = selectCargoRate(
+    itemPriceGbp,
+    file.cargoRate1Kg,
+    file.cargoRate2Kg,
+    file.cargoRateOverride,
+    file.cargoRateIsManual,
+  )
   const costingPriceGbp = calculateCostingPriceGbp(itemPriceGbp, totalWeight, cargoRate)
   const costingPriceBdt = calculateCostingPriceBdt(costingPriceGbp, file.conversionRate)
   const calculatedOfferPriceBdt = calculateOfferPriceBdt(costingPriceBdt, file.adminProfitRate)

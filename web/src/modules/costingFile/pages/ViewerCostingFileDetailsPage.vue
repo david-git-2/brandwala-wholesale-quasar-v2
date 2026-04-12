@@ -123,12 +123,15 @@ const statusChipColor = (status: string) => {
 }
 
 const viewerReviewRows = computed(() =>
-  buildAdminReviewRows(costingFileItems.value, {
+  buildAdminReviewRows(
+    costingFileItems.value.filter((item) => item.status === 'accepted'),
+    {
     cargoRate1Kg: selectedFile.value?.cargo_rate_1kg ?? null,
     cargoRate2Kg: selectedFile.value?.cargo_rate_2kg ?? null,
     conversionRate: selectedFile.value?.conversion_rate ?? null,
     adminProfitRate: selectedFile.value?.admin_profit_rate ?? null,
-  }),
+    },
+  ),
 )
 
 const viewerReviewColumns = [
@@ -364,17 +367,18 @@ onMounted(async () => {
 .viewer-page__link {
   color: var(--bw-theme-primary);
   text-decoration: underline;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-  display: inline-block;
-}
-
-.viewer-page__name-text {
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.viewer-page__name-text {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>

@@ -81,6 +81,7 @@ const listCostingFileItemsForCustomer = async (
     auxiliary_price_gbp: null,
     item_price_gbp: null,
     cargo_rate: null,
+    cargo_rate_is_manual: false,
     costing_price_gbp: null,
     costing_price_bdt: null,
     offer_price_override_bdt: null,
@@ -116,6 +117,7 @@ const createCostingFileItem = async (
       auxiliary_price_gbp: payload.auxiliaryPriceGbp ?? null,
       item_price_gbp: payload.itemPriceGbp ?? null,
       cargo_rate: payload.cargoRate ?? null,
+      cargo_rate_is_manual: payload.cargoRateIsManual ?? false,
       costing_price_gbp: payload.costingPriceGbp ?? null,
       costing_price_bdt: payload.costingPriceBdt ?? null,
       offer_price_override_bdt: payload.offerPriceOverrideBdt ?? null,
@@ -323,6 +325,9 @@ const updateCostingFileItem = async (
   if (payload.auxiliaryPriceGbp !== undefined) updateData.auxiliary_price_gbp = payload.auxiliaryPriceGbp
   if (payload.itemPriceGbp !== undefined) updateData.item_price_gbp = payload.itemPriceGbp
   if (payload.cargoRate !== undefined) updateData.cargo_rate = payload.cargoRate
+  if (payload.cargoRateIsManual !== undefined) {
+    updateData.cargo_rate_is_manual = payload.cargoRateIsManual
+  }
   if (payload.costingPriceGbp !== undefined) updateData.costing_price_gbp = payload.costingPriceGbp
   if (payload.costingPriceBdt !== undefined) updateData.costing_price_bdt = payload.costingPriceBdt
   if (payload.offerPriceOverrideBdt !== undefined) {

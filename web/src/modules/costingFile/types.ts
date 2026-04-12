@@ -39,6 +39,7 @@ export type CostingFileItem = {
   auxiliary_price_gbp: number | null
   item_price_gbp: number | null
   cargo_rate: number | null
+  cargo_rate_is_manual: boolean
   costing_price_gbp: number | null
   costing_price_bdt: number | null
   offer_price_override_bdt: number | null
@@ -141,6 +142,7 @@ export type CostingFileItemCreateInput = {
   auxiliaryPriceGbp?: number | null
   itemPriceGbp?: number | null
   cargoRate?: number | null
+  cargoRateIsManual?: boolean
   costingPriceGbp?: number | null
   costingPriceBdt?: number | null
   offerPriceOverrideBdt?: number | null
@@ -168,6 +170,7 @@ export type CostingFileItemUpdateInput = {
   auxiliaryPriceGbp?: number | null
   itemPriceGbp?: number | null
   cargoRate?: number | null
+  cargoRateIsManual?: boolean
   costingPriceGbp?: number | null
   costingPriceBdt?: number | null
   offerPriceOverrideBdt?: number | null

@@ -76,6 +76,7 @@ const normalizeRequestItemToCostingFileItem = (
   auxiliary_price_gbp: null,
   item_price_gbp: null,
   cargo_rate: null,
+  cargo_rate_is_manual: false,
   costing_price_gbp: null,
   costing_price_bdt: null,
   offer_price_override_bdt: null,

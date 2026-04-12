@@ -1199,9 +1199,15 @@ const saveItemField = async (
   const key = itemFieldKey(itemId, field)
   savingFieldKey.value = key
   try {
+    const normalizedValue = value == null ? null : Number(value)
     await costingFileStore.updateCostingFileItem({
       id: itemId,
-      [field]: value == null ? null : Number(value),
+      [field]: normalizedValue,
+      ...(field === 'cargoRate'
+        ? {
+            cargoRateIsManual: normalizedValue != null,
+          }
+        : {}),
     })
   } finally {
     savingFieldKey.value = null

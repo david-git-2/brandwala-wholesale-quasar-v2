@@ -359,6 +359,8 @@ onMounted(() => {
 .preview-page__meta-value--compact {
   font-size: 14px;
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .preview-page__header-row {
@@ -431,17 +433,22 @@ onMounted(() => {
   max-width: 100%;
   white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .preview-page__name-text {
   white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   line-height: 1.2;
   font-size: 11px;
+  max-width: 100%;
 }
 
 :deep(.preview-page__name-column) {
   min-width: 0;
+  width: auto;
 }
 
 .preview-page__offer-cell {

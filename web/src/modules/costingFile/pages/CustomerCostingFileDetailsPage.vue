@@ -521,63 +521,85 @@
 
           <q-form @submit.prevent="handleSubmitRequest">
             <q-card-section class="costing-page__request-grid">
-              <q-input
-                v-model="requestForm.websiteUrl"
-                label="Web link"
-                outlined
-                dense
-                :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
-              />
-              <q-input
-                v-model.number="requestForm.quantity"
-                label="Quantity"
-                type="number"
-                outlined
-                dense
-                min="1"
-                :rules="[
-                  (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
-                ]"
-              />
-              <q-input
-                v-model="requestForm.size"
-                label="Size"
-                outlined
-                dense
-              />
-              <q-input
-                v-model="requestForm.color"
-                label="Color"
-                outlined
-                dense
-              />
-              <q-select
-                v-model="requestForm.itemType"
-                :options="itemTypeOptions"
-                label="Type"
-                outlined
-                dense
-                clearable
-                emit-value
-                map-options
-                hint="Pick the closest product type."
-              />
-              <q-input
-                v-model="requestForm.extraInformation1"
-                label="Extra information 1"
-                type="textarea"
-                autogrow
-                outlined
-                dense
-              />
-              <q-input
-                v-model="requestForm.extraInformation2"
-                label="Extra information 2"
-                type="textarea"
-                autogrow
-                outlined
-                dense
-              />
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">
+                  Web link <span class="costing-page__required-star">*</span>
+                </div>
+                <q-input
+                  v-model="requestForm.websiteUrl"
+                  outlined
+                  dense
+                  :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
+                />
+              </div>
+
+
+
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">Quantity</div>
+                <q-input
+                  v-model.number="requestForm.quantity"
+                  type="number"
+                  outlined
+                  dense
+                  min="1"
+                  :rules="[
+                    (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+                  ]"
+                />
+              </div>
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">Size</div>
+                <q-input
+                  v-model="requestForm.size"
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">Color</div>
+                <q-input
+                  v-model="requestForm.color"
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">
+                  Type <span class="costing-page__required-star">*</span>
+                </div>
+                <q-select
+                  v-model="requestForm.itemType"
+                  :options="itemTypeOptions"
+                  outlined
+                  dense
+                  clearable
+                  emit-value
+                  map-options
+                  hint="Pick the closest product type."
+                  :rules="[(value) => !!String(value ?? '').trim() || 'Type is required.']"
+                />
+              </div>
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">Extra information 1</div>
+                <q-input
+                  v-model="requestForm.extraInformation1"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="costing-page__field-block">
+                <div class="costing-page__field-label">Extra information 2</div>
+                <q-input
+                  v-model="requestForm.extraInformation2"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                />
+              </div>
             </q-card-section>
 
             <q-card-actions align="right">
@@ -643,6 +665,7 @@ const requestForm = reactive({
 })
 
 const itemTypeOptions = ['Watch', 'Perfume', 'Others']
+
 
 const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
 
@@ -1111,9 +1134,61 @@ watch(
 
 .costing-page__request-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
+}
+
+.costing-page__field-block {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.costing-page__field-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--bw-theme-ink);
+}
+
+.costing-page__required-star {
+  color: #c63c4f;
+  font-weight: 700;
+}
+
+.costing-page__link-preview {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bw-theme-primary) 4%, white), white);
+}
+
+.costing-page__link-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.costing-page__link-preview-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--bw-theme-ink);
+}
+
+.costing-page__link-preview-frame {
+  width: 100%;
+  height: 240px;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.costing-page__link-preview-note {
+  font-size: 0.8rem;
+  color: var(--bw-theme-muted);
 }
 
 .costing-page__request-actions {
@@ -1350,15 +1425,7 @@ watch(
   }
 
   .costing-page__request-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(110px, 140px);
-  }
-
-  .costing-page__request-grid > :nth-child(3),
-  .costing-page__request-grid > :nth-child(4),
-  .costing-page__request-grid > :nth-child(5),
-  .costing-page__request-grid > :nth-child(6),
-  .costing-page__request-grid > :nth-child(7) {
-    grid-column: span 1;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

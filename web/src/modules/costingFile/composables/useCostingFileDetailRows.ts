@@ -48,6 +48,8 @@ export const buildAdminReviewRows = (
       {
         cargoRate1Kg: pricing.cargoRate1Kg,
         cargoRate2Kg: pricing.cargoRate2Kg,
+        cargoRateOverride: item.cargo_rate,
+        cargoRateIsManual: item.cargo_rate_is_manual,
         conversionRate: pricing.conversionRate,
         adminProfitRate: pricing.adminProfitRate,
         offerPriceOverrideBdt: item.offer_price_override_bdt,
@@ -98,8 +100,10 @@ export const buildAdminReviewRows = (
       status: item.status,
       auxiliaryPriceGbp: formatGbp(calculated.auxiliaryPriceGbp),
       purchasePriceGbp: formatGbp(calculated.itemPriceGbp),
-      cargoRateValue: item.cargo_rate ?? calculated.cargoRate,
-      cargoRateGbp: formatGbp(item.cargo_rate ?? calculated.cargoRate),
+      cargoRateValue: item.cargo_rate_is_manual ? item.cargo_rate : calculated.cargoRate,
+      cargoRateGbp: formatGbp(
+        item.cargo_rate_is_manual ? item.cargo_rate : calculated.cargoRate,
+      ),
       costingPriceGbp: formatGbp(calculated.costingPriceGbp),
       costingPriceBdt: formatBdt(calculated.costingPriceBdt),
       offerPriceBdtValue: calculated.offerPriceBdt,
