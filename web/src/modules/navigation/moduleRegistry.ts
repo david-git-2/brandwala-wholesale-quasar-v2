@@ -172,7 +172,24 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'store',
     name: 'Store',
     description: 'Manage storefront configuration and store-level operations.',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Stores',
+        caption: 'Manage tenant stores and customer access',
+        icon: 'store',
+        routeSegment: 'stores',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Stores',
+        caption: 'View stores available to your customer group',
+        icon: 'storefront',
+        routeSegment: 'stores',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'invoice',

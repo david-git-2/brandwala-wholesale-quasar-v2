@@ -8,6 +8,7 @@ import membershipRoutes from 'src/modules/membership/routes';
 import marketRoutes from 'src/modules/market/routes';
 import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
 import productRoutes from 'src/modules/products/routes';
+import storeRoutes from 'src/modules/store/routes';
 import vendorRoutes from 'src/modules/vendor/routes';
 
 const routes: RouteRecordRaw[] = [
@@ -72,6 +73,7 @@ const routes: RouteRecordRaw[] = [
   ...marketRoutes,
   ...productBasedCostingRoutes,
   ...productRoutes,
+  ...storeRoutes,
   ...vendorRoutes,
   ...costingFileRoutes,
   ...membershipRoutes,

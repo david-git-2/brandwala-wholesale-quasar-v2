@@ -628,6 +628,83 @@ export type Database = {
           },
         ]
       }
+      store_access: {
+        Row: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          status: boolean
+          store_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id: number
+          id?: number
+          status?: boolean
+          store_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: number
+          id?: number
+          status?: boolean
+          store_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_access_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_access_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          tenant_id: number
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_modules: {
         Row: {
           created_at: string
@@ -785,6 +862,10 @@ export type Database = {
         Args: { p_customer_group_id: number }
         Returns: boolean
       }
+      can_customer_access_store: {
+        Args: { p_store_id: number }
+        Returns: boolean
+      }
       can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
         Args: { p_tenant_id: number }
@@ -807,6 +888,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_products: { Args: { p_tenant_id: number }; Returns: boolean }
+      can_manage_store: { Args: { p_tenant_id: number }; Returns: boolean }
       can_staff_access_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -877,6 +959,7 @@ export type Database = {
           member_updated_at: string
         }[]
       }
+      check_store_access: { Args: { p_store_id: number }; Returns: boolean }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
@@ -958,6 +1041,44 @@ export type Database = {
               website_url: string
             }[]
           }
+      create_store: {
+        Args: { p_name: string; p_tenant_id: number; p_vendor_code: string }
+        Returns: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_store_access: {
+        Args: {
+          p_customer_group_id: number
+          p_status?: boolean
+          p_store_id: number
+        }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          status: boolean
+          store_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "store_access"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_tenant_for_superadmin: {
         Args: {
           p_is_active?: boolean
@@ -996,6 +1117,8 @@ export type Database = {
         Returns: string
       }
       current_user_email: { Args: never; Returns: string }
+      delete_store: { Args: { p_id: number }; Returns: undefined }
+      delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -1099,6 +1222,57 @@ export type Database = {
           tenant_name: string
           tenant_slug: string
         }[]
+      }
+      get_store_access_admin: {
+        Args: { p_store_id: number }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          status: boolean
+          store_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "store_access"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_stores_admin: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stores"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_stores_for_customer: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stores"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_tenant_details_by_membership: {
         Args: {
@@ -1485,6 +1659,40 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_store: {
+        Args: { p_id: number; p_name: string; p_vendor_code: string }
+        Returns: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_store_access: {
+        Args: { p_id: number; p_status: boolean }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          status: boolean
+          store_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "store_access"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_tenant_for_superadmin: {
         Args: {
