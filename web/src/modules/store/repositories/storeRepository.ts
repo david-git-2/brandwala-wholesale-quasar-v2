@@ -5,6 +5,9 @@ import type {
   StoreAccess,
   StoreAccessCreateInput,
   StoreAccessDeleteInput,
+  StoreProductsPage,
+  StoreProductsQueryInput,
+  StoreProductsRow,
   StoreAccessUpdateInput,
   StoreCreateInput,
   StoreDeleteInput,
@@ -160,6 +163,33 @@ const checkStoreAccess = async (storeId: number): Promise<boolean> => {
   return Boolean(data)
 }
 
+const listStoreProducts = async (
+  payload: StoreProductsQueryInput,
+): Promise<StoreProductsPage> => {
+  const { data, error } = await supabase.rpc('list_store_products' as never, {
+    p_store_id: payload.store_id,
+    p_fields: payload.fields ?? null,
+    p_search: payload.search ?? null,
+    p_category: payload.category ?? null,
+    p_brand: payload.brand ?? null,
+    p_sort_by: payload.sort_by ?? 'id',
+    p_sort_dir: payload.sort_dir ?? 'asc',
+    p_limit: payload.limit ?? 20,
+    p_offset: payload.offset ?? 0,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  const rows = (data as StoreProductsRow[] | null) ?? []
+
+  return {
+    items: rows.map((row) => row.product ?? {}),
+    total: Number(rows[0]?.total_count ?? 0),
+  }
+}
+
 export const storeRepository = {
   getStoresAdmin,
   createStore,
@@ -171,4 +201,5 @@ export const storeRepository = {
   deleteStoreAccess,
   getStoresForCustomer,
   checkStoreAccess,
+  listStoreProducts,
 }

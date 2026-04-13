@@ -1423,6 +1423,23 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_store_products: {
+        Args: {
+          p_brand?: string
+          p_category?: string
+          p_fields?: string[]
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_dir?: string
+          p_store_id: number
+        }
+        Returns: {
+          product: Json
+          total_count: number
+        }[]
+      }
       list_tenant_modules_by_tenant: {
         Args: { p_tenant_id?: number }
         Returns: {

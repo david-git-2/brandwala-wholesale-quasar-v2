@@ -4,6 +4,8 @@ import type {
   StoreAccess,
   StoreAccessCreateInput,
   StoreAccessDeleteInput,
+  StoreProductsPage,
+  StoreProductsQueryInput,
   StoreAccessUpdateInput,
   StoreCreateInput,
   StoreDeleteInput,
@@ -143,6 +145,20 @@ const checkStoreAccess = async (
   }
 }
 
+const listStoreProducts = async (
+  payload: StoreProductsQueryInput,
+): Promise<StoreServiceResult<StoreProductsPage>> => {
+  try {
+    const data = await storeRepository.listStoreProducts(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load store products.',
+    }
+  }
+}
+
 export const storeService = {
   getStoresAdmin,
   createStore,
@@ -154,4 +170,5 @@ export const storeService = {
   deleteStoreAccess,
   getStoresForCustomer,
   checkStoreAccess,
+  listStoreProducts,
 }

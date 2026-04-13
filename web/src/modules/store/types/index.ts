@@ -52,3 +52,25 @@ export type StoreServiceResult<T> = {
   data?: T
   error?: string
 }
+
+export type StoreProductsQueryInput = {
+  store_id: number
+  fields?: string[] | null
+  search?: string | null
+  category?: string | null
+  brand?: string | null
+  sort_by?: string | null
+  sort_dir?: string | null
+  limit?: number
+  offset?: number
+}
+
+export type StoreProductsRow = {
+  product: Record<string, unknown>
+  total_count: number
+}
+
+export type StoreProductsPage = {
+  items: Record<string, unknown>[]
+  total: number
+}
