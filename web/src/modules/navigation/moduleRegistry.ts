@@ -8,6 +8,7 @@ export type ModuleKey =
   | 'products'
   | 'product_based_costing'
   | 'costing_file'
+  | 'store'
   | 'accounting'
   | 'invoice'
 
@@ -166,6 +167,12 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         requiredAction: 'view',
       },
     ],
+  },
+  {
+    key: 'store',
+    name: 'Store',
+    description: 'Manage storefront configuration and store-level operations.',
+    routes: [],
   },
   {
     key: 'invoice',

@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           auxiliary_price_gbp: number | null
           cargo_rate: number | null
+          cargo_rate_is_manual: boolean
           color: string | null
           costing_file_id: number
           costing_price_bdt: number | null
@@ -47,6 +48,7 @@ export type Database = {
         Insert: {
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
+          cargo_rate_is_manual?: boolean
           color?: string | null
           costing_file_id: number
           costing_price_bdt?: number | null
@@ -76,6 +78,7 @@ export type Database = {
         Update: {
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
+          cargo_rate_is_manual?: boolean
           color?: string | null
           costing_file_id?: number
           costing_price_bdt?: number | null

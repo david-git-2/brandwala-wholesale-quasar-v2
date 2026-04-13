@@ -63,6 +63,12 @@ values
     'Invoice',
     'Manage invoice creation, status, and reconciliation flow.',
     true
+  ),
+  (
+    'store',
+    'Store',
+    'Manage storefront configuration and store-level operations.',
+    true
   )
 on conflict (key) do update
 set
