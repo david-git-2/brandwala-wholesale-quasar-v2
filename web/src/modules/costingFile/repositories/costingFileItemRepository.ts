@@ -100,30 +100,29 @@ const createCostingFileItem = async (
   const { data, error } = await supabase
     .from('costing_file_items')
     .insert({
-      costing_file_id: payload.costingFileId,
-      name: payload.name ?? null,
-      item_type: payload.itemType ?? null,
-      size: payload.size ?? null,
-      color: payload.color ?? null,
-      extra_information_1: payload.extraInformation1 ?? null,
-      extra_information_2: payload.extraInformation2 ?? null,
-      image_url: payload.imageUrl ?? null,
-      website_url: payload.websiteUrl,
-      quantity: payload.quantity,
-      product_weight: payload.productWeight ?? null,
-      package_weight: payload.packageWeight ?? null,
-      price_in_web_gbp: payload.priceInWebGbp ?? null,
-      delivery_price_gbp: payload.deliveryPriceGbp ?? null,
-      auxiliary_price_gbp: payload.auxiliaryPriceGbp ?? null,
-      item_price_gbp: payload.itemPriceGbp ?? null,
-      cargo_rate: payload.cargoRate ?? null,
-      cargo_rate_is_manual: payload.cargoRateIsManual ?? false,
-      costing_price_gbp: payload.costingPriceGbp ?? null,
-      costing_price_bdt: payload.costingPriceBdt ?? null,
-      offer_price_override_bdt: payload.offerPriceOverrideBdt ?? null,
-      offer_price_bdt: payload.offerPriceBdt ?? null,
-      customer_profit_rate: payload.customerProfitRate ?? null,
-      status: payload.status ?? 'pending',
+    costing_file_id: payload.costingFileId,
+    name: payload.name ?? null,
+    item_type: payload.itemType ?? null,
+    size: payload.size ?? null,
+    color: payload.color ?? null,
+    extra_information_1: payload.extraInformation1 ?? null,
+    extra_information_2: payload.extraInformation2 ?? null,
+    image_url: payload.imageUrl ?? null,
+    website_url: payload.websiteUrl,
+    quantity: payload.quantity,
+    product_weight: payload.productWeight ?? null,
+    package_weight: payload.packageWeight ?? null,
+    price_in_web_gbp: payload.priceInWebGbp ?? null,
+    delivery_price_gbp: payload.deliveryPriceGbp ?? null,
+    auxiliary_price_gbp: payload.auxiliaryPriceGbp ?? null,
+    item_price_gbp: payload.itemPriceGbp ?? null,
+    cargo_rate: payload.cargoRate ?? null,
+    costing_price_gbp: payload.costingPriceGbp ?? null,
+    costing_price_bdt: payload.costingPriceBdt ?? null,
+    offer_price_override_bdt: payload.offerPriceOverrideBdt ?? null,
+    offer_price_bdt: payload.offerPriceBdt ?? null,
+    customer_profit_rate: payload.customerProfitRate ?? null,
+    status: payload.status ?? 'pending',
     })
     .select('*')
     .single()
@@ -325,9 +324,6 @@ const updateCostingFileItem = async (
   if (payload.auxiliaryPriceGbp !== undefined) updateData.auxiliary_price_gbp = payload.auxiliaryPriceGbp
   if (payload.itemPriceGbp !== undefined) updateData.item_price_gbp = payload.itemPriceGbp
   if (payload.cargoRate !== undefined) updateData.cargo_rate = payload.cargoRate
-  if (payload.cargoRateIsManual !== undefined) {
-    updateData.cargo_rate_is_manual = payload.cargoRateIsManual
-  }
   if (payload.costingPriceGbp !== undefined) updateData.costing_price_gbp = payload.costingPriceGbp
   if (payload.costingPriceBdt !== undefined) updateData.costing_price_bdt = payload.costingPriceBdt
   if (payload.offerPriceOverrideBdt !== undefined) {
@@ -336,7 +332,6 @@ const updateCostingFileItem = async (
   if (payload.offerPriceBdt !== undefined) updateData.offer_price_bdt = payload.offerPriceBdt
   if (payload.customerProfitRate !== undefined) updateData.customer_profit_rate = payload.customerProfitRate
   if (payload.status !== undefined) updateData.status = payload.status
-
   const { data, error } = await supabase
     .from('costing_file_items')
     .update(updateData)

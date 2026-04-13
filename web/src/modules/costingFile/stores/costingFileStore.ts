@@ -569,6 +569,8 @@ export const useCostingFileStore = defineStore('costingFile', {
           this.selectedItem = { ...this.selectedItem, ...result.data }
         }
 
+        await this.fetchCostingFileItems(payload.id)
+
         showSuccessNotification('Costing file pricing updated.')
         return result
       } finally {
