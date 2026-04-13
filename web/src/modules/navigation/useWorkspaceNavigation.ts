@@ -2,6 +2,7 @@ import { computed } from 'vue'
 
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions'
@@ -134,24 +135,83 @@ const getBaseWorkspaceLinks = ({
 
 export const useWorkspaceLinks = (scope: WorkspaceScope) => {
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
   const { accessibleModuleRoutes } = useModulePermissions()
 
-  const links = computed<WorkspaceLink[]>(() => [
-    ...getBaseWorkspaceLinks({
+  const links = computed<WorkspaceLink[]>(() => {
+    const baseLinks = getBaseWorkspaceLinks({
       scope,
       role: authStore.matchedRole,
       tenantId: authStore.tenantId,
       tenantSlug: authStore.tenantSlug,
-    }),
-    ...accessibleModuleRoutes.value
-      .filter((routeDefinition) => routeDefinition.scope === scope)
+    })
+
+    const scopedModuleRouteDefinitions = accessibleModuleRoutes.value.filter(
+      (routeDefinition) => routeDefinition.scope === scope,
+    )
+
+    const moduleLinks = scopedModuleRouteDefinitions
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
         to: routeDefinition.to,
-      })),
-  ])
+      }))
+
+    if (scope !== 'app') {
+      return [...baseLinks, ...moduleLinks]
+    }
+
+    const hasStoreModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'store',
+    )
+
+    if (!hasStoreModuleAccess) {
+      return [...baseLinks, ...moduleLinks]
+    }
+
+    const moduleLinksWithoutStore = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey !== 'store')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: routeDefinition.icon,
+        to: routeDefinition.to,
+      }))
+    const activeTenantSlug = tenantStore.selectedTenantSlug ?? authStore.tenantSlug
+    const tenantPrefix = activeTenantSlug ? `/${activeTenantSlug}` : ''
+
+    return [
+      ...baseLinks,
+      ...moduleLinksWithoutStore,
+      {
+        title: 'Stores',
+        caption: 'Store module',
+        icon: 'store',
+        children: [
+          {
+            title: 'Manage Store',
+            caption: 'Store module',
+            icon: 'chevron_right',
+            to: `${tenantPrefix}/app/stores/manage-store`,
+          },
+          {
+            title: 'Manage Access',
+            caption: 'Store module',
+            icon: 'chevron_right',
+            to: `${tenantPrefix}/app/stores/manage-access`,
+          },
+          {
+            title: 'Store Products',
+            caption: 'Store module',
+            icon: 'chevron_right',
+            to: `${tenantPrefix}/app/stores/store-products`,
+          },
+        ],
+      },
+    ]
+  })
 
   return {
     links,

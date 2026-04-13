@@ -248,6 +248,8 @@ const onPaginationClick = async () => {
       search: search.value,
       category: category.value,
       brand: brand.value,
+      vendorCode: 'PC',
+      append: true,
     })
   } finally {
     isLoadingMore.value = false
@@ -270,6 +272,7 @@ const onResetFilters = async () => {
       search: '',
       category: null,
       brand: null,
+      vendorCode: 'PC',
     })
   } finally {
     suppressFilterWatch.value = false

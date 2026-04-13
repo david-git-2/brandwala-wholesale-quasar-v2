@@ -633,6 +633,7 @@ export type Database = {
           created_at: string
           customer_group_id: number
           id: number
+          see_price: boolean
           status: boolean
           store_id: number
           updated_at: string
@@ -641,6 +642,7 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           id?: number
+          see_price?: boolean
           status?: boolean
           store_id: number
           updated_at?: string
@@ -649,6 +651,7 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           id?: number
+          see_price?: boolean
           status?: boolean
           store_id?: number
           updated_at?: string
@@ -866,6 +869,10 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
+      can_customer_see_store_price: {
+        Args: { p_store_id: number }
+        Returns: boolean
+      }
       can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
         Args: { p_tenant_id: number }
@@ -960,6 +967,10 @@ export type Database = {
         }[]
       }
       check_store_access: { Args: { p_store_id: number }; Returns: boolean }
+      check_store_price_access: {
+        Args: { p_store_id: number }
+        Returns: boolean
+      }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
@@ -1058,27 +1069,52 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      create_store_access: {
-        Args: {
-          p_customer_group_id: number
-          p_status?: boolean
-          p_store_id: number
-        }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          status: boolean
-          store_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "store_access"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      create_store_access:
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_status?: boolean
+              p_store_id: number
+            }
+            Returns: {
+              created_at: string
+              customer_group_id: number
+              id: number
+              see_price: boolean
+              status: boolean
+              store_id: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "store_access"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_see_price?: boolean
+              p_status?: boolean
+              p_store_id: number
+            }
+            Returns: {
+              created_at: string
+              customer_group_id: number
+              id: number
+              see_price: boolean
+              status: boolean
+              store_id: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "store_access"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       create_tenant_for_superadmin: {
         Args: {
           p_is_active?: boolean
@@ -1224,11 +1260,12 @@ export type Database = {
         }[]
       }
       get_store_access_admin: {
-        Args: { p_store_id: number }
+        Args: { p_store_id?: number }
         Returns: {
           created_at: string
           customer_group_id: number
           id: number
+          see_price: boolean
           status: boolean
           store_id: number
           updated_at: string
@@ -1239,6 +1276,18 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_store_product_brands: {
+        Args: { p_store_id: number }
+        Returns: {
+          brand: string
+        }[]
+      }
+      get_store_product_categories: {
+        Args: { p_store_id: number }
+        Returns: {
+          category: string
+        }[]
       }
       get_stores_admin: {
         Args: { p_tenant_id: number }
@@ -1263,16 +1312,11 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          see_price: boolean
           tenant_id: number
           updated_at: string
-          vendor_code: string | null
+          vendor_code: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "stores"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_tenant_details_by_membership: {
         Args: {
@@ -1435,10 +1479,7 @@ export type Database = {
           p_sort_dir?: string
           p_store_id: number
         }
-        Returns: {
-          product: Json
-          total_count: number
-        }[]
+        Returns: Json
       }
       list_tenant_modules_by_tenant: {
         Args: { p_tenant_id?: number }
@@ -1700,6 +1741,25 @@ export type Database = {
           created_at: string
           customer_group_id: number
           id: number
+          see_price: boolean
+          status: boolean
+          store_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "store_access"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_store_access_fields: {
+        Args: { p_id: number; p_see_price?: boolean; p_status?: boolean }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          see_price: boolean
           status: boolean
           store_id: number
           updated_at: string

@@ -1,5 +1,5 @@
 <template>
-  <StoreProductsBrowser mode="customer" />
+  <StoreProductsBrowser mode="admin" />
 </template>
 
 <script setup lang="ts">

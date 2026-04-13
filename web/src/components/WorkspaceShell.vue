@@ -62,22 +62,44 @@
             <div class="workspace-shell__nav-label">Workspace</div>
 
             <q-list class="workspace-shell__nav-list">
-              <q-item
-                v-for="link in links"
-                :key="link.to"
-                clickable
-                :to="link.to"
-                class="workspace-shell__nav-item"
-                active-class="workspace-shell__nav-item--active"
-              >
-                <q-item-section avatar>
-                  <q-icon :name="link.icon" />
-                </q-item-section>
+              <template v-for="link in links" :key="link.to || link.title">
+                <q-expansion-item
+                  v-if="link.children?.length"
+                  :icon="link.icon"
+                  :label="link.title"
+                  class="workspace-shell__nav-item"
+                  default-opened
+                >
+                  <q-item
+                    v-for="child in link.children"
+                    :key="child.to"
+                    clickable
+                    :to="child.to"
+                    class="workspace-shell__nav-sub-item"
+                    active-class="workspace-shell__nav-item--active"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ child.title }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-expansion-item>
 
-                <q-item-section>
-                  <q-item-label>{{ link.title }}</q-item-label>
-                </q-item-section>
-              </q-item>
+                <q-item
+                  v-else
+                  clickable
+                  :to="link.to"
+                  class="workspace-shell__nav-item"
+                  active-class="workspace-shell__nav-item--active"
+                >
+                  <q-item-section avatar>
+                    <q-icon :name="link.icon" />
+                  </q-item-section>
+
+                  <q-item-section>
+                    <q-item-label>{{ link.title }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
             </q-list>
           </div>
         </q-scroll-area>
@@ -112,7 +134,8 @@ export interface WorkspaceLink {
   title: string
   caption: string
   icon: string
-  to: string
+  to?: string
+  children?: WorkspaceLink[]
 }
 
 const props = defineProps<{
@@ -401,5 +424,9 @@ const handleLogout = async () => {
   .workspace-shell__actions {
     gap: 0.35rem;
   }
+}
+
+.workspace-shell__nav-sub-item {
+  padding-left: 3.4rem;
 }
 </style>

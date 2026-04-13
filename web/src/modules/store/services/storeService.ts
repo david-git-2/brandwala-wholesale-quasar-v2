@@ -64,7 +64,7 @@ const deleteStore = async (
 }
 
 const getStoreAccessAdmin = async (
-  storeId: number,
+  storeId?: number | null,
 ): Promise<StoreServiceResult<StoreAccess[]>> => {
   try {
     const data = await storeRepository.getStoreAccessAdmin(storeId)
@@ -131,6 +131,34 @@ const getStoresForCustomer = async (): Promise<StoreServiceResult<Store[]>> => {
   }
 }
 
+const getStoreProductBrands = async (
+  storeId: number,
+): Promise<StoreServiceResult<string[]>> => {
+  try {
+    const data = await storeRepository.getStoreProductBrands(storeId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load brands.',
+    }
+  }
+}
+
+const getStoreProductCategories = async (
+  storeId: number,
+): Promise<StoreServiceResult<string[]>> => {
+  try {
+    const data = await storeRepository.getStoreProductCategories(storeId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load categories.',
+    }
+  }
+}
+
 const checkStoreAccess = async (
   storeId: number,
 ): Promise<StoreServiceResult<boolean>> => {
@@ -141,6 +169,20 @@ const checkStoreAccess = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to check store access.',
+    }
+  }
+}
+
+const checkStorePriceAccess = async (
+  storeId: number,
+): Promise<StoreServiceResult<boolean>> => {
+  try {
+    const data = await storeRepository.checkStorePriceAccess(storeId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to check store price access.',
     }
   }
 }
@@ -169,6 +211,9 @@ export const storeService = {
   updateStoreAccess,
   deleteStoreAccess,
   getStoresForCustomer,
+  getStoreProductBrands,
+  getStoreProductCategories,
   checkStoreAccess,
+  checkStorePriceAccess,
   listStoreProducts,
 }

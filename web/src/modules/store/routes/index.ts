@@ -36,8 +36,22 @@ const storeRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        name: 'app-store-page',
-        component: () => import('../pages/AdminStorePage.vue'),
+        redirect: { name: 'app-store-manage-page' },
+      },
+      {
+        path: 'manage-store',
+        name: 'app-store-manage-page',
+        component: () => import('../pages/AdminManageStorePage.vue'),
+      },
+      {
+        path: 'manage-access',
+        name: 'app-store-access-page',
+        component: () => import('../pages/AdminManageAccessPage.vue'),
+      },
+      {
+        path: 'store-products',
+        name: 'app-store-products-page',
+        component: () => import('../pages/AdminStoreProductsPage.vue'),
       },
     ],
   },

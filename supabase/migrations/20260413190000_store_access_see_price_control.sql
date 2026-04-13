@@ -1,9 +1,127 @@
 -- =========================================================
--- Store module: products listing API
--- - admin/staff can read by store tenant
--- - customer group can read only if store access exists
--- - supports selected fields, sort, filters, and pagination
+-- Store access: see_price control for customer product visibility
 -- =========================================================
+
+alter table public.store_access
+add column if not exists see_price boolean not null default false;
+
+create or replace function public.can_customer_see_store_price(p_store_id bigint)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.store_access sa
+    join public.customer_group_members cgm
+      on cgm.customer_group_id = sa.customer_group_id
+    where sa.store_id = p_store_id
+      and sa.status = true
+      and sa.see_price = true
+      and lower(trim(cgm.email)) = public.current_user_email()
+      and cgm.is_active = true
+  )
+$$;
+
+grant execute on function public.can_customer_see_store_price(bigint)
+to authenticated;
+
+create or replace function public.create_store_access(
+  p_store_id bigint,
+  p_customer_group_id bigint,
+  p_status boolean default true,
+  p_see_price boolean default false
+)
+returns public.store_access
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.store_access;
+  v_tenant_id bigint;
+begin
+  select tenant_id into v_tenant_id
+  from public.stores
+  where id = p_store_id;
+
+  if v_tenant_id is null then
+    raise exception 'store not found';
+  end if;
+
+  if not public.can_manage_store(v_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  insert into public.store_access (
+    store_id,
+    customer_group_id,
+    status,
+    see_price
+  )
+  values (
+    p_store_id,
+    p_customer_group_id,
+    p_status,
+    p_see_price
+  )
+  on conflict (store_id, customer_group_id)
+  do update
+  set
+    status = excluded.status,
+    see_price = excluded.see_price,
+    updated_at = now()
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+grant execute on function public.create_store_access(bigint, bigint, boolean, boolean)
+to authenticated;
+
+create or replace function public.update_store_access_fields(
+  p_id bigint,
+  p_status boolean default null,
+  p_see_price boolean default null
+)
+returns public.store_access
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.store_access;
+  v_tenant_id bigint;
+begin
+  select s.tenant_id into v_tenant_id
+  from public.store_access sa
+  join public.stores s on s.id = sa.store_id
+  where sa.id = p_id;
+
+  if v_tenant_id is null then
+    raise exception 'store access not found';
+  end if;
+
+  if not public.can_manage_store(v_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  update public.store_access
+  set
+    status = coalesce(p_status, status),
+    see_price = coalesce(p_see_price, see_price)
+  where id = p_id
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+grant execute on function public.update_store_access_fields(bigint, boolean, boolean)
+to authenticated;
 
 create or replace function public.list_store_products(
   p_store_id bigint,
@@ -30,6 +148,7 @@ declare
   v_offset integer;
   v_has_internal_access boolean;
   v_has_customer_access boolean;
+  v_can_see_price boolean;
   v_allowed_fields text[] := array[
     'id',
     'tenant_id',
@@ -82,6 +201,8 @@ begin
     raise exception 'not allowed';
   end if;
 
+  v_can_see_price := v_has_internal_access or public.can_customer_see_store_price(p_store_id);
+
   v_sort_by := lower(trim(coalesce(p_sort_by, 'id')));
   if not (v_sort_by = any (array[
     'id',
@@ -113,6 +234,13 @@ begin
 
   if coalesce(array_length(v_selected_fields, 1), 0) = 0 then
     v_selected_fields := array['id', 'name', 'vendor_code', 'brand', 'category'];
+  end if;
+
+  if not v_can_see_price then
+    select coalesce(array_agg(field_name), '{}'::text[])
+    into v_selected_fields
+    from unnest(v_selected_fields) as field_name
+    where field_name <> 'price_gbp';
   end if;
 
   execute format(
@@ -150,11 +278,14 @@ begin
       select jsonb_build_object(
         'data',
         coalesce(
-          jsonb_agg(
-            (
-              select jsonb_object_agg(field_name, to_jsonb(paged) -> field_name)
-              from unnest($6::text[]) as field_name
+          (
+            select jsonb_agg(
+              (
+                select jsonb_object_agg(field_name, to_jsonb(p) -> field_name)
+                from unnest($6::text[]) as field_name
+              )
             )
+            from paged p
           ),
           '[]'::jsonb
         ),
@@ -165,10 +296,11 @@ begin
           'offset', $8,
           'current_page', (($8 / $7) + 1),
           'sort_by', $10,
-          'sort_dir', $11
+          'sort_dir', $11,
+          'total', (select count(*) from filtered),
+          'can_see_price', $12
         )
       )
-      from paged
     $sql$,
     v_sort_by,
     v_sort_dir
@@ -185,7 +317,8 @@ begin
     v_offset,
     p_store_id,
     v_sort_by,
-    v_sort_dir;
+    v_sort_dir,
+    v_can_see_price;
 
   return coalesce(
     v_result,
@@ -197,7 +330,9 @@ begin
         'offset', v_offset,
         'current_page', ((v_offset / v_limit) + 1),
         'sort_by', v_sort_by,
-        'sort_dir', v_sort_dir
+        'sort_dir', v_sort_dir,
+        'total', 0,
+        'can_see_price', v_can_see_price
       )
     )
   );

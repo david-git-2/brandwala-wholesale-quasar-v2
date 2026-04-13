@@ -1,8 +1,5 @@
 -- =========================================================
--- Store module: products listing API
--- - admin/staff can read by store tenant
--- - customer group can read only if store access exists
--- - supports selected fields, sort, filters, and pagination
+-- Store module: list_store_products meta includes total
 -- =========================================================
 
 create or replace function public.list_store_products(
@@ -150,11 +147,14 @@ begin
       select jsonb_build_object(
         'data',
         coalesce(
-          jsonb_agg(
-            (
-              select jsonb_object_agg(field_name, to_jsonb(paged) -> field_name)
-              from unnest($6::text[]) as field_name
+          (
+            select jsonb_agg(
+              (
+                select jsonb_object_agg(field_name, to_jsonb(p) -> field_name)
+                from unnest($6::text[]) as field_name
+              )
             )
+            from paged p
           ),
           '[]'::jsonb
         ),
@@ -165,10 +165,10 @@ begin
           'offset', $8,
           'current_page', (($8 / $7) + 1),
           'sort_by', $10,
-          'sort_dir', $11
+          'sort_dir', $11,
+          'total', (select count(*) from filtered)
         )
       )
-      from paged
     $sql$,
     v_sort_by,
     v_sort_dir
@@ -197,7 +197,8 @@ begin
         'offset', v_offset,
         'current_page', ((v_offset / v_limit) + 1),
         'sort_by', v_sort_by,
-        'sort_dir', v_sort_dir
+        'sort_dir', v_sort_dir,
+        'total', 0
       )
     )
   );

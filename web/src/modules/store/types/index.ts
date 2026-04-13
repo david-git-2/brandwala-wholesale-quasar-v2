@@ -5,6 +5,7 @@ export type Store = {
   tenant_id: number
   created_at: string
   updated_at: string
+  see_price?: boolean
 }
 
 export type StoreAccess = {
@@ -12,6 +13,7 @@ export type StoreAccess = {
   store_id: number
   customer_group_id: number
   status: boolean
+  see_price: boolean
   created_at: string
   updated_at: string
 }
@@ -36,11 +38,13 @@ export type StoreAccessCreateInput = {
   store_id: number
   customer_group_id: number
   status?: boolean
+  see_price?: boolean
 }
 
 export type StoreAccessUpdateInput = {
   id: number
-  status: boolean
+  status?: boolean
+  see_price?: boolean
 }
 
 export type StoreAccessDeleteInput = {
@@ -65,12 +69,30 @@ export type StoreProductsQueryInput = {
   offset?: number
 }
 
-export type StoreProductsRow = {
-  product: Record<string, unknown>
-  total_count: number
+export type StoreProductsPage = {
+  data: Record<string, unknown>[]
+  meta: {
+    store_id: number
+    limit: number
+    offset: number
+    current_page: number
+    sort_by: string
+    sort_dir: string
+    total: number
+    can_see_price: boolean
+  }
 }
 
-export type StoreProductsPage = {
-  items: Record<string, unknown>[]
-  total: number
+export type StoreStoreState = {
+  items: Store[]
+  accessItems: StoreAccess[]
+  productItems: Record<string, unknown>[]
+  loading: boolean
+  saving: boolean
+  error: string | null
+  productsTotal: number
+  productsOffset: number
+  productsPage: number
+  productsPageSize: number
+  productsCanSeePrice: boolean
 }

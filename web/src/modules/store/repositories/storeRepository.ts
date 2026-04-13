@@ -7,7 +7,6 @@ import type {
   StoreAccessDeleteInput,
   StoreProductsPage,
   StoreProductsQueryInput,
-  StoreProductsRow,
   StoreAccessUpdateInput,
   StoreCreateInput,
   StoreDeleteInput,
@@ -76,9 +75,9 @@ const deleteStore = async (payload: StoreDeleteInput): Promise<void> => {
   }
 }
 
-const getStoreAccessAdmin = async (storeId: number): Promise<StoreAccess[]> => {
+const getStoreAccessAdmin = async (storeId?: number | null): Promise<StoreAccess[]> => {
   const { data, error } = await supabase.rpc('get_store_access_admin' as never, {
-    p_store_id: storeId,
+    p_store_id: storeId ?? null,
   } as never)
 
   if (error) {
@@ -95,6 +94,7 @@ const createStoreAccess = async (
     p_store_id: payload.store_id,
     p_customer_group_id: payload.customer_group_id,
     p_status: payload.status ?? true,
+    p_see_price: payload.see_price ?? false,
   } as never)
 
   if (error) {
@@ -113,9 +113,10 @@ const createStoreAccess = async (
 const updateStoreAccess = async (
   payload: StoreAccessUpdateInput,
 ): Promise<StoreAccess> => {
-  const { data, error } = await supabase.rpc('update_store_access' as never, {
+  const { data, error } = await supabase.rpc('update_store_access_fields' as never, {
     p_id: payload.id,
-    p_status: payload.status,
+    p_status: payload.status ?? null,
+    p_see_price: payload.see_price ?? null,
   } as never)
 
   if (error) {
@@ -151,8 +152,46 @@ const getStoresForCustomer = async (): Promise<Store[]> => {
   return (data as Store[] | null) ?? []
 }
 
+const getStoreProductBrands = async (storeId: number): Promise<string[]> => {
+  const { data, error } = await supabase.rpc('get_store_product_brands' as never, {
+    p_store_id: storeId,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  const rows = (data as Array<{ brand: string | null }> | null) ?? []
+  return rows.map((row) => row.brand?.trim() ?? '').filter((item) => item.length > 0)
+}
+
+const getStoreProductCategories = async (storeId: number): Promise<string[]> => {
+  const { data, error } = await supabase.rpc('get_store_product_categories' as never, {
+    p_store_id: storeId,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  const rows = (data as Array<{ category: string | null }> | null) ?? []
+  return rows.map((row) => row.category?.trim() ?? '').filter((item) => item.length > 0)
+}
+
 const checkStoreAccess = async (storeId: number): Promise<boolean> => {
   const { data, error } = await supabase.rpc('check_store_access' as never, {
+    p_store_id: storeId,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  return Boolean(data)
+}
+
+const checkStorePriceAccess = async (storeId: number): Promise<boolean> => {
+  const { data, error } = await supabase.rpc('check_store_price_access' as never, {
     p_store_id: storeId,
   } as never)
 
@@ -182,12 +221,28 @@ const listStoreProducts = async (
     throw error
   }
 
-  const rows = (data as StoreProductsRow[] | null) ?? []
+  const response = (data as StoreProductsPage | null) ?? null
 
-  return {
-    items: rows.map((row) => row.product ?? {}),
-    total: Number(rows[0]?.total_count ?? 0),
+  if (!response) {
+    const fallbackLimit = payload.limit ?? 20
+    const fallbackOffset = payload.offset ?? 0
+
+    return {
+      data: [],
+      meta: {
+        store_id: payload.store_id,
+        limit: fallbackLimit,
+        offset: fallbackOffset,
+        current_page: Math.floor(fallbackOffset / fallbackLimit) + 1,
+        sort_by: payload.sort_by ?? 'id',
+        sort_dir: payload.sort_dir ?? 'asc',
+        total: 0,
+        can_see_price: false,
+      },
+    }
   }
+
+  return response
 }
 
 export const storeRepository = {
@@ -200,6 +255,9 @@ export const storeRepository = {
   updateStoreAccess,
   deleteStoreAccess,
   getStoresForCustomer,
+  getStoreProductBrands,
+  getStoreProductCategories,
   checkStoreAccess,
+  checkStorePriceAccess,
   listStoreProducts,
 }

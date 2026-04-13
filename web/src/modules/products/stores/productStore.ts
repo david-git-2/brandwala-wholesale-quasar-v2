@@ -21,6 +21,7 @@ type FetchProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  append?: boolean
 }
 
 type ProductStoreState = {
@@ -109,7 +110,22 @@ export const useProductStore = defineStore('product', {
           return result
         }
 
-        this.items = result.data ?? []
+        const incomingItems = result.data ?? []
+
+        if (params?.append) {
+          const existingById = new Set(this.items.map((item) => item.id))
+          const nextItems = [...this.items]
+
+          for (const item of incomingItems) {
+            if (!existingById.has(item.id)) {
+              nextItems.push(item)
+            }
+          }
+
+          this.items = nextItems
+        } else {
+          this.items = incomingItems
+        }
         this.total = result.total ?? 0
         this.page = result.page ?? this.page
         this.pageSize = result.pageSize ?? this.pageSize

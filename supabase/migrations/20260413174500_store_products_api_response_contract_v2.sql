@@ -1,9 +1,21 @@
 -- =========================================================
--- Store module: products listing API
--- - admin/staff can read by store tenant
--- - customer group can read only if store access exists
--- - supports selected fields, sort, filters, and pagination
+-- Store module: list_store_products response contract v2
+-- - Keep product rows in data[]
+-- - Move paging/query details to meta
+-- - Do not return total_count
 -- =========================================================
+
+drop function if exists public.list_store_products(
+  bigint,
+  text[],
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer,
+  integer
+);
 
 create or replace function public.list_store_products(
   p_store_id bigint,
