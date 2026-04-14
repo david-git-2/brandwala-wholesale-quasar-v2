@@ -2,6 +2,7 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Cart</div>
+      {{authStore.customerGroup }}
       <q-btn
         color="negative"
         icon="delete_sweep"

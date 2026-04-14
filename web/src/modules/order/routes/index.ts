@@ -23,6 +23,21 @@ const orderRoutes: RouteRecordRaw[] = [
           requiredModule: 'order_management',
         }),
       },
+      {
+        path: ':id',
+        name: 'shop-order-details-page',
+        component: () => import('../pages/CustomerOrderDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
+          requiredScope: 'shop',
+          requireTenantContext: true,
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+          requiredModule: 'order_management',
+        }),
+      },
     ],
   },
   {
@@ -33,6 +48,18 @@ const orderRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-order-page',
         component: () => import('../pages/AdminOrderPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'order_management',
+        }),
+      },
+      {
+        path: ':id',
+        name: 'app-order-details-page',
+        component: () => import('../pages/AdminOrderDetailsPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',

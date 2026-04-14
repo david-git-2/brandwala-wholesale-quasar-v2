@@ -52,8 +52,20 @@ export type OrderListInput = {
   customer_group_id?: number | null
   store_id?: number | null
   status?: OrderStatus | null
+  page?: number
+  page_size?: number
   limit?: number
   offset?: number
+}
+
+export type OrderListPage = {
+  data: Order[]
+  meta: {
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }
 }
 
 export type OrderGetByIdInput = {
@@ -93,6 +105,10 @@ export type OrderServiceResult<T> = {
 export type OrderStoreState = {
   items: Order[]
   selected: OrderWithItems | null
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
   loading: boolean
   saving: boolean
   error: string | null

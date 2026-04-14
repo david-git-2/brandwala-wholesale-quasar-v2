@@ -13,9 +13,11 @@
         class="order-card"
         flat
         bordered
+        clickable
         :style="{
           borderLeft: `6px solid ${order.accent_color || '#1976d2'}`,
         }"
+        @click="goToOrder(order.id)"
       >
         <q-card-section>
           <div class="row items-center justify-between q-gutter-sm">
@@ -44,24 +46,56 @@
         </q-card-section>
       </q-card>
     </div>
+
+    <div v-if="orderStore.total_pages > 1" class="row justify-center q-mt-md">
+      <q-pagination
+        :model-value="page"
+        :max="orderStore.total_pages"
+        :max-pages="8"
+        boundary-numbers
+        direction-links
+        @update:model-value="onPageChange"
+      />
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useOrderStore } from '../stores/orderStore'
 
 const authStore = useAuthStore()
 const orderStore = useOrderStore()
+const router = useRouter()
+const page = ref(1)
+
+const loadOrders = async (nextPage = 1) => {
+  await orderStore.fetchOrders({
+    page: nextPage,
+    page_size: 20,
+  })
+}
 
 onMounted(async () => {
-  await orderStore.fetchOrders()
+  await loadOrders(1)
 })
 
 const deleteOrder = async (id: number) => {
   await orderStore.deleteOrder({ id })
+  await loadOrders(page.value)
+}
+
+const onPageChange = async (nextPage: number) => {
+  page.value = nextPage
+  await loadOrders(nextPage)
+}
+
+const goToOrder = async (id: number) => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/app/orders/${id}`)
 }
 </script>
 

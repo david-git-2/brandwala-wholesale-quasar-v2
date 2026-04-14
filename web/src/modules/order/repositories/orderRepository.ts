@@ -9,6 +9,7 @@ import type {
   OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
+  OrderListPage,
   OrderListInput,
   OrderUpdateInput,
   OrderWithItems,
@@ -62,10 +63,18 @@ const pickFields = (requested: string[] | undefined, allowed: readonly string[])
   return safe.length ? safe.join(',') : '*'
 }
 
-const listOrders = async (payload: OrderListInput = {}): Promise<Order[]> => {
+const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> => {
   const orderSelect = pickFields(payload.fields, ORDER_FIELDS)
+  const pageSize = Math.max(1, payload.page_size ?? payload.limit ?? 20)
+  const page = Math.max(1, payload.page ?? 1)
+  const offset = payload.offset ?? (page - 1) * pageSize
+  const from = Math.max(0, offset)
+  const to = from + pageSize - 1
 
-  let query = supabase.from('orders').select(orderSelect).order('id', { ascending: false })
+  let query = supabase
+    .from('orders')
+    .select(orderSelect, { count: 'exact' })
+    .order('id', { ascending: false })
 
   if (payload.customer_group_id != null) {
     query = query.eq('customer_group_id', payload.customer_group_id)
@@ -79,19 +88,26 @@ const listOrders = async (payload: OrderListInput = {}): Promise<Order[]> => {
     query = query.eq('status', payload.status)
   }
 
-  if (payload.limit != null && payload.offset != null) {
-    const from = Math.max(0, payload.offset)
-    const to = from + Math.max(1, payload.limit) - 1
-    query = query.range(from, to)
-  }
+  query = query.range(from, to)
 
-  const { data, error } = await query
+  const { data, error, count } = await query
 
   if (error) {
     throw error
   }
 
-  return (data as unknown as Order[] | null) ?? []
+  const rows = (data as unknown as Order[] | null) ?? []
+  const total = count ?? 0
+
+  return {
+    data: rows,
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
 }
 
 const createOrder = async (payload: OrderCreateInput): Promise<Order> => {

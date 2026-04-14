@@ -18,6 +18,10 @@ export const useOrderStore = defineStore('order', {
   state: (): OrderStoreState => ({
     items: [],
     selected: null,
+    total: 0,
+    page: 1,
+    page_size: 20,
+    total_pages: 1,
     loading: false,
     saving: false,
     error: null,
@@ -41,7 +45,11 @@ export const useOrderStore = defineStore('order', {
           return result
         }
 
-        this.items = result.data ?? []
+        this.items = result.data?.data ?? []
+        this.total = result.data?.meta.total ?? 0
+        this.page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.page_size = result.data?.meta.page_size ?? (payload.page_size ?? 20)
+        this.total_pages = result.data?.meta.total_pages ?? 1
         return result
       } finally {
         this.loading = false

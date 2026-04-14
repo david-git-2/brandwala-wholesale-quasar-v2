@@ -8,6 +8,7 @@ import type {
   OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
+  OrderListPage,
   OrderListInput,
   OrderServiceResult,
   OrderUpdateInput,
@@ -16,7 +17,7 @@ import type {
 
 const listOrders = async (
   payload: OrderListInput = {},
-): Promise<OrderServiceResult<Order[]>> => {
+): Promise<OrderServiceResult<OrderListPage>> => {
   try {
     const data = await orderRepository.listOrders(payload)
     return { success: true, data }

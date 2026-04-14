@@ -67,21 +67,23 @@
                   v-if="link.children?.length"
                   :icon="link.icon"
                   :label="link.title"
-                  class="workspace-shell__nav-item"
-                  default-opened
+                  class="workspace-shell__nav-item workspace-shell__nav-group"
+                  expand-separator
                 >
-                  <q-item
-                    v-for="child in link.children"
-                    :key="child.to ?? child.title"
-                    clickable
-                    :to="child.to!"
-                    class="workspace-shell__nav-sub-item"
-                    active-class="workspace-shell__nav-item--active"
-                  >
-                    <q-item-section>
-                      <q-item-label>{{ child.title }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
+                  <div class="workspace-shell__nav-sub-list">
+                    <q-item
+                      v-for="child in link.children"
+                      :key="child.to ?? child.title"
+                      clickable
+                      :to="child.to!"
+                      class="workspace-shell__nav-sub-item"
+                      active-class="workspace-shell__nav-item--active"
+                    >
+                      <q-item-section>
+                        <q-item-label>{{ child.title }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </div>
                 </q-expansion-item>
 
                 <q-item
@@ -388,6 +390,27 @@ const handleLogout = async () => {
   color: var(--shell-ink);
 }
 
+.workspace-shell__nav-group {
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.workspace-shell__nav-group :deep(.q-expansion-item__container) {
+  border-radius: 0.65rem;
+}
+
+.workspace-shell__nav-group :deep(.q-item) {
+  min-height: 44px;
+}
+
+.workspace-shell__nav-sub-list {
+  margin: 0.2rem 0.35rem 0.45rem 2.05rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid color-mix(in srgb, var(--shell-accent) 28%, transparent);
+  display: grid;
+  gap: 0.18rem;
+}
+
 .workspace-shell__nav-item--active {
   background: var(--shell-accent-soft);
   color: var(--shell-ink);
@@ -416,6 +439,9 @@ const handleLogout = async () => {
 }
 
 .workspace-shell__nav-sub-item {
-  padding-left: 3.4rem;
+  border-radius: 0.5rem;
+  min-height: 38px;
+  padding-left: 0.55rem;
+  margin-left: 0.15rem;
 }
 </style>
