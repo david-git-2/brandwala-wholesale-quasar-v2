@@ -1815,7 +1815,7 @@ export type Database = {
         | "in_review"
         | "priced"
         | "offered"
-        | "completed"
+        | "po_placed"
         | "cancelled"
       customer_group_role: "admin" | "negotiator" | "staff"
     }
@@ -1953,7 +1953,7 @@ export const Constants = {
         "in_review",
         "priced",
         "offered",
-        "completed",
+        "po_placed",
         "cancelled",
       ],
       customer_group_role: ["admin", "negotiator", "staff"],

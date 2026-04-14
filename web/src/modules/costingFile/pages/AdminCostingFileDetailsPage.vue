@@ -312,7 +312,7 @@
         v-else-if="
           selectedFile?.status === 'in_review' ||
           selectedFile?.status === 'offered' ||
-          selectedFile?.status === 'completed'
+          selectedFile?.status === 'po_placed'
         "
         class="costing-page__pricing-section"
       >
@@ -688,7 +688,7 @@
               <template
                 v-if="
                   selectedFile?.status === 'offered' ||
-                  selectedFile?.status === 'completed'
+                  selectedFile?.status === 'po_placed'
                 "
               >
                 <q-btn
@@ -856,7 +856,7 @@ const fileStatuses = computed<CostingFileStatus[]>(() => {
     return [currentStatus]
   }
 
-  return ['draft', 'customer_submitted', 'in_review', 'offered', 'completed', 'cancelled']
+  return ['draft', 'customer_submitted', 'in_review', 'offered', 'po_placed', 'cancelled']
 })
 
 const subtitle = computed(() =>
@@ -1492,7 +1492,7 @@ const handleCreateItem = async (payload: {
 const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
   if (
     selectedFile.value?.status !== 'offered' &&
-    selectedFile.value?.status !== 'completed'
+    selectedFile.value?.status !== 'po_placed'
   ) {
     return
   }

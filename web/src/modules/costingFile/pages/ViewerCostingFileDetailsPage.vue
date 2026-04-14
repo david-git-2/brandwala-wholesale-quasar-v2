@@ -24,8 +24,8 @@
         <q-card-section class="text-grey-7">Loading costing file details...</q-card-section>
       </q-card>
 
-      <q-banner v-if="selectedFile && selectedFile.status !== 'completed'" rounded class="bg-blue-1 text-blue-10">
-        Item details become visible after the costing file is completed.
+      <q-banner v-if="selectedFile && selectedFile.status !== 'po_placed'" rounded class="bg-blue-1 text-blue-10">
+        Item details become visible after the costing file is PO placed.
       </q-banner>
 
       <section v-else-if="selectedFile" class="viewer-page__table-section">
@@ -134,7 +134,7 @@ const statusChipColor = (status: string) => {
   if (status === 'customer_submitted') return 'indigo'
   if (status === 'in_review') return 'amber-8'
   if (status === 'offered') return 'positive'
-  if (status === 'completed') return 'primary'
+  if (status === 'po_placed') return 'primary'
   return 'secondary'
 }
 
@@ -321,7 +321,7 @@ const loadFile = async () => {
     return
   }
 
-  if (result.data.status === 'completed') {
+  if (result.data.status === 'po_placed') {
     await costingFileStore.fetchCostingFileItems(fileId)
   } else {
     costingFileStore.costingFileItems = []

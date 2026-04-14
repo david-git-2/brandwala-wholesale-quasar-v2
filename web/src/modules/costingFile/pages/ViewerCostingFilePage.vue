@@ -4,7 +4,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Viewer Access</div>
-          <h1 class="text-h5 q-my-none">Completed costing files</h1>
+          <h1 class="text-h5 q-my-none">PO placed costing files</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
         </div>
       </section>
@@ -14,7 +14,7 @@
       </q-card>
       <q-card v-else-if="!files.length" flat bordered>
         <q-card-section class="text-grey-7">
-          No completed costing files are available for your viewer access yet.
+          No PO placed costing files are available for your viewer access yet.
         </q-card-section>
       </q-card>
       <section v-else class="costing-page__card-grid">
@@ -82,7 +82,7 @@ const statusChipColor = (status: string) => {
   if (status === 'customer_submitted') return 'indigo'
   if (status === 'in_review') return 'amber-8'
   if (status === 'offered') return 'positive'
-  if (status === 'completed') return 'primary'
+  if (status === 'po_placed') return 'primary'
   return 'secondary'
 }
 const formatStatusLabel = (status: string) =>
