@@ -2,9 +2,11 @@ import { supabase } from 'src/boot/supabase'
 
 import type {
   Order,
+  OrderCreateInput,
   OrderDeleteInput,
   OrderGetByIdInput,
   OrderItem,
+  OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
   OrderListInput,
@@ -16,6 +18,8 @@ const ORDER_FIELDS = [
   'id',
   'name',
   'customer_group_id',
+  'can_see_price',
+  'accent_color',
   'cargo_rate',
   'conversion_rate',
   'profit_rate',
@@ -87,7 +91,25 @@ const listOrders = async (payload: OrderListInput = {}): Promise<Order[]> => {
     throw error
   }
 
-  return (data as Order[] | null) ?? []
+  return (data as unknown as Order[] | null) ?? []
+}
+
+const createOrder = async (payload: OrderCreateInput): Promise<Order> => {
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([payload])
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Order was not created.')
+  }
+
+  return data as Order
 }
 
 const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems> => {
@@ -109,7 +131,7 @@ const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems>
     throw new Error('Order not found.')
   }
 
-  return data as OrderWithItems
+  return data as unknown as OrderWithItems
 }
 
 const updateOrder = async (payload: OrderUpdateInput): Promise<Order> => {
@@ -150,6 +172,23 @@ const updateOrderItem = async (payload: OrderItemUpdateInput): Promise<OrderItem
   return data as OrderItem
 }
 
+const createOrderItems = async (payload: OrderItemCreateInput[]): Promise<OrderItem[]> => {
+  if (!payload.length) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('order_items')
+    .insert(payload)
+    .select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as OrderItem[] | null) ?? []
+}
+
 const deleteOrder = async (payload: OrderDeleteInput): Promise<void> => {
   const { error } = await supabase.from('orders').delete().eq('id', payload.id)
 
@@ -168,8 +207,10 @@ const deleteOrderItem = async (payload: OrderItemDeleteInput): Promise<void> => 
 
 export const orderRepository = {
   listOrders,
+  createOrder,
   getOrderById,
   updateOrder,
+  createOrderItems,
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,

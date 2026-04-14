@@ -505,6 +505,143 @@ export type Database = {
         }
         Relationships: []
       }
+      order_items: {
+        Row: {
+          cost_bdt: number | null
+          cost_gbp: number | null
+          created_at: string
+          customer_offer_bdt: number | null
+          delivered_quantity: number
+          final_offer_bdt: number | null
+          first_offer_bdt: number | null
+          id: number
+          image_url: string | null
+          minimum_quantity: number
+          name: string
+          order_id: number
+          ordered_quantity: number
+          package_weight: number | null
+          price_gbp: number | null
+          product_id: number | null
+          product_weight: number | null
+          returned_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cost_bdt?: number | null
+          cost_gbp?: number | null
+          created_at?: string
+          customer_offer_bdt?: number | null
+          delivered_quantity?: number
+          final_offer_bdt?: number | null
+          first_offer_bdt?: number | null
+          id?: number
+          image_url?: string | null
+          minimum_quantity?: number
+          name: string
+          order_id: number
+          ordered_quantity?: number
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_id?: number | null
+          product_weight?: number | null
+          returned_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_bdt?: number | null
+          cost_gbp?: number | null
+          created_at?: string
+          customer_offer_bdt?: number | null
+          delivered_quantity?: number
+          final_offer_bdt?: number | null
+          first_offer_bdt?: number | null
+          id?: number
+          image_url?: string | null
+          minimum_quantity?: number
+          name?: string
+          order_id?: number
+          ordered_quantity?: number
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_id?: number | null
+          product_weight?: number | null
+          returned_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          accent_color: string | null
+          can_see_price: boolean
+          cargo_rate: number | null
+          conversion_rate: number | null
+          created_at: string
+          customer_group_id: number
+          id: number
+          name: string
+          negotiate: boolean
+          profit_rate: number | null
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          can_see_price?: boolean
+          cargo_rate?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          customer_group_id: number
+          id?: number
+          name: string
+          negotiate?: boolean
+          profit_rate?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          store_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          can_see_price?: boolean
+          cargo_rate?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          customer_group_id?: number
+          id?: number
+          name?: string
+          negotiate?: boolean
+          profit_rate?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          store_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_based_costing_files: {
         Row: {
           cargo_rate_kg_gbp: number | null
@@ -1959,6 +2096,12 @@ export type Database = {
         | "cancelled"
         | "completed"
       customer_group_role: "admin" | "negotiator" | "staff"
+      order_status:
+        | "customer_submit"
+        | "priced"
+        | "negotiate"
+        | "ordered"
+        | "placed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2099,6 +2242,13 @@ export const Constants = {
         "completed",
       ],
       customer_group_role: ["admin", "negotiator", "staff"],
+      order_status: [
+        "customer_submit",
+        "priced",
+        "negotiate",
+        "ordered",
+        "placed",
+      ],
     },
   },
 } as const

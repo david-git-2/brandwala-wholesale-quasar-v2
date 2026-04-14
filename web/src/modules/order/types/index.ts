@@ -9,6 +9,8 @@ export type Order = {
   id: number
   name: string
   customer_group_id: number
+  can_see_price: boolean
+  accent_color: string | null
   cargo_rate: number | null
   conversion_rate: number | null
   profit_rate: number | null
@@ -65,6 +67,8 @@ export type OrderUpdateInput = {
   patch: Partial<Omit<Order, 'id' | 'created_at' | 'updated_at'>>
 }
 
+export type OrderCreateInput = Omit<Order, 'id' | 'created_at' | 'updated_at'>
+
 export type OrderItemUpdateInput = {
   id: number
   patch: Partial<Omit<OrderItem, 'id' | 'order_id' | 'created_at' | 'updated_at'>>
@@ -77,6 +81,8 @@ export type OrderDeleteInput = {
 export type OrderItemDeleteInput = {
   id: number
 }
+
+export type OrderItemCreateInput = Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>
 
 export type OrderServiceResult<T> = {
   success: boolean

@@ -100,7 +100,9 @@
           color="primary"
           icon="shopping_bag"
           label="Place Order"
-          @click="onPlaceOrder"
+          :disable="!cartStore.items.length"
+          :loading="orderStore.saving"
+          @click="confirmPlaceOrderOpen = true"
         />
       </div>
     </div>
@@ -122,6 +124,24 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="confirmPlaceOrderOpen">
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-h6">Place Order</q-card-section>
+        <q-card-section>
+          Are you sure you want to place this order?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="primary"
+            label="Confirm"
+            :loading="orderStore.saving"
+            @click="onConfirmPlaceOrder"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -130,15 +150,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import SmartImage from 'src/components/SmartImage.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useOrderStore } from 'src/modules/order/stores/orderStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useCartStore } from '../stores/cartStore'
 
 const authStore = useAuthStore()
 const storeStore = useStoreStore()
 const cartStore = useCartStore()
+const orderStore = useOrderStore()
 
 const selectedStoreId = ref<number | null>(null)
 const confirmClearOpen = ref(false)
+const confirmPlaceOrderOpen = ref(false)
 const draftQuantities = ref<Record<number, number>>({})
 
 const storeOptions = computed(() =>
@@ -222,11 +245,35 @@ const onConfirmClear = async () => {
   confirmClearOpen.value = false
 }
 
-const onPlaceOrder = () => {
-  console.log('place-order', {
+const onPlaceOrder = async () => {
+  const tenantId = authStore.tenantId
+  const customerGroupId = authStore.customerGroupId
+  const customerGroup = authStore.customerGroup
+
+  if (!tenantId || !customerGroupId || !customerGroup?.name) {
+    return false
+  }
+
+  const result = await orderStore.placeOrderFromCart({
+    tenant_id: tenantId,
     store_id: selectedStoreId.value,
-    items: cartStore.items,
+    customer_group_id: customerGroupId,
+    customer_group_name: customerGroup.name,
+    accent_color: customerGroup.accentColor ?? null,
   })
+
+  return Boolean(result?.success)
+}
+
+const onConfirmPlaceOrder = async () => {
+  const placed = await onPlaceOrder()
+
+  if (!placed) {
+    return
+  }
+
+  await clearCart()
+  confirmPlaceOrderOpen.value = false
 }
 
 const formatPrice = (value: number | null) => {

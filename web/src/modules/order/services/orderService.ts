@@ -1,9 +1,11 @@
 import { orderRepository } from '../repositories/orderRepository'
 import type {
   Order,
+  OrderCreateInput,
   OrderDeleteInput,
   OrderGetByIdInput,
   OrderItem,
+  OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
   OrderListInput,
@@ -22,6 +24,20 @@ const listOrders = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load orders.',
+    }
+  }
+}
+
+const createOrder = async (
+  payload: OrderCreateInput,
+): Promise<OrderServiceResult<Order>> => {
+  try {
+    const data = await orderRepository.createOrder(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create order.',
     }
   }
 }
@@ -68,6 +84,20 @@ const updateOrderItem = async (
   }
 }
 
+const createOrderItems = async (
+  payload: OrderItemCreateInput[],
+): Promise<OrderServiceResult<OrderItem[]>> => {
+  try {
+    const data = await orderRepository.createOrderItems(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create order items.',
+    }
+  }
+}
+
 const deleteOrder = async (
   payload: OrderDeleteInput,
 ): Promise<OrderServiceResult<void>> => {
@@ -98,8 +128,10 @@ const deleteOrderItem = async (
 
 export const orderService = {
   listOrders,
+  createOrder,
   getOrderById,
   updateOrder,
+  createOrderItems,
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
