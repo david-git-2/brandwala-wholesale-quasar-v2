@@ -9,7 +9,7 @@
     >
       <div class="image-wrapper">
         <SmartImage
-          :src="item.image_url"
+          :src="item.image_url ?? null"
           :alt="item.name"
           img-class="product-image"
           fallback-class="product-image-fallback"
@@ -69,10 +69,19 @@
           </div>
 
           <q-btn
+            v-if="!getCartItemId(item.id)"
             round
             color="primary"
             icon="shopping_cart"
             @click="handleAddToCart(item)"
+          />
+
+          <q-btn
+            v-else
+            round
+            color="negative"
+            icon="delete"
+            @click="handleRemoveFromCart(item)"
           />
         </div>
 
@@ -95,7 +104,7 @@
       <template v-if="selectedItem">
         <q-card-section class="details-image-wrap">
           <SmartImage
-            :src="selectedItem.image_url"
+            :src="selectedItem.image_url ?? null"
             :alt="selectedItem.name"
             img-class="details-image"
             fallback-class="details-image-fallback"
@@ -237,12 +246,22 @@ const props = withDefaults(defineProps<{
   showCart?: boolean
   showInfo?: boolean
   storeId?: number | null
+  cartItemByProductId?: Record<number, number>
+  cartQuantityByProductId?: Record<number, number>
 }>(), {
   showPrice: true,
   showCart: true,
   showInfo: true,
   storeId: null,
+  cartItemByProductId: () => ({}),
+  cartQuantityByProductId: () => ({}),
 })
+
+const emit = defineEmits<{
+  addToCart: [payload: { store_id: number | null; item: ProductItem; quantity: number; minimum_quantity: number }]
+  removeFromCart: [payload: { cart_item_id: number; product_id: number }]
+  updateCartQty: [payload: { cart_item_id: number; product_id: number; quantity: number; minimum_quantity: number }]
+}>()
 
 const detailsOpen = ref(false)
 const selectedItem = ref<ProductItem | null>(null)
@@ -254,16 +273,18 @@ const getStep = (item: ProductItem) => {
 }
 
 const getQty = (item: ProductItem) => {
-  if (!quantities.value[item.id]) {
-    quantities.value[item.id] = getStep(item)
-  }
-  return quantities.value[item.id]
+  const existingQty = props.cartQuantityByProductId?.[item.id]
+  const initial = existingQty && existingQty > 0 ? existingQty : getStep(item)
+  const current = quantities.value[item.id] ?? initial
+  quantities.value[item.id] = current
+  return current
 }
 
 const incrementQty = (item: ProductItem) => {
   const step = getStep(item)
   const current = getQty(item)
   quantities.value[item.id] = current + step
+  emitQuantityUpdate(item)
 }
 
 const decrementQty = (item: ProductItem) => {
@@ -271,6 +292,7 @@ const decrementQty = (item: ProductItem) => {
   const current = getQty(item)
   const next = current - step
   quantities.value[item.id] = next < step ? step : next
+  emitQuantityUpdate(item)
 }
 
 const openDetails = (item: ProductItem) => {
@@ -278,13 +300,44 @@ const openDetails = (item: ProductItem) => {
   detailsOpen.value = true
 }
 
+const getCartItemId = (productId: number) => props.cartItemByProductId?.[productId] ?? null
+
 const handleAddToCart = (item: ProductItem) => {
   const quantity = getQty(item)
+  const minimum_quantity = getStep(item)
 
-  console.log('add to cart', {
-    store_id: props.storeId,
-    ...item,
+  emit('addToCart', {
+    store_id: props.storeId ?? null,
+    item,
     quantity,
+    minimum_quantity,
+  })
+}
+
+const handleRemoveFromCart = (item: ProductItem) => {
+  const cartItemId = getCartItemId(item.id)
+
+  if (!cartItemId) {
+    return
+  }
+
+  emit('removeFromCart', {
+    cart_item_id: cartItemId,
+    product_id: item.id,
+  })
+}
+
+const emitQuantityUpdate = (item: ProductItem) => {
+  const cartItemId = getCartItemId(item.id)
+  if (!cartItemId) {
+    return
+  }
+
+  emit('updateCartQty', {
+    cart_item_id: cartItemId,
+    product_id: item.id,
+    quantity: getQty(item),
+    minimum_quantity: getStep(item),
   })
 }
 
@@ -321,7 +374,7 @@ const showCart = props.showCart
   justify-content: center;
   align-items: center;
   padding: 12px;
-  background: #f5f5f5;
+  background: #ffffff;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
   overflow: hidden;

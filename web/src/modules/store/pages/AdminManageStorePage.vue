@@ -85,12 +85,6 @@ type StoreItem = {
   updated_at: string
 }
 
-type StoreFormData = {
-  id?: number | string
-  name: string
-  vendor_code: string
-}
-
 const $q = useQuasar()
 
 const tenantStore = useTenantStore()
@@ -128,7 +122,7 @@ const columns: QTableColumn<StoreItem>[] = [
   {
     name: 'actions',
     label: 'Actions',
-    field: 'actions',
+    field: (row) => row.id,
     align: 'right',
   },
 ]
@@ -148,7 +142,11 @@ const openDelete = (row: StoreItem) => {
   deleteDialogOpen.value = true
 }
 
-const handleSave = async (payload: StoreFormData) => {
+const handleSave = async (payload: {
+  id: number | string | null
+  name: string
+  vendor_code: string
+}) => {
   try {
     if (payload.id) {
       await storeStore.updateStore({

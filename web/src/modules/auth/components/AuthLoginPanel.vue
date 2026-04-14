@@ -56,13 +56,13 @@ const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
 const panelBadge = computed(() => {
   switch (props.tone) {
     case 'platform':
-      return 'BW'
+      return 'TD'
     case 'app':
       return 'APP'
     case 'shop':
       return 'SHOP'
     default:
-      return 'BW'
+      return 'TD'
   }
 })
 

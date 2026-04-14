@@ -155,7 +155,7 @@ const columns: QTableColumn<StoreAccess>[] = [
   },
   { name: 'status', label: 'Status', field: 'status', align: 'left' },
   { name: 'see_price', label: 'See Price', field: 'see_price', align: 'left' },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
+  { name: 'actions', label: 'Actions', field: (row) => row.id, align: 'right' },
 ]
 
 const storeOptions = computed(() =>

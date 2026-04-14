@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_items: {
+        Row: {
+          cart_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          minimum_quantity: number
+          name: string
+          price_gbp: number | null
+          product_id: number | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cart_id: number
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          minimum_quantity?: number
+          name: string
+          price_gbp?: number | null
+          product_id?: number | null
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          cart_id?: number
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          minimum_quantity?: number
+          name?: string
+          price_gbp?: number | null
+          product_id?: number | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          can_see_price: boolean
+          created_at: string
+          customer_group_id: number | null
+          id: number
+          store_id: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          can_see_price?: boolean
+          created_at?: string
+          customer_group_id?: number | null
+          id?: number
+          store_id?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          can_see_price?: boolean
+          created_at?: string
+          customer_group_id?: number | null
+          id?: number
+          store_id?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carts_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       costing_file_items: {
         Row: {
           auxiliary_price_gbp: number | null
@@ -842,6 +941,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_item_to_cart: {
+        Args: {
+          p_can_see_price?: boolean
+          p_customer_group_id?: number
+          p_image_url?: string
+          p_minimum_quantity?: number
+          p_name?: string
+          p_price_gbp?: number
+          p_product_id?: number
+          p_quantity?: number
+          p_store_id?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       calculate_costing_auxiliary_price_gbp: {
         Args: { p_delivery_price_gbp: number; p_price_in_web_gbp: number }
         Returns: number
@@ -849,6 +963,11 @@ export type Database = {
       calculate_costing_item_type_surcharge_gbp: {
         Args: { p_item_type: string }
         Returns: number
+      }
+      can_access_cart: { Args: { p_cart_id: number }; Returns: boolean }
+      can_access_cart_item: {
+        Args: { p_cart_item_id: number }
+        Returns: boolean
       }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
@@ -873,6 +992,20 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
+      can_insert_cart:
+        | {
+            Args: { p_customer_group_id: number; p_tenant_id: number }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_store_id?: number
+              p_tenant_id: number
+            }
+            Returns: boolean
+          }
+      can_insert_cart_item: { Args: { p_cart_id: number }; Returns: boolean }
       can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
         Args: { p_tenant_id: number }
@@ -936,6 +1069,7 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
       check_login_membership: {
         Args: { p_email: string; p_scope: string }
         Returns: {
@@ -1218,6 +1352,8 @@ export type Database = {
           tenant_slug: string
         }[]
       }
+      get_cart: { Args: { p_cart_id: number }; Returns: Json }
+      get_cart_details: { Args: { p_cart_id: number }; Returns: Json }
       get_costing_file_by_id: {
         Args: { p_id: number }
         Returns: {
@@ -1357,6 +1493,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }[]
+      }
+      has_active_tenant_membership: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
       }
       is_assigned_costing_file_viewer: {
         Args: { p_costing_file_id: number }
@@ -1817,6 +1957,7 @@ export type Database = {
         | "offered"
         | "po_placed"
         | "cancelled"
+        | "completed"
       customer_group_role: "admin" | "negotiator" | "staff"
     }
     CompositeTypes: {
@@ -1955,6 +2096,7 @@ export const Constants = {
         "offered",
         "po_placed",
         "cancelled",
+        "completed",
       ],
       customer_group_role: ["admin", "negotiator", "staff"],
     },

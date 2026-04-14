@@ -4,6 +4,16 @@ import type {
   StoreAccess,
   StoreAccessCreateInput,
   StoreAccessDeleteInput,
+  StoreCart,
+  StoreCartCreateInput,
+  StoreCartDeleteInput,
+  StoreCartDetailedPayload,
+  StoreCartItem,
+  StoreCartItemCreateInput,
+  StoreCartItemDeleteInput,
+  StoreCartItemUpdateInput,
+  StoreCartPayload,
+  StoreCartUpdateInput,
   StoreProductsPage,
   StoreProductsQueryInput,
   StoreAccessUpdateInput,
@@ -201,6 +211,116 @@ const listStoreProducts = async (
   }
 }
 
+const getCart = async (cartId: number): Promise<StoreServiceResult<StoreCartPayload>> => {
+  try {
+    const data = await storeRepository.getCart(cartId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load cart.',
+    }
+  }
+}
+
+const getCartDetails = async (
+  cartId: number,
+): Promise<StoreServiceResult<StoreCartDetailedPayload>> => {
+  try {
+    const data = await storeRepository.getCartDetails(cartId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load cart details.',
+    }
+  }
+}
+
+const createCart = async (
+  payload: StoreCartCreateInput,
+): Promise<StoreServiceResult<StoreCart>> => {
+  try {
+    const data = await storeRepository.createCart(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create cart.',
+    }
+  }
+}
+
+const updateCart = async (
+  payload: StoreCartUpdateInput,
+): Promise<StoreServiceResult<StoreCart>> => {
+  try {
+    const data = await storeRepository.updateCart(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update cart.',
+    }
+  }
+}
+
+const deleteCart = async (
+  payload: StoreCartDeleteInput,
+): Promise<StoreServiceResult<StoreCart>> => {
+  try {
+    const data = await storeRepository.deleteCart(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete cart.',
+    }
+  }
+}
+
+const createCartItem = async (
+  payload: StoreCartItemCreateInput,
+): Promise<StoreServiceResult<StoreCartItem>> => {
+  try {
+    const data = await storeRepository.createCartItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create cart item.',
+    }
+  }
+}
+
+const updateCartItem = async (
+  payload: StoreCartItemUpdateInput,
+): Promise<StoreServiceResult<StoreCartItem>> => {
+  try {
+    const data = await storeRepository.updateCartItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update cart item.',
+    }
+  }
+}
+
+const deleteCartItem = async (
+  payload: StoreCartItemDeleteInput,
+): Promise<StoreServiceResult<StoreCartItem>> => {
+  try {
+    const data = await storeRepository.deleteCartItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete cart item.',
+    }
+  }
+}
+
 export const storeService = {
   getStoresAdmin,
   createStore,
@@ -216,4 +336,12 @@ export const storeService = {
   checkStoreAccess,
   checkStorePriceAccess,
   listStoreProducts,
+  getCart,
+  getCartDetails,
+  createCart,
+  updateCart,
+  deleteCart,
+  createCartItem,
+  updateCartItem,
+  deleteCartItem,
 }

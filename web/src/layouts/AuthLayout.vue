@@ -4,7 +4,7 @@
       <q-page class="auth-page">
         <section class="auth-stage">
           <div class="auth-stage__shell">
-            <div class="auth-stage__brand">BrandWala Wholesale</div>
+            <div class="auth-stage__brand">TradeFlowBD</div>
             <router-view />
           </div>
         </section>

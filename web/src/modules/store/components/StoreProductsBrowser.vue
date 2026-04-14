@@ -57,11 +57,16 @@
     />
 
     <ProductCardGrid
-      :items="storeStore.productItems || []"
+      :items="productCardItems"
       :show-price="props.mode === 'admin' || customerCanSeePrice"
       :show-cart="props.mode === 'customer'"
       :show-info="props.mode === 'admin'"
       :store-id="selectedStoreId"
+      :cart-item-by-product-id="cartItemByProductId"
+      :cart-quantity-by-product-id="cartQuantityByProductId"
+      @add-to-cart="onAddToCart"
+      @remove-from-cart="onRemoveFromCart"
+      @update-cart-qty="onUpdateCartQty"
     />
 
     <div v-if="totalPages > 1" class="row justify-center q-mt-md">
@@ -80,6 +85,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useCartStore } from 'src/modules/cart/stores/cartStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { storeService } from '../services/storeService'
 import { useStoreStore } from '../stores/storeStore'
@@ -96,10 +103,38 @@ const props = withDefaults(
 
 const tenantStore = useTenantStore()
 const storeStore = useStoreStore()
+const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 type FilterOption = {
   label: string
   value: string | null
+}
+
+type ProductCardItem = {
+  id: number
+  name: string
+  brand?: string | null
+  barcode?: string | null
+  category?: string | null
+  image_url?: string | null
+  languages?: string | null
+  price_gbp?: number | null
+  tenant_id?: number
+  created_at?: string
+  updated_at?: string
+  expire_date?: string | null
+  market_code?: string | null
+  tariff_code?: string | null
+  vendor_code?: string | null
+  is_available?: boolean
+  product_code?: string | null
+  package_weight?: number | null
+  product_weight?: number | null
+  available_units?: number | null
+  country_of_origin?: string | null
+  minimum_order_quantity?: number | null
+  batch_code_manufacture_date?: string | null
 }
 
 const allBrandOption: FilterOption = {
@@ -138,6 +173,18 @@ const filteredCategoryOptions = computed<FilterOption[]>(() => [
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(storeStore.productsTotal / storeStore.productsPageSize)),
 )
+const productCardItems = computed<ProductCardItem[]>(() =>
+  storeStore.productItems
+    .filter(
+      (item): item is Record<string, unknown> & { id: number; name: string } =>
+        typeof item['id'] === 'number' && typeof item['name'] === 'string',
+    )
+    .map((item) => ({
+      ...item,
+      id: item.id,
+      name: item.name,
+    })),
+)
 const customerCanSeePrice = computed(() => {
   if (storeStore.productsCanSeePrice) {
     return true
@@ -147,6 +194,28 @@ const customerCanSeePrice = computed(() => {
     const price = item['price_gbp']
     return price !== null && price !== undefined
   })
+})
+const cartItemByProductId = computed<Record<number, number>>(() => {
+  const map: Record<number, number> = {}
+
+  cartStore.items.forEach((item) => {
+    if (item.product_id != null) {
+      map[item.product_id] = item.id
+    }
+  })
+
+  return map
+})
+const cartQuantityByProductId = computed<Record<number, number>>(() => {
+  const map: Record<number, number> = {}
+
+  cartStore.items.forEach((item) => {
+    if (item.product_id != null) {
+      map[item.product_id] = item.quantity
+    }
+  })
+
+  return map
 })
 
 const loadProducts = async (storeId: number, page = 1) => {
@@ -205,6 +274,17 @@ const onStoreSelectionChange = async (storeId: number | string | null) => {
   }
 
   await loadProducts(numericStoreId, 1)
+
+  if (props.mode === 'customer') {
+    const tenantId = authStore.tenantId
+    if (tenantId) {
+      await cartStore.fetchItemsForContext({
+        tenant_id: tenantId,
+        store_id: numericStoreId,
+        customer_group_id: authStore.customerGroupId ?? null,
+      })
+    }
+  }
 }
 
 const filterBrands = (val: string, update: (fn: () => void) => void) => {
@@ -288,6 +368,63 @@ const onResetFilters = async () => {
   }
 }
 
+const onAddToCart = async (payload: {
+  store_id: number | null
+  item: ProductCardItem
+  quantity: number
+  minimum_quantity: number
+}) => {
+  if (props.mode !== 'customer') {
+    return
+  }
+
+  const tenantId = authStore.tenantId
+  if (!tenantId) {
+    return
+  }
+
+  const selectedStore = storeStore.items.find((store) => store.id === (payload.store_id ?? -1))
+
+  await cartStore.addItemToCart({
+    tenant_id: tenantId,
+    store_id: payload.store_id,
+    customer_group_id: authStore.customerGroupId ?? null,
+    can_see_price: Boolean(selectedStore?.see_price),
+    product_id: payload.item.id,
+    name: payload.item.name,
+    image_url: payload.item.image_url ?? null,
+    price_gbp: payload.item.price_gbp ?? null,
+    quantity: payload.quantity,
+    minimum_quantity: payload.minimum_quantity,
+  })
+}
+
+const onRemoveFromCart = async (payload: { cart_item_id: number }) => {
+  if (props.mode !== 'customer') {
+    return
+  }
+
+  await cartStore.deleteCartItem({
+    id: payload.cart_item_id,
+  })
+}
+
+const onUpdateCartQty = async (payload: {
+  cart_item_id: number
+  quantity: number
+  minimum_quantity: number
+}) => {
+  if (props.mode !== 'customer') {
+    return
+  }
+
+  await cartStore.updateCartItem({
+    id: payload.cart_item_id,
+    quantity: payload.quantity,
+    minimum_quantity: payload.minimum_quantity,
+  })
+}
+
 onMounted(async () => {
   if (props.mode === 'customer') {
     await storeStore.fetchStoresForCustomer()
@@ -313,6 +450,17 @@ onMounted(async () => {
   }
   await Promise.all([loadBrands(firstStore.id), loadCategories(firstStore.id)])
   await loadProducts(firstStore.id, 1)
+
+  if (props.mode === 'customer') {
+    const tenantId = authStore.tenantId
+    if (tenantId) {
+      await cartStore.fetchItemsForContext({
+        tenant_id: tenantId,
+        store_id: firstStore.id,
+        customer_group_id: authStore.customerGroupId ?? null,
+      })
+    }
+  }
 })
 
 onBeforeUnmount(() => {

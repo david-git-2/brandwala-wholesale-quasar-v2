@@ -69,6 +69,12 @@ values
     'Store',
     'Manage storefront configuration and store-level operations.',
     true
+  ),
+  (
+    'cart',
+    'Cart',
+    'Manage customer shopping carts and line items.',
+    true
   )
 on conflict (key) do update
 set

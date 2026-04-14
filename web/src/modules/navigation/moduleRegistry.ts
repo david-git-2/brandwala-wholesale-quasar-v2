@@ -9,6 +9,7 @@ export type ModuleKey =
   | 'product_based_costing'
   | 'costing_file'
   | 'store'
+  | 'cart'
   | 'accounting'
   | 'invoice'
 
@@ -187,6 +188,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'View stores available to your customer group',
         icon: 'storefront',
         routeSegment: 'stores',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'cart',
+    name: 'Cart',
+    description: 'Manage customer shopping carts and line items.',
+    routes: [
+      {
+        scope: 'shop',
+        title: 'Cart',
+        caption: 'Review and manage your cart',
+        icon: 'shopping_cart',
+        routeSegment: 'cart',
         requiredAction: 'view',
       },
     ],

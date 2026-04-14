@@ -5,6 +5,16 @@ import type {
   StoreAccess,
   StoreAccessCreateInput,
   StoreAccessDeleteInput,
+  StoreCart,
+  StoreCartCreateInput,
+  StoreCartDeleteInput,
+  StoreCartDetailedPayload,
+  StoreCartItem,
+  StoreCartItemCreateInput,
+  StoreCartItemDeleteInput,
+  StoreCartItemUpdateInput,
+  StoreCartPayload,
+  StoreCartUpdateInput,
   StoreProductsPage,
   StoreProductsQueryInput,
   StoreAccessUpdateInput,
@@ -245,6 +255,175 @@ const listStoreProducts = async (
   return response
 }
 
+const getCart = async (cartId: number): Promise<StoreCartPayload> => {
+  const { data, error } = await supabase.rpc('get_cart' as never, {
+    p_cart_id: cartId,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart was not found.')
+  }
+
+  return data as StoreCartPayload
+}
+
+const getCartDetails = async (cartId: number): Promise<StoreCartDetailedPayload> => {
+  const { data, error } = await supabase.rpc('get_cart_details' as never, {
+    p_cart_id: cartId,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart details were not found.')
+  }
+
+  return data as StoreCartDetailedPayload
+}
+
+const createCart = async (payload: StoreCartCreateInput): Promise<StoreCart> => {
+  const { data, error } = await supabase
+    .from('carts')
+    .insert([
+      {
+        tenant_id: payload.tenant_id,
+        store_id: payload.store_id ?? null,
+        customer_group_id: payload.customer_group_id ?? null,
+        can_see_price: payload.can_see_price ?? false,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart was not created.')
+  }
+
+  return data as StoreCart
+}
+
+const updateCart = async (payload: StoreCartUpdateInput): Promise<StoreCart> => {
+  const { id, ...rest } = payload
+  const { data, error } = await supabase
+    .from('carts')
+    .update(rest)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart was not updated.')
+  }
+
+  return data as StoreCart
+}
+
+const deleteCart = async (payload: StoreCartDeleteInput): Promise<StoreCart> => {
+  const { data, error } = await supabase
+    .from('carts')
+    .delete()
+    .eq('id', payload.id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart was not deleted.')
+  }
+
+  return data as StoreCart
+}
+
+const createCartItem = async (
+  payload: StoreCartItemCreateInput,
+): Promise<StoreCartItem> => {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .insert([
+      {
+        cart_id: payload.cart_id,
+        product_id: payload.product_id ?? null,
+        name: payload.name,
+        image_url: payload.image_url ?? null,
+        price_gbp: payload.price_gbp ?? null,
+        quantity: payload.quantity ?? 1,
+        minimum_quantity: payload.minimum_quantity ?? 1,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart item was not created.')
+  }
+
+  return data as StoreCartItem
+}
+
+const updateCartItem = async (
+  payload: StoreCartItemUpdateInput,
+): Promise<StoreCartItem> => {
+  const { id, ...rest } = payload
+  const { data, error } = await supabase
+    .from('cart_items')
+    .update(rest)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart item was not updated.')
+  }
+
+  return data as StoreCartItem
+}
+
+const deleteCartItem = async (
+  payload: StoreCartItemDeleteInput,
+): Promise<StoreCartItem> => {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('id', payload.id)
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Cart item was not deleted.')
+  }
+
+  return data as StoreCartItem
+}
+
 export const storeRepository = {
   getStoresAdmin,
   createStore,
@@ -260,4 +439,12 @@ export const storeRepository = {
   checkStoreAccess,
   checkStorePriceAccess,
   listStoreProducts,
+  getCart,
+  getCartDetails,
+  createCart,
+  updateCart,
+  deleteCart,
+  createCartItem,
+  updateCartItem,
+  deleteCartItem,
 }

@@ -44,7 +44,7 @@ import { computed, reactive, watch } from 'vue'
 const vendorStore = useVendorStore()
 
 type StoreFormData = {
-  id?: number | string |undefined
+  id: number | string | null
   name: string
   vendor_code: string
 }
@@ -60,7 +60,7 @@ const emit = defineEmits<{
 }>()
 
 const form = reactive<StoreFormData>({
-  id: undefined,
+  id: null,
   name: '',
   vendor_code: '',
 })
@@ -68,7 +68,7 @@ const form = reactive<StoreFormData>({
 const isEdit = computed(() => !!props.data)
 
 const resetForm = () => {
-  form.id = undefined
+  form.id = null
   form.name = ''
   form.vendor_code = ''
 }
@@ -77,7 +77,7 @@ watch(
   () => [props.open, props.data],
   () => {
     if (props.open) {
-      form.id = props.data?.id
+      form.id = props.data?.id ?? null
       form.name = props.data?.name ?? ''
       form.vendor_code = props.data?.vendor_code ?? ''
     }
@@ -98,7 +98,7 @@ const handleDialogToggle = (value: boolean) => {
 
 const handleSave = () => {
   const payload: StoreFormData = {
-    id: form.id,
+    id: form.id ?? null,
     name: form.name.trim(),
     vendor_code: form.vendor_code,
   }

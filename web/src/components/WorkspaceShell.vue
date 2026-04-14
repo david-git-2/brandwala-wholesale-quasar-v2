@@ -72,9 +72,9 @@
                 >
                   <q-item
                     v-for="child in link.children"
-                    :key="child.to"
+                    :key="child.to ?? child.title"
                     clickable
-                    :to="child.to"
+                    :to="child.to!"
                     class="workspace-shell__nav-sub-item"
                     active-class="workspace-shell__nav-item--active"
                   >
@@ -85,7 +85,7 @@
                 </q-expansion-item>
 
                 <q-item
-                  v-else
+                  v-else-if="link.to"
                   clickable
                   :to="link.to"
                   class="workspace-shell__nav-item"
@@ -261,26 +261,15 @@ const handleLogout = async () => {
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
-  --shell-base: var(--bw-theme-base, #f4f0e8);
-  --shell-surface: var(--bw-theme-surface, rgb(255 252 246 / 0.86));
-  --shell-border: var(--bw-theme-border, rgb(72 58 40 / 0.12));
-  --shell-shadow: var(--bw-theme-shadow, rgb(59 46 28 / 0.14));
-  --shell-ink: var(--bw-theme-ink, #241d16);
-  --shell-muted: var(--bw-theme-muted, #7d6b58);
-  --shell-accent: var(--bw-theme-primary, #8a5b2b);
-  --shell-accent-soft: var(--bw-theme-primary-soft, rgb(138 91 43 / 0.12));
-  background:
-    radial-gradient(
-      circle at top left,
-      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.18),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgb(var(--bw-theme-primary-rgb, 138 91 43) / 0.12),
-      transparent 30%
-    ),
-    linear-gradient(180deg, var(--bw-theme-gradient-top, #f8f3ec) 0%, var(--shell-base) 100%);
+  --shell-base: var(--bw-theme-base, #eef2f5);
+  --shell-surface: var(--bw-theme-surface, rgb(255 255 255 / 0.92));
+  --shell-border: var(--bw-theme-border, rgb(40 56 74 / 0.12));
+  --shell-shadow: var(--bw-theme-shadow, rgb(25 35 47 / 0.08));
+  --shell-ink: var(--bw-theme-ink, #1f2937);
+  --shell-muted: var(--bw-theme-muted, #6b7280);
+  --shell-accent: var(--bw-theme-primary, #2563eb);
+  --shell-accent-soft: var(--bw-theme-primary-soft, rgb(37 99 235 / 0.12));
+  background: var(--shell-base);
   color: var(--shell-ink);
 }
 

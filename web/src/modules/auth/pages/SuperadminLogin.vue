@@ -5,7 +5,7 @@
     title="Enter the platform workspace"
     description="Use your platform-approved Google account to manage tenants and modules."
     cta-label="Sign in as superadmin"
-    support-text="Platform access is reserved for the BrandWala core team."
+    support-text="Platform access is reserved for the TradeFlowBD core team."
     tone="platform"
   />
 </template>

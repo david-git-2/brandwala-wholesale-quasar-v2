@@ -96,3 +96,80 @@ export type StoreStoreState = {
   productsPageSize: number
   productsCanSeePrice: boolean
 }
+
+export type StoreCart = {
+  id: number
+  tenant_id: number
+  store_id: number | null
+  customer_group_id: number | null
+  can_see_price: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type StoreCartItem = {
+  id: number
+  cart_id: number
+  product_id: number | null
+  name: string
+  image_url: string | null
+  price_gbp: number | null
+  quantity: number
+  minimum_quantity: number
+  created_at: string
+  updated_at: string
+}
+
+export type StoreCartPayload = {
+  cart: StoreCart
+  items: StoreCartItem[]
+}
+
+export type StoreCartDetailedPayload = {
+  cart: StoreCart
+  items: Array<StoreCartItem & { product: Record<string, unknown> | null }>
+}
+
+export type StoreCartCreateInput = {
+  tenant_id: number
+  store_id?: number | null
+  customer_group_id?: number | null
+  can_see_price?: boolean
+}
+
+export type StoreCartUpdateInput = {
+  id: number
+  tenant_id?: number
+  store_id?: number | null
+  customer_group_id?: number | null
+  can_see_price?: boolean
+}
+
+export type StoreCartDeleteInput = {
+  id: number
+}
+
+export type StoreCartItemCreateInput = {
+  cart_id: number
+  product_id?: number | null
+  name: string
+  image_url?: string | null
+  price_gbp?: number | null
+  quantity?: number
+  minimum_quantity?: number
+}
+
+export type StoreCartItemUpdateInput = {
+  id: number
+  cart_id?: number
+  product_id?: number | null
+  name?: string
+  image_url?: string | null
+  price_gbp?: number | null
+  quantity?: number
+  minimum_quantity?: number
+}
+
+export type StoreCartItemDeleteInput = {
+  id: number
+}
