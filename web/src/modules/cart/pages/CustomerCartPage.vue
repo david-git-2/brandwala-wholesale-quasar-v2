@@ -312,7 +312,7 @@ const onPlaceOrder = async () => {
 
   ;(cartStore.cartDetails?.items ?? []).forEach((item) => {
     const productId = item.product_id
-    const product = item.product as Record<string, unknown> | null
+    const product = item.product
     if (productId == null || !product) {
       return
     }

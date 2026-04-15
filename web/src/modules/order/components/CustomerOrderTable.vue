@@ -214,7 +214,15 @@ watch(
 )
 
 const allColumns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'left', sortable: false },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    sortable: false,
+    style: 'width: 50px; max-width: 50px;',
+    headerStyle: 'width: 50px; max-width: 50px;',
+  },
   { name: 'image_url', label: 'Image', field: 'image_url', align: 'left', sortable: false },
   {
     name: 'name',
@@ -233,8 +241,8 @@ const allColumns: QTableColumn[] = [
     field: 'ordered_quantity',
     align: 'center',
     sortable: true,
-    style: 'background-color:#E7E7E7;font-weight:bold',
-    headerStyle: 'background-color:#E7E7E7;',
+    style: 'background-color:#E7E7E7;font-weight:bold;min-width:90px;width:90px;max-width:90px;',
+    headerStyle: 'background-color:#E7E7E7;min-width:90px;width:90px;max-width:90px;',
     headerClasses: 'text-center',
   },
   { name: 'first_offered_price', label: 'First Offered Price', field: 'first_offered_price', align: 'left', sortable: true ,style: 'background-color:#9bf6ff;font-weight:bold',
@@ -424,7 +432,14 @@ const onPlaceOrder = async () => {
 
 :deep(.q-table th),
 :deep(.q-table td) {
-  min-width: 140px;
+  min-width: 120px;
+}
+
+:deep(.q-table th:nth-child(1)),
+:deep(.q-table td:nth-child(1)) {
+  min-width: 50px !important;
+  width: 50px !important;
+  max-width: 50px !important;
 }
 
 :deep(.q-table th:nth-child(3)),
@@ -439,12 +454,12 @@ const onPlaceOrder = async () => {
   min-width: 1in !important;
   width: 1in !important;
   max-width: 1in !important;
-  padding-right: 14px !important;
+  padding-right: 18px !important;
 }
 
 :deep(.q-table th:nth-child(3)),
 :deep(.q-table td:nth-child(3)) {
-  padding-left: 14px !important;
+  padding-left: 18px !important;
 }
 
 .customer-order-name-cell {

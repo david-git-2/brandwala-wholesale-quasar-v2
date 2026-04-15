@@ -735,6 +735,7 @@ const onSaveItemChanges = async () => {
     package_weight: packageWeightDraftById.value[row.id] ?? row.package_weight ?? null,
     first_offer_bdt:
       firstOfferDraftById.value[row.id] ?? row.first_offer_bdt ?? row.seller_first_offer_bdt,
+    final_offer_bdt: finalOfferDraftById.value[row.id] ?? row.final_offer_bdt ?? null,
   }))
   const productWeightUpdatesByProductId = getProductWeightUpdatesByProductId()
 
@@ -753,6 +754,7 @@ const onSaveItemChanges = async () => {
     productWeightInitialById.value[entry.id] = entry.product_weight
     packageWeightInitialById.value[entry.id] = entry.package_weight
     firstOfferInitialById.value[entry.id] = entry.first_offer_bdt
+    finalOfferInitialById.value[entry.id] = entry.final_offer_bdt
   })
 
   await syncProductWeightsFromOrderRows(productWeightUpdatesByProductId)
@@ -967,12 +969,12 @@ const updateSingleItemFromDraft = async (
   min-width: 1in !important;
   width: 1in !important;
   max-width: 1in !important;
-  padding-right: 14px !important;
+  padding-right: 18px !important;
 }
 
 :deep(.q-table th:nth-child(3)),
 :deep(.q-table td:nth-child(3)) {
-  padding-left: 14px !important;
+  padding-left: 18px !important;
 }
 
 .order-item-name-cell {
