@@ -507,6 +507,7 @@ export type Database = {
       }
       order_items: {
         Row: {
+          barcode: string | null
           cost_bdt: number | null
           cost_gbp: number | null
           created_at: string
@@ -522,12 +523,14 @@ export type Database = {
           ordered_quantity: number
           package_weight: number | null
           price_gbp: number | null
+          product_code: string | null
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           cost_bdt?: number | null
           cost_gbp?: number | null
           created_at?: string
@@ -543,12 +546,14 @@ export type Database = {
           ordered_quantity?: number
           package_weight?: number | null
           price_gbp?: number | null
+          product_code?: string | null
           product_id?: number | null
           product_weight?: number | null
           returned_quantity?: number
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           cost_bdt?: number | null
           cost_gbp?: number | null
           created_at?: string
@@ -564,6 +569,7 @@ export type Database = {
           ordered_quantity?: number
           package_weight?: number | null
           price_gbp?: number | null
+          product_code?: string | null
           product_id?: number | null
           product_weight?: number | null
           returned_quantity?: number
@@ -1096,6 +1102,7 @@ export type Database = {
       bulk_update_order_item_offers: {
         Args: { p_items: Json }
         Returns: {
+          barcode: string | null
           cost_bdt: number | null
           cost_gbp: number | null
           created_at: string
@@ -1111,6 +1118,7 @@ export type Database = {
           ordered_quantity: number
           package_weight: number | null
           price_gbp: number | null
+          product_code: string | null
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
@@ -1126,6 +1134,7 @@ export type Database = {
       bulk_update_order_items: {
         Args: { p_items: Json }
         Returns: {
+          barcode: string | null
           cost_bdt: number | null
           cost_gbp: number | null
           created_at: string
@@ -1141,6 +1150,7 @@ export type Database = {
           ordered_quantity: number
           package_weight: number | null
           price_gbp: number | null
+          product_code: string | null
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
@@ -2160,6 +2170,7 @@ export type Database = {
         | "customer_submit"
         | "priced"
         | "negotiate"
+        | "final_offered"
         | "ordered"
         | "placed"
     }
@@ -2306,6 +2317,7 @@ export const Constants = {
         "customer_submit",
         "priced",
         "negotiate",
+        "final_offered",
         "ordered",
         "placed",
       ],

@@ -2,6 +2,7 @@ export type OrderStatus =
   | 'customer_submit'
   | 'priced'
   | 'negotiate'
+  | 'final_offered'
   | 'ordered'
   | 'placed'
 
@@ -26,6 +27,8 @@ export type OrderItem = {
   order_id: number
   name: string
   image_url: string | null
+  barcode: string | null
+  product_code: string | null
   price_gbp: number | null
   cost_gbp: number | null
   cost_bdt: number | null

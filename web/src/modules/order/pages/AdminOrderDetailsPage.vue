@@ -45,6 +45,7 @@
         :loading="orderStore.saving"
         @click="onSaveRates"
       />
+
     </div>
 
     <OrderItemsTable
@@ -74,6 +75,7 @@ const statusOptions: OrderStatus[] = [
   'customer_submit',
   'priced',
   'negotiate',
+  'final_offered',
   'ordered',
   'placed',
 ]
@@ -177,4 +179,7 @@ const onSaveRates = async () => {
 
   await orderStore.updateOrderItemsFirstOffer(firstOfferPayload)
 }
+
+
+
 </script>

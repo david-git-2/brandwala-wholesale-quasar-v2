@@ -37,6 +37,8 @@ const ORDER_ITEM_FIELDS = [
   'order_id',
   'name',
   'image_url',
+  'barcode',
+  'product_code',
   'price_gbp',
   'cost_gbp',
   'cost_bdt',
@@ -209,15 +211,73 @@ const createOrderItems = async (payload: OrderItemCreateInput[]): Promise<OrderI
 const bulkUpdateOrderItems = async (
   payload: OrderItemBulkUpdateInput,
 ): Promise<OrderItem[]> => {
-  const { data, error } = await supabase.rpc('bulk_update_order_items' as never, {
-    p_items: payload,
-  } as never)
+  const normalizeId = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
 
-  if (error) {
-    throw error
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+
+    return null
   }
 
-  return (data as OrderItem[] | null) ?? []
+  const sanitizedPayload = payload
+    .map((entry) => {
+      const sanitized = Object.fromEntries(
+        Object.entries(entry).filter(([, value]) => value !== undefined),
+      ) as Record<string, unknown>
+
+      const normalizedId = normalizeId(sanitized.id)
+      if (normalizedId == null) {
+        return null
+      }
+
+      sanitized.id = normalizedId
+      return sanitized
+    })
+    .filter((entry): entry is Record<string, unknown> => entry != null)
+
+  if (!sanitizedPayload.length) {
+    return []
+  }
+
+  const { data, error } = await supabase.rpc('bulk_update_order_items' as never, {
+    p_items: sanitizedPayload,
+  } as never)
+
+  if (!error) {
+    return (data as OrderItem[] | null) ?? []
+  }
+
+  const updatedRows: OrderItem[] = []
+
+  for (const entry of sanitizedPayload) {
+    const { id, ...patch } = entry
+
+    if (!Object.keys(patch).length) {
+      continue
+    }
+
+    const { data: rowData, error: rowError } = await supabase
+      .from('order_items')
+      .update(patch)
+      .eq('id', id as number)
+      .select('*')
+      .single()
+
+    if (rowError) {
+      throw rowError
+    }
+
+    if (rowData) {
+      updatedRows.push(rowData as OrderItem)
+    }
+  }
+
+  return updatedRows
 }
 
 const deleteOrder = async (payload: OrderDeleteInput): Promise<void> => {

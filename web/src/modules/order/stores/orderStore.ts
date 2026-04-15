@@ -224,6 +224,46 @@ export const useOrderStore = defineStore('order', {
       }
     },
 
+    async updateOrderItemsWeights(
+      payload: Array<{
+        id: number
+        product_weight?: number | null
+        package_weight?: number | null
+      }>,
+    ) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await orderService.bulkUpdateOrderItems(
+          payload.map((item) => ({
+            id: item.id,
+            product_weight: item.product_weight ?? null,
+            package_weight: item.package_weight ?? null,
+          })),
+        )
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update item weights.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updatedRows = result.data ?? []
+        if (this.selected && updatedRows.length) {
+          const updatedMap = new Map(updatedRows.map((row) => [row.id, row]))
+          this.selected.order_items = this.selected.order_items.map((row) =>
+            updatedMap.get(row.id) ?? row,
+          )
+        }
+
+        showSuccessNotification('Item weights updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
     async bulkUpdateOrderItems(payload: OrderItemBulkUpdateInput) {
       this.saving = true
       this.error = null
@@ -336,38 +376,38 @@ export const useOrderStore = defineStore('order', {
         const order = createOrderResult.data
 
         const createItemsResult = await orderService.createOrderItems(
-          items.map((item) => ({
-            order_id: order.id,
-            name: item.name,
-            image_url: item.image_url ?? null,
-            price_gbp: item.price_gbp ?? null,
-            cost_gbp: null,
-            cost_bdt: null,
-            first_offer_bdt: null,
-            customer_offer_bdt: null,
-            final_offer_bdt: null,
-            product_weight: Number(
-              (
-                (item as Record<string, unknown>).product as
-                  | { product_weight?: number | null }
-                  | null
-                  | undefined
-              )?.product_weight ?? null,
-            ) || null,
-            package_weight: Number(
-              (
-                (item as Record<string, unknown>).product as
-                  | { package_weight?: number | null }
-                  | null
-                  | undefined
-              )?.package_weight ?? null,
-            ) || null,
-            minimum_quantity: item.minimum_quantity,
-            product_id: item.product_id ?? null,
-            ordered_quantity: item.quantity,
-            delivered_quantity: 0,
-            returned_quantity: 0,
-          })),
+          items.map((item) => {
+            const product = ((item as Record<string, unknown>).product as
+              | {
+                  barcode?: string | null
+                  product_code?: string | null
+                  product_weight?: number | null
+                  package_weight?: number | null
+                }
+              | null
+              | undefined) ?? null
+
+            return {
+              order_id: order.id,
+              name: item.name,
+              image_url: item.image_url ?? null,
+              barcode: product?.barcode ?? null,
+              product_code: product?.product_code ?? null,
+              price_gbp: item.price_gbp ?? null,
+              cost_gbp: null,
+              cost_bdt: null,
+              first_offer_bdt: null,
+              customer_offer_bdt: null,
+              final_offer_bdt: null,
+              product_weight: Number(product?.product_weight ?? null) || null,
+              package_weight: Number(product?.package_weight ?? null) || null,
+              minimum_quantity: item.minimum_quantity,
+              product_id: item.product_id ?? null,
+              ordered_quantity: item.quantity,
+              delivered_quantity: 0,
+              returned_quantity: 0,
+            }
+          }),
         )
 
         if (!createItemsResult.success) {
