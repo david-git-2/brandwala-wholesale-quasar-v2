@@ -143,6 +143,30 @@ const deleteOrderItem = async (
   }
 }
 
+const getOrderProductSnapshots = async (
+  productIds: number[],
+): Promise<
+  OrderServiceResult<
+    Array<{
+      id: number
+      barcode: string | null
+      product_code: string | null
+      product_weight: number | null
+      package_weight: number | null
+    }>
+  >
+> => {
+  try {
+    const data = await orderRepository.getOrderProductSnapshots(productIds)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load product snapshots.',
+    }
+  }
+}
+
 export const orderService = {
   listOrders,
   createOrder,
@@ -153,4 +177,5 @@ export const orderService = {
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
+  getOrderProductSnapshots,
 }

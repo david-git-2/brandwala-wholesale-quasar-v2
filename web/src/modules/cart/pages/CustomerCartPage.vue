@@ -294,6 +294,36 @@ const onPlaceOrder = async () => {
     return false
   }
 
+  const cartId = cartStore.cartSnapshot?.cart?.id ?? null
+  if (cartId) {
+    await cartStore.fetchCartDetails(cartId)
+  }
+
+  const detailByProductId = new Map<
+    number,
+    {
+      barcode: string | null
+      product_code: string | null
+      product_weight: number | null
+      package_weight: number | null
+    }
+  >()
+
+  ;(cartStore.cartDetails?.items ?? []).forEach((item) => {
+    const productId = item.product_id
+    const product = item.product as Record<string, unknown> | null
+    if (productId == null || !product) {
+      return
+    }
+
+    detailByProductId.set(productId, {
+      barcode: (product['barcode'] as string | null) ?? null,
+      product_code: (product['product_code'] as string | null) ?? null,
+      product_weight: (product['product_weight'] as number | null) ?? null,
+      package_weight: (product['package_weight'] as number | null) ?? null,
+    })
+  })
+
   const result = await orderStore.placeOrderFromCart({
     tenant_id: tenantId,
     store_id: storeStore.selectedStore?.id ?? null,
@@ -301,14 +331,21 @@ const onPlaceOrder = async () => {
     customer_group_name: customerGroup.name,
     accent_color: customerGroup.accentColor ?? null,
     can_see_price: Boolean(cartStore.cartSnapshot?.cart?.can_see_price),
-    items: cartStore.items.map((item) => ({
-      product_id: item.product_id ?? null,
-      name: item.name,
-      image_url: item.image_url ?? null,
-      price_gbp: item.price_gbp ?? null,
-      quantity: item.quantity,
-      minimum_quantity: item.minimum_quantity,
-    })),
+    items: cartStore.items.map((item) => {
+      const productDetail = detailByProductId.get(item.product_id ?? -1)
+      return {
+        product_id: item.product_id ?? null,
+        name: item.name,
+        image_url: item.image_url ?? null,
+        price_gbp: item.price_gbp ?? null,
+        barcode: productDetail?.barcode ?? null,
+        product_code: productDetail?.product_code ?? null,
+        product_weight: productDetail?.product_weight ?? null,
+        package_weight: productDetail?.package_weight ?? null,
+        quantity: item.quantity,
+        minimum_quantity: item.minimum_quantity,
+      }
+    }),
   })
 
   return Boolean(result?.success)

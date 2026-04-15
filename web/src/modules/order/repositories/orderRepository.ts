@@ -16,6 +16,14 @@ import type {
   OrderWithItems,
 } from '../types'
 
+type OrderProductSnapshot = {
+  id: number
+  barcode: string | null
+  product_code: string | null
+  product_weight: number | null
+  package_weight: number | null
+}
+
 const ORDER_FIELDS = [
   'id',
   'name',
@@ -140,6 +148,7 @@ const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems>
     .from('orders')
     .select(select)
     .eq('id', payload.id)
+    .order('id', { ascending: true, foreignTable: 'order_items' })
     .single()
 
   if (error) {
@@ -296,6 +305,24 @@ const deleteOrderItem = async (payload: OrderItemDeleteInput): Promise<void> => 
   }
 }
 
+const getOrderProductSnapshots = async (productIds: number[]): Promise<OrderProductSnapshot[]> => {
+  const uniqueIds = Array.from(new Set(productIds)).filter((id) => Number.isFinite(id))
+  if (!uniqueIds.length) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id,barcode,product_code,product_weight,package_weight')
+    .in('id', uniqueIds)
+
+  if (error) {
+    throw error
+  }
+
+  return (data as OrderProductSnapshot[] | null) ?? []
+}
+
 export const orderRepository = {
   listOrders,
   createOrder,
@@ -306,4 +333,5 @@ export const orderRepository = {
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
+  getOrderProductSnapshots,
 }

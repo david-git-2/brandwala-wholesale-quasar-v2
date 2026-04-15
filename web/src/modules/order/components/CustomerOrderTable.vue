@@ -17,12 +17,12 @@
           </q-td>
 
           <q-td key="image_url" :props="props">
-            <div class="w-20 h-20 flex items-center justify-center bg-white rounded overflow-hidden">
+            <div class="order-table-image-box">
               <SmartImage
                 :src="props.row.image_url"
                 alt="product"
-                imgClass="w-full h-full object-contain block"
-                fallbackClass="w-full h-full flex items-center justify-center bg-gray-200 text-xs"
+                imgClass="order-table-image"
+                fallbackClass="order-table-image-fallback"
               />
             </div>
           </q-td>
@@ -434,10 +434,45 @@ const onPlaceOrder = async () => {
   max-width: 360px !important;
 }
 
+:deep(.q-table th:nth-child(2)),
+:deep(.q-table td:nth-child(2)) {
+  min-width: 1in !important;
+  width: 1in !important;
+  max-width: 1in !important;
+}
+
 .customer-order-name-cell {
   white-space: normal;
   word-break: break-word;
   line-height: 1.35;
+}
+
+.order-table-image-box {
+  width: 1in;
+  height: 1in;
+  min-width: 1in;
+  min-height: 1in;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.order-table-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.order-table-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  font-size: 12px;
 }
 
 .col-name {

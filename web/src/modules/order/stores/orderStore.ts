@@ -302,6 +302,10 @@ export const useOrderStore = defineStore('order', {
         name: string
         image_url?: string | null
         price_gbp?: number | null
+        barcode?: string | null
+        product_code?: string | null
+        product_weight?: number | null
+        package_weight?: number | null
         quantity: number
         minimum_quantity?: number | null
       }>
@@ -338,23 +342,33 @@ export const useOrderStore = defineStore('order', {
         }
 
         const order = createOrderResult.data
+        const productIds = items
+          .map((item) => item.product_id)
+          .filter((id): id is number => typeof id === 'number')
+        const productSnapshotResult = await orderService.getOrderProductSnapshots(productIds)
+        const productSnapshotMap = new Map(
+          (productSnapshotResult.data ?? []).map((row) => [row.id, row]),
+        )
 
         const createItemsResult = await orderService.createOrderItems(
           items.map((item) => {
+            const productSnapshot =
+              item.product_id != null ? productSnapshotMap.get(item.product_id) : null
+
             return {
               order_id: order.id,
               name: item.name,
               image_url: item.image_url ?? null,
-              barcode: null,
-              product_code: null,
+              barcode: item.barcode ?? productSnapshot?.barcode ?? null,
+              product_code: item.product_code ?? productSnapshot?.product_code ?? null,
               price_gbp: item.price_gbp ?? null,
               cost_gbp: null,
               cost_bdt: null,
               first_offer_bdt: null,
               customer_offer_bdt: null,
               final_offer_bdt: null,
-              product_weight: null,
-              package_weight: null,
+              product_weight: item.product_weight ?? productSnapshot?.product_weight ?? null,
+              package_weight: item.package_weight ?? productSnapshot?.package_weight ?? null,
               minimum_quantity: Math.max(1, Number(item.minimum_quantity ?? 1) || 1),
               product_id: item.product_id ?? null,
               ordered_quantity: Math.max(0, Number(item.quantity) || 0),
