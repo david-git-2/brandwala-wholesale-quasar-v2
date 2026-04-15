@@ -224,6 +224,24 @@ const deleteCartItem = async (payload: CartItemDeleteInput): Promise<CartItem> =
   return data as CartItem
 }
 
+const deleteCartItemsBulk = async (itemIds: number[]): Promise<CartItem[]> => {
+  if (!itemIds.length) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('cart_items')
+    .delete()
+    .in('id', itemIds)
+    .select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as CartItem[] | null) ?? []
+}
+
 const getCart = async (cartId: number): Promise<CartWithItems> => {
   const { data, error } = await supabase.rpc('get_cart' as never, {
     p_cart_id: cartId,
@@ -292,6 +310,7 @@ export const cartRepository = {
   createCartItem,
   updateCartItem,
   deleteCartItem,
+  deleteCartItemsBulk,
   getCart,
   getCartDetails,
   addItemToCart,

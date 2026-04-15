@@ -220,18 +220,21 @@ export const useCartStore = defineStore('cart', {
       this.error = null
 
       try {
-        for (const id of itemIds) {
-          const result = await cartService.deleteCartItem({ id })
-
-          if (!result.success) {
-            this.error = result.error ?? 'Failed to clear cart items.'
-            handleApiFailure(result, this.error)
-            return result
-          }
+        const result = await cartService.deleteCartItemsBulk(itemIds)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to clear cart items.'
+          handleApiFailure(result, this.error)
+          return result
         }
 
         const idSet = new Set(itemIds)
         this.items = this.items.filter((item) => !idSet.has(item.id))
+        if (this.cartSnapshot) {
+          this.cartSnapshot = {
+            cart: this.cartSnapshot.cart,
+            items: this.items,
+          }
+        }
         showSuccessNotification('Cart cleared successfully.')
         return { success: true as const }
       } finally {
@@ -346,6 +349,7 @@ export const useCartStore = defineStore('cart', {
         const cart = cartResult.data ?? null
         if (!cart) {
           this.items = []
+          this.cartSnapshot = null
           return { success: true, data: [] as typeof this.items }
         }
 
@@ -357,6 +361,10 @@ export const useCartStore = defineStore('cart', {
         }
 
         this.items = itemsResult.data ?? []
+        this.cartSnapshot = {
+          cart,
+          items: this.items,
+        }
         return itemsResult
       } finally {
         this.loading = false

@@ -1,7 +1,8 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="text-h5">Order Details</div>
+    <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
     <div class="row justify-end"><q-chip class="bg-primary" text-color="white"  :label="formatStatus(orderStore.selected?.status)" /></div>
+    <CustomerOrderCard />
     <CustomerOrderTable
       :items="orderStore.selected?.order_items || []"
       :status="orderStore.selected?.status ?? 'customer_submit'"
@@ -14,6 +15,8 @@ import { useOrderStore } from '../stores/orderStore';
 import { useRoute } from 'vue-router';
 import CustomerOrderTable from '../components/CustomerOrderTable.vue';
 import { formatStatus } from 'src/composables/useFormatStatus';
+import CustomerOrderCard from '../components/CustomerOrderCard.vue';
+
 
 
 

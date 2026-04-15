@@ -1,8 +1,8 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="text-h5">Order Details</div>
+    <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
 
-    <div class="q-mt-md q-mb-md" style="max-width: 280px">
+    <div class="q-mt-md q-mb-md row justify-end" >
       <q-select
         v-model="selectedStatus"
         outlined

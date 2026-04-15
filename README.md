@@ -175,13 +175,7 @@ Set these env vars in the `web` app:
 - `VITE_LOCAL_APP_URL=http://localhost:9000`
 - `VITE_PRODUCTION_APP_URL=https://your-production-domain.example`
 
-In Supabase Auth, make sure both callback hosts are included in Redirect URLs.
-2. Enable RLS.
-3. Add policies.
-4. Add helper functions if the policy needs cross-table access.
-5. Make helper functions `security definer` if they read RLS-protected tables.
-6. For write operations, prefer RPCs when direct client access would fight RLS.
-7. Regenerate Supabase types.
+In Supabase Auth, make sure both callback hosts are included in Redirect URLs. 2. Enable RLS. 3. Add policies. 4. Add helper functions if the policy needs cross-table access. 5. Make helper functions `security definer` if they read RLS-protected tables. 6. For write operations, prefer RPCs when direct client access would fight RLS. 7. Regenerate Supabase types.
 
 ### Safe RPC Rules
 
@@ -275,3 +269,16 @@ If you are adding a new table or function later, keep this order in mind:
 - avoid naming collisions in SQL function return values
 
 That is the path that has been working reliably in this project.
+
+color pallet
+
+--powder-blush: #ffadadff;
+--apricot-cream: #ffd6a5ff;
+--cream: #fdffb6ff;
+--tea-green: #caffbfff;
+--electric-aqua: #9bf6ffff;
+--baby-blue-ice: #a0c4ffff;
+--periwinkle: #bdb2ffff;
+
+https://coolors.co/palette/ffadad-ffd6a5-fdffb6-caffbf-9bf6ff-a0c4ff-bdb2ff
+![alt text](image.png)

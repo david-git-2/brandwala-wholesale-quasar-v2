@@ -13,18 +13,41 @@
       </div>
     </template>
 
+    <template #header-extra>
+      <q-btn
+        flat
+        round
+        dense
+        icon="shopping_cart"
+        class="shop-cart-btn"
+        @click="goToCart"
+      >
+        <q-badge
+          v-if="cartItemCount > 0"
+          color="negative"
+          floating
+          rounded
+          :label="cartItemCount"
+        />
+      </q-btn>
+    </template>
+
     <router-view />
   </WorkspaceShell>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useCartStore } from 'src/modules/cart/stores/cartStore'
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 
 const authStore = useAuthStore()
+const cartStore = useCartStore()
+const router = useRouter()
 const { links } = useShopWorkspaceLinks()
 
 const tenantName = computed(() => authStore.tenant?.name ?? '')
@@ -44,6 +67,13 @@ const roleLabel = computed(() => {
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/shop/login` : '/shop/login',
 )
+
+const cartItemCount = computed(() => cartStore.items.length)
+
+const goToCart = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/shop/cart`)
+}
 </script>
 
 <style scoped>
@@ -68,5 +98,9 @@ const logoutTo = computed(() =>
   font-size: 0.9rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.shop-cart-btn {
+  color: var(--bw-theme-ink);
 }
 </style>

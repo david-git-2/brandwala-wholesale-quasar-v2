@@ -150,6 +150,20 @@ const deleteCartItem = async (
   }
 }
 
+const deleteCartItemsBulk = async (
+  itemIds: number[],
+): Promise<CartServiceResult<CartItem[]>> => {
+  try {
+    const data = await cartRepository.deleteCartItemsBulk(itemIds)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete cart items.',
+    }
+  }
+}
+
 const getCart = async (cartId: number): Promise<CartServiceResult<CartWithItems>> => {
   try {
     const data = await cartRepository.getCart(cartId)
@@ -201,6 +215,7 @@ export const cartService = {
   createCartItem,
   updateCartItem,
   deleteCartItem,
+  deleteCartItemsBulk,
   getCart,
   getCartDetails,
   addItemToCart,

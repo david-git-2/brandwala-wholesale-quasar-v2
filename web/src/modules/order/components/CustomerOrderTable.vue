@@ -17,16 +17,18 @@
           </q-td>
 
           <q-td key="image_url" :props="props">
-            <SmartImage
-              :src="props.row.image_url"
-              alt="product"
-              imgClass="w-12 h-12 object-cover rounded"
-              fallbackClass="w-12 h-12 flex items-center justify-center bg-gray-200 text-xs"
-            />
+            <div class="w-20 h-20 flex items-center justify-center bg-white rounded overflow-hidden">
+              <SmartImage
+                :src="props.row.image_url"
+                alt="product"
+                imgClass="w-full h-full object-contain block"
+                fallbackClass="w-full h-full flex items-center justify-center bg-gray-200 text-xs"
+              />
+            </div>
           </q-td>
 
-          <q-td key="name" :props="props">
-            <div class="whitespace-normal" style="min-width: 260px">
+          <q-td key="name" :props="props" class="col-name">
+            <div class="whitespace-normal customer-order-name-cell">
               {{ props.row.name }}
             </div>
           </q-td>
@@ -84,7 +86,7 @@
               label-set="Save"
               label-cancel="Cancel"
               v-slot="scope"
-              @save="(value) => onDraftChange(props.row.id, value)"
+              @save="(value) => onCustomerOfferPopupSave(props.row.id, value)"
             >
               <q-input
                 v-model.number="scope.value"
@@ -214,10 +216,42 @@ watch(
 const allColumns: QTableColumn[] = [
   { name: 'sl', label: 'SL', field: 'sl', align: 'left', sortable: false },
   { name: 'image_url', label: 'Image', field: 'image_url', align: 'left', sortable: false },
-  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
-  { name: 'quantity', label: 'Quantity', field: 'ordered_quantity', align: 'left', sortable: true },
-  { name: 'first_offered_price', label: 'First Offered Price', field: 'first_offered_price', align: 'left', sortable: true },
-  { name: 'customer_offer_bdt', label: 'Customer Offer', field: 'display_customer_offer_bdt', align: 'left', sortable: true },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left',
+    sortable: true,
+    style: 'min-width: 360px; width: 360px; max-width: 360px; text-align: left;',
+    headerStyle: 'min-width: 360px; width: 360px; max-width: 360px;',
+    classes: 'col-name',
+    headerClasses: 'col-name-wrap',
+  },
+  {
+    name: 'quantity',
+    label: 'Quantity',
+    field: 'ordered_quantity',
+    align: 'center',
+    sortable: true,
+    style: 'background-color:#E7E7E7;font-weight:bold',
+    headerStyle: 'background-color:#E7E7E7;',
+    headerClasses: 'text-center',
+  },
+  { name: 'first_offered_price', label: 'First Offered Price', field: 'first_offered_price', align: 'left', sortable: true ,style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',},
+  { name: 'customer_offer_bdt', label: 'Customer Offer', field: 'display_customer_offer_bdt', align: 'left', sortable: true, style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;', },
+  {
+    name: 'final_offer_bdt',
+    label: 'Final Offer (BDT)',
+    field: 'final_offer_bdt',
+    align: 'center',
+    style: 'background-color:#bdb2ff;font-weight:bold',
+  headerStyle: 'background-color:#bdb2ff;',
+
+
+  },
+
 ]
 
 const statusColumnMap: Record<OrderStatus, string[]> = {
@@ -303,6 +337,24 @@ const onSaveCustomerOffers = async () => {
   })
 }
 
+const onCustomerOfferPopupSave = async (id: number, value: string | number | null) => {
+  onDraftChange(id, value)
+  const nextOffer = draftOfferById.value[id]
+
+  const result = await orderStore.updateOrderItem({
+    id,
+    patch: {
+      customer_offer_bdt: nextOffer ?? null,
+    },
+  })
+
+  if (!result.success) {
+    return
+  }
+
+  initialDisplayOfferById.value[id] = nextOffer ?? null
+}
+
 const onQuantityPopupSave = async (id: number, value: string | number | null) => {
   onQuantityDraftChange(id, value)
   const nextQuantity = draftQuantityById.value[id]
@@ -338,3 +390,65 @@ const onPlaceOrder = async () => {
   })
 }
 </script>
+
+<style scoped>
+:deep(.q-table) {
+  min-width: 1020px;
+  table-layout: fixed;
+}
+
+:deep(.q-table thead th) {
+  text-align: center !important;
+  vertical-align: middle;
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  white-space: normal !important;
+  overflow: hidden;
+}
+
+:deep(.q-table thead th .q-table__th-content) {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 4px;
+  width: 100%;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+}
+
+:deep(.q-table th),
+:deep(.q-table td) {
+  min-width: 140px;
+}
+
+:deep(.q-table th:nth-child(3)),
+:deep(.q-table td:nth-child(3)) {
+  min-width: 360px !important;
+  width: 360px !important;
+  max-width: 360px !important;
+}
+
+.customer-order-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.col-name {
+  min-width: 360px !important;
+  width: 360px !important;
+  max-width: 360px !important;
+}
+
+.col-name-wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.2;
+}
+</style>

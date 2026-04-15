@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { supabase } from 'src/boot/supabase'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
-import { cartService } from 'src/modules/cart/services/cartService'
 import { orderService } from '../services/orderService'
 import type {
   OrderDeleteInput,
@@ -298,41 +296,21 @@ export const useOrderStore = defineStore('order', {
       customer_group_id: number
       customer_group_name: string
       accent_color?: string | null
+      can_see_price?: boolean
+      items: Array<{
+        product_id?: number | null
+        name: string
+        image_url?: string | null
+        price_gbp?: number | null
+        quantity: number
+        minimum_quantity?: number | null
+      }>
     }) {
       this.saving = true
       this.error = null
 
       try {
-        const cartResult = await cartService.findCart({
-          tenant_id: payload.tenant_id,
-          store_id: payload.store_id ?? null,
-          customer_group_id: payload.customer_group_id,
-        })
-
-        if (!cartResult.success) {
-          this.error = cartResult.error ?? 'Failed to find cart.'
-          handleApiFailure(cartResult, this.error)
-          return cartResult
-        }
-
-        const cart = cartResult.data ?? null
-        if (!cart) {
-          const result = { success: false as const, error: 'Cart not found.' }
-          this.error = result.error
-          handleApiFailure(result, result.error)
-          return result
-        }
-
-        const cartDetailsResult = await cartService.getCartDetails(cart.id)
-        if (!cartDetailsResult.success) {
-          this.error = cartDetailsResult.error ?? 'Failed to load cart details.'
-          handleApiFailure(cartDetailsResult, this.error)
-          return cartDetailsResult
-        }
-
-        const cartDetails = cartDetailsResult.data
-        const items = cartDetails?.items ?? []
-
+        const items = payload.items ?? []
         if (!items.length) {
           const result = { success: false as const, error: 'Cart has no items.' }
           this.error = result.error
@@ -340,31 +318,17 @@ export const useOrderStore = defineStore('order', {
           return result
         }
 
-        const { data: groupData } = await supabase
-          .from('customer_groups')
-          .select('name,accent_color')
-          .eq('id', payload.customer_group_id)
-          .maybeSingle()
-
-        const customerGroupName =
-          (groupData as { name?: string | null } | null)?.name?.trim() ||
-          payload.customer_group_name
-        const accentColor =
-          (groupData as { accent_color?: string | null } | null)?.accent_color ??
-          payload.accent_color ??
-          null
-
         const createOrderResult = await orderService.createOrder({
-          name: customerGroupName,
+          name: payload.customer_group_name,
           customer_group_id: payload.customer_group_id,
-          can_see_price: Boolean(cartDetails?.cart?.can_see_price),
-          accent_color: accentColor,
+          can_see_price: Boolean(payload.can_see_price),
+          accent_color: payload.accent_color ?? null,
           cargo_rate: null,
           conversion_rate: null,
           profit_rate: null,
           negotiate: false,
           status: 'customer_submit',
-          store_id: payload.store_id ?? cartDetails?.cart?.store_id ?? null,
+          store_id: payload.store_id ?? null,
         })
 
         if (!createOrderResult.success || !createOrderResult.data) {
@@ -377,33 +341,23 @@ export const useOrderStore = defineStore('order', {
 
         const createItemsResult = await orderService.createOrderItems(
           items.map((item) => {
-            const product = ((item as Record<string, unknown>).product as
-              | {
-                  barcode?: string | null
-                  product_code?: string | null
-                  product_weight?: number | null
-                  package_weight?: number | null
-                }
-              | null
-              | undefined) ?? null
-
             return {
               order_id: order.id,
               name: item.name,
               image_url: item.image_url ?? null,
-              barcode: product?.barcode ?? null,
-              product_code: product?.product_code ?? null,
+              barcode: null,
+              product_code: null,
               price_gbp: item.price_gbp ?? null,
               cost_gbp: null,
               cost_bdt: null,
               first_offer_bdt: null,
               customer_offer_bdt: null,
               final_offer_bdt: null,
-              product_weight: Number(product?.product_weight ?? null) || null,
-              package_weight: Number(product?.package_weight ?? null) || null,
-              minimum_quantity: item.minimum_quantity,
+              product_weight: null,
+              package_weight: null,
+              minimum_quantity: Math.max(1, Number(item.minimum_quantity ?? 1) || 1),
               product_id: item.product_id ?? null,
-              ordered_quantity: item.quantity,
+              ordered_quantity: Math.max(0, Number(item.quantity) || 0),
               delivered_quantity: 0,
               returned_quantity: 0,
             }

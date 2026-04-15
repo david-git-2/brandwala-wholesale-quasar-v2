@@ -28,8 +28,8 @@
       </template>
 
       <template #body-cell-name="props">
-        <q-td :props="props">
-          <div class="whitespace-normal" style="min-width: 260px">
+        <q-td :props="props" class="col-name">
+          <div class="whitespace-normal order-item-name-cell">
             {{ props.row.name }}
           </div>
         </q-td>
@@ -176,6 +176,7 @@
 
     <div class="row justify-end q-mt-md">
       <q-btn
+      v-if="orderStore.selected?.status==='negotiate'"
         color="primary"
         no-caps
         label="Save Item Changes"
@@ -296,190 +297,242 @@ const allColumns: QTableColumn[] = [
     name: 'sl',
     label: 'SL',
     field: 'sl',
-    align: 'left',
+    align: 'center',
     sortable: false,
+    headerStyle: 'width: 50px; max-width: 50px;',
   },
   {
     name: 'image_url',
     label: 'Image',
     field: 'image_url',
-    align: 'left',
+    align: 'center',
     sortable: false,
   },
   {
     name: 'name',
     label: 'Name',
     field: 'name',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
+    style: 'min-width: 320px; width: 320px; max-width: 320px; text-align: left;',
+    headerStyle: 'min-width: 320px; width: 320px; max-width: 320px;',
+    classes: 'col-name',
+    headerClasses: 'col-name-wrap',
   },
   {
-    name: 'ordered_quantity',
-    label: 'Ordered Qty',
-    field: 'ordered_quantity',
-    align: 'left',
-    sortable: true,
-  },
+  name: 'ordered_quantity',
+  label: 'Ordered Qty',
+  field: 'ordered_quantity',
+  align: 'center',
+
+  style: 'background-color:#E7E7E7;font-weight:bold',
+  headerStyle: 'background-color:#E7E7E7;',
+  headerClasses: 'text-center'
+},
   {
     name: 'product_weight',
     label: 'Product Weight',
     field: 'product_weight',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
   },
   {
     name: 'package_weight',
     label: 'Package Weight',
     field: 'package_weight',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
   },
   {
     name: 'total_weight',
     label: 'Total Weight',
     field: 'total_weight',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
   },
   {
     name: 'price_gbp',
     label: 'Price (GBP)',
     field: 'price_gbp',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#caffbf;font-weight:bold',
+  headerStyle: 'background-color:#caffbf;',
+
   },
   {
     name: 'line_total_purchese_cost_gbp',
     label: 'Line Total Purchase Cost (GBP)',
     field: 'line_total_purchese_cost_gbp',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#caffbfff;font-weight:bold',
+  headerStyle: 'background-color:#caffbfff;',
+
   },
   {
     name: 'cargo_rate',
-    label: 'Cargo Rate / KG',
+    label: 'Cargo Rate (GBP)/ KG',
     field: 'cargo_rate',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
   },
   {
     name: 'unit_line_cost_gbp',
     label: 'Unit Line Cost (GBP/Pc)',
     field: 'unit_line_cost_gbp',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#caffbfff;font-weight:bold',
+  headerStyle: 'background-color:#caffbfff;',
+
   },
   {
     name: 'cost_bdt',
     label: 'Cost (BDT/PC)',
     field: 'cost_bdt',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#fdffb6;font-weight:bold',
+  headerStyle: 'background-color:#fdffb6;',
+
   },
   {
     name: 'line_total_cost_bdt',
     label: 'Line Total Cost (BDT)',
     field: 'line_total_cost_bdt',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#fdffb6;font-weight:bold',
+  headerStyle: 'background-color:#fdffb6;',
+
   },
   {
     name: 'seller_first_offer_bdt',
     label: 'First Offer (BDT)',
     field: 'seller_first_offer_bdt',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',
+
   },
   {
     name: 'seller_first_offer_bdt_total',
     label: 'First Offer Total (BDT)',
     field: 'seller_first_offer_bdt_total',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',
+
+
   },
   {
     name: 'seller_first_offer_profit_pc',
     label: 'First Offer Profit /Pc',
     field: 'seller_first_offer_profit_pc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',
+
+
   },
   {
     name: 'seler_first_offer_profit_pc_perc',
     label: 'First Offer Profit %',
     field: 'seler_first_offer_profit_pc_perc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',
+
+
   },
   {
     name: 'seller_first_offer_profit_total',
     label: 'First Offer Profit Total',
     field: 'seller_first_offer_profit_total',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#9bf6ff;font-weight:bold',
+  headerStyle: 'background-color:#9bf6ff;',
+
+
   },
   {
     name: 'customer_offer_bdt',
     label: 'Customer Offer (BDT)',
     field: 'customer_offer_bdt',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;',
+
+
   },
   {
     name: 'customer_offer_bdt_total',
     label: 'Customer Offer Total (BDT)',
     field: 'customer_offer_bdt_total',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;',
+
   },
   {
     name: 'customer_offer_profit_pc',
     label: 'Customer Offer Profit /Pc',
     field: 'customer_offer_profit_pc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;',
+
   },
   {
     name: 'customer_offer_profit_total',
     label: 'Customer Offer Profit Total',
     field: 'customer_offer_profit_total',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;',
+
   },
   {
     name: 'customer_offer_profit_pc_perc',
     label: 'Customer Offer Profit %',
     field: 'customer_offer_profit_pc_perc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#ffd6a5;font-weight:bold',
+  headerStyle: 'background-color:#ffd6a5;',
+
   },
   {
     name: 'final_offer_bdt',
     label: 'Final Offer (BDT)',
     field: 'final_offer_bdt',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#bdb2ff;font-weight:bold',
+  headerStyle: 'background-color:#bdb2ff;',
+
+
   },
   {
     name: 'final_offer_profit_pc',
     label: 'Final Offer Profit /Pc',
     field: 'final_offer_profit_pc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#bdb2ff;font-weight:bold',
+  headerStyle: 'background-color:#bdb2ff;',
+
   },
   {
     name: 'final_offer_profit_total',
     label: 'Final Offer Profit Total',
     field: 'final_offer_profit_total',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#bdb2ff;font-weight:bold',
+  headerStyle: 'background-color:#bdb2ff;',
+
   },
   {
     name: 'final_offer_profit_pc_perc',
     label: 'Final Offer Profit %',
     field: 'final_offer_profit_pc_perc',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+    style: 'background-color:#bdb2ff;font-weight:bold',
+  headerStyle: 'background-color:#bdb2ff;',
+
   },
 ]
 
@@ -499,7 +552,6 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'cost_bdt',
     'line_total_cost_bdt',
     'seller_first_offer_bdt',
-    'final_offer_bdt',
     'seller_first_offer_bdt_total',
     'seller_first_offer_profit_pc',
     'seler_first_offer_profit_pc_perc',
@@ -834,3 +886,64 @@ const updateSingleItemFromDraft = async (
   }
 }
 </script>
+
+<style scoped>
+:deep(.q-table) {
+  min-width: 2720px;
+  table-layout: fixed;
+}
+
+:deep(.q-table thead th) {
+  text-align: center !important;
+  vertical-align: middle;
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  white-space: normal !important;
+  overflow: hidden;
+}
+
+:deep(.q-table thead th .q-table__th-content) {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 4px;
+  width: 100%;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+}
+:deep(.q-table th),
+:deep(.q-table td) {
+  min-width: 140px;
+}
+
+:deep(.q-table th:nth-child(3)),
+:deep(.q-table td:nth-child(3)) {
+  min-width: 360px !important;
+  width: 360px !important;
+  max-width: 360px !important;
+}
+
+.order-item-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.col-name {
+  min-width: 360px !important;
+  width: 360px !important;
+  max-width: 360px !important;
+}
+
+.col-name-wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.2;
+}
+</style>

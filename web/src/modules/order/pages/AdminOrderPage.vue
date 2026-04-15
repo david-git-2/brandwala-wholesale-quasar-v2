@@ -32,7 +32,7 @@
                 color="negative"
                 icon="delete"
                 :loading="orderStore.saving"
-                @click="deleteOrder(order.id)"
+                @click.stop="onAskDelete(order.id)"
               />
             </div>
           </div>
@@ -57,6 +57,24 @@
         @update:model-value="onPageChange"
       />
     </div>
+
+    <q-dialog v-model="confirmDeleteOpen">
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-h6">Delete Order</q-card-section>
+        <q-card-section>
+          Are you sure you want to delete this order? This will remove all order items too.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="orderStore.saving"
+            @click="onConfirmDelete"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -71,6 +89,8 @@ const authStore = useAuthStore()
 const orderStore = useOrderStore()
 const router = useRouter()
 const page = ref(1)
+const confirmDeleteOpen = ref(false)
+const pendingDeleteOrderId = ref<number | null>(null)
 
 const loadOrders = async (nextPage = 1) => {
   await orderStore.fetchOrders({
@@ -86,6 +106,21 @@ onMounted(async () => {
 const deleteOrder = async (id: number) => {
   await orderStore.deleteOrder({ id })
   await loadOrders(page.value)
+}
+
+const onAskDelete = (id: number) => {
+  pendingDeleteOrderId.value = id
+  confirmDeleteOpen.value = true
+}
+
+const onConfirmDelete = async () => {
+  if (!pendingDeleteOrderId.value) {
+    return
+  }
+
+  await deleteOrder(pendingDeleteOrderId.value)
+  pendingDeleteOrderId.value = null
+  confirmDeleteOpen.value = false
 }
 
 const onPageChange = async (nextPage: number) => {

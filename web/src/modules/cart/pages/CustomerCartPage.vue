@@ -1,19 +1,25 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Cart</div>
-      {{authStore.customerGroup }}
+  <q-page class="cart-page q-pa-md">
+    <div class="cart-header q-mb-md">
+      <div>
+        <div class="text-h5 text-weight-bold">Cart</div>
+        <div class="text-caption text-grey-7">
+          {{ cartSummary.totalItems }} items | Subtotal £{{ formatPrice(cartSummary.subtotal) }}
+        </div>
+      </div>
       <q-btn
         color="negative"
         icon="delete_sweep"
         label="Clear Cart"
+        no-caps
+        unelevated
         :disable="!cartStore.items.length"
         :loading="cartStore.saving"
         @click="confirmClearOpen = true"
       />
     </div>
 
-    <div v-if="storeOptions.length" class="q-mb-md">
+    <div v-if="storeOptions.length" class="store-switch q-mb-md">
       <q-btn-toggle
         v-model="selectedStoreId"
         no-caps
@@ -24,30 +30,35 @@
       />
     </div>
 
-    <q-banner v-if="!cartStore.items.length" class="bg-grey-2 text-grey-8">
-      Cart is empty.
+    <q-banner v-if="!cartStore.items.length" class="empty-banner">
+      Cart is empty. Add items from store to place an order.
     </q-banner>
 
-    <q-list v-else bordered separator>
+    <q-list v-else class="cart-list" separator>
       <q-item v-for="item in cartStore.items" :key="item.id" class="cart-row">
         <q-item-section avatar>
-          <SmartImage
-            :src="item.image_url ?? null"
-            :alt="item.name"
-            img-class="cart-item-image"
-            fallback-class="cart-item-image-fallback"
-          />
+          <div class="cart-image-wrap">
+            <SmartImage
+              :src="item.image_url ?? null"
+              :alt="item.name"
+              img-class="cart-item-image"
+              fallback-class="cart-item-image-fallback"
+            />
+          </div>
         </q-item-section>
 
-        <q-item-section>
-          <q-item-label>{{ item.name }}</q-item-label>
+        <q-item-section class="cart-main">
+          <q-item-label class="cart-name">{{ item.name }}</q-item-label>
           <q-item-label caption>
             Qty: {{ getDraftQty(item.id, item.quantity) }} | MOQ: {{ item.minimum_quantity }}
+          </q-item-label>
+          <q-item-label class="text-caption text-grey-7 q-mt-xs">
+            Unit Price: £{{ formatPrice(item.price_gbp) }}
           </q-item-label>
         </q-item-section>
 
         <q-item-section side class="cart-actions">
-          <div class="row items-center q-gutter-xs q-mb-xs">
+          <div class="qty-box q-mb-xs">
             <q-btn
               dense
               round
@@ -67,45 +78,51 @@
             />
           </div>
 
-          <div class="text-right q-mb-xs">
-            £{{ formatPrice(item.price_gbp) }}
+          <div class="text-right text-weight-medium q-mb-xs">
+            £{{ formatPrice((item.price_gbp ?? 0) * getDraftQty(item.id, item.quantity)) }}
           </div>
-          <q-btn
-            v-if="isQuantityChanged(item.id, item.quantity)"
-            dense
-            unelevated
-            color="primary"
-            icon="save"
-            label="Save"
-            class="q-mb-xs"
-            :loading="cartStore.saving"
-            @click="saveQuantity(item.id, item.minimum_quantity)"
-          />
-          <q-btn
-            dense
-            flat
-            color="negative"
-            icon="delete"
-            label="Remove"
-            :loading="cartStore.saving"
-            @click="removeItem(item.id)"
-          />
+          <div class="action-buttons">
+            <q-btn
+              v-if="isQuantityChanged(item.id, item.quantity)"
+              dense
+              unelevated
+              color="primary"
+              icon="save"
+              label="Save"
+              no-caps
+              class="q-mb-xs"
+              :loading="cartStore.saving"
+              @click="saveQuantity(item.id, item.minimum_quantity)"
+            />
+            <q-btn
+              dense
+              flat
+              color="negative"
+              icon="delete"
+              label="Remove"
+              no-caps
+              :loading="cartStore.saving"
+              @click="removeItem(item.id)"
+            />
+          </div>
         </q-item-section>
       </q-item>
     </q-list>
 
-    <div class="row q-col-gutter-sm q-mt-lg">
-      <div class="col-12 col-sm-auto">
-        <q-btn
-          outline
-          color="primary"
-          icon="shopping_bag"
-          label="Place Order"
-          :disable="!cartStore.items.length"
-          :loading="orderStore.saving"
-          @click="confirmPlaceOrderOpen = true"
-        />
+    <div class="cart-footer q-mt-lg">
+      <div class="text-caption text-grey-7">
+        Total items: {{ cartSummary.totalItems }} | Subtotal: £{{ formatPrice(cartSummary.subtotal) }}
       </div>
+      <q-btn
+        color="primary"
+        unelevated
+        icon="shopping_bag"
+        label="Place Order"
+        no-caps
+        :disable="!cartStore.items.length"
+        :loading="orderStore.saving"
+        @click="confirmPlaceOrderOpen = true"
+      />
     </div>
 
     <q-dialog v-model="confirmClearOpen">
@@ -171,6 +188,23 @@ const storeOptions = computed(() =>
     value: store.id,
   })),
 )
+
+const cartSummary = computed(() => {
+  const totalItems = cartStore.items.reduce((sum, item) => {
+    return sum + (draftQuantities.value[item.id] ?? item.quantity)
+  }, 0)
+
+  const subtotal = cartStore.items.reduce((sum, item) => {
+    const qty = draftQuantities.value[item.id] ?? item.quantity
+    const price = item.price_gbp ?? 0
+    return sum + qty * price
+  }, 0)
+
+  return {
+    totalItems,
+    subtotal,
+  }
+})
 
 const loadCart = async () => {
   const tenantId = authStore.tenantId
@@ -261,6 +295,15 @@ const onPlaceOrder = async () => {
     customer_group_id: customerGroupId,
     customer_group_name: customerGroup.name,
     accent_color: customerGroup.accentColor ?? null,
+    can_see_price: Boolean(cartStore.cartSnapshot?.cart?.can_see_price),
+    items: cartStore.items.map((item) => ({
+      product_id: item.product_id ?? null,
+      name: item.name,
+      image_url: item.image_url ?? null,
+      price_gbp: item.price_gbp ?? null,
+      quantity: item.quantity,
+      minimum_quantity: item.minimum_quantity,
+    })),
   })
 
   return Boolean(result?.success)
@@ -308,27 +351,125 @@ watch(
 <style scoped>
 :deep(.cart-item-image),
 :deep(.cart-item-image-fallback) {
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+
+.cart-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.store-switch {
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #e7e2d8;
+  border-radius: 12px;
+}
+
+.empty-banner {
+  background: #fff9ef;
+  color: #5b4c33;
+  border: 1px solid #e8dbbf;
+  border-radius: 12px;
+}
+
+.cart-list {
+  background: #ffffff;
+  border: 1px solid #e7e2d8;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cart-row {
+  padding-block: 12px;
+}
+
+.cart-image-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 12px;
+  border: 1px solid #ece6db;
+  background: #ffffff;
+  padding: 6px;
+}
+
+.cart-main {
+  min-width: 0;
+}
+
+.cart-name {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.qty-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid #e6e0d4;
+  border-radius: 999px;
+  background: #faf8f3;
 }
 
 .cart-actions {
-  min-width: 150px;
+  min-width: 170px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.cart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e7e2d8;
+  border-radius: 12px;
+  background: #fff;
 }
 
 @media (max-width: 680px) {
+  .cart-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .store-switch {
+    overflow-x: auto;
+  }
+
   .cart-row {
     flex-wrap: wrap;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .cart-actions {
     width: 100%;
     min-width: 0;
     margin-top: 8px;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .action-buttons {
+    align-items: stretch;
+  }
+
+  .cart-footer {
+    position: sticky;
+    bottom: 8px;
+    z-index: 2;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
   }
 }
 </style>

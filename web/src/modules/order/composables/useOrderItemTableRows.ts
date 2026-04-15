@@ -106,7 +106,8 @@ export const useOrderItemTableRows = ({
           ? ceilInt(((customerOfferBdtPc - costBdtRaw) / costBdtRaw) * 100)
           : null
 
-      const finalOfferBdt = item.final_offer_bdt
+      const finalOfferBdt =
+        item.final_offer_bdt != null ? item.final_offer_bdt : item.customer_offer_bdt
       const finalOfferProfitPc =
         finalOfferBdt != null ? ceilInt(finalOfferBdt - costBdtRaw) : null
       const finalOfferProfitTotal =
