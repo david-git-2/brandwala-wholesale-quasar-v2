@@ -1093,6 +1093,66 @@ export type Database = {
         }
         Returns: Json
       }
+      bulk_update_order_item_offers: {
+        Args: { p_items: Json }
+        Returns: {
+          cost_bdt: number | null
+          cost_gbp: number | null
+          created_at: string
+          customer_offer_bdt: number | null
+          delivered_quantity: number
+          final_offer_bdt: number | null
+          first_offer_bdt: number | null
+          id: number
+          image_url: string | null
+          minimum_quantity: number
+          name: string
+          order_id: number
+          ordered_quantity: number
+          package_weight: number | null
+          price_gbp: number | null
+          product_id: number | null
+          product_weight: number | null
+          returned_quantity: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "order_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      bulk_update_order_items: {
+        Args: { p_items: Json }
+        Returns: {
+          cost_bdt: number | null
+          cost_gbp: number | null
+          created_at: string
+          customer_offer_bdt: number | null
+          delivered_quantity: number
+          final_offer_bdt: number | null
+          first_offer_bdt: number | null
+          id: number
+          image_url: string | null
+          minimum_quantity: number
+          name: string
+          order_id: number
+          ordered_quantity: number
+          package_weight: number | null
+          price_gbp: number | null
+          product_id: number | null
+          product_weight: number | null
+          returned_quantity: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "order_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       calculate_costing_auxiliary_price_gbp: {
         Args: { p_delivery_price_gbp: number; p_price_in_web_gbp: number }
         Returns: number

@@ -96,6 +96,12 @@ export type OrderItemDeleteInput = {
 
 export type OrderItemCreateInput = Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>
 
+export type OrderItemBulkUpdateInput = Array<
+  {
+    id: number
+  } & Partial<Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>>
+>
+
 export type OrderServiceResult<T> = {
   success: boolean
   data?: T

@@ -6,6 +6,7 @@ import type {
   OrderDeleteInput,
   OrderGetByIdInput,
   OrderItem,
+  OrderItemBulkUpdateInput,
   OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
@@ -205,6 +206,20 @@ const createOrderItems = async (payload: OrderItemCreateInput[]): Promise<OrderI
   return (data as OrderItem[] | null) ?? []
 }
 
+const bulkUpdateOrderItems = async (
+  payload: OrderItemBulkUpdateInput,
+): Promise<OrderItem[]> => {
+  const { data, error } = await supabase.rpc('bulk_update_order_items' as never, {
+    p_items: payload,
+  } as never)
+
+  if (error) {
+    throw error
+  }
+
+  return (data as OrderItem[] | null) ?? []
+}
+
 const deleteOrder = async (payload: OrderDeleteInput): Promise<void> => {
   const { error } = await supabase.from('orders').delete().eq('id', payload.id)
 
@@ -227,6 +242,7 @@ export const orderRepository = {
   getOrderById,
   updateOrder,
   createOrderItems,
+  bulkUpdateOrderItems,
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,

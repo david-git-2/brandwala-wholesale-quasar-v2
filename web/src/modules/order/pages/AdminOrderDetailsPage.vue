@@ -63,6 +63,7 @@ import { useOrderStore } from '../stores/orderStore'
 import { useRoute } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
 import type { OrderStatus } from '../types'
+import { useOrderItemTableRows } from '../composables/useOrderItemTableRows'
 
 const route = useRoute()
 const orderStore = useOrderStore()
@@ -76,6 +77,19 @@ const statusOptions: OrderStatus[] = [
   'ordered',
   'placed',
 ]
+
+const normalizeNumericInput = (value: unknown) => {
+  if (value == null) {
+    return null
+  }
+
+  if (typeof value === 'string' && value.trim() === '') {
+    return null
+  }
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 onMounted(async () => {
   await orderStore.fetchOrderById({ id: Number(route.params.id) })
@@ -93,8 +107,7 @@ const conversionRate = computed({
   get: () => orderStore.selected?.conversion_rate ?? null,
   set: (value) => {
     if (orderStore.selected) {
-      orderStore.selected.conversion_rate =
-        value == null || value === '' ? null : Number(value)
+      orderStore.selected.conversion_rate = normalizeNumericInput(value)
     }
   },
 })
@@ -103,8 +116,7 @@ const cargoRate = computed({
   get: () => orderStore.selected?.cargo_rate ?? null,
   set: (value) => {
     if (orderStore.selected) {
-      orderStore.selected.cargo_rate =
-        value == null || value === '' ? null : Number(value)
+      orderStore.selected.cargo_rate = normalizeNumericInput(value)
     }
   },
 })
@@ -113,10 +125,22 @@ const profitRate = computed({
   get: () => orderStore.selected?.profit_rate ?? null,
   set: (value) => {
     if (orderStore.selected) {
-      orderStore.selected.profit_rate =
-        value == null || value === '' ? null : Number(value)
+      orderStore.selected.profit_rate = normalizeNumericInput(value)
     }
   },
+})
+
+const conversionRateRef = computed(() => Number(conversionRate.value) || 0)
+const cargoRateRef = computed(() => Number(cargoRate.value) || 0)
+const profitRateRef = computed(() => Number(profitRate.value) || 0)
+
+const selectedItems = computed(() => orderStore.selected?.order_items ?? [])
+
+const { tableRows } = useOrderItemTableRows({
+  items: selectedItems,
+  conversionRate: conversionRateRef,
+  cargoRate: cargoRateRef,
+  profitRate: profitRateRef,
 })
 
 const onStatusChange = async (status: OrderStatus | null) => {
@@ -133,7 +157,7 @@ const onStatusChange = async (status: OrderStatus | null) => {
 const onSaveRates = async () => {
   if (!orderStore.selected?.id) return
 
-  await orderStore.updateOrder({
+  const orderUpdateResult = await orderStore.updateOrder({
     id: orderStore.selected.id,
     patch: {
       cargo_rate: orderStore.selected.cargo_rate ?? null,
@@ -141,5 +165,16 @@ const onSaveRates = async () => {
       profit_rate: orderStore.selected.profit_rate ?? null,
     },
   })
+
+  if (!orderUpdateResult.success) {
+    return
+  }
+
+  const firstOfferPayload = tableRows.value.map((row) => ({
+    id: row.id,
+    first_offer_bdt: row.seller_first_offer_bdt,
+  }))
+
+  await orderStore.updateOrderItemsFirstOffer(firstOfferPayload)
 }
 </script>

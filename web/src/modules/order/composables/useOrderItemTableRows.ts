@@ -52,7 +52,7 @@ type UseOrderItemTableRowsParams = {
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100
 const ceilInt = (n: number) => Math.ceil(n)
-const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
+const roundToNearest5 = (n: number) => Math.round(n / 5) * 5
 
 export const useOrderItemTableRows = ({
   items,
@@ -81,7 +81,7 @@ export const useOrderItemTableRows = ({
       const costBdtRaw = ceilInt(unitLineCost * conversionRateValue)
       const lineTotalCostBdt = ceilInt(costBdtRaw * quantity)
 
-      const sellerFirstOfferBdt = roundUpTo5(
+      const sellerFirstOfferBdt = roundToNearest5(
         (costBdtRaw * profitRateValue) / 100 + costBdtRaw
       )
       const sellerFirstOfferBdtTotal = sellerFirstOfferBdt * quantity

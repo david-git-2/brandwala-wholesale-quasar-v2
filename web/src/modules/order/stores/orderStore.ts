@@ -7,6 +7,7 @@ import { orderService } from '../services/orderService'
 import type {
   OrderDeleteInput,
   OrderGetByIdInput,
+  OrderItemBulkUpdateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
   OrderListInput,
@@ -184,6 +185,67 @@ export const useOrderStore = defineStore('order', {
         }
 
         showSuccessNotification('Order item deleted successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateOrderItemsFirstOffer(payload: Array<{ id: number; first_offer_bdt: number }>) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await orderService.bulkUpdateOrderItems(
+          payload.map((item) => ({
+            id: item.id,
+            first_offer_bdt: item.first_offer_bdt,
+          })),
+        )
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update first offer prices.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updatedRows = result.data ?? []
+        if (this.selected && updatedRows.length) {
+          const updatedMap = new Map(updatedRows.map((row) => [row.id, row]))
+          this.selected.order_items = this.selected.order_items.map((row) =>
+            updatedMap.get(row.id) ?? row,
+          )
+        }
+
+        showSuccessNotification('First offer prices updated successfully.')
+        return { success: true as const }
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async bulkUpdateOrderItems(payload: OrderItemBulkUpdateInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await orderService.bulkUpdateOrderItems(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to bulk update order items.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updatedRows = result.data ?? []
+        if (this.selected && updatedRows.length) {
+          const updatedMap = new Map(updatedRows.map((row) => [row.id, row]))
+          this.selected.order_items = this.selected.order_items.map((row) =>
+            updatedMap.get(row.id) ?? row,
+          )
+        }
+
+        showSuccessNotification('Order items updated successfully.')
         return result
       } finally {
         this.saving = false

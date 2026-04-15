@@ -5,6 +5,7 @@ import type {
   OrderDeleteInput,
   OrderGetByIdInput,
   OrderItem,
+  OrderItemBulkUpdateInput,
   OrderItemCreateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
@@ -99,6 +100,21 @@ const createOrderItems = async (
   }
 }
 
+const bulkUpdateOrderItems = async (
+  payload: OrderItemBulkUpdateInput,
+): Promise<OrderServiceResult<OrderItem[]>> => {
+  try {
+    const data = await orderRepository.bulkUpdateOrderItems(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to bulk update order items.',
+    }
+  }
+}
+
 const deleteOrder = async (
   payload: OrderDeleteInput,
 ): Promise<OrderServiceResult<void>> => {
@@ -133,6 +149,7 @@ export const orderService = {
   getOrderById,
   updateOrder,
   createOrderItems,
+  bulkUpdateOrderItems,
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
