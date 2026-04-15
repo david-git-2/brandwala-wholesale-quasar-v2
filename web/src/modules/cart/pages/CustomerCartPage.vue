@@ -52,7 +52,7 @@
           <q-item-label caption>
             Qty: {{ getDraftQty(item.id, item.quantity) }} | MOQ: {{ item.minimum_quantity }}
           </q-item-label>
-          <q-item-label class="text-caption text-grey-7 q-mt-xs">
+          <q-item-label v-if="storeStore.selectedStore?.see_price" class="text-caption text-grey-7 q-mt-xs">
             Unit Price: £{{ formatPrice(item.price_gbp) }}
           </q-item-label>
         </q-item-section>
@@ -78,7 +78,7 @@
             />
           </div>
 
-          <div class="text-right text-weight-medium q-mb-xs">
+          <div v-if="storeStore.selectedStore?.see_price" class="text-right text-weight-medium q-mb-xs">
             £{{ formatPrice((item.price_gbp ?? 0) * getDraftQty(item.id, item.quantity)) }}
           </div>
           <div class="action-buttons">
@@ -177,7 +177,12 @@ const storeStore = useStoreStore()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
 
-const selectedStoreId = ref<number | null>(null)
+const selectedStoreId = computed<number | null>({
+  get: () => storeStore.selectedStore?.id ?? null,
+  set: (value) => {
+    storeStore.setSelectedStoreById(value)
+  },
+})
 const confirmClearOpen = ref(false)
 const confirmPlaceOrderOpen = ref(false)
 const draftQuantities = ref<Record<number, number>>({})
@@ -214,7 +219,7 @@ const loadCart = async () => {
 
   await cartStore.fetchItemsForContext({
     tenant_id: tenantId,
-    store_id: selectedStoreId.value,
+    store_id: storeStore.selectedStore?.id ?? null,
     customer_group_id: authStore.customerGroupId ?? null,
   })
 }
@@ -291,7 +296,7 @@ const onPlaceOrder = async () => {
 
   const result = await orderStore.placeOrderFromCart({
     tenant_id: tenantId,
-    store_id: selectedStoreId.value,
+    store_id: storeStore.selectedStore?.id ?? null,
     customer_group_id: customerGroupId,
     customer_group_name: customerGroup.name,
     accent_color: customerGroup.accentColor ?? null,
@@ -329,7 +334,11 @@ const formatPrice = (value: number | null) => {
 
 onMounted(async () => {
   await storeStore.fetchStoresForCustomer()
-  selectedStoreId.value = storeStore.items[0]?.id ?? null
+  const selectedId = storeStore.selectedStore?.id ?? null
+  const selectedExists = selectedId != null && storeStore.items.some((store) => store.id === selectedId)
+  if (!selectedExists) {
+    storeStore.setSelectedStore(storeStore.items[0] ?? null)
+  }
   await loadCart()
 })
 

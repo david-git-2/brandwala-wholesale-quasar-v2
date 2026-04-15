@@ -55,7 +55,6 @@
       :options="storeOptions"
       @update:model-value="onStoreSelectionChange"
     />
-
     <ProductCardGrid
       :items="productCardItems"
       :show-price="props.mode === 'admin' || customerCanSeePrice"
@@ -222,6 +221,20 @@ const loadProducts = async (storeId: number, page = 1) => {
   const limit = storeStore.productsPageSize || 20
   const offset = Math.max(0, (page - 1) * limit)
 
+
+const fields =
+  props.mode === 'customer'
+    ? [
+        'brand',
+        'category',
+        'id',
+        'image_url',
+        'name',
+        ...(customerCanSeePrice.value ? ['price_gbp'] : []),
+        'minimum_order_quantity',
+        'country_of_origin',
+      ]
+    : null
   await storeStore.fetchStoreProducts({
     store_id: storeId,
     search: search.value || null,
@@ -231,6 +244,8 @@ const loadProducts = async (storeId: number, page = 1) => {
     sort_dir: 'asc',
     limit,
     offset,
+    fields: fields,
+
   })
 }
 

@@ -34,8 +34,8 @@
 
         <div class="product-meta q-mt-sm">
           <div>Origin: {{ item.country_of_origin || '-' }}</div>
-          <div>Available Units: {{ item.available_units ?? 0 }}</div>
-          <div v-if="showPrice" class="product-price">Price: £{{ formatPrice(item.price_gbp) }}</div>
+          <div v-if="props.showInfo">Available Units: {{ item.available_units ?? 0 }}</div>
+          <div v-if="props.showPrice" class="product-price">Price: £{{ formatPrice(item.price_gbp) }}</div>
         </div>
       </q-card-section>
 
@@ -188,7 +188,7 @@
           </div>
 
           <div
-            v-if="showPrice"
+            v-if="props.showPrice"
             class="detail-item"
           >
             <div class="detail-label">Price GBP</div>
@@ -346,7 +346,6 @@ const formatPrice = (value?: number | null) => {
   return Number(value).toFixed(2)
 }
 
-const showPrice = props.showPrice
 const showCart = props.showCart
 </script>
 

@@ -85,6 +85,7 @@ export type StoreProductsPage = {
 
 export type StoreStoreState = {
   items: Store[]
+  selectedStore: Store | null
   accessItems: StoreAccess[]
   productItems: Record<string, unknown>[]
   loading: boolean

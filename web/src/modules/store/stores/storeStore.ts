@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { storeService } from '../services/storeService'
 import type {
+  Store,
   StoreAccessCreateInput,
   StoreAccessDeleteInput,
   StoreAccessUpdateInput,
@@ -16,6 +17,7 @@ import type {
 export const useStoreStore = defineStore('store', {
   state: (): StoreStoreState => ({
     items: [],
+    selectedStore: null,
     accessItems: [],
     productItems: [],
     loading: false,
@@ -29,6 +31,30 @@ export const useStoreStore = defineStore('store', {
   }),
 
   actions: {
+    setSelectedStore(store: Store | null) {
+      this.selectedStore = store
+    },
+
+    setSelectedStoreById(storeId: number | null) {
+      if (storeId == null) {
+        this.selectedStore = null
+        return
+      }
+      this.selectedStore = this.items.find((item) => item.id === storeId) ?? null
+    },
+
+    clearSelectedStore() {
+      this.selectedStore = null
+    },
+
+    syncSelectedStoreFromItems() {
+      const selectedId = this.selectedStore?.id
+      if (selectedId == null) {
+        return
+      }
+      this.selectedStore = this.items.find((item) => item.id === selectedId) ?? null
+    },
+
     clearError() {
       this.error = null
     },
@@ -47,6 +73,7 @@ export const useStoreStore = defineStore('store', {
         }
 
         this.items = result.data ?? []
+        this.syncSelectedStoreFromItems()
         return result
       } finally {
         this.loading = false
@@ -67,6 +94,7 @@ export const useStoreStore = defineStore('store', {
         }
 
         this.items = result.data ?? []
+        this.syncSelectedStoreFromItems()
         return result
       } finally {
         this.loading = false
@@ -88,6 +116,7 @@ export const useStoreStore = defineStore('store', {
 
         if (result.data) {
           this.items.push(result.data)
+          this.syncSelectedStoreFromItems()
         }
 
         showSuccessNotification('Store created successfully.')
@@ -115,6 +144,7 @@ export const useStoreStore = defineStore('store', {
 
           if (index >= 0) {
             this.items.splice(index, 1, result.data)
+            this.syncSelectedStoreFromItems()
           }
         }
 
@@ -139,6 +169,7 @@ export const useStoreStore = defineStore('store', {
         }
 
         this.items = this.items.filter((item) => item.id !== payload.id)
+        this.syncSelectedStoreFromItems()
 
         showSuccessNotification('Store deleted successfully.')
         return result
