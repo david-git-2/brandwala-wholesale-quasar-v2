@@ -230,7 +230,7 @@ const fields =
         'id',
         'image_url',
         'name',
-        ...(customerCanSeePrice.value ? ['price_gbp'] : []),
+        'price_gbp',
         'minimum_order_quantity',
         'country_of_origin',
       ]

@@ -439,6 +439,12 @@ const onPlaceOrder = async () => {
   min-width: 1in !important;
   width: 1in !important;
   max-width: 1in !important;
+  padding-right: 14px !important;
+}
+
+:deep(.q-table th:nth-child(3)),
+:deep(.q-table td:nth-child(3)) {
+  padding-left: 14px !important;
 }
 
 .customer-order-name-cell {

@@ -302,6 +302,7 @@ const onPlaceOrder = async () => {
   const detailByProductId = new Map<
     number,
     {
+      price_gbp: number | null
       barcode: string | null
       product_code: string | null
       product_weight: number | null
@@ -317,6 +318,7 @@ const onPlaceOrder = async () => {
     }
 
     detailByProductId.set(productId, {
+      price_gbp: (product['price_gbp'] as number | null) ?? null,
       barcode: (product['barcode'] as string | null) ?? null,
       product_code: (product['product_code'] as string | null) ?? null,
       product_weight: (product['product_weight'] as number | null) ?? null,
@@ -337,7 +339,7 @@ const onPlaceOrder = async () => {
         product_id: item.product_id ?? null,
         name: item.name,
         image_url: item.image_url ?? null,
-        price_gbp: item.price_gbp ?? null,
+        price_gbp: item.price_gbp ?? productDetail?.price_gbp ?? null,
         barcode: productDetail?.barcode ?? null,
         product_code: productDetail?.product_code ?? null,
         product_weight: productDetail?.product_weight ?? null,

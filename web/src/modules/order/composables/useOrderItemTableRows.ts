@@ -52,7 +52,8 @@ type UseOrderItemTableRowsParams = {
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100
 const ceilInt = (n: number) => Math.ceil(n)
-const roundToNearest5 = (n: number) => Math.round(n / 5) * 5
+const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
+const round2 = (n: number) => Math.round(n * 100) / 100
 
 export const useOrderItemTableRows = ({
   items,
@@ -81,14 +82,15 @@ export const useOrderItemTableRows = ({
       const costBdtRaw = ceilInt(unitLineCost * conversionRateValue)
       const lineTotalCostBdt = ceilInt(costBdtRaw * quantity)
 
-      const sellerFirstOfferBdt = roundToNearest5(
-        (costBdtRaw * profitRateValue) / 100 + costBdtRaw
-      )
+      const sellerFirstOfferBdt =
+        item.first_offer_bdt != null
+          ? Number(item.first_offer_bdt)
+          : roundUpTo5((costBdtRaw * profitRateValue) / 100 + costBdtRaw)
       const sellerFirstOfferBdtTotal = sellerFirstOfferBdt * quantity
       const sellerFirstOfferProfitPc = ceilInt(sellerFirstOfferBdt - costBdtRaw)
       const selerFirstOfferProfitPcPerc =
         costBdtRaw > 0
-          ? ceilInt(((sellerFirstOfferBdt - costBdtRaw) / costBdtRaw) * 100)
+          ? round2(((sellerFirstOfferBdt - costBdtRaw) / costBdtRaw) * 100)
           : null
       const sellerFirstOfferProfitTotal = sellerFirstOfferProfitPc * quantity
 
@@ -103,7 +105,7 @@ export const useOrderItemTableRows = ({
         customerOfferProfitPc != null ? ceilInt(customerOfferProfitPc * quantity) : null
       const customerOfferProfitPcPerc =
         costBdtRaw > 0 && customerOfferBdtPc != null
-          ? ceilInt(((customerOfferBdtPc - costBdtRaw) / costBdtRaw) * 100)
+          ? round2(((customerOfferBdtPc - costBdtRaw) / costBdtRaw) * 100)
           : null
 
       const finalOfferBdt =
@@ -114,7 +116,7 @@ export const useOrderItemTableRows = ({
         finalOfferProfitPc != null ? ceilInt(finalOfferProfitPc * quantity) : null
       const finalOfferProfitPcPerc =
         costBdtRaw > 0 && finalOfferBdt != null
-          ? ceilInt(((finalOfferBdt - costBdtRaw) / costBdtRaw) * 100)
+          ? round2(((finalOfferBdt - costBdtRaw) / costBdtRaw) * 100)
           : null
 
       return {

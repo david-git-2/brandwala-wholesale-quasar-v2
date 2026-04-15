@@ -37,6 +37,17 @@
         </q-td>
       </template>
 
+      <template #body-cell-product_meta="props">
+        <q-td :props="props" class="col-product-meta">
+          <div class="text-caption text-grey-7">
+            Barcode: {{ props.row.barcode ?? '-' }}
+          </div>
+          <div class="text-caption text-grey-7">
+            Product Code: {{ props.row.product_code ?? '-' }}
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-id="props">
         <q-td :props="props">
           {{ props.row.id }}
@@ -322,6 +333,17 @@ const allColumns: QTableColumn[] = [
     headerClasses: 'col-name-wrap',
   },
   {
+    name: 'product_meta',
+    label: 'Product Details',
+    field: 'product_code',
+    align: 'center',
+    sortable: false,
+    style: 'min-width: 220px; width: 220px; max-width: 220px; text-align: left;',
+    headerStyle: 'min-width: 220px; width: 220px; max-width: 220px;',
+    classes: 'col-product-meta',
+    headerClasses: 'col-product-meta-wrap',
+  },
+  {
   name: 'ordered_quantity',
   label: 'Ordered Qty',
   field: 'ordered_quantity',
@@ -438,6 +460,7 @@ const allColumns: QTableColumn[] = [
     label: 'First Offer Profit %',
     field: 'seler_first_offer_profit_pc_perc',
     align: 'center',
+    format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
     style: 'background-color:#9bf6ff;font-weight:bold',
   headerStyle: 'background-color:#9bf6ff;',
 
@@ -495,6 +518,7 @@ const allColumns: QTableColumn[] = [
     label: 'Customer Offer Profit %',
     field: 'customer_offer_profit_pc_perc',
     align: 'center',
+    format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
     style: 'background-color:#ffd6a5;font-weight:bold',
   headerStyle: 'background-color:#ffd6a5;',
 
@@ -532,6 +556,7 @@ const allColumns: QTableColumn[] = [
     label: 'Final Offer Profit %',
     field: 'final_offer_profit_pc_perc',
     align: 'center',
+    format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
     style: 'background-color:#bdb2ff;font-weight:bold',
   headerStyle: 'background-color:#bdb2ff;',
 
@@ -543,6 +568,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'product_weight',
     'package_weight',
@@ -563,6 +589,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'product_weight',
     'package_weight',
@@ -583,6 +610,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'product_weight',
     'package_weight',
@@ -612,6 +640,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'seller_first_offer_bdt',
     'final_offer_bdt',
@@ -623,6 +652,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'seller_first_offer_bdt',
     'final_offer_bdt',
@@ -634,6 +664,7 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'sl',
     'image_url',
     'name',
+    'product_meta',
     'ordered_quantity',
     'seller_first_offer_bdt',
     'final_offer_bdt',
@@ -936,6 +967,12 @@ const updateSingleItemFromDraft = async (
   min-width: 1in !important;
   width: 1in !important;
   max-width: 1in !important;
+  padding-right: 14px !important;
+}
+
+:deep(.q-table th:nth-child(3)),
+:deep(.q-table td:nth-child(3)) {
+  padding-left: 14px !important;
 }
 
 .order-item-name-cell {
@@ -979,6 +1016,18 @@ const updateSingleItemFromDraft = async (
 }
 
 .col-name-wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.col-product-meta {
+  min-width: 220px !important;
+  width: 220px !important;
+  max-width: 220px !important;
+}
+
+.col-product-meta-wrap {
   white-space: normal !important;
   word-break: break-word;
   line-height: 1.2;

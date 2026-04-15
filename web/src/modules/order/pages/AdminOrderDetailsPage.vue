@@ -64,7 +64,6 @@ import { useOrderStore } from '../stores/orderStore'
 import { useRoute } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
 import type { OrderStatus } from '../types'
-import { useOrderItemTableRows } from '../composables/useOrderItemTableRows'
 
 const route = useRoute()
 const orderStore = useOrderStore()
@@ -138,12 +137,9 @@ const profitRateRef = computed(() => Number(profitRate.value) || 0)
 
 const selectedItems = computed(() => orderStore.selected?.order_items ?? [])
 
-const { tableRows } = useOrderItemTableRows({
-  items: selectedItems,
-  conversionRate: conversionRateRef,
-  cargoRate: cargoRateRef,
-  profitRate: profitRateRef,
-})
+const ceil2 = (n: number) => Math.ceil(n * 100) / 100
+const ceilInt = (n: number) => Math.ceil(n)
+const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
 
 const onStatusChange = async (status: OrderStatus | null) => {
   if (!status || !orderStore.selected?.id) return
@@ -172,12 +168,29 @@ const onSaveRates = async () => {
     return
   }
 
-  const firstOfferPayload = tableRows.value.map((row) => ({
-    id: row.id,
-    first_offer_bdt: row.seller_first_offer_bdt,
-  }))
+  const conversion = conversionRateRef.value
+  const cargo = cargoRateRef.value
+  const profit = profitRateRef.value
 
-  await orderStore.updateOrderItemsFirstOffer(firstOfferPayload)
+  const recalculatedPayload = selectedItems.value.map((item) => {
+    const productWeight = Number(item.product_weight || 0)
+    const packageWeight = Number(item.package_weight || 0)
+    const totalWeight = productWeight + packageWeight
+    const priceGbp = Number(item.price_gbp || 0)
+
+    const unitLineCostGbp = ceil2((totalWeight / 1000) * cargo + priceGbp)
+    const costBdt = ceilInt(unitLineCostGbp * conversion)
+    const firstOfferBdt = roundUpTo5((costBdt * profit) / 100 + costBdt)
+
+    return {
+      id: item.id,
+      cost_gbp: unitLineCostGbp,
+      cost_bdt: costBdt,
+      first_offer_bdt: firstOfferBdt,
+    }
+  })
+
+  await orderStore.bulkUpdateOrderItems(recalculatedPayload)
 }
 
 
