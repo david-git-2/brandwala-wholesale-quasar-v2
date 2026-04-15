@@ -3,7 +3,7 @@
     flat
     bordered
     :rows="tableRows"
-    :columns="columns"
+    :columns="customer_offer_columns"
     row-key="id"
     :pagination="{ rowsPerPage: 0 }"
     hide-bottom
@@ -34,78 +34,6 @@
       </q-td>
     </template>
 
-    <template #body-cell-price_gbp="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.price_gbp, '£') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-cost_gbp="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.cost_gbp, '£') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-cost_bdt="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.cost_bdt, '৳') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-first_offer_bdt="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.first_offer_bdt, '৳') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-customer_offer_bdt="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.customer_offer_bdt, '৳') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-final_offer_bdt="props">
-      <q-td :props="props">
-        {{ formatCurrency(props.row.final_offer_bdt, '৳') }}
-      </q-td>
-    </template>
-
-    <template #body-cell-minimum_quantity="props">
-      <q-td :props="props">
-        {{ props.row.minimum_quantity }}
-      </q-td>
-    </template>
-
-    <template #body-cell-ordered_quantity="props">
-      <q-td :props="props">
-        {{ props.row.ordered_quantity }}
-      </q-td>
-    </template>
-
-    <template #body-cell-delivered_quantity="props">
-      <q-td :props="props">
-        {{ props.row.delivered_quantity }}
-      </q-td>
-    </template>
-
-    <template #body-cell-returned_quantity="props">
-      <q-td :props="props">
-        {{ props.row.returned_quantity }}
-      </q-td>
-    </template>
-
-    <template #body-cell-product_weight="props">
-      <q-td :props="props">
-        {{ formatWeight(props.row.product_weight) }}
-      </q-td>
-    </template>
-
-    <template #body-cell-package_weight="props">
-      <q-td :props="props">
-        {{ formatWeight(props.row.package_weight) }}
-      </q-td>
-    </template>
-
     <template #body-cell-id="props">
       <q-td :props="props">
         {{ props.row.id }}
@@ -124,18 +52,6 @@
       </q-td>
     </template>
 
-    <template #body-cell-created_at="props">
-      <q-td :props="props">
-        {{ formatDate(props.row.created_at) }}
-      </q-td>
-    </template>
-
-    <template #body-cell-updated_at="props">
-      <q-td :props="props">
-        {{ formatDate(props.row.updated_at) }}
-      </q-td>
-    </template>
-
     <template #no-data>
       <div class="full-width row flex-center q-pa-md text-grey-6">
         No items found
@@ -145,66 +61,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { toRef } from 'vue'
 import type { QTableColumn } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
+import {
+  useOrderItemTableRows,
+  type OrderItem,
+} from '../composables/useOrderItemTableRows'
 
-type OrderItem = {
-  id: number
-  name: string
-  cost_bdt: number | null
-  cost_gbp: number | null
-  order_id: number
-  image_url: string | null
-  price_gbp: number | null
-  created_at: string
-  product_id: number | null
-  updated_at: string
-  package_weight: number | null
-  product_weight: number | null
-  final_offer_bdt: number | null
-  first_offer_bdt: number | null
-  minimum_quantity: number
-  ordered_quantity: number
-  returned_quantity: number
-  customer_offer_bdt: number | null
-  delivered_quantity: number
-}
 type OrderStatus = 'customer_submit' | 'priced' | 'negotiate' | 'ordered' | 'placed'
 
 const props = withDefaults(
   defineProps<{
     items?: OrderItem[]
     status?: OrderStatus
+    conversionRate?: number
+    cargoRate?: number
+    profitRate?: number
   }>(),
   {
     items: () => [],
   }
 )
 
-const tableRows = computed(() =>
-  props.items.map((item, index) => ({
-    ...item,
-    sl: index + 1,
-  }))
-)
+const { tableRows } = useOrderItemTableRows({
+  items: toRef(props, 'items'),
+  conversionRate: toRef(props, 'conversionRate'),
+  cargoRate: toRef(props, 'cargoRate'),
+  profitRate: toRef(props, 'profitRate'),
+})
 
-const formatCurrency = (value: number | null, symbol = '') => {
-  if (value == null) return '-'
-  return `${symbol}${value}`
-}
-
-const formatWeight = (value: number | null) => {
-  if (value == null) return '-'
-  return `${value}g`
-}
-
-const formatDate = (value: string | null) => {
-  if (!value) return '-'
-  return new Date(value).toLocaleString()
-}
-
-const columns: QTableColumn[] = [
+const customer_offer_columns: QTableColumn[] = [
   {
     name: 'sl',
     label: 'SL',
@@ -212,27 +99,7 @@ const columns: QTableColumn[] = [
     align: 'left',
     sortable: false,
   },
-  {
-    name: 'id',
-    label: 'ID',
-    field: 'id',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'order_id',
-    label: 'Order ID',
-    field: 'order_id',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'product_id',
-    label: 'Product ID',
-    field: 'product_id',
-    align: 'left',
-    sortable: true,
-  },
+
   {
     name: 'image_url',
     label: 'Image',
@@ -248,72 +115,9 @@ const columns: QTableColumn[] = [
     sortable: true,
   },
   {
-    name: 'price_gbp',
-    label: 'Price (GBP)',
-    field: 'price_gbp',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'cost_gbp',
-    label: 'Cost (GBP)',
-    field: 'cost_gbp',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'cost_bdt',
-    label: 'Cost (BDT)',
-    field: 'cost_bdt',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'first_offer_bdt',
-    label: 'First Offer (BDT)',
-    field: 'first_offer_bdt',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'customer_offer_bdt',
-    label: 'Customer Offer (BDT)',
-    field: 'customer_offer_bdt',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'final_offer_bdt',
-    label: 'Final Offer (BDT)',
-    field: 'final_offer_bdt',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'minimum_quantity',
-    label: 'Minimum Qty',
-    field: 'minimum_quantity',
-    align: 'left',
-    sortable: true,
-  },
-  {
     name: 'ordered_quantity',
     label: 'Ordered Qty',
     field: 'ordered_quantity',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'delivered_quantity',
-    label: 'Delivered Qty',
-    field: 'delivered_quantity',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'returned_quantity',
-    label: 'Returned Qty',
-    field: 'returned_quantity',
     align: 'left',
     sortable: true,
   },
@@ -332,16 +136,149 @@ const columns: QTableColumn[] = [
     sortable: true,
   },
   {
-    name: 'created_at',
-    label: 'Created At',
-    field: 'created_at',
+    name: 'total_weight',
+    label: 'Total Weight',
+    field: 'total_weight',
     align: 'left',
     sortable: true,
   },
   {
-    name: 'updated_at',
-    label: 'Updated At',
-    field: 'updated_at',
+    name: 'price_gbp',
+    label: 'Price (GBP)',
+    field: 'price_gbp',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'line_total_purchese_cost_gbp',
+    label: 'Line Total Purchase Cost (GBP)',
+    field: 'line_total_purchese_cost_gbp',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'cargo_rate',
+    label: 'Cargo Rate / KG',
+    field: 'cargo_rate',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'unit_line_cost_gbp',
+    label: 'Unit Line Cost (GBP/Pc)',
+    field: 'unit_line_cost_gbp',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'cost_bdt',
+    label: 'Cost (BDT/PC)',
+    field: 'cost_bdt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'line_total_cost_bdt',
+    label: 'Line Total Cost (BDT)',
+    field: 'line_total_cost_bdt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'seller_first_offer_bdt',
+    label: 'First Offer (BDT)',
+    field: 'seller_first_offer_bdt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'seller_first_offer_bdt_total',
+    label: 'First Offer Total (BDT)',
+    field: 'seller_first_offer_bdt_total',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'seller_first_offer_profit_pc',
+    label: 'First Offer Profit /Pc',
+    field: 'seller_first_offer_profit_pc',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'seler_first_offer_profit_pc_perc',
+    label: 'First Offer Profit %',
+    field: 'seler_first_offer_profit_pc_perc',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'seller_first_offer_profit_total',
+    label: 'First Offer Profit Total',
+    field: 'seller_first_offer_profit_total',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customer_offer_bdt',
+    label: 'Customer Offer (BDT)',
+    field: 'customer_offer_bdt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customer_offer_bdt_total',
+    label: 'Customer Offer Total (BDT)',
+    field: 'customer_offer_bdt_total',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customer_offer_profit_pc',
+    label: 'Customer Offer Profit /Pc',
+    field: 'customer_offer_profit_pc',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customer_offer_profit_total',
+    label: 'Customer Offer Profit Total',
+    field: 'customer_offer_profit_total',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customer_offer_profit_pc_perc',
+    label: 'Customer Offer Profit %',
+    field: 'customer_offer_profit_pc_perc',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'final_offer_bdt',
+    label: 'Final Offer (BDT)',
+    field: 'final_offer_bdt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'final_offer_profit_pc',
+    label: 'Final Offer Profit /Pc',
+    field: 'final_offer_profit_pc',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'final_offer_profit_total',
+    label: 'Final Offer Profit Total',
+    field: 'final_offer_profit_total',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'final_offer_profit_pc_perc',
+    label: 'Final Offer Profit %',
+    field: 'final_offer_profit_pc_perc',
     align: 'left',
     sortable: true,
   },
