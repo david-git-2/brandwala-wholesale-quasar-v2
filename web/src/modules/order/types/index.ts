@@ -19,6 +19,7 @@ export type Order = {
   negotiate: boolean
   status: OrderStatus
   store_id: number | null
+  shipment_id: number | null
   created_at: string
   updated_at: string
 }

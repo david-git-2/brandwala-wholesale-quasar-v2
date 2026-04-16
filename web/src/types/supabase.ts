@@ -604,6 +604,7 @@ export type Database = {
           name: string
           negotiate: boolean
           profit_rate: number | null
+          shipment_id: number | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: number | null
           updated_at: string
@@ -619,6 +620,7 @@ export type Database = {
           name: string
           negotiate?: boolean
           profit_rate?: number | null
+          shipment_id?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
           updated_at?: string
@@ -634,6 +636,7 @@ export type Database = {
           name?: string
           negotiate?: boolean
           profit_rate?: number | null
+          shipment_id?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
           updated_at?: string
@@ -644,6 +647,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]

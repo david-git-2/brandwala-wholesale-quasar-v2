@@ -47,6 +47,7 @@ const ORDER_FIELDS = [
   'negotiate',
   'status',
   'store_id',
+  'shipment_id',
   'created_at',
   'updated_at',
 ] as const
