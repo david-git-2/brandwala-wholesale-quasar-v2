@@ -13,7 +13,19 @@
       />
     </div>
 
-    <q-banner v-if="!orderStore.items.length && !orderStore.loading" class="bg-grey-2 text-grey-8">
+    <div v-if="orderStore.loading" class="order-grid">
+      <q-card v-for="n in skeletonCount" :key="`order-skeleton-${n}`" class="order-card" flat bordered>
+        <q-card-section>
+          <div class="row items-center justify-end q-gutter-sm q-mb-sm">
+            <q-skeleton type="QChip" width="84px" />
+          </div>
+          <q-skeleton type="text" width="70%" />
+          <q-skeleton type="text" width="40%" class="q-mt-xs" />
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <q-banner v-else-if="!orderStore.items.length" class="bg-grey-2 text-grey-8">
       No orders found.
     </q-banner>
 
@@ -72,6 +84,7 @@ const orderStore = useOrderStore()
 const storeStore = useStoreStore()
 const router = useRouter()
 const page = ref(1)
+const skeletonCount = 6
 
 const selectedStoreId = computed<number | null>({
   get: () => storeStore.selectedStore?.id ?? null,
@@ -130,11 +143,17 @@ onMounted(async () => {
 
 .order-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .order-card {
   border-radius: 10px;
+}
+
+@media (max-width: 700px) {
+  .order-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

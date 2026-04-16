@@ -39,6 +39,7 @@ export type OrderItemTableRow = OrderItem & {
   customer_offer_profit_total: number | null
   customer_offer_profit_pc_perc: number | null
   final_offer_profit_pc: number | null
+  final_offer_bdt_total: number | null
   final_offer_profit_total: number | null
   final_offer_profit_pc_perc: number | null
 }
@@ -110,6 +111,8 @@ export const useOrderItemTableRows = ({
 
       const finalOfferBdt =
         item.final_offer_bdt != null ? item.final_offer_bdt : item.customer_offer_bdt
+      const finalOfferBdtTotal =
+        finalOfferBdt != null ? ceilInt(finalOfferBdt * quantity) : null
       const finalOfferProfitPc =
         finalOfferBdt != null ? ceilInt(finalOfferBdt - costBdtRaw) : null
       const finalOfferProfitTotal =
@@ -139,6 +142,7 @@ export const useOrderItemTableRows = ({
         customer_offer_profit_total: customerOfferProfitTotal,
         customer_offer_profit_pc_perc: customerOfferProfitPcPerc,
         final_offer_bdt: finalOfferBdt,
+        final_offer_bdt_total: finalOfferBdtTotal,
         final_offer_profit_pc: finalOfferProfitPc,
         final_offer_profit_total: finalOfferProfitTotal,
         final_offer_profit_pc_perc: finalOfferProfitPcPerc,

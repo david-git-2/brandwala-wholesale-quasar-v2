@@ -14,6 +14,30 @@
       />
     </div>
 
+    <div class="row q-mb-sm">
+      <q-btn-toggle
+        v-model="tableViewMode"
+        no-caps
+        unelevated
+        toggle-color="primary"
+        :options="tableViewOptions"
+      />
+    </div>
+
+    <div v-if="orderStore.selected?.negotiate !== false" class="row q-gutter-sm q-my-sm">
+      <q-toggle
+        :model-value="orderStore.selected?.negotiate ?? true"
+        label="Enable Negotiation"
+        :disable="!orderStore.selected?.id || orderStore.saving"
+        @update:model-value="onNegotiationToggle"
+      />
+    </div>
+    <div v-else class="row q-gutter-sm q-my-sm">
+      <q-chip dense color="negative" text-color="white" icon="block">
+        Negotiation Disabled
+      </q-chip>
+    </div>
+
     <div class="row q-gutter-sm q-my-sm">
       <q-input
         outlined
@@ -47,14 +71,40 @@
       />
 
     </div>
-
-    <OrderItemsTable
+    <CompactOrderItemTable
+      v-if="tableViewMode === 'compact'"
       :items="orderStore.selected?.order_items ?? []"
       :status="selectedStatus ?? 'customer_submit'"
       :conversion-rate="Number(conversionRate) || 0"
       :cargo-rate="Number(cargoRate) || 0"
       :profit-rate="Number(profitRate) || 0"
     />
+    <OrderItemsTable
+      v-else
+      :items="orderStore.selected?.order_items ?? []"
+      :status="selectedStatus ?? 'customer_submit'"
+      :conversion-rate="Number(conversionRate) || 0"
+      :cargo-rate="Number(cargoRate) || 0"
+      :profit-rate="Number(profitRate) || 0"
+    />
+
+    <q-dialog v-model="confirmDisableNegotiationOpen">
+      <q-card style="min-width: 360px">
+        <q-card-section class="text-h6">Disable Negotiation?</q-card-section>
+        <q-card-section>
+          If you disable negotiation, priced and negotiate states will be removed and offers will be prefilled to final offer.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="negative"
+            label="Disable"
+            :loading="orderStore.saving"
+            @click="onConfirmDisableNegotiation"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -64,19 +114,33 @@ import { useOrderStore } from '../stores/orderStore'
 import { useRoute } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
 import type { OrderStatus } from '../types'
+import CompactOrderItemTable from '../components/CompactOrderItemTable.vue'
+
 
 const route = useRoute()
 const orderStore = useOrderStore()
 
 const selectedStatus = ref<OrderStatus | null>(null)
+const tableViewMode = ref<'compact' | 'detailed'>('compact')
+const confirmDisableNegotiationOpen = ref(false)
 
-const statusOptions: OrderStatus[] = [
+const allStatusOptions: OrderStatus[] = [
   'customer_submit',
   'priced',
   'negotiate',
   'final_offered',
   'ordered',
   'placed',
+]
+const statusOptions = computed<OrderStatus[]>(() =>
+  orderStore.selected?.negotiate === false
+    ? allStatusOptions.filter((status) => status !== 'priced' && status !== 'negotiate')
+    : allStatusOptions,
+)
+
+const tableViewOptions = [
+  { label: 'Compact', value: 'compact' },
+  { label: 'Detailed', value: 'detailed' },
 ]
 
 const normalizeNumericInput = (value: unknown) => {
@@ -143,6 +207,12 @@ const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
 
 const onStatusChange = async (status: OrderStatus | null) => {
   if (!status || !orderStore.selected?.id) return
+  if (
+    orderStore.selected.negotiate === false &&
+    (status === 'priced' || status === 'negotiate')
+  ) {
+    return
+  }
 
   await orderStore.updateOrder({
     id: orderStore.selected.id,
@@ -152,8 +222,73 @@ const onStatusChange = async (status: OrderStatus | null) => {
   })
 }
 
+const applyNegotiationToggle = async (nextValue: boolean) => {
+  if (!orderStore.selected?.id) {
+    return
+  }
+
+  const shouldMoveToFinalOffered =
+    !nextValue &&
+    ['customer_submit', 'priced', 'negotiate'].includes(orderStore.selected.status)
+
+  if (!nextValue) {
+    const conversion = Number(conversionRate.value) || 0
+    const cargo = Number(cargoRate.value) || 0
+    const profit = Number(profitRate.value) || 0
+
+    const prefillPayload = selectedItems.value.map((item) => {
+      const productWeight = Number(item.product_weight || 0)
+      const packageWeight = Number(item.package_weight || 0)
+      const totalWeight = productWeight + packageWeight
+      const priceGbp = Number(item.price_gbp || 0)
+
+      const unitLineCostGbp = ceil2((totalWeight / 1000) * cargo + priceGbp)
+      const costBdt = ceilInt(unitLineCostGbp * conversion)
+      const firstOfferBdt =
+        item.first_offer_bdt ?? roundUpTo5((costBdt * profit) / 100 + costBdt)
+
+      return {
+        id: item.id,
+        first_offer_bdt: firstOfferBdt,
+        customer_offer_bdt: firstOfferBdt,
+        final_offer_bdt: firstOfferBdt,
+      }
+    })
+
+    const prefillResult = await orderStore.bulkUpdateOrderItems(prefillPayload)
+    if (!prefillResult.success) {
+      return
+    }
+  }
+
+  await orderStore.updateOrder({
+    id: orderStore.selected.id,
+    patch: {
+      negotiate: nextValue,
+      ...(shouldMoveToFinalOffered ? { status: 'final_offered' as OrderStatus } : {}),
+    },
+  })
+}
+
+const onNegotiationToggle = (nextValue: boolean) => {
+  if (nextValue) {
+    return
+  }
+  confirmDisableNegotiationOpen.value = true
+}
+
+const onConfirmDisableNegotiation = async () => {
+  confirmDisableNegotiationOpen.value = false
+  await applyNegotiationToggle(false)
+}
+
 const onSaveRates = async () => {
   if (!orderStore.selected?.id) return
+  const negotiateEnabled = orderStore.selected.negotiate !== false
+  const hasRequiredRates =
+    orderStore.selected.cargo_rate != null &&
+    orderStore.selected.conversion_rate != null &&
+    orderStore.selected.profit_rate != null
 
   const orderUpdateResult = await orderStore.updateOrder({
     id: orderStore.selected.id,
@@ -187,10 +322,28 @@ const onSaveRates = async () => {
       cost_gbp: unitLineCostGbp,
       cost_bdt: costBdt,
       first_offer_bdt: firstOfferBdt,
+      customer_offer_bdt: negotiateEnabled ? item.customer_offer_bdt : firstOfferBdt,
+      final_offer_bdt: negotiateEnabled ? item.final_offer_bdt : firstOfferBdt,
     }
   })
 
-  await orderStore.bulkUpdateOrderItems(recalculatedPayload)
+  const itemsUpdateResult = await orderStore.bulkUpdateOrderItems(recalculatedPayload)
+  if (!itemsUpdateResult.success) {
+    return
+  }
+
+  if (
+    !negotiateEnabled &&
+    hasRequiredRates &&
+    orderStore.selected.status === 'customer_submit'
+  ) {
+    await orderStore.updateOrder({
+      id: orderStore.selected.id,
+      patch: {
+        status: 'final_offered',
+      },
+    })
+  }
 }
 
 

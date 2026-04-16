@@ -10,6 +10,7 @@ export type Order = {
   id: number
   name: string
   customer_group_id: number
+  customer_group_name?: string | null
   can_see_price: boolean
   accent_color: string | null
   cargo_rate: number | null

@@ -24,6 +24,17 @@ type OrderProductSnapshot = {
   package_weight: number | null
 }
 
+type OrderListRow = Order & {
+  customer_groups?:
+    | {
+      name: string | null
+    }
+    | Array<{
+      name: string | null
+    }>
+    | null
+}
+
 const ORDER_FIELDS = [
   'id',
   'name',
@@ -82,9 +93,11 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
   const from = Math.max(0, offset)
   const to = from + pageSize - 1
 
+  const relationSelect = `${orderSelect},customer_groups(name)`
+
   let query = supabase
     .from('orders')
-    .select(orderSelect, { count: 'exact' })
+    .select(relationSelect, { count: 'exact' })
     .order('id', { ascending: false })
 
   if (payload.customer_group_id != null) {
@@ -107,7 +120,21 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
     throw error
   }
 
-  const rows = (data as unknown as Order[] | null) ?? []
+  const rawRows = (data as unknown as OrderListRow[] | null) ?? []
+  const rows = rawRows.map((row) => {
+    const relation = row.customer_groups
+    const customerGroupName = Array.isArray(relation)
+      ? (relation[0]?.name ?? null)
+      : (relation?.name ?? null)
+
+    const { customer_groups, ...rest } = row
+    void customer_groups
+
+    return {
+      ...(rest as Order),
+      customer_group_name: customerGroupName,
+    }
+  })
   const total = count ?? 0
 
   return {

@@ -2,11 +2,16 @@
   <q-page class="q-pa-md">
     <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
     <div class="row justify-end"><q-chip class="bg-primary" text-color="white"  :label="formatStatus(orderStore.selected?.status)" /></div>
-    <CustomerOrderCard />
-    <CustomerOrderTable
-      :items="orderStore.selected?.order_items || []"
-      :status="orderStore.selected?.status ?? 'customer_submit'"
-    />
+    <div v-if="$q.screen.lt.sm">
+      <CustomerOrderCard />
+    </div>
+    <div v-else>
+      <CustomerOrderTable
+        :items="orderStore.selected?.order_items || []"
+        :status="orderStore.selected?.status ?? 'customer_submit'"
+        :negotiate-enabled="orderStore.selected?.negotiate ?? true"
+      />
+    </div>
   </q-page>
 </template>
 <script setup lang="ts">

@@ -97,6 +97,10 @@
               />
             </q-popup-edit>
           </q-td>
+
+          <q-td key="final_offer_bdt" :props="props">
+            {{ props.row.final_offer_bdt ?? props.row.display_customer_offer_bdt ?? props.row.first_offered_price ?? '-' }}
+          </q-td>
         </q-tr>
       </template>
 
@@ -150,6 +154,7 @@ type OrderItem = {
   minimum_quantity?: number | null
   first_offer_bdt?: number | null
   customer_offer_bdt?: number | null
+  final_offer_bdt?: number | null
   ordered_quantity?: number | null
 }
 
@@ -163,10 +168,12 @@ const props = withDefaults(
   defineProps<{
     items?: OrderItem[]
     status?: OrderStatus
+    negotiateEnabled?: boolean
   }>(),
   {
     items: () => [],
     status: 'customer_submit',
+    negotiateEnabled: true,
   }
 )
 
@@ -219,17 +226,17 @@ const allColumns: QTableColumn[] = [
     label: 'SL',
     field: 'sl',
     align: 'center',
-    sortable: false,
+
     style: 'width: 50px; max-width: 50px;',
     headerStyle: 'width: 50px; max-width: 50px;',
   },
-  { name: 'image_url', label: 'Image', field: 'image_url', align: 'left', sortable: false },
+  { name: 'image_url', label: 'Image', field: 'image_url', align: 'center', sortable: false },
   {
     name: 'name',
     label: 'Name',
     field: 'name',
-    align: 'left',
-    sortable: true,
+    align: 'center',
+
     style: 'min-width: 360px; width: 360px; max-width: 360px; text-align: left;',
     headerStyle: 'min-width: 360px; width: 360px; max-width: 360px;',
     classes: 'col-name',
@@ -240,14 +247,14 @@ const allColumns: QTableColumn[] = [
     label: 'Quantity',
     field: 'ordered_quantity',
     align: 'center',
-    sortable: true,
+
     style: 'background-color:#E7E7E7;font-weight:bold;min-width:90px;width:90px;max-width:90px;',
     headerStyle: 'background-color:#E7E7E7;min-width:90px;width:90px;max-width:90px;',
     headerClasses: 'text-center',
   },
-  { name: 'first_offered_price', label: 'First Offered Price', field: 'first_offered_price', align: 'left', sortable: true ,style: 'background-color:#9bf6ff;font-weight:bold',
+  { name: 'first_offered_price', label: 'First Offered Price', field: 'first_offered_price', align: 'center', style: 'background-color:#9bf6ff;font-weight:bold',
   headerStyle: 'background-color:#9bf6ff;',},
-  { name: 'customer_offer_bdt', label: 'Customer Offer', field: 'display_customer_offer_bdt', align: 'left', sortable: true, style: 'background-color:#ffd6a5;font-weight:bold',
+  { name: 'customer_offer_bdt', label: 'Customer Offer', field: 'display_customer_offer_bdt', align: 'center',  style: 'background-color:#ffd6a5;font-weight:bold',
   headerStyle: 'background-color:#ffd6a5;', },
   {
     name: 'final_offer_bdt',
@@ -262,20 +269,31 @@ const allColumns: QTableColumn[] = [
 
 ]
 
-const statusColumnMap: Record<OrderStatus, string[]> = {
+const statusColumnMapWithNegotiation: Record<OrderStatus, string[]> = {
   customer_submit: ['sl', 'image_url', 'name', 'quantity'],
   priced: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
   negotiate: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
-  final_offered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price'],
-  ordered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price'],
-  placed: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price'],
+  final_offered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+  ordered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+  placed: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+}
+
+const statusColumnMapWithoutNegotiation: Record<OrderStatus, string[]> = {
+  customer_submit: ['sl', 'image_url', 'name', 'quantity'],
+  priced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  negotiate: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  final_offered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  ordered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  placed: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
 }
 
 const columns = computed(() => {
-  const visibleColumnNames = statusColumnMap[props.status ?? 'customer_submit']
+  const visibleColumnNames = (
+    props.negotiateEnabled ? statusColumnMapWithNegotiation : statusColumnMapWithoutNegotiation
+  )[props.status ?? 'customer_submit']
   return allColumns.filter((column) => visibleColumnNames.includes(column.name))
 })
-const canEditCustomerOffer = computed(() => props.status === 'priced')
+const canEditCustomerOffer = computed(() => props.negotiateEnabled && props.status === 'priced')
 const canEditQuantity = computed(() => props.status === 'final_offered')
 
 const onDraftChange = (id: number, value: string | number | null) => {
@@ -337,10 +355,11 @@ const onSaveCustomerOffers = async () => {
     initialDisplayOfferById.value[entry.id] = entry.customer_offer_bdt
   })
 
+  const shouldNegotiate = orderStore.selected?.negotiate !== false
   await orderStore.updateOrder({
-    id: orderStore.selected?.id ||0,
+    id: orderStore.selected?.id || 0,
     patch: {
-      status:'negotiate',
+      status: shouldNegotiate ? 'negotiate' : 'final_offered',
     },
   })
 }

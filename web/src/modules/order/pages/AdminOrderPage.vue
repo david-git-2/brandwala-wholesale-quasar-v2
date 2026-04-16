@@ -13,7 +13,20 @@
       />
     </div>
 
-    <q-banner v-if="!orderStore.items.length && !orderStore.loading" class="bg-grey-2 text-grey-8">
+    <div v-if="orderStore.loading" class="order-grid">
+      <q-card v-for="n in skeletonCount" :key="`admin-order-skeleton-${n}`" class="order-card" flat bordered>
+        <q-card-section>
+          <div class="row items-center justify-end q-gutter-sm q-mb-sm">
+            <q-skeleton type="QChip" width="84px" />
+            <q-skeleton type="QAvatar" size="26px" />
+          </div>
+          <q-skeleton type="text" width="72%" />
+          <q-skeleton type="text" width="52%" class="q-mt-xs" />
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <q-banner v-else-if="!orderStore.items.length" class="bg-grey-2 text-grey-8">
       No orders found.
     </q-banner>
 
@@ -33,6 +46,15 @@
         <q-card-section>
           <div class="row items-center justify-end q-gutter-sm">
             <q-chip dense square>{{ formatStatus(order.status) }}</q-chip>
+            <q-chip
+              v-if="order.negotiate === false"
+              dense
+              square
+              color="negative"
+              text-color="white"
+            >
+              Negotiation Off
+            </q-chip>
             <q-btn
               v-if="authStore.matchedRole === 'admin'"
               dense
@@ -47,6 +69,9 @@
 
           <div class="row items-center justify-start q-gutter-sm">
             <div class="text-subtitle1 text-weight-medium">#{{ order.id }} {{ order.name }}</div>
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Customer Group: {{ order.customer_group_name || 'N/A' }}
           </div>
         </q-card-section>
       </q-card>
@@ -97,6 +122,7 @@ const orderStore = useOrderStore()
 const storeStore = useStoreStore()
 const router = useRouter()
 const page = ref(1)
+const skeletonCount = 6
 const confirmDeleteOpen = ref(false)
 const pendingDeleteOrderId = ref<number | null>(null)
 
@@ -179,11 +205,17 @@ const goToOrder = async (id: number) => {
 
 .order-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .order-card {
   border-radius: 10px;
+}
+
+@media (max-width: 700px) {
+  .order-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
