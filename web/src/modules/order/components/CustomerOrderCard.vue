@@ -165,7 +165,17 @@
       </q-card-section>
     </q-card>
   </div>
-
+<div class="row justify-end">
+  <q-btn
+        v-if="canEditCustomerOffer"
+          color="primary"
+          class="q-mt-md"
+          no-caps
+          label="Save Customer Offers"
+          :loading="orderStore.saving"
+          @click="onAskSaveCustomerOffers"
+        />
+</div>
   <div v-if="orderStore.selected?.status==='final_offered'" class="row justify-end q-mt-md">
     <q-btn
       color="primary"
@@ -193,6 +203,24 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="confirmSaveCustomerOffersOpen">
+    <q-card style="min-width: 320px">
+      <q-card-section class="text-h6">Save Customer Offers</q-card-section>
+      <q-card-section>
+        Are you sure you want to save customer offers?
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" v-close-popup />
+        <q-btn
+          color="primary"
+          label="Save"
+          :loading="orderStore.saving"
+          @click="onConfirmSaveCustomerOffers"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
@@ -204,6 +232,7 @@ const orderStore = useOrderStore()
 const customerOfferDraftById = ref<Record<number, number | null>>({})
 const quantityDraftById = ref<Record<number, number | null>>({})
 const confirmPlaceOrderOpen = ref(false)
+const confirmSaveCustomerOffersOpen = ref(false)
 
 type OrderCardItem = {
   id: number
@@ -213,6 +242,7 @@ type OrderCardItem = {
   ordered_quantity: number | null
   minimum_quantity: number | null
 }
+const canEditCustomerOffer = computed(() => orderStore.selected?.negotiate && orderStore.selected?.status === 'priced')
 
 const orderItems = computed(
   () => (orderStore.selected?.order_items ?? []) as Array<OrderCardItem & Record<string, unknown>>,
@@ -330,6 +360,43 @@ const onConfirmPlaceOrder = async () => {
     },
   })
   confirmPlaceOrderOpen.value = false
+}
+
+const onAskSaveCustomerOffers = () => {
+  confirmSaveCustomerOffersOpen.value = true
+}
+
+const onConfirmSaveCustomerOffers = async () => {
+  await onSaveCustomerOffers()
+  confirmSaveCustomerOffersOpen.value = false
+}
+
+const onSaveCustomerOffers = async () => {
+  const payload = orderItems.value.map((item) => ({
+    id: item.id,
+    customer_offer_bdt: customerOfferDraftById.value[item.id] ?? null,
+  }))
+
+  if (!payload.length) {
+    return
+  }
+
+  const result = await orderStore.bulkUpdateOrderItems(payload)
+  if (!result.success) {
+    return
+  }
+
+  const shouldNegotiate = orderStore.selected?.negotiate !== false
+  if (!orderStore.selected?.id) {
+    return
+  }
+
+  await orderStore.updateOrder({
+    id: orderStore.selected.id,
+    patch: {
+      status: shouldNegotiate ? 'negotiate' : 'final_offered',
+    },
+  })
 }
 </script>
 

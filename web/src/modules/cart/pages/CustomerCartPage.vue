@@ -4,7 +4,7 @@
       <div>
         <div class="text-h5 text-weight-bold">Cart</div>
         <div class="text-caption text-grey-7">
-          {{ cartSummary.totalItems }} items | Subtotal £{{ formatPrice(cartSummary.subtotal) }}
+          {{ cartSummary.totalItems }} items <span v-if="storeStore.selectedStore?.see_price"> | Subtotal £{{ formatPrice(cartSummary.subtotal) }}</span>
         </div>
       </div>
       <q-btn
@@ -111,7 +111,7 @@
 
     <div class="cart-footer q-mt-lg">
       <div class="text-caption text-grey-7">
-        Total items: {{ cartSummary.totalItems }} | Subtotal: £{{ formatPrice(cartSummary.subtotal) }}
+        Total items: {{ cartSummary.totalItems }} <span v-if="storeStore.selectedStore?.see_price">  | Subtotal: £{{ formatPrice(cartSummary.subtotal) }}</span>
       </div>
       <q-btn
         color="primary"
