@@ -100,6 +100,132 @@ const tenantRoutes: RouteRecordRaw[] = [
           },
         }),
       },
+      {
+        path: ':id/customer-groups',
+        name: 'admin-tenant-customer-groups',
+        component: () => import('../pages/AdminTenantManagementPage.vue'),
+        props: () => ({ view: 'customer-groups' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
+              return true
+            }
+
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-customer-groups',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
+              },
+              selectedTenantSlug,
+            )
+          },
+        }),
+      },
+      {
+        path: ':id/staff',
+        name: 'admin-tenant-staff',
+        component: () => import('../pages/AdminTenantManagementPage.vue'),
+        props: () => ({ view: 'staff' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
+              return true
+            }
+
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-staff',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
+              },
+              selectedTenantSlug,
+            )
+          },
+        }),
+      },
+      {
+        path: ':id/modules',
+        name: 'admin-tenant-modules',
+        component: () => import('../pages/AdminTenantManagementPage.vue'),
+        props: () => ({ view: 'modules' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
+              return true
+            }
+
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-modules',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
+              },
+              selectedTenantSlug,
+            )
+          },
+        }),
+      },
     ],
   },
 ]
