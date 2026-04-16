@@ -870,6 +870,164 @@ export type Database = {
           },
         ]
       }
+      shipment_items: {
+        Row: {
+          barcode: string | null
+          created_at: string
+          damaged_quantity: number
+          id: number
+          image_url: string | null
+          name: string | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number | null
+          product_weight: number | null
+          quantity: number
+          received_quantity: number
+          shipment_id: number
+          stolen_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          created_at?: string
+          damaged_quantity?: number
+          id?: number
+          image_url?: string | null
+          name?: string | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_id?: number | null
+          product_weight?: number | null
+          quantity?: number
+          received_quantity?: number
+          shipment_id: number
+          stolen_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          created_at?: string
+          damaged_quantity?: number
+          id?: number
+          image_url?: string | null
+          name?: string | null
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_id?: number | null
+          product_weight?: number | null
+          quantity?: number
+          received_quantity?: number
+          shipment_id?: number
+          stolen_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_orders: {
+        Row: {
+          created_at: string
+          id: number
+          order_id: number
+          shipment_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          order_id: number
+          shipment_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          order_id?: number
+          shipment_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_orders_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          cargo_conversion_rate: number | null
+          cargo_rate: number | null
+          created_at: string
+          id: number
+          name: string
+          product_conversion_rate: number | null
+          received_weight: number | null
+          tenant_id: number
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          cargo_conversion_rate?: number | null
+          cargo_rate?: number | null
+          created_at?: string
+          id?: number
+          name: string
+          product_conversion_rate?: number | null
+          received_weight?: number | null
+          tenant_id: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          cargo_conversion_rate?: number | null
+          cargo_rate?: number | null
+          created_at?: string
+          id?: number
+          name?: string
+          product_conversion_rate?: number | null
+          received_weight?: number | null
+          tenant_id?: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_access: {
         Row: {
           created_at: string
@@ -1099,6 +1257,109 @@ export type Database = {
         }
         Returns: Json
       }
+      add_shipment_item_from_product: {
+        Args: {
+          p_product_id: number
+          p_quantity: number
+          p_shipment_id: number
+        }
+        Returns: {
+          barcode: string | null
+          created_at: string
+          damaged_quantity: number
+          id: number
+          image_url: string | null
+          name: string | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number | null
+          product_weight: number | null
+          quantity: number
+          received_quantity: number
+          shipment_id: number
+          stolen_quantity: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_shipment_item_manual: {
+        Args: {
+          p_barcode?: string
+          p_damaged_quantity?: number
+          p_image_url?: string
+          p_name?: string
+          p_package_weight?: number
+          p_price_gbp?: number
+          p_product_code?: string
+          p_product_id?: number
+          p_product_weight?: number
+          p_quantity?: number
+          p_received_quantity?: number
+          p_shipment_id: number
+          p_stolen_quantity?: number
+        }
+        Returns: {
+          barcode: string | null
+          created_at: string
+          damaged_quantity: number
+          id: number
+          image_url: string | null
+          name: string | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number | null
+          product_weight: number | null
+          quantity: number
+          received_quantity: number
+          shipment_id: number
+          stolen_quantity: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      bulk_add_shipment_items_from_product_ids: {
+        Args: { p_items: Json; p_shipment_id: number }
+        Returns: {
+          barcode: string | null
+          created_at: string
+          damaged_quantity: number
+          id: number
+          image_url: string | null
+          name: string | null
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number | null
+          product_weight: number | null
+          quantity: number
+          received_quantity: number
+          shipment_id: number
+          stolen_quantity: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shipment_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      bulk_delete_shipment_items_by_product_id: {
+        Args: { p_items: Json; p_shipment_id: number }
+        Returns: number
+      }
       bulk_update_order_item_offers: {
         Args: { p_items: Json }
         Returns: {
@@ -1235,6 +1496,11 @@ export type Database = {
         Returns: boolean
       }
       can_manage_products: { Args: { p_tenant_id: number }; Returns: boolean }
+      can_manage_shipment: { Args: { p_tenant_id: number }; Returns: boolean }
+      can_manage_shipment_by_id: {
+        Args: { p_shipment_id: number }
+        Returns: boolean
+      }
       can_manage_store: { Args: { p_tenant_id: number }; Returns: boolean }
       can_staff_access_costing_file: {
         Args: { p_tenant_id: number }
@@ -1393,6 +1659,43 @@ export type Database = {
               website_url: string
             }[]
           }
+      create_shipment: {
+        Args: { p_name: string; p_tenant_id: number }
+        Returns: {
+          cargo_conversion_rate: number | null
+          cargo_rate: number | null
+          created_at: string
+          id: number
+          name: string
+          product_conversion_rate: number | null
+          received_weight: number | null
+          tenant_id: number
+          updated_at: string
+          weight: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_shipment_order: {
+        Args: { p_order_id: number; p_shipment_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          order_id: number
+          shipment_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_store: {
         Args: { p_name: string; p_tenant_id: number; p_vendor_code: string }
         Returns: {
@@ -1494,6 +1797,12 @@ export type Database = {
         Returns: string
       }
       current_user_email: { Args: never; Returns: string }
+      delete_shipment: { Args: { p_id: number }; Returns: undefined }
+      delete_shipment_item_quantity: {
+        Args: { p_id: number; p_quantity: number }
+        Returns: boolean
+      }
+      delete_shipment_order: { Args: { p_id: number }; Returns: undefined }
       delete_store: { Args: { p_id: number }; Returns: undefined }
       delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
@@ -2064,6 +2373,43 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_shipment: {
+        Args: { p_field: string; p_id: number; p_value: string }
+        Returns: {
+          cargo_conversion_rate: number | null
+          cargo_rate: number | null
+          created_at: string
+          id: number
+          name: string
+          product_conversion_rate: number | null
+          received_weight: number | null
+          tenant_id: number
+          updated_at: string
+          weight: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_shipment_order: {
+        Args: { p_id: number; p_order_id: number; p_shipment_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          order_id: number
+          shipment_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_store: {
         Args: { p_id: number; p_name: string; p_vendor_code: string }

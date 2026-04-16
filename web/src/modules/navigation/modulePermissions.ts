@@ -19,7 +19,7 @@ const NO_ACCESS: readonly ModuleAction[] = []
 const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
   superadmin: {
     order_management: ['view'],
-    shipment: ['view'],
+    shipment: NO_ACCESS,
     inventory: ['view'],
     vendor: ['view'],
     products: ['view'],
