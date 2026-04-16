@@ -165,6 +165,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import SmartImage from 'src/components/SmartImage.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -176,6 +177,7 @@ const authStore = useAuthStore()
 const storeStore = useStoreStore()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
+const router = useRouter()
 
 const selectedStoreId = computed<number | null>({
   get: () => storeStore.selectedStore?.id ?? null,
@@ -285,13 +287,13 @@ const onConfirmClear = async () => {
   confirmClearOpen.value = false
 }
 
-const onPlaceOrder = async () => {
+const onPlaceOrder = async (): Promise<number | null> => {
   const tenantId = authStore.tenantId
   const customerGroupId = authStore.customerGroupId
   const customerGroup = authStore.customerGroup
 
   if (!tenantId || !customerGroupId || !customerGroup?.name) {
-    return false
+    return null
   }
 
   const cartId = cartStore.cartSnapshot?.cart?.id ?? null
@@ -350,18 +352,25 @@ const onPlaceOrder = async () => {
     }),
   })
 
-  return Boolean(result?.success)
+  if (!result?.success || !result.data?.id) {
+    return null
+  }
+
+  return result.data.id
 }
 
 const onConfirmPlaceOrder = async () => {
-  const placed = await onPlaceOrder()
+  const orderId = await onPlaceOrder()
 
-  if (!placed) {
+  if (!orderId) {
     return
   }
 
   await clearCart()
   confirmPlaceOrderOpen.value = false
+
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/shop/orders/${orderId}`)
 }
 
 const formatPrice = (value: number | null) => {

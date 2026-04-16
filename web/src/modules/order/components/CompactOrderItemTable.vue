@@ -164,8 +164,8 @@ const compactColumns: QTableColumn[] = [
     label: 'Quantity',
     field: 'ordered_quantity',
     align: 'center',
-    style: 'background-color:#E7E7E7;font-weight:bold',
-    headerStyle: 'background-color:#E7E7E7;',
+    style: 'background-color:#f2f4f7;font-weight:bold',
+    headerStyle: 'background-color:#f2f4f7;',
     headerClasses: 'text-center'
   },
   {
@@ -173,32 +173,32 @@ const compactColumns: QTableColumn[] = [
     label: 'Cost / Line Total',
     field: 'cost_bdt',
     align: 'center',
-    style: 'background-color:#fdffb6;font-weight:bold',
-    headerStyle: 'background-color:#fdffb6;',
+    style: 'background-color:#f8f4d9;font-weight:bold',
+    headerStyle: 'background-color:#f8f4d9;',
   },
   {
     name: 'first_offer_summary',
     label: 'First Offer / Line Total / Profit',
     field: 'seller_first_offer_bdt',
     align: 'center',
-    style: 'background-color:#9bf6ff;font-weight:bold',
-    headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+    headerStyle: 'background-color:#e0f2f6;',
   },
   {
     name: 'customer_offer_summary',
     label: 'Customer Offer / Line Total / Profit',
     field: 'customer_offer_bdt',
     align: 'center',
-    style: 'background-color:#ffd6a5;font-weight:bold',
-    headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+    headerStyle: 'background-color:#f8e8d5;',
   },
   {
     name: 'final_offer_summary',
     label: 'Final Offer / Line Total / Profit',
     field: 'final_offer_bdt',
     align: 'center',
-    style: 'background-color:#bdb2ff;font-weight:bold',
-    headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+    headerStyle: 'background-color:#e8e2f8;',
   },
 ]
 </script>
@@ -270,10 +270,10 @@ const compactColumns: QTableColumn[] = [
 }
 
 .order-table-image-box {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
+  width: 1in;
+  height: 1in;
+  min-width: 1in;
+  min-height: 1in;
   border-radius: 6px;
   overflow: hidden;
   background: #ffffff;

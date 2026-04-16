@@ -417,18 +417,18 @@ const onConfirmPlaceOrder = async () => {
 }
 
 .field-qty {
-  background: #e7e7e7;
+  background: #f2f4f7;
 }
 
 .field-first-offer {
-  background: #9bf6ff;
+  background: #e0f2f6;
 }
 
 .field-customer-offer {
-  background: #ffd6a5;
+  background: #f8e8d5;
 }
 
 .field-final-offer {
-  background: #bdb2ff;
+  background: #e8e2f8;
 }
 </style>

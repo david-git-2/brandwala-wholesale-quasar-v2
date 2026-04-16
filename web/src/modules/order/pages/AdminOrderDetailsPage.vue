@@ -1,5 +1,15 @@
 <template>
   <q-page class="q-pa-md">
+    <div class="row items-center justify-between q-mb-sm">
+      <q-btn
+        flat
+        no-caps
+        color="primary"
+        icon="arrow_back"
+        label="Back to Orders"
+        @click="onBackToOrders"
+      />
+    </div>
     <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
 
     <div class="q-mt-md q-mb-md row justify-end" >
@@ -11,16 +21,6 @@
         :options="statusOptions"
         :loading="orderStore.saving"
         @update:model-value="onStatusChange"
-      />
-    </div>
-
-    <div class="row q-mb-sm">
-      <q-btn-toggle
-        v-model="tableViewMode"
-        no-caps
-        unelevated
-        toggle-color="primary"
-        :options="tableViewOptions"
       />
     </div>
 
@@ -71,6 +71,15 @@
       />
 
     </div>
+    <div class="row justify-end q-mb-sm">
+      <q-btn-toggle
+        v-model="tableViewMode"
+        no-caps
+        unelevated
+        toggle-color="primary"
+        :options="tableViewOptions"
+      />
+    </div>
     <CompactOrderItemTable
       v-if="tableViewMode === 'compact'"
       :items="orderStore.selected?.order_items ?? []"
@@ -111,13 +120,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useOrderStore } from '../stores/orderStore'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
 import type { OrderStatus } from '../types'
 import CompactOrderItemTable from '../components/CompactOrderItemTable.vue'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const orderStore = useOrderStore()
 
 const selectedStatus = ref<OrderStatus | null>(null)
@@ -280,6 +292,11 @@ const onNegotiationToggle = (nextValue: boolean) => {
 const onConfirmDisableNegotiation = async () => {
   confirmDisableNegotiationOpen.value = false
   await applyNegotiationToggle(false)
+}
+
+const onBackToOrders = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/app/orders`)
 }
 
 const onSaveRates = async () => {

@@ -185,6 +185,20 @@
           No items found
         </div>
       </template>
+
+      <template #bottom-row>
+        <q-tr class="total-row text-weight-bold">
+          <q-td
+            v-for="column in customerOfferColumns"
+            :key="`total-${column.name}`"
+            class="text-center"
+            :style="getTotalCellStyle(column.name)"
+          >
+            <span v-if="column.name === 'sl'">Total</span>
+            <span v-else>{{ formatTotalValue(column.name) }}</span>
+          </q-td>
+        </q-tr>
+      </template>
     </q-table>
 
     <div class="row justify-end q-mt-md">
@@ -349,8 +363,8 @@ const allColumns: QTableColumn[] = [
   field: 'ordered_quantity',
   align: 'center',
 
-  style: 'background-color:#E7E7E7;font-weight:bold',
-  headerStyle: 'background-color:#E7E7E7;',
+  style: 'background-color:#f2f4f7;font-weight:bold',
+  headerStyle: 'background-color:#f2f4f7;',
   headerClasses: 'text-center'
 },
   {
@@ -379,8 +393,8 @@ const allColumns: QTableColumn[] = [
     label: 'Price (GBP)',
     field: 'price_gbp',
     align: 'center',
-    style: 'background-color:#caffbf;font-weight:bold',
-  headerStyle: 'background-color:#caffbf;',
+    style: 'background-color:#e6f4ea;font-weight:bold',
+  headerStyle: 'background-color:#e6f4ea;',
 
   },
   {
@@ -388,8 +402,8 @@ const allColumns: QTableColumn[] = [
     label: 'Line Total Purchase Cost (GBP)',
     field: 'line_total_purchese_cost_gbp',
     align: 'center',
-    style: 'background-color:#caffbfff;font-weight:bold',
-  headerStyle: 'background-color:#caffbfff;',
+    style: 'background-color:#eef7f0;font-weight:bold',
+  headerStyle: 'background-color:#eef7f0;',
 
   },
   {
@@ -404,8 +418,8 @@ const allColumns: QTableColumn[] = [
     label: 'Unit Line Cost (GBP/Pc)',
     field: 'unit_line_cost_gbp',
     align: 'center',
-    style: 'background-color:#caffbfff;font-weight:bold',
-  headerStyle: 'background-color:#caffbfff;',
+    style: 'background-color:#eef7f0;font-weight:bold',
+  headerStyle: 'background-color:#eef7f0;',
 
   },
   {
@@ -413,8 +427,8 @@ const allColumns: QTableColumn[] = [
     label: 'Cost (BDT/PC)',
     field: 'cost_bdt',
     align: 'center',
-    style: 'background-color:#fdffb6;font-weight:bold',
-  headerStyle: 'background-color:#fdffb6;',
+    style: 'background-color:#f8f4d9;font-weight:bold',
+  headerStyle: 'background-color:#f8f4d9;',
 
   },
   {
@@ -422,8 +436,8 @@ const allColumns: QTableColumn[] = [
     label: 'Line Total Cost (BDT)',
     field: 'line_total_cost_bdt',
     align: 'center',
-    style: 'background-color:#fdffb6;font-weight:bold',
-  headerStyle: 'background-color:#fdffb6;',
+    style: 'background-color:#f8f4d9;font-weight:bold',
+  headerStyle: 'background-color:#f8f4d9;',
 
   },
   {
@@ -431,8 +445,8 @@ const allColumns: QTableColumn[] = [
     label: 'First Offer (BDT)',
     field: 'seller_first_offer_bdt',
     align: 'center',
-    style: 'background-color:#9bf6ff;font-weight:bold',
-  headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+  headerStyle: 'background-color:#e0f2f6;',
 
   },
   {
@@ -440,8 +454,8 @@ const allColumns: QTableColumn[] = [
     label: 'First Offer Total (BDT)',
     field: 'seller_first_offer_bdt_total',
     align: 'center',
-    style: 'background-color:#9bf6ff;font-weight:bold',
-  headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+  headerStyle: 'background-color:#e0f2f6;',
 
 
   },
@@ -450,8 +464,8 @@ const allColumns: QTableColumn[] = [
     label: 'First Offer Profit /Pc',
     field: 'seller_first_offer_profit_pc',
     align: 'center',
-    style: 'background-color:#9bf6ff;font-weight:bold',
-  headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+  headerStyle: 'background-color:#e0f2f6;',
 
 
   },
@@ -461,8 +475,8 @@ const allColumns: QTableColumn[] = [
     field: 'seler_first_offer_profit_pc_perc',
     align: 'center',
     format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
-    style: 'background-color:#9bf6ff;font-weight:bold',
-  headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+  headerStyle: 'background-color:#e0f2f6;',
 
 
   },
@@ -471,8 +485,8 @@ const allColumns: QTableColumn[] = [
     label: 'First Offer Profit Total',
     field: 'seller_first_offer_profit_total',
     align: 'center',
-    style: 'background-color:#9bf6ff;font-weight:bold',
-  headerStyle: 'background-color:#9bf6ff;',
+    style: 'background-color:#e0f2f6;font-weight:bold',
+  headerStyle: 'background-color:#e0f2f6;',
 
 
   },
@@ -481,8 +495,8 @@ const allColumns: QTableColumn[] = [
     label: 'Customer Offer (BDT)',
     field: 'customer_offer_bdt',
     align: 'center',
-    style: 'background-color:#ffd6a5;font-weight:bold',
-  headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+  headerStyle: 'background-color:#f8e8d5;',
 
 
   },
@@ -491,8 +505,8 @@ const allColumns: QTableColumn[] = [
     label: 'Customer Offer Total (BDT)',
     field: 'customer_offer_bdt_total',
     align: 'center',
-    style: 'background-color:#ffd6a5;font-weight:bold',
-  headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+  headerStyle: 'background-color:#f8e8d5;',
 
   },
   {
@@ -500,8 +514,8 @@ const allColumns: QTableColumn[] = [
     label: 'Customer Offer Profit /Pc',
     field: 'customer_offer_profit_pc',
     align: 'center',
-    style: 'background-color:#ffd6a5;font-weight:bold',
-  headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+  headerStyle: 'background-color:#f8e8d5;',
 
   },
   {
@@ -509,8 +523,8 @@ const allColumns: QTableColumn[] = [
     label: 'Customer Offer Profit Total',
     field: 'customer_offer_profit_total',
     align: 'center',
-    style: 'background-color:#ffd6a5;font-weight:bold',
-  headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+  headerStyle: 'background-color:#f8e8d5;',
 
   },
   {
@@ -519,8 +533,8 @@ const allColumns: QTableColumn[] = [
     field: 'customer_offer_profit_pc_perc',
     align: 'center',
     format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
-    style: 'background-color:#ffd6a5;font-weight:bold',
-  headerStyle: 'background-color:#ffd6a5;',
+    style: 'background-color:#f8e8d5;font-weight:bold',
+  headerStyle: 'background-color:#f8e8d5;',
 
   },
   {
@@ -528,8 +542,8 @@ const allColumns: QTableColumn[] = [
     label: 'Final Offer (BDT)',
     field: 'final_offer_bdt',
     align: 'center',
-    style: 'background-color:#bdb2ff;font-weight:bold',
-  headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+  headerStyle: 'background-color:#e8e2f8;',
 
 
   },
@@ -538,8 +552,8 @@ const allColumns: QTableColumn[] = [
     label: 'Final Offer Line Total (BDT)',
     field: 'final_offer_bdt_total',
     align: 'center',
-    style: 'background-color:#bdb2ff;font-weight:bold',
-  headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+  headerStyle: 'background-color:#e8e2f8;',
 
   },
   {
@@ -547,8 +561,8 @@ const allColumns: QTableColumn[] = [
     label: 'Final Offer Profit /Pc',
     field: 'final_offer_profit_pc',
     align: 'center',
-    style: 'background-color:#bdb2ff;font-weight:bold',
-  headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+  headerStyle: 'background-color:#e8e2f8;',
 
   },
   {
@@ -556,8 +570,8 @@ const allColumns: QTableColumn[] = [
     label: 'Final Offer Profit Total',
     field: 'final_offer_profit_total',
     align: 'center',
-    style: 'background-color:#bdb2ff;font-weight:bold',
-  headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+  headerStyle: 'background-color:#e8e2f8;',
 
   },
   {
@@ -566,8 +580,8 @@ const allColumns: QTableColumn[] = [
     field: 'final_offer_profit_pc_perc',
     align: 'center',
     format: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2)),
-    style: 'background-color:#bdb2ff;font-weight:bold',
-  headerStyle: 'background-color:#bdb2ff;',
+    style: 'background-color:#e8e2f8;font-weight:bold',
+  headerStyle: 'background-color:#e8e2f8;',
 
   },
 ]
@@ -717,6 +731,66 @@ const customerOfferColumns = computed(() => {
 
   return allColumns.filter((column) => visibleColumnNames.includes(column.name))
 })
+
+const totalsByColumn = computed<Record<string, number | null>>(() => {
+  const totals: Record<string, number | null> = {}
+
+  customerOfferColumns.value.forEach((column) => {
+    let sum = 0
+    let hasNumeric = false
+
+    tableRows.value.forEach((row) => {
+      const raw = (row as Record<string, unknown>)[column.name]
+      if (typeof raw === 'number' && Number.isFinite(raw)) {
+        sum += raw
+        hasNumeric = true
+      }
+    })
+
+    totals[column.name] = hasNumeric ? sum : null
+  })
+
+  return totals
+})
+
+const formatTotalValue = (columnName: string) => {
+  const value = totalsByColumn.value[columnName]
+  if (value == null) {
+    return '-'
+  }
+
+  const rounded = Math.round(value * 100) / 100
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
+}
+
+const totalCellBackgroundByColumn: Record<string, string> = {
+  ordered_quantity: '#f2f4f7',
+  price_gbp: '#e6f4ea',
+  line_total_purchese_cost_gbp: '#eef7f0',
+  unit_line_cost_gbp: '#eef7f0',
+  cost_bdt: '#f8f4d9',
+  line_total_cost_bdt: '#f8f4d9',
+  seller_first_offer_bdt: '#e0f2f6',
+  seller_first_offer_bdt_total: '#e0f2f6',
+  seller_first_offer_profit_pc: '#e0f2f6',
+  seler_first_offer_profit_pc_perc: '#e0f2f6',
+  seller_first_offer_profit_total: '#e0f2f6',
+  customer_offer_bdt: '#f8e8d5',
+  customer_offer_bdt_total: '#f8e8d5',
+  customer_offer_profit_pc: '#f8e8d5',
+  customer_offer_profit_total: '#f8e8d5',
+  customer_offer_profit_pc_perc: '#f8e8d5',
+  final_offer_bdt: '#e8e2f8',
+  final_offer_bdt_total: '#e8e2f8',
+  final_offer_profit_pc: '#e8e2f8',
+  final_offer_profit_total: '#e8e2f8',
+  final_offer_profit_pc_perc: '#e8e2f8',
+}
+
+const getTotalCellStyle = (columnName: string) => {
+  const backgroundColor = totalCellBackgroundByColumn[columnName]
+  return backgroundColor ? { backgroundColor } : {}
+}
 
 const parseNullableNumber = (value: string | number | null) => {
   if (value == null || value === '') {
