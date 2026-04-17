@@ -3,12 +3,14 @@ import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { orderService } from '../services/orderService'
 import type {
+  Order,
   OrderDeleteInput,
   OrderGetByIdInput,
   OrderItemBulkUpdateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
   OrderListInput,
+  OrderServiceResult,
   OrderStoreState,
   OrderUpdateInput,
 } from '../types'
@@ -309,7 +311,7 @@ export const useOrderStore = defineStore('order', {
         quantity: number
         minimum_quantity?: number | null
       }>
-    }) {
+    }): Promise<OrderServiceResult<Order>> {
       this.saving = true
       this.error = null
 
@@ -379,9 +381,10 @@ export const useOrderStore = defineStore('order', {
         )
 
         if (!createItemsResult.success) {
-          this.error = createItemsResult.error ?? 'Failed to create order items.'
+          const error = createItemsResult.error ?? 'Failed to create order items.'
+          this.error = error
           handleApiFailure(createItemsResult, this.error)
-          return createItemsResult
+          return { success: false, error }
         }
 
         showSuccessNotification('Order placed successfully.')

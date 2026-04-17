@@ -13,6 +13,7 @@ import type {
   Shipment,
   ShipmentItem,
   ShipmentOrder,
+  UpdateShipmentInput,
   UpdateShipmentFieldInput,
   UpdateShipmentOrderInput,
 } from '../types'
@@ -69,12 +70,21 @@ const createShipment = async (payload: CreateShipmentInput): Promise<Shipment> =
   return data as Shipment
 }
 
-const updateShipmentField = async (payload: UpdateShipmentFieldInput): Promise<Shipment> => {
-  const { data, error } = await db.rpc('update_shipment', {
-    p_id: payload.id,
-    p_field: payload.field,
-    p_value: payload.value == null ? '' : String(payload.value),
-  })
+const updateShipment = async (payload: UpdateShipmentInput): Promise<Shipment> => {
+  const entries = Object.entries(payload.patch).filter(([, value]) => value !== undefined)
+
+  if (!entries.length) {
+    throw new Error('No fields provided for shipment update.')
+  }
+
+  const normalizedPatch = Object.fromEntries(entries)
+
+  const { data, error } = await db
+    .from('shipments')
+    .update(normalizedPatch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
 
   if (error) {
     throw error
@@ -86,6 +96,14 @@ const updateShipmentField = async (payload: UpdateShipmentFieldInput): Promise<S
 
   return data as Shipment
 }
+
+const updateShipmentField = async (payload: UpdateShipmentFieldInput): Promise<Shipment> =>
+  updateShipment({
+    id: payload.id,
+    patch: {
+      [payload.field]: payload.value,
+    },
+  })
 
 const deleteShipment = async (payload: DeleteShipmentInput): Promise<void> => {
   const { error } = await db.rpc('delete_shipment', {
@@ -269,6 +287,7 @@ export const shipmentRepository = {
   listShipments,
   getShipmentById,
   createShipment,
+  updateShipment,
   updateShipmentField,
   deleteShipment,
   listShipmentItems,

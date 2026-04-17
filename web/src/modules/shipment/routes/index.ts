@@ -19,6 +19,31 @@ const shipmentRoutes: RouteRecordRaw[] = [
           requiredModule: 'shipment',
         }),
       },
+      {
+        path: ':id',
+        name: 'app-shipment-details-page',
+        component: () => import('../pages/AdminShipmentDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'shipment',
+        }),
+      },
+      {
+        path: ':id/orders',
+        name: 'app-shipment-order-list-page',
+        component: () => import('../pages/AdminOrderList.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'shipment',
+        }),
+      },
+
     ],
   },
 ]

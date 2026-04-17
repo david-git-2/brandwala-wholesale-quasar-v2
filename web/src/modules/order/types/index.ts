@@ -56,6 +56,7 @@ export type OrderListInput = {
   fields?: string[]
   customer_group_id?: number | null
   store_id?: number | null
+  shipment_id?: number | null
   status?: OrderStatus | null
   page?: number
   page_size?: number
@@ -84,7 +85,12 @@ export type OrderUpdateInput = {
   patch: Partial<Omit<Order, 'id' | 'created_at' | 'updated_at'>>
 }
 
-export type OrderCreateInput = Omit<Order, 'id' | 'created_at' | 'updated_at'>
+export type OrderCreateInput = Omit<
+  Order,
+  'id' | 'created_at' | 'updated_at' | 'shipment_id'
+> & {
+  shipment_id?: number | null
+}
 
 export type OrderItemUpdateInput = {
   id: number

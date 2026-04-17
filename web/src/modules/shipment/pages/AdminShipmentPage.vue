@@ -1,50 +1,115 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="text-h5 q-mb-md text-weight-bold">Shipment</div>
+  <q-page padding>
+    <div class="text-h5">Shipment Management</div>
+    <div class="row justify-end">
+      <q-btn label="Create Shipment" color="primary" @click="openCreate" />
+    </div>
+    <CreateShipmentDialog v-model="showDialog" :initialData="selectedShipment" @submit="onSubmit" />
+    <ShipmentListCard @edit="onShipmentEdit" @delete="onShipmentDelete" @select="onSelectShipment" />
 
-    <q-banner v-if="shipmentStore.error" class="bg-red-1 text-negative q-mb-md">
-      {{ shipmentStore.error }}
-    </q-banner>
-
-    <q-banner v-if="shipmentStore.loading" class="bg-grey-2 text-grey-8 q-mb-md">
-      Loading shipments...
-    </q-banner>
-
-    <q-card flat bordered>
-      <q-card-section class="text-subtitle1">Shipments</q-card-section>
-      <q-list separator>
-        <q-item v-for="shipment in shipmentStore.shipments" :key="shipment.id">
-          <q-item-section>
-            <q-item-label>#{{ shipment.id }} {{ shipment.name }}</q-item-label>
-            <q-item-label caption>
-              Weight: {{ shipment.weight ?? 'N/A' }} | Received: {{ shipment.received_weight ?? 'N/A' }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item v-if="!shipmentStore.loading && !shipmentStore.shipments.length">
-          <q-item-section>
-            <q-item-label>No shipments found.</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card>
+    <q-dialog v-model="showDeleteDialog" persistent>
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-h6">Delete Shipment</q-card-section>
+        <q-card-section>
+          Are you sure you want to delete
+          <strong>{{ pendingDeleteShipment?.name ?? 'this shipment' }}</strong
+          >?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="closeDeleteDialog" />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="shipmentStore.saving"
+            @click="confirmDeleteShipment"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import CreateShipmentDialog from '../components/ShipmentDialog.vue'
 import { useShipmentStore } from '../stores/shipmentStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import ShipmentListCard from '../components/ShipmentListCard.vue'
+import type { Shipment } from '../types'
 
-const authStore = useAuthStore()
 const shipmentStore = useShipmentStore()
+const tenantStore = useTenantStore()
+const authStore = useAuthStore()
+const router = useRouter()
 
-onMounted(async () => {
-  if (!authStore.tenantId) {
+const showDialog = ref(false)
+const selectedShipment = ref<{ id?: number; name?: string } | null>(null)
+const showDeleteDialog = ref(false)
+const pendingDeleteShipment = ref<Shipment | null>(null)
+
+const openCreate = () => {
+  selectedShipment.value = null
+  showDialog.value = true
+}
+
+const onSubmit = async (data: { name: string }) => {
+  if (selectedShipment.value?.id) {
+    console.log('Updating shipment with data:', data)
+    await shipmentStore.updateShipment({
+      id: selectedShipment.value.id,
+      patch: {
+        name: data.name,
+      },
+    })
+  } else {
+    console.log('Creating shipment with data:', data)
+    await shipmentStore.createShipment({
+      name: data.name,
+      tenant_id: tenantStore.selectedTenant?.id ?? 1,
+    })
+  }
+}
+
+const onShipmentEdit = (shipment: (typeof shipmentStore.shipments)[number]) => {
+  selectedShipment.value = {
+    id: shipment.id,
+    name: shipment.name,
+  }
+  showDialog.value = true
+}
+
+const onShipmentDelete = (shipment: Shipment) => {
+  pendingDeleteShipment.value = shipment
+  showDeleteDialog.value = true
+}
+
+const closeDeleteDialog = () => {
+  pendingDeleteShipment.value = null
+  showDeleteDialog.value = false
+}
+
+const confirmDeleteShipment = async () => {
+  if (!pendingDeleteShipment.value) {
     return
   }
 
-  await shipmentStore.fetchShipments(authStore.tenantId)
+  const result = await shipmentStore.deleteShipment({
+    id: pendingDeleteShipment.value.id,
+  })
+
+  if (result.success) {
+    closeDeleteDialog()
+  }
+}
+
+const onSelectShipment = async (shipment: Shipment) => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/app/shipment/${shipment.id}`)
+}
+
+onMounted(async () => {
+  await shipmentStore.fetchShipments(tenantStore.selectedTenant?.id ?? 1)
 })
 </script>

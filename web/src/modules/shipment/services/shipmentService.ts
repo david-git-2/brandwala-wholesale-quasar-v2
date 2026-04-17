@@ -13,6 +13,7 @@ import type {
   ShipmentItem,
   ShipmentOrder,
   ShipmentServiceResult,
+  UpdateShipmentInput,
   UpdateShipmentFieldInput,
   UpdateShipmentOrderInput,
 } from '../types'
@@ -57,11 +58,11 @@ const createShipment = async (
   }
 }
 
-const updateShipmentField = async (
-  payload: UpdateShipmentFieldInput,
+const updateShipment = async (
+  payload: UpdateShipmentInput,
 ): Promise<ShipmentServiceResult<Shipment>> => {
   try {
-    const data = await shipmentRepository.updateShipmentField(payload)
+    const data = await shipmentRepository.updateShipment(payload)
     return { success: true, data }
   } catch (error) {
     return {
@@ -69,6 +70,17 @@ const updateShipmentField = async (
       error: error instanceof Error ? error.message : 'Failed to update shipment.',
     }
   }
+}
+
+const updateShipmentField = async (
+  payload: UpdateShipmentFieldInput,
+): Promise<ShipmentServiceResult<Shipment>> => {
+  return updateShipment({
+    id: payload.id,
+    patch: {
+      [payload.field]: payload.value,
+    },
+  })
 }
 
 const deleteShipment = async (
@@ -233,6 +245,7 @@ export const shipmentService = {
   listShipments,
   getShipmentById,
   createShipment,
+  updateShipment,
   updateShipmentField,
   deleteShipment,
   listShipmentItems,

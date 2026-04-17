@@ -43,16 +43,23 @@ export type CreateShipmentInput = {
   tenant_id: number
 }
 
+export type ShipmentUpdateField =
+  | 'name'
+  | 'product_conversion_rate'
+  | 'cargo_conversion_rate'
+  | 'cargo_rate'
+  | 'weight'
+  | 'received_weight'
+
 export type UpdateShipmentFieldInput = {
   id: number
-  field:
-    | 'name'
-    | 'product_conversion_rate'
-    | 'cargo_conversion_rate'
-    | 'cargo_rate'
-    | 'weight'
-    | 'received_weight'
+  field: ShipmentUpdateField
   value: string | number | null
+}
+
+export type UpdateShipmentInput = {
+  id: number
+  patch: Partial<Pick<Shipment, ShipmentUpdateField>>
 }
 
 export type DeleteShipmentInput = {

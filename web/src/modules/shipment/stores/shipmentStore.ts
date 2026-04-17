@@ -13,6 +13,7 @@ import type {
   DeleteShipmentItemQuantityInput,
   DeleteShipmentOrderInput,
   ShipmentStoreState,
+  UpdateShipmentInput,
   UpdateShipmentFieldInput,
   UpdateShipmentOrderInput,
 } from '../types'
@@ -58,16 +59,26 @@ export const useShipmentStore = defineStore('shipment', {
       this.error = null
 
       try {
-        const result = await shipmentService.getShipmentById(id)
+        const [shipmentResult, itemsResult] = await Promise.all([
+          shipmentService.getShipmentById(id),
+          shipmentService.listShipmentItems(id),
+        ])
 
-        if (!result.success) {
-          this.error = result.error ?? 'Failed to load shipment.'
-          handleApiFailure(result, this.error)
-          return result
+        if (!shipmentResult.success) {
+          this.error = shipmentResult.error ?? 'Failed to load shipment.'
+          handleApiFailure(shipmentResult, this.error)
+          return shipmentResult
         }
 
-        this.selectedShipment = result.data ?? null
-        return result
+        if (!itemsResult.success) {
+          this.error = itemsResult.error ?? 'Failed to load shipment items.'
+          handleApiFailure(itemsResult, this.error)
+          return itemsResult
+        }
+
+        this.selectedShipment = shipmentResult.data ?? null
+        this.shipmentItems = itemsResult.data ?? []
+        return shipmentResult
       } finally {
         this.loading = false
       }
@@ -97,12 +108,12 @@ export const useShipmentStore = defineStore('shipment', {
       }
     },
 
-    async updateShipmentField(payload: UpdateShipmentFieldInput) {
+    async updateShipment(payload: UpdateShipmentInput) {
       this.saving = true
       this.error = null
 
       try {
-        const result = await shipmentService.updateShipmentField(payload)
+        const result = await shipmentService.updateShipment(payload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update shipment.'
@@ -126,6 +137,15 @@ export const useShipmentStore = defineStore('shipment', {
       } finally {
         this.saving = false
       }
+    },
+
+    async updateShipmentField(payload: UpdateShipmentFieldInput) {
+      return this.updateShipment({
+        id: payload.id,
+        patch: {
+          [payload.field]: payload.value,
+        },
+      })
     },
 
     async deleteShipment(payload: DeleteShipmentInput) {
