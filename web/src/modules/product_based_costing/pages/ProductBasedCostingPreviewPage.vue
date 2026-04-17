@@ -368,9 +368,9 @@ const printPage = () => {
   isPrintMode.value = true
   void nextTick(async () => {
     // Ensure full list is rendered and visible images are loaded before opening print dialog.
-    const root = document.querySelector('.preview-page__table-card') as HTMLElement | null
+    const root = document.querySelector<HTMLElement>('.preview-page__table-card')
     if (root) {
-      const images = Array.from(root.querySelectorAll('img')) as HTMLImageElement[]
+      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'))
       await Promise.all(
         images.map(
           (img) =>
