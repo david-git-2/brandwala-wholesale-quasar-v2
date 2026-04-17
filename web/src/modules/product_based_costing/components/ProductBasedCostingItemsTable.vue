@@ -389,7 +389,13 @@
 import { computed, ref, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import { roundBdtUpToZeroOrFive } from 'src/modules/costingFile/utils/costingCalculations';
+import {
+  calculateOfferPriceBdt,
+  getUnitCostBdt as calculateUnitCostBdt,
+  getUnitTotalCostGbp as calculateUnitTotalCostGbp,
+  normalizeOfferPriceBdt,
+  toNumberSafe,
+} from '../utils/pricing';
 
 interface ProductBasedCostingItem {
   id: number;
@@ -484,10 +490,7 @@ const statusOptions = [
   { label: 'Rejected', value: 'rejected' },
 ];
 
-const toNumber = (value: unknown) => {
-  const num = Number(value ?? 0);
-  return Number.isNaN(num) ? 0 : num;
-};
+const toNumber = (value: unknown) => toNumberSafe(value);
 
 const toText = (value: unknown, fallback = '-') => {
   if (typeof value !== 'string') return fallback;
@@ -517,7 +520,13 @@ const getUnitTotalCostGbp = (
   productWeight: number,
   packageWeight: number,
   cargoRate: number,
-) => priceGbp + getUnitCargoCostGbp(productWeight, packageWeight, cargoRate);
+) =>
+  calculateUnitTotalCostGbp({
+    priceGbp,
+    productWeight,
+    packageWeight,
+    cargoRate,
+  });
 
 const getUnitCostBdt = (
   priceGbp: number,
@@ -525,9 +534,14 @@ const getUnitCostBdt = (
   packageWeight: number,
   cargoRate: number,
   conversionRate: number,
-) => Math.ceil(
-  getUnitTotalCostGbp(priceGbp, productWeight, packageWeight, cargoRate) * conversionRate,
-);
+) =>
+  calculateUnitCostBdt({
+    priceGbp,
+    productWeight,
+    packageWeight,
+    cargoRate,
+    conversionRate,
+  });
 
 const buildRows = (): ProductBasedCostingTableRow[] => {
   return (props.items ?? []).map((item, index) => {
@@ -541,14 +555,14 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const cargoRate = toNumber(props.cargoRate);
     const conversionRate = toNumber(props.conversionRate);
     const profitRate = toNumber(props.profitRate);
-    const costBdt = getUnitCostBdt(
+    const calculatedOfferPriceBdt = calculateOfferPriceBdt({
       priceGbp,
       productWeight,
       packageWeight,
       cargoRate,
       conversionRate,
-    );
-    const calculatedOfferPriceBdt = roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate) / 100);
+      profitRate,
+    });
 
     return {
       id: item.id,
@@ -566,7 +580,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       conversionRate,
       profitRate,
       offerPriceBdt:
-        item.offer_price == null ? calculatedOfferPriceBdt : toNumber(item.offer_price),
+        item.offer_price == null ? calculatedOfferPriceBdt : normalizeOfferPriceBdt(item.offer_price),
       status: toText(item.status, 'pending').toLowerCase(),
       raw: { ...item },
     };
@@ -894,7 +908,7 @@ const onQtySave = (row: ProductBasedCostingTableRow) => {
 };
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
-  row.offerPriceBdt = toNumber(row.offerPriceBdt);
+  row.offerPriceBdt = normalizeOfferPriceBdt(row.offerPriceBdt);
   emitRowChange(row, 'offer_price');
 };
 

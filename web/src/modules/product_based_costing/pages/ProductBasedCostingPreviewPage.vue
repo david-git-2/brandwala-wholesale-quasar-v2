@@ -164,9 +164,9 @@ import type { QTableColumn } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
 import SmartImage from 'src/components/SmartImage.vue'
-import { roundBdtUpToZeroOrFive } from 'src/modules/costingFile/utils/costingCalculations'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types'
+import { calculateOfferPriceBdt, normalizeOfferPriceBdt, toNumberSafe } from '../utils/pricing'
 
 type PreviewRow = {
   id: number
@@ -235,24 +235,24 @@ const formatNumber = (value: number | null | undefined) => {
 }
 
 const toNumber = (value: unknown) => {
-  const num = Number(value ?? 0)
-  return Number.isNaN(num) ? 0 : num
+  return toNumberSafe(value)
 }
 
 const getOfferPriceBdt = (item: ProductBasedCostingItem) => {
-  if (item.offer_price != null) {
-    return toNumber(item.offer_price)
+  // Always prefer saved cell value from offer_price, then round to nearest upper 0/5.
+  const rawOffer = toNumber(item.offer_price)
+  if (rawOffer > 0) {
+    return normalizeOfferPriceBdt(rawOffer)
   }
 
-  const priceGbp = toNumber(item.price_gbp)
-  const productWeight = toNumber(item.product_weight)
-  const packageWeight = toNumber(item.package_weight)
-
-  const cargoCostGbp = ((productWeight + packageWeight) / 1000) * cargoRate.value
-  const totalCostGbp = priceGbp + cargoCostGbp
-  const costBdt = roundBdtUpToZeroOrFive(totalCostGbp * conversionRate.value)
-
-  return roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate.value) / 100)
+  return calculateOfferPriceBdt({
+    priceGbp: toNumber(item.price_gbp),
+    productWeight: toNumber(item.product_weight),
+    packageWeight: toNumber(item.package_weight),
+    cargoRate: cargoRate.value,
+    conversionRate: conversionRate.value,
+    profitRate: profitRate.value,
+  })
 }
 
 const rows = computed<PreviewRow[]>(() =>

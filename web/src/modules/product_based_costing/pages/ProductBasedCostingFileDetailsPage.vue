@@ -133,6 +133,8 @@ import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingI
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import type { ProductBasedCostingItem } from '../types';
+import { productBasedCostingService } from '../services/productBasedCostingService';
+import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
 const productStore = useProductStore();
 
 const route = useRoute();
@@ -156,10 +158,37 @@ const onStatusChange = async () => {
     return;
   }
 
-  await store.updateProductBasedCostingFile({
+  const fileUpdateResult = await store.updateProductBasedCostingFile({
     id: fileId.value,
     status: status.value,
   });
+
+  if (!fileUpdateResult?.success || status.value !== 'offered') {
+    return;
+  }
+
+  const cargoRate = cargoRateValue.value;
+  const conversionRate = conversionRateValue.value;
+  const profitRate = profitRateValue.value;
+
+  const updates = (store.costingItems ?? []).map((item) => {
+    const nextOfferPrice = calculateOfferPriceBdt({
+      priceGbp: toNumberSafe(item.price_gbp),
+      productWeight: toNumberSafe(item.product_weight),
+      packageWeight: toNumberSafe(item.package_weight),
+      cargoRate,
+      conversionRate,
+      profitRate,
+    });
+
+    return productBasedCostingService.updateProductBasedCostingItem({
+      id: item.id,
+      offer_price: nextOfferPrice,
+    });
+  });
+
+  await Promise.allSettled(updates);
+  await store.fetchProductBasedCostingItems(fileId.value);
 };
 
 const loadData = async () => {
