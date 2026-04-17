@@ -8,6 +8,7 @@
       row-key="id"
       hide-pagination
       :pagination="{ rowsPerPage: 0 }"
+      :table-style="{ maxHeight: '72vh' }"
       class="costing-q-table"
     >
       <template #body="slotProps">
@@ -294,7 +295,9 @@
 
       <template #bottom-row>
         <q-tr class="totals-row">
-          <q-td class="totals-row__cell col-sl text-center">Total</q-td>
+          <q-td class="totals-row__cell col-sl text-center">
+            Total
+          </q-td>
           <q-td class="totals-row__cell col-image" />
           <q-td class="totals-row__cell col-name">
             {{ tableRows.length }} Items
@@ -581,7 +584,13 @@ watch(
 );
 
 const columns = computed<QTableColumn[]>(() => [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    style: 'text-align: center;',
+  },
   {
     name: 'image',
     label: 'Image',
@@ -986,10 +995,63 @@ const totals = computed(() => {
 
 .costing-q-table {
   max-width: 100%;
+  height: 72vh;
 }
 
 :deep(.q-table) {
   min-width: 2200px;
+}
+
+.product-based-costing-table :deep(.costing-q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.product-based-costing-table :deep(.costing-q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 1;
+}
+
+.product-based-costing-table :deep(.costing-q-table thead tr + tr th) {
+  top: 48px;
+  z-index: 3;
+}
+
+.product-based-costing-table :deep(.costing-q-table td:first-child),
+.product-based-costing-table :deep(.costing-q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.product-based-costing-table :deep(.costing-q-table td:nth-child(2)),
+.product-based-costing-table :deep(.costing-q-table th:nth-child(2)) {
+  position: sticky;
+  left: 60px;
+}
+
+.product-based-costing-table :deep(.costing-q-table td:first-child) {
+  z-index: 1;
+  background: #f8f9fa;
+}
+
+.product-based-costing-table :deep(.costing-q-table td:nth-child(2)) {
+  z-index: 1;
+  background: #fcfcfc;
+}
+
+.product-based-costing-table :deep(.costing-q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: #f8f9fa;
+}
+
+.product-based-costing-table :deep(.costing-q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: #fcfcfc;
+}
+
+.product-based-costing-table :deep(.costing-q-table tbody) {
+  scroll-margin-top: 48px;
 }
 
 .table-image {
