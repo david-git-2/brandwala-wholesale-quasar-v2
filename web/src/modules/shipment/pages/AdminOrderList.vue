@@ -52,7 +52,7 @@ const onBack = async () => {
 const onAddToShipment=()=>{
   console.log('add to shipment')
 }
-onMounted(()=>{
-  orderStore.fetchOrders({ shipment_id: null,status:'ordered' })
+onMounted(() => {
+  void orderStore.fetchOrders({ shipment_id: null, status: 'ordered' })
 })
 </script>
