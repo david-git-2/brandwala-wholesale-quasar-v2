@@ -3,13 +3,13 @@
 .venv/
 .env
 .env.*
-!.env.example
 
 web/node_modules
 web/.quasar
 web/dist
 web/.env
 web/.env.*
+!web/.env.example
 supabase/.temp
 web/quasar.config.*.temporary.compiled*
 web/npm-debug.log*

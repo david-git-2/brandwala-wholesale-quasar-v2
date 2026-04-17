@@ -240,10 +240,12 @@ const openPreview = () => {
     return
   }
 
-  void router.push({
+  const previewRoute = router.resolve({
     name: 'product-based-costing-file-preview-page',
     params: { id: fileId.value },
   })
+
+  window.open(previewRoute.href, '_blank', 'noopener')
 }
 
 const openEditDialog = (item: ProductBasedCostingItem) => {

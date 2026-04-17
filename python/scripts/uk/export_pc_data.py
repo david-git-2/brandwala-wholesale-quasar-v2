@@ -6,6 +6,7 @@ from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import openpyxl
+import requests
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -16,10 +17,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 ROOT_ENV_FILE = os.path.join(ROOT_DIR, ".env")
+WEB_ENV_FILE = os.path.join(ROOT_DIR, "web", ".env")
 
 
 def load_env_file(path: str):
-    """Minimal .env loader for root-level config without extra dependencies."""
+    """Minimal .env loader without extra dependencies."""
     if not os.path.exists(path):
         return
     with open(path, "r", encoding="utf-8") as f:
@@ -43,6 +45,10 @@ def load_env_file(path: str):
                 os.environ.setdefault(key, value)
 
 
+# Shared env strategy:
+# 1) Prefer web/.env as single source for web + python settings.
+# 2) Fall back to root .env for backward compatibility.
+load_env_file(WEB_ENV_FILE)
 load_env_file(ROOT_ENV_FILE)
 
 def env_path(env_key: str, default_abs_path: str) -> str:
@@ -56,6 +62,8 @@ DEFAULT_XLSX = env_path("PY_UK_PC_XLSX_PATH", os.path.join(ROOT_DIR, "python", "
 DEFAULT_OUT_JSON = env_path("PY_UK_PC_OUT_JSON_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_data.json"))
 DEFAULT_OUT_MANIFEST = env_path("PY_UK_PC_OUT_MANIFEST_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_manifest.json"))
 DEFAULT_OUT_IMAGES = env_path("PY_UK_PC_OUT_IMAGES_DIR", os.path.join(ROOT_DIR, "python", "images", "uk", "out_images"))
+DEFAULT_SUPABASE_BUCKET = os.getenv("PY_SUPABASE_STORAGE_BUCKET", "product-images").strip() or "product-images"
+DEFAULT_SUPABASE_PREFIX = os.getenv("PY_SUPABASE_STORAGE_PREFIX", "uk/pc").strip().strip("/")
 
 CREDS_DIR = env_path("PY_GOOGLE_CREDS_DIR", os.path.join(ROOT_DIR, "python", "credentials"))
 OAUTH_CLIENT_JSON = env_path("PY_GOOGLE_OAUTH_CLIENT_JSON", os.path.join(CREDS_DIR, "oauth_client.json"))
@@ -345,6 +353,37 @@ def format_duration(seconds: float) -> str:
     return f"{s}s"
 
 
+def supabase_public_url(base_url: str, bucket: str, object_path: str) -> str:
+    base = base_url.rstrip("/")
+    return f"{base}/storage/v1/object/public/{bucket}/{object_path}"
+
+
+def upload_to_supabase_storage(
+    supabase_url: str,
+    api_key: str,
+    bucket: str,
+    object_path: str,
+    local_path: str,
+) -> tuple[str, str]:
+    """
+    Upload/replace object in Supabase Storage.
+    Returns (public_url, action) where action is 'created_or_updated'.
+    """
+    base = supabase_url.rstrip("/")
+    url = f"{base}/storage/v1/object/{bucket}/{object_path}"
+    headers = {
+        "apikey": api_key,
+        "Authorization": f"Bearer {api_key}",
+        "x-upsert": "true",
+        "Content-Type": "application/octet-stream",
+    }
+    with open(local_path, "rb") as f:
+        resp = requests.post(url, headers=headers, data=f, timeout=120)
+    if not resp.ok:
+        raise RuntimeError(f"supabase upload failed ({resp.status_code}): {resp.text}")
+    return supabase_public_url(base, bucket, object_path), "created_or_updated"
+
+
 def main():
     t0 = time.perf_counter()
 
@@ -353,12 +392,19 @@ def main():
     OUT_JSON_PATH = DEFAULT_OUT_JSON
     OUT_IMAGES_DIR = DEFAULT_OUT_IMAGES
 
-    # Your Drive folder is already public (Anyone with link).
-    DRIVE_FOLDER_ID = DEFAULT_DRIVE_FOLDER_ID
-    if not DRIVE_FOLDER_ID:
+    SUPABASE_URL = str(os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "").strip()
+    SUPABASE_ADMIN_KEY = str(
+        os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
+    ).strip()
+    SUPABASE_BUCKET = DEFAULT_SUPABASE_BUCKET
+    SUPABASE_PREFIX = DEFAULT_SUPABASE_PREFIX
+    if not SUPABASE_URL:
         raise ValueError(
-            "Missing PY_GOOGLE_DRIVE_FOLDER_ID in root .env. "
-            "Set it to the target Google Drive folder ID before running export."
+            "Missing SUPABASE_URL or VITE_SUPABASE_URL in web/.env."
+        )
+    if not SUPABASE_ADMIN_KEY:
+        raise ValueError(
+            "Missing SUPABASE_SECRET_KEY (preferred) or SUPABASE_SERVICE_ROLE_KEY (legacy) in web/.env."
         )
 
     DEFAULT_HEADER_ROW = 4
@@ -392,7 +438,7 @@ def main():
         "  - product_id = barcode + '_' + product_code\n"
         "\n"
         "⚡ Speed mode enabled:\n"
-        "  - Your Drive folder is already public → we will NOT set per-file permissions.\n"
+        "  - Supabase Storage upsert enabled (same filename replaces old image).\n"
         f"  - Parallel uploads enabled (workers={MAX_WORKERS}).\n"
         "\n"
         "👉 You will be asked for:\n"
@@ -581,43 +627,27 @@ def main():
         f"unique_keys={len(local_path_by_key)}\n"
     )
 
-    # OAuth once (IMPORTANT): do NOT do OAuth inside threads.
-    log("☁️ Preparing Google Drive credentials...")
-    base_creds = get_oauth_credentials()
-    log("✅ Credentials ready")
-
-    # Load existing files once for fast upsert decisions.
-    index_service = build_drive_service(base_creds)
-    drive_index = list_drive_files_index(index_service, DRIVE_FOLDER_ID)
-    existing_by_name = drive_index["by_name"]
-    existing_by_key = drive_index["by_key"]
+    log("☁️ Preparing Supabase Storage upload config...")
     log(
-        f"📚 Drive index loaded: names={len(existing_by_name)}, "
-        f"keys={len(existing_by_key)}"
+        f"✅ Supabase ready: bucket={SUPABASE_BUCKET}"
+        + (f", prefix={SUPABASE_PREFIX}" if SUPABASE_PREFIX else "")
     )
 
-    # Helper: create independent creds per worker to avoid shared-state issues
-    base_creds_info = json.loads(base_creds.to_json())
-
     def upload_one(image_key: str, path: str):
-        # Fresh creds object per thread (avoid races on refresh state)
-        creds = Credentials.from_authorized_user_info(base_creds_info, SCOPES)
-        service = build_drive_service(creds)
         filename = os.path.basename(path)
-        existing_id = existing_by_name.get(filename) or existing_by_key.get(
-            drive_file_key_from_name(filename)
-        )
+        object_path = f"{SUPABASE_PREFIX}/{filename}" if SUPABASE_PREFIX else filename
 
         last_err = None
         for attempt in range(1, 4):
             try:
-                url, file_id, action = upload_to_drive(
-                    service,
+                url, action = upload_to_supabase_storage(
+                    SUPABASE_URL,
+                    SUPABASE_ADMIN_KEY,
+                    SUPABASE_BUCKET,
+                    object_path,
                     path,
-                    DRIVE_FOLDER_ID,
-                    existing_file_id=existing_id,
                 )
-                return image_key, url, file_id, action
+                return image_key, url, action
             except Exception as e:
                 last_err = e
                 time.sleep(min(2.0, 0.4 * attempt))
@@ -626,12 +656,11 @@ def main():
     # Parallel upload
     items = list(local_path_by_key.items())
     total = len(items)
-    drive_url_by_key = {}
-    created_count = 0
+    storage_url_by_key = {}
     updated_count = 0
 
     log(
-        f"⬆️ Upserting {total} unique image(s) to Drive "
+        f"⬆️ Upserting {total} unique image(s) to Supabase Storage "
         f"(parallel workers={MAX_WORKERS})..."
     )
     up_start = time.perf_counter()
@@ -644,12 +673,10 @@ def main():
 
         for fut in as_completed(futures):
             try:
-                image_key, url, file_id, action = fut.result()
-                drive_url_by_key[image_key] = url
-                if action == "updated":
+                image_key, url, action = fut.result()
+                storage_url_by_key[image_key] = url
+                if action == "created_or_updated":
                     updated_count += 1
-                else:
-                    created_count += 1
             except Exception as e:
                 failed += 1
                 log(f"❌ Upload failed: {e}")
@@ -666,10 +693,10 @@ def main():
                         f"(fail={failed}) | avg {rate:.2f} files/sec | ETA {format_duration(eta)}"
                     )
 
-    uploaded_count = len(drive_url_by_key)
+    uploaded_count = len(storage_url_by_key)
     log(
         f"✅ Upload step done. URLs ready: {uploaded_count} "
-        f"(created={created_count}, updated={updated_count}, failed={failed})\n"
+        f"(upserted={updated_count}, failed={failed})\n"
     )
 
     # Build JSON (field names come from Excel header row)
@@ -718,8 +745,8 @@ def main():
         # ✅ stable product id
         out["product_id"] = product_id
 
-        # ✅ imageUrl (drive direct link)
-        out["imageUrl"] = drive_url_by_key.get(img_key)
+        # ✅ imageUrl (Supabase Storage public URL)
+        out["imageUrl"] = storage_url_by_key.get(img_key)
         out["expire_date"] = format_optional_expire_date(
             obj.get(expire_date_header_name, "") if expire_date_header_name else ""
         )
@@ -734,14 +761,15 @@ def main():
             "count": len(products),
             "imagesExtracted": len(image_key_by_row),
             "imagesUploaded": uploaded_count,
-            "imagesCreated": created_count,
-            "imagesUpdated": updated_count,
+            "imagesUpserted": updated_count,
             "headerRow": HEADER_ROW,
             "imageColumnIndex": IMAGE_COLUMN_INDEX,
             "imageColumnLetter": excel_col_index_to_letters(IMAGE_COLUMN_INDEX),
             "parallelWorkers": MAX_WORKERS,
-            "driveFolderId": DRIVE_FOLDER_ID,
-            "note": "Per-file permissions not set (folder is already public). Drive upsert uses barcode+product_code key.",
+            "storageProvider": "supabase",
+            "storageBucket": SUPABASE_BUCKET,
+            "storagePrefix": SUPABASE_PREFIX,
+            "note": "Supabase Storage upsert uses barcode+product_code key.",
             "productIdRule": "product_id = barcode + '_' + product_code",
         },
         "products": products,
@@ -769,11 +797,10 @@ def main():
     )
     log(
         f"- Images upserted (with URL): {uploaded_count} "
-        f"(created={created_count}, updated={updated_count})"
+        f"(upserted={updated_count})"
     )
     log(f"- Upload failures: {failed}")
     log(f"- JSON written: {OUT_JSON_PATH}")
-    log(f"- Token saved: {TOKEN_JSON}")
     log(f"⏱️ Total time: {format_duration(t_total)}\n")
 
 

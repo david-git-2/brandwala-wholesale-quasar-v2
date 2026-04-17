@@ -3,6 +3,7 @@
     <section class="preview-page__shell">
       <div class="preview-page__actions q-mb-md">
         <q-btn
+          size="sm"
           dense
           flat
           color="primary"
@@ -12,10 +13,10 @@
           @click="goBack"
         />
         <q-btn
+          size="sm"
           dense
           color="primary"
           icon="print"
-          label="Print"
           class="preview-page__action-btn"
           @click="printPage"
         />
@@ -41,7 +42,7 @@
         <q-table
           flat
           bordered
-          :rows="rows"
+          :rows="tableRows"
           :columns="columns"
           row-key="id"
           :loading="loading"
@@ -51,6 +52,13 @@
         >
           <template #header="props">
             <q-tr :props="props" class="preview-page__header-row">
+              <q-th
+                key="sl"
+                :props="props"
+                class="text-center preview-page__header-cell preview-page__header-cell--sl preview-page__sl-cell"
+              >
+                SL
+              </q-th>
               <q-th
                 key="image"
                 :props="props"
@@ -66,16 +74,20 @@
                 :props="props"
                 class="text-center preview-page__header-cell preview-page__header-cell--offer"
               >
-                Offer Price
+                Offer Price (BDT/Unit)
               </q-th>
             </q-tr>
           </template>
 
           <template #body="slotProps">
             <q-tr :props="slotProps">
-              <q-td key="image" :props="slotProps" class="text-center" >
+              <q-td key="sl" :props="slotProps" class="text-center preview-page__sl-cell">
+                {{ slotProps.row.sl }}
+              </q-td>
+
+              <q-td key="image" :props="slotProps" class="text-center">
                 <SmartImage
-                  :src="slotProps.row.imageUrl"
+                  :src="resolvePreviewImageUrl(slotProps.row.imageUrl)"
                   :alt="slotProps.row.name || 'Product image'"
                   img-class="preview-page__image"
                   fallback-class="preview-page__image preview-page__image--placeholder"
@@ -111,12 +123,43 @@
           </template>
         </q-table>
       </q-card>
+
+      <div class="preview-page__pager q-mt-sm">
+        <q-btn
+          size="sm"
+          dense
+          round
+          flat
+          color="primary"
+          icon="chevron_left"
+          class="preview-page__pager-nav"
+          :disable="currentPage <= 1 || !rows.length"
+          @click="goPrevPage"
+        />
+        <div class="preview-page__pager-center">
+          <div class="preview-page__pager-label">Page {{ currentPage }} / {{ totalPages }}</div>
+          <div class="preview-page__pager-sub">
+            Showing {{ pageStartIndex }}-{{ pageEndIndex }} of {{ rows.length }}
+          </div>
+        </div>
+        <q-btn
+          size="sm"
+          dense
+          round
+          flat
+          color="primary"
+          icon="chevron_right"
+          class="preview-page__pager-nav"
+          :disable="currentPage >= totalPages || !rows.length"
+          @click="goNextPage"
+        />
+      </div>
     </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { QTableColumn } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -139,9 +182,12 @@ const router = useRouter()
 const store = useProductBasedCostingStore()
 
 const loading = ref(false)
+const isPrintMode = ref(false)
+const currentPage = ref(1)
 const errorMessage = ref('')
 const fileInfo = ref<ProductBasedCostingFile | null>(null)
 const items = ref<ProductBasedCostingItem[]>([])
+const VIEW_ROWS_PER_PAGE = 6
 
 const fileId = computed(() => {
   const parsed = Number(route.params.id)
@@ -157,6 +203,28 @@ const fileLabel = computed(() => `#${fileInfo.value?.id ?? fileId.value ?? '-'}`
 const fileName = computed(() => fileInfo.value?.name?.trim() || '-')
 
 const createdFor = computed(() => fileInfo.value?.order_for?.trim() || '-')
+
+const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
+
+const getDriveFileId = (url: string) => {
+  const byQuery = url.match(/[?&]id=([^&]+)/)
+  const byPath = url.match(/\/file\/d\/([^/]+)/)
+  return byQuery?.[1] || byPath?.[1] || null
+}
+
+const resolvePreviewImageUrl = (value: string | null) => {
+  if (!value) {
+    return null
+  }
+
+  const normalized = toExternalUrl(value)
+  const driveId = getDriveFileId(normalized)
+  if (driveId) {
+    return `https://lh3.googleusercontent.com/d/${driveId}`
+  }
+
+  return normalized
+}
 
 const formatNumber = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -176,12 +244,11 @@ const getOfferPriceBdt = (item: ProductBasedCostingItem) => {
     return toNumber(item.offer_price)
   }
 
-  const qty = toNumber(item.quantity)
   const priceGbp = toNumber(item.price_gbp)
   const productWeight = toNumber(item.product_weight)
   const packageWeight = toNumber(item.package_weight)
 
-  const cargoCostGbp = (((productWeight + packageWeight) * qty) / 1000) * cargoRate.value
+  const cargoCostGbp = ((productWeight + packageWeight) / 1000) * cargoRate.value
   const totalCostGbp = priceGbp + cargoCostGbp
   const costBdt = roundBdtUpToZeroOrFive(totalCostGbp * conversionRate.value)
 
@@ -199,7 +266,29 @@ const rows = computed<PreviewRow[]>(() =>
   })),
 )
 
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(rows.value.length / VIEW_ROWS_PER_PAGE)),
+)
+
+const pagedRows = computed<PreviewRow[]>(() => {
+  const start = (currentPage.value - 1) * VIEW_ROWS_PER_PAGE
+  return rows.value.slice(start, start + VIEW_ROWS_PER_PAGE)
+})
+const tableRows = computed<PreviewRow[]>(() => (isPrintMode.value ? rows.value : pagedRows.value))
+const pageStartIndex = computed(() => (rows.value.length ? (currentPage.value - 1) * VIEW_ROWS_PER_PAGE + 1 : 0))
+const pageEndIndex = computed(() =>
+  rows.value.length ? Math.min(currentPage.value * VIEW_ROWS_PER_PAGE, rows.value.length) : 0,
+)
+
 const columns = computed((): QTableColumn[] => [
+  {
+    name: 'sl',
+    label: '',
+    field: 'sl',
+    align: 'center',
+    style: 'width: 36px; min-width: 36px;',
+    headerStyle: 'width: 36px; min-width: 36px;',
+  },
   {
     name: 'image',
     label: '',
@@ -276,15 +365,82 @@ const goBack = () => {
 }
 
 const printPage = () => {
-  window.print()
+  isPrintMode.value = true
+  void nextTick(async () => {
+    // Ensure full list is rendered and visible images are loaded before opening print dialog.
+    const root = document.querySelector('.preview-page__table-card') as HTMLElement | null
+    if (root) {
+      const images = Array.from(root.querySelectorAll('img')) as HTMLImageElement[]
+      await Promise.all(
+        images.map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete && img.naturalWidth > 0) {
+                resolve()
+                return
+              }
+
+              const done = () => {
+                img.removeEventListener('load', done)
+                img.removeEventListener('error', done)
+                resolve()
+              }
+
+              img.addEventListener('load', done, { once: true })
+              img.addEventListener('error', done, { once: true })
+              setTimeout(done, 7000)
+            }),
+        ),
+      )
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    window.print()
+  })
+}
+
+const resetPrintMode = () => {
+  isPrintMode.value = false
+}
+
+const activatePrintMode = () => {
+  isPrintMode.value = true
+}
+
+const goPrevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1
+  }
+}
+
+const goNextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1
+  }
 }
 
 watch(fileId, () => {
   void loadPreviewData()
 })
 
+watch(
+  () => rows.value.length,
+  () => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
+  },
+)
+
 onMounted(() => {
+  window.addEventListener('beforeprint', activatePrintMode)
+  window.addEventListener('afterprint', resetPrintMode)
   void loadPreviewData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeprint', activatePrintMode)
+  window.removeEventListener('afterprint', resetPrintMode)
 })
 </script>
 
@@ -314,12 +470,58 @@ onMounted(() => {
 .preview-page__actions {
   display: flex;
   flex-direction: row;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  justify-content: center;
 }
 
 .preview-page__action-btn {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: 132px;
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.preview-page__action-btn :deep(.q-btn__content) {
+  gap: 4px;
+  font-size: 11px;
+}
+
+.preview-page__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%);
+}
+
+.preview-page__pager-nav {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fff;
+}
+
+.preview-page__pager-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 150px;
+}
+
+.preview-page__pager-label {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.preview-page__pager-sub {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .preview-page__meta-card,
@@ -364,14 +566,14 @@ onMounted(() => {
 }
 
 .preview-page__header-row {
-  background: #faf5ff;
+  background: transparent;
 }
 
 .preview-page__header-cell {
   font-size: 11px;
   line-height: 1.1;
   padding: 4px 5px;
-  color: #4a044e;
+  color: #0f172a;
   font-weight: 700;
   text-transform: none;
   white-space: normal;
@@ -383,9 +585,19 @@ onMounted(() => {
   min-width: 104px;
 }
 
+.preview-page__sl-cell {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+}
+
 .preview-page__header-cell--offer {
   width: 82px;
   min-width: 82px;
+  background: #faf5ff;
+  color: #4a044e;
 }
 
 .preview-page__table :deep(.q-table) {
@@ -466,12 +678,26 @@ onMounted(() => {
 }
 
 @media print {
+  :root,
+  body,
+  .preview-page__shell,
+  .preview-page__meta-card,
+  .preview-page__table-card,
+  .preview-page__header-row,
+  .preview-page__header-cell,
+  .preview-page__offer-cell,
+  .preview-page__offer-value {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .preview-page {
     background: #fff;
     padding: 0;
   }
 
   .preview-page__actions,
+  .preview-page__pager,
   .q-banner {
     display: none !important;
   }
@@ -480,6 +706,27 @@ onMounted(() => {
   .preview-page__table-card {
     box-shadow: none;
     border-radius: 0;
+  }
+
+  .preview-page__header-row {
+    background: transparent !important;
+  }
+
+  .preview-page__header-cell {
+    color: #0f172a !important;
+  }
+
+  .preview-page__header-cell--offer {
+    background: #faf5ff !important;
+    color: #4a044e !important;
+  }
+
+  .preview-page__offer-cell {
+    background: rgba(126, 34, 206, 0.08) !important;
+  }
+
+  .preview-page__offer-value {
+    color: #6b21a8 !important;
   }
 }
 </style>

@@ -3,12 +3,18 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-Set root `.env` values (at `/Users/david/Desktop/projects/group/brand-wala-wholesale/.env`):
+Set shared env values in `web/.env` (single env for web + python):
 
 ```env
-PY_GOOGLE_DRIVE_FOLDER_ID=your_google_drive_folder_id
-PY_GOOGLE_OAUTH_CLIENT_JSON=python/credentials/oauth_client.json
-PY_GOOGLE_TOKEN_JSON=python/credentials/token.json
+PY_SUPABASE_STORAGE_BUCKET=product-images
+PY_SUPABASE_STORAGE_PREFIX=uk/pc
+SUPABASE_SECRET_KEY=your_supabase_secret_key
+# Legacy fallback:
+# SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+# Optional sync scope (defaults shown)
+# PY_PRODUCTS_VENDOR_CODE=PC
+# PY_PRODUCTS_MARKET_CODE=GB
+# PY_PRODUCTS_TENANT_ID=
 ```
 
 Run UK export:
@@ -16,6 +22,20 @@ Run UK export:
 ```bash
 python scripts/uk/export_pc_data.py
 ```
+
+From repo root you can also run:
+
+```bash
+npm run python:pc
+```
+
+`npm run python:pc` now does all of this in sequence:
+1. Export from Excel + upload images to Supabase Storage bucket
+2. Normalize/clean product names in `web/public/uk/pc_data.json`
+3. Sync into Supabase `products` with scope `vendor_code=PC`, `market_code=GB` by default
+   - Match key: `(barcode, product_code)` inside that scope
+   - If matched: update existing row(s)
+   - If not matched: insert new row
 
 Export brand and category lists from the generated PC JSON:
 
