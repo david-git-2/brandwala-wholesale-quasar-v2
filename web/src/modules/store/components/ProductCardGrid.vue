@@ -456,6 +456,7 @@ const showCart = props.showCart
 
 .ellipsis-3-lines {
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;

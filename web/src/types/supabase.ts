@@ -715,6 +715,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string | null
+          note: string | null
           offer_price: number | null
           package_weight: number | null
           price_gbp: number | null
@@ -733,6 +734,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           name?: string | null
+          note?: string | null
           offer_price?: number | null
           package_weight?: number | null
           price_gbp?: number | null
@@ -751,6 +753,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           name?: string | null
+          note?: string | null
           offer_price?: number | null
           package_weight?: number | null
           price_gbp?: number | null

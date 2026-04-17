@@ -33,6 +33,20 @@
             dense
           />
 
+          <div>
+            <div class="text-subtitle2 q-mb-xs">Item Note</div>
+            <q-editor
+              v-model="form.note"
+              min-height="140px"
+              :toolbar="[
+                ['bold', 'italic', 'underline', 'strike'],
+                ['unordered', 'ordered'],
+                ['quote', 'hr'],
+                ['undo', 'redo'],
+              ]"
+            />
+          </div>
+
           <div v-if="form.image_url" class="q-mt-sm" >
             <div class="text-subtitle2 q-mb-sm">Image Preview</div>
             <div style="margin: 0 auto; width: fit-content;">
@@ -111,6 +125,7 @@ interface ProductBasedCostingItemFormData {
   product_based_costing_file_id?: number | null
   name?: string | null
   image_url?: string | null
+  note?: string | null
   quantity?: number | null
   web_link?: string | null
   price_gbp?: number | null
@@ -144,6 +159,7 @@ const getInitialForm = () => ({
   product_based_costing_file_id: props.productBasedCostingFileId,
   name: '',
   image_url: '',
+  note: '',
   quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
@@ -161,6 +177,7 @@ const fillForm = () => {
         props.itemData.product_based_costing_file_id ?? props.productBasedCostingFileId,
       name: props.itemData.name ?? '',
       image_url: props.itemData.image_url ?? '',
+      note: props.itemData.note ?? '',
       quantity: props.itemData.quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
@@ -184,6 +201,7 @@ const submitForm = async () => {
       product_based_costing_file_id: props.productBasedCostingFileId,
       name: form.name,
       image_url: form.image_url,
+      note: form.note,
       quantity: form.quantity,
       web_link: form.web_link,
       price_gbp: form.price_gbp,
@@ -206,6 +224,7 @@ const submitForm = async () => {
     product_based_costing_file_id: props.productBasedCostingFileId,
     name: form.name,
     image_url: form.image_url,
+    note: form.note,
     quantity: form.quantity,
     web_link: form.web_link,
     price_gbp: form.price_gbp,

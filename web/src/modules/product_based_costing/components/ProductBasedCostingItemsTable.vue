@@ -29,6 +29,15 @@
             {{ slotProps.row.name }}
           </q-td>
 
+          <q-td key="note" :props="slotProps" class="col-note">
+            <div
+              v-if="slotProps.row.noteHtml"
+              class="item-note-html"
+              v-html="slotProps.row.noteHtml"
+            />
+            <span v-else>-</span>
+          </q-td>
+
           <q-td key="qty" :props="slotProps" class="col-qty text-center editable-cell">
             <div class="editable-value">
               {{ slotProps.row.qty }}
@@ -290,6 +299,7 @@
           <q-td class="totals-row__cell col-name">
             {{ tableRows.length }} Items
           </q-td>
+          <q-td class="totals-row__cell col-note" />
           <q-td class="totals-row__cell col-qty text-center">
             {{ formatNumber(totals.qty) }}
           </q-td>
@@ -384,6 +394,7 @@ interface ProductBasedCostingItem {
   product_id?: number | null;
   name: string | null;
   image_url: string | null;
+  note: string | null;
   quantity: number | null;
   barcode: string | null;
   product_code: string | null;
@@ -401,6 +412,7 @@ interface ProductBasedCostingTableRow {
   id: number;
   sl: number;
   name: string;
+  noteHtml: string;
   imageUrl: string | null;
   qty: number;
   barcodeText: string;
@@ -539,6 +551,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       id: item.id,
       sl: index + 1,
       name: toText(item.name),
+      noteHtml: item.note ?? '',
       imageUrl: item.image_url ?? null,
       qty,
       barcodeText: barcodeParts.length ? barcodeParts.join(' / ') : '-',
@@ -584,6 +597,13 @@ const columns = computed<QTableColumn[]>(() => [
     classes: 'col-name-wrap',
     headerClasses: 'col-name-wrap',
     style: 'text-align: center;',
+  },
+  {
+    name: 'note',
+    label: 'Note',
+    field: 'noteHtml',
+    align: 'left',
+    style: 'text-align: left;',
   },
   { name: 'qty', label: 'Qty', field: 'qty', align: 'center', style: 'text-align: center;' },
   {
@@ -1026,6 +1046,11 @@ const totals = computed(() => {
   background: #ffffff;
 }
 
+.col-note {
+  min-width: 260px;
+  background: #fcfcfc;
+}
+
 .col-qty {
   min-width: 100px;
   width: 100px;
@@ -1165,5 +1190,11 @@ const totals = computed(() => {
   white-space: normal; /* allow wrapping */
   word-break: break-word; /* break long words */
   line-height: 1.3;
+}
+
+.item-note-html {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
 }
 </style>

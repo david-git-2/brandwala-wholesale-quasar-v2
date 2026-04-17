@@ -57,7 +57,6 @@
 
         <div class="text-h6 text-weight-bold">#{{ store.item.id }} {{ store.item.name }}</div>
         <div class="text-subtitle2 q-mt-sm">created for: {{ store.item.order_for }}</div>
-        <div v-if="store.item.note" class="q-mt-sm text-body2">note: {{ store.item.note }}</div>
       </template>
 
       <div v-else class="text-negative">File not found.</div>

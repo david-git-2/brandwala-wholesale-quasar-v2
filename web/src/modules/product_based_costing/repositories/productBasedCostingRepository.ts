@@ -78,6 +78,7 @@ const buildProductBasedCostingItemCreatePayload = (
   product_based_costing_file_id: payload.product_based_costing_file_id ?? null,
   name: normalizeText(payload.name),
   image_url: normalizeText(payload.image_url),
+  note: normalizeText(payload.note),
   quantity: payload.quantity ?? null,
   barcode: normalizeText(payload.barcode),
   product_code: normalizeText(payload.product_code),
@@ -105,6 +106,10 @@ const buildProductBasedCostingItemUpdatePayload = (
 
   if (payload.image_url !== undefined) {
     updatePayload.image_url = normalizeText(payload.image_url)
+  }
+
+  if (payload.note !== undefined) {
+    updatePayload.note = normalizeText(payload.note)
   }
 
   if (payload.quantity !== undefined) {

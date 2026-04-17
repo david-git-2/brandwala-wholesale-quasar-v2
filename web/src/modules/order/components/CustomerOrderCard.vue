@@ -424,6 +424,7 @@ const onSaveCustomerOffers = async () => {
 
 .name-clamp {
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;

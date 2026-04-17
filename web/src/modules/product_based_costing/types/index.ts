@@ -27,6 +27,7 @@ export interface ProductBasedCostingItem {
   product_id?: number | null
   name: string | null
   image_url: string | null
+  note: string | null
   quantity: number | null
   barcode: string | null
   product_code: string | null
@@ -44,6 +45,7 @@ export interface ProductBasedCostingItemCreateInput {
   product_based_costing_file_id?: number | null
   name?: string | null
   image_url?: string | null
+  note?: string | null
   quantity?: number | null
   barcode?: string | null
   product_code?: string | null
