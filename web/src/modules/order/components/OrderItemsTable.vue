@@ -801,6 +801,31 @@ const parseNullableNumber = (value: string | number | null) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+const ceil2 = (n: number) => Math.ceil(n * 100) / 100
+const ceilInt = (n: number) => Math.ceil(n)
+const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
+
+const recalculateRowPricing = ({
+  priceGbp,
+  productWeight,
+  packageWeight,
+}: {
+  priceGbp: number
+  productWeight: number
+  packageWeight: number
+}) => {
+  const cargo = Number(props.cargoRate || 0)
+  const conversion = Number(props.conversionRate || 0)
+  const profit = Number(props.profitRate || 0)
+  const totalWeight = productWeight + packageWeight
+
+  const costGbp = ceil2((totalWeight / 1000) * cargo + priceGbp)
+  const costBdt = ceilInt(costGbp * conversion)
+  const firstOfferBdt = roundUpTo5((costBdt * profit) / 100 + costBdt)
+
+  return { costGbp, costBdt, firstOfferBdt }
+}
+
 const onQuantityDraftChange = (id: number, value: string | number | null) => {
   const parsed = parseNullableNumber(value)
   quantityDraftById.value[id] = parsed != null && parsed > 0 ? Math.floor(parsed) : null
@@ -837,17 +862,39 @@ const onSaveButtonClick =async  () => {
 }
 
 const onSaveItemChanges = async () => {
+  const negotiateEnabled = orderStore.selected?.negotiate !== false
+  const payload = tableRows.value.map((row) => {
+    const orderedQuantity = quantityDraftById.value[row.id] ?? row.ordered_quantity
+    const priceGbp = priceDraftById.value[row.id] ?? row.price_gbp ?? null
+    const productWeight = productWeightDraftById.value[row.id] ?? row.product_weight ?? null
+    const packageWeight = packageWeightDraftById.value[row.id] ?? row.package_weight ?? null
+    const finalOfferBdt = finalOfferDraftById.value[row.id] ?? row.final_offer_bdt ?? null
 
-  const payload = tableRows.value.map((row) => ({
-    id: row.id,
-    ordered_quantity: quantityDraftById.value[row.id] ?? row.ordered_quantity,
-    price_gbp: priceDraftById.value[row.id] ?? row.price_gbp ?? null,
-    product_weight: productWeightDraftById.value[row.id] ?? row.product_weight ?? null,
-    package_weight: packageWeightDraftById.value[row.id] ?? row.package_weight ?? null,
-    first_offer_bdt:
-      firstOfferDraftById.value[row.id] ?? row.first_offer_bdt ?? row.seller_first_offer_bdt,
-    final_offer_bdt: finalOfferDraftById.value[row.id] ?? row.final_offer_bdt ?? null,
-  }))
+    const pricing = recalculateRowPricing({
+      priceGbp: Number(priceGbp || 0),
+      productWeight: Number(productWeight || 0),
+      packageWeight: Number(packageWeight || 0),
+    })
+
+    const firstOfferChanged = firstOfferDraftById.value[row.id] !== firstOfferInitialById.value[row.id]
+    const nextFirstOffer =
+      firstOfferChanged && firstOfferDraftById.value[row.id] != null
+        ? firstOfferDraftById.value[row.id]
+        : pricing.firstOfferBdt
+
+    return {
+      id: row.id,
+      ordered_quantity: orderedQuantity,
+      price_gbp: priceGbp,
+      product_weight: productWeight,
+      package_weight: packageWeight,
+      cost_gbp: pricing.costGbp,
+      cost_bdt: pricing.costBdt,
+      first_offer_bdt: nextFirstOffer,
+      customer_offer_bdt: negotiateEnabled ? row.customer_offer_bdt : nextFirstOffer,
+      final_offer_bdt: negotiateEnabled ? finalOfferBdt : nextFirstOffer,
+    }
+  })
   const productWeightUpdatesByProductId = getProductWeightUpdatesByProductId()
 
   if (!payload.length) {
@@ -865,7 +912,9 @@ const onSaveItemChanges = async () => {
     productWeightInitialById.value[entry.id] = entry.product_weight
     packageWeightInitialById.value[entry.id] = entry.package_weight
     firstOfferInitialById.value[entry.id] = entry.first_offer_bdt
+    firstOfferDraftById.value[entry.id] = entry.first_offer_bdt
     finalOfferInitialById.value[entry.id] = entry.final_offer_bdt
+    finalOfferDraftById.value[entry.id] = entry.final_offer_bdt
   })
 
   await syncProductWeightsFromOrderRows(productWeightUpdatesByProductId)
@@ -995,6 +1044,35 @@ const updateSingleItemFromDraft = async (
       firstOfferDraftById.value[id] ?? row.first_offer_bdt ?? row.seller_first_offer_bdt ?? null
   }
 
+  const impactsCosting =
+    fields.includes('ordered_quantity') ||
+    fields.includes('price_gbp') ||
+    fields.includes('product_weight') ||
+    fields.includes('package_weight')
+
+  if (impactsCosting || fields.includes('first_offer_bdt')) {
+    const nextPriceGbp = Number((patch.price_gbp ?? row.price_gbp) || 0)
+    const nextProductWeight = Number((patch.product_weight ?? row.product_weight) || 0)
+    const nextPackageWeight = Number((patch.package_weight ?? row.package_weight) || 0)
+    const pricing = recalculateRowPricing({
+      priceGbp: nextPriceGbp,
+      productWeight: nextProductWeight,
+      packageWeight: nextPackageWeight,
+    })
+
+    patch.cost_gbp = pricing.costGbp
+    patch.cost_bdt = pricing.costBdt
+
+    const manualFirstOffer = fields.includes('first_offer_bdt') ? patch.first_offer_bdt : null
+    const nextFirstOffer = manualFirstOffer ?? pricing.firstOfferBdt
+    patch.first_offer_bdt = nextFirstOffer
+
+    if (orderStore.selected?.negotiate === false) {
+      patch.customer_offer_bdt = nextFirstOffer
+      patch.final_offer_bdt = nextFirstOffer
+    }
+  }
+
   const result = await orderStore.updateOrderItem({
     id,
     patch,
@@ -1018,6 +1096,11 @@ const updateSingleItemFromDraft = async (
   }
   if ('first_offer_bdt' in patch) {
     firstOfferInitialById.value[id] = patch.first_offer_bdt
+    firstOfferDraftById.value[id] = patch.first_offer_bdt
+  }
+  if ('final_offer_bdt' in patch) {
+    finalOfferInitialById.value[id] = patch.final_offer_bdt
+    finalOfferDraftById.value[id] = patch.final_offer_bdt
   }
 
   if (

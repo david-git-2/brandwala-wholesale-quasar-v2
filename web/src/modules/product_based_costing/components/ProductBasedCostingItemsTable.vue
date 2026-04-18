@@ -919,11 +919,27 @@ const onStatusSave = (row: ProductBasedCostingTableRow) => {
 
 const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
   row.productWeight = toNumber(row.productWeight);
+  row.offerPriceBdt = calculateOfferPriceBdt({
+    priceGbp: row.priceGbp,
+    productWeight: row.productWeight,
+    packageWeight: row.packageWeight,
+    cargoRate: row.cargoRate,
+    conversionRate: row.conversionRate,
+    profitRate: row.profitRate,
+  });
   emitProductWeightChange(row);
 };
 
 const onPackageWeightSave = (row: ProductBasedCostingTableRow) => {
   row.packageWeight = toNumber(row.packageWeight);
+  row.offerPriceBdt = calculateOfferPriceBdt({
+    priceGbp: row.priceGbp,
+    productWeight: row.productWeight,
+    packageWeight: row.packageWeight,
+    cargoRate: row.cargoRate,
+    conversionRate: row.conversionRate,
+    profitRate: row.profitRate,
+  });
   emitPackageWeightChange(row);
 };
 

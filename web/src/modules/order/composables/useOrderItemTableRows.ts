@@ -86,7 +86,8 @@ export const useOrderItemTableRows = ({
       const sellerFirstOfferBdt =
         item.first_offer_bdt != null
           ? Number(item.first_offer_bdt)
-          : roundUpTo5((costBdtRaw * profitRateValue) / 100 + costBdtRaw)
+          : roundUpTo5(((costBdtRaw * (profitRateValue / 100)) + costBdtRaw))
+
       const sellerFirstOfferBdtTotal = sellerFirstOfferBdt * quantity
       const sellerFirstOfferProfitPc = ceilInt(sellerFirstOfferBdt - costBdtRaw)
       const selerFirstOfferProfitPcPerc =
@@ -121,7 +122,14 @@ export const useOrderItemTableRows = ({
         costBdtRaw > 0 && finalOfferBdt != null
           ? round2(((finalOfferBdt - costBdtRaw) / costBdtRaw) * 100)
           : null
-
+console.log({
+  itemFirstOffer: item.first_offer_bdt,
+  costBdtRaw,
+  profitRateValue,
+  rawFirstOffer: (costBdtRaw * (profitRateValue / 100)) + costBdtRaw,
+  roundedRawFirstOffer: roundUpTo5((costBdtRaw * (profitRateValue / 100)) + costBdtRaw),
+  sellerFirstOfferBdt,
+})
       return {
         ...item,
         sl: index + 1,

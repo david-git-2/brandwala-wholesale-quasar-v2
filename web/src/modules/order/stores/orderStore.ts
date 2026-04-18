@@ -6,6 +6,7 @@ import type {
   Order,
   OrderDeleteInput,
   OrderGetByIdInput,
+  OrderItem,
   OrderItemBulkUpdateInput,
   OrderItemDeleteInput,
   OrderItemUpdateInput,
@@ -14,6 +15,70 @@ import type {
   OrderStoreState,
   OrderUpdateInput,
 } from '../types'
+
+const ceil2 = (n: number) => Math.ceil(n * 100) / 100
+const ceilInt = (n: number) => Math.ceil(n)
+const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
+
+const toNumberSafe = (value: unknown) => {
+  const parsed = Number(value ?? 0)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key)
+
+const buildExpandedOrderItemPatch = (
+  base: OrderItem,
+  patch: Partial<Omit<OrderItem, 'id' | 'order_id' | 'created_at' | 'updated_at'>>,
+  context: {
+    cargoRate: number
+    conversionRate: number
+    profitRate: number
+    negotiateEnabled: boolean
+  },
+) => {
+  const mergedPriceGbp = patch.price_gbp ?? base.price_gbp ?? null
+  const mergedProductWeight = patch.product_weight ?? base.product_weight ?? null
+  const mergedPackageWeight = patch.package_weight ?? base.package_weight ?? null
+  const mergedOrderedQuantity = patch.ordered_quantity ?? base.ordered_quantity
+
+  const totalWeight = toNumberSafe(mergedProductWeight) + toNumberSafe(mergedPackageWeight)
+  const costGbp = ceil2((totalWeight / 1000) * context.cargoRate + toNumberSafe(mergedPriceGbp))
+  const costBdt = ceilInt(costGbp * context.conversionRate)
+  const autoFirstOffer = roundUpTo5((costBdt * context.profitRate) / 100 + costBdt)
+
+  const pricingDriversChanged =
+    hasOwn(patch, 'price_gbp') || hasOwn(patch, 'product_weight') || hasOwn(patch, 'package_weight')
+  const manualFirstOfferProvided = hasOwn(patch, 'first_offer_bdt')
+
+  const mergedFirstOffer =
+    manualFirstOfferProvided
+      ? patch.first_offer_bdt ?? autoFirstOffer
+      : pricingDriversChanged
+        ? autoFirstOffer
+        : (base.first_offer_bdt ?? autoFirstOffer)
+
+  const mergedCustomerOffer =
+    context.negotiateEnabled
+      ? (patch.customer_offer_bdt ?? base.customer_offer_bdt ?? null)
+      : mergedFirstOffer
+  const mergedFinalOffer =
+    context.negotiateEnabled
+      ? (patch.final_offer_bdt ?? base.final_offer_bdt ?? null)
+      : mergedFirstOffer
+
+  return {
+    ordered_quantity: mergedOrderedQuantity,
+    price_gbp: mergedPriceGbp,
+    product_weight: mergedProductWeight,
+    package_weight: mergedPackageWeight,
+    cost_gbp: costGbp,
+    cost_bdt: costBdt,
+    first_offer_bdt: mergedFirstOffer,
+    customer_offer_bdt: mergedCustomerOffer,
+    final_offer_bdt: mergedFinalOffer,
+  }
+}
 
 export const useOrderStore = defineStore('order', {
   state: (): OrderStoreState => ({
@@ -117,7 +182,22 @@ export const useOrderStore = defineStore('order', {
       this.error = null
 
       try {
-        const result = await orderService.updateOrderItem(payload)
+        const selectedItem = this.selected?.order_items.find((item) => item.id === payload.id)
+        const context = {
+          cargoRate: toNumberSafe(this.selected?.cargo_rate),
+          conversionRate: toNumberSafe(this.selected?.conversion_rate),
+          profitRate: toNumberSafe(this.selected?.profit_rate),
+          negotiateEnabled: this.selected?.negotiate !== false,
+        }
+        const expandedPayload =
+          selectedItem == null
+            ? payload
+            : {
+                id: payload.id,
+                patch: buildExpandedOrderItemPatch(selectedItem, payload.patch, context),
+              }
+
+        const result = await orderService.updateOrderItem(expandedPayload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update order item.'
@@ -269,7 +349,27 @@ export const useOrderStore = defineStore('order', {
       this.error = null
 
       try {
-        const result = await orderService.bulkUpdateOrderItems(payload)
+        const orderItemsById = new Map((this.selected?.order_items ?? []).map((item) => [item.id, item]))
+        const context = {
+          cargoRate: toNumberSafe(this.selected?.cargo_rate),
+          conversionRate: toNumberSafe(this.selected?.conversion_rate),
+          profitRate: toNumberSafe(this.selected?.profit_rate),
+          negotiateEnabled: this.selected?.negotiate !== false,
+        }
+        const expandedPayload = payload.map((entry) => {
+          const base = orderItemsById.get(entry.id)
+          if (!base) {
+            return entry
+          }
+
+          const { id, ...patch } = entry
+          return {
+            id,
+            ...buildExpandedOrderItemPatch(base, patch, context),
+          }
+        })
+
+        const result = await orderService.bulkUpdateOrderItems(expandedPayload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to bulk update order items.'

@@ -321,6 +321,7 @@ const onProductWeightChange = async (payload: WeightChangePayload) => {
   await store.updateProductBasedCostingItem({
     id: payload.item.id,
     product_weight: payload.item.product_weight,
+    offer_price: payload.item.offer_price,
   });
 };
 
@@ -335,6 +336,7 @@ const onPackageWeightChange = async (payload: WeightChangePayload) => {
   await store.updateProductBasedCostingItem({
     id: payload.item.id,
     package_weight: payload.item.package_weight,
+    offer_price: payload.item.offer_price,
   });
 };
 </script>
