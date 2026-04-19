@@ -71,8 +71,19 @@
       />
 
     </div>
-    <div class="row justify-end q-mb-sm">
+    <div class="row items-center q-mb-sm">
+      <q-btn
+        v-if="selectedItemIds.length"
+        class="q-mr-auto"
+        color="negative"
+        no-caps
+        icon="delete"
+        :label="`Delete Selected (${selectedItemIds.length})`"
+        :loading="orderStore.saving"
+        @click="confirmDeleteSelectedOpen = true"
+      />
       <q-btn-toggle
+        class="q-ml-auto"
         v-model="tableViewMode"
         no-caps
         unelevated
@@ -82,19 +93,23 @@
     </div>
     <CompactOrderItemTable
       v-if="tableViewMode === 'compact'"
+      v-model:selected-ids="selectedItemIds"
       :items="orderStore.selected?.order_items ?? []"
       :status="selectedStatus ?? 'customer_submit'"
       :conversion-rate="Number(conversionRate) || 0"
       :cargo-rate="Number(cargoRate) || 0"
       :profit-rate="Number(profitRate) || 0"
+      @ship="onShipItem"
     />
     <OrderItemsTable
       v-else
+      v-model:selected-ids="selectedItemIds"
       :items="orderStore.selected?.order_items ?? []"
       :status="selectedStatus ?? 'customer_submit'"
       :conversion-rate="Number(conversionRate) || 0"
       :cargo-rate="Number(cargoRate) || 0"
       :profit-rate="Number(profitRate) || 0"
+      @ship="onShipItem"
     />
 
     <q-dialog v-model="confirmDisableNegotiationOpen">
@@ -110,6 +125,24 @@
             label="Disable"
             :loading="orderStore.saving"
             @click="onConfirmDisableNegotiation"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="confirmDeleteSelectedOpen">
+      <q-card style="min-width: 360px">
+        <q-card-section class="text-h6">Delete Selected Items?</q-card-section>
+        <q-card-section>
+          This will permanently delete {{ selectedItemIds.length }} selected item(s).
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="orderStore.saving"
+            @click="onConfirmDeleteSelected"
           />
         </q-card-actions>
       </q-card>
@@ -135,6 +168,8 @@ const orderStore = useOrderStore()
 const selectedStatus = ref<OrderStatus | null>(null)
 const tableViewMode = ref<'compact' | 'detailed'>('compact')
 const confirmDisableNegotiationOpen = ref(false)
+const confirmDeleteSelectedOpen = ref(false)
+const selectedItemIds = ref<number[]>([])
 
 const allStatusOptions: OrderStatus[] = [
   'customer_submit',
@@ -142,6 +177,7 @@ const allStatusOptions: OrderStatus[] = [
   'negotiate',
   'final_offered',
   'ordered',
+  'processing',
   'placed',
 ]
 const statusOptions = computed<OrderStatus[]>(() =>
@@ -178,6 +214,15 @@ watch(
     selectedStatus.value = status ?? null
   },
   { immediate: true }
+)
+
+watch(
+  () => orderStore.selected?.order_items ?? [],
+  (items) => {
+    const valid = new Set(items.map((item) => item.id))
+    selectedItemIds.value = selectedItemIds.value.filter((id) => valid.has(id))
+  },
+  { immediate: true },
 )
 
 const conversionRate = computed({
@@ -294,9 +339,29 @@ const onConfirmDisableNegotiation = async () => {
   await applyNegotiationToggle(false)
 }
 
+const onConfirmDeleteSelected = async () => {
+  const ids = [...selectedItemIds.value]
+  if (!ids.length) {
+    confirmDeleteSelectedOpen.value = false
+    return
+  }
+
+  for (const id of ids) {
+    await orderStore.deleteOrderItem({ id })
+  }
+
+  selectedItemIds.value = []
+  confirmDeleteSelectedOpen.value = false
+}
+
 const onBackToOrders = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
   await router.push(`${tenantPrefix}/app/orders`)
+}
+
+const onShipItem = (itemId: number) => {
+  const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) ?? null
+  console.log('Ship row item (from parent):', rowItem)
 }
 
 const onSaveRates = async () => {

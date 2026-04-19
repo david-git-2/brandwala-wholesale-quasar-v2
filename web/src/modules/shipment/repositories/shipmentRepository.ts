@@ -6,16 +6,12 @@ import type {
   BulkAddShipmentItemsFromProductInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
-  CreateShipmentOrderInput,
   DeleteShipmentInput,
   DeleteShipmentItemQuantityInput,
-  DeleteShipmentOrderInput,
   Shipment,
   ShipmentItem,
-  ShipmentOrder,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
-  UpdateShipmentOrderInput,
 } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,65 +220,6 @@ const bulkDeleteShipmentItemsByProduct = async (
   return Number(data ?? 0)
 }
 
-const listShipmentOrders = async (shipmentId: number): Promise<ShipmentOrder[]> => {
-  const { data, error } = await db
-    .from('shipment_orders')
-    .select('*')
-    .eq('shipment_id', shipmentId)
-    .order('id', { ascending: true })
-
-  if (error) {
-    throw error
-  }
-
-  return (data as ShipmentOrder[] | null) ?? []
-}
-
-const createShipmentOrder = async (payload: CreateShipmentOrderInput): Promise<ShipmentOrder> => {
-  const { data, error } = await db.rpc('create_shipment_order', {
-    p_shipment_id: payload.shipment_id,
-    p_order_id: payload.order_id,
-  })
-
-  if (error) {
-    throw error
-  }
-
-  if (!data) {
-    throw new Error('Shipment order was not created.')
-  }
-
-  return data as ShipmentOrder
-}
-
-const updateShipmentOrder = async (payload: UpdateShipmentOrderInput): Promise<ShipmentOrder> => {
-  const { data, error } = await db.rpc('update_shipment_order', {
-    p_id: payload.id,
-    p_shipment_id: payload.shipment_id,
-    p_order_id: payload.order_id,
-  })
-
-  if (error) {
-    throw error
-  }
-
-  if (!data) {
-    throw new Error('Shipment order was not updated.')
-  }
-
-  return data as ShipmentOrder
-}
-
-const deleteShipmentOrder = async (payload: DeleteShipmentOrderInput): Promise<void> => {
-  const { error } = await db.rpc('delete_shipment_order', {
-    p_id: payload.id,
-  })
-
-  if (error) {
-    throw error
-  }
-}
-
 export const shipmentRepository = {
   listShipments,
   getShipmentById,
@@ -296,8 +233,4 @@ export const shipmentRepository = {
   bulkAddShipmentItemsFromProduct,
   deleteShipmentItemQuantity,
   bulkDeleteShipmentItemsByProduct,
-  listShipmentOrders,
-  createShipmentOrder,
-  updateShipmentOrder,
-  deleteShipmentOrder,
 }

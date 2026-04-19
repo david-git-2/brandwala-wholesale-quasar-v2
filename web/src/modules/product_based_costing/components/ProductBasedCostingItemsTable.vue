@@ -1025,7 +1025,8 @@ const totals = computed(() => {
 
 .costing-q-table {
   max-width: 100%;
-  height: 72vh;
+  max-height: 72vh;
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 :deep(.q-table) {
@@ -1062,22 +1063,22 @@ const totals = computed(() => {
 
 .product-based-costing-table :deep(.costing-q-table td:first-child) {
   z-index: 1;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .product-based-costing-table :deep(.costing-q-table td:nth-child(2)) {
   z-index: 1;
-  background: #fcfcfc;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table tr:first-child th:first-child) {
   z-index: 4;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .product-based-costing-table :deep(.costing-q-table tr:first-child th:nth-child(2)) {
   z-index: 4;
-  background: #fcfcfc;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table tbody) {
@@ -1094,6 +1095,13 @@ const totals = computed(() => {
   background: #fff;
   object-fit: contain;
   object-position: center;
+}
+
+:deep(.q-table__container),
+:deep(.q-table__middle),
+:deep(.q-table__middle table),
+:deep(.q-table__bottom) {
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 .table-image-placeholder {

@@ -55,6 +55,7 @@ const ORDER_FIELDS = [
 const ORDER_ITEM_FIELDS = [
   'id',
   'order_id',
+  'shipment_id',
   'name',
   'image_url',
   'barcode',
@@ -242,9 +243,14 @@ const createOrderItems = async (payload: OrderItemCreateInput[]): Promise<OrderI
     return []
   }
 
+  const createPayload = payload.map((item) => ({
+    ...item,
+    shipment_id: item.shipment_id ?? null,
+  }))
+
   const { data, error } = await supabase
     .from('order_items')
-    .insert(payload)
+    .insert(createPayload)
     .select('*')
 
   if (error) {

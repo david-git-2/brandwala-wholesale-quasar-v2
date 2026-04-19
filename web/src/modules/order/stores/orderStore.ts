@@ -524,6 +524,7 @@ export const useOrderStore = defineStore('order', {
 
             return {
               order_id: order.id,
+              shipment_id: null,
               name: item.name,
               image_url: item.image_url ?? null,
               barcode: item.barcode ?? productSnapshot?.barcode ?? null,

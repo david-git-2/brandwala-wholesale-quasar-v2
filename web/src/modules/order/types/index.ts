@@ -3,6 +3,7 @@ export type OrderStatus =
   | 'priced'
   | 'negotiate'
   | 'final_offered'
+  | 'processing'
   | 'ordered'
   | 'placed'
 
@@ -27,6 +28,7 @@ export type Order = {
 export type OrderItem = {
   id: number
   order_id: number
+  shipment_id: number | null
   name: string
   image_url: string | null
   barcode: string | null

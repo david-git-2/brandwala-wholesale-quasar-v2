@@ -5,17 +5,13 @@ import type {
   BulkAddShipmentItemsFromProductInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
-  CreateShipmentOrderInput,
   DeleteShipmentInput,
   DeleteShipmentItemQuantityInput,
-  DeleteShipmentOrderInput,
   Shipment,
   ShipmentItem,
-  ShipmentOrder,
   ShipmentServiceResult,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
-  UpdateShipmentOrderInput,
 } from '../types'
 
 const listShipments = async (
@@ -185,62 +181,6 @@ const bulkDeleteShipmentItemsByProduct = async (
   }
 }
 
-const listShipmentOrders = async (
-  shipmentId: number,
-): Promise<ShipmentServiceResult<ShipmentOrder[]>> => {
-  try {
-    const data = await shipmentRepository.listShipmentOrders(shipmentId)
-    return { success: true, data }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to load shipment orders.',
-    }
-  }
-}
-
-const createShipmentOrder = async (
-  payload: CreateShipmentOrderInput,
-): Promise<ShipmentServiceResult<ShipmentOrder>> => {
-  try {
-    const data = await shipmentRepository.createShipmentOrder(payload)
-    return { success: true, data }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create shipment order.',
-    }
-  }
-}
-
-const updateShipmentOrder = async (
-  payload: UpdateShipmentOrderInput,
-): Promise<ShipmentServiceResult<ShipmentOrder>> => {
-  try {
-    const data = await shipmentRepository.updateShipmentOrder(payload)
-    return { success: true, data }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update shipment order.',
-    }
-  }
-}
-
-const deleteShipmentOrder = async (
-  payload: DeleteShipmentOrderInput,
-): Promise<ShipmentServiceResult<void>> => {
-  try {
-    await shipmentRepository.deleteShipmentOrder(payload)
-    return { success: true }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete shipment order.',
-    }
-  }
-}
-
 export const shipmentService = {
   listShipments,
   getShipmentById,
@@ -254,8 +194,4 @@ export const shipmentService = {
   bulkAddShipmentItemsFromProduct,
   deleteShipmentItemQuantity,
   bulkDeleteShipmentItemsByProduct,
-  listShipmentOrders,
-  createShipmentOrder,
-  updateShipmentOrder,
-  deleteShipmentOrder,
 }

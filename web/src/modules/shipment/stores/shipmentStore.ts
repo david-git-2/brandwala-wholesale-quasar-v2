@@ -8,14 +8,11 @@ import type {
   BulkAddShipmentItemsFromProductInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
-  CreateShipmentOrderInput,
   DeleteShipmentInput,
   DeleteShipmentItemQuantityInput,
-  DeleteShipmentOrderInput,
   ShipmentStoreState,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
-  UpdateShipmentOrderInput,
 } from '../types'
 
 export const useShipmentStore = defineStore('shipment', {
@@ -23,7 +20,6 @@ export const useShipmentStore = defineStore('shipment', {
     shipments: [],
     selectedShipment: null,
     shipmentItems: [],
-    shipmentOrders: [],
     loading: false,
     saving: false,
     error: null,
@@ -166,7 +162,6 @@ export const useShipmentStore = defineStore('shipment', {
         if (this.selectedShipment?.id === payload.id) {
           this.selectedShipment = null
           this.shipmentItems = []
-          this.shipmentOrders = []
         }
 
         showSuccessNotification('Shipment deleted successfully.')
@@ -301,87 +296,5 @@ export const useShipmentStore = defineStore('shipment', {
       }
     },
 
-    async fetchShipmentOrders(shipmentId: number) {
-      this.loading = true
-      this.error = null
-
-      try {
-        const result = await shipmentService.listShipmentOrders(shipmentId)
-
-        if (!result.success) {
-          this.error = result.error ?? 'Failed to load shipment orders.'
-          handleApiFailure(result, this.error)
-          return result
-        }
-
-        this.shipmentOrders = result.data ?? []
-        return result
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createShipmentOrder(payload: CreateShipmentOrderInput) {
-      this.saving = true
-      this.error = null
-
-      try {
-        const result = await shipmentService.createShipmentOrder(payload)
-
-        if (!result.success) {
-          this.error = result.error ?? 'Failed to create shipment order.'
-          handleApiFailure(result, this.error)
-          return result
-        }
-
-        await this.fetchShipmentOrders(payload.shipment_id)
-        showSuccessNotification('Shipment order created successfully.')
-        return result
-      } finally {
-        this.saving = false
-      }
-    },
-
-    async updateShipmentOrder(payload: UpdateShipmentOrderInput) {
-      this.saving = true
-      this.error = null
-
-      try {
-        const result = await shipmentService.updateShipmentOrder(payload)
-
-        if (!result.success) {
-          this.error = result.error ?? 'Failed to update shipment order.'
-          handleApiFailure(result, this.error)
-          return result
-        }
-
-        await this.fetchShipmentOrders(payload.shipment_id)
-        showSuccessNotification('Shipment order updated successfully.')
-        return result
-      } finally {
-        this.saving = false
-      }
-    },
-
-    async deleteShipmentOrder(payload: DeleteShipmentOrderInput, shipmentId: number) {
-      this.saving = true
-      this.error = null
-
-      try {
-        const result = await shipmentService.deleteShipmentOrder(payload)
-
-        if (!result.success) {
-          this.error = result.error ?? 'Failed to delete shipment order.'
-          handleApiFailure(result, this.error)
-          return result
-        }
-
-        await this.fetchShipmentOrders(shipmentId)
-        showSuccessNotification('Shipment order deleted successfully.')
-        return result
-      } finally {
-        this.saving = false
-      }
-    },
   },
 })

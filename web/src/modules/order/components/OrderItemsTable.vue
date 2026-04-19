@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="order-items-table">
     <q-table
       flat
       bordered
@@ -8,8 +8,43 @@
       row-key="id"
       :pagination="{ rowsPerPage: 0 }"
       hide-bottom
-      class="bg-white"
+      :table-style="{ maxHeight: '72vh' }"
+      class="order-q-table"
     >
+      <template #header-cell-select="props">
+        <q-th :props="props" class="text-center">
+          <q-checkbox
+            :model-value="allVisibleSelected"
+            :indeterminate="someVisibleSelected"
+            dense
+            @update:model-value="toggleSelectAllVisible"
+          />
+        </q-th>
+      </template>
+
+      <template #body-cell-select="props">
+        <q-td :props="props" class="text-center">
+          <q-checkbox
+            :model-value="isSelected(props.row.id)"
+            dense
+            @update:model-value="(value) => toggleSelection(props.row.id, value)"
+          />
+        </q-td>
+      </template>
+
+      <template #body-cell-ship="props">
+        <q-td :props="props" class="text-center">
+          <q-btn
+            color="primary"
+            no-caps
+            dense
+            size="sm"
+            label="Ship"
+            @click="onShipClick(props.row)"
+          />
+        </q-td>
+      </template>
+
       <template #body-cell-sl="props">
         <q-td :props="props">
           {{ props.row.sl }}
@@ -31,19 +66,43 @@
 
       <template #body-cell-name="props">
         <q-td :props="props" class="col-name">
-          <div class="whitespace-normal order-item-name-cell">
+          <div class="whitespace-normal order-item-name-cell row items-center no-wrap q-gutter-xs">
             {{ props.row.name }}
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="content_copy"
+              @click="copyText(props.row.name, 'Name')"
+            />
           </div>
         </q-td>
       </template>
 
       <template #body-cell-product_meta="props">
         <q-td :props="props" class="col-product-meta">
-          <div class="text-caption text-grey-7">
-            Barcode: {{ props.row.barcode ?? '-' }}
+          <div class="text-caption text-grey-7 row items-center no-wrap q-gutter-xs">
+            <span>Barcode: {{ props.row.barcode ?? '-' }}</span>
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="content_copy"
+              @click="copyText(props.row.barcode, 'Barcode')"
+            />
           </div>
-          <div class="text-caption text-grey-7">
-            Product Code: {{ props.row.product_code ?? '-' }}
+          <div class="text-caption text-grey-7 row items-center no-wrap q-gutter-xs">
+            <span>Product Code: {{ props.row.product_code ?? '-' }}</span>
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="content_copy"
+              @click="copyText(props.row.product_code, 'Product code')"
+            />
           </div>
         </q-td>
       </template>
@@ -194,7 +253,8 @@
             class="text-center"
             :style="getTotalCellStyle(column.name)"
           >
-            <span v-if="column.name === 'sl'">Total</span>
+            <span v-if="column.name === 'select' || column.name === 'ship'"></span>
+            <span v-else-if="column.name === 'sl'">Total</span>
             <span v-else>{{ formatTotalValue(column.name) }}</span>
           </q-td>
         </q-tr>
@@ -216,7 +276,7 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
-import type { QTableColumn } from 'quasar'
+import { copyToClipboard, type QTableColumn, useQuasar } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useOrderStore } from '../stores/orderStore'
@@ -230,6 +290,7 @@ type OrderStatus =
   | 'priced'
   | 'negotiate'
   | 'final_offered'
+  | 'processing'
   | 'ordered'
   | 'placed'
 
@@ -240,6 +301,7 @@ const props = withDefaults(
     conversionRate?: number
     cargoRate?: number
     profitRate?: number
+    selectedIds?: number[]
   }>(),
   {
     items: () => [],
@@ -247,8 +309,13 @@ const props = withDefaults(
     conversionRate: 0,
     cargoRate: 0,
     profitRate: 0,
+    selectedIds: () => [],
   }
 )
+const emit = defineEmits<{
+  (e: 'update:selectedIds', value: number[]): void
+  (e: 'ship', value: number): void
+}>()
 
 const { tableRows } = useOrderItemTableRows({
   items: toRef(props, 'items'),
@@ -258,6 +325,7 @@ const { tableRows } = useOrderItemTableRows({
 })
 const orderStore = useOrderStore()
 const productStore = useProductStore()
+const $q = useQuasar()
 
 const quantityDraftById = ref<Record<number, number | null>>({})
 const quantityInitialById = ref<Record<number, number | null>>({})
@@ -320,6 +388,24 @@ watch(
 )
 
 const allColumns: QTableColumn[] = [
+  {
+    name: 'select',
+    label: '',
+    field: 'select',
+    align: 'center',
+    sortable: false,
+    style: 'width: 52px; min-width: 52px; max-width: 52px;',
+    headerStyle: 'width: 52px; min-width: 52px; max-width: 52px;',
+  },
+  {
+    name: 'ship',
+    label: '',
+    field: 'ship',
+    align: 'center',
+    sortable: false,
+    style: 'width: 52px; min-width: 52px; max-width: 52px;',
+    headerStyle: 'width: 52px; min-width: 52px; max-width: 52px;',
+  },
   {
     name: 'sl',
     label: 'SL',
@@ -703,7 +789,57 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'name',
     'product_meta',
     'ordered_quantity',
+    'product_weight',
+    'package_weight',
+    'total_weight',
+    'price_gbp',
+    'line_total_purchese_cost_gbp',
+    'cargo_rate',
+    'unit_line_cost_gbp',
+    'cost_bdt',
+    'line_total_cost_bdt',
     'seller_first_offer_bdt',
+    'seller_first_offer_bdt_total',
+    'seller_first_offer_profit_pc',
+    'seler_first_offer_profit_pc_perc',
+    'seller_first_offer_profit_total',
+    'customer_offer_bdt',
+    'customer_offer_bdt_total',
+    'customer_offer_profit_pc',
+    'customer_offer_profit_total',
+    'customer_offer_profit_pc_perc',
+    'final_offer_bdt',
+    'final_offer_bdt_total',
+    'final_offer_profit_pc',
+    'final_offer_profit_total',
+    'final_offer_profit_pc_perc',
+  ],
+  processing: [
+    'ship',
+    'sl',
+    'image_url',
+    'name',
+    'product_meta',
+    'ordered_quantity',
+    'product_weight',
+    'package_weight',
+    'total_weight',
+    'price_gbp',
+    'line_total_purchese_cost_gbp',
+    'cargo_rate',
+    'unit_line_cost_gbp',
+    'cost_bdt',
+    'line_total_cost_bdt',
+    'seller_first_offer_bdt',
+    'seller_first_offer_bdt_total',
+    'seller_first_offer_profit_pc',
+    'seler_first_offer_profit_pc_perc',
+    'seller_first_offer_profit_total',
+    'customer_offer_bdt',
+    'customer_offer_bdt_total',
+    'customer_offer_profit_pc',
+    'customer_offer_profit_total',
+    'customer_offer_profit_pc_perc',
     'final_offer_bdt',
     'final_offer_bdt_total',
     'final_offer_profit_pc',
@@ -729,8 +865,43 @@ const customerOfferColumns = computed(() => {
   const currentStatus = props.status || 'customer_submit'
   const visibleColumnNames = statusColumnMap[currentStatus] || []
 
-  return allColumns.filter((column) => visibleColumnNames.includes(column.name))
+  return allColumns.filter((column) => column.name === 'select' || visibleColumnNames.includes(column.name))
 })
+
+const selectedIdSet = computed(() => new Set(props.selectedIds ?? []))
+const isSelected = (id: number) => selectedIdSet.value.has(id)
+
+const visibleIds = computed(() => tableRows.value.map((row) => row.id))
+const allVisibleSelected = computed(
+  () => visibleIds.value.length > 0 && visibleIds.value.every((id) => selectedIdSet.value.has(id)),
+)
+const someVisibleSelected = computed(
+  () => !allVisibleSelected.value && visibleIds.value.some((id) => selectedIdSet.value.has(id)),
+)
+
+const toggleSelection = (id: number, checked: boolean | null) => {
+  const next = new Set(props.selectedIds ?? [])
+  if (checked) {
+    next.add(id)
+  } else {
+    next.delete(id)
+  }
+  emit('update:selectedIds', Array.from(next))
+}
+
+const toggleSelectAllVisible = (checked: boolean | null) => {
+  const next = new Set(props.selectedIds ?? [])
+  if (checked) {
+    visibleIds.value.forEach((id) => next.add(id))
+  } else {
+    visibleIds.value.forEach((id) => next.delete(id))
+  }
+  emit('update:selectedIds', Array.from(next))
+}
+
+const onShipClick = (row: OrderItem) => {
+  emit('ship', row.id)
+}
 
 const totalsByColumn = computed<Record<string, number | null>>(() => {
   const totals: Record<string, number | null> = {}
@@ -841,6 +1012,25 @@ const onPackageWeightDraftChange = (id: number, value: string | number | null) =
 
 const onPriceDraftChange = (id: number, value: string | number | null) => {
   priceDraftById.value[id] = parseNullableNumber(value)
+}
+
+const copyText = async (value: unknown, label: string) => {
+  const text =
+    typeof value === 'string'
+      ? value.trim()
+      : typeof value === 'number'
+        ? String(value)
+        : ''
+  if (!text || text === '-') {
+    return
+  }
+
+  await copyToClipboard(text)
+  $q.notify({
+    type: 'positive',
+    message: `${label} copied`,
+    position: 'top-right',
+  })
 }
 
 const onFirstOfferDraftChange = (id: number, value: string | number | null) => {
@@ -1122,17 +1312,90 @@ const updateSingleItemFromDraft = async (
 </script>
 
 <style scoped>
+.order-items-table {
+  width: 100%;
+}
+
+.order-q-table {
+  max-width: 100%;
+  max-height: 72vh;
+  background: var(--bw-theme-base, #eef2f5);
+}
+
 :deep(.q-table) {
   min-width: 2720px;
   table-layout: fixed;
+}
+
+.order-items-table :deep(.order-q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.order-items-table :deep(.order-q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 3;
+}
+
+.order-items-table :deep(.order-q-table td:first-child),
+.order-items-table :deep(.order-q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.order-items-table :deep(.order-q-table td:nth-child(2)),
+.order-items-table :deep(.order-q-table th:nth-child(2)) {
+  position: sticky;
+  left: 52px;
+}
+
+.order-items-table :deep(.order-q-table td:nth-child(3)),
+.order-items-table :deep(.order-q-table th:nth-child(3)) {
+  position: sticky;
+  left: 102px;
+}
+
+.order-items-table :deep(.order-q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.order-items-table :deep(.order-q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.order-items-table :deep(.order-q-table td:nth-child(3)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 98%, #fefefe 2%);
+}
+
+.order-items-table :deep(.order-q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.order-items-table :deep(.order-q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.order-items-table :deep(.order-q-table tr:first-child th:nth-child(3)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 98%, #fefefe 2%);
 }
 
 :deep(.q-table thead th) {
   text-align: center !important;
   vertical-align: middle;
   height: auto;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 12px;
+  font-weight: 400;
   white-space: normal !important;
   overflow: hidden;
 }
@@ -1153,26 +1416,30 @@ const updateSingleItemFromDraft = async (
 }
 :deep(.q-table th),
 :deep(.q-table td) {
-  min-width: 140px;
+  min-width: 160px;
+  background: var(--bw-theme-surface, #fff);
+  padding: 12px 14px;
+  font-size: 14px;
 }
 
-:deep(.q-table th:nth-child(3)),
-:deep(.q-table td:nth-child(3)) {
+:deep(.q-table th:nth-child(4)),
+:deep(.q-table td:nth-child(4)) {
   min-width: 360px !important;
   width: 360px !important;
   max-width: 360px !important;
 }
 
-:deep(.q-table th:nth-child(2)),
-:deep(.q-table td:nth-child(2)) {
-  min-width: 1in !important;
-  width: 1in !important;
-  max-width: 1in !important;
-  padding-right: 18px !important;
-}
-
 :deep(.q-table th:nth-child(3)),
 :deep(.q-table td:nth-child(3)) {
+  min-width: 120px !important;
+  width: 120px !important;
+  max-width: 120px !important;
+  padding-right: 8px !important;
+  padding-left: 8px !important;
+}
+
+:deep(.q-table th:nth-child(4)),
+:deep(.q-table td:nth-child(4)) {
   padding-left: 18px !important;
 }
 
@@ -1183,14 +1450,21 @@ const updateSingleItemFromDraft = async (
 }
 
 .order-table-image-box {
-  width: 1in;
-  height: 1in;
-  min-width: 1in;
-  min-height: 1in;
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
   border-radius: 8px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bw-theme-surface, #fff);
   border: 1px solid #e5e7eb;
+}
+
+:deep(.q-table__container),
+:deep(.q-table__middle),
+:deep(.q-table__middle table),
+:deep(.q-table__bottom) {
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 .order-table-image {

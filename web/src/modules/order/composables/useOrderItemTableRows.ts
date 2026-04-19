@@ -6,6 +6,7 @@ export type OrderItem = {
   cost_bdt: number | null
   cost_gbp: number | null
   order_id: number
+  shipment_id: number | null
   image_url: string | null
   price_gbp: number | null
   created_at: string

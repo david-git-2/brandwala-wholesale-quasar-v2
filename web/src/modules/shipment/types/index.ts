@@ -14,6 +14,7 @@ export type Shipment = {
 export type ShipmentItem = {
   id: number
   shipment_id: number
+  order_id: number | null
   name: string | null
   quantity: number
   barcode: string | null
@@ -26,14 +27,6 @@ export type ShipmentItem = {
   received_quantity: number
   damaged_quantity: number
   stolen_quantity: number
-  created_at: string
-  updated_at: string
-}
-
-export type ShipmentOrder = {
-  id: number
-  shipment_id: number
-  order_id: number
   created_at: string
   updated_at: string
 }
@@ -74,6 +67,7 @@ export type AddShipmentItemFromProductInput = {
 
 export type AddShipmentItemManualInput = {
   shipment_id: number
+  order_id?: number | null
   name?: string | null
   quantity?: number | null
   barcode?: string | null
@@ -103,21 +97,6 @@ export type BulkDeleteShipmentItemsByProductInput = {
   items: Array<{ product_id: number; quantity: number }>
 }
 
-export type CreateShipmentOrderInput = {
-  shipment_id: number
-  order_id: number
-}
-
-export type UpdateShipmentOrderInput = {
-  id: number
-  shipment_id: number
-  order_id: number
-}
-
-export type DeleteShipmentOrderInput = {
-  id: number
-}
-
 export type ShipmentServiceResult<T> = {
   success: boolean
   data?: T
@@ -128,7 +107,6 @@ export type ShipmentStoreState = {
   shipments: Shipment[]
   selectedShipment: Shipment | null
   shipmentItems: ShipmentItem[]
-  shipmentOrders: ShipmentOrder[]
   loading: boolean
   saving: boolean
   error: string | null

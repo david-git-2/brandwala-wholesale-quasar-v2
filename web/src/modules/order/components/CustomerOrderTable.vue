@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="customer-order-table">
     <q-table
       flat
       bordered
@@ -8,7 +8,8 @@
       row-key="id"
       :pagination="{ rowsPerPage: 0 }"
       hide-bottom
-      class="bg-white"
+      :table-style="{ maxHeight: '72vh' }"
+      class="order-q-table"
     >
       <template #body="props">
         <q-tr :props="props">
@@ -144,6 +145,7 @@ type OrderStatus =
   | 'priced'
   | 'negotiate'
   | 'final_offered'
+  | 'processing'
   | 'ordered'
   | 'placed'
 
@@ -274,6 +276,7 @@ const statusColumnMapWithNegotiation: Record<OrderStatus, string[]> = {
   priced: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
   negotiate: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
   final_offered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+  processing: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
   ordered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
   placed: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
 }
@@ -283,6 +286,7 @@ const statusColumnMapWithoutNegotiation: Record<OrderStatus, string[]> = {
   priced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   negotiate: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   final_offered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  processing: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   ordered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   placed: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
 }
@@ -419,9 +423,62 @@ const onPlaceOrder = async () => {
 </script>
 
 <style scoped>
+.customer-order-table {
+  width: 100%;
+}
+
+.order-q-table {
+  max-width: 100%;
+  max-height: 72vh;
+  background: var(--bw-theme-base, #eef2f5);
+}
+
 :deep(.q-table) {
   min-width: 1020px;
   table-layout: fixed;
+}
+
+.customer-order-table :deep(.order-q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.customer-order-table :deep(.order-q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 3;
+}
+
+.customer-order-table :deep(.order-q-table td:first-child),
+.customer-order-table :deep(.order-q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.customer-order-table :deep(.order-q-table td:nth-child(2)),
+.customer-order-table :deep(.order-q-table th:nth-child(2)) {
+  position: sticky;
+  left: 50px;
+}
+
+.customer-order-table :deep(.order-q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.customer-order-table :deep(.order-q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.customer-order-table :deep(.order-q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.customer-order-table :deep(.order-q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 :deep(.q-table thead th) {
@@ -452,6 +509,7 @@ const onPlaceOrder = async () => {
 :deep(.q-table th),
 :deep(.q-table td) {
   min-width: 120px;
+  background: var(--bw-theme-surface, #fff);
 }
 
 :deep(.q-table th:nth-child(1)),
@@ -470,10 +528,11 @@ const onPlaceOrder = async () => {
 
 :deep(.q-table th:nth-child(2)),
 :deep(.q-table td:nth-child(2)) {
-  min-width: 1in !important;
-  width: 1in !important;
-  max-width: 1in !important;
-  padding-right: 18px !important;
+  min-width: 120px !important;
+  width: 120px !important;
+  max-width: 120px !important;
+  padding-right: 8px !important;
+  padding-left: 8px !important;
 }
 
 :deep(.q-table th:nth-child(3)),
@@ -488,14 +547,21 @@ const onPlaceOrder = async () => {
 }
 
 .order-table-image-box {
-  width: 1in;
-  height: 1in;
-  min-width: 1in;
-  min-height: 1in;
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
   border-radius: 8px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bw-theme-surface, #fff);
   border: 1px solid #e5e7eb;
+}
+
+:deep(.q-table__container),
+:deep(.q-table__middle),
+:deep(.q-table__middle table),
+:deep(.q-table__bottom) {
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 .order-table-image {

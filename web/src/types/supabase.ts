@@ -891,6 +891,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string | null
+          order_id: number | null
           package_weight: number | null
           price_gbp: number | null
           product_code: string | null
@@ -909,6 +910,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           name?: string | null
+          order_id?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_code?: string | null
@@ -927,6 +929,7 @@ export type Database = {
           id?: number
           image_url?: string | null
           name?: string | null
+          order_id?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_code?: string | null
@@ -940,6 +943,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "shipment_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shipment_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -948,45 +958,6 @@ export type Database = {
           },
           {
             foreignKeyName: "shipment_items_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shipment_orders: {
-        Row: {
-          created_at: string
-          id: number
-          order_id: number
-          shipment_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          order_id: number
-          shipment_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          order_id?: number
-          shipment_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipment_orders_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipment_orders_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
             referencedRelation: "shipments"
@@ -1283,6 +1254,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string | null
+          order_id: number | null
           package_weight: number | null
           price_gbp: number | null
           product_code: string | null
@@ -1324,6 +1296,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string | null
+          order_id: number | null
           package_weight: number | null
           price_gbp: number | null
           product_code: string | null
@@ -1351,6 +1324,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string | null
+          order_id: number | null
           package_weight: number | null
           price_gbp: number | null
           product_code: string | null
@@ -1689,22 +1663,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "shipments"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      create_shipment_order: {
-        Args: { p_order_id: number; p_shipment_id: number }
-        Returns: {
-          created_at: string
-          id: number
-          order_id: number
-          shipment_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "shipment_orders"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2408,22 +2366,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      update_shipment_order: {
-        Args: { p_id: number; p_order_id: number; p_shipment_id: number }
-        Returns: {
-          created_at: string
-          id: number
-          order_id: number
-          shipment_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "shipment_orders"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       update_store: {
         Args: { p_id: number; p_name: string; p_vendor_code: string }
         Returns: {
@@ -2530,6 +2472,7 @@ export type Database = {
         | "priced"
         | "negotiate"
         | "final_offered"
+        | "processing"
         | "ordered"
         | "placed"
     }
@@ -2677,6 +2620,7 @@ export const Constants = {
         "priced",
         "negotiate",
         "final_offered",
+        "processing",
         "ordered",
         "placed",
       ],
