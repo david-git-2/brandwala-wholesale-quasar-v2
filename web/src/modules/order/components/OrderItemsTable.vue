@@ -876,11 +876,16 @@ const onSaveItemChanges = async () => {
       packageWeight: Number(packageWeight || 0),
     })
 
-    const firstOfferChanged = firstOfferDraftById.value[row.id] !== firstOfferInitialById.value[row.id]
-    const nextFirstOffer =
-      firstOfferChanged && firstOfferDraftById.value[row.id] != null
-        ? firstOfferDraftById.value[row.id]
-        : pricing.firstOfferBdt
+    const firstOfferDraft = firstOfferDraftById.value[row.id] ?? null
+    const firstOfferChanged = firstOfferDraft !== (firstOfferInitialById.value[row.id] ?? null)
+    const nextFirstOffer: number | null =
+      firstOfferChanged && firstOfferDraft != null ? firstOfferDraft : pricing.firstOfferBdt
+    const nextCustomerOffer: number | null = negotiateEnabled
+      ? (row.customer_offer_bdt ?? null)
+      : nextFirstOffer
+    const nextFinalOffer: number | null = negotiateEnabled
+      ? finalOfferBdt
+      : nextFirstOffer
 
     return {
       id: row.id,
@@ -891,8 +896,8 @@ const onSaveItemChanges = async () => {
       cost_gbp: pricing.costGbp,
       cost_bdt: pricing.costBdt,
       first_offer_bdt: nextFirstOffer,
-      customer_offer_bdt: negotiateEnabled ? row.customer_offer_bdt : nextFirstOffer,
-      final_offer_bdt: negotiateEnabled ? finalOfferBdt : nextFirstOffer,
+      customer_offer_bdt: nextCustomerOffer,
+      final_offer_bdt: nextFinalOffer,
     }
   })
   const productWeightUpdatesByProductId = getProductWeightUpdatesByProductId()

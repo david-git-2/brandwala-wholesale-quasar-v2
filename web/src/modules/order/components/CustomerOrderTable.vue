@@ -346,7 +346,7 @@ const onSaveCustomerOffers = async () => {
 
   console.log('bulk-save-customer-offers', payload)
 
-  const result = await orderStore.bulkUpdateOrderItems(payload)
+  const result = await orderStore.bulkUpdateOrderItemsRaw(payload)
   if (!result.success) {
     return
   }
@@ -368,7 +368,7 @@ const onCustomerOfferPopupSave = async (id: number, value: string | number | nul
   onDraftChange(id, value)
   const nextOffer = draftOfferById.value[id]
 
-  const result = await orderStore.updateOrderItem({
+  const result = await orderStore.updateOrderItemRaw({
     id,
     patch: {
       customer_offer_bdt: nextOffer ?? null,
@@ -390,7 +390,7 @@ const onQuantityPopupSave = async (id: number, value: string | number | null) =>
     return
   }
 
-  const result = await orderStore.updateOrderItem({
+  const result = await orderStore.updateOrderItemRaw({
     id,
     patch: {
       ordered_quantity: nextQuantity,

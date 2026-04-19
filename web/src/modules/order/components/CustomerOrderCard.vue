@@ -308,7 +308,7 @@ const decrementQuantity = (item: OrderCardItem) => {
 
 const saveCustomerOffer = async (itemId: number) => {
   const nextOffer = customerOfferDraftById.value[itemId] ?? null
-  const result = await orderStore.updateOrderItem({
+  const result = await orderStore.updateOrderItemRaw({
     id: itemId,
     patch: {
       customer_offer_bdt: nextOffer,
@@ -327,7 +327,7 @@ const saveCustomerOffer = async (itemId: number) => {
 
 const saveQuantity = async (itemId: number) => {
   const nextQuantity = quantityDraftById.value[itemId] ?? 0
-  const result = await orderStore.updateOrderItem({
+  const result = await orderStore.updateOrderItemRaw({
     id: itemId,
     patch: {
       ordered_quantity: nextQuantity,
@@ -381,7 +381,7 @@ const onSaveCustomerOffers = async () => {
     return
   }
 
-  const result = await orderStore.bulkUpdateOrderItems(payload)
+  const result = await orderStore.bulkUpdateOrderItemsRaw(payload)
   if (!result.success) {
     return
   }

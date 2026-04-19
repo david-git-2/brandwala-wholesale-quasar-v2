@@ -43,13 +43,22 @@ const buildExpandedOrderItemPatch = (
   const mergedOrderedQuantity = patch.ordered_quantity ?? base.ordered_quantity
 
   const totalWeight = toNumberSafe(mergedProductWeight) + toNumberSafe(mergedPackageWeight)
-  const costGbp = ceil2((totalWeight / 1000) * context.cargoRate + toNumberSafe(mergedPriceGbp))
-  const costBdt = ceilInt(costGbp * context.conversionRate)
-  const autoFirstOffer = roundUpTo5((costBdt * context.profitRate) / 100 + costBdt)
-
   const pricingDriversChanged =
     hasOwn(patch, 'price_gbp') || hasOwn(patch, 'product_weight') || hasOwn(patch, 'package_weight')
   const manualFirstOfferProvided = hasOwn(patch, 'first_offer_bdt')
+  const recalculatedCostGbp = ceil2(
+    (totalWeight / 1000) * context.cargoRate + toNumberSafe(mergedPriceGbp),
+  )
+  const recalculatedCostBdt = ceilInt(recalculatedCostGbp * context.conversionRate)
+  const autoFirstOffer = roundUpTo5((recalculatedCostBdt * context.profitRate) / 100 + recalculatedCostBdt)
+  const mergedCostGbp =
+    pricingDriversChanged
+      ? recalculatedCostGbp
+      : (patch.cost_gbp ?? base.cost_gbp ?? null)
+  const mergedCostBdt =
+    pricingDriversChanged
+      ? recalculatedCostBdt
+      : (patch.cost_bdt ?? base.cost_bdt ?? null)
 
   const mergedFirstOffer =
     manualFirstOfferProvided
@@ -72,8 +81,8 @@ const buildExpandedOrderItemPatch = (
     price_gbp: mergedPriceGbp,
     product_weight: mergedProductWeight,
     package_weight: mergedPackageWeight,
-    cost_gbp: costGbp,
-    cost_bdt: costBdt,
+    cost_gbp: mergedCostGbp,
+    cost_bdt: mergedCostBdt,
     first_offer_bdt: mergedFirstOffer,
     customer_offer_bdt: mergedCustomerOffer,
     final_offer_bdt: mergedFinalOffer,
@@ -198,6 +207,34 @@ export const useOrderStore = defineStore('order', {
               }
 
         const result = await orderService.updateOrderItem(expandedPayload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update order item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updated = result.data
+        if (updated && this.selected) {
+          const index = this.selected.order_items.findIndex((item) => item.id === updated.id)
+          if (index >= 0) {
+            this.selected.order_items.splice(index, 1, updated)
+          }
+        }
+
+        showSuccessNotification('Order item updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateOrderItemRaw(payload: OrderItemUpdateInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await orderService.updateOrderItem(payload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update order item.'
@@ -370,6 +407,34 @@ export const useOrderStore = defineStore('order', {
         })
 
         const result = await orderService.bulkUpdateOrderItems(expandedPayload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to bulk update order items.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        const updatedRows = result.data ?? []
+        if (this.selected && updatedRows.length) {
+          const updatedMap = new Map(updatedRows.map((row) => [row.id, row]))
+          this.selected.order_items = this.selected.order_items.map((row) =>
+            updatedMap.get(row.id) ?? row,
+          )
+        }
+
+        showSuccessNotification('Order items updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async bulkUpdateOrderItemsRaw(payload: OrderItemBulkUpdateInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await orderService.bulkUpdateOrderItems(payload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to bulk update order items.'
