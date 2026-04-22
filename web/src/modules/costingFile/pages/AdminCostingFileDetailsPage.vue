@@ -886,10 +886,8 @@ const productColumns = [
     label: 'SL',
     field: 'sl',
     align: 'left' as const,
-    style: 'width: 48px; min-width: 48px;',
-    headerStyle: 'width: 48px; min-width: 48px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
   },
   {
     name: 'image',
@@ -898,8 +896,6 @@ const productColumns = [
     align: 'left' as const,
     style: 'width: 108px; min-width: 108px;',
     headerStyle: 'width: 108px; min-width: 108px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
   },
   {
     name: 'name',
@@ -954,10 +950,8 @@ const reviewColumns = [
     label: 'SL',
     field: 'sl',
     align: 'left' as const,
-    style: 'width: 48px; min-width: 48px;',
-    headerStyle: 'width: 48px; min-width: 48px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
   },
   {
     name: 'image',
@@ -966,8 +960,6 @@ const reviewColumns = [
     align: 'left' as const,
     style: 'width: 108px; min-width: 108px;',
     headerStyle: 'width: 108px; min-width: 108px;',
-    classes: 'costing-page__sticky-col costing-page__sticky-col--image',
-    headerClasses: 'costing-page__sticky-col costing-page__sticky-col--image',
   },
 
   {
@@ -1690,25 +1682,68 @@ onMounted(async () => {
   vertical-align: middle;
 }
 
-.costing-page__table :deep(.costing-page__sticky-col) {
+.costing-page__table--review :deep(.q-table td:first-child),
+.costing-page__table--review :deep(.q-table th:first-child) {
   position: sticky;
-  background: var(--bw-theme-surface, #fff);
-}
-
-.costing-page__table :deep(td.costing-page__sticky-col) {
-  z-index: 2;
-}
-
-.costing-page__table :deep(th.costing-page__sticky-col) {
-  z-index: 3;
-}
-
-.costing-page__table :deep(.costing-page__sticky-col--sl) {
   left: 0;
 }
 
-.costing-page__table :deep(.costing-page__sticky-col--image) {
-  left: 48px;
+.costing-page__table--review :deep(.q-table td:nth-child(2)),
+.costing-page__table--review :deep(.q-table th:nth-child(2)) {
+  position: sticky;
+  left: 60px;
+}
+
+.costing-page__table--review :deep(.q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--review :deep(.q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--review :deep(.q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--review :deep(.q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(2)),
+.costing-page__table--product :deep(.q-table th:nth-child(2)) {
+  position: sticky;
+  left: 0;
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(3)),
+.costing-page__table--product :deep(.q-table th:nth-child(3)) {
+  position: sticky;
+  left: 60px;
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(3)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--product :deep(.q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--product :deep(.q-table tr:first-child th:nth-child(3)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--review :deep(.costing-page__rejected-row > td) {
@@ -1770,8 +1805,8 @@ onMounted(async () => {
 }
 
 .costing-page__sl-cell {
-  width: 3ch;
-  max-width: 3ch;
+  width: 60px;
+  max-width: 60px;
   white-space: nowrap;
 }
 

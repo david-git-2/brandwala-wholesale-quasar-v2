@@ -133,7 +133,14 @@ const columns = [
     style: 'width: 64px; min-width: 64px;',
     headerStyle: 'width: 64px; min-width: 64px;',
   },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 124px; min-width: 124px; max-width: 124px;',
+    headerStyle: 'width: 124px; min-width: 124px; max-width: 124px;',
+  },
   {
     name: 'buyerSellingPriceBdt',
     label: 'Buyer selling',
@@ -294,7 +301,7 @@ const getTotalsValue = (columnName: string) => {
 }
 
 .preview-page__card {
-  width: min(400px, calc(100vw - 1rem));
+  width: min(320px, calc(100vw - 1rem));
   margin: 0 auto;
   display: grid;
   gap: 0.75rem;
@@ -315,6 +322,11 @@ const getTotalsValue = (columnName: string) => {
 .preview-page__table :deep(.q-table th),
 .preview-page__table :deep(.q-table td) {
   vertical-align: middle;
+}
+
+.preview-page__table :deep(.q-table__middle table) {
+  width: 320px;
+  table-layout: fixed;
 }
 
 .preview-page__table :deep(.q-table tr) {
@@ -350,7 +362,10 @@ const getTotalsValue = (columnName: string) => {
 }
 
 .preview-page__name-cell {
-  min-width: 0;
+  width: 124px;
+  min-width: 124px;
+  max-width: 124px;
+  white-space: normal;
 }
 
 .preview-page__totals-row {
@@ -364,8 +379,9 @@ const getTotalsValue = (columnName: string) => {
 }
 
 .preview-page__name-text {
-  display: inline-block;
+  display: block;
   max-width: 100%;
+  white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
   line-height: 1.25;
@@ -402,8 +418,8 @@ const getTotalsValue = (columnName: string) => {
   }
 
   .preview-page__card {
-    width: 400px;
-    max-width: 400px;
+    width: 320px;
+    max-width: 320px;
     margin: 0 auto;
     gap: 0.4rem;
   }

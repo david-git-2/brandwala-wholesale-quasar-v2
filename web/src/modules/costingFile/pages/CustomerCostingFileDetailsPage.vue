@@ -243,9 +243,13 @@
           </div>
         </div>
 
-        <div v-else-if="selectedFile.status === 'offered'" class="costing-page__table-section">
+        <div
+          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'po_placed'"
+          class="costing-page__table-section"
+        >
           <div class="costing-page__offered-controls">
             <q-input
+              v-if="selectedFile.status === 'offered'"
               v-model.number="sharedProfitRate"
               type="number"
               dense
@@ -256,6 +260,7 @@
               class="costing-page__shared-profit-input"
             />
             <q-btn
+              v-if="selectedFile.status === 'offered'"
               unelevated
               color="primary"
               label="Save buyer profit"
@@ -281,6 +286,7 @@
             :columns="visibleColumns"
             :row-class="getOfferedRowClass"
             :pagination="{ rowsPerPage: 0 }"
+            :table-style="{ maxHeight: '72vh' }"
             hide-bottom
             class="costing-page__table costing-page__table--offered"
           >
@@ -415,28 +421,30 @@
                 class="costing-page__actions-cell"
                 :class="getOfferedCellClass(props.row)"
               >
-                <q-btn
-                  unelevated
-                  size="sm"
-                  dense
-                  color="positive"
-                  label="Accept"
-                  class="costing-page__decision-btn costing-page__decision-btn--accept"
-                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
-                  :disable="props.row.status === 'accepted' || savingDecisionItemId === props.row.id"
-                  @click="handleDecision(props.row.id, 'accepted')"
-                />
-                <q-btn
-                  unelevated
-                  size="sm"
-                  dense
-                  color="negative"
-                  label="Reject"
-                  class="costing-page__decision-btn costing-page__decision-btn--reject"
-                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
-                  :disable="props.row.status === 'rejected' || savingDecisionItemId === props.row.id"
-                  @click="handleDecision(props.row.id, 'rejected')"
-                />
+                <template v-if="selectedFile.status === 'offered'">
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="positive"
+                    label="Accept"
+                    class="costing-page__decision-btn costing-page__decision-btn--accept"
+                    :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
+                    :disable="props.row.status === 'accepted' || savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'accepted')"
+                  />
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="negative"
+                    label="Reject"
+                    class="costing-page__decision-btn costing-page__decision-btn--reject"
+                    :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
+                    :disable="props.row.status === 'rejected' || savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'rejected')"
+                  />
+                </template>
               </q-td>
             </template>
 
@@ -754,8 +762,8 @@ const allColumns = [
     label: 'SL',
     field: 'sl',
     align: 'center' as const,
-    style: 'width: 48px; min-width: 48px;',
-    headerStyle: 'width: 48px; min-width: 48px;',
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
     classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
   },
@@ -947,6 +955,28 @@ const visibleColumns = computed(() => {
         'customerProfitRateDisplay',
         'status',
         'actions',
+      ].includes(column.name),
+    )
+  }
+
+  if (selectedFile.value.status === 'po_placed') {
+    return allColumns.filter((column) =>
+      [
+        'sl',
+        'image',
+        'name',
+        'websiteUrl',
+        'quantity',
+        'itemType',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
+        'offerPriceBdt',
+        'buyerSellingPriceBdt',
+        'customerProfitAmountBdt',
+        'customerProfitRateDisplay',
+        'status',
       ].includes(column.name),
     )
   }
@@ -1147,7 +1177,10 @@ const handleSubmitOrder = async () => {
 }
 
 const openPreview = () => {
-  if (!selectedFile.value || selectedFile.value.status !== 'offered') {
+  if (
+    !selectedFile.value ||
+    (selectedFile.value.status !== 'offered' && selectedFile.value.status !== 'po_placed')
+  ) {
     return
   }
 
@@ -1328,12 +1361,32 @@ watch(
 }
 
 .costing-page__table :deep(.costing-page__sticky-col--image) {
-  left: 48px;
+  left: 60px;
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col--sl) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col--image) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col--sl) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col--image) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__sl-cell {
-  width: 3ch;
-  max-width: 3ch;
+  width: 60px;
+  max-width: 60px;
   white-space: nowrap;
 }
 
@@ -1510,6 +1563,11 @@ watch(
   gap: 0.5rem;
   justify-content: flex-end;
   margin-bottom: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  padding: 0.5rem 0;
+  background: var(--bw-theme-base, #fff);
 }
 
 .costing-page__shared-profit-input {
@@ -1529,6 +1587,66 @@ watch(
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.costing-page__table--offered {
+  height: 72vh;
+}
+
+.costing-page__table--offered :deep(.q-table__middle) {
+  max-height: 72vh;
+}
+
+.costing-page__table--offered :deep(.q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table--offered :deep(.q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 1;
+}
+
+.costing-page__table--offered :deep(.q-table thead tr + tr th) {
+  top: 48px;
+  z-index: 3;
+}
+
+.costing-page__table--offered :deep(.q-table td:first-child),
+.costing-page__table--offered :deep(.q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.costing-page__table--offered :deep(.q-table td:nth-child(2)),
+.costing-page__table--offered :deep(.q-table th:nth-child(2)) {
+  position: sticky;
+  left: 60px;
+}
+
+.costing-page__table--offered :deep(.q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--offered :deep(.q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--offered :deep(.q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--offered :deep(.q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--offered :deep(.q-table tbody) {
+  scroll-margin-top: 48px;
 }
 
 .costing-page__totals-row {

@@ -229,8 +229,8 @@ const productColumns = [
     label: 'SL',
     field: 'sl',
     align: 'left' as const,
-    style: 'width: 48px; min-width: 48px;',
-    headerStyle: 'width: 48px; min-width: 48px;',
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
     classes: 'costing-page__sticky-col costing-page__sticky-col--sl',
     headerClasses: 'costing-page__sticky-col costing-page__sticky-col--sl',
   },
@@ -559,12 +559,32 @@ watch(editDialogOpen, (isOpen) => {
 }
 
 .costing-page__table :deep(.costing-page__sticky-col--image) {
-  left: 48px;
+  left: 60px;
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col--sl) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table :deep(td.costing-page__sticky-col--image) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col--sl) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table :deep(th.costing-page__sticky-col--image) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__sl-cell {
-  width: 3ch;
-  max-width: 3ch;
+  width: 60px;
+  max-width: 60px;
   white-space: nowrap;
 }
 
