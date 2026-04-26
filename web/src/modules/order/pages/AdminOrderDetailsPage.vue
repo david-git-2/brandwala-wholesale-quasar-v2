@@ -147,6 +147,28 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="confirmRemoveShipmentOpen">
+      <q-card style="min-width: 360px">
+        <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
+        <q-card-section>
+          This will remove the selected item from its shipment.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="negative"
+            label="Remove"
+            :loading="orderStore.saving || shipmentStore.saving"
+            @click="onConfirmRemoveShipment"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <ShipmentItemCompactDialog v-model="showAddShipmentDialog"
+  :quantity="selectedQuantity"
+  :price-gbp="selectedPriceGbp"
+  @save="onSaveShipment"/>
   </q-page>
 </template>
 
@@ -155,21 +177,34 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useOrderStore } from '../stores/orderStore'
 import { useRoute, useRouter } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
-import type { OrderStatus } from '../types'
+import type { OrderItem, OrderStatus } from '../types'
 import CompactOrderItemTable from '../components/CompactOrderItemTable.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
+
+
 
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const orderStore = useOrderStore()
+const shipmentStore = useShipmentStore()
+const tenantStore = useTenantStore()
 
 const selectedStatus = ref<OrderStatus | null>(null)
 const tableViewMode = ref<'compact' | 'detailed'>('compact')
 const confirmDisableNegotiationOpen = ref(false)
 const confirmDeleteSelectedOpen = ref(false)
+const confirmRemoveShipmentOpen = ref(false)
 const selectedItemIds = ref<number[]>([])
+const showAddShipmentDialog = ref(false)
+const selectedQuantity = ref<number | null>(null)
+const selectedPriceGbp = ref<number | null>(null)
+const selectedShipItemId = ref<number | null>(null)
+const pendingRemoveShipItemId = ref<number | null>(null)
 
 const allStatusOptions: OrderStatus[] = [
   'customer_submit',
@@ -206,6 +241,7 @@ const normalizeNumericInput = (value: unknown) => {
 
 onMounted(async () => {
   await orderStore.fetchOrderById({ id: Number(route.params.id) })
+  await shipmentStore.fetchShipments(tenantStore.selectedTenant?.id ?? 1)
 })
 
 watch(
@@ -359,9 +395,30 @@ const onBackToOrders = async () => {
   await router.push(`${tenantPrefix}/app/orders`)
 }
 
+const openShipDialogForItem = (itemId: number) => {
+  const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) ?? null
+  if (!rowItem) {
+    return
+  }
+  selectedShipItemId.value = rowItem.id
+  showAddShipmentDialog.value = true
+  selectedQuantity.value = rowItem?.ordered_quantity ?? null
+  selectedPriceGbp.value = rowItem?.price_gbp ?? null
+}
+
 const onShipItem = (itemId: number) => {
   const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) ?? null
-  console.log('Ship row item (from parent):', rowItem)
+  if (!rowItem) {
+    return
+  }
+
+  if (rowItem.shipment_id == null) {
+    openShipDialogForItem(itemId)
+    return
+  }
+
+  pendingRemoveShipItemId.value = itemId
+  confirmRemoveShipmentOpen.value = true
 }
 
 const onSaveRates = async () => {
@@ -428,6 +485,123 @@ const onSaveRates = async () => {
   }
 }
 
+
+const onSaveShipment = async (data: {
+  shipment_id: number
+  quantity: number
+  price_gbp: number | null
+}) => {
+  const itemId = selectedShipItemId.value
+  if (!itemId) {
+    return
+  }
+
+  const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) as
+    | OrderItem
+    | undefined
+  if (!rowItem) {
+    return
+  }
+
+  const quantity = Math.max(0, Number(data.quantity) || 0)
+  if (quantity <= 0) {
+    return
+  }
+
+  const addShipmentResult = await shipmentStore.addShipmentItemManual({
+    shipment_id: data.shipment_id,
+    order_id: rowItem.order_id,
+    method: 'order',
+    name: rowItem.name ?? null,
+    quantity,
+    barcode: rowItem.barcode ?? null,
+    product_code: rowItem.product_code ?? null,
+    product_id: rowItem.product_id ?? null,
+    image_url: rowItem.image_url ?? null,
+    product_weight: rowItem.product_weight ?? null,
+    package_weight: rowItem.package_weight ?? null,
+    price_gbp: data.price_gbp,
+    received_quantity: 0,
+    damaged_quantity: 0,
+    stolen_quantity: 0,
+  })
+
+  if (!addShipmentResult.success) {
+    return
+  }
+
+  const updateOrderItemResult = await orderStore.updateOrderItemRaw({
+    id: itemId,
+    patch: {
+      shipment_id: data.shipment_id,
+    },
+  })
+
+  if (!updateOrderItemResult.success) {
+    return
+  }
+
+  selectedShipItemId.value = null
+  selectedQuantity.value = null
+  selectedPriceGbp.value = null
+}
+
+const onConfirmRemoveShipment = async () => {
+  const itemId = pendingRemoveShipItemId.value
+  if (!itemId) {
+    confirmRemoveShipmentOpen.value = false
+    return
+  }
+
+  const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) as
+    | OrderItem
+    | undefined
+  if (!rowItem || rowItem.shipment_id == null) {
+    confirmRemoveShipmentOpen.value = false
+    pendingRemoveShipItemId.value = null
+    return
+  }
+
+  const shipmentId = rowItem.shipment_id
+  const itemsResult = await shipmentStore.fetchShipmentItems(shipmentId)
+  if (!itemsResult.success) {
+    return
+  }
+
+  const shipmentItems = shipmentStore.shipmentItems ?? []
+  const exactProductMatch = shipmentItems.find(
+    (item) =>
+      item.order_id === rowItem.order_id &&
+      rowItem.product_id != null &&
+      item.product_id === rowItem.product_id,
+  )
+  const nameMatch = shipmentItems.find(
+    (item) => item.order_id === rowItem.order_id && item.name === rowItem.name,
+  )
+  const fallbackByOrder = shipmentItems.find((item) => item.order_id === rowItem.order_id)
+  const shipmentItemToDelete = exactProductMatch ?? nameMatch ?? fallbackByOrder ?? null
+
+  if (shipmentItemToDelete) {
+    const deleteResult = await shipmentStore.deleteShipmentItem({ id: shipmentItemToDelete.id })
+    if (!deleteResult.success) {
+      return
+    }
+  }
+
+  const updateOrderItemResult = await orderStore.updateOrderItemRaw({
+    id: itemId,
+    patch: {
+      shipment_id: null,
+    },
+  })
+
+  if (!updateOrderItemResult.success) {
+    return
+  }
+
+  confirmRemoveShipmentOpen.value = false
+  pendingRemoveShipItemId.value = null
+}
 
 
 </script>

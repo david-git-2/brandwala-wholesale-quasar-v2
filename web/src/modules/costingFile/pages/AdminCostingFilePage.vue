@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page">
-    <section class="bw-page__stack">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Operations</div>
@@ -12,7 +13,7 @@
             unelevated
             label="Create costing file"
             :disable="!tenantStore.selectedTenant?.id"
-            @click="createDialog = true"
+            @click="openCreateDialog"
           />
         </div>
       </section>
@@ -197,10 +198,12 @@ import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
+import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
 
 const router = useRouter()
 const tenantStore = useTenantStore()
@@ -210,6 +213,7 @@ const { items: files, listLoading: loadingFiles, error, totalItems } = storeToRe
 const creating = ref(false)
 const editing = ref(false)
 const deleting = ref(false)
+const initialLoading = ref(true)
 const createDialog = ref(false)
 const editDialog = ref(false)
 const deleteDialog = ref(false)
@@ -254,6 +258,11 @@ const customerGroupNameById = (customerGroupId: number) =>
 const customerGroupAccentColorById = (customerGroupId: number) =>
   customerGroupOptions.value.find((option) => option.value === customerGroupId)?.accentColor?.trim() ||
   'var(--bw-theme-primary)'
+const buildCreateFileName = (customerGroupId: number | null) => {
+  const customerGroupName =
+    customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? 'Costing File'
+  return formatCurrentDateTimeForName(customerGroupName)
+}
 const statusChipColor = (status: string) => {
   if (status === 'draft') return 'grey-7'
   if (status === 'customer_submitted') return 'indigo'
@@ -278,9 +287,10 @@ const filePendingDelete = computed(
 )
 
 const resetCreateForm = () => {
-  createForm.name = ''
+  createForm.name = buildCreateFileName(createForm.customerGroupId)
   createForm.market = ''
   createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null
+  createForm.name = buildCreateFileName(createForm.customerGroupId)
 }
 
 const resetEditForm = () => {
@@ -365,6 +375,11 @@ const openEditDialog = (id: number) => {
   editForm.market = file.market ?? ''
   editForm.customerGroupId = file.customer_group_id
   editDialog.value = true
+}
+
+const openCreateDialog = () => {
+  resetCreateForm()
+  createDialog.value = true
 }
 
 const closeEditDialog = () => {
@@ -470,12 +485,16 @@ const handleDelete = async () => {
 watch(
   () => tenantStore.selectedTenant?.id ?? null,
   async () => {
-    createDialog.value = false
-    closeEditDialog()
-    closeDeleteDialog()
-    selectedCustomerGroupId.value = null
-    page.value = 1
-    await loadPageData()
+    try {
+      createDialog.value = false
+      closeEditDialog()
+      closeDeleteDialog()
+      selectedCustomerGroupId.value = null
+      page.value = 1
+      await loadPageData()
+    } finally {
+      initialLoading.value = false
+    }
   },
   { immediate: true },
 )

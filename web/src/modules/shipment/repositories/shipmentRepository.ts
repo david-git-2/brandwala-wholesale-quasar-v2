@@ -7,9 +7,11 @@ import type {
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
   DeleteShipmentInput,
+  DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
   Shipment,
   ShipmentItem,
+  UpdateShipmentItemInput,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
 } from '../types'
@@ -142,7 +144,23 @@ const addShipmentItemFromProduct = async (
     throw new Error('Shipment item was not added.')
   }
 
-  return data as ShipmentItem
+  let createdRow = data as ShipmentItem
+  const { data: updatedData, error: updateError } = await db
+    .from('shipment_items')
+    .update({ method: 'costing' })
+    .eq('id', createdRow.id)
+    .select('*')
+    .single()
+
+  if (updateError) {
+    throw updateError
+  }
+
+  if (updatedData) {
+    createdRow = updatedData as ShipmentItem
+  }
+
+  return createdRow
 }
 
 const addShipmentItemManual = async (
@@ -172,7 +190,40 @@ const addShipmentItemManual = async (
     throw new Error('Shipment item was not added.')
   }
 
-  return data as ShipmentItem
+  let createdRow = data as ShipmentItem
+
+  const updatePatch: Record<string, unknown> = {}
+
+  if (payload.order_id != null && Number.isFinite(payload.order_id)) {
+    updatePatch.order_id = payload.order_id
+  }
+
+  if (payload.method != null) {
+    updatePatch.method = payload.method
+  }
+
+  if (!Object.keys(updatePatch).length) {
+    updatePatch.method = 'manual'
+  }
+
+  if (Object.keys(updatePatch).length) {
+    const { data: updatedData, error: updateError } = await db
+      .from('shipment_items')
+      .update(updatePatch)
+      .eq('id', createdRow.id)
+      .select('*')
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    if (updatedData) {
+      createdRow = updatedData as ShipmentItem
+    }
+  }
+
+  return createdRow
 }
 
 const bulkAddShipmentItemsFromProduct = async (
@@ -205,6 +256,66 @@ const deleteShipmentItemQuantity = async (
   return Boolean(data)
 }
 
+const updateShipmentItem = async (payload: UpdateShipmentItemInput): Promise<ShipmentItem> => {
+  const entries = Object.entries(payload.patch).filter(([, value]) => value !== undefined)
+  if (!entries.length) {
+    throw new Error('No fields provided for shipment item update.')
+  }
+
+  const normalizedPatch = Object.fromEntries(entries)
+  const { data, error } = await db
+    .from('shipment_items')
+    .update(normalizedPatch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Shipment item was not updated.')
+  }
+
+  return data as ShipmentItem
+}
+
+const deleteShipmentItem = async (payload: DeleteShipmentItemInput): Promise<void> => {
+  const { error } = await db.from('shipment_items').delete().eq('id', payload.id)
+  if (error) {
+    throw error
+  }
+}
+
+const clearOrderItemShipmentLinkByShipmentItem = async (
+  shipmentItem: ShipmentItem,
+): Promise<number> => {
+  if (shipmentItem.order_id == null) {
+    return 0
+  }
+
+  let query = db
+    .from('order_items')
+    .update({ shipment_id: null })
+    .eq('order_id', shipmentItem.order_id)
+    .eq('shipment_id', shipmentItem.shipment_id)
+
+  if (shipmentItem.product_id != null) {
+    query = query.eq('product_id', shipmentItem.product_id)
+  } else if (shipmentItem.name != null && shipmentItem.name.trim() !== '') {
+    query = query.eq('name', shipmentItem.name)
+  }
+
+  const { data, error } = await query.select('id')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as Array<{ id: number }> | null)?.length ?? 0
+}
+
 const bulkDeleteShipmentItemsByProduct = async (
   payload: BulkDeleteShipmentItemsByProductInput,
 ): Promise<number> => {
@@ -232,5 +343,8 @@ export const shipmentRepository = {
   addShipmentItemManual,
   bulkAddShipmentItemsFromProduct,
   deleteShipmentItemQuantity,
+  updateShipmentItem,
+  deleteShipmentItem,
+  clearOrderItemShipmentLinkByShipmentItem,
   bulkDeleteShipmentItemsByProduct,
 }

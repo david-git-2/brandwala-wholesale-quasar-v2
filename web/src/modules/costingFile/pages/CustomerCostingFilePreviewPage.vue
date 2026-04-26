@@ -1,6 +1,7 @@
 <template>
   <q-page class="preview-page">
-    <section class="preview-page__card">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="preview-page__card">
       <div class="preview-page__header">
         <div class="text-subtitle1">Offer Preview</div>
         <div class="preview-page__header-actions">
@@ -102,6 +103,7 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import {
   buildCustomerProductRows,
   summarizeCustomerProductRows,
@@ -115,6 +117,7 @@ const { costingFileItems, selectedItem } = storeToRefs(costingFileStore);
 const captureRef = ref<HTMLElement | null>(null);
 const exporting = ref(false);
 const exportWithoutImages = ref(false);
+const initialLoading = ref(true);
 
 const columns = [
   {
@@ -130,8 +133,8 @@ const columns = [
     label: 'Image',
     field: 'imageUrl',
     align: 'left' as const,
-    style: 'width: 64px; min-width: 64px;',
-    headerStyle: 'width: 64px; min-width: 64px;',
+    style: 'width: 108px; min-width: 108px; max-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px; max-width: 108px;',
   },
   {
     name: 'name',
@@ -145,7 +148,7 @@ const columns = [
     name: 'buyerSellingPriceBdt',
     label: 'Buyer selling',
     field: 'buyerSellingPriceBdt',
-    align: 'right' as const,
+    align: 'center' as const,
     style: 'width: 92px; min-width: 92px;',
     headerStyle: 'width: 92px; min-width: 92px;',
     classes: 'preview-page__tone-orange',
@@ -182,7 +185,11 @@ const loadFile = async () => {
   }
 
   const result = await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId);
-  if (!result.success || !result.data || result.data.status !== 'offered') {
+  if (
+    !result.success ||
+    !result.data ||
+    (result.data.status !== 'offered' && result.data.status !== 'po_placed')
+  ) {
     await router.replace({
       name: 'customer-costing-file-details-page',
       params: { id: String(fileId) },
@@ -274,7 +281,11 @@ const downloadZip = async () => {
 };
 
 onMounted(async () => {
-  await loadFile();
+  try {
+    await loadFile();
+  } finally {
+    initialLoading.value = false;
+  }
 });
 
 const totals = computed(() => summarizeCustomerProductRows(rows.value));
@@ -301,7 +312,7 @@ const getTotalsValue = (columnName: string) => {
 }
 
 .preview-page__card {
-  width: min(320px, calc(100vw - 1rem));
+  width: min(364px, calc(100vw - 1rem));
   margin: 0 auto;
   display: grid;
   gap: 0.75rem;
@@ -322,10 +333,12 @@ const getTotalsValue = (columnName: string) => {
 .preview-page__table :deep(.q-table th),
 .preview-page__table :deep(.q-table td) {
   vertical-align: middle;
+  padding: 4px;
+  overflow: hidden;
 }
 
 .preview-page__table :deep(.q-table__middle table) {
-  width: 320px;
+  width: 364px;
   table-layout: fixed;
 }
 
@@ -340,6 +353,8 @@ const getTotalsValue = (columnName: string) => {
 .preview-page__image {
   width: 1in;
   height: 1in;
+  margin: 0 auto;
+  display: block;
   border-radius: 6px;
   overflow: hidden;
   background: var(--bw-theme-surface);
@@ -368,6 +383,13 @@ const getTotalsValue = (columnName: string) => {
   white-space: normal;
 }
 
+.preview-page__image-cell {
+  width: 108px;
+  min-width: 108px;
+  max-width: 108px;
+  overflow: hidden;
+}
+
 .preview-page__totals-row {
   background: inherit;
 }
@@ -389,6 +411,7 @@ const getTotalsValue = (columnName: string) => {
 
 .preview-page__price-cell {
   white-space: nowrap;
+  text-align: center;
   font-weight: 700;
   background: #fff8e1;
   color: #7a5313;
@@ -418,8 +441,8 @@ const getTotalsValue = (columnName: string) => {
   }
 
   .preview-page__card {
-    width: 320px;
-    max-width: 320px;
+    width: 364px;
+    max-width: 364px;
     margin: 0 auto;
     gap: 0.4rem;
   }

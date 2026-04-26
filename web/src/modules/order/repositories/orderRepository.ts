@@ -47,7 +47,6 @@ const ORDER_FIELDS = [
   'negotiate',
   'status',
   'store_id',
-  'shipment_id',
   'created_at',
   'updated_at',
 ] as const
@@ -110,10 +109,6 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
     query = query.eq('store_id', payload.store_id)
   }
 
-  if (payload.shipment_id != null) {
-    query = query.eq('shipment_id', payload.shipment_id)
-  }
-
   if (payload.status != null) {
     query = query.eq('status', payload.status)
   }
@@ -155,14 +150,9 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
 }
 
 const createOrder = async (payload: OrderCreateInput): Promise<Order> => {
-  const createPayload = {
-    ...payload,
-    shipment_id: payload.shipment_id ?? null,
-  }
-
   const { data, error } = await supabase
     .from('orders')
-    .insert([createPayload])
+    .insert([payload])
     .select('*')
     .single()
 

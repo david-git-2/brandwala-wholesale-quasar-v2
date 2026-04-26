@@ -902,6 +902,7 @@ import { useMembershipStore } from 'src/modules/membership/stores/membershipStor
 import type { Membership } from 'src/modules/membership/types'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import type { CostingFileListEntry } from 'src/modules/costingFile/types'
+import { formatAppDateTime } from 'src/utils/dateTime'
 import { useCustomerGroupStore } from '../stores/customerGroupStore'
 import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useTenantStore } from '../stores/tenantStore'
@@ -1237,7 +1238,7 @@ const formatDateTime = (value: string | null) => {
     return '-'
   }
 
-  return new Date(value).toLocaleString()
+  return formatAppDateTime(value, '-')
 }
 
 const customerGroupNameById = (customerGroupId: number) =>

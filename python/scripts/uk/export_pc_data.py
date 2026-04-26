@@ -58,12 +58,24 @@ def env_path(env_key: str, default_abs_path: str) -> str:
     return raw if os.path.isabs(raw) else os.path.join(ROOT_DIR, raw)
 
 
+def env_positive_int(env_key: str, default: int) -> int:
+    raw = str(os.getenv(env_key, "")).strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
 DEFAULT_XLSX = env_path("PY_UK_PC_XLSX_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "pc_data.xlsx"))
 DEFAULT_OUT_JSON = env_path("PY_UK_PC_OUT_JSON_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_data.json"))
 DEFAULT_OUT_MANIFEST = env_path("PY_UK_PC_OUT_MANIFEST_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_manifest.json"))
 DEFAULT_OUT_IMAGES = env_path("PY_UK_PC_OUT_IMAGES_DIR", os.path.join(ROOT_DIR, "python", "images", "uk", "out_images"))
 DEFAULT_SUPABASE_BUCKET = os.getenv("PY_SUPABASE_STORAGE_BUCKET", "product-images").strip() or "product-images"
 DEFAULT_SUPABASE_PREFIX = os.getenv("PY_SUPABASE_STORAGE_PREFIX", "uk/pc").strip().strip("/")
+DEFAULT_UPLOAD_WORKERS = env_positive_int("PY_UK_PC_UPLOAD_WORKERS", 20)
 
 CREDS_DIR = env_path("PY_GOOGLE_CREDS_DIR", os.path.join(ROOT_DIR, "python", "credentials"))
 OAUTH_CLIENT_JSON = env_path("PY_GOOGLE_OAUTH_CLIENT_JSON", os.path.join(CREDS_DIR, "oauth_client.json"))
@@ -217,6 +229,11 @@ def normalize_yes_no_value(value) -> str:
     """Normalize spreadsheet yes/no style values for filtering."""
     text = to_text(value).lower()
     return text.replace(" ", "")
+
+
+def is_hazardous_yes(value) -> bool:
+    normalized = normalize_yes_no_value(value)
+    return normalized in {"yes", "y", "true", "1"}
 
 
 def get_oauth_credentials() -> Credentials:
@@ -413,7 +430,7 @@ def main():
     SHEET_NAME = None
 
     # Parallel upload settings
-    MAX_WORKERS = 6  # try 5-10; too high may hit rate limits
+    MAX_WORKERS = DEFAULT_UPLOAD_WORKERS
     # ----------------
 
     log(
@@ -573,6 +590,21 @@ def main():
 
     log(f"✅ Products loaded: {len(products_by_row)}")
 
+    # Filter hazardous rows first so image upload only processes needed products.
+    eligible_rows = set(products_by_row.keys())
+    hazardous_removed_rows = 0
+    if hazardous_header_name:
+        eligible_rows = set()
+        for row, obj in products_by_row.items():
+            if is_hazardous_yes(obj.get(hazardous_header_name, "")):
+                hazardous_removed_rows += 1
+                continue
+            eligible_rows.add(row)
+        log(
+            f"🧪 Hazardous filter: removed={hazardous_removed_rows}, "
+            f"kept={len(eligible_rows)}"
+        )
+
     # Extract images
     log(
         "🖼️ Finding embedded images anchored to column "
@@ -590,6 +622,8 @@ def main():
         if col != IMAGE_COLUMN_INDEX:
             continue
         if row not in products_by_row:
+            continue
+        if row not in eligible_rows:
             continue
 
         img_bytes = img._data()
@@ -704,10 +738,8 @@ def main():
     products = []
 
     for row, obj in products_by_row.items():
-        if hazardous_header_name:
-            hazardous_value = normalize_yes_no_value(obj.get(hazardous_header_name, ""))
-            if hazardous_value == "yes":
-                continue
+        if row not in eligible_rows:
+            continue
 
         out = {}
 
@@ -771,6 +803,7 @@ def main():
             "storagePrefix": SUPABASE_PREFIX,
             "note": "Supabase Storage upsert uses barcode+product_code key.",
             "productIdRule": "product_id = barcode + '_' + product_code",
+            "hazardousRowsRemoved": hazardous_removed_rows,
         },
         "products": products,
     }

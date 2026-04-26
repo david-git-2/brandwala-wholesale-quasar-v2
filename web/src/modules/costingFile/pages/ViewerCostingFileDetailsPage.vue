@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-app">
-    <section class="bw-page__stack viewer-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack viewer-page">
       <section class="viewer-page__header">
         <div>
           <div class="text-overline">Viewer Access</div>
@@ -109,10 +110,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import {
   buildAdminReviewRows,
@@ -123,6 +125,7 @@ const route = useRoute()
 const router = useRouter()
 const costingFileStore = useCostingFileStore()
 const { selectedItem: selectedFile, costingFileItems } = storeToRefs(costingFileStore)
+const initialLoading = ref(true)
 
 const formatStatusLabel = (status: string) =>
   status
@@ -329,7 +332,11 @@ const loadFile = async () => {
 }
 
 onMounted(async () => {
-  await loadFile()
+  try {
+    await loadFile()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 

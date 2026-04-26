@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-app">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Viewer Access</div>
@@ -66,6 +67,7 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 
@@ -73,6 +75,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const costingFileStore = useCostingFileStore()
 const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(costingFileStore)
+const initialLoading = ref(true)
 const page = ref(1)
 const pageSize = 20
 
@@ -124,7 +127,11 @@ const openFile = async (id: number) => {
 }
 
 onMounted(async () => {
-  await loadFiles()
+  try {
+    await loadFiles()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 

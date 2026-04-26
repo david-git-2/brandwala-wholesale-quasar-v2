@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-app">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section class="costing-page__header">
         <div class="costing-page__heading">
           <h1 class="text-h5 q-my-none">Costing file details</h1>
@@ -788,6 +789,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
 import {
@@ -828,6 +830,7 @@ const reviewItemPendingDeleteId = ref<number | null>(null)
 const statusForm = ref<CostingFileStatus>('draft')
 const editDialogOpen = ref(false)
 const addItemDialogOpen = ref(false)
+const initialLoading = ref(true)
 const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
 const reviewTableMode = ref<'detailed' | 'compact'>('detailed')
@@ -1579,7 +1582,11 @@ watch(addItemDialogOpen, (isOpen) => {
 })
 
 onMounted(async () => {
-  await loadFile()
+  try {
+    await loadFile()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 

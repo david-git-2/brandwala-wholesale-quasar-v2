@@ -35,11 +35,12 @@
       <template #body-cell-ship="props">
         <q-td :props="props" class="text-center">
           <q-btn
-            color="primary"
-            no-caps
+            :color="props.row.shipment_id != null ? 'negative' : 'primary'"
+            flat
+            round
             dense
             size="sm"
-            label="Ship"
+            icon="local_shipping"
             @click="onShipClick(props.row)"
           />
         </q-td>
@@ -91,6 +92,17 @@
               size="sm"
               icon="content_copy"
               @click="copyText(props.row.barcode, 'Barcode')"
+            />
+          </div>
+          <div class="text-caption text-grey-7 row items-center no-wrap q-gutter-xs">
+            <span>Product ID: {{ props.row.product_id ?? '-' }}</span>
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="content_copy"
+              @click="copyText(props.row.product_id, 'Product ID')"
             />
           </div>
           <div class="text-caption text-grey-7 row items-center no-wrap q-gutter-xs">
@@ -398,15 +410,6 @@ const allColumns: QTableColumn[] = [
     headerStyle: 'width: 52px; min-width: 52px; max-width: 52px;',
   },
   {
-    name: 'ship',
-    label: '',
-    field: 'ship',
-    align: 'center',
-    sortable: false,
-    style: 'width: 52px; min-width: 52px; max-width: 52px;',
-    headerStyle: 'width: 52px; min-width: 52px; max-width: 52px;',
-  },
-  {
     name: 'sl',
     label: 'SL',
     field: 'sl',
@@ -431,6 +434,15 @@ const allColumns: QTableColumn[] = [
     headerStyle: 'min-width: 320px; width: 320px; max-width: 320px;',
     classes: 'col-name',
     headerClasses: 'col-name-wrap',
+  },
+  {
+    name: 'ship',
+    label: '',
+    field: 'ship',
+    align: 'center',
+    sortable: false,
+    style: 'width: 72px; min-width: 72px; max-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px; max-width: 72px;',
   },
   {
     name: 'product_meta',
@@ -815,10 +827,10 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'final_offer_profit_pc_perc',
   ],
   processing: [
-    'ship',
     'sl',
     'image_url',
     'name',
+    'ship',
     'product_meta',
     'ordered_quantity',
     'product_weight',

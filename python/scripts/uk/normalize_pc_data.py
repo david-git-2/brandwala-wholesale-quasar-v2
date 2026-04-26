@@ -95,12 +95,13 @@ def get_first_value(row: dict[str, Any], keys: list[str], default: Any = "") -> 
 
 
 def normalize_hazardous_value(value: Any) -> str:
-    return to_text(value).lower().replace(" ", "")
+    return to_text(value).upper().replace(" ", "")
 
 
 def should_skip_row(row: dict[str, Any]) -> bool:
-    hazardous_value = get_first_value(row, ["Hazardous", "hazardous"], "")
-    return normalize_hazardous_value(hazardous_value) == "yes"
+    hazardous_value = get_first_value(row, ["HAZARDOUS", "Hazardous", "hazardous"], "")
+    normalized = normalize_hazardous_value(hazardous_value)
+    return normalized in {"YES", "Y", "TRUE", "1"}
 
 
 def compute_minimum_quantity(row: dict[str, Any]) -> int:
@@ -108,7 +109,8 @@ def compute_minimum_quantity(row: dict[str, Any]) -> int:
     outer_case = max(0, to_int(get_first_value(row, ["outer_case", "OUTER CASE"], 0), 0))
     inner_case = max(0, to_int(get_first_value(row, ["inner_case", "INNER CASE"], 0), 0))
 
-    if sales_unit == "CASE":
+    # Source files use OUTER/INNER while some legacy exports use CASE/INNER.
+    if sales_unit in {"CASE", "OUTER"}:
         return outer_case if outer_case > 0 else 1
     if sales_unit == "INNER":
         return 6 if inner_case < 6 else inner_case
@@ -220,7 +222,7 @@ def main() -> int:
         meta["normalizedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         meta["normalizedStage"] = "minimum_quantity"
         meta["removedHazardousRows"] = removed_rows
-        meta["minimumQuantityRule"] = "CASE -> outer_case; INNER -> max(inner_case, 6); otherwise 1"
+        meta["minimumQuantityRule"] = "OUTER/CASE -> outer_case; INNER -> max(inner_case, 6); otherwise 1"
         normalized_payload["meta"] = meta
     else:
         normalized_payload = filtered_products

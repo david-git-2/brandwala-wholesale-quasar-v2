@@ -32,9 +32,9 @@ const shipmentRoutes: RouteRecordRaw[] = [
         }),
       },
       {
-        path: ':id/orders',
-        name: 'app-shipment-order-list-page',
-        component: () => import('../pages/AdminOrderList.vue'),
+        path: ':id/info',
+        name: 'app-shipment-info-page',
+        component: () => import('../pages/AdminShipmentInfoPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',

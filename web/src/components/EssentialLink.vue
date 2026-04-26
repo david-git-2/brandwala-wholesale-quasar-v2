@@ -4,7 +4,7 @@
     :to="to"
     :tag="to ? 'router-link' : 'a'"
     :target="to ? undefined : '_blank'"
-    :href="to ? undefined : link"
+    :href="to ? undefined : link" 
   >
     <q-item-section v-if="icon" avatar>
       <q-icon :name="icon" />

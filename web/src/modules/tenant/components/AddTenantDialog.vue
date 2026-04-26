@@ -88,6 +88,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { formatAppDateTime } from 'src/utils/dateTime'
 
 type TenantForm = {
   id?: number
@@ -175,12 +176,7 @@ const onPublicDomainInput = () => {
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return ''
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return formatAppDateTime(value, '')
 }
 
 const onSave = () => {

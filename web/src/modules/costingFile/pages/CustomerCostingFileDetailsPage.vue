@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-shop">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section>
         <h1 class="text-h5 q-my-none">Costing file details</h1>
       </section>
@@ -45,7 +46,7 @@
             :columns="visibleColumns"
             :pagination="{ rowsPerPage: 0 }"
             hide-bottom
-            class="costing-page__table"
+            class="costing-page__table costing-page__table--draft"
           >
             <template #body-cell-sl="props">
               <q-td
@@ -684,6 +685,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import {
   buildCustomerProductRows,
@@ -704,6 +706,7 @@ const {
 
 const submitDialog = ref(false)
 const addItemDialogOpen = ref(false)
+const initialLoading = ref(true)
 const submittingRequest = ref(false)
 const submittingOrder = ref(false)
 const deletingItemId = ref<number | null>(null)
@@ -1199,9 +1202,13 @@ watch(selectedFile, () => {
 watch(
   () => route.params.id,
   async () => {
-    addItemDialogOpen.value = false
-    submitDialog.value = false
-    await loadFile()
+    try {
+      addItemDialogOpen.value = false
+      submitDialog.value = false
+      await loadFile()
+    } finally {
+      initialLoading.value = false
+    }
   },
   { immediate: true },
 )
@@ -1459,6 +1466,16 @@ watch(
 
 .costing-page__actions-cell {
   white-space: nowrap;
+  min-height: 40px;
+  text-align: center;
+}
+
+.costing-page__actions-cell :deep(.q-btn + .q-btn) {
+  margin-left: 0.5rem;
+}
+
+.costing-page__table--offered :deep(td.costing-page__actions-cell) {
+  background: #fff;
 }
 
 .costing-page__image-table-cell {
@@ -1490,6 +1507,7 @@ watch(
   line-height: 1.35;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  min-height: 40px;
 }
 
 .costing-page__status-cell {
@@ -1567,7 +1585,7 @@ watch(
   top: 0;
   z-index: 7;
   padding: 0.5rem 0;
-  background: var(--bw-theme-base, #fff);
+  background: var(--bw-theme-base, #f4f6f8);
 }
 
 .costing-page__shared-profit-input {
@@ -1587,6 +1605,17 @@ watch(
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.costing-page__table :deep(.q-table__container),
+.costing-page__table :deep(.q-table__middle),
+.costing-page__table :deep(.q-table__bottom) {
+  background: var(--bw-theme-base, #f4f6f8);
+}
+
+.costing-page__table :deep(.q-table thead tr th),
+.costing-page__table :deep(.q-table tbody tr td) {
+  background: #fff;
 }
 
 .costing-page__table--offered {
@@ -1647,6 +1676,17 @@ watch(
 
 .costing-page__table--offered :deep(.q-table tbody) {
   scroll-margin-top: 48px;
+}
+
+.costing-page__table--offered :deep(.q-table tbody tr td) {
+  background: #fff;
+  min-height: 40px;
+}
+
+.costing-page__table--offered :deep(td.costing-page__tone-orange),
+.costing-page__table--offered :deep(th.costing-page__tone-orange) {
+  background: #fff8e1;
+  color: #7a5313;
 }
 
 .costing-page__totals-row {

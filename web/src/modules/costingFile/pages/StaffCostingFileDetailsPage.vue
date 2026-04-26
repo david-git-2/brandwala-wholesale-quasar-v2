@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-app">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section class="costing-page__header">
         <div class="costing-page__heading">
           <div class="text-overline">Costing File</div>
@@ -184,6 +185,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue'
 import {
@@ -203,6 +205,7 @@ const itemLoading = computed(() => costingFileStore.itemLoading)
 
 const addItemDialogOpen = ref(false)
 const editDialogOpen = ref(false)
+const initialLoading = ref(true)
 const creatingItem = ref(false)
 const savingItemId = ref<number | null>(null)
 const savingStatus = ref(false)
@@ -454,10 +457,14 @@ const handleSendToReview = async () => {
 watch(
   () => route.params.id,
   async () => {
-    addItemDialogOpen.value = false
-    editDialogOpen.value = false
-    editingItemId.value = null
-    await loadFile()
+    try {
+      addItemDialogOpen.value = false
+      editDialogOpen.value = false
+      editingItemId.value = null
+      await loadFile()
+    } finally {
+      initialLoading.value = false
+    }
   },
   { immediate: true },
 )

@@ -1,7 +1,25 @@
+export type ShipmentItemMethod = 'order' | 'costing' | 'manual'
+
+export const SHIPMENT_STATUS_OPTIONS = [
+  'Draft',
+  'Order Placed',
+  'Proforma Generated',
+  'Payment Done',
+  'Delivery Date Received',
+  'Uk Warehouse Delivery Received',
+  'Air Shipment Date Set',
+  'Airport Arrival',
+  'Airport Released',
+  'Warehouse Received',
+] as const
+
+export type ShipmentStatus = (typeof SHIPMENT_STATUS_OPTIONS)[number]
+
 export type Shipment = {
   id: number
   tenant_id: number
   name: string
+  status: ShipmentStatus
   product_conversion_rate: number | null
   cargo_conversion_rate: number | null
   cargo_rate: number | null
@@ -15,6 +33,7 @@ export type ShipmentItem = {
   id: number
   shipment_id: number
   order_id: number | null
+  method: ShipmentItemMethod | null
   name: string | null
   quantity: number
   barcode: string | null
@@ -38,6 +57,7 @@ export type CreateShipmentInput = {
 
 export type ShipmentUpdateField =
   | 'name'
+  | 'status'
   | 'product_conversion_rate'
   | 'cargo_conversion_rate'
   | 'cargo_rate'
@@ -68,6 +88,7 @@ export type AddShipmentItemFromProductInput = {
 export type AddShipmentItemManualInput = {
   shipment_id: number
   order_id?: number | null
+  method?: ShipmentItemMethod | null
   name?: string | null
   quantity?: number | null
   barcode?: string | null
@@ -90,6 +111,32 @@ export type BulkAddShipmentItemsFromProductInput = {
 export type DeleteShipmentItemQuantityInput = {
   id: number
   quantity: number
+}
+
+export type UpdateShipmentItemInput = {
+  id: number
+  patch: Partial<
+    Pick<
+      ShipmentItem,
+      | 'name'
+      | 'quantity'
+      | 'barcode'
+      | 'product_code'
+      | 'image_url'
+      | 'order_id'
+      | 'method'
+      | 'price_gbp'
+      | 'received_quantity'
+      | 'damaged_quantity'
+      | 'stolen_quantity'
+      | 'product_weight'
+      | 'package_weight'
+    >
+  >
+}
+
+export type DeleteShipmentItemInput = {
+  id: number
 }
 
 export type BulkDeleteShipmentItemsByProductInput = {

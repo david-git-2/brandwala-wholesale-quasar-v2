@@ -6,10 +6,12 @@ import type {
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
   DeleteShipmentInput,
+  DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
   Shipment,
   ShipmentItem,
   ShipmentServiceResult,
+  UpdateShipmentItemInput,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
 } from '../types'
@@ -164,6 +166,48 @@ const deleteShipmentItemQuantity = async (
   }
 }
 
+const updateShipmentItem = async (
+  payload: UpdateShipmentItemInput,
+): Promise<ShipmentServiceResult<ShipmentItem>> => {
+  try {
+    const data = await shipmentRepository.updateShipmentItem(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update shipment item.',
+    }
+  }
+}
+
+const deleteShipmentItem = async (
+  payload: DeleteShipmentItemInput,
+): Promise<ShipmentServiceResult<void>> => {
+  try {
+    await shipmentRepository.deleteShipmentItem(payload)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete shipment item.',
+    }
+  }
+}
+
+const clearOrderItemShipmentLinkByShipmentItem = async (
+  shipmentItem: ShipmentItem,
+): Promise<ShipmentServiceResult<number>> => {
+  try {
+    const data = await shipmentRepository.clearOrderItemShipmentLinkByShipmentItem(shipmentItem)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to clear order item shipment link.',
+    }
+  }
+}
+
 const bulkDeleteShipmentItemsByProduct = async (
   payload: BulkDeleteShipmentItemsByProductInput,
 ): Promise<ShipmentServiceResult<number>> => {
@@ -193,5 +237,8 @@ export const shipmentService = {
   addShipmentItemManual,
   bulkAddShipmentItemsFromProduct,
   deleteShipmentItemQuantity,
+  updateShipmentItem,
+  deleteShipmentItem,
+  clearOrderItemShipmentLinkByShipmentItem,
   bulkDeleteShipmentItemsByProduct,
 }

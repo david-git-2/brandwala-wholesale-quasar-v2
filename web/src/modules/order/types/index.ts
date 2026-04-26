@@ -20,7 +20,6 @@ export type Order = {
   negotiate: boolean
   status: OrderStatus
   store_id: number | null
-  shipment_id: number | null
   created_at: string
   updated_at: string
 }
@@ -58,7 +57,6 @@ export type OrderListInput = {
   fields?: string[]
   customer_group_id?: number | null
   store_id?: number | null
-  shipment_id?: number | null
   status?: OrderStatus | null
   page?: number
   page_size?: number
@@ -89,10 +87,8 @@ export type OrderUpdateInput = {
 
 export type OrderCreateInput = Omit<
   Order,
-  'id' | 'created_at' | 'updated_at' | 'shipment_id'
-> & {
-  shipment_id?: number | null
-}
+  'id' | 'created_at' | 'updated_at'
+>
 
 export type OrderItemUpdateInput = {
   id: number

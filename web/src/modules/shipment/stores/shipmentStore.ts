@@ -9,8 +9,10 @@ import type {
   BulkDeleteShipmentItemsByProductInput,
   CreateShipmentInput,
   DeleteShipmentInput,
+  DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
   ShipmentStoreState,
+  UpdateShipmentItemInput,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
 } from '../types'
@@ -26,6 +28,15 @@ export const useShipmentStore = defineStore('shipment', {
   }),
 
   actions: {
+    upsertShipmentItem(item: NonNullable<ShipmentStoreState['shipmentItems']>[number]) {
+      const index = this.shipmentItems.findIndex((entry) => entry.id === item.id)
+      if (index >= 0) {
+        this.shipmentItems.splice(index, 1, item)
+      } else {
+        this.shipmentItems.push(item)
+      }
+    },
+
     clearError() {
       this.error = null
     },
@@ -204,7 +215,9 @@ export const useShipmentStore = defineStore('shipment', {
           return result
         }
 
-        await this.fetchShipmentItems(payload.shipment_id)
+        if (result.data) {
+          this.upsertShipmentItem(result.data)
+        }
         showSuccessNotification('Shipment item added successfully.')
         return result
       } finally {
@@ -225,7 +238,9 @@ export const useShipmentStore = defineStore('shipment', {
           return result
         }
 
-        await this.fetchShipmentItems(payload.shipment_id)
+        if (result.data) {
+          this.upsertShipmentItem(result.data)
+        }
         showSuccessNotification('Shipment item added successfully.')
         return result
       } finally {
@@ -269,6 +284,64 @@ export const useShipmentStore = defineStore('shipment', {
 
         await this.fetchShipmentItems(shipmentId)
         showSuccessNotification('Shipment item quantity updated.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateShipmentItem(payload: UpdateShipmentItemInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.updateShipmentItem(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update shipment item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.upsertShipmentItem(result.data)
+        }
+        showSuccessNotification('Shipment item updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteShipmentItem(payload: DeleteShipmentItemInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const deletedShipmentItem =
+          this.shipmentItems.find((item) => item.id === payload.id) ?? null
+
+        const result = await shipmentService.deleteShipmentItem(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete shipment item.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (deletedShipmentItem) {
+          const clearLinkResult =
+            await shipmentService.clearOrderItemShipmentLinkByShipmentItem(deletedShipmentItem)
+
+          if (!clearLinkResult.success) {
+            this.error = clearLinkResult.error ?? 'Failed to clear order item shipment link.'
+            handleApiFailure(clearLinkResult, this.error)
+            return clearLinkResult
+          }
+        }
+
+        this.shipmentItems = this.shipmentItems.filter((item) => item.id !== payload.id)
+        showSuccessNotification('Shipment item deleted successfully.')
         return result
       } finally {
         this.saving = false

@@ -527,6 +527,7 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
+          shipment_id: number | null
           updated_at: string
         }
         Insert: {
@@ -550,6 +551,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           returned_quantity?: number
+          shipment_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -573,6 +575,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           returned_quantity?: number
+          shipment_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -590,6 +593,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       orders: {
@@ -604,7 +614,6 @@ export type Database = {
           name: string
           negotiate: boolean
           profit_rate: number | null
-          shipment_id: number | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: number | null
           updated_at: string
@@ -620,7 +629,6 @@ export type Database = {
           name: string
           negotiate?: boolean
           profit_rate?: number | null
-          shipment_id?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
           updated_at?: string
@@ -636,7 +644,6 @@ export type Database = {
           name?: string
           negotiate?: boolean
           profit_rate?: number | null
-          shipment_id?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
           updated_at?: string
@@ -647,13 +654,6 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -890,6 +890,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          method: string
           name: string | null
           order_id: number | null
           package_weight: number | null
@@ -909,6 +910,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          method?: string
           name?: string | null
           order_id?: number | null
           package_weight?: number | null
@@ -928,6 +930,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          method?: string
           name?: string | null
           order_id?: number | null
           package_weight?: number | null
@@ -974,6 +977,7 @@ export type Database = {
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
+          status: string
           tenant_id: number
           updated_at: string
           weight: number | null
@@ -986,6 +990,7 @@ export type Database = {
           name: string
           product_conversion_rate?: number | null
           received_weight?: number | null
+          status?: string
           tenant_id: number
           updated_at?: string
           weight?: number | null
@@ -998,6 +1003,7 @@ export type Database = {
           name?: string
           product_conversion_rate?: number | null
           received_weight?: number | null
+          status?: string
           tenant_id?: number
           updated_at?: string
           weight?: number | null
@@ -1253,6 +1259,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          method: string
           name: string | null
           order_id: number | null
           package_weight: number | null
@@ -1295,6 +1302,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          method: string
           name: string | null
           order_id: number | null
           package_weight: number | null
@@ -1323,6 +1331,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          method: string
           name: string | null
           order_id: number | null
           package_weight: number | null
@@ -1370,6 +1379,7 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
+          shipment_id: number | null
           updated_at: string
         }[]
         SetofOptions: {
@@ -1402,6 +1412,7 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           returned_quantity: number
+          shipment_id: number | null
           updated_at: string
         }[]
         SetofOptions: {
@@ -1656,6 +1667,7 @@ export type Database = {
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
+          status: string
           tenant_id: number
           updated_at: string
           weight: number | null
@@ -2355,6 +2367,7 @@ export type Database = {
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
+          status: string
           tenant_id: number
           updated_at: string
           weight: number | null

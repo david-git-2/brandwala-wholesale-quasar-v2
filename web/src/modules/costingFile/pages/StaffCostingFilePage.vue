@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-app">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section class="row items-start justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Costing File</div>
@@ -13,7 +14,7 @@
             unelevated
             label="Create costing file"
             :disable="!tenantStore.selectedTenant?.id"
-            @click="createDialog = true"
+            @click="openCreateDialog"
           />
         </div>
       </section>
@@ -134,9 +135,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
 
 const router = useRouter()
 const tenantStore = useTenantStore()
@@ -148,6 +151,7 @@ const page = ref(1)
 const pageSize = 20
 const createDialog = ref(false)
 const creating = ref(false)
+const initialLoading = ref(true)
 
 const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>([])
 const createForm = reactive({
@@ -181,6 +185,11 @@ const customerGroupNameById = (customerGroupId: number) =>
 const customerGroupAccentColorById = (customerGroupId: number) =>
   customerGroupOptions.value.find((option) => option.value === customerGroupId)?.accentColor?.trim() ||
   'var(--bw-theme-primary)'
+const buildCreateFileName = (customerGroupId: number | null) => {
+  const customerGroupName =
+    customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? 'Costing File'
+  return formatCurrentDateTimeForName(customerGroupName)
+}
 const statusChipColor = (status: string) => {
   if (status === 'draft') return 'grey-7'
   if (status === 'customer_submitted') return 'indigo'
@@ -287,9 +296,15 @@ const loadCustomerGroups = async () => {
 }
 
 const resetCreateForm = () => {
-  createForm.name = ''
+  createForm.name = buildCreateFileName(createForm.customerGroupId)
   createForm.market = ''
   createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null
+  createForm.name = buildCreateFileName(createForm.customerGroupId)
+}
+
+const openCreateDialog = () => {
+  resetCreateForm()
+  createDialog.value = true
 }
 
 const handleCreate = async () => {
@@ -360,9 +375,13 @@ watch(
 )
 
 onMounted(async () => {
-  loadStaffListState()
-  await loadCustomerGroups()
-  await loadFiles()
+  try {
+    loadStaffListState()
+    await loadCustomerGroups()
+    await loadFiles()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 

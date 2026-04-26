@@ -15,6 +15,7 @@
 
     <template #header-extra>
       <q-btn
+        v-if="canShowCartIcon"
         flat
         round
         dense
@@ -44,6 +45,7 @@ import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
+import { canAccessModule } from 'src/modules/navigation/modulePermissions'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
@@ -69,6 +71,16 @@ const logoutTo = computed(() =>
 )
 
 const cartItemCount = computed(() => cartStore.items.length)
+const canShowCartIcon = computed(() =>
+  canAccessModule({
+    scope: authStore.scope,
+    tenantId: authStore.tenantId,
+    customerGroupId: authStore.customerGroupId,
+    role: authStore.matchedRole,
+    moduleKey: 'cart',
+    activeModuleKeys: authStore.activeModuleKeys,
+  }),
+)
 
 const goToCart = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''

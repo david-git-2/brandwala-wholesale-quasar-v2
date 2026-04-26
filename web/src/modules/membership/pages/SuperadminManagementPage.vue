@@ -157,6 +157,7 @@ import { storeToRefs } from 'pinia'
 import type { QTableColumn } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { formatAppDateTime } from 'src/utils/dateTime'
 import { useMembershipStore } from '../stores/membershipStore'
 import type { Membership } from '../types'
 
@@ -221,12 +222,7 @@ const isCurrentUser = (email: string) =>
   normalizeEmail(authStore.user?.email ?? '') === normalizeEmail(email)
 
 const formatDate = (value?: string) => {
-  if (!value) return 'N/A'
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return formatAppDateTime(value, 'N/A')
 }
 
 const resetForm = () => {

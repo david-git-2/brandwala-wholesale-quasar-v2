@@ -11,56 +11,608 @@
       />
     </div>
 
-    <div class="text-h5 q-mb-md">
-      #{{ shipmentStore.selectedShipment?.id }} {{ shipmentStore.selectedShipment?.name }}
+    <div class="row items-center justify-between q-mb-md">
+      <div class="text-h5">
+        #{{ shipmentStore.selectedShipment?.id }} {{ shipmentStore.selectedShipment?.name }}
+      </div>
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          color="secondary"
+          flat
+          round
+          icon="info"
+          aria-label="Shipment info"
+          @click="goToShipmentInfo"
+        />
+        <q-btn color="primary" no-caps label="Add Item" @click="openAddItemDialog" />
+      </div>
     </div>
 
-    <q-banner v-if="shipmentStore.loading" class="bg-grey-2 text-grey-8 q-mb-md">
+    <div v-if="shipmentStore.selectedShipment" class="q-mb-md">
+      <q-select
+        v-model="selectedStatus"
+        :options="statusOptions"
+        label="Shipment Status"
+        outlined
+        dense
+        class="shipment-status-select"
+        :disable="shipmentStore.saving"
+        @update:model-value="onStatusChange"
+      />
+    </div>
+
+    <PageInitialLoader v-if="initialLoading" />
+
+    <q-banner v-else-if="shipmentStore.loading" class="bg-grey-2 text-grey-8 q-mb-md">
       Loading shipment details...
     </q-banner>
 
-    <q-banner v-if="shipmentStore.error" class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="!initialLoading && shipmentStore.error" class="bg-red-1 text-negative q-mb-md">
       {{ shipmentStore.error }}
     </q-banner>
 
-<div>
-  <q-btn color="primary" label="Add Item From Order" @click="onClick" />
-</div>
+    <q-card v-if="!initialLoading" flat bordered>
+      <q-card-section class="q-pa-none">
+        <q-markup-table flat>
+          <thead>
+            <tr>
+              <th class="text-right">SL</th>
+              <th class="text-left">Image</th>
+              <th class="text-left">Name</th>
+              <th class="text-left">Method</th>
+              <th class="text-right">Price GBP</th>
+              <th class="text-right">Quantity</th>
+              <th class="text-right">Received Qty</th>
+              <th class="text-right">Damaged Qty</th>
+              <th class="text-right">Stolen Qty</th>
+              <th class="text-right">Product Wt</th>
+              <th class="text-right">Package Wt</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in shipmentStore.shipmentItems" :key="item.id">
+              <td class="text-right">{{ index + 1 }}</td>
+              <td>
+                <div class="shipment-item-image-box">
+                  <SmartImage
+                    :src="item.image_url"
+                    alt="shipment item"
+                    imgClass="shipment-item-image"
+                    fallbackClass="shipment-item-image-fallback"
+                  />
+                </div>
+              </td>
+              <td>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  class="shipment-item-name-btn"
+                  :label="item.name ?? '-'"
+                  @click="openItemDetailsDialog(item)"
+                />
+              </td>
+              <td class="text-uppercase">{{ item.method ?? '-' }}</td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ formatDecimal(item.price_gbp) }}</span>
+                <q-popup-edit
+                  :model-value="item.price_gbp"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'price_gbp', value, { decimals: 2 })"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    step="0.01"
+                    dense
+                    outlined
+                    autofocus
+                  />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ item.quantity }}</span>
+                <q-popup-edit
+                  :model-value="item.quantity"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'quantity', value)"
+                >
+                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ item.received_quantity }}</span>
+                <q-popup-edit
+                  :model-value="item.received_quantity"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'received_quantity', value)"
+                >
+                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ item.damaged_quantity }}</span>
+                <q-popup-edit
+                  :model-value="item.damaged_quantity"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'damaged_quantity', value)"
+                >
+                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ item.stolen_quantity }}</span>
+                <q-popup-edit
+                  :model-value="item.stolen_quantity"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'stolen_quantity', value)"
+                >
+                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ formatDecimal(item.product_weight) }}</span>
+                <q-popup-edit
+                  :model-value="item.product_weight"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'product_weight', value, { decimals: 3 })"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    step="0.001"
+                    dense
+                    outlined
+                    autofocus
+                  />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <span class="cursor-pointer">{{ formatDecimal(item.package_weight) }}</span>
+                <q-popup-edit
+                  :model-value="item.package_weight"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'package_weight', value, { decimals: 3 })"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    step="0.001"
+                    dense
+                    outlined
+                    autofocus
+                  />
+                </q-popup-edit>
+              </td>
+              <td class="text-right">
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  round
+                  icon="edit"
+                  @click="openEditItemDialog(item)"
+                >
+                  <q-tooltip>Edit</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  color="negative"
+                  round
+                  icon="delete"
+                  @click="openDeleteDialog(item)"
+                >
+                  <q-tooltip>Delete</q-tooltip>
+                </q-btn>
+              </td>
+            </tr>
+            <tr v-if="!shipmentStore.shipmentItems.length">
+              <td colspan="12" class="text-center text-grey-6 q-pa-md">No shipment items yet</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+    </q-card>
 
+    <q-dialog v-model="showAddItemDialog">
+      <q-card style="min-width: 420px; max-width: 90vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">{{ editingItemId ? 'Edit Shipment Item' : 'Add Shipment Item' }}</div>
+          <q-btn icon="close" flat round dense @click="showAddItemDialog = false" />
+        </q-card-section>
 
+        <q-card-section class="q-gutter-md">
+          <q-input v-model="itemForm.name" label="Name" outlined dense autofocus />
+          <q-input v-model.number="itemForm.quantity" label="Quantity" type="number" outlined dense />
+          <q-input v-model="itemForm.barcode" label="Barcode" outlined dense />
+          <q-input v-model="itemForm.product_code" label="Product Code" outlined dense />
+          <q-input v-model="itemForm.image_url" label="Image URL" outlined dense />
+          <q-select
+            v-model="itemForm.method"
+            :options="methodOptions"
+            label="Method"
+            emit-value
+            map-options
+            outlined
+            dense
+          />
+          <q-input
+            v-model.number="itemForm.order_id"
+            label="Order ID (Optional)"
+            type="number"
+            outlined
+            dense
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="showAddItemDialog = false" />
+          <q-btn
+            color="primary"
+            :label="editingItemId ? 'Update Item' : 'Add Item'"
+            :loading="shipmentStore.saving"
+            @click="onSubmitItem"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showDeleteDialog" persistent>
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-h6">Delete Shipment Item</q-card-section>
+        <q-card-section>
+          Are you sure you want to delete
+          <strong>{{ pendingDeleteItem?.name ?? 'this item' }}</strong
+          >?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="showDeleteDialog = false" />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="shipmentStore.saving"
+            @click="onConfirmDelete"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <ShipmentItemDetailsDialog
+      v-model="showItemDetailsDialog"
+      :item="selectedDetailsItem"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
+import SmartImage from 'src/components/SmartImage.vue'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import ShipmentItemDetailsDialog from '../components/ShipmentItemDetailsDialog.vue'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useShipmentStore } from '../stores/shipmentStore'
+import { SHIPMENT_STATUS_OPTIONS, type ShipmentItem, type ShipmentItemMethod, type ShipmentStatus } from '../types'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const shipmentStore = useShipmentStore()
+const productStore = useProductStore()
+const $q = useQuasar()
+
+const showAddItemDialog = ref(false)
+const showDeleteDialog = ref(false)
+const showItemDetailsDialog = ref(false)
+const initialLoading = ref(true)
+const editingItemId = ref<number | null>(null)
+const pendingDeleteItem = ref<ShipmentItem | null>(null)
+const selectedDetailsItem = ref<ShipmentItem | null>(null)
+const selectedStatus = ref<ShipmentStatus>('Draft')
+const methodOptions: Array<{ label: string; value: ShipmentItemMethod }> = [
+  { label: 'Order', value: 'order' },
+  { label: 'Costing', value: 'costing' },
+  { label: 'Manual', value: 'manual' },
+]
+const itemForm = reactive({
+  name: '',
+  quantity: 1,
+  barcode: '',
+  product_code: '',
+  image_url: '',
+  method: 'manual' as ShipmentItemMethod,
+  order_id: null as number | null,
+})
+
+const shipmentId = computed(() => Number(route.params.id))
+const statusOptions = SHIPMENT_STATUS_OPTIONS
 
 const onBack = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
   await router.push(`${tenantPrefix}/app/shipment`)
 }
 
-const onClick = async () => {
+const goToShipmentInfo = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  const shipmentId = Number(route.params.id)
-  await router.push(`${tenantPrefix}/app/shipment/${shipmentId}/orders`)
+  await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/info`)
 }
 
-onMounted(async () => {
-  const shipmentId = Number(route.params.id)
+const resetItemForm = () => {
+  editingItemId.value = null
+  itemForm.name = ''
+  itemForm.quantity = 1
+  itemForm.barcode = ''
+  itemForm.product_code = ''
+  itemForm.image_url = ''
+  itemForm.method = 'manual'
+  itemForm.order_id = null
+}
 
-  if (!Number.isFinite(shipmentId) || shipmentId <= 0) {
+const openAddItemDialog = () => {
+  resetItemForm()
+  showAddItemDialog.value = true
+}
+
+const openEditItemDialog = (item: ShipmentItem) => {
+  editingItemId.value = item.id
+  itemForm.name = item.name ?? ''
+  itemForm.quantity = item.quantity
+  itemForm.barcode = item.barcode ?? ''
+  itemForm.product_code = item.product_code ?? ''
+  itemForm.image_url = item.image_url ?? ''
+  itemForm.method = item.method ?? 'manual'
+  itemForm.order_id = item.order_id ?? null
+  showAddItemDialog.value = true
+}
+
+const openDeleteDialog = (item: ShipmentItem) => {
+  pendingDeleteItem.value = item
+  showDeleteDialog.value = true
+}
+
+const openItemDetailsDialog = (item: ShipmentItem) => {
+  selectedDetailsItem.value = item
+  showItemDetailsDialog.value = true
+}
+
+const onStatusChange = async (value: ShipmentStatus | null) => {
+  const selectedShipment = shipmentStore.selectedShipment
+  if (!selectedShipment || !value || value === selectedShipment.status) {
     return
   }
 
-  await shipmentStore.fetchShipmentById(shipmentId)
+  await shipmentStore.updateShipmentField({
+    id: selectedShipment.id,
+    field: 'status',
+    value,
+  })
+}
+
+const onSubmitItem = async () => {
+  if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+
+  const quantity = Number(itemForm.quantity || 0)
+  if (!itemForm.name.trim()) {
+    $q.notify({ type: 'warning', message: 'Name is required.' })
+    return
+  }
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    $q.notify({ type: 'warning', message: 'Quantity must be greater than 0.' })
+    return
+  }
+
+  let result:
+    | {
+        success: boolean
+      }
+    | undefined
+
+  const editingId = editingItemId.value
+  if (editingId != null) {
+    result = await shipmentStore.updateShipmentItem({
+      id: editingId,
+      patch: {
+        name: itemForm.name.trim(),
+        quantity,
+        barcode: itemForm.barcode.trim() || null,
+        product_code: itemForm.product_code.trim() || null,
+        image_url: itemForm.image_url.trim() || null,
+        method: itemForm.method,
+        order_id: itemForm.order_id,
+      },
+    })
+  } else {
+    result = await shipmentStore.addShipmentItemManual({
+      shipment_id: shipmentId.value,
+      name: itemForm.name.trim(),
+      quantity,
+      barcode: itemForm.barcode.trim() || null,
+      product_code: itemForm.product_code.trim() || null,
+      image_url: itemForm.image_url.trim() || null,
+      method: itemForm.method,
+      order_id: itemForm.order_id,
+    })
+  }
+
+  if (!result.success) {
+    return
+  }
+
+  showAddItemDialog.value = false
+  resetItemForm()
+}
+
+const onConfirmDelete = async () => {
+  const pendingDelete = pendingDeleteItem.value
+  if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0 || !pendingDelete) {
+    showDeleteDialog.value = false
+    return
+  }
+
+  const result = await shipmentStore.deleteShipmentItem({ id: pendingDelete.id })
+  if (!result.success) {
+    return
+  }
+
+  pendingDeleteItem.value = null
+  showDeleteDialog.value = false
+}
+
+type EditableNumericField =
+  | 'price_gbp'
+  | 'quantity'
+  | 'received_quantity'
+  | 'damaged_quantity'
+  | 'stolen_quantity'
+  | 'product_weight'
+  | 'package_weight'
+
+const formatDecimal = (value: number | null | undefined) =>
+  value == null ? '-' : String(Number(value))
+
+const roundTo = (value: number, decimals = 0) => {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
+
+const onNumericPopupSave = async (
+  item: ShipmentItem,
+  field: EditableNumericField,
+  value: string | number | null,
+  options?: { decimals?: number },
+) => {
+  if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    $q.notify({ type: 'warning', message: 'Value must be 0 or greater.' })
+    return
+  }
+
+  const normalized =
+    field === 'quantity' ||
+    field === 'received_quantity' ||
+    field === 'damaged_quantity' ||
+    field === 'stolen_quantity'
+      ? Math.floor(parsed)
+      : roundTo(parsed, options?.decimals ?? 0)
+
+  const result = await shipmentStore.updateShipmentItem({
+    id: item.id,
+    patch: {
+      [field]: normalized,
+    },
+  })
+
+  if (!result.success) {
+    return
+  }
+
+  if (field === 'product_weight' && item.product_id != null) {
+    const productId = item.product_id
+    await productStore.updateProduct({
+      id: productId,
+      product_weight: normalized,
+    })
+  }
+}
+
+onMounted(async () => {
+  if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+  try {
+    await shipmentStore.fetchShipmentById(shipmentId.value)
+  } finally {
+    initialLoading.value = false
+  }
 })
+
+watch(
+  () => shipmentStore.selectedShipment?.status,
+  (value) => {
+    selectedStatus.value = value ?? 'Draft'
+  },
+  { immediate: true },
+)
 </script>
+
+<style scoped>
+.shipment-item-image-box {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.shipment-item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.shipment-item-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  font-size: 11px;
+}
+
+.shipment-item-name-btn {
+  justify-content: flex-start;
+  padding-left: 0;
+}
+
+.shipment-status-select {
+  min-width: 260px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+</style>

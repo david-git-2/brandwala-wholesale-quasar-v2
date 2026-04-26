@@ -1,6 +1,7 @@
 <template>
   <q-page class="bw-page theme-shop">
-    <section class="bw-page__stack costing-page">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="bw-page__stack costing-page">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Shop Costing File</div>
@@ -112,9 +113,11 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
+import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -123,6 +126,7 @@ const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(cost
 const createDialog = ref(false)
 const creating = ref(false)
 const deletingFileId = ref<number | null>(null)
+const initialLoading = ref(true)
 const page = ref(1)
 const pageSize = 20
 
@@ -150,15 +154,7 @@ const subtitle = computed(() =>
     : 'Customer group access is required.',
 )
 
-const formatFileDate = () => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const buildCustomerFileName = () => `${customerGroupName.value} ${formatFileDate()}`
+const buildCustomerFileName = () => formatCurrentDateTimeForName(customerGroupName.value)
 
 const loadFiles = async () => {
   const customerGroupId = authStore.customerGroupId
@@ -234,7 +230,11 @@ const openFile = async (id: number) => {
 }
 
 onMounted(async () => {
-  await loadFiles()
+  try {
+    await loadFiles()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 
