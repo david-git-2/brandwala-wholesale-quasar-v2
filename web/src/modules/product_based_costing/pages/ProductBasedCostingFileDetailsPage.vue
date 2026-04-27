@@ -101,8 +101,10 @@
           :conversion-rate="conversionRateValue"
           :profit-rate="profitRateValue"
           :status="store.item?.status??'pending'"
+          :shipped-item-ids="shippedItemIds"
           @edit="onEdit"
           @delete="onDelete"
+          @ship="onShip"
           @row-change="onRowChange"
           @product-weight-change="onProductWeightChange"
           @package-weight-change="onPackageWeightChange"
@@ -122,20 +124,53 @@
       :item-data="selectedItem"
       @updated="handleUpdated"
     />
+
+    <ShipmentItemCompactDialog
+      v-model="showAddShipmentDialog"
+      :quantity="selectedQuantity"
+      :price-gbp="selectedPriceGbp"
+      @save="onSaveShipment"
+    />
+
+    <q-dialog v-model="confirmRemoveShipmentOpen">
+      <q-card style="min-width: 360px">
+        <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
+        <q-card-section>
+          This will remove the selected item from its shipment.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="negative"
+            label="Remove"
+            :loading="shipmentStore.saving"
+            @click="onConfirmRemoveShipment"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore';
+import { shipmentService } from 'src/modules/shipment/services/shipmentService';
+import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue';
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
 const productStore = useProductStore();
+const shipmentStore = useShipmentStore();
+const tenantStore = useTenantStore();
+const $q = useQuasar();
 
 const route = useRoute();
 const router = useRouter();
@@ -145,6 +180,13 @@ const cargo_rate_kg_gbp = ref<number | null>(null);
 const conversion_rate = ref<number | null>(null);
 const profit_rate = ref<number | null>(null);
 const status = ref<string>('pending');
+const showAddShipmentDialog = ref(false);
+const selectedQuantity = ref<number | null>(null);
+const selectedPriceGbp = ref<number | null>(null);
+const selectedShipItem = ref<ProductBasedCostingItem | null>(null);
+const shippedItemIds = ref<number[]>([]);
+const confirmRemoveShipmentOpen = ref(false);
+const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
 const cargoRateValue = computed(() => cargo_rate_kg_gbp.value ?? 0);
 const conversionRateValue = computed(() => conversion_rate.value ?? 140);
 const profitRateValue = computed(() => profit_rate.value ?? 25);
@@ -202,7 +244,7 @@ const loadData = async () => {
   ]);
 };
 
-const statusOptions = ['pending', 'offered', 'cancelled'];
+const statusOptions = ['pending', 'offered', 'processing', 'cancelled'];
 
 const handleCreated = async () => {
   if (!fileId.value) {
@@ -210,10 +252,16 @@ const handleCreated = async () => {
   }
 
   await store.fetchProductBasedCostingItems(fileId.value);
+  await refreshShippedItemIndicators();
 };
 
 onMounted(async () => {
   await loadData();
+  const tenantId = tenantStore.selectedTenant?.id;
+  if (tenantId) {
+    await shipmentStore.fetchShipments(tenantId);
+  }
+  await refreshShippedItemIndicators();
 
   cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp ?? null;
   conversion_rate.value = store.item?.conversion_rate ?? null;
@@ -225,6 +273,7 @@ watch(
   () => route.params.id,
   async () => {
     await loadData();
+    await refreshShippedItemIndicators();
   },
 );
 
@@ -288,6 +337,7 @@ const handleUpdated = async () => {
   }
 
   await store.fetchProductBasedCostingItems(fileId.value);
+  await refreshShippedItemIndicators();
 };
 
 const onRateSave = async () => {
@@ -338,5 +388,219 @@ const onPackageWeightChange = async (payload: WeightChangePayload) => {
     package_weight: payload.item.package_weight,
     offer_price: payload.item.offer_price,
   });
+};
+
+const openShipmentDialog = (item: ProductBasedCostingItem) => {
+  selectedShipItem.value = item;
+  selectedQuantity.value = item.quantity ?? null;
+  selectedPriceGbp.value = item.price_gbp ?? null;
+  showAddShipmentDialog.value = true;
+};
+
+const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
+
+const buildItemMatchKeys = (item: ProductBasedCostingItem) => {
+  const keys: string[] = [];
+  if (item.product_id != null) {
+    keys.push(`product:${item.product_id}`);
+  }
+  const name = normalizeText(item.name);
+  const barcode = normalizeText(item.barcode);
+  const productCode = normalizeText(item.product_code);
+  if (name || barcode || productCode) {
+    keys.push(`meta:${name}|${barcode}|${productCode}`);
+  }
+  return keys;
+};
+
+const buildShipmentMatchKeys = (item: {
+  product_id: number | null
+  name: string | null
+  barcode: string | null
+  product_code: string | null
+}) => {
+  const keys: string[] = [];
+  if (item.product_id != null) {
+    keys.push(`product:${item.product_id}`);
+  }
+  const name = normalizeText(item.name);
+  const barcode = normalizeText(item.barcode);
+  const productCode = normalizeText(item.product_code);
+  if (name || barcode || productCode) {
+    keys.push(`meta:${name}|${barcode}|${productCode}`);
+  }
+  return keys;
+};
+
+const refreshShippedItemIndicators = async () => {
+  const tenantId = tenantStore.selectedTenant?.id;
+  if (!tenantId) {
+    shippedItemIds.value = [];
+    return;
+  }
+
+  const productItems = store.costingItems ?? [];
+  if (!productItems.length) {
+    shippedItemIds.value = [];
+    return;
+  }
+
+  const itemMap = new Map<string, Set<number>>();
+  productItems.forEach((item) => {
+    buildItemMatchKeys(item).forEach((key) => {
+      const current = itemMap.get(key) ?? new Set<number>();
+      current.add(item.id);
+      itemMap.set(key, current);
+    });
+  });
+
+  const shippedIds = new Set<number>();
+  const shipmentsResult = await shipmentService.listShipments(tenantId);
+  if (!shipmentsResult.success) {
+    shippedItemIds.value = [];
+    return;
+  }
+
+  const shipmentItemsResults = await Promise.all(
+    (shipmentsResult.data ?? []).map((shipment) => shipmentService.listShipmentItems(shipment.id)),
+  );
+
+  shipmentItemsResults.forEach((result) => {
+    if (!result.success) {
+      return;
+    }
+
+    (result.data ?? [])
+      .filter((item) => item.method === 'costing')
+      .forEach((item) => {
+        buildShipmentMatchKeys(item).forEach((key) => {
+          const ids = itemMap.get(key);
+          if (!ids) {
+            return;
+          }
+          ids.forEach((id) => shippedIds.add(id));
+        });
+      });
+  });
+
+  shippedItemIds.value = Array.from(shippedIds);
+};
+
+const onShip = (item: ProductBasedCostingItem) => {
+  if (shippedItemIds.value.includes(item.id)) {
+    pendingRemoveShipItem.value = item;
+    confirmRemoveShipmentOpen.value = true;
+    return;
+  }
+
+  openShipmentDialog(item);
+};
+
+const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => {
+  const tenantId = tenantStore.selectedTenant?.id;
+  if (!tenantId) {
+    return null;
+  }
+
+  const itemKeys = new Set(buildItemMatchKeys(item));
+  if (!itemKeys.size) {
+    return null;
+  }
+
+  const shipmentsResult = await shipmentService.listShipments(tenantId);
+  if (!shipmentsResult.success) {
+    return null;
+  }
+
+  const shipmentItemsResults = await Promise.all(
+    (shipmentsResult.data ?? []).map((shipment) => shipmentService.listShipmentItems(shipment.id)),
+  );
+
+  for (const result of shipmentItemsResults) {
+    if (!result.success) {
+      continue;
+    }
+
+    const matched = (result.data ?? [])
+      .filter((entry) => entry.method === 'costing')
+      .find((entry) => {
+        const entryKeys = buildShipmentMatchKeys(entry);
+        return entryKeys.some((key) => itemKeys.has(key));
+      });
+
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return null;
+};
+
+const onConfirmRemoveShipment = async () => {
+  const item = pendingRemoveShipItem.value;
+  if (!item) {
+    confirmRemoveShipmentOpen.value = false;
+    return;
+  }
+
+  const shipmentItem = await findShipmentItemForCostingItem(item);
+  if (!shipmentItem) {
+    $q.notify({
+      type: 'warning',
+      message: 'No linked shipment item found.',
+    });
+    confirmRemoveShipmentOpen.value = false;
+    pendingRemoveShipItem.value = null;
+    await refreshShippedItemIndicators();
+    return;
+  }
+
+  const deleteResult = await shipmentStore.deleteShipmentItem({ id: shipmentItem.id });
+  if (!deleteResult.success) {
+    return;
+  }
+
+  confirmRemoveShipmentOpen.value = false;
+  pendingRemoveShipItem.value = null;
+  await refreshShippedItemIndicators();
+};
+
+const onSaveShipment = async (data: {
+  shipment_id: number
+  quantity: number
+  price_gbp: number | null
+}) => {
+  const rowItem = selectedShipItem.value;
+  if (!rowItem) {
+    return;
+  }
+
+  const quantity = Math.max(0, Number(data.quantity) || 0);
+  if (quantity <= 0) {
+    return;
+  }
+
+  await shipmentStore.addShipmentItemManual({
+    shipment_id: data.shipment_id,
+    order_id: null,
+    method: 'costing',
+    name: rowItem.name ?? null,
+    quantity,
+    barcode: rowItem.barcode ?? null,
+    product_code: rowItem.product_code ?? null,
+    product_id: rowItem.product_id ?? null,
+    image_url: rowItem.image_url ?? null,
+    product_weight: rowItem.product_weight ?? null,
+    package_weight: rowItem.package_weight ?? null,
+    price_gbp: data.price_gbp,
+    received_quantity: 0,
+    damaged_quantity: 0,
+    stolen_quantity: 0,
+  });
+
+  selectedShipItem.value = null;
+  selectedQuantity.value = null;
+  selectedPriceGbp.value = null;
+  await refreshShippedItemIndicators();
 };
 </script>

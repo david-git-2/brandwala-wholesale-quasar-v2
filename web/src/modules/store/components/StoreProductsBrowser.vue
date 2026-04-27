@@ -1,5 +1,7 @@
 <template>
-  <q-page class="q-pa-md">
+  <div>
+    <PageInitialLoader v-if="initialLoading" />
+    <q-page v-else class="q-pa-md">
     <div class="text-h6 q-mb-md">Store Products</div>
 
     <div class="row q-col-gutter-md items-end q-mb-md">
@@ -42,13 +44,13 @@
       </div>
 
       <div class="col-12 col-sm-4 col-md-3">
-        <q-btn color="negative" outline label="Reset" @click="onResetFilters" />
+        <q-btn color="negative" outline label="Reset"  @click="onResetFilters" />
       </div>
     </div>
-
     <q-btn-toggle
       v-if="storeOptions.length"
       v-model="selectedStoreId"
+      class="q-mb-md"
       no-caps
       unelevated
       toggle-color="primary"
@@ -72,18 +74,21 @@
       <q-pagination
         :model-value="storeStore.productsPage"
         :max="totalPages"
-        :max-pages="8"
+        :max-pages="$q.screen.gt.xs? 7 : 3"
         boundary-numbers
         direction-links
+        :size="$q.screen.gt.xs? 'md' : 'sm'"
         @update:model-value="onPageChange"
       />
     </div>
-  </q-page>
+    </q-page>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
@@ -147,6 +152,7 @@ const allCategoryOption: FilterOption = {
 }
 
 const selectedStoreId = ref<number | null>(null)
+const initialLoading = ref(true)
 const storeOptions = ref<Array<{ label: string; value: number }>>([])
 const search = ref('')
 const category = ref<string | null>(null)
@@ -229,6 +235,7 @@ const fields =
         'category',
         'id',
         'image_url',
+        'is_available',
         'name',
         'price_gbp',
         'minimum_order_quantity',
@@ -240,6 +247,7 @@ const fields =
     search: search.value || null,
     category: category.value || null,
     brand: brand.value || null,
+    is_available: props.mode === 'customer' ? true : null,
     sort_by: 'id',
     sort_dir: 'asc',
     limit,
@@ -441,40 +449,44 @@ const onUpdateCartQty = async (payload: {
 }
 
 onMounted(async () => {
-  if (props.mode === 'customer') {
-    await storeStore.fetchStoresForCustomer()
-  } else {
-    const tenantId = tenantStore.selectedTenant?.id ?? 0
-    await storeStore.fetchStoresAdmin(tenantId)
-  }
-
-  storeOptions.value = storeStore.items.map((store) => ({
-    label: store.name,
-    value: store.id,
-  }))
-
-  const firstStore = storeStore.items[0]
-
-  if (!firstStore) {
-    return
-  }
-
-  selectedStoreId.value = firstStore.id
-  if (props.mode === 'customer') {
-    storeStore.productsCanSeePrice = Boolean(firstStore.see_price)
-  }
-  await Promise.all([loadBrands(firstStore.id), loadCategories(firstStore.id)])
-  await loadProducts(firstStore.id, 1)
-
-  if (props.mode === 'customer') {
-    const tenantId = authStore.tenantId
-    if (tenantId) {
-      await cartStore.fetchItemsForContext({
-        tenant_id: tenantId,
-        store_id: firstStore.id,
-        customer_group_id: authStore.customerGroupId ?? null,
-      })
+  try {
+    if (props.mode === 'customer') {
+      await storeStore.fetchStoresForCustomer()
+    } else {
+      const tenantId = tenantStore.selectedTenant?.id ?? 0
+      await storeStore.fetchStoresAdmin(tenantId)
     }
+
+    storeOptions.value = storeStore.items.map((store) => ({
+      label: store.name,
+      value: store.id,
+    }))
+
+    const firstStore = storeStore.items[0]
+
+    if (!firstStore) {
+      return
+    }
+
+    selectedStoreId.value = firstStore.id
+    if (props.mode === 'customer') {
+      storeStore.productsCanSeePrice = Boolean(firstStore.see_price)
+    }
+    await Promise.all([loadBrands(firstStore.id), loadCategories(firstStore.id)])
+    await loadProducts(firstStore.id, 1)
+
+    if (props.mode === 'customer') {
+      const tenantId = authStore.tenantId
+      if (tenantId) {
+        await cartStore.fetchItemsForContext({
+          tenant_id: tenantId,
+          store_id: firstStore.id,
+          customer_group_id: authStore.customerGroupId ?? null,
+        })
+      }
+    }
+  } finally {
+    initialLoading.value = false
   }
 })
 

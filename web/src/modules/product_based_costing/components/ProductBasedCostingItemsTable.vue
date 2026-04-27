@@ -27,7 +27,21 @@
           </q-td>
 
           <q-td key="name" :props="slotProps" class="col-name">
-            {{ slotProps.row.name }}
+            <div class="row items-center no-wrap q-gutter-xs">
+              <span>{{ slotProps.row.name }}</span>
+              <q-btn
+                v-if="props.status === 'processing'"
+                icon="local_shipping"
+                :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
+                flat
+                round
+                dense
+                size="sm"
+                @click="onShip(slotProps.row)"
+              >
+                <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+              </q-btn>
+            </div>
           </q-td>
 
           <q-td key="note" :props="slotProps" class="col-note">
@@ -444,18 +458,21 @@ const props = withDefaults(
     conversionRate?: number;
     profitRate?: number;
     status?: string | undefined;
+    shippedItemIds?: number[];
   }>(),
   {
     cargoRate: 0,
     conversionRate: 0,
     profitRate: 0,
     status: 'pending',
+    shippedItemIds: () => [],
   },
 );
 
 const emit = defineEmits<{
   (e: 'edit', item: ProductBasedCostingItem): void;
   (e: 'delete', item: ProductBasedCostingItem): void;
+  (e: 'ship', item: ProductBasedCostingItem): void;
   (
     e: 'row-change',
     payload: {
@@ -956,6 +973,14 @@ const onDelete = (row: ProductBasedCostingTableRow) => {
   }).onOk(() => {
     emit('delete', row.raw);
   });
+};
+
+const onShip = (row: ProductBasedCostingTableRow) => {
+  emit('ship', row.raw);
+};
+
+const isShipped = (item: ProductBasedCostingItem) => {
+  return props.shippedItemIds.includes(item.id);
 };
 
 const getStatusColor = (status: string | null) => {

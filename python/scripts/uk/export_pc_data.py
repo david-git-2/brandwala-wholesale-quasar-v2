@@ -3,10 +3,8 @@ import re
 import json
 import time
 from datetime import date, datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import openpyxl
-import requests
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -58,24 +56,10 @@ def env_path(env_key: str, default_abs_path: str) -> str:
     return raw if os.path.isabs(raw) else os.path.join(ROOT_DIR, raw)
 
 
-def env_positive_int(env_key: str, default: int) -> int:
-    raw = str(os.getenv(env_key, "")).strip()
-    if not raw:
-        return default
-    try:
-        value = int(raw)
-        return value if value > 0 else default
-    except ValueError:
-        return default
-
-
 DEFAULT_XLSX = env_path("PY_UK_PC_XLSX_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "pc_data.xlsx"))
 DEFAULT_OUT_JSON = env_path("PY_UK_PC_OUT_JSON_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_data.json"))
 DEFAULT_OUT_MANIFEST = env_path("PY_UK_PC_OUT_MANIFEST_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_manifest.json"))
 DEFAULT_OUT_IMAGES = env_path("PY_UK_PC_OUT_IMAGES_DIR", os.path.join(ROOT_DIR, "python", "images", "uk", "out_images"))
-DEFAULT_SUPABASE_BUCKET = os.getenv("PY_SUPABASE_STORAGE_BUCKET", "product-images").strip() or "product-images"
-DEFAULT_SUPABASE_PREFIX = os.getenv("PY_SUPABASE_STORAGE_PREFIX", "uk/pc").strip().strip("/")
-DEFAULT_UPLOAD_WORKERS = env_positive_int("PY_UK_PC_UPLOAD_WORKERS", 20)
 
 CREDS_DIR = env_path("PY_GOOGLE_CREDS_DIR", os.path.join(ROOT_DIR, "python", "credentials"))
 OAUTH_CLIENT_JSON = env_path("PY_GOOGLE_OAUTH_CLIENT_JSON", os.path.join(CREDS_DIR, "oauth_client.json"))
@@ -95,7 +79,11 @@ def safe_filename(s: str) -> str:
     return s[:120] if len(s) > 120 else s
 
 
-def build_image_identity(product_code_value, barcode_value, row_number: int) -> tuple[str, str]:
+def build_image_identity(
+    product_code_value,
+    barcode_value,
+    row_number: int,
+) -> tuple[str, str]:
     """
     Build stable identifiers for image/product keys.
     - Search/upload key uses barcode first: <barcode>__<product_code>
@@ -370,37 +358,6 @@ def format_duration(seconds: float) -> str:
     return f"{s}s"
 
 
-def supabase_public_url(base_url: str, bucket: str, object_path: str) -> str:
-    base = base_url.rstrip("/")
-    return f"{base}/storage/v1/object/public/{bucket}/{object_path}"
-
-
-def upload_to_supabase_storage(
-    supabase_url: str,
-    api_key: str,
-    bucket: str,
-    object_path: str,
-    local_path: str,
-) -> tuple[str, str]:
-    """
-    Upload/replace object in Supabase Storage.
-    Returns (public_url, action) where action is 'created_or_updated'.
-    """
-    base = supabase_url.rstrip("/")
-    url = f"{base}/storage/v1/object/{bucket}/{object_path}"
-    headers = {
-        "apikey": api_key,
-        "Authorization": f"Bearer {api_key}",
-        "x-upsert": "true",
-        "Content-Type": "application/octet-stream",
-    }
-    with open(local_path, "rb") as f:
-        resp = requests.post(url, headers=headers, data=f, timeout=120)
-    if not resp.ok:
-        raise RuntimeError(f"supabase upload failed ({resp.status_code}): {resp.text}")
-    return supabase_public_url(base, bucket, object_path), "created_or_updated"
-
-
 def main():
     t0 = time.perf_counter()
 
@@ -409,29 +366,10 @@ def main():
     OUT_JSON_PATH = DEFAULT_OUT_JSON
     OUT_IMAGES_DIR = DEFAULT_OUT_IMAGES
 
-    SUPABASE_URL = str(os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "").strip()
-    SUPABASE_ADMIN_KEY = str(
-        os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
-    ).strip()
-    SUPABASE_BUCKET = DEFAULT_SUPABASE_BUCKET
-    SUPABASE_PREFIX = DEFAULT_SUPABASE_PREFIX
-    if not SUPABASE_URL:
-        raise ValueError(
-            "Missing SUPABASE_URL or VITE_SUPABASE_URL in web/.env."
-        )
-    if not SUPABASE_ADMIN_KEY:
-        raise ValueError(
-            "Missing SUPABASE_SECRET_KEY (preferred) or SUPABASE_SERVICE_ROLE_KEY (legacy) in web/.env."
-        )
-
     DEFAULT_HEADER_ROW = 4
     DEFAULT_IMAGE_COLUMN_INDEX = 14  # 1-based column index (14 = N)
 
     SHEET_NAME = None
-
-    # Parallel upload settings
-    MAX_WORKERS = DEFAULT_UPLOAD_WORKERS
-    # ----------------
 
     log(
         "\n"
@@ -455,8 +393,8 @@ def main():
         "  - product_id = barcode + '_' + product_code\n"
         "\n"
         "⚡ Speed mode enabled:\n"
-        "  - Supabase Storage upsert enabled (same filename replaces old image).\n"
-        f"  - Parallel uploads enabled (workers={MAX_WORKERS}).\n"
+        "  - Export extracts images only.\n"
+        "  - Upload happens in sync step using DB product_id key.\n"
         "\n"
         "👉 You will be asked for:\n"
         "  - Header row number (where the column names are)\n"
@@ -661,77 +599,11 @@ def main():
         f"unique_keys={len(local_path_by_key)}\n"
     )
 
-    log("☁️ Preparing Supabase Storage upload config...")
-    log(
-        f"✅ Supabase ready: bucket={SUPABASE_BUCKET}"
-        + (f", prefix={SUPABASE_PREFIX}" if SUPABASE_PREFIX else "")
-    )
-
-    def upload_one(image_key: str, path: str):
-        filename = os.path.basename(path)
-        object_path = f"{SUPABASE_PREFIX}/{filename}" if SUPABASE_PREFIX else filename
-
-        last_err = None
-        for attempt in range(1, 4):
-            try:
-                url, action = upload_to_supabase_storage(
-                    SUPABASE_URL,
-                    SUPABASE_ADMIN_KEY,
-                    SUPABASE_BUCKET,
-                    object_path,
-                    path,
-                )
-                return image_key, url, action
-            except Exception as e:
-                last_err = e
-                time.sleep(min(2.0, 0.4 * attempt))
-        raise RuntimeError(f"upload failed after retries: {last_err}")
-
-    # Parallel upload
-    items = list(local_path_by_key.items())
-    total = len(items)
-    storage_url_by_key = {}
+    # Storage upload is handled in sync_pc_products_to_supabase.py (phase 2),
+    # where object key is based on DB product id for collision-free mapping.
+    uploaded_count = 0
     updated_count = 0
-
-    log(
-        f"⬆️ Upserting {total} unique image(s) to Supabase Storage "
-        f"(parallel workers={MAX_WORKERS})..."
-    )
-    up_start = time.perf_counter()
-
-    done = 0
     failed = 0
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = [ex.submit(upload_one, image_key, path) for image_key, path in items]
-
-        for fut in as_completed(futures):
-            try:
-                image_key, url, action = fut.result()
-                storage_url_by_key[image_key] = url
-                if action == "created_or_updated":
-                    updated_count += 1
-            except Exception as e:
-                failed += 1
-                log(f"❌ Upload failed: {e}")
-            finally:
-                done += 1
-
-                if done % 25 == 0 or done == total:
-                    elapsed = time.perf_counter() - up_start
-                    rate = (done / elapsed) if elapsed > 0 else 0.0
-                    remaining = total - done
-                    eta = (remaining / rate) if rate > 0 else 0
-                    log(
-                        f"   ...uploaded {done}/{total} "
-                        f"(fail={failed}) | avg {rate:.2f} files/sec | ETA {format_duration(eta)}"
-                    )
-
-    uploaded_count = len(storage_url_by_key)
-    log(
-        f"✅ Upload step done. URLs ready: {uploaded_count} "
-        f"(upserted={updated_count}, failed={failed})\n"
-    )
 
     # Build JSON (field names come from Excel header row)
     log("🧾 Building JSON payload...")
@@ -777,8 +649,11 @@ def main():
         # ✅ stable product id
         out["product_id"] = product_id
 
-        # ✅ imageUrl (Supabase Storage public URL)
-        out["imageUrl"] = storage_url_by_key.get(img_key)
+        # ✅ stable image key for backend URL generation
+        out["imageKey"] = img_key
+        # imageUrl will be set in sync phase after DB ids are known.
+        out["imageUrl"] = None
+        out["imageUploaded"] = False
         out["expire_date"] = format_optional_expire_date(
             obj.get(expire_date_header_name, "") if expire_date_header_name else ""
         )
@@ -797,11 +672,9 @@ def main():
             "headerRow": HEADER_ROW,
             "imageColumnIndex": IMAGE_COLUMN_INDEX,
             "imageColumnLetter": excel_col_index_to_letters(IMAGE_COLUMN_INDEX),
-            "parallelWorkers": MAX_WORKERS,
+            "parallelWorkers": 0,
             "storageProvider": "supabase",
-            "storageBucket": SUPABASE_BUCKET,
-            "storagePrefix": SUPABASE_PREFIX,
-            "note": "Supabase Storage upsert uses barcode+product_code key.",
+            "note": "Image upload moved to sync step (DB product_id based key).",
             "productIdRule": "product_id = barcode + '_' + product_code",
             "hazardousRowsRemoved": hazardous_removed_rows,
         },
@@ -829,8 +702,7 @@ def main():
         f"unique_keys={len(local_path_by_key)} -> {OUT_IMAGES_DIR}"
     )
     log(
-        f"- Images upserted (with URL): {uploaded_count} "
-        f"(upserted={updated_count})"
+        "- Image upload deferred to sync step (product_id key)"
     )
     log(f"- Upload failures: {failed}")
     log(f"- JSON written: {OUT_JSON_PATH}")

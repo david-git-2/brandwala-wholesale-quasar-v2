@@ -783,6 +783,48 @@ export type Database = {
           },
         ]
       }
+      product_sync_snapshots: {
+        Row: {
+          barcode: string | null
+          captured_at: string
+          expires_at: string
+          id: number
+          market_code: string
+          product_code: string | null
+          product_id: number
+          row_data: Json
+          run_id: string
+          tenant_id: number | null
+          vendor_code: string
+        }
+        Insert: {
+          barcode?: string | null
+          captured_at?: string
+          expires_at: string
+          id?: number
+          market_code: string
+          product_code?: string | null
+          product_id: number
+          row_data: Json
+          run_id: string
+          tenant_id?: number | null
+          vendor_code: string
+        }
+        Update: {
+          barcode?: string | null
+          captured_at?: string
+          expires_at?: string
+          id?: number
+          market_code?: string
+          product_code?: string | null
+          product_id?: number
+          row_data?: Json
+          run_id?: string
+          tenant_id?: number | null
+          vendor_code?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           available_units: number | null
@@ -2111,6 +2153,7 @@ export type Database = {
           p_brand?: string
           p_category?: string
           p_fields?: string[]
+          p_is_available?: boolean
           p_limit?: number
           p_offset?: number
           p_search?: string

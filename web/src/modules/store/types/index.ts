@@ -63,6 +63,7 @@ export type StoreProductsQueryInput = {
   search?: string | null
   category?: string | null
   brand?: string | null
+  is_available?: boolean | null
   sort_by?: string | null
   sort_dir?: string | null
   limit?: number

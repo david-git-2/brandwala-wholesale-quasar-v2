@@ -221,6 +221,7 @@ const listStoreProducts = async (
     p_search: payload.search ?? null,
     p_category: payload.category ?? null,
     p_brand: payload.brand ?? null,
+    p_is_available: payload.is_available ?? null,
     p_sort_by: payload.sort_by ?? 'id',
     p_sort_dir: payload.sort_dir ?? 'asc',
     p_limit: payload.limit ?? 20,
