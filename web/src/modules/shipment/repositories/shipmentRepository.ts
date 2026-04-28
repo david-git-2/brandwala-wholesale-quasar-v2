@@ -127,6 +127,26 @@ const listShipmentItems = async (shipmentId: number): Promise<ShipmentItem[]> =>
   return (data as ShipmentItem[] | null) ?? []
 }
 
+const listShipmentItemsByTenant = async (tenantId: number): Promise<ShipmentItem[]> => {
+  const { data, error } = await db
+    .from('shipment_items')
+    .select('*, shipments!inner(tenant_id)')
+    .eq('shipments.tenant_id', tenantId)
+    .order('id', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  return ((data as Array<ShipmentItem & { shipments?: { tenant_id: number } | null }> | null) ?? []).map(
+    (row) => {
+      const item = { ...row }
+      delete (item as { shipments?: { tenant_id: number } | null }).shipments
+      return item as ShipmentItem
+    },
+  )
+}
+
 const addShipmentItemFromProduct = async (
   payload: AddShipmentItemFromProductInput,
 ): Promise<ShipmentItem> => {
@@ -339,6 +359,7 @@ export const shipmentRepository = {
   updateShipmentField,
   deleteShipment,
   listShipmentItems,
+  listShipmentItemsByTenant,
   addShipmentItemFromProduct,
   addShipmentItemManual,
   bulkAddShipmentItemsFromProduct,

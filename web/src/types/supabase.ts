@@ -401,6 +401,147 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          cost: number | null
+          created_at: string
+          expire_date: string | null
+          id: number
+          image_url: string | null
+          manufacturing_date: string | null
+          name: string
+          source_id: number | null
+          source_type: string
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          image_url?: string | null
+          manufacturing_date?: string | null
+          name: string
+          source_id?: number | null
+          source_type: string
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          image_url?: string | null
+          manufacturing_date?: string | null
+          name?: string
+          source_id?: number | null
+          source_type?: string
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          inventory_item_id: number
+          new_quantity: number
+          note: string | null
+          previous_quantity: number
+          quantity: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_item_id: number
+          new_quantity: number
+          note?: string | null
+          previous_quantity: number
+          quantity: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_item_id?: number
+          new_quantity?: number
+          note?: string | null
+          previous_quantity?: number
+          quantity?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_stocks: {
+        Row: {
+          available_quantity: number
+          created_at: string
+          damaged_quantity: number
+          expired_quantity: number
+          id: number
+          inventory_item_id: number
+          reserved_quantity: number
+          stolen_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          available_quantity?: number
+          created_at?: string
+          damaged_quantity?: number
+          expired_quantity?: number
+          id?: number
+          inventory_item_id: number
+          reserved_quantity?: number
+          stolen_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          available_quantity?: number
+          created_at?: string
+          damaged_quantity?: number
+          expired_quantity?: number
+          id?: number
+          inventory_item_id?: number
+          reserved_quantity?: number
+          stolen_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stocks_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           code: string
@@ -2136,6 +2277,39 @@ export type Database = {
               updated_at: string
             }[]
           }
+      list_inventory_items_with_stock: {
+        Args: {
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_by?: string
+          p_sort_order?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          available_quantity: number
+          cost: number
+          created_at: string
+          damaged_quantity: number
+          expire_date: string
+          expired_quantity: number
+          id: number
+          image_url: string
+          manufacturing_date: string
+          name: string
+          reserved_quantity: number
+          source_id: number
+          source_type: string
+          status: string
+          stock_created_at: string
+          stock_id: number
+          stock_updated_at: string
+          stolen_quantity: number
+          tenant_id: number
+          total_count: number
+          updated_at: string
+        }[]
+      }
       list_my_admin_tenants: {
         Args: never
         Returns: {

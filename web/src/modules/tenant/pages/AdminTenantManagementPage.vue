@@ -536,6 +536,7 @@
             row-key="id"
             :rows="modules"
             :columns="moduleFeatureColumns"
+            :pagination="{ rowsPerPage: 0 }"
             :dense="$q.screen.lt.md"
             hide-bottom
             class="tenant-detail-card__table"

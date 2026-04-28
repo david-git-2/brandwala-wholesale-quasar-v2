@@ -109,6 +109,20 @@ const listShipmentItems = async (
   }
 }
 
+const listShipmentItemsByTenant = async (
+  tenantId: number,
+): Promise<ShipmentServiceResult<ShipmentItem[]>> => {
+  try {
+    const data = await shipmentRepository.listShipmentItemsByTenant(tenantId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load shipment items.',
+    }
+  }
+}
+
 const addShipmentItemFromProduct = async (
   payload: AddShipmentItemFromProductInput,
 ): Promise<ShipmentServiceResult<ShipmentItem>> => {
@@ -233,6 +247,7 @@ export const shipmentService = {
   updateShipmentField,
   deleteShipment,
   listShipmentItems,
+  listShipmentItemsByTenant,
   addShipmentItemFromProduct,
   addShipmentItemManual,
   bulkAddShipmentItemsFromProduct,

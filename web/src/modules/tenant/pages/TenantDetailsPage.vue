@@ -179,6 +179,7 @@
             :columns="moduleFeatureColumns"
             :dense="$q.screen.lt.md"
             hide-bottom
+            :pagination="{ rowsPerPage: 0 }"
             class="tenant-details-page__table"
           >
             <template #body-cell-module_key="props">

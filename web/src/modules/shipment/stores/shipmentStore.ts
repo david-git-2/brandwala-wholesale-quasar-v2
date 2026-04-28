@@ -202,6 +202,26 @@ export const useShipmentStore = defineStore('shipment', {
       }
     },
 
+    async fetchShipmentItemsByTenant(tenantId: number) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.listShipmentItemsByTenant(tenantId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load shipment items.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.shipmentItems = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
     async addShipmentItemFromProduct(payload: AddShipmentItemFromProductInput) {
       this.saving = true
       this.error = null
