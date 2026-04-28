@@ -9,11 +9,11 @@ import type {
   DeleteInventoryStockInput,
   InventoryItem,
   InventoryItemWithStock,
+  InventoryListPage,
   InventoryListQuery,
   InventoryMovement,
   InventoryServiceResult,
   InventoryStock,
-  PaginatedResult,
   UpdateInventoryItemInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
@@ -21,7 +21,7 @@ import type {
 
 const listInventoryItems = async (
   payload: InventoryListQuery = {},
-): Promise<InventoryServiceResult<PaginatedResult<InventoryItemWithStock>>> => {
+): Promise<InventoryServiceResult<InventoryListPage<InventoryItemWithStock>>> => {
   try {
     const data = await inventoryRepository.listInventoryItems(payload)
     return { success: true, data }
@@ -89,7 +89,7 @@ const deleteInventoryItem = async (
 
 const listInventoryStocks = async (
   payload: InventoryListQuery = {},
-): Promise<InventoryServiceResult<PaginatedResult<InventoryStock>>> => {
+): Promise<InventoryServiceResult<InventoryListPage<InventoryStock>>> => {
   try {
     const data = await inventoryRepository.listInventoryStocks(payload)
     return { success: true, data }
@@ -159,7 +159,7 @@ const deleteInventoryStock = async (
 
 const listInventoryMovements = async (
   payload: InventoryListQuery = {},
-): Promise<InventoryServiceResult<PaginatedResult<InventoryMovement>>> => {
+): Promise<InventoryServiceResult<InventoryListPage<InventoryMovement>>> => {
   try {
     const data = await inventoryRepository.listInventoryMovements(payload)
     return { success: true, data }

@@ -16,8 +16,6 @@ import type {
   UpdateInventoryStockInput,
 } from '../types'
 
-const DEFAULT_PAGINATION = { total: 0, page: 1, pageSize: 20 }
-
 export const useInventoryStore = defineStore('inventory', {
   state: (): InventoryStoreState => ({
     items: [],
@@ -26,9 +24,18 @@ export const useInventoryStore = defineStore('inventory', {
     selectedItem: null,
     selectedStock: null,
     selectedMovement: null,
-    itemPagination: { ...DEFAULT_PAGINATION },
-    stockPagination: { ...DEFAULT_PAGINATION },
-    movementPagination: { ...DEFAULT_PAGINATION },
+    total: 0,
+    page: 1,
+    page_size: 20,
+    total_pages: 1,
+    stock_total: 0,
+    stock_page: 1,
+    stock_page_size: 20,
+    stock_total_pages: 1,
+    movement_total: 0,
+    movement_page: 1,
+    movement_page_size: 20,
+    movement_total_pages: 1,
     loading: false,
     saving: false,
     error: null,
@@ -52,13 +59,11 @@ export const useInventoryStore = defineStore('inventory', {
           return result
         }
 
-        const page = result.data ?? { rows: [], ...DEFAULT_PAGINATION }
-        this.items = page.rows
-        this.itemPagination = {
-          total: page.total,
-          page: page.page,
-          pageSize: page.pageSize,
-        }
+        this.items = result.data?.data ?? []
+        this.total = result.data?.meta.total ?? 0
+        this.page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.page_size = result.data?.meta.page_size ?? (payload.page_size ?? payload.pageSize ?? 20)
+        this.total_pages = result.data?.meta.total_pages ?? 1
 
         return result
       } finally {
@@ -103,6 +108,7 @@ export const useInventoryStore = defineStore('inventory', {
           this.items.unshift({
             ...result.data,
             stock: null,
+            shipment: null,
             quantities: {
               available: 0,
               reserved: 0,
@@ -137,6 +143,7 @@ export const useInventoryStore = defineStore('inventory', {
           const index = this.items.findIndex((row) => row.id === result.data?.id)
           if (index >= 0) {
             const existingStock = this.items[index]?.stock ?? null
+            const existingShipment = this.items[index]?.shipment ?? null
             const existingQuantities = this.items[index]?.quantities ?? {
               available: 0,
               reserved: 0,
@@ -147,6 +154,7 @@ export const useInventoryStore = defineStore('inventory', {
             this.items.splice(index, 1, {
               ...result.data,
               stock: existingStock,
+              shipment: existingShipment,
               quantities: existingQuantities,
             })
           }
@@ -201,13 +209,11 @@ export const useInventoryStore = defineStore('inventory', {
           return result
         }
 
-        const page = result.data ?? { rows: [], ...DEFAULT_PAGINATION }
-        this.stocks = page.rows
-        this.stockPagination = {
-          total: page.total,
-          page: page.page,
-          pageSize: page.pageSize,
-        }
+        this.stocks = result.data?.data ?? []
+        this.stock_total = result.data?.meta.total ?? 0
+        this.stock_page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.stock_page_size = result.data?.meta.page_size ?? (payload.page_size ?? payload.pageSize ?? 20)
+        this.stock_total_pages = result.data?.meta.total_pages ?? 1
 
         return result
       } finally {
@@ -328,13 +334,11 @@ export const useInventoryStore = defineStore('inventory', {
           return result
         }
 
-        const page = result.data ?? { rows: [], ...DEFAULT_PAGINATION }
-        this.movements = page.rows
-        this.movementPagination = {
-          total: page.total,
-          page: page.page,
-          pageSize: page.pageSize,
-        }
+        this.movements = result.data?.data ?? []
+        this.movement_total = result.data?.meta.total ?? 0
+        this.movement_page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.movement_page_size = result.data?.meta.page_size ?? (payload.page_size ?? payload.pageSize ?? 20)
+        this.movement_total_pages = result.data?.meta.total_pages ?? 1
 
         return result
       } finally {

@@ -18,16 +18,20 @@ export type InventoryListQuery = {
   filters?: Record<string, unknown>
   operators?: Record<string, FilterOperator>
   page?: number
+  page_size?: number
   pageSize?: number
   sortBy?: string
   sortOrder?: SortOrder
 }
 
-export type PaginatedResult<T> = {
-  rows: T[]
-  total: number
-  page: number
-  pageSize: number
+export type InventoryListPage<T> = {
+  data: T[]
+  meta: {
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }
 }
 
 export type InventoryServiceResult<T> = {
@@ -73,6 +77,10 @@ export type InventoryQuantities = {
 
 export type InventoryItemWithStock = InventoryItem & {
   stock: InventoryStock | null
+  shipment: {
+    shipment_item: Record<string, unknown> | null
+    shipment: Record<string, unknown> | null
+  } | null
   quantities: InventoryQuantities
 }
 
@@ -139,9 +147,18 @@ export type InventoryStoreState = {
   selectedItem: InventoryItem | null
   selectedStock: InventoryStock | null
   selectedMovement: InventoryMovement | null
-  itemPagination: { total: number; page: number; pageSize: number }
-  stockPagination: { total: number; page: number; pageSize: number }
-  movementPagination: { total: number; page: number; pageSize: number }
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+  stock_total: number
+  stock_page: number
+  stock_page_size: number
+  stock_total_pages: number
+  movement_total: number
+  movement_page: number
+  movement_page_size: number
+  movement_total_pages: number
   loading: boolean
   saving: boolean
   error: string | null

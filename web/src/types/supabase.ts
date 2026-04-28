@@ -2286,29 +2286,7 @@ export type Database = {
           p_sort_order?: string
           p_tenant_id: number
         }
-        Returns: {
-          available_quantity: number
-          cost: number
-          created_at: string
-          damaged_quantity: number
-          expire_date: string
-          expired_quantity: number
-          id: number
-          image_url: string
-          manufacturing_date: string
-          name: string
-          reserved_quantity: number
-          source_id: number
-          source_type: string
-          status: string
-          stock_created_at: string
-          stock_id: number
-          stock_updated_at: string
-          stolen_quantity: number
-          tenant_id: number
-          total_count: number
-          updated_at: string
-        }[]
+        Returns: Json
       }
       list_my_admin_tenants: {
         Args: never

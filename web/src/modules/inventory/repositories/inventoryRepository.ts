@@ -10,10 +10,10 @@ import type {
   FilterOperator,
   InventoryItem,
   InventoryItemWithStock,
+  InventoryListPage,
   InventoryListQuery,
   InventoryMovement,
   InventoryStock,
-  PaginatedResult,
   UpdateInventoryItemInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
@@ -98,13 +98,20 @@ const toNumberOrZero = (value: unknown): number => {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
+const toObjectRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
 const listWithQuery = async <T extends string, R>(
   tableName: string,
   queryInput: InventoryListQuery,
   allowlist: readonly T[],
   defaultSortBy: T,
-): Promise<PaginatedResult<R>> => {
-  const pageSize = sanitizePage(queryInput.pageSize, 20)
+): Promise<InventoryListPage<R>> => {
+  const pageSize = sanitizePage(queryInput.page_size ?? queryInput.pageSize, 20)
   const page = sanitizePage(queryInput.page, 1)
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -132,11 +139,15 @@ const listWithQuery = async <T extends string, R>(
     throw error
   }
 
+  const total = count ?? 0
   return {
-    rows: (data as R[] | null) ?? [],
-    total: count ?? 0,
-    page,
-    pageSize,
+    data: (data as R[] | null) ?? [],
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
   }
 }
 
@@ -181,12 +192,12 @@ const INVENTORY_MOVEMENT_FILTERABLE_FIELDS = [
 
 const listInventoryItems = async (
   payload: InventoryListQuery = {},
-): Promise<PaginatedResult<InventoryItemWithStock>> => {
+): Promise<InventoryListPage<InventoryItemWithStock>> => {
   if (typeof payload.tenant_id !== 'number') {
     throw new Error('tenant_id is required to fetch inventory items.')
   }
 
-  const pageSize = sanitizePage(payload.pageSize, 20)
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
   const page = sanitizePage(payload.page, 1)
   const safeSortBy = isAllowedField(payload.sortBy, INVENTORY_ITEM_FILTERABLE_FIELDS)
     ? payload.sortBy
@@ -206,52 +217,77 @@ const listInventoryItems = async (
     throw error
   }
 
-  const rows = (data as Array<Record<string, unknown>> | null) ?? []
+  const envelope = toObjectRecord(data)
+  const rows = Array.isArray(envelope?.data)
+    ? (envelope.data as Array<Record<string, unknown>>)
+    : []
 
-  const mappedRows: InventoryItemWithStock[] = rows.map((row) => ({
-    id: toNumberOrZero(row.id),
-    tenant_id: toNumberOrZero(row.tenant_id),
-    source_type: row.source_type as InventoryItem['source_type'],
-    source_id: row.source_id == null ? null : toNumberOrZero(row.source_id),
-    name: toNullableText(row.name) ?? '',
-    image_url: toNullableText(row.image_url),
-    cost: row.cost == null ? null : toNumberOrZero(row.cost),
-    manufacturing_date: toNullableText(row.manufacturing_date),
-    expire_date: toNullableText(row.expire_date),
-    status: row.status as InventoryItem['status'],
-    created_at: toNullableText(row.created_at) ?? '',
-    updated_at: toNullableText(row.updated_at) ?? '',
-    stock:
-      row.stock_id == null
-        ? null
-        : {
-            id: toNumberOrZero(row.stock_id),
-            inventory_item_id: toNumberOrZero(row.id),
-            available_quantity: toNumberOrZero(row.available_quantity),
-            reserved_quantity: toNumberOrZero(row.reserved_quantity),
-            damaged_quantity: toNumberOrZero(row.damaged_quantity),
-            stolen_quantity: toNumberOrZero(row.stolen_quantity),
-            expired_quantity: toNumberOrZero(row.expired_quantity),
-            created_at: toNullableText(row.stock_created_at) ?? '',
-            updated_at: toNullableText(row.stock_updated_at) ?? '',
-          },
-    quantities: {
-      available: toNumberOrZero(row.available_quantity),
-      reserved: toNumberOrZero(row.reserved_quantity),
-      damaged: toNumberOrZero(row.damaged_quantity),
-      stolen: toNumberOrZero(row.stolen_quantity),
-      expired: toNumberOrZero(row.expired_quantity),
-    },
-  }))
+  const mappedRows: InventoryItemWithStock[] = rows.map((row) => {
+    const stockRecord = toObjectRecord(row.stock)
+    const shipmentRecord = toObjectRecord(row.shipment)
+    const availableQuantity = toNumberOrZero(stockRecord?.available_quantity)
+    const reservedQuantity = toNumberOrZero(stockRecord?.reserved_quantity)
+    const damagedQuantity = toNumberOrZero(stockRecord?.damaged_quantity)
+    const stolenQuantity = toNumberOrZero(stockRecord?.stolen_quantity)
+    const expiredQuantity = toNumberOrZero(stockRecord?.expired_quantity)
 
-  const firstRow = rows[0]
-  const total = firstRow ? Number(firstRow.total_count ?? 0) : 0
+    return {
+      id: toNumberOrZero(row.id),
+      tenant_id: toNumberOrZero(row.tenant_id),
+      source_type: row.source_type as InventoryItem['source_type'],
+      source_id: row.source_id == null ? null : toNumberOrZero(row.source_id),
+      name: toNullableText(row.name) ?? '',
+      image_url: toNullableText(row.image_url),
+      cost: row.cost == null ? null : toNumberOrZero(row.cost),
+      manufacturing_date: toNullableText(row.manufacturing_date),
+      expire_date: toNullableText(row.expire_date),
+      status: row.status as InventoryItem['status'],
+      created_at: toNullableText(row.created_at) ?? '',
+      updated_at: toNullableText(row.updated_at) ?? '',
+      stock: stockRecord
+        ? {
+            id: toNumberOrZero(stockRecord.id),
+            inventory_item_id: toNumberOrZero(stockRecord.inventory_item_id),
+            available_quantity: availableQuantity,
+            reserved_quantity: reservedQuantity,
+            damaged_quantity: damagedQuantity,
+            stolen_quantity: stolenQuantity,
+            expired_quantity: expiredQuantity,
+            created_at: toNullableText(stockRecord.created_at) ?? '',
+            updated_at: toNullableText(stockRecord.updated_at) ?? '',
+          }
+        : null,
+      shipment: shipmentRecord
+        ? {
+            shipment_item: toObjectRecord(shipmentRecord.shipment_item),
+            shipment: toObjectRecord(shipmentRecord.shipment),
+          }
+        : null,
+      quantities: {
+        available: availableQuantity,
+        reserved: reservedQuantity,
+        damaged: damagedQuantity,
+        stolen: stolenQuantity,
+        expired: expiredQuantity,
+      },
+    }
+  })
+
+  const meta = toObjectRecord(envelope?.meta)
+  const total = toNumberOrZero(meta?.total)
+  const metaPage = toNumberOrZero(meta?.page) || page
+  const metaPageSize = toNumberOrZero(meta?.page_size) || pageSize
+  const metaTotalPages =
+    toNumberOrZero(meta?.total_pages) || Math.max(1, Math.ceil(total / Math.max(1, metaPageSize)))
 
   return {
-    rows: mappedRows,
-    total,
-    page,
-    pageSize,
+    data: mappedRows,
+    meta: {
+      total,
+      page: metaPage,
+      page_size: metaPageSize,
+      total_pages: metaTotalPages,
+    },
   }
 }
 
@@ -336,8 +372,8 @@ const deleteInventoryItem = async (payload: DeleteInventoryItemInput): Promise<v
 
 const listInventoryStocks = async (
   payload: InventoryListQuery = {},
-): Promise<PaginatedResult<InventoryStock>> => {
-  const pageSize = sanitizePage(payload.pageSize, 20)
+): Promise<InventoryListPage<InventoryStock>> => {
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
   const page = sanitizePage(payload.page, 1)
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -373,11 +409,15 @@ const listInventoryStocks = async (
     },
   )
 
+  const total = count ?? 0
   return {
-    rows,
-    total: count ?? 0,
-    page,
-    pageSize,
+    data: rows,
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
   }
 }
 
@@ -450,7 +490,7 @@ const deleteInventoryStock = async (payload: DeleteInventoryStockInput): Promise
 
 const listInventoryMovements = async (
   payload: InventoryListQuery = {},
-): Promise<PaginatedResult<InventoryMovement>> =>
+): Promise<InventoryListPage<InventoryMovement>> =>
   listWithQuery<'id' | 'inventory_item_id' | 'type' | 'quantity' | 'previous_quantity' | 'new_quantity' | 'note' | 'created_by' | 'created_at', InventoryMovement>(
     'inventory_movements',
     payload,

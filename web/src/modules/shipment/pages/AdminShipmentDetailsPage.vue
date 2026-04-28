@@ -61,10 +61,10 @@
               <th class="text-left">Name</th>
               <th class="text-left">Method</th>
               <th class="text-right">Price GBP</th>
-              <th class="text-right">Quantity</th>
-              <th class="text-right">Received Qty</th>
-              <th class="text-right">Damaged Qty</th>
-              <th class="text-right">Stolen Qty</th>
+              <th class="text-right shipment-qty-col shipment-qty-col--quantity">Quantity</th>
+              <th class="text-right shipment-qty-col shipment-qty-col--received">Received Qty</th>
+              <th class="text-right shipment-qty-col shipment-qty-col--damaged">Damaged Qty</th>
+              <th class="text-right shipment-qty-col shipment-qty-col--stolen">Stolen Qty</th>
               <th class="text-right">Product Wt</th>
               <th class="text-right">Package Wt</th>
               <th class="text-right">Actions</th>
@@ -116,7 +116,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td class="text-right shipment-qty-col shipment-qty-col--quantity">
                 <span class="cursor-pointer">{{ item.quantity }}</span>
                 <q-popup-edit
                   :model-value="item.quantity"
@@ -130,7 +130,7 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td class="text-right shipment-qty-col shipment-qty-col--received">
                 <span class="cursor-pointer">{{ item.received_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.received_quantity"
@@ -144,7 +144,7 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td class="text-right shipment-qty-col shipment-qty-col--damaged">
                 <span class="cursor-pointer">{{ item.damaged_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.damaged_quantity"
@@ -158,7 +158,7 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td class="text-right shipment-qty-col shipment-qty-col--stolen">
                 <span class="cursor-pointer">{{ item.stolen_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.stolen_quantity"
@@ -613,6 +613,22 @@ watch(
   min-width: 260px;
   width: fit-content;
   max-width: 100%;
+}
+
+.shipment-qty-col--quantity {
+  background: #eaf7ef;
+}
+
+.shipment-qty-col--received {
+  background: #eef4ff;
+}
+
+.shipment-qty-col--damaged {
+  background: #fff1f0;
+}
+
+.shipment-qty-col--stolen {
+  background: #fff8e9;
 }
 
 </style>
