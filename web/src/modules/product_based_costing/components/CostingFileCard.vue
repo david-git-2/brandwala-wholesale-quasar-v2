@@ -3,7 +3,7 @@
     <div
       v-for="item in items"
       :key="item.id"
-      class="col-12 col-lg-6"
+      class="col-12 col-sm-6"
     >
       <q-card
         class="q-pa-md cursor-pointer"

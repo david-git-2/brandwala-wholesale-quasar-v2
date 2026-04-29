@@ -1,11 +1,17 @@
 <template>
   <q-page padding>
     <div class="text-h5">Shipment Management</div>
-    <div class="row justify-end">
+    <div class="row justify-end q-mb-md">
       <q-btn label="Create Shipment" color="primary" @click="openCreate" />
     </div>
     <CreateShipmentDialog v-model="showDialog" :initialData="selectedShipment" @submit="onSubmit" />
-    <ShipmentListCard @edit="onShipmentEdit" @delete="onShipmentDelete" @select="onSelectShipment" />
+    <PageInitialLoader v-if="shipmentStore.loading" />
+    <ShipmentListCard
+      v-else
+      @edit="onShipmentEdit"
+      @delete="onShipmentDelete"
+      @select="onSelectShipment"
+    />
 
     <q-dialog v-model="showDeleteDialog" persistent>
       <q-card style="min-width: 320px">
@@ -38,6 +44,7 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import ShipmentListCard from '../components/ShipmentListCard.vue'
 import type { Shipment } from '../types'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const shipmentStore = useShipmentStore()
 const tenantStore = useTenantStore()

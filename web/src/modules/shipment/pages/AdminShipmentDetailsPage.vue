@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div v-if="shipmentStore.selectedShipment" class="q-mb-md">
+    <div v-if="shipmentStore.selectedShipment" class="q-mb-md row justify-end">
       <q-select
         v-model="selectedStatus"
         :options="statusOptions"

@@ -13,18 +13,7 @@
       />
     </div>
 
-    <div v-if="orderStore.loading" class="order-grid">
-      <q-card v-for="n in skeletonCount" :key="`admin-order-skeleton-${n}`" class="order-card" flat bordered>
-        <q-card-section>
-          <div class="row items-center justify-end q-gutter-sm q-mb-sm">
-            <q-skeleton type="QChip" width="84px" />
-            <q-skeleton type="QAvatar" size="26px" />
-          </div>
-          <q-skeleton type="text" width="72%" />
-          <q-skeleton type="text" width="52%" class="q-mt-xs" />
-        </q-card-section>
-      </q-card>
-    </div>
+    <PageInitialLoader v-if="orderStore.loading" />
 
     <q-banner v-else-if="!orderStore.items.length" class="bg-grey-2 text-grey-8">
       No orders found.
@@ -51,11 +40,18 @@
               dense
               flat
               round
-              color="negative"
-              icon="delete"
+              icon="more_vert"
               :loading="orderStore.saving"
-              @click.stop="onAskDelete(order.id)"
-            />
+              @click.stop
+            >
+              <q-menu auto-close>
+                <q-list dense style="min-width: 120px">
+                  <q-item clickable v-ripple @click="onAskDelete(order.id)">
+                    <q-item-section class="text-negative">Delete</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
           </div>
 
           <div class="row items-center justify-start q-gutter-sm">
@@ -107,13 +103,13 @@ import { formatStatus } from 'src/composables/useFormatStatus'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useOrderStore } from '../stores/orderStore'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const authStore = useAuthStore()
 const orderStore = useOrderStore()
 const storeStore = useStoreStore()
 const router = useRouter()
 const page = ref(1)
-const skeletonCount = 6
 const confirmDeleteOpen = ref(false)
 const pendingDeleteOrderId = ref<number | null>(null)
 

@@ -12,6 +12,9 @@
     </div>
     <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
 
+    <PageInitialLoader v-if="orderStore.loading" />
+
+    <template v-else>
     <div class="q-mt-md q-mb-md row justify-end" >
       <q-select
         v-model="selectedStatus"
@@ -22,20 +25,6 @@
         :loading="orderStore.saving"
         @update:model-value="onStatusChange"
       />
-    </div>
-
-    <div v-if="orderStore.selected?.negotiate !== false" class="row q-gutter-sm q-my-sm">
-      <q-toggle
-        :model-value="orderStore.selected?.negotiate ?? true"
-        label="Enable Negotiation"
-        :disable="!orderStore.selected?.id || orderStore.saving"
-        @update:model-value="onNegotiationToggle"
-      />
-    </div>
-    <div v-else class="row q-gutter-sm q-my-sm">
-      <q-chip dense color="negative" text-color="white" icon="block">
-        Negotiation Disabled
-      </q-chip>
     </div>
 
     <div class="row q-gutter-sm q-my-sm">
@@ -192,6 +181,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    </template>
   </q-page>
 </template>
 
@@ -206,6 +196,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 
 

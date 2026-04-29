@@ -27,23 +27,20 @@
             flat
             round
             dense
-            color="primary"
-            icon="edit"
-            aria-label="Edit shipment"
-            @click.stop="emit('edit', shipment)"
+            icon="more_vert"
+            aria-label="Shipment actions"
+            @click.stop
           >
-            <q-tooltip>Edit</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            round
-            dense
-            color="negative"
-            icon="delete"
-            aria-label="Delete shipment"
-            @click.stop="emit('delete', shipment)"
-          >
-            <q-tooltip>Delete</q-tooltip>
+            <q-menu auto-close>
+              <q-list dense style="min-width: 120px">
+                <q-item clickable v-ripple @click="emit('edit', shipment)">
+                  <q-item-section>Edit</q-item-section>
+                </q-item>
+                <q-item clickable v-ripple @click="emit('delete', shipment)">
+                  <q-item-section class="text-negative">Delete</q-item-section>
+                </q-item> 
+              </q-list>
+            </q-menu>
           </q-btn>
         </q-card-actions>
       </q-card>

@@ -570,6 +570,14 @@ const onSaveShipment = async (data: {
     return;
   }
 
+  if (rowItem.product_id == null) {
+    $q.notify({
+      type: 'negative',
+      message: 'Product ID is required before adding shipment.',
+    });
+    return;
+  }
+
   const quantity = Math.max(0, Number(data.quantity) || 0);
   if (quantity <= 0) {
     return;
@@ -583,7 +591,7 @@ const onSaveShipment = async (data: {
     quantity,
     barcode: rowItem.barcode ?? null,
     product_code: rowItem.product_code ?? null,
-    product_id: rowItem.product_id ?? null,
+    product_id: rowItem.product_id,
     image_url: rowItem.image_url ?? null,
     product_weight: rowItem.product_weight ?? null,
     package_weight: rowItem.package_weight ?? null,
