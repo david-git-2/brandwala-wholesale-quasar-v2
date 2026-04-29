@@ -151,6 +151,7 @@ const loadProducts = async () => {
     category: category.value,
     brand: brand.value,
     vendorCode: "PC",
+    isAvailable: true,
   })
 }
 
@@ -249,6 +250,7 @@ const onPaginationClick = async () => {
       category: category.value,
       brand: brand.value,
       vendorCode: 'PC',
+      isAvailable: true,
       append: true,
     })
   } finally {
@@ -273,6 +275,7 @@ const onResetFilters = async () => {
       category: null,
       brand: null,
       vendorCode: 'PC',
+      isAvailable: true,
     })
   } finally {
     suppressFilterWatch.value = false

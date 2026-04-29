@@ -1,6 +1,8 @@
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository'
 import type {
   ProductBasedCostingFile,
+  ProductBasedCostingFileListInput,
+  ProductBasedCostingFileListPage,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
@@ -9,11 +11,13 @@ import type {
   ProductBasedCostingServiceResult,
 } from '../types'
 
-const listProductBasedCostingFiles = async (): Promise<
-  ProductBasedCostingServiceResult<ProductBasedCostingFile[]>
+const listProductBasedCostingFiles = async (
+  payload: ProductBasedCostingFileListInput = {},
+): Promise<
+  ProductBasedCostingServiceResult<ProductBasedCostingFileListPage>
 > => {
   try {
-    const data = await productBasedCostingRepository.listProductBasedCostingFiles()
+    const data = await productBasedCostingRepository.listProductBasedCostingFiles(payload)
 
     return {
       success: true,

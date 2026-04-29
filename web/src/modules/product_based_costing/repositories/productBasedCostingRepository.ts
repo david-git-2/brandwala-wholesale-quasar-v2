@@ -2,6 +2,8 @@ import { supabase } from 'src/boot/supabase'
 
 import type {
   ProductBasedCostingFile,
+  ProductBasedCostingFileListInput,
+  ProductBasedCostingFileListPage,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
@@ -82,6 +84,8 @@ const buildProductBasedCostingItemCreatePayload = (
   quantity: payload.quantity ?? null,
   barcode: normalizeText(payload.barcode),
   product_code: normalizeText(payload.product_code),
+  vendor_code: normalizeText(payload.vendor_code),
+  market_code: normalizeText(payload.market_code),
   web_link: normalizeText(payload.web_link),
   price_gbp: payload.price_gbp ?? null,
   product_weight: payload.product_weight ?? null,
@@ -89,6 +93,7 @@ const buildProductBasedCostingItemCreatePayload = (
   offer_price: payload.offer_price ?? null,
   status: normalizeText(payload.status),
   product_id: payload.product_id,
+  input_type: normalizeText(payload.input_type),
 })
 
 const buildProductBasedCostingItemUpdatePayload = (
@@ -124,6 +129,14 @@ const buildProductBasedCostingItemUpdatePayload = (
     updatePayload.product_code = normalizeText(payload.product_code)
   }
 
+  if (payload.vendor_code !== undefined) {
+    updatePayload.vendor_code = normalizeText(payload.vendor_code)
+  }
+
+  if (payload.market_code !== undefined) {
+    updatePayload.market_code = normalizeText(payload.market_code)
+  }
+
   if (payload.web_link !== undefined) {
     updatePayload.web_link = normalizeText(payload.web_link)
   }
@@ -148,20 +161,49 @@ const buildProductBasedCostingItemUpdatePayload = (
     updatePayload.status = normalizeText(payload.status)
   }
 
+  if (payload.input_type !== undefined) {
+    updatePayload.input_type = normalizeText(payload.input_type)
+  }
+
   return updatePayload
 }
 
-const listProductBasedCostingFiles = async (): Promise<ProductBasedCostingFile[]> => {
-  const { data, error } = await supabase
-    .from('product_based_costing_files')
-    .select('*')
-    .order('id', { ascending: true })
+const listProductBasedCostingFiles = async (
+  payload: ProductBasedCostingFileListInput = {},
+): Promise<ProductBasedCostingFileListPage> => {
+  const page = Math.max(1, Number(payload.page ?? 1) || 1)
+  const pageSize = Math.max(1, Number(payload.page_size ?? 20) || 20)
+  const { data, error } = await supabase.rpc('list_product_based_costing_files', {
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: payload.search?.trim() || null,
+    p_status: payload.status?.trim() || null,
+    p_tenant_id: null,
+  })
 
   if (error) {
     throw error
   }
 
-  return (data as ProductBasedCostingFile[] | null) ?? []
+  const envelope = (data as { data?: ProductBasedCostingFile[]; meta?: Record<string, unknown> } | null) ?? {}
+  const rows = envelope.data ?? []
+  const meta = envelope.meta ?? {}
+  const total = Number(meta.total ?? rows.length ?? 0)
+  const metaPage = Number(meta.page ?? page)
+  const metaPageSize = Number(meta.page_size ?? pageSize)
+  const metaTotalPages = Number(meta.total_pages ?? Math.max(1, Math.ceil(total / pageSize)))
+
+  return {
+    data: rows,
+    meta: {
+      total,
+      page: Number.isFinite(metaPage) && metaPage > 0 ? metaPage : page,
+      page_size: Number.isFinite(metaPageSize) && metaPageSize > 0 ? metaPageSize : pageSize,
+      total_pages: Number.isFinite(metaTotalPages) && metaTotalPages > 0
+        ? metaTotalPages
+        : Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
 }
 
 const createProductBasedCostingFile = async (

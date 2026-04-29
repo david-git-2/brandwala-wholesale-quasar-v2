@@ -159,6 +159,8 @@ const INVENTORY_ITEM_FILTERABLE_FIELDS = [
   'name',
   'image_url',
   'cost',
+  'barcode',
+  'product_code',
   'manufacturing_date',
   'expire_date',
   'status',
@@ -239,6 +241,8 @@ const listInventoryItems = async (
       name: toNullableText(row.name) ?? '',
       image_url: toNullableText(row.image_url),
       cost: row.cost == null ? null : toNumberOrZero(row.cost),
+      barcode: toNullableText(row.barcode),
+      product_code: toNullableText(row.product_code),
       manufacturing_date: toNullableText(row.manufacturing_date),
       expire_date: toNullableText(row.expire_date),
       status: row.status as InventoryItem['status'],
@@ -314,6 +318,8 @@ const createInventoryItem = async (payload: CreateInventoryItemInput): Promise<I
     ...payload,
     name: payload.name.trim(),
     image_url: normalizeText(payload.image_url),
+    barcode: normalizeText(payload.barcode),
+    product_code: normalizeText(payload.product_code),
   }
 
   const { data, error } = await supabase
@@ -333,6 +339,24 @@ const createInventoryItem = async (payload: CreateInventoryItemInput): Promise<I
   return data as InventoryItem
 }
 
+const createInventoryItemsBulk = async (
+  payload: CreateInventoryItemInput[],
+): Promise<InventoryItem[]> => {
+  if (!payload.length) return []
+
+  const rows = payload.map((item) => ({
+    ...item,
+    name: item.name.trim(),
+    image_url: normalizeText(item.image_url),
+    barcode: normalizeText(item.barcode),
+    product_code: normalizeText(item.product_code),
+  }))
+
+  const { data, error } = await supabase.from('inventory_items').insert(rows).select('*')
+  if (error) throw error
+  return (data as InventoryItem[] | null) ?? []
+}
+
 const updateInventoryItem = async (payload: UpdateInventoryItemInput): Promise<InventoryItem> => {
   const patch = { ...payload.patch }
 
@@ -342,6 +366,12 @@ const updateInventoryItem = async (payload: UpdateInventoryItemInput): Promise<I
 
   if ('image_url' in patch) {
     patch.image_url = normalizeText(patch.image_url)
+  }
+  if ('barcode' in patch) {
+    patch.barcode = normalizeText(patch.barcode)
+  }
+  if ('product_code' in patch) {
+    patch.product_code = normalizeText(patch.product_code)
   }
 
   const { data, error } = await supabase
@@ -457,6 +487,15 @@ const createInventoryStock = async (
   }
 
   return data as InventoryStock
+}
+
+const createInventoryStocksBulk = async (
+  payload: CreateInventoryStockInput[],
+): Promise<InventoryStock[]> => {
+  if (!payload.length) return []
+  const { data, error } = await supabase.from('inventory_stocks').insert(payload).select('*')
+  if (error) throw error
+  return (data as InventoryStock[] | null) ?? []
 }
 
 const updateInventoryStock = async (
@@ -575,11 +614,13 @@ export const inventoryRepository = {
   listInventoryItems,
   getInventoryItemById,
   createInventoryItem,
+  createInventoryItemsBulk,
   updateInventoryItem,
   deleteInventoryItem,
   listInventoryStocks,
   getInventoryStockById,
   createInventoryStock,
+  createInventoryStocksBulk,
   updateInventoryStock,
   deleteInventoryStock,
   listInventoryMovements,

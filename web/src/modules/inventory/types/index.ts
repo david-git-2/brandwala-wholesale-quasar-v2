@@ -48,6 +48,8 @@ export type InventoryItem = {
   name: string
   image_url: string | null
   cost: number | null
+  barcode: string | null
+  product_code: string | null
   manufacturing_date: string | null
   expire_date: string | null
   status: InventoryStatus
@@ -107,6 +109,8 @@ export type UpdateInventoryItemInput = {
       | 'name'
       | 'image_url'
       | 'cost'
+      | 'barcode'
+      | 'product_code'
       | 'manufacturing_date'
       | 'expire_date'
       | 'status'

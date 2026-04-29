@@ -24,6 +24,7 @@
             label="Name"
             outlined
             dense
+            :disable="isProductListInputType"
           />
 
           <q-input
@@ -31,6 +32,31 @@
             label="Image URL"
             outlined
             dense
+            :disable="isProductListInputType"
+          />
+
+          <q-select
+            v-model="form.vendor_code"
+            :options="vendorOptions"
+            emit-value
+            map-options
+            label="Vendor"
+            outlined
+            dense
+            clearable
+            :disable="isProductListInputType"
+          />
+
+          <q-select
+            v-model="form.market_code"
+            :options="marketOptions"
+            emit-value
+            map-options
+            label="Market"
+            outlined
+            dense
+            clearable
+            :disable="isProductListInputType"
           />
 
           <div>
@@ -116,9 +142,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, onMounted, reactive, watch } from 'vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue'
+import { useProductStore } from 'src/modules/products/stores/productStore'
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
+import { useMarketStore } from 'src/modules/market/stores/marketStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 
 interface ProductBasedCostingItemFormData {
   id?: number
@@ -126,12 +156,15 @@ interface ProductBasedCostingItemFormData {
   name?: string | null
   image_url?: string | null
   note?: string | null
+  vendor_code?: string | null
+  market_code?: string | null
   quantity?: number | null
   web_link?: string | null
   price_gbp?: number | null
   product_weight?: number | null
   package_weight?: number | null
   status?: string | null
+  input_type?: 'manual' | 'product_list' | null
 }
 
 const props = defineProps<{
@@ -147,6 +180,10 @@ const emit = defineEmits<{
 }>()
 
 const store = useProductBasedCostingStore()
+const productStore = useProductStore()
+const vendorStore = useVendorStore()
+const marketStore = useMarketStore()
+const authStore = useAuthStore()
 
 const dialogModel = computed({
   get: () => props.modelValue,
@@ -154,12 +191,15 @@ const dialogModel = computed({
 })
 
 const isEditMode = computed(() => Boolean(props.itemData?.id))
+const isProductListInputType = computed(() => props.itemData?.input_type === 'product_list')
 
 const getInitialForm = () => ({
   product_based_costing_file_id: props.productBasedCostingFileId,
   name: '',
   image_url: '',
   note: '',
+  vendor_code: null as string | null,
+  market_code: null as string | null,
   quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
@@ -178,6 +218,8 @@ const fillForm = () => {
       name: props.itemData.name ?? '',
       image_url: props.itemData.image_url ?? '',
       note: props.itemData.note ?? '',
+      vendor_code: props.itemData.vendor_code ?? null,
+      market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
@@ -194,6 +236,22 @@ const resetForm = () => {
   Object.assign(form, getInitialForm())
 }
 
+const vendorOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...vendorStore.items.map((vendor) => ({
+    label: `${vendor.name} (${vendor.code})`,
+    value: vendor.code,
+  })),
+])
+
+const marketOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...marketStore.items.map((market) => ({
+    label: `${market.name} (${market.code})`,
+    value: market.code,
+  })),
+])
+
 const submitForm = async () => {
   if (isEditMode.value && props.itemData?.id) {
     const result = await store.updateProductBasedCostingItem({
@@ -202,6 +260,8 @@ const submitForm = async () => {
       name: form.name,
       image_url: form.image_url,
       note: form.note,
+      vendor_code: form.vendor_code,
+      market_code: form.market_code,
       quantity: form.quantity,
       web_link: form.web_link,
       price_gbp: form.price_gbp,
@@ -220,11 +280,42 @@ const submitForm = async () => {
     return
   }
 
+  const createProductResult = await productStore.createProduct({
+    tenant_id: authStore.tenantId ?? null,
+    name: form.name || null,
+    image_url: form.image_url || null,
+    barcode: null,
+    product_code: null,
+    price_gbp: form.price_gbp,
+    country_of_origin: null,
+    brand: null,
+    category: null,
+    available_units: null,
+    tariff_code: null,
+    languages: null,
+    batch_code_manufacture_date: null,
+    expire_date: null,
+    minimum_order_quantity: null,
+    product_weight: form.product_weight,
+    package_weight: form.package_weight,
+    vendor_code: form.vendor_code,
+    market_code: form.market_code,
+    is_available: true,
+  })
+
+  if (!createProductResult.success || !createProductResult.data?.id) {
+    return
+  }
+
   const result = await store.createProductBasedCostingItem({
     product_based_costing_file_id: props.productBasedCostingFileId,
+    product_id: createProductResult.data.id,
+    input_type: 'manual',
     name: form.name,
     image_url: form.image_url,
     note: form.note,
+    vendor_code: form.vendor_code,
+    market_code: form.market_code,
     quantity: form.quantity,
     web_link: form.web_link,
     price_gbp: form.price_gbp,
@@ -251,6 +342,10 @@ watch(
   },
   { immediate: true, deep: true },
 )
+
+onMounted(() => {
+  void Promise.all([vendorStore.fetchVendors(), marketStore.fetchMarkets()])
+})
 </script>
 
 <style scoped>

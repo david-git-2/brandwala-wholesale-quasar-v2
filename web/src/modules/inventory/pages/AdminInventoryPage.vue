@@ -1,20 +1,35 @@
 <template>
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Shipment</div>
+      <div class="text-h5">Inventory</div>
       <q-btn color="primary" label="Add Item" @click="openAddDialog" />
     </div>
 
     <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-12 col-md-5">
-        <q-input
-          v-model="searchText"
-          outlined
-          dense
-          label="Search by name"
-          clearable
-          @keyup.enter="() => { page = 1; void fetchInventoryItems() }"
-        />
+      <div class="col-12 col-md-6">
+        <div class="row no-wrap q-col-gutter-sm">
+          <div class="col-5">
+            <q-select
+              v-model="searchField"
+              :options="searchFieldOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              label="Search by"
+            />
+          </div>
+          <div class="col-7">
+            <q-input
+              v-model="searchText"
+              outlined
+              dense
+              :label="`Search ${searchFieldLabel}`"
+              clearable
+              @keyup.enter="() => { page = 1; void fetchInventoryItems() }"
+            />
+          </div>
+        </div>
       </div>
       <div class="col-12 col-md-3">
         <q-select
@@ -33,7 +48,7 @@
         <q-btn
           flat
           label="Reset"
-          @click="() => { searchText = ''; shipmentIdFilter = null; page = 1; void fetchInventoryItems() }"
+          @click="() => { searchText = ''; searchField = 'name'; shipmentIdFilter = null; page = 1; void fetchInventoryItems() }"
         />
       </div>
     </div>
@@ -42,6 +57,7 @@
     <InventoryCard
       :items="inventoryStore.items"
       @save-quantity="onSaveQuantity"
+      @save-date="onSaveDate"
       @delete-item="onDeleteItem"
     />
 
@@ -64,6 +80,7 @@ import { useQuasar } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
+import { useProductStore } from 'src/modules/products/stores/productStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
 import InventoryCard from '../components/InventoryCard.vue'
 import InventoryItemDialog from '../components/InventoryItemDialog.vue'
@@ -73,9 +90,11 @@ import type { CreateInventoryItemInput, InventoryItemWithStock } from '../types'
 const authStore = useAuthStore()
 const inventoryStore = useInventoryStore()
 const shipmentStore = useShipmentStore()
+const productStore = useProductStore()
 const $q = useQuasar()
 
 const isAddDialogOpen = ref(false)
+const searchField = ref<'name' | 'barcode' | 'product_code'>('name')
 const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
 const page = ref(1)
@@ -94,6 +113,18 @@ const shipmentOptions = computed(() =>
   ],
 )
 
+const searchFieldOptions = [
+  { label: 'Name', value: 'name' as const },
+  { label: 'Barcode', value: 'barcode' as const },
+  { label: 'Product Code', value: 'product_code' as const },
+]
+
+const searchFieldLabel = computed(() => {
+  if (searchField.value === 'barcode') return 'Barcode'
+  if (searchField.value === 'product_code') return 'Product Code'
+  return 'Name'
+})
+
 const fetchInventoryItems = async () => {
   const tenantId = authStore.tenantId
   if (!tenantId) {
@@ -103,7 +134,7 @@ const fetchInventoryItems = async () => {
 
   const filters: Record<string, unknown> = {}
   if (searchText.value.trim()) {
-    filters.name = searchText.value.trim()
+    filters[searchField.value] = searchText.value.trim()
   }
   if (shipmentIdFilter.value != null && Number.isFinite(shipmentIdFilter.value)) {
     filters.shipment_id = shipmentIdFilter.value
@@ -137,10 +168,41 @@ const onSaveItem = async (
 
   const { available_quantity, ...itemPayload } = payload
 
+  const createProductResult = await productStore.createProduct({
+    tenant_id: tenantId,
+    name: itemPayload.name,
+    image_url: itemPayload.image_url,
+    barcode: itemPayload.barcode ?? null,
+    product_code: itemPayload.product_code ?? null,
+    price_gbp: null,
+    country_of_origin: null,
+    brand: null,
+    category: null,
+    available_units: null,
+    tariff_code: null,
+    languages: null,
+    batch_code_manufacture_date: null,
+    expire_date: itemPayload.expire_date,
+    minimum_order_quantity: null,
+    product_weight: null,
+    package_weight: null,
+    vendor_code: null,
+    market_code: null,
+    is_available: true,
+  })
+
+  if (!createProductResult.success || !createProductResult.data?.id) {
+    handleApiFailure(
+      createProductResult,
+      createProductResult.error ?? 'Failed to create product.',
+    )
+    return
+  }
+
   const result = await inventoryStore.createInventoryItem({
     tenant_id: tenantId,
     source_type: 'manual',
-    source_id: null,
+    source_id: createProductResult.data.id,
     status: 'active',
     ...itemPayload,
   })
@@ -172,8 +234,6 @@ const onSaveItem = async (
     handleApiFailure(stockResult, stockResult.error ?? 'Failed to create inventory stock.')
     return
   }
-
-  await fetchInventoryItems()
 }
 
 const onSaveQuantity = async (payload: {
@@ -245,6 +305,26 @@ const onDeleteItem = (item: InventoryItemWithStock) => {
       await fetchInventoryItems()
     })()
   })
+}
+
+const onSaveDate = async (payload: {
+  item: InventoryItemWithStock
+  field: 'manufacturing_date' | 'expire_date'
+  value: string | null
+}) => {
+  const result = await inventoryStore.updateInventoryItem({
+    id: payload.item.id,
+    patch: {
+      [payload.field]: payload.value,
+    },
+  })
+
+  if (!result.success) {
+    handleApiFailure(result, result.error ?? 'Failed to update date.')
+    return
+  }
+
+  await fetchInventoryItems()
 }
 
 onMounted(() => {

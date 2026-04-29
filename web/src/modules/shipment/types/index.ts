@@ -23,6 +23,7 @@ export type Shipment = {
   product_conversion_rate: number | null
   cargo_conversion_rate: number | null
   cargo_rate: number | null
+  inventory_added: boolean
   weight: number | null
   received_weight: number | null
   created_at: string
@@ -63,6 +64,7 @@ export type ShipmentUpdateField =
   | 'cargo_rate'
   | 'weight'
   | 'received_weight'
+  | 'inventory_added'
 
 export type UpdateShipmentFieldInput = {
   id: number

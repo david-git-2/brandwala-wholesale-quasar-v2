@@ -46,15 +46,6 @@
         <q-card-section>
           <div class="row items-center justify-end q-gutter-sm">
             <q-chip dense square>{{ formatStatus(order.status) }}</q-chip>
-            <q-chip
-              v-if="order.negotiate === false"
-              dense
-              square
-              color="negative"
-              text-color="white"
-            >
-              Negotiation Off
-            </q-chip>
             <q-btn
               v-if="authStore.matchedRole === 'admin'"
               dense

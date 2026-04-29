@@ -52,6 +52,7 @@ import { useShipmentStore } from '../stores/shipmentStore'
 type Shipment = {
   id: number
   name: string
+  status?: string | null
 }
 
 const props = defineProps<{
@@ -112,10 +113,12 @@ watch(
 )
 
 const shipmentOptions = computed(() =>
-  (shipmentStore.shipments ?? []).map((shipment: Shipment) => ({
-    label: `#${shipment.id} ${shipment.name}`,
-    value: shipment.id,
-  }))
+  (shipmentStore.shipments ?? [])
+    .filter((shipment: Shipment) => shipment.status === 'Draft')
+    .map((shipment: Shipment) => ({
+      label: `#${shipment.id} ${shipment.name}`,
+      value: shipment.id,
+    }))
 )
 
 const requiredRule = (value: unknown) =>

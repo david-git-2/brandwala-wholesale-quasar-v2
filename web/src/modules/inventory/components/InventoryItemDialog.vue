@@ -101,6 +101,8 @@ import type { CreateInventoryItemInput } from '../types'
 type InventoryItemForm = {
   name: string
   image_url: string
+  barcode: string
+  product_code: string
   cost: number | null
   available_quantity: number
   manufacturing_date: string
@@ -129,6 +131,8 @@ const localModelValue = computed({
 const getDefaultForm = (): InventoryItemForm => ({
   name: '',
   image_url: '',
+  barcode: '',
+  product_code: '',
   cost: null,
   available_quantity: 0,
   manufacturing_date: '',
@@ -161,6 +165,8 @@ const onSave = async () => {
   emit('save', {
     name: form.name.trim(),
     image_url: form.image_url.trim() || null,
+    barcode: form.barcode.trim() || null,
+    product_code: form.product_code.trim() || null,
     cost: form.cost,
     available_quantity: Math.floor(form.available_quantity),
     manufacturing_date: form.manufacturing_date || null,

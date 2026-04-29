@@ -169,6 +169,29 @@
   :quantity="selectedQuantity"
   :price-gbp="selectedPriceGbp"
   @save="onSaveShipment"/>
+
+    <q-dialog v-model="showNegotiationDialog" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section class="text-h6">Negotiation Setting</q-card-section>
+        <q-card-section>
+          <div class="q-mb-sm">Select negotiation mode for this order.</div>
+          <q-option-group
+            v-model="negotiationChoice"
+            :options="negotiationOptions"
+            type="radio"
+            color="primary"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn
+            color="primary"
+            label="Save"
+            :loading="orderStore.saving"
+            @click="onSaveNegotiationFromDialog"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -205,6 +228,14 @@ const selectedQuantity = ref<number | null>(null)
 const selectedPriceGbp = ref<number | null>(null)
 const selectedShipItemId = ref<number | null>(null)
 const pendingRemoveShipItemId = ref<number | null>(null)
+const showNegotiationDialog = ref(false)
+const negotiationChoice = ref<boolean>(false)
+const negotiationDialogShownForOrderId = ref<number | null>(null)
+
+const negotiationOptions = [
+  { label: 'Enable Negotiation', value: true },
+  { label: 'Disable Negotiation', value: false },
+]
 
 const allStatusOptions: OrderStatus[] = [
   'customer_submit',
@@ -250,6 +281,26 @@ watch(
     selectedStatus.value = status ?? null
   },
   { immediate: true }
+)
+
+watch(
+  () => orderStore.selected,
+  (selected) => {
+    if (!selected?.id) {
+      return
+    }
+
+    negotiationChoice.value = selected.negotiate !== false
+
+    if (
+      selected.status === 'customer_submit' &&
+      negotiationDialogShownForOrderId.value !== selected.id
+    ) {
+      showNegotiationDialog.value = true
+      negotiationDialogShownForOrderId.value = selected.id
+    }
+  },
+  { immediate: true },
 )
 
 watch(
@@ -483,6 +534,25 @@ const onSaveRates = async () => {
       },
     })
   }
+}
+
+const onSaveNegotiationFromDialog = async () => {
+  if (!orderStore.selected?.id) {
+    return
+  }
+
+  const result = await orderStore.updateOrder({
+    id: orderStore.selected.id,
+    patch: {
+      negotiate: negotiationChoice.value,
+    },
+  })
+
+  if (!result.success) {
+    return
+  }
+
+  showNegotiationDialog.value = false
 }
 
 

@@ -1,12 +1,14 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div>
-        <div class="text-h5 text-weight-bold">Product Based Costing File Details</div>
-      </div>
-    </div>
+
 <div>
-  <q-btn flat color="primary" icon="keyboard_backspace" label="Back to Files" @click="router.push({ name: 'product-based-costing-page' })" />
+  <q-btn flat color="primary" dense icon="keyboard_backspace" label="Back to Files" @click="router.push({ name: 'product-based-costing-page' })" />
+  <div>
+        <div class="text-h5 text-weight-bold">
+          <div class="text-h6 text-weight-bold">#{{ store?.item?.id }} {{ store?.item?.name }}</div>
+        <div class="text-subtitle2 q-mt-sm">created for: {{ store?.item?.order_for }}</div>
+        </div>
+      </div>
 </div>
     <div class="row justify-end q-gutter-sm q-mb-md">
       <q-btn
@@ -40,8 +42,8 @@
         style="border-radius: 8px"
       />
     </div>
-    <q-card flat bordered class="q-pa-md q-mb-md">
-      <div v-if="store.loading" class="text-body1">Loading...</div>
+    <q-card flat class="q-pa-md q-mb-md bg-transparent">
+      <PageInitialLoader v-if="store.loading" />
 
       <template v-else-if="store.item">
         <div class="row justify-end">
@@ -55,8 +57,6 @@
           />
         </div>
 
-        <div class="text-h6 text-weight-bold">#{{ store.item.id }} {{ store.item.name }}</div>
-        <div class="text-subtitle2 q-mt-sm">created for: {{ store.item.order_for }}</div>
       </template>
 
       <div v-else class="text-negative">File not found.</div>
@@ -88,9 +88,8 @@
     </div>
 
     <div class="q-pa-md">
-      <div class="text-h6 text-weight-bold q-mb-md">Items</div>
 
-      <div v-if="store.loading" class="text-body1">Loading items...</div>
+      <PageInitialLoader v-if="store.loading" />
 
       <div v-else-if="!store.costingItems.length" class="text-grey-7">No items found.</div>
 
@@ -159,6 +158,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore';
@@ -331,13 +331,8 @@ const openEditDialog = (item: ProductBasedCostingItem) => {
   showItemDialog.value = true;
 };
 
-const handleUpdated = async () => {
-  if (!fileId.value) {
-    return;
-  }
-
-  await store.fetchProductBasedCostingItems(fileId.value);
-  await refreshShippedItemIndicators();
+const handleUpdated = () => {
+  return;
 };
 
 const onRateSave = async () => {

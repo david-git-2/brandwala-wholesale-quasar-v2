@@ -142,6 +142,7 @@ type ListProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  isAvailable?: boolean | null | undefined
 }
 
 const listBrands = async (): Promise<string[]> => {
@@ -207,6 +208,7 @@ const listProducts = async ({
   brand,
   tenantId,
   vendorCode,
+  isAvailable,
 }: ListProductsParams): Promise<PaginatedProducts> => {
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -221,6 +223,10 @@ const listProducts = async ({
 
   if (vendorCode) {
     query = query.eq('vendor_code', vendorCode)
+  }
+
+  if (typeof isAvailable === 'boolean') {
+    query = query.eq('is_available', isAvailable)
   }
 
   if (search.trim()) {

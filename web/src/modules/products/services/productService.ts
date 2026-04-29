@@ -15,6 +15,7 @@ type ListProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  isAvailable?: boolean | null | undefined
 }
 
 type ProductServiceResult<T> = {

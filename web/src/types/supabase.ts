@@ -403,6 +403,7 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          barcode: string | null
           cost: number | null
           created_at: string
           expire_date: string | null
@@ -410,6 +411,7 @@ export type Database = {
           image_url: string | null
           manufacturing_date: string | null
           name: string
+          product_code: string | null
           source_id: number | null
           source_type: string
           status: string
@@ -417,6 +419,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           cost?: number | null
           created_at?: string
           expire_date?: string | null
@@ -424,6 +427,7 @@ export type Database = {
           image_url?: string | null
           manufacturing_date?: string | null
           name: string
+          product_code?: string | null
           source_id?: number | null
           source_type: string
           status?: string
@@ -431,6 +435,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           cost?: number | null
           created_at?: string
           expire_date?: string | null
@@ -438,6 +443,7 @@ export type Database = {
           image_url?: string | null
           manufacturing_date?: string | null
           name?: string
+          product_code?: string | null
           source_id?: number | null
           source_type?: string
           status?: string
@@ -855,6 +861,8 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          input_type: string | null
+          market_code: string | null
           name: string | null
           note: string | null
           offer_price: number | null
@@ -867,6 +875,7 @@ export type Database = {
           quantity: number | null
           status: string | null
           updated_at: string
+          vendor_code: string | null
           web_link: string | null
         }
         Insert: {
@@ -874,6 +883,8 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          input_type?: string | null
+          market_code?: string | null
           name?: string | null
           note?: string | null
           offer_price?: number | null
@@ -886,6 +897,7 @@ export type Database = {
           quantity?: number | null
           status?: string | null
           updated_at?: string
+          vendor_code?: string | null
           web_link?: string | null
         }
         Update: {
@@ -893,6 +905,8 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          input_type?: string | null
+          market_code?: string | null
           name?: string | null
           note?: string | null
           offer_price?: number | null
@@ -905,6 +919,7 @@ export type Database = {
           quantity?: number | null
           status?: string | null
           updated_at?: string
+          vendor_code?: string | null
           web_link?: string | null
         }
         Relationships: [
@@ -1157,6 +1172,7 @@ export type Database = {
           cargo_rate: number | null
           created_at: string
           id: number
+          inventory_added: boolean
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
@@ -1170,6 +1186,7 @@ export type Database = {
           cargo_rate?: number | null
           created_at?: string
           id?: number
+          inventory_added?: boolean
           name: string
           product_conversion_rate?: number | null
           received_weight?: number | null
@@ -1183,6 +1200,7 @@ export type Database = {
           cargo_rate?: number | null
           created_at?: string
           id?: number
+          inventory_added?: boolean
           name?: string
           product_conversion_rate?: number | null
           received_weight?: number | null
@@ -1847,6 +1865,7 @@ export type Database = {
           cargo_rate: number | null
           created_at: string
           id: number
+          inventory_added: boolean
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
@@ -2300,6 +2319,16 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_product_based_costing_files: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id?: number
+        }
+        Returns: Json
+      }
       list_store_products: {
         Args: {
           p_brand?: string
@@ -2559,6 +2588,7 @@ export type Database = {
           cargo_rate: number | null
           created_at: string
           id: number
+          inventory_added: boolean
           name: string
           product_conversion_rate: number | null
           received_weight: number | null

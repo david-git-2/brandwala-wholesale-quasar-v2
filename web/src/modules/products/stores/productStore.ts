@@ -21,6 +21,7 @@ type FetchProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  isAvailable?: boolean | null | undefined
   append?: boolean
 }
 
@@ -38,6 +39,7 @@ type ProductStoreState = {
   sortPrice: 'asc' | 'desc'
   tenantId: number | undefined
   vendorCode: string | undefined
+  isAvailable: boolean | undefined
 }
 
 export const useProductStore = defineStore('product', {
@@ -55,6 +57,7 @@ export const useProductStore = defineStore('product', {
     sortPrice: 'asc',
     tenantId: undefined,
     vendorCode: undefined,
+    isAvailable: undefined,
   }),
 
   actions: {
@@ -71,6 +74,7 @@ export const useProductStore = defineStore('product', {
       if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
       if (params.tenantId !== undefined) this.tenantId = params.tenantId ?? undefined
       if (params.vendorCode !== undefined) this.vendorCode = params.vendorCode ?? undefined
+      if (params.isAvailable !== undefined) this.isAvailable = params.isAvailable ?? undefined
     },
 
     resetFilters() {
@@ -82,6 +86,7 @@ export const useProductStore = defineStore('product', {
       this.sortPrice = 'asc'
       this.tenantId = undefined
       this.vendorCode = undefined
+      this.isAvailable = undefined
     },
 
     async fetchProducts(params?: FetchProductsParams) {
@@ -102,6 +107,7 @@ export const useProductStore = defineStore('product', {
           sortPrice: this.sortPrice,
           tenantId: this.tenantId ?? null,
           vendorCode: this.vendorCode || null,
+          isAvailable: this.isAvailable ?? null,
         })
 
         if (!result.success) {
@@ -149,18 +155,12 @@ export const useProductStore = defineStore('product', {
           return result
         }
 
-        showSuccessNotification('Product created successfully.')
+        if (result.data) {
+          this.items.unshift(result.data)
+          this.total += 1
+        }
 
-        await this.fetchProducts({
-          page: this.page,
-          pageSize: this.pageSize,
-          search: this.search,
-          category: this.category,
-          brand: this.brand,
-          sortPrice: this.sortPrice,
-          tenantId: this.tenantId ?? null,
-          vendorCode: this.vendorCode ?? null,
-        })
+        showSuccessNotification('Product created successfully.')
 
         return result
       } finally {

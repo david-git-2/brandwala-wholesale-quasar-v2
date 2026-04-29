@@ -36,7 +36,7 @@
                 flat
                 round
                 dense
-                size="sm"
+                size="md"
                 @click="onShip(slotProps.row)"
               >
                 <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>

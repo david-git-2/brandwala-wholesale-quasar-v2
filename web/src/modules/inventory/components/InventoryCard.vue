@@ -8,17 +8,52 @@
           </div>
 
           <q-card-section class="col">
-             <div class="text-h6 text-weight-medium text-right inventory-card__cost">
-                  Cost: {{ item.cost ?? '-' }}
-                </div>
+            <div class="row items-center justify-between">
+              <div class="text-caption text-grey-8">
+                Shipment No: {{ getShipmentId(item) ?? '-' }}
+              </div>
+              <div class="text-h6 text-weight-medium text-right inventory-card__cost">
+                Cost: {{ item.cost ?? '-' }}
+              </div>
+            </div>
             <div class="row items-start justify-between no-wrap q-col-gutter-md">
               <div>
                 <div class="text-subtitle1 text-weight-medium">{{ item.name }}</div>
                 <div class="text-caption text-grey-7 q-mb-sm">
                   ID: {{ item.id }} | Source: {{ item.source_type }} | Status: {{ item.status }}
                 </div>
-                <div>Manufacturing Date: {{ item.manufacturing_date ?? '-' }}</div>
-                <div>Expire Date: {{ item.expire_date ?? '-' }}</div>
+                <div>Barcode: {{ item.barcode ?? '-' }}</div>
+                <div>Product Code: {{ item.product_code ?? '-' }}</div>
+                <div class="inventory-card__date-row cursor-pointer">
+                  <span class="text-weight-medium">Manufacturing Date:</span>
+                  <span>{{ formatCardDate(item.manufacturing_date) }}</span>
+                  <q-popup-proxy transition-show="scale" transition-hide="scale">
+                    <q-date
+                      :model-value="item.manufacturing_date"
+                      mask="YYYY-MM-DD"
+                      @update:model-value="(value) => onDateSave(item, 'manufacturing_date', value)"
+                    >
+                      <div class="row items-center justify-end q-pa-sm">
+                        <q-btn v-close-popup flat label="Close" />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </div>
+                <div class="inventory-card__date-row cursor-pointer">
+                  <span class="text-weight-medium">Expire Date:</span>
+                  <span>{{ formatCardDate(item.expire_date) }}</span>
+                  <q-popup-proxy transition-show="scale" transition-hide="scale">
+                    <q-date
+                      :model-value="item.expire_date"
+                      mask="YYYY-MM-DD"
+                      @update:model-value="(value) => onDateSave(item, 'expire_date', value)"
+                    >
+                      <div class="row items-center justify-end q-pa-sm">
+                        <q-btn v-close-popup flat label="Close" />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </div>
               </div>
               <div class="column items-end q-gutter-sm">
 
@@ -151,6 +186,7 @@ type QuantityKey = 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired'
 
 const emit = defineEmits<{
   (e: 'save-quantity', payload: { item: InventoryItemWithStock; field: QuantityKey; value: number }): void
+  (e: 'save-date', payload: { item: InventoryItemWithStock; field: 'manufacturing_date' | 'expire_date'; value: string | null }): void
   (e: 'delete-item', item: InventoryItemWithStock): void
 }>()
 
@@ -169,6 +205,30 @@ const onQuantitySave = (item: InventoryItemWithStock, field: QuantityKey, value:
     value: toNonNegativeInt(value),
   })
 }
+
+const onDateSave = (
+  item: InventoryItemWithStock,
+  field: 'manufacturing_date' | 'expire_date',
+  value: unknown,
+) => {
+  const nextValue = typeof value === 'string' && value.trim() ? value.trim() : null
+  emit('save-date', { item, field, value: nextValue })
+}
+
+const formatCardDate = (value: string | null) => {
+  if (!value) return '-'
+  const [year, month, day] = value.split('-')
+  if (!year || !month || !day) return value
+  return `${day}/${month}/${year}`
+}
+
+const getShipmentId = (item: InventoryItemWithStock): number | null => {
+  const shipmentObj = item.shipment?.shipment
+  if (!shipmentObj) return null
+  const raw = shipmentObj.id
+  const num = typeof raw === 'number' ? raw : Number(raw)
+  return Number.isFinite(num) ? num : null
+}
 </script>
 
 <style scoped>
@@ -177,18 +237,27 @@ const onQuantitySave = (item: InventoryItemWithStock, field: QuantityKey, value:
 }
 
 .inventory-card__media {
-  width: 220px;
+  width: 1in;
+  min-width: 1in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .inventory-card__image {
-  width: 100%;
-  height: 100%;
-  min-height: 220px;
-  object-fit: cover;
+  width: 1in;
+  height: 1in;
+  object-fit: contain;
 }
 
 .inventory-card__cost {
   min-width: 180px;
+}
+
+.inventory-card__date-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .inventory-card__table {
@@ -214,7 +283,7 @@ const onQuantitySave = (item: InventoryItemWithStock, field: QuantityKey, value:
 
 .qty-col {
   padding: 8px 10px !important;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .qty-col--available {

@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { shipmentService } from '../services/shipmentService'
+import { inventoryService } from 'src/modules/inventory/services/inventoryService'
+import { calculateCostBdt } from '../utils/costing'
 import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
@@ -367,6 +369,86 @@ export const useShipmentStore = defineStore('shipment', {
         this.saving = false
       }
     },
+
+    async addShipmentToInventory() {
+      this.saving = true
+      this.error = null
+
+      try {
+        const shipment = this.selectedShipment
+        if (!shipment?.id) {
+          const result = { success: false as const, error: 'Shipment not found.' }
+          this.error = result.error
+          return result
+        }
+
+        const validItems = this.shipmentItems.filter((item) => (item.received_quantity ?? 0) > 0)
+        if (!validItems.length) {
+          const result = { success: false as const, error: 'No received quantity found to add.' }
+          this.error = result.error
+          handleApiFailure(result, result.error)
+          return result
+        }
+
+        const itemPayload = validItems.map((item) => ({
+          tenant_id: shipment.tenant_id,
+          source_type: 'shipment' as const,
+          source_id: item.id,
+          name: item.name ?? 'Shipment Item',
+          image_url: item.image_url ?? null,
+          cost: calculateCostBdt({
+            productWeight: item.product_weight,
+            packageWeight: item.package_weight,
+            cargoRate: shipment.cargo_rate,
+            priceGbp: item.price_gbp,
+            productConversionRate: shipment.product_conversion_rate,
+            cargoConversionRate: shipment.cargo_conversion_rate,
+          }),
+          barcode: item.barcode ?? null,
+          product_code: item.product_code ?? null,
+          manufacturing_date: null,
+          expire_date: null,
+          status: 'active' as const,
+        }))
+
+        const createItemsResult = await inventoryService.createInventoryItemsBulk(itemPayload)
+        if (!createItemsResult.success || !createItemsResult.data?.length) {
+          this.error = createItemsResult.error ?? 'Failed to create inventory entries.'
+          handleApiFailure(createItemsResult, this.error)
+          return createItemsResult
+        }
+
+        const stocksPayload = createItemsResult.data.map((row, index) => ({
+          inventory_item_id: row.id,
+          available_quantity: Number(validItems[index]?.received_quantity ?? 0),
+          reserved_quantity: 0,
+          damaged_quantity: 0,
+          stolen_quantity: 0,
+          expired_quantity: 0,
+        }))
+
+        const createStocksResult = await inventoryService.createInventoryStocksBulk(stocksPayload)
+        if (!createStocksResult.success) {
+          this.error = createStocksResult.error ?? 'Failed to create inventory stocks.'
+          handleApiFailure(createStocksResult, this.error)
+          return createStocksResult
+        }
+
+        const updateShipmentResult = await this.updateShipment({
+          id: shipment.id,
+          patch: { inventory_added: true },
+        })
+        if (!updateShipmentResult.success) {
+          return updateShipmentResult
+        }
+
+        showSuccessNotification('Shipment items added to inventory successfully.')
+        return { success: true as const }
+      } finally {
+        this.saving = false
+      }
+    },
+
 
     async bulkDeleteShipmentItemsByProduct(payload: BulkDeleteShipmentItemsByProductInput) {
       this.saving = true

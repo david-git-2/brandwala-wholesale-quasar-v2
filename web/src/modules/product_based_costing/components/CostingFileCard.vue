@@ -3,7 +3,7 @@
     <div
       v-for="item in items"
       :key="item.id"
-      :class="colClass"
+      class="col-12 col-lg-6"
     >
       <q-card
         class="q-pa-md cursor-pointer"
@@ -24,20 +24,29 @@
 
           <div class="row items-center q-gutter-xs">
             <q-btn
-              icon="edit"
+              icon="more_vert"
               flat
               round
               dense
-              @click.stop="handleEdit(item)"
-            />
-            <q-btn
-              icon="delete"
-              flat
-              round
-              dense
-              color="negative"
-              @click.stop="handleDelete(item)"
-            />
+              @click.stop
+            >
+              <q-menu auto-close>
+                <q-list dense style="min-width: 140px">
+                  <q-item clickable v-ripple @click="handleEdit(item)">
+                    <q-item-section avatar>
+                      <q-icon name="edit" />
+                    </q-item-section>
+                    <q-item-section>Edit</q-item-section>
+                  </q-item>
+                  <q-item clickable v-ripple @click="handleDelete(item)">
+                    <q-item-section avatar>
+                      <q-icon name="delete_outline" color="negative" />
+                    </q-item-section>
+                    <q-item-section class="text-negative">Delete</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
           </div>
         </div>
       </q-card>
@@ -46,7 +55,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useQuasar } from 'quasar'
 import type { ProductBasedCostingFile } from '../types'
 
@@ -61,10 +69,6 @@ const emit = defineEmits<{
 }>()
 
 const $q = useQuasar()
-
-const colClass = computed(() => {
-  return $q.screen.gt.md ? 'col-6' : 'col-12'
-})
 
 const handleSelect = (item: ProductBasedCostingFile) => {
   emit('select', item)

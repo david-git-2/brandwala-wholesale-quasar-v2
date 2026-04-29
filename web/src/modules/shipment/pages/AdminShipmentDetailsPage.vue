@@ -17,6 +17,14 @@
       </div>
       <div class="row items-center q-gutter-sm">
         <q-btn
+          v-if="canAddToInventory"
+          color="positive"
+          no-caps
+          label="Add To Inventory"
+          :loading="shipmentStore.saving"
+          @click="onAddToInventory"
+        />
+        <q-btn
           color="secondary"
           flat
           round
@@ -53,14 +61,15 @@
 
     <q-card v-if="!initialLoading" flat bordered>
       <q-card-section class="q-pa-none">
-        <q-markup-table flat>
+        <q-markup-table flat class="shipment-details-table">
           <thead>
             <tr>
-              <th class="text-right">SL</th>
-              <th class="text-left">Image</th>
-              <th class="text-left">Name</th>
+              <th class="text-right shipment-sl-col">SL</th>
+              <th class="text-left shipment-image-col">Image</th>
+              <th class="text-left shipment-name-col">Name</th>
               <th class="text-left">Method</th>
               <th class="text-right">Price GBP</th>
+              <th class="text-right">Cost BDT</th>
               <th class="text-right shipment-qty-col shipment-qty-col--quantity">Quantity</th>
               <th class="text-right shipment-qty-col shipment-qty-col--received">Received Qty</th>
               <th class="text-right shipment-qty-col shipment-qty-col--damaged">Damaged Qty</th>
@@ -72,8 +81,8 @@
           </thead>
           <tbody>
             <tr v-for="(item, index) in shipmentStore.shipmentItems" :key="item.id">
-              <td class="text-right">{{ index + 1 }}</td>
-              <td>
+              <td class="text-right shipment-sl-col">{{ index + 1 }}</td>
+              <td class="shipment-image-col">
                 <div class="shipment-item-image-box">
                   <SmartImage
                     :src="item.image_url"
@@ -83,16 +92,8 @@
                   />
                 </div>
               </td>
-              <td>
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  color="primary"
-                  class="shipment-item-name-btn"
-                  :label="item.name ?? '-'"
-                  @click="openItemDetailsDialog(item)"
-                />
+              <td class="shipment-item-name-cell shipment-name-col" @click="openItemDetailsDialog(item)">
+                {{ item.name ?? '-' }}
               </td>
               <td class="text-uppercase">{{ item.method ?? '-' }}</td>
               <td class="text-right">
@@ -115,6 +116,9 @@
                     autofocus
                   />
                 </q-popup-edit>
+              </td>
+              <td class="text-right">
+                {{ formatFixed2(calculateItemCostBdt(item)) }}
               </td>
               <td class="text-right shipment-qty-col shipment-qty-col--quantity">
                 <span class="cursor-pointer">{{ item.quantity }}</span>
@@ -237,8 +241,39 @@
                 </q-btn>
               </td>
             </tr>
+            <tr v-if="shipmentStore.shipmentItems.length" class="shipment-total-row">
+              <td class="shipment-sl-col"></td>
+              <td class="shipment-image-col"></td>
+              <td class="shipment-name-col"></td>
+              <td></td>
+              <td class="text-right text-weight-bold">
+                {{ formatDecimal(totals.price_gbp) }}
+              </td>
+              <td class="text-right text-weight-bold">
+                {{ formatFixed2(totals.cost_bdt) }}
+              </td>
+              <td class="text-right shipment-qty-col shipment-qty-col--quantity text-weight-bold">
+                {{ totals.quantity }}
+              </td>
+              <td class="text-right shipment-qty-col shipment-qty-col--received text-weight-bold">
+                {{ totals.received_quantity }}
+              </td>
+              <td class="text-right shipment-qty-col shipment-qty-col--damaged text-weight-bold">
+                {{ totals.damaged_quantity }}
+              </td>
+              <td class="text-right shipment-qty-col shipment-qty-col--stolen text-weight-bold">
+                {{ totals.stolen_quantity }}
+              </td>
+              <td class="text-right text-weight-bold">
+                {{ formatDecimal(totals.product_weight) }}
+              </td>
+              <td class="text-right text-weight-bold">
+                {{ formatDecimal(totals.package_weight) }}
+              </td>
+              <td></td>
+            </tr>
             <tr v-if="!shipmentStore.shipmentItems.length">
-              <td colspan="12" class="text-center text-grey-6 q-pa-md">No shipment items yet</td>
+              <td colspan="13" class="text-center text-grey-6 q-pa-md">No shipment items yet</td>
             </tr>
           </tbody>
         </q-markup-table>
@@ -322,6 +357,7 @@ import { useQuasar } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import ShipmentItemDetailsDialog from '../components/ShipmentItemDetailsDialog.vue'
+import { calculateCostBdt } from '../utils/costing'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
@@ -360,6 +396,11 @@ const itemForm = reactive({
 
 const shipmentId = computed(() => Number(route.params.id))
 const statusOptions = SHIPMENT_STATUS_OPTIONS
+const canAddToInventory = computed(
+  () =>
+    shipmentStore.selectedShipment?.status === 'Warehouse Received' &&
+    shipmentStore.selectedShipment?.inventory_added !== true,
+)
 
 const onBack = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
@@ -420,6 +461,10 @@ const onStatusChange = async (value: ShipmentStatus | null) => {
     field: 'status',
     value,
   })
+}
+
+const onAddToInventory = async () => {
+  await shipmentStore.addShipmentToInventory()
 }
 
 const onSubmitItem = async () => {
@@ -506,10 +551,51 @@ type EditableNumericField =
 const formatDecimal = (value: number | null | undefined) =>
   value == null ? '-' : String(Number(value))
 
+const formatFixed2 = (value: number | null | undefined) =>
+  value == null ? '-' : Number(value).toFixed(2)
+
 const roundTo = (value: number, decimals = 0) => {
   const factor = 10 ** decimals
   return Math.round(value * factor) / factor
 }
+
+const calculateItemCostBdt = (item: ShipmentItem) => {
+  const shipment = shipmentStore.selectedShipment
+  return calculateCostBdt({
+    productWeight: item.product_weight,
+    packageWeight: item.package_weight,
+    cargoRate: shipment?.cargo_rate,
+    priceGbp: item.price_gbp,
+    productConversionRate: shipment?.product_conversion_rate,
+    cargoConversionRate: shipment?.cargo_conversion_rate,
+  })
+}
+
+const totals = computed(() => {
+  return shipmentStore.shipmentItems.reduce(
+    (acc, item) => {
+      acc.price_gbp += Number(item.price_gbp ?? 0)
+      acc.cost_bdt += calculateItemCostBdt(item)
+      acc.quantity += Number(item.quantity ?? 0)
+      acc.received_quantity += Number(item.received_quantity ?? 0)
+      acc.damaged_quantity += Number(item.damaged_quantity ?? 0)
+      acc.stolen_quantity += Number(item.stolen_quantity ?? 0)
+      acc.product_weight += Number(item.product_weight ?? 0)
+      acc.package_weight += Number(item.package_weight ?? 0)
+      return acc
+    },
+    {
+      price_gbp: 0,
+      cost_bdt: 0,
+      quantity: 0,
+      received_quantity: 0,
+      damaged_quantity: 0,
+      stolen_quantity: 0,
+      product_weight: 0,
+      package_weight: 0,
+    },
+  )
+})
 
 const onNumericPopupSave = async (
   item: ShipmentItem,
@@ -604,15 +690,68 @@ watch(
   font-size: 11px;
 }
 
-.shipment-item-name-btn {
-  justify-content: flex-start;
-  padding-left: 0;
+.shipment-item-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  cursor: pointer;
 }
 
 .shipment-status-select {
   min-width: 260px;
   width: fit-content;
   max-width: 100%;
+}
+
+.shipment-name-col {
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+}
+
+.shipment-sl-col {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+}
+
+.shipment-image-col {
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
+}
+
+.shipment-details-table :deep(th) {
+  background: #fff;
+}
+
+.shipment-details-table :deep(td:first-child),
+.shipment-details-table :deep(th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.shipment-details-table :deep(td:nth-child(2)),
+.shipment-details-table :deep(th:nth-child(2)) {
+  position: sticky;
+  left: 60px;
+}
+
+.shipment-details-table :deep(td:first-child) {
+  z-index: 1;
+  background: #fff;
+}
+
+.shipment-details-table :deep(td:nth-child(2)) {
+  z-index: 1;
+  background: #fff;
+}
+
+.shipment-details-table :deep(tr:first-child th:first-child) {
+  z-index: 3;
+}
+
+.shipment-details-table :deep(tr:first-child th:nth-child(2)) {
+  z-index: 3;
 }
 
 .shipment-qty-col--quantity {
@@ -628,6 +767,22 @@ watch(
 }
 
 .shipment-qty-col--stolen {
+  background: #fff8e9;
+}
+
+.shipment-details-table :deep(th.shipment-qty-col--quantity) {
+  background: #eaf7ef;
+}
+
+.shipment-details-table :deep(th.shipment-qty-col--received) {
+  background: #eef4ff;
+}
+
+.shipment-details-table :deep(th.shipment-qty-col--damaged) {
+  background: #fff1f0;
+}
+
+.shipment-details-table :deep(th.shipment-qty-col--stolen) {
   background: #fff8e9;
 }
 

@@ -59,6 +59,20 @@ const createInventoryItem = async (
   }
 }
 
+const createInventoryItemsBulk = async (
+  payload: CreateInventoryItemInput[],
+): Promise<InventoryServiceResult<InventoryItem[]>> => {
+  try {
+    const data = await inventoryRepository.createInventoryItemsBulk(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create inventory items.',
+    }
+  }
+}
+
 const updateInventoryItem = async (
   payload: UpdateInventoryItemInput,
 ): Promise<InventoryServiceResult<InventoryItem>> => {
@@ -125,6 +139,20 @@ const createInventoryStock = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create inventory stock.',
+    }
+  }
+}
+
+const createInventoryStocksBulk = async (
+  payload: CreateInventoryStockInput[],
+): Promise<InventoryServiceResult<InventoryStock[]>> => {
+  try {
+    const data = await inventoryRepository.createInventoryStocksBulk(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create inventory stocks.',
     }
   }
 }
@@ -231,11 +259,13 @@ export const inventoryService = {
   listInventoryItems,
   getInventoryItemById,
   createInventoryItem,
+  createInventoryItemsBulk,
   updateInventoryItem,
   deleteInventoryItem,
   listInventoryStocks,
   getInventoryStockById,
   createInventoryStock,
+  createInventoryStocksBulk,
   updateInventoryStock,
   deleteInventoryStock,
   listInventoryMovements,

@@ -497,7 +497,7 @@ export const useOrderStore = defineStore('order', {
           cargo_rate: null,
           conversion_rate: null,
           profit_rate: null,
-          negotiate: true,
+          negotiate: false,
           status: 'customer_submit',
           store_id: payload.store_id ?? null,
         })

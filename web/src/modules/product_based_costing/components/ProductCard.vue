@@ -119,6 +119,8 @@ const handleConsole = () => {
     quantity: 1,
     barcode: props.product.barcode || '',
     product_code: props.product.product_code || '',
+    vendor_code: props.product.vendor_code || null,
+    market_code: props.product.market_code || null,
     price_gbp: props.product.price_gbp || 0,
     product_weight: props.product.product_weight || 0,
     web_link: '',
@@ -126,6 +128,7 @@ const handleConsole = () => {
     status: 'pending',
     product_based_costing_file_id: route.params.id ? Number(route.params.id) : null,
     product_id: props.product.id,
+    input_type: 'product_list',
   })
   console.log('Image candidates:', props.product.id)
   console.log('Current image src:', currentImageSrc.value)

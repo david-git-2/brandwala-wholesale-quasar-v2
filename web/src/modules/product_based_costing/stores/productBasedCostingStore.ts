@@ -4,6 +4,7 @@ import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback
 import { productBasedCostingService } from '../services/productBasedCostingService'
 import type {
   ProductBasedCostingFile,
+  ProductBasedCostingFileListInput,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
@@ -19,6 +20,10 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
 
     costingItems: [],
     costingItem: null,
+    total: 0,
+    page: 1,
+    page_size: 20,
+    total_pages: 1,
 
     loading: false,
     saving: false,
@@ -46,12 +51,12 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
       this.costingItem = item
     },
 
-    async fetchProductBasedCostingFiles() {
+    async fetchProductBasedCostingFiles(payload: ProductBasedCostingFileListInput = {}) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await productBasedCostingService.listProductBasedCostingFiles()
+        const result = await productBasedCostingService.listProductBasedCostingFiles(payload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load product based costing files.'
@@ -59,7 +64,11 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
           return result
         }
 
-        this.items = result.data ?? []
+        this.items = result.data?.data ?? []
+        this.total = result.data?.meta.total ?? 0
+        this.page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.page_size = result.data?.meta.page_size ?? (payload.page_size ?? 20)
+        this.total_pages = result.data?.meta.total_pages ?? 1
         return result
       } finally {
         this.loading = false
