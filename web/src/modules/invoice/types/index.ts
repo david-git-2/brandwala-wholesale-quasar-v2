@@ -2,6 +2,7 @@ export type SortOrder = 'asc' | 'desc'
 export type FilterOperator = 'eq' | 'ilike' | 'gte' | 'lte' | 'in'
 
 export type InvoicePaymentStatus = 'due' | 'partially_paid' | 'paid'
+export type InvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled'
 export type InvoiceSourceType = 'order' | 'product_based_costing_file'
 export type InvoiceItemSourceType = 'order_item' | 'product_based_costing_item'
 export type InventoryAccountingStatus = 'due' | 'paid'
@@ -41,6 +42,7 @@ export type Invoice = {
   source_type: InvoiceSourceType
   source_id: number
   payment_status: InvoicePaymentStatus
+  status: InvoiceStatus
   invoice_date: string
   due_date: string | null
   subtotal_amount: number

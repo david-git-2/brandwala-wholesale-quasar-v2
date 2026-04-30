@@ -280,6 +280,7 @@ const listInventoryItems = async (
       tenant_id: toNumberOrZero(row.tenant_id),
       source_type: row.source_type as InventoryItem['source_type'],
       source_id: row.source_id == null ? null : toNumberOrZero(row.source_id),
+      product_id: row.product_id == null ? null : toNumberOrZero(row.product_id),
       name: toNullableText(row.name) ?? '',
       image_url: toNullableText(row.image_url),
       cost: row.cost == null ? null : toNumberOrZero(row.cost),

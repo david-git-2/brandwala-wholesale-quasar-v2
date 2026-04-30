@@ -490,6 +490,7 @@ export const useOrderStore = defineStore('order', {
         }
 
         const createOrderResult = await orderService.createOrder({
+          invoice_id: null,
           name: payload.customer_group_name,
           customer_group_id: payload.customer_group_id,
           can_see_price: Boolean(payload.can_see_price),

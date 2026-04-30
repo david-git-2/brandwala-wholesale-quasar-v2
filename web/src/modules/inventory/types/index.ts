@@ -45,6 +45,7 @@ export type InventoryItem = {
   tenant_id: number
   source_type: InventorySourceType
   source_id: number | null
+  product_id: number | null
   name: string
   image_url: string | null
   cost: number | null
@@ -98,7 +99,12 @@ export type InventoryMovement = {
   created_at: string
 }
 
-export type CreateInventoryItemInput = Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>
+export type CreateInventoryItemInput = Omit<
+  InventoryItem,
+  'id' | 'created_at' | 'updated_at' | 'product_id'
+> & {
+  product_id?: number | null
+}
 export type UpdateInventoryItemInput = {
   id: number
   patch: Partial<
@@ -106,6 +112,7 @@ export type UpdateInventoryItemInput = {
       InventoryItem,
       | 'source_type'
       | 'source_id'
+      | 'product_id'
       | 'name'
       | 'image_url'
       | 'cost'

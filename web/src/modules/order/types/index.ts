@@ -9,6 +9,7 @@ export type OrderStatus =
 
 export type Order = {
   id: number
+  invoice_id: number | null
   name: string
   customer_group_id: number
   customer_group_name?: string | null

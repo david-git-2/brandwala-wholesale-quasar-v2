@@ -394,6 +394,7 @@ export const useShipmentStore = defineStore('shipment', {
           tenant_id: shipment.tenant_id,
           source_type: 'shipment' as const,
           source_id: item.id,
+          product_id: item.product_id ?? null,
           name: item.name ?? 'Shipment Item',
           image_url: item.image_url ?? null,
           cost: calculateCostBdt({

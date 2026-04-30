@@ -511,6 +511,7 @@ export type Database = {
           manufacturing_date: string | null
           name: string
           product_code: string | null
+          product_id: number | null
           source_id: number | null
           source_type: string
           status: string
@@ -527,6 +528,7 @@ export type Database = {
           manufacturing_date?: string | null
           name: string
           product_code?: string | null
+          product_id?: number | null
           source_id?: number | null
           source_type: string
           status?: string
@@ -543,6 +545,7 @@ export type Database = {
           manufacturing_date?: string | null
           name?: string
           product_code?: string | null
+          product_id?: number | null
           source_id?: number | null
           source_type?: string
           status?: string
@@ -550,6 +553,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_items_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -810,6 +820,7 @@ export type Database = {
           payment_status: string
           source_id: number
           source_type: string
+          status: string
           subtotal_amount: number
           tenant_id: number
           total_amount: number
@@ -828,6 +839,7 @@ export type Database = {
           payment_status?: string
           source_id: number
           source_type: string
+          status?: string
           subtotal_amount?: number
           tenant_id: number
           total_amount?: number
@@ -846,6 +858,7 @@ export type Database = {
           payment_status?: string
           source_id?: number
           source_type?: string
+          status?: string
           subtotal_amount?: number
           tenant_id?: number
           total_amount?: number
@@ -1071,6 +1084,7 @@ export type Database = {
           created_at: string
           customer_group_id: number
           id: number
+          invoice_id: number | null
           name: string
           negotiate: boolean
           profit_rate: number | null
@@ -1086,6 +1100,7 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           id?: number
+          invoice_id?: number | null
           name: string
           negotiate?: boolean
           profit_rate?: number | null
@@ -1101,6 +1116,7 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           id?: number
+          invoice_id?: number | null
           name?: string
           negotiate?: boolean
           profit_rate?: number | null
@@ -1116,6 +1132,13 @@ export type Database = {
             referencedRelation: "customer_groups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_based_costing_files: {
@@ -1124,6 +1147,7 @@ export type Database = {
           conversion_rate: number | null
           created_at: string
           id: number
+          invoice_id: number | null
           name: string | null
           note: string | null
           order_for: string | null
@@ -1137,6 +1161,7 @@ export type Database = {
           conversion_rate?: number | null
           created_at?: string
           id?: number
+          invoice_id?: number | null
           name?: string | null
           note?: string | null
           order_for?: string | null
@@ -1150,6 +1175,7 @@ export type Database = {
           conversion_rate?: number | null
           created_at?: string
           id?: number
+          invoice_id?: number | null
           name?: string | null
           note?: string | null
           order_for?: string | null
@@ -1159,6 +1185,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "product_based_costing_files_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_based_costing_files_tenant_id_fkey"
             columns: ["tenant_id"]
