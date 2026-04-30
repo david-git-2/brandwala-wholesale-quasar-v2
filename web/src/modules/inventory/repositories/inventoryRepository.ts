@@ -1,20 +1,28 @@
 import { supabase } from 'src/boot/supabase'
 
 import type {
+  CreateInventoryAccountingEntryInput,
   CreateInventoryItemInput,
+  CreateInvoiceAccountingPaymentInput,
   CreateInventoryMovementInput,
   CreateInventoryStockInput,
+  DeleteInventoryAccountingEntryInput,
   DeleteInventoryItemInput,
+  DeleteInvoiceAccountingPaymentInput,
   DeleteInventoryMovementInput,
   DeleteInventoryStockInput,
   FilterOperator,
+  InventoryAccountingEntry,
   InventoryItem,
   InventoryItemWithStock,
   InventoryListPage,
   InventoryListQuery,
   InventoryMovement,
   InventoryStock,
+  InvoiceAccountingPayment,
+  UpdateInventoryAccountingEntryInput,
   UpdateInventoryItemInput,
+  UpdateInvoiceAccountingPaymentInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
 } from '../types'
@@ -190,6 +198,40 @@ const INVENTORY_MOVEMENT_FILTERABLE_FIELDS = [
   'note',
   'created_by',
   'created_at',
+] as const
+const INVENTORY_ACCOUNTING_ENTRY_FILTERABLE_FIELDS = [
+  'id',
+  'tenant_id',
+  'invoice_id',
+  'invoice_item_id',
+  'inventory_item_id',
+  'product_id',
+  'quantity',
+  'cost_amount',
+  'sell_price_amount',
+  'total_cost_amount',
+  'total_sell_amount',
+  'gross_profit_amount',
+  'status',
+  'entry_date',
+  'note',
+  'created_by',
+  'created_at',
+  'updated_at',
+] as const
+
+const INVOICE_ACCOUNTING_PAYMENT_FILTERABLE_FIELDS = [
+  'id',
+  'tenant_id',
+  'inventory_accounting_entry_id',
+  'amount',
+  'payment_date',
+  'payment_method',
+  'reference_no',
+  'note',
+  'created_by',
+  'created_at',
+  'updated_at',
 ] as const
 
 const listInventoryItems = async (
@@ -610,6 +652,86 @@ const deleteInventoryMovement = async (payload: DeleteInventoryMovementInput): P
   }
 }
 
+const listInventoryAccountingEntries = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryListPage<InventoryAccountingEntry>> =>
+  listWithQuery('inventory_accounting_entries', payload, INVENTORY_ACCOUNTING_ENTRY_FILTERABLE_FIELDS, 'id')
+
+const createInventoryAccountingEntry = async (
+  payload: CreateInventoryAccountingEntryInput,
+): Promise<InventoryAccountingEntry> => {
+  const { data, error } = await supabase
+    .from('inventory_accounting_entries')
+    .insert([payload])
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InventoryAccountingEntry
+}
+
+const updateInventoryAccountingEntry = async (
+  payload: UpdateInventoryAccountingEntryInput,
+): Promise<InventoryAccountingEntry> => {
+  const { data, error } = await supabase
+    .from('inventory_accounting_entries')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InventoryAccountingEntry
+}
+
+const deleteInventoryAccountingEntry = async (
+  payload: DeleteInventoryAccountingEntryInput,
+): Promise<void> => {
+  const { error } = await supabase
+    .from('inventory_accounting_entries')
+    .delete()
+    .eq('id', payload.id)
+  if (error) throw error
+}
+
+const listInvoiceAccountingPayments = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryListPage<InvoiceAccountingPayment>> =>
+  listWithQuery('invoice_accounting_payments', payload, INVOICE_ACCOUNTING_PAYMENT_FILTERABLE_FIELDS, 'id')
+
+const createInvoiceAccountingPayment = async (
+  payload: CreateInvoiceAccountingPaymentInput,
+): Promise<InvoiceAccountingPayment> => {
+  const { data, error } = await supabase
+    .from('invoice_accounting_payments')
+    .insert([payload])
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InvoiceAccountingPayment
+}
+
+const updateInvoiceAccountingPayment = async (
+  payload: UpdateInvoiceAccountingPaymentInput,
+): Promise<InvoiceAccountingPayment> => {
+  const { data, error } = await supabase
+    .from('invoice_accounting_payments')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InvoiceAccountingPayment
+}
+
+const deleteInvoiceAccountingPayment = async (
+  payload: DeleteInvoiceAccountingPaymentInput,
+): Promise<void> => {
+  const { error } = await supabase
+    .from('invoice_accounting_payments')
+    .delete()
+    .eq('id', payload.id)
+  if (error) throw error
+}
+
 export const inventoryRepository = {
   listInventoryItems,
   getInventoryItemById,
@@ -628,4 +750,12 @@ export const inventoryRepository = {
   createInventoryMovement,
   updateInventoryMovement,
   deleteInventoryMovement,
+  listInventoryAccountingEntries,
+  createInventoryAccountingEntry,
+  updateInventoryAccountingEntry,
+  deleteInventoryAccountingEntry,
+  listInvoiceAccountingPayments,
+  createInvoiceAccountingPayment,
+  updateInvoiceAccountingPayment,
+  deleteInvoiceAccountingPayment,
 }

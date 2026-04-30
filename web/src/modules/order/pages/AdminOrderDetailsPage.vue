@@ -405,13 +405,6 @@ const applyNegotiationToggle = async (nextValue: boolean) => {
   })
 }
 
-const onNegotiationToggle = (nextValue: boolean) => {
-  if (nextValue) {
-    return
-  }
-  confirmDisableNegotiationOpen.value = true
-}
-
 const onConfirmDisableNegotiation = async () => {
   confirmDisableNegotiationOpen.value = false
   await applyNegotiationToggle(false)

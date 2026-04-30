@@ -401,6 +401,105 @@ export type Database = {
           },
         ]
       }
+      inventory_accounting_entries: {
+        Row: {
+          cost_amount: number
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          gross_profit_amount: number
+          id: number
+          inventory_item_id: number
+          invoice_id: number | null
+          invoice_item_id: number | null
+          note: string | null
+          product_id: number | null
+          quantity: number
+          sell_price_amount: number
+          status: string
+          tenant_id: number
+          total_cost_amount: number
+          total_sell_amount: number
+          updated_at: string
+        }
+        Insert: {
+          cost_amount?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          gross_profit_amount?: number
+          id?: number
+          inventory_item_id: number
+          invoice_id?: number | null
+          invoice_item_id?: number | null
+          note?: string | null
+          product_id?: number | null
+          quantity: number
+          sell_price_amount?: number
+          status?: string
+          tenant_id: number
+          total_cost_amount?: number
+          total_sell_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_amount?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          gross_profit_amount?: number
+          id?: number
+          inventory_item_id?: number
+          invoice_id?: number | null
+          invoice_item_id?: number | null
+          note?: string | null
+          product_id?: number | null
+          quantity?: number
+          sell_price_amount?: number
+          status?: string
+          tenant_id?: number
+          total_cost_amount?: number
+          total_sell_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_accounting_entries_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           barcode: string | null
@@ -544,6 +643,220 @@ export type Database = {
             columns: ["inventory_item_id"]
             isOneToOne: true
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_accounting_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: number
+          inventory_accounting_entry_id: number
+          note: string | null
+          payment_date: string
+          payment_method: string | null
+          reference_no: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_accounting_entry_id: number
+          note?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          reference_no?: string | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_accounting_entry_id?: number
+          note?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          reference_no?: string | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_accounting_payments_inventory_accounting_entry_id_fkey"
+            columns: ["inventory_accounting_entry_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_accounting_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_accounting_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          barcode_snapshot: string | null
+          cost_amount: number
+          created_at: string
+          id: number
+          inventory_item_id: number | null
+          invoice_id: number
+          line_discount_amount: number
+          line_tax_amount: number
+          line_total_amount: number
+          name_snapshot: string
+          product_code_snapshot: string | null
+          product_id: number | null
+          quantity: number
+          sell_price_amount: number
+          source_item_id: number
+          source_item_type: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          barcode_snapshot?: string | null
+          cost_amount?: number
+          created_at?: string
+          id?: number
+          inventory_item_id?: number | null
+          invoice_id: number
+          line_discount_amount?: number
+          line_tax_amount?: number
+          line_total_amount?: number
+          name_snapshot: string
+          product_code_snapshot?: string | null
+          product_id?: number | null
+          quantity: number
+          sell_price_amount?: number
+          source_item_id: number
+          source_item_type: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          barcode_snapshot?: string | null
+          cost_amount?: number
+          created_at?: string
+          id?: number
+          inventory_item_id?: number | null
+          invoice_id?: number
+          line_discount_amount?: number
+          line_tax_amount?: number
+          line_total_amount?: number
+          name_snapshot?: string
+          product_code_snapshot?: string | null
+          product_id?: number | null
+          quantity?: number
+          sell_price_amount?: number
+          source_item_id?: number
+          source_item_type?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          due_date: string | null
+          id: number
+          invoice_date: string
+          invoice_no: string
+          note: string | null
+          paid_amount: number
+          payment_status: string
+          source_id: number
+          source_type: string
+          subtotal_amount: number
+          tenant_id: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: number
+          invoice_date?: string
+          invoice_no: string
+          note?: string | null
+          paid_amount?: number
+          payment_status?: string
+          source_id: number
+          source_type: string
+          subtotal_amount?: number
+          tenant_id: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: number
+          invoice_date?: string
+          invoice_no?: string
+          note?: string | null
+          paid_amount?: number
+          payment_status?: string
+          source_id?: number
+          source_type?: string
+          subtotal_amount?: number
+          tenant_id?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

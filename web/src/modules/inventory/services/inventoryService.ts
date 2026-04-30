@@ -1,12 +1,17 @@
 import { inventoryRepository } from '../repositories/inventoryRepository'
 
 import type {
+  CreateInventoryAccountingEntryInput,
   CreateInventoryItemInput,
+  CreateInvoiceAccountingPaymentInput,
   CreateInventoryMovementInput,
   CreateInventoryStockInput,
+  DeleteInventoryAccountingEntryInput,
   DeleteInventoryItemInput,
+  DeleteInvoiceAccountingPaymentInput,
   DeleteInventoryMovementInput,
   DeleteInventoryStockInput,
+  InventoryAccountingEntry,
   InventoryItem,
   InventoryItemWithStock,
   InventoryListPage,
@@ -14,7 +19,9 @@ import type {
   InventoryMovement,
   InventoryServiceResult,
   InventoryStock,
+  UpdateInventoryAccountingEntryInput,
   UpdateInventoryItemInput,
+  UpdateInvoiceAccountingPaymentInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
 } from '../types'
@@ -255,6 +262,28 @@ const deleteInventoryMovement = async (
   }
 }
 
+const listInventoryAccountingEntries = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryServiceResult<InventoryListPage<InventoryAccountingEntry>>> => {
+  try {
+    const data = await inventoryRepository.listInventoryAccountingEntries(payload)
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to load inventory accounting entries.' }
+  }
+}
+
+const createInventoryAccountingEntry = async (
+  payload: CreateInventoryAccountingEntryInput,
+): Promise<InventoryServiceResult<InventoryAccountingEntry>> => {
+  try {
+    const data = await inventoryRepository.createInventoryAccountingEntry(payload)
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create inventory accounting entry.' }
+  }
+}
+
 export const inventoryService = {
   listInventoryItems,
   getInventoryItemById,
@@ -273,4 +302,54 @@ export const inventoryService = {
   createInventoryMovement,
   updateInventoryMovement,
   deleteInventoryMovement,
+  listInventoryAccountingEntries,
+  createInventoryAccountingEntry,
+  updateInventoryAccountingEntry: async (payload: UpdateInventoryAccountingEntryInput) => {
+    try {
+      const data = await inventoryRepository.updateInventoryAccountingEntry(payload)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update inventory accounting entry.' }
+    }
+  },
+  deleteInventoryAccountingEntry: async (payload: DeleteInventoryAccountingEntryInput) => {
+    try {
+      await inventoryRepository.deleteInventoryAccountingEntry(payload)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to delete inventory accounting entry.' }
+    }
+  },
+  listInvoiceAccountingPayments: async (payload: InventoryListQuery = {}) => {
+    try {
+      const data = await inventoryRepository.listInvoiceAccountingPayments(payload)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to load invoice accounting payments.' }
+    }
+  },
+  createInvoiceAccountingPayment: async (payload: CreateInvoiceAccountingPaymentInput) => {
+    try {
+      const data = await inventoryRepository.createInvoiceAccountingPayment(payload)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create invoice accounting payment.' }
+    }
+  },
+  updateInvoiceAccountingPayment: async (payload: UpdateInvoiceAccountingPaymentInput) => {
+    try {
+      const data = await inventoryRepository.updateInvoiceAccountingPayment(payload)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update invoice accounting payment.' }
+    }
+  },
+  deleteInvoiceAccountingPayment: async (payload: DeleteInvoiceAccountingPaymentInput) => {
+    try {
+      await inventoryRepository.deleteInvoiceAccountingPayment(payload)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to delete invoice accounting payment.' }
+    }
+  },
 }
