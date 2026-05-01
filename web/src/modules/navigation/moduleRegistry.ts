@@ -228,14 +228,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'invoices',
         requiredAction: 'view',
       },
-      {
-        scope: 'app',
-        title: 'Accounting - Invoice',
-        caption: 'Track invoice accounting entries and payment status',
-        icon: 'account_balance_wallet',
-        routeSegment: 'invoice-accounting',
-        requiredAction: 'view',
-      },
     ],
   },
 ] as const
@@ -291,4 +283,12 @@ export const getModuleRoutesForScope = (
         }),
         ...routeDefinition,
       })),
-  )
+  ).sort((a, b) => {
+    const aIsDashboard = a.title.trim().toLowerCase() === 'dashboard'
+    const bIsDashboard = b.title.trim().toLowerCase() === 'dashboard'
+
+    if (aIsDashboard && !bIsDashboard) return -1
+    if (!aIsDashboard && bIsDashboard) return 1
+
+    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+  })

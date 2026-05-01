@@ -830,6 +830,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          customer_group_id: number | null
           discount_amount: number
           due_date: string | null
           id: number
@@ -849,6 +850,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          customer_group_id?: number | null
           discount_amount?: number
           due_date?: string | null
           id?: number
@@ -868,6 +870,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          customer_group_id?: number | null
           discount_amount?: number
           due_date?: string | null
           id?: number
@@ -885,6 +888,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
             columns: ["tenant_id"]

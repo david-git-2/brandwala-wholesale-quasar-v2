@@ -312,9 +312,37 @@ const onStatusChange = async (nextStatus: InvoiceStatus) => {
 
   savingStatus.value = true
   try {
+    let patch: {
+      status: InvoiceStatus
+      subtotal_amount?: number
+      total_amount?: number
+    } = { status: nextStatus }
+
+    if (nextStatus === 'issued') {
+      const tenantId = authStore.tenantId
+      if (!tenantId) {
+        showWarningDialog('Tenant context is missing.')
+        selectedStatus.value = invoice.value.status
+        return
+      }
+
+      const accountingRows = await fetchAllAccountingEntriesForInvoice(invoice.value.id, tenantId)
+      const subtotalFromAccounting = Number(
+        accountingRows
+          .reduce((sum, row) => sum + toNumber(row.total_sell_amount), 0)
+          .toFixed(2),
+      )
+
+      patch = {
+        status: nextStatus,
+        subtotal_amount: subtotalFromAccounting,
+        total_amount: subtotalFromAccounting,
+      }
+    }
+
     const result = await invoiceService.updateInvoice({
       id: invoice.value.id,
-      patch: { status: nextStatus },
+      patch,
     })
 
     if (result.success && result.data) {
@@ -470,6 +498,7 @@ const fetchAllAccountingEntriesForInvoice = async (invoiceId: number, tenantId: 
     invoice_item_id: number | null
     inventory_item_id: number
     quantity: number
+    total_sell_amount: number
   }> = []
 
   while (true) {
@@ -494,6 +523,7 @@ const fetchAllAccountingEntriesForInvoice = async (invoiceId: number, tenantId: 
         invoice_item_id: row.invoice_item_id,
         inventory_item_id: row.inventory_item_id,
         quantity: toNumber(row.quantity),
+        total_sell_amount: toNumber(row.total_sell_amount),
       })),
     )
 
