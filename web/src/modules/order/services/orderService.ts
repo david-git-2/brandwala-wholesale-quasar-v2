@@ -143,6 +143,20 @@ const deleteOrderItem = async (
   }
 }
 
+const clearInvoiceFromOrders = async (
+  invoiceId: number,
+): Promise<OrderServiceResult<void>> => {
+  try {
+    await orderRepository.clearInvoiceFromOrders(invoiceId)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to clear invoice from orders.',
+    }
+  }
+}
+
 const getOrderProductSnapshots = async (
   productIds: number[],
 ): Promise<
@@ -177,5 +191,6 @@ export const orderService = {
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
+  clearInvoiceFromOrders,
   getOrderProductSnapshots,
 }

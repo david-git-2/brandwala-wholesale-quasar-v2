@@ -9,21 +9,13 @@
         label="Back to Orders"
         @click="onBackToOrders"
       />
-      <q-btn
-        v-if="orderStore.selected?.status === 'processing'"
-        color="primary"
-        no-caps
-        :label="orderStore.selected?.invoice_id ? 'Open Invoice' : 'Create Invoice'"
-        :loading="creatingInvoice"
-        @click="onInvoiceAction"
-      />
     </div>
     <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
 
     <PageInitialLoader v-if="orderStore.loading" />
 
     <template v-else>
-    <div class="q-mt-md q-mb-md row justify-end" >
+    <div class="q-mt-md q-mb-md row justify-end items-center q-gutter-sm" >
       <q-select
         v-model="selectedStatus"
         outlined
@@ -32,6 +24,14 @@
         :options="statusOptions"
         :loading="orderStore.saving"
         @update:model-value="onStatusChange"
+      />
+      <q-btn
+        v-if="orderStore.selected?.status === 'invoicing'"
+        color="primary"
+        no-caps
+        :label="orderStore.selected?.invoice_id ? 'Open Invoice' : 'Create Invoice'"
+        :loading="creatingInvoice"
+        @click="onInvoiceAction"
       />
     </div>
 
@@ -42,6 +42,7 @@
         v-model="conversionRate"
         type="number"
         label="Conversion Rate"
+        :disable="isRateEditingLocked"
       />
       <q-input
         outlined
@@ -49,6 +50,7 @@
         v-model="cargoRate"
         type="number"
         label="Cargo Rate / KG"
+        :disable="isRateEditingLocked"
       />
       <q-input
         outlined
@@ -56,6 +58,7 @@
         v-model="profitRate"
         type="number"
         label="Profit Rate"
+        :disable="isRateEditingLocked"
       />
       <q-btn
         color="primary"
@@ -64,6 +67,7 @@
         label="Save Rates"
         class="q-px-sm"
         :loading="orderStore.saving"
+        :disable="isRateEditingLocked"
         @click="onSaveRates"
       />
 
@@ -113,7 +117,7 @@
       <q-card style="min-width: 360px">
         <q-card-section class="text-h6">Disable Negotiation?</q-card-section>
         <q-card-section>
-          If you disable negotiation, priced and negotiate states will be removed and offers will be prefilled to final offer.
+          If you disable negotiation, negotiate state will be removed and offers will be prefilled.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -241,17 +245,19 @@ const negotiationOptions = [
 
 const allStatusOptions: OrderStatus[] = [
   'customer_submit',
+  'direct_priced',
   'priced',
   'negotiate',
   'final_offered',
   'ordered',
   'processing',
-  'placed',
+  'invoicing',
+  'invoiced',
 ]
 const statusOptions = computed<OrderStatus[]>(() =>
   orderStore.selected?.negotiate === false
-    ? allStatusOptions.filter((status) => status !== 'priced' && status !== 'negotiate')
-    : allStatusOptions,
+    ? allStatusOptions.filter((status) => status !== 'negotiate' && status !== 'priced')
+    : allStatusOptions.filter((status) => status !== 'direct_priced'),
 )
 
 const tableViewOptions = [
@@ -344,6 +350,9 @@ const profitRate = computed({
 const conversionRateRef = computed(() => Number(conversionRate.value) || 0)
 const cargoRateRef = computed(() => Number(cargoRate.value) || 0)
 const profitRateRef = computed(() => Number(profitRate.value) || 0)
+const isRateEditingLocked = computed(() =>
+  ['ordered', 'processing', 'invoicing', 'invoiced'].includes(orderStore.selected?.status ?? ''),
+)
 
 const selectedItems = computed(() => orderStore.selected?.order_items ?? [])
 
@@ -355,8 +364,11 @@ const onStatusChange = async (status: OrderStatus | null) => {
   if (!status || !orderStore.selected?.id) return
   if (
     orderStore.selected.negotiate === false &&
-    (status === 'priced' || status === 'negotiate')
+    (status === 'negotiate' || status === 'priced')
   ) {
+    return
+  }
+  if (orderStore.selected.negotiate !== false && status === 'direct_priced') {
     return
   }
 
@@ -372,10 +384,7 @@ const applyNegotiationToggle = async (nextValue: boolean) => {
   if (!orderStore.selected?.id) {
     return
   }
-
-  const shouldMoveToFinalOffered =
-    !nextValue &&
-    ['customer_submit', 'priced', 'negotiate'].includes(orderStore.selected.status)
+  let nextStatusPatch: OrderStatus | undefined
 
   if (!nextValue) {
     const conversion = Number(conversionRate.value) || 0
@@ -405,13 +414,23 @@ const applyNegotiationToggle = async (nextValue: boolean) => {
     if (!prefillResult.success) {
       return
     }
+
+    if (
+      orderStore.selected.status === 'customer_submit' ||
+      orderStore.selected.status === 'negotiate' ||
+      orderStore.selected.status === 'priced'
+    ) {
+      nextStatusPatch = 'direct_priced'
+    }
+  } else if (orderStore.selected.status === 'direct_priced') {
+    nextStatusPatch = 'priced'
   }
 
   await orderStore.updateOrder({
     id: orderStore.selected.id,
     patch: {
       negotiate: nextValue,
-      ...(shouldMoveToFinalOffered ? { status: 'final_offered' as OrderStatus } : {}),
+      ...(nextStatusPatch ? { status: nextStatusPatch } : {}),
     },
   })
 }
@@ -512,6 +531,15 @@ const onSaveRates = async () => {
   if (!itemsUpdateResult.success) {
     return
   }
+
+  if (!negotiateEnabled && orderStore.selected.status === 'customer_submit') {
+    await orderStore.updateOrder({
+      id: orderStore.selected.id,
+      patch: {
+        status: 'direct_priced',
+      },
+    })
+  }
 }
 
 const onSaveNegotiationFromDialog = async () => {
@@ -519,16 +547,7 @@ const onSaveNegotiationFromDialog = async () => {
     return
   }
 
-  const result = await orderStore.updateOrder({
-    id: orderStore.selected.id,
-    patch: {
-      negotiate: negotiationChoice.value,
-    },
-  })
-
-  if (!result.success) {
-    return
-  }
+  await applyNegotiationToggle(negotiationChoice.value)
 
   showNegotiationDialog.value = false
 }
@@ -656,7 +675,7 @@ const toMoney = (value: unknown) => {
   return Number.isFinite(n) ? n : 0
 }
 
-const buildInvoiceNo = (orderId: number) => `ORD-${orderId}-${Date.now()}`
+const buildInvoiceNo = (orderId: number) => `INVOICE ORD ${orderId}`
 
 const onInvoiceAction = async () => {
   const order = orderStore.selected
@@ -664,8 +683,17 @@ const onInvoiceAction = async () => {
 
   if (order.invoice_id) {
     const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-    await router.push(`${tenantPrefix}/app/invoices?invoice_id=${order.invoice_id}`)
+    await router.push(`${tenantPrefix}/app/invoices/${order.invoice_id}`)
     return
+  }
+
+  if (order.status === 'processing') {
+    await orderStore.updateOrder({
+      id: order.id,
+      patch: {
+        status: 'invoicing',
+      },
+    })
   }
 
   await onCreateInvoiceFromOrder()
@@ -692,6 +720,7 @@ const onCreateInvoiceFromOrder = async () => {
   try {
     const invoiceResult = await invoiceService.createInvoice({
       tenant_id: tenantId,
+      customer_group_id: order.customer_group_id ?? null,
       invoice_no: buildInvoiceNo(order.id),
       source_type: 'order',
       source_id: order.id,
@@ -714,16 +743,16 @@ const onCreateInvoiceFromOrder = async () => {
 
     const invoice = invoiceResult.data
 
-    for (const row of items) {
+    const invoiceItemsPayload = items.map((row) => {
       const quantity = toMoney(row.ordered_quantity)
       const sellPrice = toMoney(row.final_offer_bdt ?? row.first_offer_bdt)
       const costAmount = toMoney(row.cost_bdt)
       const lineTotal = sellPrice * quantity
 
-      const itemResult = await invoiceService.createInvoiceItem({
+      return {
         tenant_id: tenantId,
         invoice_id: invoice.id,
-        source_item_type: 'order_item',
+        source_item_type: 'order_item' as const,
         source_item_id: row.id,
         inventory_item_id: null,
         product_id: row.product_id ?? null,
@@ -736,12 +765,13 @@ const onCreateInvoiceFromOrder = async () => {
         line_discount_amount: 0,
         line_tax_amount: 0,
         line_total_amount: lineTotal,
-      })
-
-      if (!itemResult.success) {
-        showWarningDialog(itemResult.error ?? 'Failed to create invoice item.')
-        return
       }
+    })
+
+    const itemResult = await invoiceService.createInvoiceItemsBulk(invoiceItemsPayload)
+    if (!itemResult.success) {
+      showWarningDialog(itemResult.error ?? 'Failed to create invoice items.')
+      return
     }
 
     const updateOrderResult = await orderStore.updateOrder({

@@ -416,6 +416,8 @@ export type Database = {
           product_id: number | null
           quantity: number
           sell_price_amount: number
+          shipment_id: number | null
+          shipment_item_id: number | null
           status: string
           tenant_id: number
           total_cost_amount: number
@@ -436,6 +438,8 @@ export type Database = {
           product_id?: number | null
           quantity: number
           sell_price_amount?: number
+          shipment_id?: number | null
+          shipment_item_id?: number | null
           status?: string
           tenant_id: number
           total_cost_amount?: number
@@ -456,6 +460,8 @@ export type Database = {
           product_id?: number | null
           quantity?: number
           sell_price_amount?: number
+          shipment_id?: number | null
+          shipment_item_id?: number | null
           status?: string
           tenant_id?: number
           total_cost_amount?: number
@@ -489,6 +495,20 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_items"
             referencedColumns: ["id"]
           },
           {
@@ -3053,12 +3073,14 @@ export type Database = {
       customer_group_role: "admin" | "negotiator" | "staff"
       order_status:
         | "customer_submit"
+        | "direct_priced"
         | "priced"
         | "negotiate"
         | "final_offered"
-        | "processing"
         | "ordered"
-        | "placed"
+        | "processing"
+        | "invoicing"
+        | "invoiced"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3201,12 +3223,14 @@ export const Constants = {
       customer_group_role: ["admin", "negotiator", "staff"],
       order_status: [
         "customer_submit",
+        "direct_priced",
         "priced",
         "negotiate",
         "final_offered",
-        "processing",
         "ordered",
-        "placed",
+        "processing",
+        "invoicing",
+        "invoiced",
       ],
     },
   },

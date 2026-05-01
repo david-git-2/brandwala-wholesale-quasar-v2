@@ -2,15 +2,15 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
-const invoiceRoutes: RouteRecordRaw[] = [
+const invoiceAccountingRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/invoices',
+    path: '/:tenantSlug?/app/invoice-accounting',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
-        name: 'app-invoice-page',
-        component: () => import('../pages/AdminInvoicePage.vue'),
+        name: 'app-invoice-accounting-page',
+        component: () => import('../pages/AdminInvoiceAccountingPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
@@ -20,21 +20,9 @@ const invoiceRoutes: RouteRecordRaw[] = [
         }),
       },
       {
-        path: ':id',
-        name: 'app-invoice-details-page',
-        component: () => import('../pages/AdminInvoiceDetailsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          requireTenantContext: true,
-          allowedRoles: ['admin', 'staff'],
-          requiredModule: 'invoice',
-        }),
-      },
-      {
-        path: ':id/preview',
-        name: 'app-invoice-preview-page',
-        component: () => import('../pages/AdminInvoicePreviewPage.vue'),
+        path: ':invoiceId',
+        name: 'app-invoice-accounting-by-invoice-page',
+        component: () => import('../pages/AdminInvoiceAccountingPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
@@ -47,4 +35,4 @@ const invoiceRoutes: RouteRecordRaw[] = [
   },
 ]
 
-export default invoiceRoutes
+export default invoiceAccountingRoutes

@@ -205,6 +205,8 @@ const INVENTORY_ACCOUNTING_ENTRY_FILTERABLE_FIELDS = [
   'invoice_id',
   'invoice_item_id',
   'inventory_item_id',
+  'shipment_id',
+  'shipment_item_id',
   'product_id',
   'quantity',
   'cost_amount',

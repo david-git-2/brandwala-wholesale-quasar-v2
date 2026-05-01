@@ -109,6 +109,10 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
     query = query.eq('store_id', payload.store_id)
   }
 
+  if (payload.invoice_id != null) {
+    query = query.eq('invoice_id', payload.invoice_id)
+  }
+
   if (payload.status != null) {
     query = query.eq('status', payload.status)
   }
@@ -338,6 +342,17 @@ const deleteOrderItem = async (payload: OrderItemDeleteInput): Promise<void> => 
   }
 }
 
+const clearInvoiceFromOrders = async (invoiceId: number): Promise<void> => {
+  const { error } = await supabase
+    .from('orders')
+    .update({ invoice_id: null })
+    .eq('invoice_id', invoiceId)
+
+  if (error) {
+    throw error
+  }
+}
+
 const getOrderProductSnapshots = async (productIds: number[]): Promise<OrderProductSnapshot[]> => {
   const uniqueIds = Array.from(new Set(productIds)).filter((id) => Number.isFinite(id))
   if (!uniqueIds.length) {
@@ -366,5 +381,6 @@ export const orderRepository = {
   updateOrderItem,
   deleteOrder,
   deleteOrderItem,
+  clearInvoiceFromOrders,
   getOrderProductSnapshots,
 }

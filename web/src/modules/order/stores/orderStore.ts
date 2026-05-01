@@ -554,7 +554,7 @@ export const useOrderStore = defineStore('order', {
           return { success: false, error }
         }
 
-        showSuccessNotification('Order placed successfully.')
+        showSuccessNotification('Order submitted successfully.')
         return { success: true as const, data: order }
       } finally {
         this.saving = false

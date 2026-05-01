@@ -394,7 +394,7 @@ const onSaveCustomerOffers = async () => {
   await orderStore.updateOrder({
     id: orderStore.selected.id,
     patch: {
-      status: shouldNegotiate ? 'negotiate' : 'final_offered',
+      status: shouldNegotiate ? 'negotiate' : 'direct_priced',
     },
   })
 }

@@ -170,12 +170,14 @@ import {
 
 type OrderStatus =
   | 'customer_submit'
+  | 'direct_priced'
   | 'priced'
   | 'negotiate'
   | 'final_offered'
   | 'processing'
+  | 'invoicing'
+  | 'invoiced'
   | 'ordered'
-  | 'placed'
 
 const props = withDefaults(
   defineProps<{
@@ -313,6 +315,15 @@ const compactStatusColumnMap: Record<OrderStatus, string[]> = {
     'cost_summary',
     'first_offer_summary',
   ],
+  direct_priced: [
+    'sl',
+    'image_url',
+    'product_details',
+    'ordered_quantity',
+    'cost_summary',
+    'first_offer_summary',
+    'final_offer_summary',
+  ],
   negotiate: [
     'sl',
     'image_url',
@@ -343,14 +354,28 @@ const compactStatusColumnMap: Record<OrderStatus, string[]> = {
     'customer_offer_summary',
     'final_offer_summary',
   ],
-  ordered: [
+  invoicing: [
+    'sl',
+    'image_url',
+    'product_details',
+    'ship',
+    'ordered_quantity',
+    'cost_summary',
+    'first_offer_summary',
+    'customer_offer_summary',
+    'final_offer_summary',
+  ],
+  invoiced: [
     'sl',
     'image_url',
     'product_details',
     'ordered_quantity',
+    'cost_summary',
+    'first_offer_summary',
+    'customer_offer_summary',
     'final_offer_summary',
   ],
-  placed: [
+  ordered: [
     'sl',
     'image_url',
     'product_details',

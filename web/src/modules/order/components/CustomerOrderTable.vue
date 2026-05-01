@@ -142,12 +142,14 @@ import { useOrderStore } from '../stores/orderStore'
 
 type OrderStatus =
   | 'customer_submit'
+  | 'direct_priced'
   | 'priced'
   | 'negotiate'
   | 'final_offered'
   | 'processing'
+  | 'invoicing'
+  | 'invoiced'
   | 'ordered'
-  | 'placed'
 
 type OrderItem = {
   id: number
@@ -273,22 +275,26 @@ const allColumns: QTableColumn[] = [
 
 const statusColumnMapWithNegotiation: Record<OrderStatus, string[]> = {
   customer_submit: ['sl', 'image_url', 'name', 'quantity'],
+  direct_priced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   priced: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
   negotiate: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price', 'customer_offer_bdt'],
   final_offered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
   processing: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+  invoicing: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
+  invoiced: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
   ordered: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
-  placed: ['sl', 'image_url', 'name', 'quantity', 'first_offered_price','customer_offer_bdt','final_offer_bdt'],
 }
 
 const statusColumnMapWithoutNegotiation: Record<OrderStatus, string[]> = {
   customer_submit: ['sl', 'image_url', 'name', 'quantity'],
+  direct_priced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   priced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   negotiate: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   final_offered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   processing: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  invoicing: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
+  invoiced: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
   ordered: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
-  placed: ['sl', 'image_url', 'name', 'quantity', 'final_offer_bdt'],
 }
 
 const columns = computed(() => {
@@ -363,7 +369,7 @@ const onSaveCustomerOffers = async () => {
   await orderStore.updateOrder({
     id: orderStore.selected?.id || 0,
     patch: {
-      status: shouldNegotiate ? 'negotiate' : 'final_offered',
+      status: shouldNegotiate ? 'negotiate' : 'direct_priced',
     },
   })
 }

@@ -1,11 +1,13 @@
 export type OrderStatus =
   | 'customer_submit'
+  | 'direct_priced'
   | 'priced'
   | 'negotiate'
   | 'final_offered'
   | 'processing'
+  | 'invoicing'
+  | 'invoiced'
   | 'ordered'
-  | 'placed'
 
 export type Order = {
   id: number
@@ -58,6 +60,7 @@ export type OrderListInput = {
   fields?: string[]
   customer_group_id?: number | null
   store_id?: number | null
+  invoice_id?: number | null
   status?: OrderStatus | null
   page?: number
   page_size?: number

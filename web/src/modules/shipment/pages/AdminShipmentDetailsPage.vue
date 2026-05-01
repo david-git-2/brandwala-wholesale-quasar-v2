@@ -21,6 +21,7 @@
           color="positive"
           no-caps
           label="Add To Inventory"
+          :disable="isAddToInventoryRateInvalid"
           :loading="shipmentStore.saving"
           @click="onAddToInventory"
         />
@@ -71,9 +72,24 @@
               <th class="text-right">Price GBP</th>
               <th class="text-right">Cost BDT</th>
               <th class="text-right shipment-qty-col shipment-qty-col--quantity">Quantity</th>
-              <th class="text-right shipment-qty-col shipment-qty-col--received">Received Qty</th>
-              <th class="text-right shipment-qty-col shipment-qty-col--damaged">Damaged Qty</th>
-              <th class="text-right shipment-qty-col shipment-qty-col--stolen">Stolen Qty</th>
+              <th
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--received"
+              >
+                Received Qty
+              </th>
+              <th
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--damaged"
+              >
+                Damaged Qty
+              </th>
+              <th
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--stolen"
+              >
+                Stolen Qty
+              </th>
               <th class="text-right">Product Wt</th>
               <th class="text-right">Package Wt</th>
               <th class="text-right">Actions</th>
@@ -134,7 +150,10 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--received">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--received"
+              >
                 <span class="cursor-pointer">{{ item.received_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.received_quantity"
@@ -148,7 +167,10 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--damaged">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--damaged"
+              >
                 <span class="cursor-pointer">{{ item.damaged_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.damaged_quantity"
@@ -162,7 +184,10 @@
                   <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
                 </q-popup-edit>
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--stolen">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--stolen"
+              >
                 <span class="cursor-pointer">{{ item.stolen_quantity }}</span>
                 <q-popup-edit
                   :model-value="item.stolen_quantity"
@@ -255,13 +280,22 @@
               <td class="text-right shipment-qty-col shipment-qty-col--quantity text-weight-bold">
                 {{ totals.quantity }}
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--received text-weight-bold">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--received text-weight-bold"
+              >
                 {{ totals.received_quantity }}
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--damaged text-weight-bold">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--damaged text-weight-bold"
+              >
                 {{ totals.damaged_quantity }}
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--stolen text-weight-bold">
+              <td
+                v-if="!isDraftStatus"
+                class="text-right shipment-qty-col shipment-qty-col--stolen text-weight-bold"
+              >
                 {{ totals.stolen_quantity }}
               </td>
               <td class="text-right text-weight-bold">
@@ -273,7 +307,9 @@
               <td></td>
             </tr>
             <tr v-if="!shipmentStore.shipmentItems.length">
-              <td colspan="13" class="text-center text-grey-6 q-pa-md">No shipment items yet</td>
+              <td :colspan="isDraftStatus ? 10 : 13" class="text-center text-grey-6 q-pa-md">
+                No shipment items yet
+              </td>
             </tr>
           </tbody>
         </q-markup-table>
@@ -293,6 +329,17 @@
           <q-input v-model="itemForm.barcode" label="Barcode" outlined dense />
           <q-input v-model="itemForm.product_code" label="Product Code" outlined dense />
           <q-input v-model="itemForm.image_url" label="Image URL" outlined dense />
+          <div v-if="itemForm.image_url" class="shipment-form-preview">
+            <div class="text-caption text-grey-7 q-mb-xs">Image Preview</div>
+            <div class="shipment-form-preview-box">
+              <SmartImage
+                :src="itemForm.image_url"
+                alt="shipment item preview"
+                imgClass="shipment-form-preview-image"
+                fallbackClass="shipment-form-preview-fallback"
+              />
+            </div>
+          </div>
           <q-select
             v-model="itemForm.method"
             :options="methodOptions"
@@ -379,6 +426,7 @@ const editingItemId = ref<number | null>(null)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
 const selectedDetailsItem = ref<ShipmentItem | null>(null)
 const selectedStatus = ref<ShipmentStatus>('Draft')
+const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
 const methodOptions: Array<{ label: string; value: ShipmentItemMethod }> = [
   { label: 'Order', value: 'order' },
   { label: 'Costing', value: 'costing' },
@@ -401,6 +449,18 @@ const canAddToInventory = computed(
     shipmentStore.selectedShipment?.status === 'Warehouse Received' &&
     shipmentStore.selectedShipment?.inventory_added !== true,
 )
+const isAddToInventoryRateInvalid = computed(() => {
+  const shipment = shipmentStore.selectedShipment
+  if (!shipment) {
+    return true
+  }
+
+  const cargoRate = Number(shipment.cargo_rate ?? 0)
+  const productConversionRate = Number(shipment.product_conversion_rate ?? 0)
+  const cargoConversionRate = Number(shipment.cargo_conversion_rate ?? 0)
+
+  return cargoRate <= 0 || productConversionRate <= 0 || cargoConversionRate <= 0
+})
 
 const onBack = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
@@ -784,6 +844,42 @@ watch(
 
 .shipment-details-table :deep(th.shipment-qty-col--stolen) {
   background: #fff8e9;
+}
+
+.shipment-form-preview-box {
+  width: 96px;
+  height: 96px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shipment-form-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+:deep(.shipment-form-preview-image) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+:deep(.shipment-form-preview-fallback) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #746655;
+  background: #f3efe9;
+  font-size: 0.75rem;
 }
 
 </style>

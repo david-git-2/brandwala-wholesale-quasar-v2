@@ -64,9 +64,9 @@ const listWithQuery = async <T>(table: string, payload: InvoiceListQuery, allow:
   return { data: (data as T[] | null) ?? [], meta: { total, page, page_size: pageSize, total_pages: Math.max(1, Math.ceil(total / pageSize)) } }
 }
 
-const invoiceFields = ['id','tenant_id','invoice_no','source_type','source_id','payment_status','status','invoice_date','due_date','subtotal_amount','discount_amount','total_amount','paid_amount','note','created_by','created_at','updated_at'] as const
+const invoiceFields = ['id','tenant_id','customer_group_id','invoice_no','source_type','source_id','payment_status','status','invoice_date','due_date','subtotal_amount','discount_amount','total_amount','paid_amount','note','created_by','created_at','updated_at'] as const
 const invoiceItemFields = ['id','tenant_id','invoice_id','source_item_type','source_item_id','inventory_item_id','product_id','name_snapshot','barcode_snapshot','product_code_snapshot','quantity','cost_amount','sell_price_amount','line_discount_amount','line_tax_amount','line_total_amount','created_at','updated_at'] as const
-const accountingFields = ['id','tenant_id','invoice_id','invoice_item_id','inventory_item_id','product_id','quantity','cost_amount','sell_price_amount','total_cost_amount','total_sell_amount','gross_profit_amount','status','entry_date','note','created_by','created_at','updated_at'] as const
+const accountingFields = ['id','tenant_id','invoice_id','invoice_item_id','inventory_item_id','shipment_id','shipment_item_id','product_id','quantity','cost_amount','sell_price_amount','total_cost_amount','total_sell_amount','gross_profit_amount','status','entry_date','note','created_by','created_at','updated_at'] as const
 const paymentFields = ['id','tenant_id','inventory_accounting_entry_id','amount','payment_date','payment_method','reference_no','note','created_by','created_at','updated_at'] as const
 
 export const invoiceRepository = {
@@ -77,11 +77,31 @@ export const invoiceRepository = {
 
   listInvoiceItems: (payload: InvoiceListQuery = {}) => listWithQuery<InvoiceItem>('invoice_items', payload, invoiceItemFields, 'id'),
   async createInvoiceItem(payload: CreateInvoiceItemInput) { const { data, error } = await supabase.from('invoice_items').insert([payload]).select('*').single(); if (error) throw error; return data as InvoiceItem },
+  async createInvoiceItemsBulk(payload: CreateInvoiceItemInput[]) {
+    const { data, error } = await supabase.from('invoice_items').insert(payload).select('*')
+    if (error) throw error
+    return (data ?? []) as InvoiceItem[]
+  },
   async updateInvoiceItem(payload: UpdateInvoiceItemInput) { const { data, error } = await supabase.from('invoice_items').update(payload.patch).eq('id', payload.id).select('*').single(); if (error) throw error; return data as InvoiceItem },
   async deleteInvoiceItem(payload: DeleteInvoiceItemInput) { const { error } = await supabase.from('invoice_items').delete().eq('id', payload.id); if (error) throw error },
 
   listInventoryAccountingEntries: (payload: InvoiceListQuery = {}) => listWithQuery<InventoryAccountingEntry>('inventory_accounting_entries', payload, accountingFields, 'id'),
   async createInventoryAccountingEntry(payload: CreateInventoryAccountingEntryInput) { const { data, error } = await supabase.from('inventory_accounting_entries').insert([payload]).select('*').single(); if (error) throw error; return data as InventoryAccountingEntry },
+  async createInventoryAccountingEntriesBulk(payload: CreateInventoryAccountingEntryInput[]) {
+    const { data, error } = await supabase
+      .from('inventory_accounting_entries')
+      .insert(payload)
+      .select('*')
+    if (error) throw error
+    return (data ?? []) as InventoryAccountingEntry[]
+  },
+  async deleteInventoryAccountingEntriesByInvoiceId(invoiceId: number) {
+    const { error } = await supabase
+      .from('inventory_accounting_entries')
+      .delete()
+      .eq('invoice_id', invoiceId)
+    if (error) throw error
+  },
   async updateInventoryAccountingEntry(payload: UpdateInventoryAccountingEntryInput) { const { data, error } = await supabase.from('inventory_accounting_entries').update(payload.patch).eq('id', payload.id).select('*').single(); if (error) throw error; return data as InventoryAccountingEntry },
   async deleteInventoryAccountingEntry(payload: DeleteInventoryAccountingEntryInput) { const { error } = await supabase.from('inventory_accounting_entries').delete().eq('id', payload.id); if (error) throw error },
 

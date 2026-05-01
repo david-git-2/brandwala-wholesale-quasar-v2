@@ -15,6 +15,7 @@ import vendorRoutes from 'src/modules/vendor/routes';
 import shipmentRoutes from 'src/modules/shipment/routes';
 import inventoryRoutes from 'src/modules/inventory/routes';
 import invoiceRoutes from 'src/modules/invoice/routes';
+import invoiceAccountingRoutes from 'src/modules/invoice_accounting/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -83,6 +84,7 @@ const routes: RouteRecordRaw[] = [
   ...shipmentRoutes,
   ...inventoryRoutes,
   ...invoiceRoutes,
+  ...invoiceAccountingRoutes,
   ...storeRoutes,
   ...vendorRoutes,
   ...costingFileRoutes,

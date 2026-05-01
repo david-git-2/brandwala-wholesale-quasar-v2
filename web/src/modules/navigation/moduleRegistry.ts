@@ -228,6 +228,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'invoices',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Accounting - Invoice',
+        caption: 'Track invoice accounting entries and payment status',
+        icon: 'account_balance_wallet',
+        routeSegment: 'invoice-accounting',
+        requiredAction: 'view',
+      },
     ],
   },
 ] as const

@@ -275,7 +275,7 @@
 
     <div class="row justify-end q-mt-md">
       <q-btn
-      v-if="orderStore.selected?.status==='negotiate'"
+      v-if="orderStore.selected?.status==='negotiate' || orderStore.selected?.status==='direct_priced'"
         color="primary"
         no-caps
         label="Save Item Changes"
@@ -299,12 +299,14 @@ import {
 
 type OrderStatus =
   | 'customer_submit'
+  | 'direct_priced'
   | 'priced'
   | 'negotiate'
   | 'final_offered'
   | 'processing'
+  | 'invoicing'
+  | 'invoiced'
   | 'ordered'
-  | 'placed'
 
 const props = withDefaults(
   defineProps<{
@@ -727,6 +729,32 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'seler_first_offer_profit_pc_perc',
     'seller_first_offer_profit_total',
   ],
+  direct_priced: [
+    'sl',
+    'image_url',
+    'name',
+    'product_meta',
+    'ordered_quantity',
+    'product_weight',
+    'package_weight',
+    'total_weight',
+    'price_gbp',
+    'line_total_purchese_cost_gbp',
+    'cargo_rate',
+    'unit_line_cost_gbp',
+    'cost_bdt',
+    'line_total_cost_bdt',
+    'seller_first_offer_bdt',
+    'final_offer_bdt',
+    'final_offer_bdt_total',
+    'final_offer_profit_pc',
+    'final_offer_profit_total',
+    'final_offer_profit_pc_perc',
+    'seller_first_offer_bdt_total',
+    'seller_first_offer_profit_pc',
+    'seler_first_offer_profit_pc_perc',
+    'seller_first_offer_profit_total',
+  ],
   negotiate: [
     'sl',
     'image_url',
@@ -858,13 +886,63 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
     'final_offer_profit_total',
     'final_offer_profit_pc_perc',
   ],
-  placed: [
+  invoicing: [
+    'sl',
+    'image_url',
+    'name',
+    'ship',
+    'product_meta',
+    'ordered_quantity',
+    'product_weight',
+    'package_weight',
+    'total_weight',
+    'price_gbp',
+    'line_total_purchese_cost_gbp',
+    'cargo_rate',
+    'unit_line_cost_gbp',
+    'cost_bdt',
+    'line_total_cost_bdt',
+    'seller_first_offer_bdt',
+    'seller_first_offer_bdt_total',
+    'seller_first_offer_profit_pc',
+    'seler_first_offer_profit_pc_perc',
+    'seller_first_offer_profit_total',
+    'customer_offer_bdt',
+    'customer_offer_bdt_total',
+    'customer_offer_profit_pc',
+    'customer_offer_profit_total',
+    'customer_offer_profit_pc_perc',
+    'final_offer_bdt',
+    'final_offer_bdt_total',
+    'final_offer_profit_pc',
+    'final_offer_profit_total',
+    'final_offer_profit_pc_perc',
+  ],
+  invoiced: [
     'sl',
     'image_url',
     'name',
     'product_meta',
     'ordered_quantity',
+    'product_weight',
+    'package_weight',
+    'total_weight',
+    'price_gbp',
+    'line_total_purchese_cost_gbp',
+    'cargo_rate',
+    'unit_line_cost_gbp',
+    'cost_bdt',
+    'line_total_cost_bdt',
     'seller_first_offer_bdt',
+    'seller_first_offer_bdt_total',
+    'seller_first_offer_profit_pc',
+    'seler_first_offer_profit_pc_perc',
+    'seller_first_offer_profit_total',
+    'customer_offer_bdt',
+    'customer_offer_bdt_total',
+    'customer_offer_profit_pc',
+    'customer_offer_profit_total',
+    'customer_offer_profit_pc_perc',
     'final_offer_bdt',
     'final_offer_bdt_total',
     'final_offer_profit_pc',

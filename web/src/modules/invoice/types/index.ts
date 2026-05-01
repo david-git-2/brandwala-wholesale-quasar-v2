@@ -38,6 +38,7 @@ export type InvoiceServiceResult<T> = {
 export type Invoice = {
   id: number
   tenant_id: number
+  customer_group_id: number | null
   invoice_no: string
   source_type: InvoiceSourceType
   source_id: number
@@ -82,6 +83,8 @@ export type InventoryAccountingEntry = {
   invoice_id: number | null
   invoice_item_id: number | null
   inventory_item_id: number
+  shipment_id: number | null
+  shipment_item_id: number | null
   product_id: number | null
   quantity: number
   cost_amount: number
