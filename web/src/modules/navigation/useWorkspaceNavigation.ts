@@ -166,50 +166,87 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'store',
     )
+    const hasInvoiceModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'invoice',
+    )
 
-    if (!hasStoreModuleAccess) {
+    if (!hasStoreModuleAccess && !hasInvoiceModuleAccess) {
       return [...baseLinks, ...moduleLinks]
     }
 
-    const moduleLinksWithoutStore = scopedModuleRouteDefinitions
-      .filter((routeDefinition) => routeDefinition.moduleKey !== 'store')
+    const moduleLinksWithoutGroupedModules = scopedModuleRouteDefinitions
+      .filter(
+        (routeDefinition) =>
+          routeDefinition.moduleKey !== 'store' &&
+          routeDefinition.moduleKey !== 'invoice',
+      )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
         to: routeDefinition.to,
       }))
+    const invoiceChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'invoice')
+      .map((routeDefinition) => ({
+        title:
+          routeDefinition.title === 'Invoices'
+            ? 'Invoice Management'
+            : routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
     const activeTenantSlug = tenantStore.selectedTenantSlug ?? authStore.tenantSlug
     const tenantPrefix = activeTenantSlug ? `/${activeTenantSlug}` : ''
 
+    const groupedLinks = [
+      ...moduleLinksWithoutGroupedModules,
+      ...(hasInvoiceModuleAccess
+        ? [
+            {
+              title: 'Invoices',
+              caption: 'Invoice module',
+              icon: 'description',
+              children: invoiceChildren,
+            },
+          ]
+        : []),
+      ...(hasStoreModuleAccess
+        ? [
+            {
+              title: 'Stores',
+              caption: 'Store module',
+              icon: 'store',
+              children: [
+                {
+                  title: 'Manage Store',
+                  caption: 'Store module',
+                  icon: 'chevron_right',
+                  to: `${tenantPrefix}/app/stores/manage-store`,
+                },
+                {
+                  title: 'Manage Access',
+                  caption: 'Store module',
+                  icon: 'chevron_right',
+                  to: `${tenantPrefix}/app/stores/manage-access`,
+                },
+                {
+                  title: 'Store Products',
+                  caption: 'Store module',
+                  icon: 'chevron_right',
+                  to: `${tenantPrefix}/app/stores/store-products`,
+                },
+              ],
+            },
+          ]
+        : []),
+    ]
+
     return [
       ...baseLinks,
-      ...moduleLinksWithoutStore,
-      {
-        title: 'Stores',
-        caption: 'Store module',
-        icon: 'store',
-        children: [
-          {
-            title: 'Manage Store',
-            caption: 'Store module',
-            icon: 'chevron_right',
-            to: `${tenantPrefix}/app/stores/manage-store`,
-          },
-          {
-            title: 'Manage Access',
-            caption: 'Store module',
-            icon: 'chevron_right',
-            to: `${tenantPrefix}/app/stores/manage-access`,
-          },
-          {
-            title: 'Store Products',
-            caption: 'Store module',
-            icon: 'chevron_right',
-            to: `${tenantPrefix}/app/stores/store-products`,
-          },
-        ],
-      },
+      ...groupedLinks,
     ]
   })
 

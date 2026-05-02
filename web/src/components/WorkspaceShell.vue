@@ -76,6 +76,7 @@
                       :key="child.to ?? child.title"
                       clickable
                       :to="child.to!"
+                      exact
                       class="workspace-shell__nav-sub-item"
                       active-class="workspace-shell__nav-item--active"
                     >
@@ -391,12 +392,18 @@ const handleLogout = async () => {
 }
 
 .workspace-shell__nav-group {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid transparent;
+  margin-bottom: 0.45rem;
 }
 
 .workspace-shell__nav-group :deep(.q-expansion-item__container) {
   border-radius: 0.65rem;
+}
+
+.workspace-shell__nav-group :deep(.q-expansion-item__content) {
+  overflow: visible;
+  padding-bottom: 0.35rem;
 }
 
 .workspace-shell__nav-group :deep(.q-item) {

@@ -1,13 +1,26 @@
 import { supabase } from 'src/boot/supabase'
 import type {
-  CreateInvoiceInput,
-  DeleteInvoiceInput,
-  FilterOperator,
-  Invoice,
-  InvoiceListPage,
-  InvoiceListQuery,
-  UpdateInvoiceInput,
-} from '../types'
+  BillingProfile,
+  BillingProfileListPage,
+  BillingProfileListQuery,
+  CreateBillingProfileInput,
+  DeleteBillingProfileInput,
+  UpdateBillingProfileInput,
+} from '../types/billingProfile'
+import type { FilterOperator } from '../types'
+
+const FIELDS = [
+  'id',
+  'tenant_id',
+  'name',
+  'email',
+  'customer_group_id',
+  'phone',
+  'address',
+  'created_at',
+  'updated_at',
+] as const
+const FIELDS_ALLOWLIST: readonly string[] = FIELDS
 
 const sanitizePage = (value: number | undefined, fallback: number) =>
   Number.isFinite(value) && (value ?? 0) > 0 ? Math.floor(value as number) : fallback
@@ -24,10 +37,9 @@ const applyFilters = <
   query: Q,
   filters: Record<string, unknown> | undefined,
   operators: Record<string, FilterOperator> | undefined,
-  allowlist: readonly string[],
 ): Q => {
   if (!filters) return query
-  const allowed = new Set(allowlist)
+  const allowed = new Set(FIELDS_ALLOWLIST)
   Object.entries(filters).forEach(([field, value]) => {
     if (!allowed.has(field) || value === undefined) return
     const op = operators?.[field] ?? 'eq'
@@ -40,44 +52,24 @@ const applyFilters = <
   return query
 }
 
-const INVOICE_FIELDS = [
-  'id',
-  'tenant_id',
-  'customer_group_id',
-  'invoice_no',
-  'source_type',
-  'source_id',
-  'payment_status',
-  'status',
-  'invoice_date',
-  'due_date',
-  'subtotal_amount',
-  'discount_amount',
-  'total_amount',
-  'paid_amount',
-  'note',
-  'created_by',
-  'created_at',
-  'updated_at',
-] as const
-const INVOICE_FIELDS_ALLOWLIST: readonly string[] = INVOICE_FIELDS
-
-const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceListPage<Invoice>> => {
+const listBillingProfiles = async (
+  payload: BillingProfileListQuery = {},
+): Promise<BillingProfileListPage> => {
   const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
   const page = sanitizePage(payload.page, 1)
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase.from('invoices').select('*', { count: 'exact' })
+  let query = supabase.from('billing_profiles').select('*', { count: 'exact' })
 
   if (typeof payload.tenant_id === 'number') {
     query = query.eq('tenant_id', payload.tenant_id)
   }
 
-  query = applyFilters(query, payload.filters, payload.operators, INVOICE_FIELDS)
+  query = applyFilters(query, payload.filters, payload.operators)
 
   const sortBy =
-    typeof payload.sortBy === 'string' && INVOICE_FIELDS_ALLOWLIST.includes(payload.sortBy)
+    typeof payload.sortBy === 'string' && FIELDS_ALLOWLIST.includes(payload.sortBy)
       ? payload.sortBy
       : 'created_at'
 
@@ -88,7 +80,7 @@ const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceList
 
   const total = count ?? 0
   return {
-    data: (data as Invoice[] | null) ?? [],
+    data: (data as BillingProfile[] | null) ?? [],
     meta: {
       total,
       page,
@@ -98,31 +90,37 @@ const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceList
   }
 }
 
-const createInvoice = async (payload: CreateInvoiceInput) => {
-  const { data, error } = await supabase.from('invoices').insert([payload]).select('*').single()
+const createBillingProfile = async (payload: CreateBillingProfileInput): Promise<BillingProfile> => {
+  const { data, error } = await supabase
+    .from('billing_profiles')
+    .insert([payload])
+    .select('*')
+    .single()
+
   if (error) throw error
-  return data as Invoice
+  return data as BillingProfile
 }
 
-const updateInvoice = async (payload: UpdateInvoiceInput) => {
+const updateBillingProfile = async (payload: UpdateBillingProfileInput): Promise<BillingProfile> => {
   const { data, error } = await supabase
-    .from('invoices')
+    .from('billing_profiles')
     .update(payload.patch)
     .eq('id', payload.id)
     .select('*')
     .single()
+
   if (error) throw error
-  return data as Invoice
+  return data as BillingProfile
 }
 
-const deleteInvoice = async (payload: DeleteInvoiceInput) => {
-  const { error } = await supabase.from('invoices').delete().eq('id', payload.id)
+const deleteBillingProfile = async (payload: DeleteBillingProfileInput): Promise<void> => {
+  const { error } = await supabase.from('billing_profiles').delete().eq('id', payload.id)
   if (error) throw error
 }
 
-export const invoiceRepository = {
-  listInvoices,
-  createInvoice,
-  updateInvoice,
-  deleteInvoice,
+export const billingProfileRepository = {
+  listBillingProfiles,
+  createBillingProfile,
+  updateBillingProfile,
+  deleteBillingProfile,
 }

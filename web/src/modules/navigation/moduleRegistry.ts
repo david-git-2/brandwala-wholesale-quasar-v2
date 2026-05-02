@@ -221,6 +221,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         requiredAction: 'view',
       },
       {
+        scope: 'app',
+        title: 'Billing Profiles',
+        caption: 'Manage billing profile records for invoices',
+        icon: 'badge',
+        routeSegment: 'invoices/billing-profiles',
+        requiredAction: 'view',
+      },
+      {
         scope: 'shop',
         title: 'Invoices',
         caption: 'View customer-facing invoice records',

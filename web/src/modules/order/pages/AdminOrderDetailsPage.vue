@@ -25,14 +25,6 @@
         :loading="orderStore.saving"
         @update:model-value="onStatusChange"
       />
-      <q-btn
-        v-if="orderStore.selected?.status === 'invoicing'"
-        color="primary"
-        no-caps
-        :label="orderStore.selected?.invoice_id ? 'Open Invoice' : 'Create Invoice'"
-        :loading="creatingInvoice"
-        @click="onInvoiceAction"
-      />
     </div>
 
     <div class="row q-gutter-sm q-my-sm">
@@ -209,8 +201,6 @@ import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { invoiceService } from 'src/modules/invoice/services/invoiceService'
-import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 
 
 
@@ -236,7 +226,6 @@ const pendingRemoveShipItemId = ref<number | null>(null)
 const showNegotiationDialog = ref(false)
 const negotiationChoice = ref<boolean>(false)
 const negotiationDialogShownForOrderId = ref<number | null>(null)
-const creatingInvoice = ref(false)
 
 const negotiationOptions = [
   { label: 'Enable Negotiation', value: true },
@@ -669,128 +658,5 @@ const onConfirmRemoveShipment = async () => {
   confirmRemoveShipmentOpen.value = false
   pendingRemoveShipItemId.value = null
 }
-
-const toMoney = (value: unknown) => {
-  const n = Number(value ?? 0)
-  return Number.isFinite(n) ? n : 0
-}
-
-const buildInvoiceNo = (orderId: number) => `INVOICE ORD ${orderId}`
-
-const onInvoiceAction = async () => {
-  const order = orderStore.selected
-  if (!order) return
-
-  if (order.invoice_id) {
-    const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-    await router.push(`${tenantPrefix}/app/invoices/${order.invoice_id}`)
-    return
-  }
-
-  if (order.status === 'processing') {
-    await orderStore.updateOrder({
-      id: order.id,
-      patch: {
-        status: 'invoicing',
-      },
-    })
-  }
-
-  await onCreateInvoiceFromOrder()
-}
-
-const onCreateInvoiceFromOrder = async () => {
-  if (!orderStore.selected?.id) return
-  if (orderStore.selected.invoice_id) return
-
-  const tenantId = authStore.tenantId
-  if (!tenantId) {
-    showWarningDialog('Tenant is missing. Cannot create invoice.')
-    return
-  }
-
-  const order = orderStore.selected
-  const items = order.order_items ?? []
-  const subtotal = items.reduce(
-    (sum, row) => sum + toMoney(row.final_offer_bdt ?? row.first_offer_bdt) * toMoney(row.ordered_quantity),
-    0,
-  )
-
-  creatingInvoice.value = true
-  try {
-    const invoiceResult = await invoiceService.createInvoice({
-      tenant_id: tenantId,
-      customer_group_id: order.customer_group_id ?? null,
-      invoice_no: buildInvoiceNo(order.id),
-      source_type: 'order',
-      source_id: order.id,
-      payment_status: 'due',
-      status: 'draft',
-      invoice_date: new Date().toISOString().slice(0, 10),
-      due_date: null,
-      subtotal_amount: subtotal,
-      discount_amount: 0,
-      total_amount: subtotal,
-      paid_amount: 0,
-      note: null,
-      created_by: null,
-    })
-
-    if (!invoiceResult.success || !invoiceResult.data) {
-      showWarningDialog(invoiceResult.error ?? 'Failed to create invoice.')
-      return
-    }
-
-    const invoice = invoiceResult.data
-
-    const invoiceItemsPayload = items.map((row) => {
-      const quantity = toMoney(row.ordered_quantity)
-      const sellPrice = toMoney(row.final_offer_bdt ?? row.first_offer_bdt)
-      const costAmount = toMoney(row.cost_bdt)
-      const lineTotal = sellPrice * quantity
-
-      return {
-        tenant_id: tenantId,
-        invoice_id: invoice.id,
-        source_item_type: 'order_item' as const,
-        source_item_id: row.id,
-        inventory_item_id: null,
-        product_id: row.product_id ?? null,
-        name_snapshot: row.name,
-        barcode_snapshot: row.barcode ?? null,
-        product_code_snapshot: row.product_code ?? null,
-        quantity,
-        cost_amount: costAmount,
-        sell_price_amount: sellPrice,
-        line_discount_amount: 0,
-        line_tax_amount: 0,
-        line_total_amount: lineTotal,
-      }
-    })
-
-    const itemResult = await invoiceService.createInvoiceItemsBulk(invoiceItemsPayload)
-    if (!itemResult.success) {
-      showWarningDialog(itemResult.error ?? 'Failed to create invoice items.')
-      return
-    }
-
-    const updateOrderResult = await orderStore.updateOrder({
-      id: order.id,
-      patch: {
-        invoice_id: invoice.id,
-      },
-    })
-
-    if (!updateOrderResult.success) {
-      showWarningDialog(updateOrderResult.error ?? 'Invoice created, but order link failed.')
-      return
-    }
-
-    showSuccessNotification('Invoice created from order successfully.')
-  } finally {
-    creatingInvoice.value = false
-  }
-}
-
 
 </script>

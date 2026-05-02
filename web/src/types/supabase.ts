@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          customer_group_id: number | null
+          email: string | null
+          id: number
+          name: string
+          phone: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          customer_group_id?: number | null
+          email?: string | null
+          id?: number
+          name: string
+          phone?: string | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          customer_group_id?: number | null
+          email?: string | null
+          id?: number
+          name?: string
+          phone?: string | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_profiles_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           cart_id: number
