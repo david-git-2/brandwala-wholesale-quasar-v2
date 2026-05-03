@@ -10,6 +10,7 @@ type ListProductsParams = {
   page?: number
   pageSize?: number
   search?: string
+  searchField?: 'name' | 'barcode' | 'product_code' | 'id'
   category?: string | null | undefined
   brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'

@@ -20,6 +20,18 @@ const invoiceRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: ':invoiceId',
+        name: 'app-invoice-details-page',
+        component: () => import('../pages/AdminInvoiceDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'invoice',
+        }),
+      },
+      {
         path: 'billing-profiles',
         name: 'app-billing-profiles-page',
         component: () => import('../pages/AdminBillingProfilesPage.vue'),

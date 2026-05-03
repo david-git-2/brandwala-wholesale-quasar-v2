@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_code_pc: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          expire_date: string | null
+          id: number
+          manufacturing_date: string | null
+          product_code: string | null
+          shipment_id: number
+          shipment_item_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          manufacturing_date?: string | null
+          product_code?: string | null
+          shipment_id: number
+          shipment_item_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          expire_date?: string | null
+          id?: number
+          manufacturing_date?: string | null
+          product_code?: string | null
+          shipment_id?: number
+          shipment_item_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_code_pc_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_code_pc_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_profiles: {
         Row: {
           address: string | null
@@ -801,6 +852,7 @@ export type Database = {
           product_id: number | null
           quantity: number
           sell_price_amount: number
+          shipment_id: number | null
           source_item_id: number
           source_item_type: string
           tenant_id: number
@@ -821,6 +873,7 @@ export type Database = {
           product_id?: number | null
           quantity: number
           sell_price_amount?: number
+          shipment_id?: number | null
           source_item_id: number
           source_item_type: string
           tenant_id: number
@@ -841,6 +894,7 @@ export type Database = {
           product_id?: number | null
           quantity?: number
           sell_price_amount?: number
+          shipment_id?: number | null
           source_item_id?: number
           source_item_type?: string
           tenant_id?: number
@@ -869,6 +923,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoice_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -879,6 +940,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          billing_profile_id: number | null
           created_at: string
           created_by: string | null
           customer_group_id: number | null
@@ -899,6 +961,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_profile_id?: number | null
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
@@ -919,6 +982,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_profile_id?: number | null
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
@@ -939,6 +1003,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_customer_group_id_fkey"
             columns: ["customer_group_id"]

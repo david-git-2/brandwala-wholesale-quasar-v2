@@ -137,6 +137,7 @@ type ListProductsParams = {
   page?: number
   pageSize?: number
   search?: string
+  searchField?: 'name' | 'barcode' | 'product_code' | 'id'
   category?: string | null | undefined
   brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'
@@ -204,6 +205,7 @@ const listProducts = async ({
   page = 1,
   pageSize = 20,
   search = '',
+  searchField = 'name',
   category,
   brand,
   tenantId,
@@ -229,10 +231,22 @@ const listProducts = async ({
     query = query.eq('is_available', isAvailable)
   }
 
-  if (search.trim()) {
-    query = query.or(
-      `name.ilike.%${search}%,product_code.ilike.%${search}%,barcode.ilike.%${search}%`
-    )
+  const trimmedSearch = search.trim()
+  if (trimmedSearch) {
+    if (searchField === 'id') {
+      const parsedId = Number(trimmedSearch)
+      if (!Number.isFinite(parsedId)) {
+        query = query.eq('id', -1)
+      } else {
+        query = query.eq('id', Math.floor(parsedId))
+      }
+    } else if (searchField === 'barcode') {
+      query = query.ilike('barcode', `%${trimmedSearch}%`)
+    } else if (searchField === 'product_code') {
+      query = query.ilike('product_code', `%${trimmedSearch}%`)
+    } else {
+      query = query.ilike('name', `%${trimmedSearch}%`)
+    }
   }
 
   if (category) {

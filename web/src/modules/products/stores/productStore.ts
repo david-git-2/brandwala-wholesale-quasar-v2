@@ -16,6 +16,7 @@ type FetchProductsParams = {
   page?: number
   pageSize?: number
   search?: string
+  searchField?: 'name' | 'barcode' | 'product_code' | 'id'
   category?: string | null | undefined
   brand?: string | null | undefined
   sortPrice?: 'asc' | 'desc'
@@ -34,6 +35,7 @@ type ProductStoreState = {
   page: number
   pageSize: number
   search: string
+  searchField: 'name' | 'barcode' | 'product_code' | 'id'
   category: string
   brand: string
   sortPrice: 'asc' | 'desc'
@@ -52,6 +54,7 @@ export const useProductStore = defineStore('product', {
     page: 1,
     pageSize: 20,
     search: '',
+    searchField: 'name',
     category: '',
     brand: '',
     sortPrice: 'asc',
@@ -69,6 +72,7 @@ export const useProductStore = defineStore('product', {
       if (params.page !== undefined) this.page = params.page
       if (params.pageSize !== undefined) this.pageSize = params.pageSize
       if (params.search !== undefined) this.search = params.search
+      if (params.searchField !== undefined) this.searchField = params.searchField
       if (params.category !== undefined) this.category = params.category ?? ''
       if (params.brand !== undefined) this.brand = params.brand ?? ''
       if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
@@ -81,6 +85,7 @@ export const useProductStore = defineStore('product', {
       this.page = 1
       this.pageSize = 20
       this.search = ''
+      this.searchField = 'name'
       this.category = ''
       this.brand = ''
       this.sortPrice = 'asc'
@@ -102,6 +107,7 @@ export const useProductStore = defineStore('product', {
           page: this.page,
           pageSize: this.pageSize,
           search: this.search,
+          searchField: this.searchField,
           category: this.category || null,
           brand: this.brand || null,
           sortPrice: this.sortPrice,

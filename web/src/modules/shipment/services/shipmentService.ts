@@ -2,8 +2,11 @@ import { shipmentRepository } from '../repositories/shipmentRepository'
 import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
+  BatchCodePc,
   BulkAddShipmentItemsFromProductInput,
+  BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
+  CreateBatchCodePcInput,
   CreateShipmentInput,
   DeleteShipmentInput,
   DeleteShipmentItemInput,
@@ -239,6 +242,48 @@ const bulkDeleteShipmentItemsByProduct = async (
   }
 }
 
+const listBatchCodePcByShipment = async (
+  shipmentId: number,
+): Promise<ShipmentServiceResult<BatchCodePc[]>> => {
+  try {
+    const data = await shipmentRepository.listBatchCodePcByShipment(shipmentId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load batch rows.',
+    }
+  }
+}
+
+const createBatchCodePc = async (
+  payload: CreateBatchCodePcInput,
+): Promise<ShipmentServiceResult<BatchCodePc>> => {
+  try {
+    const data = await shipmentRepository.createBatchCodePc(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create batch row.',
+    }
+  }
+}
+
+const bulkCreateBatchCodePc = async (
+  payload: BulkCreateBatchCodePcInput,
+): Promise<ShipmentServiceResult<BatchCodePc[]>> => {
+  try {
+    const data = await shipmentRepository.bulkCreateBatchCodePc(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to bulk create batch rows.',
+    }
+  }
+}
+
 export const shipmentService = {
   listShipments,
   getShipmentById,
@@ -256,4 +301,7 @@ export const shipmentService = {
   deleteShipmentItem,
   clearOrderItemShipmentLinkByShipmentItem,
   bulkDeleteShipmentItemsByProduct,
+  listBatchCodePcByShipment,
+  createBatchCodePc,
+  bulkCreateBatchCodePc,
 }

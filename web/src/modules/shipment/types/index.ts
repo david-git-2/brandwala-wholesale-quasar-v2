@@ -51,6 +51,18 @@ export type ShipmentItem = {
   updated_at: string
 }
 
+export type BatchCodePc = {
+  id: number
+  shipment_id: number
+  shipment_item_id: number | null
+  product_code: string | null
+  batch_id: string | null
+  manufacturing_date: string | null
+  expire_date: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type CreateShipmentInput = {
   name: string
   tenant_id: number
@@ -146,6 +158,19 @@ export type BulkDeleteShipmentItemsByProductInput = {
   items: Array<{ product_id: number; quantity: number }>
 }
 
+export type CreateBatchCodePcInput = {
+  shipment_id: number
+  shipment_item_id?: number | null
+  product_code?: string | null
+  batch_id?: string | null
+  manufacturing_date?: string | null
+  expire_date?: string | null
+}
+
+export type BulkCreateBatchCodePcInput = {
+  rows: CreateBatchCodePcInput[]
+}
+
 export type ShipmentServiceResult<T> = {
   success: boolean
   data?: T
@@ -156,6 +181,7 @@ export type ShipmentStoreState = {
   shipments: Shipment[]
   selectedShipment: Shipment | null
   shipmentItems: ShipmentItem[]
+  batchCodePcRows: BatchCodePc[]
   loading: boolean
   saving: boolean
   error: string | null

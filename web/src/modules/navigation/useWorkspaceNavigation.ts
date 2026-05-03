@@ -170,8 +170,12 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'invoice',
     )
+    const hasAccountingModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'accounting',
+    )
 
-    if (!hasStoreModuleAccess && !hasInvoiceModuleAccess) {
+    if (!hasStoreModuleAccess && !hasInvoiceModuleAccess && !hasAccountingModuleAccess) {
       return [...baseLinks, ...moduleLinks]
     }
 
@@ -179,7 +183,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .filter(
         (routeDefinition) =>
           routeDefinition.moduleKey !== 'store' &&
-          routeDefinition.moduleKey !== 'invoice',
+          routeDefinition.moduleKey !== 'invoice' &&
+          routeDefinition.moduleKey !== 'accounting',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -198,6 +203,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
+    const accountingChildren = scopedModuleRouteDefinitions
+      .filter(
+        (routeDefinition) =>
+          routeDefinition.moduleKey === 'accounting' &&
+          routeDefinition.title !== 'Accounting',
+      )
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
     const activeTenantSlug = tenantStore.selectedTenantSlug ?? authStore.tenantSlug
     const tenantPrefix = activeTenantSlug ? `/${activeTenantSlug}` : ''
 
@@ -210,6 +227,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
               caption: 'Invoice module',
               icon: 'description',
               children: invoiceChildren,
+            },
+          ]
+        : []),
+      ...(hasAccountingModuleAccess
+        ? [
+            {
+              title: 'Accounting',
+              caption: 'Accounting module',
+              icon: 'account_balance',
+              children: accountingChildren,
             },
           ]
         : []),

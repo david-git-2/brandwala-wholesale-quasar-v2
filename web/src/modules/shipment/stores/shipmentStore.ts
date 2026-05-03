@@ -8,7 +8,9 @@ import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
   BulkAddShipmentItemsFromProductInput,
+  BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
+  CreateBatchCodePcInput,
   CreateShipmentInput,
   DeleteShipmentInput,
   DeleteShipmentItemInput,
@@ -24,6 +26,7 @@ export const useShipmentStore = defineStore('shipment', {
     shipments: [],
     selectedShipment: null,
     shipmentItems: [],
+    batchCodePcRows: [],
     loading: false,
     saving: false,
     error: null,
@@ -221,6 +224,74 @@ export const useShipmentStore = defineStore('shipment', {
         return result
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchBatchCodePcByShipment(shipmentId: number) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.listBatchCodePcByShipment(shipmentId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load batch rows.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.batchCodePcRows = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createBatchCodePc(payload: CreateBatchCodePcInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.createBatchCodePc(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create batch row.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.batchCodePcRows.push(result.data)
+        }
+
+        showSuccessNotification('Batch row created successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async bulkCreateBatchCodePc(payload: BulkCreateBatchCodePcInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.bulkCreateBatchCodePc(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to bulk create batch rows.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data?.length) {
+          this.batchCodePcRows = [...this.batchCodePcRows, ...result.data]
+        }
+
+        showSuccessNotification('Batch rows created successfully.')
+        return result
+      } finally {
+        this.saving = false
       }
     },
 

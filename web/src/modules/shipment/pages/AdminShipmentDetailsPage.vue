@@ -28,12 +28,39 @@
         <q-btn
           color="secondary"
           flat
-          round
+          no-caps
           icon="info"
-          aria-label="Shipment info"
+          label="Shipment Info"
+          aria-label="Open shipment info page"
           @click="goToShipmentInfo"
+        >
+          <q-tooltip>Open shipment information page</q-tooltip>
+        </q-btn>
+        <q-btn
+          color="secondary"
+          flat
+          no-caps
+          icon="fact_check"
+          label="Batch Code"
+          aria-label="Open batch code entry page"
+          @click="goToBatchCodePage"
+        >
+          <q-tooltip>Open batch code paste page</q-tooltip>
+        </q-btn>
+        <q-btn
+          v-if="isDraftStatus"
+          color="secondary"
+          no-caps
+          label="Add New Item"
+          @click="openAddProductDialog"
         />
-        <q-btn color="primary" no-caps label="Add Item" @click="openAddItemDialog" />
+        <q-btn
+          v-if="isDraftStatus"
+          color="primary"
+          no-caps
+          label="Search Item"
+          @click="openAddItemDialog"
+        />
       </div>
     </div>
 
@@ -247,16 +274,6 @@
                 <q-btn
                   flat
                   dense
-                  color="primary"
-                  round
-                  icon="edit"
-                  @click="openEditItemDialog(item)"
-                >
-                  <q-tooltip>Edit</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
                   color="negative"
                   round
                   icon="delete"
@@ -272,7 +289,7 @@
               <td class="shipment-name-col"></td>
               <td></td>
               <td class="text-right text-weight-bold">
-                {{ formatDecimal(totals.price_gbp) }}
+                {{ formatFixed2(totals.price_gbp) }}
               </td>
               <td class="text-right text-weight-bold">
                 {{ formatFixed2(totals.cost_bdt) }}
@@ -317,54 +334,208 @@
     </q-card>
 
     <q-dialog v-model="showAddItemDialog">
-      <q-card style="min-width: 420px; max-width: 90vw">
+      <q-card style="min-width: 860px; max-width: 94vw">
         <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6">{{ editingItemId ? 'Edit Shipment Item' : 'Add Shipment Item' }}</div>
+          <div class="text-h6">Search Product</div>
           <q-btn icon="close" flat round dense @click="showAddItemDialog = false" />
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="itemForm.name" label="Name" outlined dense autofocus />
-          <q-input v-model.number="itemForm.quantity" label="Quantity" type="number" outlined dense />
-          <q-input v-model="itemForm.barcode" label="Barcode" outlined dense />
-          <q-input v-model="itemForm.product_code" label="Product Code" outlined dense />
-          <q-input v-model="itemForm.image_url" label="Image URL" outlined dense />
-          <div v-if="itemForm.image_url" class="shipment-form-preview">
-            <div class="text-caption text-grey-7 q-mb-xs">Image Preview</div>
-            <div class="shipment-form-preview-box">
-              <SmartImage
-                :src="itemForm.image_url"
-                alt="shipment item preview"
-                imgClass="shipment-form-preview-image"
-                fallbackClass="shipment-form-preview-fallback"
+          <div class="row no-wrap q-col-gutter-sm items-start">
+            <div style="width: 220px; min-width: 220px">
+              <q-select
+                v-model="productSearchField"
+                :options="productSearchFieldOptions"
+                label="Search By"
+                outlined
+                dense
+                emit-value
+                map-options
+                option-value="value"
+                option-label="label"
+              />
+            </div>
+            <div class="col">
+              <q-input
+                v-model="productSearch"
+                label="Search"
+                outlined
+                dense
+                autofocus
+                @keyup.enter="onSearchProducts"
               />
             </div>
           </div>
-          <q-select
-            v-model="itemForm.method"
-            :options="methodOptions"
-            label="Method"
-            emit-value
-            map-options
-            outlined
-            dense
-          />
-          <q-input
-            v-model.number="itemForm.order_id"
-            label="Order ID (Optional)"
-            type="number"
-            outlined
-            dense
-          />
+
+          <q-markup-table flat bordered wrap-cells>
+            <thead>
+              <tr>
+                <th class="text-left">Image</th>
+                <th class="text-left">Name</th>
+                <th class="text-left">Barcode</th>
+                <th class="text-left">Product Code</th>
+                <th class="text-right">Minimum Qty</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!productStore.items.length && !productStore.loading">
+                <td colspan="7" class="text-center text-grey-6">No products found</td>
+              </tr>
+              <tr v-for="product in productStore.items" :key="product.id">
+                <td>
+                  <div class="shipment-item-image-box">
+                    <SmartImage
+                      :src="product.image_url"
+                      alt="product image"
+                      imgClass="shipment-item-image"
+                      fallbackClass="shipment-item-image-fallback"
+                    />
+                  </div>
+                </td>
+                <td class="shipment-item-name-cell">{{ product.name ?? '-' }}</td>
+                <td>{{ product.barcode ?? '-' }}</td>
+                <td>{{ product.product_code ?? '-' }}</td>
+                <td class="text-right">{{ product.minimum_order_quantity ?? '-' }}</td>
+                <td class="text-right" style="width: 130px">
+                  <q-input
+                    :model-value="productQuantityById[product.id] ?? 1"
+                    type="number"
+                    dense
+                    outlined
+                    min="1"
+                    @update:model-value="(value) => onSetProductQuantity(product.id, value)"
+                  />
+                </td>
+                <td class="text-right">
+                  <q-btn
+                    color="primary"
+                    no-caps
+                    label="Add"
+                    :loading="shipmentStore.saving"
+                    @click="onAddProductToShipment(product.id)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="showAddItemDialog = false" />
+          <q-btn flat label="Close" @click="showAddItemDialog = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showAddProductDialog">
+      <q-card style="min-width: 560px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">Add Product + Add to Shipment</div>
+          <q-btn icon="close" flat round dense @click="showAddProductDialog = false" />
+        </q-card-section>
+
+        <q-card-section>
+          <q-form ref="addProductFormRef" class="q-gutter-sm">
+          <q-input
+            v-model="addProductForm.name"
+            label="Name *"
+            outlined
+            dense
+            autofocus
+            hide-bottom-space
+            :rules="[(value: string) => Boolean(value?.trim()) || 'Name is required']"
+          />
+          <q-input
+            v-model.number="addProductForm.quantity"
+            label="Quantity *"
+            type="number"
+            min="1"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
+          />
+          <q-input v-model="addProductForm.barcode" label="Barcode" outlined dense hide-bottom-space />
+          <q-input v-model="addProductForm.product_code" label="Product Code" outlined dense hide-bottom-space />
+          <q-input
+            v-model="addProductForm.image_url"
+            label="Image URL *"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: string) => Boolean(value?.trim()) || 'Image URL is required']"
+          />
+          <q-input
+            v-model.number="addProductForm.price_gbp"
+            label="Price GBP *"
+            type="number"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Price GBP is required']"
+          />
+          <q-input
+            v-model.number="addProductForm.product_weight"
+            label="Product Weight *"
+            type="number"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Product Weight is required']"
+          />
+          <q-input
+            v-model.number="addProductForm.package_weight"
+            label="Package Weight *"
+            type="number"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Package Weight is required']"
+          />
+          <q-select
+            v-model="addProductForm.vendor_code"
+            :options="vendorOptions"
+            emit-value
+            map-options
+            option-value="value"
+            option-label="label"
+            label="Vendor"
+            outlined
+            dense
+            hide-bottom-space
+          />
+          <q-select
+            v-model="addProductForm.market_code"
+            :options="marketOptions"
+            emit-value
+            map-options
+            option-value="value"
+            option-label="label"
+            label="Market"
+            outlined
+            dense
+            hide-bottom-space
+          />
+          <q-input
+            v-model.number="addProductForm.minimum_order_quantity"
+            label="Minimum Order Quantity"
+            type="number"
+            outlined
+            dense
+            hide-bottom-space
+          />
+          </q-form>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" @click="showAddProductDialog = false" />
           <q-btn
             color="primary"
-            :label="editingItemId ? 'Update Item' : 'Add Item'"
-            :loading="shipmentStore.saving"
-            @click="onSubmitItem"
+            no-caps
+            label="Create & Add"
+            :loading="productStore.saving || shipmentStore.saving"
+            @click="onCreateProductAndAddToShipment"
           />
         </q-card-actions>
       </q-card>
@@ -401,46 +572,77 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import type { QForm } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import ShipmentItemDetailsDialog from '../components/ShipmentItemDetailsDialog.vue'
 import { calculateCostBdt } from '../utils/costing'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useShipmentStore } from '../stores/shipmentStore'
-import { SHIPMENT_STATUS_OPTIONS, type ShipmentItem, type ShipmentItemMethod, type ShipmentStatus } from '../types'
+import { SHIPMENT_STATUS_OPTIONS, type ShipmentItem, type ShipmentStatus } from '../types'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const shipmentStore = useShipmentStore()
 const productStore = useProductStore()
+const vendorStore = useVendorStore()
+const marketStore = useMarketStore()
 const $q = useQuasar()
 
 const showAddItemDialog = ref(false)
+const showAddProductDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showItemDetailsDialog = ref(false)
 const initialLoading = ref(true)
-const editingItemId = ref<number | null>(null)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
 const selectedDetailsItem = ref<ShipmentItem | null>(null)
 const selectedStatus = ref<ShipmentStatus>('Draft')
 const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
-const methodOptions: Array<{ label: string; value: ShipmentItemMethod }> = [
-  { label: 'Order', value: 'order' },
-  { label: 'Costing', value: 'costing' },
-  { label: 'Manual', value: 'manual' },
+const productSearch = ref('')
+const productSearchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name')
+const productSearchFieldOptions: Array<{
+  label: string
+  value: 'name' | 'barcode' | 'product_code' | 'id'
+}> = [
+  { label: 'Name', value: 'name' },
+  { label: 'Barcode', value: 'barcode' },
+  { label: 'Product Code', value: 'product_code' },
+  { label: 'Product ID', value: 'id' },
 ]
-const itemForm = reactive({
+const productQuantityById = reactive<Record<number, number>>({})
+const addProductFormRef = ref<QForm | null>(null)
+const addProductForm = reactive({
   name: '',
   quantity: 1,
   barcode: '',
   product_code: '',
   image_url: '',
-  method: 'manual' as ShipmentItemMethod,
-  order_id: null as number | null,
+  price_gbp: null as number | null,
+  product_weight: null as number | null,
+  package_weight: null as number | null,
+  vendor_code: null as string | null,
+  market_code: null as string | null,
+  minimum_order_quantity: null as number | null,
 })
+const vendorOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...vendorStore.items.map((vendor) => ({
+    label: `${vendor.name} (${vendor.code})`,
+    value: vendor.code,
+  })),
+])
+const marketOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...marketStore.items.map((market) => ({
+    label: `${market.name} (${market.code})`,
+    value: market.code,
+  })),
+])
 
 const shipmentId = computed(() => Number(route.params.id))
 const statusOptions = SHIPMENT_STATUS_OPTIONS
@@ -472,32 +674,51 @@ const goToShipmentInfo = async () => {
   await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/info`)
 }
 
-const resetItemForm = () => {
-  editingItemId.value = null
-  itemForm.name = ''
-  itemForm.quantity = 1
-  itemForm.barcode = ''
-  itemForm.product_code = ''
-  itemForm.image_url = ''
-  itemForm.method = 'manual'
-  itemForm.order_id = null
+const goToBatchCodePage = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/batch-code-pc`)
+}
+
+const resetProductSearchDialog = () => {
+  productSearch.value = ''
+  productSearchField.value = 'name'
+  Object.keys(productQuantityById).forEach((key) => {
+    delete productQuantityById[Number(key)]
+  })
+  productStore.items = []
 }
 
 const openAddItemDialog = () => {
-  resetItemForm()
+  resetProductSearchDialog()
   showAddItemDialog.value = true
 }
 
-const openEditItemDialog = (item: ShipmentItem) => {
-  editingItemId.value = item.id
-  itemForm.name = item.name ?? ''
-  itemForm.quantity = item.quantity
-  itemForm.barcode = item.barcode ?? ''
-  itemForm.product_code = item.product_code ?? ''
-  itemForm.image_url = item.image_url ?? ''
-  itemForm.method = item.method ?? 'manual'
-  itemForm.order_id = item.order_id ?? null
-  showAddItemDialog.value = true
+const resetAddProductForm = () => {
+  addProductForm.name = ''
+  addProductForm.quantity = 1
+  addProductForm.barcode = ''
+  addProductForm.product_code = ''
+  addProductForm.image_url = ''
+  addProductForm.price_gbp = null
+  addProductForm.product_weight = null
+  addProductForm.package_weight = null
+  addProductForm.vendor_code = null
+  addProductForm.market_code = null
+  addProductForm.minimum_order_quantity = null
+}
+
+const openAddProductDialog = () => {
+  resetAddProductForm()
+  showAddProductDialog.value = true
+}
+
+const onSetProductQuantity = (productId: number, value: string | number | null) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    productQuantityById[productId] = 1
+    return
+  }
+  productQuantityById[productId] = Math.floor(parsed)
 }
 
 const openDeleteDialog = (item: ShipmentItem) => {
@@ -527,60 +748,95 @@ const onAddToInventory = async () => {
   await shipmentStore.addShipmentToInventory()
 }
 
-const onSubmitItem = async () => {
+const onSearchProducts = async () => {
+  await productStore.fetchProducts({
+    page: 1,
+    pageSize: 40,
+    search: productSearch.value,
+    searchField: productSearchField.value,
+    tenantId: authStore.tenantId,
+    isAvailable: true,
+  })
+}
+
+const onAddProductToShipment = async (productId: number) => {
   if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
     return
   }
-
-  const quantity = Number(itemForm.quantity || 0)
-  if (!itemForm.name.trim()) {
-    $q.notify({ type: 'warning', message: 'Name is required.' })
-    return
-  }
+  const quantity = Number(productQuantityById[productId] ?? 1)
   if (!Number.isFinite(quantity) || quantity <= 0) {
     $q.notify({ type: 'warning', message: 'Quantity must be greater than 0.' })
     return
   }
 
-  let result:
-    | {
-        success: boolean
-      }
-    | undefined
-
-  const editingId = editingItemId.value
-  if (editingId != null) {
-    result = await shipmentStore.updateShipmentItem({
-      id: editingId,
-      patch: {
-        name: itemForm.name.trim(),
-        quantity,
-        barcode: itemForm.barcode.trim() || null,
-        product_code: itemForm.product_code.trim() || null,
-        image_url: itemForm.image_url.trim() || null,
-        method: itemForm.method,
-        order_id: itemForm.order_id,
-      },
-    })
-  } else {
-    result = await shipmentStore.addShipmentItemManual({
-      shipment_id: shipmentId.value,
-      name: itemForm.name.trim(),
-      quantity,
-      barcode: itemForm.barcode.trim() || null,
-      product_code: itemForm.product_code.trim() || null,
-      image_url: itemForm.image_url.trim() || null,
-      method: itemForm.method,
-      order_id: itemForm.order_id,
-    })
-  }
+  const result = await shipmentStore.addShipmentItemFromProduct({
+    shipment_id: shipmentId.value,
+    product_id: productId,
+    quantity,
+  })
 
   if (!result.success) {
     return
   }
 
-  showAddItemDialog.value = false
-  resetItemForm()
+  productQuantityById[productId] = 1
+}
+
+const onCreateProductAndAddToShipment = async () => {
+  if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+
+  const isValid = await addProductFormRef.value?.validate()
+  if (!isValid) {
+    return
+  }
+
+  const name = addProductForm.name.trim()
+  const quantity = Number(addProductForm.quantity ?? 0)
+  const priceGbp = Number(addProductForm.price_gbp)
+  const productWeight = Number(addProductForm.product_weight)
+  const packageWeight = Number(addProductForm.package_weight)
+
+  const createProductResult = await productStore.createProduct({
+    tenant_id: authStore.tenantId ?? null,
+    name,
+    image_url: addProductForm.image_url.trim() || null,
+    barcode: addProductForm.barcode.trim() || null,
+    product_code: addProductForm.product_code.trim() || null,
+    price_gbp: priceGbp,
+    country_of_origin: null,
+    brand: null,
+    category: null,
+    available_units: null,
+    tariff_code: null,
+    languages: null,
+    batch_code_manufacture_date: null,
+    expire_date: null,
+    minimum_order_quantity: addProductForm.minimum_order_quantity,
+    product_weight: productWeight,
+    package_weight: packageWeight,
+    vendor_code: addProductForm.vendor_code,
+    market_code: addProductForm.market_code,
+    is_available: true,
+  })
+
+  if (!createProductResult.success || !createProductResult.data?.id) {
+    return
+  }
+
+  const addResult = await shipmentStore.addShipmentItemFromProduct({
+    shipment_id: shipmentId.value,
+    product_id: createProductResult.data.id,
+    quantity,
+  })
+
+  if (!addResult.success) {
+    return
+  }
+
+  showAddProductDialog.value = false
+  resetAddProductForm()
 }
 
 const onConfirmDelete = async () => {
@@ -706,7 +962,11 @@ onMounted(async () => {
     return
   }
   try {
-    await shipmentStore.fetchShipmentById(shipmentId.value)
+    await Promise.all([
+      shipmentStore.fetchShipmentById(shipmentId.value),
+      vendorStore.fetchVendors(),
+      marketStore.fetchMarkets(),
+    ])
   } finally {
     initialLoading.value = false
   }
@@ -719,6 +979,12 @@ watch(
   },
   { immediate: true },
 )
+
+watch(showAddItemDialog, (open) => {
+  if (!open) {
+    resetProductSearchDialog()
+  }
+})
 </script>
 
 <style scoped>

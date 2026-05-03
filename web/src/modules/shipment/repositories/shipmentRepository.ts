@@ -3,8 +3,11 @@ import { supabase } from 'src/boot/supabase'
 import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
+  BatchCodePc,
   BulkAddShipmentItemsFromProductInput,
+  BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
+  CreateBatchCodePcInput,
   CreateShipmentInput,
   DeleteShipmentInput,
   DeleteShipmentItemInput,
@@ -351,6 +354,72 @@ const bulkDeleteShipmentItemsByProduct = async (
   return Number(data ?? 0)
 }
 
+const listBatchCodePcByShipment = async (shipmentId: number): Promise<BatchCodePc[]> => {
+  const { data, error } = await db
+    .from('batch_code_pc')
+    .select('*')
+    .eq('shipment_id', shipmentId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return (data as BatchCodePc[] | null) ?? []
+}
+
+const createBatchCodePc = async (payload: CreateBatchCodePcInput): Promise<BatchCodePc> => {
+  const insertPayload = {
+    shipment_id: payload.shipment_id,
+    shipment_item_id: payload.shipment_item_id ?? null,
+    product_code: payload.product_code ?? null,
+    batch_id: payload.batch_id ?? null,
+    manufacturing_date: payload.manufacturing_date ?? null,
+    expire_date: payload.expire_date ?? null,
+  }
+
+  const { data, error } = await db
+    .from('batch_code_pc')
+    .insert(insertPayload)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Batch row was not created.')
+  }
+
+  return data as BatchCodePc
+}
+
+const bulkCreateBatchCodePc = async (
+  payload: BulkCreateBatchCodePcInput,
+): Promise<BatchCodePc[]> => {
+  if (!payload.rows.length) {
+    return []
+  }
+
+  const insertRows = payload.rows.map((row) => ({
+    shipment_id: row.shipment_id,
+    shipment_item_id: row.shipment_item_id ?? null,
+    product_code: row.product_code ?? null,
+    batch_id: row.batch_id ?? null,
+    manufacturing_date: row.manufacturing_date ?? null,
+    expire_date: row.expire_date ?? null,
+  }))
+
+  const { data, error } = await db.from('batch_code_pc').insert(insertRows).select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data as BatchCodePc[] | null) ?? []
+}
+
 export const shipmentRepository = {
   listShipments,
   getShipmentById,
@@ -368,4 +437,7 @@ export const shipmentRepository = {
   deleteShipmentItem,
   clearOrderItemShipmentLinkByShipmentItem,
   bulkDeleteShipmentItemsByProduct,
+  listBatchCodePcByShipment,
+  createBatchCodePc,
+  bulkCreateBatchCodePc,
 }

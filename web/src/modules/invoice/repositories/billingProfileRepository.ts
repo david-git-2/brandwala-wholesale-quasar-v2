@@ -7,7 +7,7 @@ import type {
   DeleteBillingProfileInput,
   UpdateBillingProfileInput,
 } from '../types/billingProfile'
-import type { FilterOperator } from '../types'
+import type { FilterOperator } from '../types/index'
 
 const FIELDS = [
   'id',

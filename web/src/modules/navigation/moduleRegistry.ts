@@ -167,6 +167,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'accounting',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Invoice Accounting',
+        caption: 'Review invoice accounting entries and payments',
+        icon: 'request_quote',
+        routeSegment: 'accounting/invoice',
+        requiredAction: 'view',
+      },
     ],
   },
   {

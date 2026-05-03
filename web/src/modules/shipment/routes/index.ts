@@ -43,6 +43,18 @@ const shipmentRoutes: RouteRecordRaw[] = [
           requiredModule: 'shipment',
         }),
       },
+      {
+        path: ':id/batch-code-pc',
+        name: 'app-shipment-batch-code-pc-page',
+        component: () => import('../pages/AdminShipmentBatchCodePage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'shipment',
+        }),
+      },
 
     ],
   },
