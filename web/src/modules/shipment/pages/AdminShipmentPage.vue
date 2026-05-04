@@ -9,6 +9,7 @@
     <ShipmentListCard
       v-else
       @edit="onShipmentEdit"
+      @copy="onShipmentCopy"
       @delete="onShipmentDelete"
       @select="onSelectShipment"
     />
@@ -90,6 +91,10 @@ const onShipmentEdit = (shipment: (typeof shipmentStore.shipments)[number]) => {
 const onShipmentDelete = (shipment: Shipment) => {
   pendingDeleteShipment.value = shipment
   showDeleteDialog.value = true
+}
+
+const onShipmentCopy = async (shipment: Shipment) => {
+  await shipmentStore.copyShipment({ id: shipment.id })
 }
 
 const closeDeleteDialog = () => {

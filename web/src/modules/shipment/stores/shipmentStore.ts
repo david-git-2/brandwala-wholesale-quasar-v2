@@ -11,7 +11,10 @@ import type {
   BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateBatchCodePcInput,
+  CopyShipmentInput,
   CreateShipmentInput,
+  DeleteBatchCodePcInput,
+  DeleteAllBatchCodePcByShipmentInput,
   DeleteShipmentInput,
   DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
@@ -187,6 +190,30 @@ export const useShipmentStore = defineStore('shipment', {
       }
     },
 
+    async copyShipment(payload: CopyShipmentInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.copyShipment(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to copy shipment.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.shipments.unshift(result.data)
+        }
+
+        showSuccessNotification('Shipment copied successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
     async fetchShipmentItems(shipmentId: number) {
       this.loading = true
       this.error = null
@@ -289,6 +316,50 @@ export const useShipmentStore = defineStore('shipment', {
         }
 
         showSuccessNotification('Batch rows created successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteBatchCodePc(payload: DeleteBatchCodePcInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.deleteBatchCodePc(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete batch row.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.batchCodePcRows = this.batchCodePcRows.filter((row) => row.id !== payload.id)
+        showSuccessNotification('Batch row deleted successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteAllBatchCodePcByShipment(payload: DeleteAllBatchCodePcByShipmentInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await shipmentService.deleteAllBatchCodePcByShipment(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete all batch rows.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.batchCodePcRows = this.batchCodePcRows.filter(
+          (row) => row.shipment_id !== payload.shipment_id,
+        )
+        showSuccessNotification('All batch rows deleted successfully.')
         return result
       } finally {
         this.saving = false

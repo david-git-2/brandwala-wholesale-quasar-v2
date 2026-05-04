@@ -112,34 +112,99 @@
         </q-tab-panel>
 
         <q-tab-panel name="data" class="bg-grey-1">
-          <div class="row justify-end q-mb-sm">
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-caption text-grey-7">Total Quantity</div>
+                  <div class="text-h6 text-weight-bold">{{ quantitySummary.totalQuantity }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-caption text-grey-7">Total Received</div>
+                  <div class="text-h6 text-weight-bold text-positive">{{ quantitySummary.totalReceivedQuantity }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-caption text-grey-7">Total Damaged</div>
+                  <div class="text-h6 text-weight-bold text-warning">{{ quantitySummary.totalDamagedQuantity }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-caption text-grey-7">Total Stolen</div>
+                  <div class="text-h6 text-weight-bold text-negative">{{ quantitySummary.totalStolenQuantity }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+
+          <div v-if="batchRowsForUi.length" class="row justify-between items-center q-mb-sm">
             <q-btn
-              flat
+              color="negative"
               no-caps
-              color="primary"
-              icon="refresh"
-              label="Refresh"
-              :loading="shipmentStore.loading"
-              @click="onRefreshRows"
+              icon="delete_sweep"
+              label="Delete All"
+              :loading="shipmentStore.saving"
+              :disable="!batchRowsForUi.length"
+              @click="confirmDeleteAllOpen = true"
             />
+            <q-select
+              v-model="visibleColumns"
+              dense
+              outlined
+              multiple
+              emit-value
+              map-options
+              options-dense
+              style="width: 52px"
+              :options="columnOptions"
+              hide-dropdown-icon
+            >
+              <template #prepend>
+                <q-icon name="view_column" />
+              </template>
+              <template #selected-item>
+                <span />
+              </template>
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section avatar>
+                    <q-checkbox :model-value="scope.selected" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <q-markup-table flat>
             <thead>
               <tr>
-                <th class="text-right">SL</th>
-                <th class="text-left">Image</th>
-                <th class="text-left">Product Name</th>
-                <th class="text-left">Product Code</th>
-                <th class="text-left batch-id-col">Batch ID</th>
-                <th class="text-left">Manufacturing Date</th>
-                <th class="text-left">Expire Date</th>
-                <th class="text-left">Time Left</th>
+                <th v-if="showColumn('sl')" class="text-right">SL</th>
+                <th v-if="showColumn('image')" class="text-left">Image</th>
+                <th v-if="showColumn('name')" class="text-left">Product Name</th>
+                <th v-if="showColumn('product_code')" class="text-left">Product Code</th>
+                <th v-if="showColumn('batch_id')" class="text-left batch-id-col">Batch ID</th>
+                <th v-if="showColumn('manufacturing_date')" class="text-left">Manufacturing Date</th>
+                <th v-if="showColumn('expire_date')" class="text-left">Expire Date</th>
+                <th v-if="showColumn('time_left')" class="text-left">Time Left</th>
+                <th v-if="showColumn('action')" class="text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, index) in batchRowsForUi" :key="row.id">
-                <td class="text-right">{{ index + 1 }}</td>
-                <td>
+                <td v-if="showColumn('sl')" class="text-right">{{ index + 1 }}</td>
+                <td v-if="showColumn('image')">
                   <q-img
                     v-if="row.imageUrl"
                     :src="row.imageUrl"
@@ -148,21 +213,52 @@
                   />
                   <span v-else>-</span>
                 </td>
-                <td>{{ row.productName ?? '-' }}</td>
-                <td>{{ row.product_code ?? '-' }}</td>
-                <td class="batch-id-col">{{ row.batch_id ?? '-' }}</td>
-                <td>{{ formatIsoDateToDdMmYyyy(row.manufacturing_date) }}</td>
-                <td>{{ formatIsoDateToDdMmYyyy(row.uiExpireDate) }}</td>
-                <td>{{ row.timeLeftLabel }}</td>
+                <td v-if="showColumn('name')" class="product-name-cell">{{ row.productName ?? '-' }}</td>
+                <td v-if="showColumn('product_code')">{{ row.product_code ?? '-' }}</td>
+                <td v-if="showColumn('batch_id')" class="batch-id-col">{{ row.batch_id ?? '-' }}</td>
+                <td v-if="showColumn('manufacturing_date')">{{ formatIsoDateToDdMmYyyy(row.manufacturing_date) }}</td>
+                <td v-if="showColumn('expire_date')">{{ formatIsoDateToDdMmYyyy(row.uiExpireDate) }}</td>
+                <td v-if="showColumn('time_left')">{{ row.timeLeftLabel }}</td>
+                <td v-if="showColumn('action')" class="text-right">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="delete"
+                    :loading="shipmentStore.saving"
+                    @click="onDeleteBatchRow(row.id)"
+                  />
+                </td>
               </tr>
               <tr v-if="!shipmentStore.batchCodePcRows.length">
-                <td colspan="8" class="text-center text-grey-6 q-pa-md">No batch code rows found.</td>
+                <td :colspan="visibleColumns.length" class="text-center text-grey-6 q-pa-md">
+                  No batch code rows found.
+                </td>
               </tr>
             </tbody>
           </q-markup-table>
         </q-tab-panel>
       </q-tab-panels>
     </q-card>
+
+    <q-dialog v-model="confirmDeleteAllOpen" persistent>
+      <q-card style="min-width: 340px">
+        <q-card-section class="text-h6">Delete All Batch Rows</q-card-section>
+        <q-card-section>
+          This will permanently delete all batch rows for this shipment. Are you sure?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="confirmDeleteAllOpen = false" />
+          <q-btn
+            color="negative"
+            label="Delete All"
+            :loading="shipmentStore.saving"
+            @click="onDeleteAllBatchRows"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -186,10 +282,24 @@ const productCodesText = ref('')
 const batchIdsText = ref('')
 const manufacturingDatesText = ref('')
 const activeTab = ref<'insert' | 'data'>('data')
+const confirmDeleteAllOpen = ref(false)
+const columnOptions = [
+  { label: 'SL', value: 'sl' },
+  { label: 'Image', value: 'image' },
+  { label: 'Product Name', value: 'name' },
+  { label: 'Product Code', value: 'product_code' },
+  { label: 'Batch ID', value: 'batch_id' },
+  { label: 'Manufacturing Date', value: 'manufacturing_date' },
+  { label: 'Expire Date', value: 'expire_date' },
+  { label: 'Time Left', value: 'time_left' },
+  { label: 'Action', value: 'action' },
+] as const
+const visibleColumns = ref<string[]>(columnOptions.map((col) => col.value))
 const tabOptions = [
   { label: 'Data', value: 'data' as const },
   { label: 'Insert', value: 'insert' as const },
 ]
+const showColumn = (columnKey: string) => visibleColumns.value.includes(columnKey)
 
 const parseLines = (value: string) =>
   value
@@ -325,6 +435,24 @@ const batchRowsForUi = computed(() =>
   }),
 )
 
+const quantitySummary = computed(() =>
+  shipmentStore.shipmentItems.reduce(
+    (acc, item) => {
+      acc.totalQuantity += Number(item.quantity ?? 0)
+      acc.totalReceivedQuantity += Number(item.received_quantity ?? 0)
+      acc.totalDamagedQuantity += Number(item.damaged_quantity ?? 0)
+      acc.totalStolenQuantity += Number(item.stolen_quantity ?? 0)
+      return acc
+    },
+    {
+      totalQuantity: 0,
+      totalReceivedQuantity: 0,
+      totalDamagedQuantity: 0,
+      totalStolenQuantity: 0,
+    },
+  ),
+)
+
 const previewRows = computed(() => {
   const productCodes = parseLines(productCodesText.value)
   const batchIds = parseLinesKeepBlanks(batchIdsText.value)
@@ -429,9 +557,20 @@ const onInsertRows = async () => {
   manufacturingDatesText.value = ''
 }
 
-const onRefreshRows = async () => {
+const onDeleteBatchRow = async (rowId: number) => {
+  const result = await shipmentStore.deleteBatchCodePc({ id: rowId })
+  if (!result.success) return
+}
+
+const onDeleteAllBatchRows = async () => {
   if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) return
-  await shipmentStore.fetchBatchCodePcByShipment(shipmentId.value)
+
+  const result = await shipmentStore.deleteAllBatchCodePcByShipment({
+    shipment_id: shipmentId.value,
+  })
+  if (!result.success) return
+
+  confirmDeleteAllOpen.value = false
 }
 
 onMounted(async () => {
@@ -452,5 +591,11 @@ onMounted(async () => {
 :deep(th.batch-id-col),
 :deep(td.batch-id-col) {
   background: #eaf7ef;
+}
+
+.product-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 420px;
 }
 </style>

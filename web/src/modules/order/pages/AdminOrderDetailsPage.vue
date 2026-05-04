@@ -62,8 +62,43 @@
         :disable="isRateEditingLocked"
         @click="onSaveRates"
       />
+      <q-btn
+        color="secondary"
+        dense
+        no-caps
+        :label="showSummary ? 'Hide Summary' : 'Show Summary'"
+        @click="showSummary = !showSummary"
+      />
 
     </div>
+    <q-card v-if="showSummary" flat bordered class="q-mt-sm q-mb-md bg-white">
+      <q-card-section class="row q-pa-none admin-summary-grid">
+        <div class="col-4 admin-summary-cell admin-summary-bg-qty">
+          <div class="text-caption text-grey-8 admin-summary-label">Total Quantity</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ adminSummary.totalQuantity }}</div>
+        </div>
+        <div class="col-4 admin-summary-cell admin-summary-bg-gbp">
+          <div class="text-caption text-grey-8 admin-summary-label">Total Price GBP</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ formatFixed2(adminSummary.totalPriceGbp) }}</div>
+        </div>
+        <div class="col-4 admin-summary-cell admin-summary-bg-bdt">
+          <div class="text-caption text-grey-8 admin-summary-label">Total Cost BDT</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ formatFixed2(adminSummary.totalCostBdt) }}</div>
+        </div>
+        <div class="col-4 admin-summary-cell admin-summary-bg-first">
+          <div class="text-caption text-grey-8 admin-summary-label">First Offer Total BDT</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ formatFixed2(adminSummary.totalFirstOfferBdt) }}</div>
+        </div>
+        <div class="col-4 admin-summary-cell admin-summary-bg-customer">
+          <div class="text-caption text-grey-8 admin-summary-label">Customer Offer Total BDT</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ formatFixed2(adminSummary.totalCustomerOfferBdt) }}</div>
+        </div>
+        <div class="col-4 admin-summary-cell admin-summary-bg-final">
+          <div class="text-caption text-grey-8 admin-summary-label">Final Offer Total BDT</div>
+          <div class="text-subtitle1 text-weight-bold admin-summary-value">{{ formatFixed2(adminSummary.totalFinalOfferBdt) }}</div>
+        </div>
+      </q-card-section>
+    </q-card>
     <div class="row items-center q-mb-sm">
       <q-btn
         v-if="selectedItemIds.length"
@@ -224,6 +259,7 @@ const selectedPriceGbp = ref<number | null>(null)
 const selectedShipItemId = ref<number | null>(null)
 const pendingRemoveShipItemId = ref<number | null>(null)
 const showNegotiationDialog = ref(false)
+const showSummary = ref(false)
 const negotiationChoice = ref<boolean>(false)
 const negotiationDialogShownForOrderId = ref<number | null>(null)
 
@@ -344,10 +380,36 @@ const isRateEditingLocked = computed(() =>
 )
 
 const selectedItems = computed(() => orderStore.selected?.order_items ?? [])
+const adminSummary = computed(() => {
+  return selectedItems.value.reduce(
+    (acc, item) => {
+      const qty = Number(item.ordered_quantity ?? 0)
+      acc.totalQuantity += qty
+      acc.totalPriceGbp += qty * Number(item.price_gbp ?? 0)
+      acc.totalCostGbp += qty * Number(item.cost_gbp ?? 0)
+      acc.totalCostBdt += qty * Number(item.cost_bdt ?? 0)
+      acc.totalFirstOfferBdt += qty * Number(item.first_offer_bdt ?? 0)
+      acc.totalCustomerOfferBdt += qty * Number(item.customer_offer_bdt ?? 0)
+      acc.totalFinalOfferBdt += qty * Number(item.final_offer_bdt ?? 0)
+      return acc
+    },
+    {
+      totalQuantity: 0,
+      totalPriceGbp: 0,
+      totalCostGbp: 0,
+      totalCostBdt: 0,
+      totalFirstOfferBdt: 0,
+      totalCustomerOfferBdt: 0,
+      totalFinalOfferBdt: 0,
+    },
+  )
+})
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100
 const ceilInt = (n: number) => Math.ceil(n)
 const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
+const formatFixed2 = (value: number | null | undefined) =>
+  value == null ? '-' : Number(value).toFixed(2)
 
 const onStatusChange = async (status: OrderStatus | null) => {
   if (!status || !orderStore.selected?.id) return
@@ -660,3 +722,47 @@ const onConfirmRemoveShipment = async () => {
 }
 
 </script>
+
+<style scoped>
+.admin-summary-cell {
+  width: calc(33.3333% - 8px);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 4px;
+  box-sizing: border-box;
+}
+
+.admin-summary-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-summary-value {
+  margin-top: 2px;
+}
+
+.admin-summary-bg-qty {
+  background: #f2f4f7;
+}
+
+.admin-summary-bg-gbp {
+  background: #e6f4ea;
+}
+
+.admin-summary-bg-bdt {
+  background: #f8f4d9;
+}
+
+.admin-summary-bg-first {
+  background: #e0f2f6;
+}
+
+.admin-summary-bg-customer {
+  background: #f8e8d5;
+}
+
+.admin-summary-bg-final {
+  background: #e8e2f8;
+}
+</style>

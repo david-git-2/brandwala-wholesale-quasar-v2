@@ -93,6 +93,10 @@ export type DeleteShipmentInput = {
   id: number
 }
 
+export type CopyShipmentInput = {
+  id: number
+}
+
 export type AddShipmentItemFromProductInput = {
   shipment_id: number
   product_id: number
@@ -169,6 +173,14 @@ export type CreateBatchCodePcInput = {
 
 export type BulkCreateBatchCodePcInput = {
   rows: CreateBatchCodePcInput[]
+}
+
+export type DeleteBatchCodePcInput = {
+  id: number
+}
+
+export type DeleteAllBatchCodePcByShipmentInput = {
+  shipment_id: number
 }
 
 export type ShipmentServiceResult<T> = {

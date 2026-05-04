@@ -7,8 +7,11 @@ import type {
   BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateBatchCodePcInput,
+  CopyShipmentInput,
   CreateShipmentInput,
   DeleteShipmentInput,
+  DeleteBatchCodePcInput,
+  DeleteAllBatchCodePcByShipmentInput,
   DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
   Shipment,
@@ -94,6 +97,20 @@ const deleteShipment = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete shipment.',
+    }
+  }
+}
+
+const copyShipment = async (
+  payload: CopyShipmentInput,
+): Promise<ShipmentServiceResult<Shipment>> => {
+  try {
+    const data = await shipmentRepository.copyShipment(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to copy shipment.',
     }
   }
 }
@@ -284,6 +301,34 @@ const bulkCreateBatchCodePc = async (
   }
 }
 
+const deleteBatchCodePc = async (
+  payload: DeleteBatchCodePcInput,
+): Promise<ShipmentServiceResult<void>> => {
+  try {
+    await shipmentRepository.deleteBatchCodePc(payload)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete batch row.',
+    }
+  }
+}
+
+const deleteAllBatchCodePcByShipment = async (
+  payload: DeleteAllBatchCodePcByShipmentInput,
+): Promise<ShipmentServiceResult<void>> => {
+  try {
+    await shipmentRepository.deleteAllBatchCodePcByShipment(payload)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete all batch rows.',
+    }
+  }
+}
+
 export const shipmentService = {
   listShipments,
   getShipmentById,
@@ -291,6 +336,7 @@ export const shipmentService = {
   updateShipment,
   updateShipmentField,
   deleteShipment,
+  copyShipment,
   listShipmentItems,
   listShipmentItemsByTenant,
   addShipmentItemFromProduct,
@@ -304,4 +350,6 @@ export const shipmentService = {
   listBatchCodePcByShipment,
   createBatchCodePc,
   bulkCreateBatchCodePc,
+  deleteBatchCodePc,
+  deleteAllBatchCodePcByShipment,
 }

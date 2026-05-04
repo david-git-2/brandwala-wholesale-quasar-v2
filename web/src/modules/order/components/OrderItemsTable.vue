@@ -1,5 +1,27 @@
 <template>
   <div class="order-items-table">
+    <div class="row justify-end q-mb-sm">
+      <q-btn flat round dense icon="view_column" aria-label="Select columns">
+        <q-menu>
+          <q-list style="min-width: 240px">
+            <q-item>
+              <q-item-section>
+                <div class="text-subtitle2">Show Columns</div>
+              </q-item-section>
+            </q-item>
+            <q-item>
+              <q-item-section>
+                <q-option-group
+                  v-model="selectedColumnNames"
+                  type="checkbox"
+                  :options="columnSelectorOptions"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
+    </div>
     <q-table
       flat
       bordered
@@ -951,9 +973,53 @@ const statusColumnMap: Record<OrderStatus, string[]> = {
   ],
 }
 
-const customerOfferColumns = computed(() => {
+const currentStatusColumnNames = computed(() => {
   const currentStatus = props.status || 'customer_submit'
-  const visibleColumnNames = statusColumnMap[currentStatus] || []
+  return statusColumnMap[currentStatus] || []
+})
+
+const columnLabelByName = computed(() => {
+  const map = new Map<string, string>()
+  allColumns.forEach((column) => {
+    map.set(column.name, String(column.label ?? column.name))
+  })
+  return map
+})
+
+const selectedColumnNames = ref<string[]>([])
+
+const columnSelectorOptions = computed(() =>
+  currentStatusColumnNames.value
+    .filter((name) => name !== 'sl' && name !== 'image_url')
+    .map((name) => ({
+      label: columnLabelByName.value.get(name) ?? name,
+      value: name,
+    })),
+)
+
+watch(
+  () => currentStatusColumnNames.value,
+  (names) => {
+    const allowed = new Set(names.filter((name) => name !== 'sl' && name !== 'image_url'))
+    selectedColumnNames.value = selectedColumnNames.value.filter((name) => allowed.has(name))
+
+    const existing = new Set(selectedColumnNames.value)
+    for (const name of names) {
+      if (name === 'sl' || name === 'image_url') continue
+      if (!existing.has(name)) {
+        selectedColumnNames.value.push(name)
+      }
+    }
+  },
+  { immediate: true },
+)
+
+const customerOfferColumns = computed(() => {
+  const statusVisible = currentStatusColumnNames.value
+  const selected = new Set(selectedColumnNames.value)
+  const visibleColumnNames = statusVisible.filter(
+    (name) => name === 'sl' || name === 'image_url' || selected.has(name),
+  )
 
   return allColumns.filter((column) => column.name === 'select' || visibleColumnNames.includes(column.name))
 })

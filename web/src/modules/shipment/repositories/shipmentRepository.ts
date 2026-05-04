@@ -8,8 +8,11 @@ import type {
   BulkCreateBatchCodePcInput,
   BulkDeleteShipmentItemsByProductInput,
   CreateBatchCodePcInput,
+  CopyShipmentInput,
   CreateShipmentInput,
   DeleteShipmentInput,
+  DeleteBatchCodePcInput,
+  DeleteAllBatchCodePcByShipmentInput,
   DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
   Shipment,
@@ -114,6 +117,62 @@ const deleteShipment = async (payload: DeleteShipmentInput): Promise<void> => {
   if (error) {
     throw error
   }
+}
+
+const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
+  const sourceShipment = await getShipmentById(payload.id)
+  const sourceItems = await listShipmentItems(payload.id)
+
+  const copiedShipment = await createShipment({
+    name: `${sourceShipment.name} (Copy)`,
+    tenant_id: sourceShipment.tenant_id,
+  })
+
+  const { data: updatedShipment, error: updateShipmentError } = await db
+    .from('shipments')
+    .update({
+      status: sourceShipment.status,
+      product_conversion_rate: sourceShipment.product_conversion_rate,
+      cargo_conversion_rate: sourceShipment.cargo_conversion_rate,
+      cargo_rate: sourceShipment.cargo_rate,
+      weight: sourceShipment.weight,
+      received_weight: sourceShipment.received_weight,
+      inventory_added: false,
+    })
+    .eq('id', copiedShipment.id)
+    .select('*')
+    .single()
+
+  if (updateShipmentError) {
+    throw updateShipmentError
+  }
+
+  if (sourceItems.length) {
+    const itemRows = sourceItems.map((item) => ({
+      shipment_id: copiedShipment.id,
+      order_id: item.order_id,
+      method: item.method,
+      name: item.name,
+      quantity: item.quantity,
+      barcode: item.barcode,
+      product_code: item.product_code,
+      product_id: item.product_id,
+      image_url: item.image_url,
+      product_weight: item.product_weight,
+      package_weight: item.package_weight,
+      price_gbp: item.price_gbp,
+      received_quantity: item.received_quantity,
+      damaged_quantity: item.damaged_quantity,
+      stolen_quantity: item.stolen_quantity,
+    }))
+
+    const { error: insertItemsError } = await db.from('shipment_items').insert(itemRows)
+    if (insertItemsError) {
+      throw insertItemsError
+    }
+  }
+
+  return (updatedShipment as Shipment | null) ?? copiedShipment
 }
 
 const listShipmentItems = async (shipmentId: number): Promise<ShipmentItem[]> => {
@@ -420,6 +479,24 @@ const bulkCreateBatchCodePc = async (
   return (data as BatchCodePc[] | null) ?? []
 }
 
+const deleteBatchCodePc = async (payload: DeleteBatchCodePcInput): Promise<void> => {
+  const { error } = await db.from('batch_code_pc').delete().eq('id', payload.id)
+
+  if (error) {
+    throw error
+  }
+}
+
+const deleteAllBatchCodePcByShipment = async (
+  payload: DeleteAllBatchCodePcByShipmentInput,
+): Promise<void> => {
+  const { error } = await db.from('batch_code_pc').delete().eq('shipment_id', payload.shipment_id)
+
+  if (error) {
+    throw error
+  }
+}
+
 export const shipmentRepository = {
   listShipments,
   getShipmentById,
@@ -427,6 +504,7 @@ export const shipmentRepository = {
   updateShipment,
   updateShipmentField,
   deleteShipment,
+  copyShipment,
   listShipmentItems,
   listShipmentItemsByTenant,
   addShipmentItemFromProduct,
@@ -440,4 +518,6 @@ export const shipmentRepository = {
   listBatchCodePcByShipment,
   createBatchCodePc,
   bulkCreateBatchCodePc,
+  deleteBatchCodePc,
+  deleteAllBatchCodePcByShipment,
 }

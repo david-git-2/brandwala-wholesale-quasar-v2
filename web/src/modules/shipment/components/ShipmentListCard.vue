@@ -36,6 +36,9 @@
                 <q-item clickable v-ripple @click="emit('edit', shipment)">
                   <q-item-section>Edit</q-item-section>
                 </q-item>
+                <q-item clickable v-ripple @click="emit('copy', shipment)">
+                  <q-item-section>Copy</q-item-section>
+                </q-item>
                 <q-item clickable v-ripple @click="emit('delete', shipment)">
                   <q-item-section class="text-negative">Delete</q-item-section>
                 </q-item> 
@@ -70,6 +73,7 @@ const statusChipColor = (status: string | null | undefined) => {
 
 const emit = defineEmits<{
   (e: 'edit', shipment: (typeof shipmentStore.shipments)[number]): void
+  (e: 'copy', shipment: (typeof shipmentStore.shipments)[number]): void
   (e: 'delete', shipment: (typeof shipmentStore.shipments)[number]): void
   (e: 'select', shipment: (typeof shipmentStore.shipments)[number]): void
 }>()

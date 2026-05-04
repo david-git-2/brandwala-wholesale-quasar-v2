@@ -23,7 +23,7 @@
           label="Add To Inventory"
           :disable="isAddToInventoryRateInvalid"
           :loading="shipmentStore.saving"
-          @click="onAddToInventory"
+          @click="showAddToInventoryConfirmDialog = true"
         />
         <q-btn
           color="secondary"
@@ -61,6 +61,26 @@
           label="Search Item"
           @click="openAddItemDialog"
         />
+        <q-btn flat round dense icon="view_column" aria-label="Select columns">
+          <q-menu>
+            <q-list style="min-width: 220px">
+              <q-item>
+                <q-item-section>
+                  <div class="text-subtitle2">Show Columns</div>
+                </q-item-section>
+              </q-item>
+              <q-item>
+                <q-item-section>
+                  <q-option-group
+                    v-model="visibleColumns"
+                    type="checkbox"
+                    :options="columnSelectorOptionsUi"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </div>
     </div>
 
@@ -77,6 +97,56 @@
       />
     </div>
 
+    <q-card
+      v-if="shipmentStore.selectedShipment && !initialLoading"
+      flat
+      bordered
+      class="q-mb-md bg-white"
+    >
+      <q-card-section class="row q-col-gutter-md shipment-summary-grid">
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Quantity</div>
+          <div class="text-subtitle1 text-weight-bold">{{ totals.quantity }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Price GBP</div>
+          <div class="text-subtitle1 text-weight-bold">{{ formatFixed2(totals.price_gbp) }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Cost BDT</div>
+          <div class="text-subtitle1 text-weight-bold">{{ formatFixed2(totals.cost_bdt) }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Weight</div>
+          <div class="text-subtitle1 text-weight-bold">{{ formatDecimal(totals.package_weight) }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Received Qty</div>
+          <div class="text-subtitle1 text-weight-bold text-positive">{{ totals.received_quantity }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Received Cost BDT</div>
+          <div class="text-subtitle1 text-weight-bold text-positive">{{ formatFixed2(totals.received_cost_bdt) }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Damaged Qty</div>
+          <div class="text-subtitle1 text-weight-bold text-warning">{{ totals.damaged_quantity }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Damaged Cost BDT</div>
+          <div class="text-subtitle1 text-weight-bold text-warning">{{ formatFixed2(totals.damaged_cost_bdt) }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Total Stolen Qty</div>
+          <div class="text-subtitle1 text-weight-bold text-negative">{{ totals.stolen_quantity }}</div>
+        </div>
+        <div class="shipment-summary-card">
+          <div class="text-caption text-grey-8">Stolen Cost BDT</div>
+          <div class="text-subtitle1 text-weight-bold text-negative">{{ formatFixed2(totals.stolen_cost_bdt) }}</div>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <PageInitialLoader v-if="initialLoading" />
 
     <q-banner v-else-if="shipmentStore.loading" class="bg-grey-2 text-grey-8 q-mb-md">
@@ -88,38 +158,43 @@
     </q-banner>
 
     <q-card v-if="!initialLoading" flat bordered>
-      <q-card-section class="q-pa-none">
+      <q-card-section class="q-pa-none shipment-table-scroll-wrap">
         <q-markup-table flat class="shipment-details-table">
           <thead>
             <tr>
               <th class="text-right shipment-sl-col">SL</th>
               <th class="text-left shipment-image-col">Image</th>
-              <th class="text-left shipment-name-col">Name</th>
-              <th class="text-left">Method</th>
-              <th class="text-right">Price GBP</th>
-              <th class="text-right">Cost BDT</th>
-              <th class="text-right shipment-qty-col shipment-qty-col--quantity">Quantity</th>
+              <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
+              <th v-if="isColumnVisible('method')" class="text-left">Method</th>
+              <th v-if="isColumnVisible('price_gbp')" class="text-right">Price GBP</th>
+              <th v-if="isColumnVisible('cost_bdt')" class="text-right">Cost BDT</th>
               <th
-                v-if="!isDraftStatus"
+                v-if="isColumnVisible('quantity')"
+                class="text-right shipment-qty-col shipment-qty-col--quantity"
+              >
+                Quantity
+              </th>
+              <th
+                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--received"
               >
                 Received Qty
               </th>
               <th
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--damaged"
               >
                 Damaged Qty
               </th>
               <th
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--stolen"
               >
                 Stolen Qty
               </th>
-              <th class="text-right">Product Wt</th>
-              <th class="text-right">Package Wt</th>
-              <th class="text-right">Actions</th>
+              <th v-if="isColumnVisible('product_weight')" class="text-right">Product Wt</th>
+              <th v-if="isColumnVisible('package_weight')" class="text-right">Package Wt</th>
+              <th v-if="isColumnVisible('actions')" class="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -135,11 +210,15 @@
                   />
                 </div>
               </td>
-              <td class="shipment-item-name-cell shipment-name-col" @click="openItemDetailsDialog(item)">
+              <td
+                v-if="isColumnVisible('name')"
+                class="shipment-item-name-cell shipment-name-col"
+                @click="openItemDetailsDialog(item)"
+              >
                 {{ item.name ?? '-' }}
               </td>
-              <td class="text-uppercase">{{ item.method ?? '-' }}</td>
-              <td class="text-right">
+              <td v-if="isColumnVisible('method')" class="text-uppercase">{{ item.method ?? '-' }}</td>
+              <td v-if="isColumnVisible('price_gbp')" class="text-right">
                 <span class="cursor-pointer">{{ formatDecimal(item.price_gbp) }}</span>
                 <q-popup-edit
                   :model-value="item.price_gbp"
@@ -151,7 +230,9 @@
                   @save="(value) => onNumericPopupSave(item, 'price_gbp', value, { decimals: 2 })"
                 >
                   <q-input
-                    v-model.number="scope.value"
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
                     type="number"
                     step="0.01"
                     dense
@@ -160,10 +241,13 @@
                   />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td v-if="isColumnVisible('cost_bdt')" class="text-right">
                 {{ formatFixed2(calculateItemCostBdt(item)) }}
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--quantity">
+              <td
+                v-if="isColumnVisible('quantity')"
+                class="text-right shipment-qty-col shipment-qty-col--quantity"
+              >
                 <span class="cursor-pointer">{{ item.quantity }}</span>
                 <q-popup-edit
                   :model-value="item.quantity"
@@ -174,16 +258,24 @@
                   v-slot="scope"
                   @save="(value) => onNumericPopupSave(item, 'quantity', value)"
                 >
-                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                  <q-input
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
+                    type="number"
+                    dense
+                    outlined
+                    autofocus
+                  />
                 </q-popup-edit>
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--received"
               >
                 <span class="cursor-pointer">{{ item.received_quantity }}</span>
                 <q-popup-edit
-                  :model-value="item.received_quantity"
+                  :model-value="toPopupQuantityValue(item.received_quantity)"
                   buttons
                   persistent
                   label-set="Save"
@@ -191,16 +283,24 @@
                   v-slot="scope"
                   @save="(value) => onNumericPopupSave(item, 'received_quantity', value)"
                 >
-                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                  <q-input
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
+                    type="number"
+                    dense
+                    outlined
+                    autofocus
+                  />
                 </q-popup-edit>
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--damaged"
               >
                 <span class="cursor-pointer">{{ item.damaged_quantity }}</span>
                 <q-popup-edit
-                  :model-value="item.damaged_quantity"
+                  :model-value="toPopupQuantityValue(item.damaged_quantity)"
                   buttons
                   persistent
                   label-set="Save"
@@ -208,16 +308,24 @@
                   v-slot="scope"
                   @save="(value) => onNumericPopupSave(item, 'damaged_quantity', value)"
                 >
-                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                  <q-input
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
+                    type="number"
+                    dense
+                    outlined
+                    autofocus
+                  />
                 </q-popup-edit>
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--stolen"
               >
                 <span class="cursor-pointer">{{ item.stolen_quantity }}</span>
                 <q-popup-edit
-                  :model-value="item.stolen_quantity"
+                  :model-value="toPopupQuantityValue(item.stolen_quantity)"
                   buttons
                   persistent
                   label-set="Save"
@@ -225,10 +333,18 @@
                   v-slot="scope"
                   @save="(value) => onNumericPopupSave(item, 'stolen_quantity', value)"
                 >
-                  <q-input v-model.number="scope.value" type="number" dense outlined autofocus />
+                  <q-input
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
+                    type="number"
+                    dense
+                    outlined
+                    autofocus
+                  />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td v-if="isColumnVisible('product_weight')" class="text-right">
                 <span class="cursor-pointer">{{ formatDecimal(item.product_weight) }}</span>
                 <q-popup-edit
                   :model-value="item.product_weight"
@@ -240,7 +356,9 @@
                   @save="(value) => onNumericPopupSave(item, 'product_weight', value, { decimals: 3 })"
                 >
                   <q-input
-                    v-model.number="scope.value"
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
                     type="number"
                     step="0.001"
                     dense
@@ -249,7 +367,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td v-if="isColumnVisible('package_weight')" class="text-right">
                 <span class="cursor-pointer">{{ formatDecimal(item.package_weight) }}</span>
                 <q-popup-edit
                   :model-value="item.package_weight"
@@ -261,7 +379,9 @@
                   @save="(value) => onNumericPopupSave(item, 'package_weight', value, { decimals: 3 })"
                 >
                   <q-input
-                    v-model.number="scope.value"
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
                     type="number"
                     step="0.001"
                     dense
@@ -270,7 +390,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td class="text-right">
+              <td v-if="isColumnVisible('actions')" class="text-right">
                 <q-btn
                   flat
                   dense
@@ -286,45 +406,48 @@
             <tr v-if="shipmentStore.shipmentItems.length" class="shipment-total-row">
               <td class="shipment-sl-col"></td>
               <td class="shipment-image-col"></td>
-              <td class="shipment-name-col"></td>
-              <td></td>
-              <td class="text-right text-weight-bold">
+              <td v-if="isColumnVisible('name')" class="shipment-name-col"></td>
+              <td v-if="isColumnVisible('method')"></td>
+              <td v-if="isColumnVisible('price_gbp')" class="text-right text-weight-bold">
                 {{ formatFixed2(totals.price_gbp) }}
               </td>
-              <td class="text-right text-weight-bold">
+              <td v-if="isColumnVisible('cost_bdt')" class="text-right text-weight-bold">
                 {{ formatFixed2(totals.cost_bdt) }}
               </td>
-              <td class="text-right shipment-qty-col shipment-qty-col--quantity text-weight-bold">
+              <td
+                v-if="isColumnVisible('quantity')"
+                class="text-right shipment-qty-col shipment-qty-col--quantity text-weight-bold"
+              >
                 {{ totals.quantity }}
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--received text-weight-bold"
               >
                 {{ totals.received_quantity }}
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--damaged text-weight-bold"
               >
                 {{ totals.damaged_quantity }}
               </td>
               <td
-                v-if="!isDraftStatus"
+                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--stolen text-weight-bold"
               >
                 {{ totals.stolen_quantity }}
               </td>
-              <td class="text-right text-weight-bold">
+              <td v-if="isColumnVisible('product_weight')" class="text-right text-weight-bold">
                 {{ formatDecimal(totals.product_weight) }}
               </td>
-              <td class="text-right text-weight-bold">
+              <td v-if="isColumnVisible('package_weight')" class="text-right text-weight-bold">
                 {{ formatDecimal(totals.package_weight) }}
               </td>
-              <td></td>
+              <td v-if="isColumnVisible('actions')"></td>
             </tr>
             <tr v-if="!shipmentStore.shipmentItems.length">
-              <td :colspan="isDraftStatus ? 10 : 13" class="text-center text-grey-6 q-pa-md">
+              <td :colspan="shipmentTableColspan" class="text-center text-grey-6 q-pa-md">
                 No shipment items yet
               </td>
             </tr>
@@ -374,6 +497,7 @@
                 <th class="text-left">Name</th>
                 <th class="text-left">Barcode</th>
                 <th class="text-left">Product Code</th>
+                <th class="text-right">Price GBP</th>
                 <th class="text-right">Minimum Qty</th>
                 <th class="text-right">Qty</th>
                 <th class="text-right">Action</th>
@@ -381,7 +505,7 @@
             </thead>
             <tbody>
               <tr v-if="!productStore.items.length && !productStore.loading">
-                <td colspan="7" class="text-center text-grey-6">No products found</td>
+                <td colspan="8" class="text-center text-grey-6">No products found</td>
               </tr>
               <tr v-for="product in productStore.items" :key="product.id">
                 <td>
@@ -397,6 +521,7 @@
                 <td class="shipment-item-name-cell">{{ product.name ?? '-' }}</td>
                 <td>{{ product.barcode ?? '-' }}</td>
                 <td>{{ product.product_code ?? '-' }}</td>
+                <td class="text-right">{{ formatFixed2(product.price_gbp) }}</td>
                 <td class="text-right">{{ product.minimum_order_quantity ?? '-' }}</td>
                 <td class="text-right" style="width: 130px">
                   <q-input
@@ -561,6 +686,24 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="showAddToInventoryConfirmDialog" persistent>
+      <q-card style="min-width: 420px; max-width: 500px; width: 92vw">
+        <q-card-section class="text-h6">Confirm Add To Inventory</q-card-section>
+        <q-card-section>
+          make sure the weight and received quantity is accurate as this will determint the purches cost in the inventory and based on that accounting entries will be done
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" @click="showAddToInventoryConfirmDialog = false" />
+          <q-btn
+            color="positive"
+            label="Confirm"
+            :loading="shipmentStore.saving"
+            @click="onConfirmAddToInventory"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <ShipmentItemDetailsDialog
       v-model="showItemDetailsDialog"
       :item="selectedDetailsItem"
@@ -597,6 +740,7 @@ const $q = useQuasar()
 const showAddItemDialog = ref(false)
 const showAddProductDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showAddToInventoryConfirmDialog = ref(false)
 const showItemDetailsDialog = ref(false)
 const initialLoading = ref(true)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
@@ -615,6 +759,40 @@ const productSearchFieldOptions: Array<{
   { label: 'Product ID', value: 'id' },
 ]
 const productQuantityById = reactive<Record<number, number>>({})
+const baseColumnSelectorOptions = [
+  { label: 'Name', value: 'name' },
+  { label: 'Method', value: 'method' },
+  { label: 'Price GBP', value: 'price_gbp' },
+  { label: 'Cost BDT', value: 'cost_bdt' },
+  { label: 'Quantity', value: 'quantity' },
+  { label: 'Product Wt', value: 'product_weight' },
+  { label: 'Package Wt', value: 'package_weight' },
+  { label: 'Actions', value: 'actions' },
+] as const
+
+const statusColumnSelectorOptions = [
+  { label: 'Received Qty', value: 'received_quantity' },
+  { label: 'Damaged Qty', value: 'damaged_quantity' },
+  { label: 'Stolen Qty', value: 'stolen_quantity' },
+] as const
+
+type ShipmentColumnKey =
+  | (typeof baseColumnSelectorOptions)[number]['value']
+  | (typeof statusColumnSelectorOptions)[number]['value']
+
+const columnSelectorOptions = computed(() =>
+  isDraftStatus.value
+    ? baseColumnSelectorOptions
+    : [...baseColumnSelectorOptions, ...statusColumnSelectorOptions],
+)
+
+const columnSelectorOptionsUi = computed(() =>
+  columnSelectorOptions.value.map((option) => ({ ...option })),
+)
+
+const visibleColumns = ref<ShipmentColumnKey[]>(
+  [...baseColumnSelectorOptions, ...statusColumnSelectorOptions].map((option) => option.value),
+)
 const addProductFormRef = ref<QForm | null>(null)
 const addProductForm = reactive({
   name: '',
@@ -662,6 +840,26 @@ const isAddToInventoryRateInvalid = computed(() => {
   const cargoConversionRate = Number(shipment.cargo_conversion_rate ?? 0)
 
   return cargoRate <= 0 || productConversionRate <= 0 || cargoConversionRate <= 0
+})
+
+const isColumnVisible = (column: ShipmentColumnKey) => visibleColumns.value.includes(column)
+
+const shipmentTableColspan = computed(() => {
+  const base = 2 // SL + Image are always visible
+  return (
+    base +
+    (isColumnVisible('name') ? 1 : 0) +
+    (isColumnVisible('method') ? 1 : 0) +
+    (isColumnVisible('price_gbp') ? 1 : 0) +
+    (isColumnVisible('cost_bdt') ? 1 : 0) +
+    (isColumnVisible('quantity') ? 1 : 0) +
+    (!isDraftStatus.value && isColumnVisible('received_quantity') ? 1 : 0) +
+    (!isDraftStatus.value && isColumnVisible('damaged_quantity') ? 1 : 0) +
+    (!isDraftStatus.value && isColumnVisible('stolen_quantity') ? 1 : 0) +
+    (isColumnVisible('product_weight') ? 1 : 0) +
+    (isColumnVisible('package_weight') ? 1 : 0) +
+    (isColumnVisible('actions') ? 1 : 0)
+  )
 })
 
 const onBack = async () => {
@@ -744,8 +942,11 @@ const onStatusChange = async (value: ShipmentStatus | null) => {
   })
 }
 
-const onAddToInventory = async () => {
-  await shipmentStore.addShipmentToInventory()
+const onConfirmAddToInventory = async () => {
+  const result = await shipmentStore.addShipmentToInventory()
+  if (result.success) {
+    showAddToInventoryConfirmDialog.value = false
+  }
 }
 
 const onSearchProducts = async () => {
@@ -755,7 +956,6 @@ const onSearchProducts = async () => {
     search: productSearch.value,
     searchField: productSearchField.value,
     tenantId: authStore.tenantId,
-    isAvailable: true,
   })
 }
 
@@ -779,7 +979,16 @@ const onAddProductToShipment = async (productId: number) => {
     return
   }
 
-  productQuantityById[productId] = 1
+  if (result.data?.id) {
+    await shipmentStore.updateShipmentItem({
+      id: result.data.id,
+      patch: {
+        method: 'manual',
+      },
+    })
+  }
+
+  resetProductSearchDialog()
 }
 
 const onCreateProductAndAddToShipment = async () => {
@@ -835,6 +1044,15 @@ const onCreateProductAndAddToShipment = async () => {
     return
   }
 
+  if (addResult.data?.id) {
+    await shipmentStore.updateShipmentItem({
+      id: addResult.data.id,
+      patch: {
+        method: 'manual',
+      },
+    })
+  }
+
   showAddProductDialog.value = false
   resetAddProductForm()
 }
@@ -870,6 +1088,9 @@ const formatDecimal = (value: number | null | undefined) =>
 const formatFixed2 = (value: number | null | undefined) =>
   value == null ? '-' : Number(value).toFixed(2)
 
+const toPopupQuantityValue = (value: number | null | undefined): number | null =>
+  value == null || Number(value) === 0 ? null : Number(value)
+
 const roundTo = (value: number, decimals = 0) => {
   const factor = 10 ** decimals
   return Math.round(value * factor) / factor
@@ -890,12 +1111,21 @@ const calculateItemCostBdt = (item: ShipmentItem) => {
 const totals = computed(() => {
   return shipmentStore.shipmentItems.reduce(
     (acc, item) => {
-      acc.price_gbp += Number(item.price_gbp ?? 0)
-      acc.cost_bdt += calculateItemCostBdt(item)
-      acc.quantity += Number(item.quantity ?? 0)
-      acc.received_quantity += Number(item.received_quantity ?? 0)
-      acc.damaged_quantity += Number(item.damaged_quantity ?? 0)
-      acc.stolen_quantity += Number(item.stolen_quantity ?? 0)
+      const itemCostBdt = Number(calculateItemCostBdt(item) ?? 0)
+      const itemQuantity = Number(item.quantity ?? 0)
+      const receivedQty = Number(item.received_quantity ?? 0)
+      const damagedQty = Number(item.damaged_quantity ?? 0)
+      const stolenQty = Number(item.stolen_quantity ?? 0)
+
+      acc.price_gbp += Number(item.price_gbp ?? 0) * itemQuantity
+      acc.cost_bdt += itemCostBdt * itemQuantity
+      acc.quantity += itemQuantity
+      acc.received_quantity += receivedQty
+      acc.damaged_quantity += damagedQty
+      acc.stolen_quantity += stolenQty
+      acc.received_cost_bdt += itemCostBdt * receivedQty
+      acc.damaged_cost_bdt += itemCostBdt * damagedQty
+      acc.stolen_cost_bdt += itemCostBdt * stolenQty
       acc.product_weight += Number(item.product_weight ?? 0)
       acc.package_weight += Number(item.package_weight ?? 0)
       return acc
@@ -907,6 +1137,9 @@ const totals = computed(() => {
       received_quantity: 0,
       damaged_quantity: 0,
       stolen_quantity: 0,
+      received_cost_bdt: 0,
+      damaged_cost_bdt: 0,
+      stolen_cost_bdt: 0,
       product_weight: 0,
       package_weight: 0,
     },
@@ -948,12 +1181,19 @@ const onNumericPopupSave = async (
     return
   }
 
-  if (field === 'product_weight' && item.product_id != null) {
+  if ((field === 'product_weight' || field === 'package_weight') && item.product_id != null) {
     const productId = item.product_id
-    await productStore.updateProduct({
-      id: productId,
-      product_weight: normalized,
-    })
+    if (field === 'product_weight') {
+      await productStore.updateProduct({
+        id: productId,
+        product_weight: normalized,
+      })
+    } else if (field === 'package_weight') {
+      await productStore.updateProduct({
+        id: productId,
+        package_weight: normalized,
+      })
+    }
   }
 }
 
@@ -976,6 +1216,22 @@ watch(
   () => shipmentStore.selectedShipment?.status,
   (value) => {
     selectedStatus.value = value ?? 'Draft'
+  },
+  { immediate: true },
+)
+
+watch(
+  () => columnSelectorOptions.value,
+  (options) => {
+    const allowed = new Set(options.map((option) => option.value))
+    visibleColumns.value = visibleColumns.value.filter((column) => allowed.has(column))
+
+    const existing = new Set(visibleColumns.value)
+    options.forEach((option) => {
+      if (!existing.has(option.value)) {
+        visibleColumns.value.push(option.value)
+      }
+    })
   },
   { immediate: true },
 )
@@ -1028,6 +1284,12 @@ watch(showAddItemDialog, (open) => {
   max-width: 100%;
 }
 
+.shipment-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .shipment-name-col {
   width: 200px;
   min-width: 200px;
@@ -1048,6 +1310,11 @@ watch(showAddItemDialog, (open) => {
 
 .shipment-details-table :deep(th) {
   background: #fff;
+}
+
+.shipment-table-scroll-wrap {
+  height: 70vh;
+  overflow: auto;
 }
 
 .shipment-details-table :deep(td:first-child),
