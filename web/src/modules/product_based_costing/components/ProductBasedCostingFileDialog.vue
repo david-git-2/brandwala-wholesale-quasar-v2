@@ -43,6 +43,28 @@
             outlined
             dense
           />
+
+          <q-select
+            v-model="form.vendor_code"
+            :options="vendorOptions"
+            emit-value
+            map-options
+            label="Default Vendor"
+            outlined
+            dense
+            clearable
+          />
+
+          <q-select
+            v-model="form.market_code"
+            :options="marketOptions"
+            emit-value
+            map-options
+            label="Default Market"
+            outlined
+            dense
+            clearable
+          />
         </q-form>
       </q-card-section>
 
@@ -63,12 +85,16 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue'
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
+import { useMarketStore } from 'src/modules/market/stores/marketStore'
 
 interface CostingFileForm {
   id: number | null
   name: string
   order_for: string
   note: string
+  vendor_code: string | null
+  market_code: string | null
 }
 
 const props = defineProps<{
@@ -86,12 +112,16 @@ type FormRef = {
 }
 
 const formRef = ref<FormRef | null>(null)
+const vendorStore = useVendorStore()
+const marketStore = useMarketStore()
 
 const emptyForm = (): CostingFileForm => ({
   id: null,
   name: '',
   order_for: '',
-  note: ''
+  note: '',
+  vendor_code: null,
+  market_code: null,
 })
 
 const form = reactive(emptyForm())
@@ -110,6 +140,8 @@ function fillForm(source: CostingFileForm | null) {
   form.name = values.name ?? ''
   form.order_for = values.order_for ?? ''
   form.note = values.note ?? ''
+  form.vendor_code = values.vendor_code ?? null
+  form.market_code = values.market_code ?? null
 }
 
 watch(
@@ -120,10 +152,34 @@ watch(
 
 watch(
   () => props.modelValue,
-  (isOpen) => {
-    if (isOpen) fillForm(props.data)
+  async (isOpen) => {
+    if (isOpen) {
+      fillForm(props.data)
+      if (!vendorStore.items.length) {
+        await vendorStore.fetchVendors()
+      }
+      if (!marketStore.items.length) {
+        await marketStore.fetchMarkets()
+      }
+    }
   }
 )
+
+const vendorOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...vendorStore.items.map((vendor) => ({
+    label: `${vendor.name} (${vendor.code})`,
+    value: vendor.code,
+  })),
+])
+
+const marketOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...marketStore.items.map((market) => ({
+    label: `${market.name} (${market.code})`,
+    value: market.code,
+  })),
+])
 
 async function handleSubmit() {
   const isValid = await formRef.value?.validate()
@@ -134,7 +190,9 @@ async function handleSubmit() {
     id: form.id,
     name: form.name,
     order_for: form.order_for,
-    note: form.note
+    note: form.note,
+    vendor_code: form.vendor_code,
+    market_code: form.market_code,
   })
 
   emit('update:modelValue', false)

@@ -1300,6 +1300,7 @@ export type Database = {
           created_at: string
           id: number
           invoice_id: number | null
+          market_code: string | null
           name: string | null
           note: string | null
           order_for: string | null
@@ -1307,6 +1308,7 @@ export type Database = {
           status: string | null
           tenant_id: number | null
           updated_at: string
+          vendor_code: string | null
         }
         Insert: {
           cargo_rate_kg_gbp?: number | null
@@ -1314,6 +1316,7 @@ export type Database = {
           created_at?: string
           id?: number
           invoice_id?: number | null
+          market_code?: string | null
           name?: string | null
           note?: string | null
           order_for?: string | null
@@ -1321,6 +1324,7 @@ export type Database = {
           status?: string | null
           tenant_id?: number | null
           updated_at?: string
+          vendor_code?: string | null
         }
         Update: {
           cargo_rate_kg_gbp?: number | null
@@ -1328,6 +1332,7 @@ export type Database = {
           created_at?: string
           id?: number
           invoice_id?: number | null
+          market_code?: string | null
           name?: string | null
           note?: string | null
           order_for?: string | null
@@ -1335,6 +1340,7 @@ export type Database = {
           status?: string | null
           tenant_id?: number | null
           updated_at?: string
+          vendor_code?: string | null
         }
         Relationships: [
           {
@@ -1345,11 +1351,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "product_based_costing_files_market_code_fkey"
+            columns: ["market_code"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "product_based_costing_files_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_files_vendor_code_fkey"
+            columns: ["vendor_code"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["code"]
           },
         ]
       }

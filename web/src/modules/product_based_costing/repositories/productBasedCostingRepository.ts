@@ -28,6 +28,8 @@ const buildProductBasedCostingFileCreatePayload = (
   name: normalizeText(payload.name),
   order_for: normalizeText(payload.order_for),
   note: normalizeText(payload.note),
+  vendor_code: normalizeText(payload.vendor_code),
+  market_code: normalizeText(payload.market_code),
   cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp ?? null,
   profit_rate: payload.profit_rate ?? null,
   conversion_rate: payload.conversion_rate ?? null,
@@ -53,6 +55,14 @@ const buildProductBasedCostingFileUpdatePayload = (
 
   if (payload.note !== undefined) {
     updatePayload.note = normalizeText(payload.note)
+  }
+
+  if (payload.vendor_code !== undefined) {
+    updatePayload.vendor_code = normalizeText(payload.vendor_code)
+  }
+
+  if (payload.market_code !== undefined) {
+    updatePayload.market_code = normalizeText(payload.market_code)
   }
 
   if (payload.cargo_rate_kg_gbp !== undefined) {

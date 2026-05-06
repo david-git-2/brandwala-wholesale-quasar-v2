@@ -86,6 +86,40 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/product-based-costing/:id/print',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: createAccessGuard({
+      loginRoute: 'admin-login-page',
+      requiredScope: 'app',
+      allowedRoles: ['admin', 'staff'],
+      requireTenantContext: true,
+      requiredModule: 'product_based_costing',
+      validateAccess: ({ authStore, to }) => {
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+        if (!selectedTenantSlug) {
+          return true
+        }
+
+        const routeTenantSlug = getTenantSlugFromRoute(to)
+
+        if (routeTenantSlug === selectedTenantSlug) {
+          return true
+        }
+
+        return getAppRouteLocation(to, selectedTenantSlug)
+      },
+    }),
+    children: [
+      {
+        path: '',
+        name: 'product-based-costing-file-print-page',
+        component: () => import('../pages/ProductBasedCostingFilePrintPage.vue'),
+        props: true,
+      },
+    ],
+  },
 ]
 
 export default productBasedCostingRoutes

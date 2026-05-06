@@ -133,6 +133,8 @@ type CostingFileForm = {
   name: string
   order_for: string
   note: string
+  vendor_code: string | null
+  market_code: string | null
 }
 
 const dialogOpen = ref(false)
@@ -151,6 +153,8 @@ function openEditDialog(row: ProductBasedCostingFile) {
     name: row.name ?? '',
     order_for: row.order_for ?? '',
     note: row.note ?? '',
+    vendor_code: row.vendor_code ?? null,
+    market_code: row.market_code ?? null,
   }
   dialogOpen.value = true
 }
@@ -162,14 +166,18 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       {id: payload.id,
       name: payload.name,
       order_for: payload.order_for,
-      note: payload.note}
+      note: payload.note,
+      vendor_code: payload.vendor_code,
+      market_code: payload.market_code}
     )
   } else {
     console.log('Create mode payload:', payload)
     await store.createProductBasedCostingFile({
       name: payload.name,
       order_for: payload.order_for,
-      note: payload.note
+      note: payload.note,
+      vendor_code: payload.vendor_code,
+      market_code: payload.market_code
     })
   }
   await loadFiles()

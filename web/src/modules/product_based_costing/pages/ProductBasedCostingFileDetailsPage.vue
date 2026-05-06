@@ -1,5 +1,7 @@
 <template>
   <q-page class="q-pa-md">
+    <PageInitialLoader v-if="store.loading" />
+    <template v-else>
 
 <div>
   <q-btn flat color="primary" dense icon="keyboard_backspace" label="Back to Files" @click="router.push({ name: 'product-based-costing-page' })" />
@@ -30,6 +32,15 @@
         @click="openPreview"
         style="border-radius: 8px"
       />
+      <q-btn
+        color="primary"
+        outline
+        icon="print"
+        no-caps
+        label="PDF"
+        @click="openPrintPage"
+        style="border-radius: 8px"
+      />
 
       <q-btn
         color="primary"
@@ -43,9 +54,7 @@
       />
     </div>
     <q-card flat class="q-pa-md q-mb-md bg-transparent">
-      <PageInitialLoader v-if="store.loading" />
-
-      <template v-else-if="store.item">
+      <template v-if="store.item">
         <div class="row justify-end">
           <q-select
             v-model="status"
@@ -88,10 +97,7 @@
     </div>
 
     <div class="q-pa-md">
-
-      <PageInitialLoader v-if="store.loading" />
-
-      <div v-else-if="!store.costingItems.length" class="text-grey-7">No items found.</div>
+      <div v-if="!store.costingItems.length" class="text-grey-7">No items found.</div>
 
       <div v-else class="row q-col-gutter-md">
         <ProductBasedCostingItemsTable
@@ -107,6 +113,7 @@
           @row-change="onRowChange"
           @product-weight-change="onProductWeightChange"
           @package-weight-change="onPackageWeightChange"
+          @bulk-delete="onBulkDelete"
         />
       </div>
     </div>
@@ -114,13 +121,10 @@
     <ProductBasedCostingItemAddDialog
       v-model="showItemDialog"
       :product-based-costing-file-id="fileId"
-      @created="handleCreated"
-    />
-
-    <ProductBasedCostingItemAddDialog
-      v-model="showItemDialog"
-      :product-based-costing-file-id="fileId"
       :item-data="selectedItem"
+      :default-vendor-code="store.item?.vendor_code ?? null"
+      :default-market-code="store.item?.market_code ?? null"
+      @created="handleCreated"
       @updated="handleUpdated"
     />
 
@@ -148,6 +152,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    </template>
   </q-page>
 </template>
 
@@ -271,7 +276,10 @@ onMounted(async () => {
 
 watch(
   () => route.params.id,
-  async () => {
+  async (newId, oldId) => {
+    if (newId === oldId) {
+      return
+    }
     await loadData();
     await refreshShippedItemIndicators();
   },
@@ -286,6 +294,38 @@ const onDelete = async (item: ProductBasedCostingItem) => {
   console.log('delete', item);
   await store.deleteProductBasedCostingItem(item.id);
 };
+
+const onBulkDelete = async (ids: number[]) => {
+  if (!ids.length) {
+    return
+  }
+
+  const results = await Promise.allSettled(
+    ids.map((id) => productBasedCostingService.deleteProductBasedCostingItem(id)),
+  )
+
+  const failedCount = results.filter(
+    (result) =>
+      result.status === 'rejected' ||
+      (result.status === 'fulfilled' && !result.value.success),
+  ).length
+
+  await store.fetchProductBasedCostingItems(fileId.value)
+  await refreshShippedItemIndicators()
+
+  if (failedCount > 0) {
+    $q.notify({
+      type: 'warning',
+      message: `${ids.length - failedCount} item(s) deleted, ${failedCount} failed.`,
+    })
+    return
+  }
+
+  $q.notify({
+    type: 'positive',
+    message: `${ids.length} item(s) deleted successfully.`,
+  })
+}
 
 type RowChangePayload = {
   item: ProductBasedCostingItem
@@ -324,6 +364,17 @@ const openPreview = () => {
   })
 
   window.open(previewRoute.href, '_blank', 'noopener')
+}
+
+const openPrintPage = () => {
+  if (!fileId.value) {
+    return
+  }
+  const printRoute = router.resolve({
+    name: 'product-based-costing-file-print-page',
+    params: { id: fileId.value },
+  })
+  window.open(printRoute.href, '_blank', 'noopener')
 }
 
 const openEditDialog = (item: ProductBasedCostingItem) => {

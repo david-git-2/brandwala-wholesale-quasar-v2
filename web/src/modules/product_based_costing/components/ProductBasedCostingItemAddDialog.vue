@@ -35,6 +35,29 @@
             :disable="isProductListInputType"
           />
 
+          <div v-if="form.image_url" class="q-mt-sm">
+            <div class="text-subtitle2 q-mb-sm">Image Preview</div>
+            <div style="margin: 0 auto; width: fit-content;">
+              <SmartImage :src="form.image_url" style="max-width: 150px;" />
+            </div>
+          </div>
+
+          <q-input
+            v-model="form.barcode"
+            label="Barcode"
+            outlined
+            dense
+            :disable="isProductListInputType"
+          />
+
+          <q-input
+            v-model="form.product_code"
+            label="Product Code"
+            outlined
+            dense
+            :disable="isProductListInputType"
+          />
+
           <q-select
             v-model="form.vendor_code"
             :options="vendorOptions"
@@ -45,6 +68,8 @@
             dense
             clearable
             :disable="isProductListInputType"
+            :loading="store.saving"
+            @update:model-value="onVendorOrMarketChange"
           />
 
           <q-select
@@ -57,6 +82,8 @@
             dense
             clearable
             :disable="isProductListInputType"
+            :loading="store.saving"
+            @update:model-value="onVendorOrMarketChange"
           />
 
           <div>
@@ -72,14 +99,6 @@
               ]"
             />
           </div>
-
-          <div v-if="form.image_url" class="q-mt-sm" >
-            <div class="text-subtitle2 q-mb-sm">Image Preview</div>
-            <div style="margin: 0 auto; width: fit-content;">
-          <SmartImage :src="form.image_url" style="max-width: 150px;" />
-</div>
-          </div>
-
 
           <q-input
             v-model.number="form.quantity"
@@ -142,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue'
+import { computed, watch, reactive } from 'vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue'
 import { useProductStore } from 'src/modules/products/stores/productStore'
@@ -156,6 +175,8 @@ interface ProductBasedCostingItemFormData {
   name?: string | null
   image_url?: string | null
   note?: string | null
+  barcode?: string | null
+  product_code?: string | null
   vendor_code?: string | null
   market_code?: string | null
   quantity?: number | null
@@ -171,6 +192,8 @@ const props = defineProps<{
   modelValue: boolean
   productBasedCostingFileId: number
   itemData?: ProductBasedCostingItemFormData | null
+  defaultVendorCode?: string | null
+  defaultMarketCode?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -198,8 +221,10 @@ const getInitialForm = () => ({
   name: '',
   image_url: '',
   note: '',
-  vendor_code: null as string | null,
-  market_code: null as string | null,
+  barcode: '',
+  product_code: '',
+  vendor_code: props.defaultVendorCode ?? null,
+  market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
@@ -218,6 +243,8 @@ const fillForm = () => {
       name: props.itemData.name ?? '',
       image_url: props.itemData.image_url ?? '',
       note: props.itemData.note ?? '',
+      barcode: props.itemData.barcode ?? '',
+      product_code: props.itemData.product_code ?? '',
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
@@ -260,6 +287,8 @@ const submitForm = async () => {
       name: form.name,
       image_url: form.image_url,
       note: form.note,
+      barcode: form.barcode,
+      product_code: form.product_code,
       vendor_code: form.vendor_code,
       market_code: form.market_code,
       quantity: form.quantity,
@@ -284,8 +313,8 @@ const submitForm = async () => {
     tenant_id: authStore.tenantId ?? null,
     name: form.name || null,
     image_url: form.image_url || null,
-    barcode: null,
-    product_code: null,
+    barcode: form.barcode || null,
+    product_code: form.product_code || null,
     price_gbp: form.price_gbp,
     country_of_origin: null,
     brand: null,
@@ -314,6 +343,8 @@ const submitForm = async () => {
     name: form.name,
     image_url: form.image_url,
     note: form.note,
+    barcode: form.barcode,
+    product_code: form.product_code,
     vendor_code: form.vendor_code,
     market_code: form.market_code,
     quantity: form.quantity,
@@ -335,17 +366,50 @@ const submitForm = async () => {
 
 watch(
   () => [props.modelValue, props.itemData],
-  ([value]) => {
+  async ([value]) => {
     if (value) {
       fillForm()
+      if (!vendorStore.items.length) {
+        await vendorStore.fetchVendors()
+      }
+      if (!marketStore.items.length) {
+        await marketStore.fetchMarkets()
+      }
     }
   },
   { immediate: true, deep: true },
 )
 
-onMounted(() => {
-  void Promise.all([vendorStore.fetchVendors(), marketStore.fetchMarkets()])
-})
+watch(
+  () => [props.defaultVendorCode, props.defaultMarketCode, props.modelValue, props.itemData],
+  (values) => {
+    const vendorCode = (values[0] ?? null) as string | null
+    const marketCode = (values[1] ?? null) as string | null
+    const isOpen = Boolean(values[2])
+    const itemData = (values[3] ?? null) as ProductBasedCostingItemFormData | null
+
+    if (!isOpen) {
+      return
+    }
+    if (itemData?.id) {
+      return
+    }
+    form.vendor_code = vendorCode ?? null
+    form.market_code = marketCode ?? null
+  },
+)
+
+const onVendorOrMarketChange = async () => {
+  const result = await store.updateProductBasedCostingFile({
+    id: props.productBasedCostingFileId,
+    vendor_code: form.vendor_code,
+    market_code: form.market_code,
+  })
+
+  if (!result.success) {
+    return
+  }
+}
 </script>
 
 <style scoped>
