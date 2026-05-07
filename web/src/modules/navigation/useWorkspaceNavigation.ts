@@ -174,8 +174,17 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'accounting',
     )
+    const hasInvestorModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'investor',
+    )
 
-    if (!hasStoreModuleAccess && !hasInvoiceModuleAccess && !hasAccountingModuleAccess) {
+    if (
+      !hasStoreModuleAccess &&
+      !hasInvoiceModuleAccess &&
+      !hasAccountingModuleAccess &&
+      !hasInvestorModuleAccess
+    ) {
       return [...baseLinks, ...moduleLinks]
     }
 
@@ -184,12 +193,21 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         (routeDefinition) =>
           routeDefinition.moduleKey !== 'store' &&
           routeDefinition.moduleKey !== 'invoice' &&
-          routeDefinition.moduleKey !== 'accounting',
+          routeDefinition.moduleKey !== 'accounting' &&
+          routeDefinition.moduleKey !== 'investor',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
+        to: routeDefinition.to,
+      }))
+    const investorChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'investor')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
         to: routeDefinition.to,
       }))
     const invoiceChildren = scopedModuleRouteDefinitions
@@ -220,6 +238,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
 
     const groupedLinks = [
       ...moduleLinksWithoutGroupedModules,
+      ...(hasInvestorModuleAccess
+        ? [
+            {
+              title: 'Investor',
+              caption: 'Investor module',
+              icon: 'groups',
+              children: investorChildren,
+            },
+          ]
+        : []),
       ...(hasInvoiceModuleAccess
         ? [
             {

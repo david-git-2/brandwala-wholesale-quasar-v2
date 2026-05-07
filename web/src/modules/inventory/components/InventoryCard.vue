@@ -81,6 +81,7 @@
             <thead>
               <tr>
                 <th class="qty-col qty-col--available">Available</th>
+                <th class="qty-col qty-col--usable">Usable</th>
                 <th class="qty-col qty-col--reserved">Reserved</th>
                 <th class="qty-col qty-col--damaged">Damaged</th>
                 <th class="qty-col qty-col--stolen">Stolen</th>
@@ -102,6 +103,11 @@
                     >
                       <q-input v-model.number="scope.value" type="number" dense autofocus />
                     </q-popup-edit>
+                  </div>
+                </td>
+                <td class="qty-col qty-col--usable">
+                  <div class="inventory-card__qty-value">
+                    {{ item.quantities.usable }}
                   </div>
                 </td>
                 <td class="qty-col qty-col--reserved">
@@ -292,6 +298,10 @@ const getShipmentId = (item: InventoryItemWithStock): number | null => {
 
 .qty-col--reserved {
   background: #eef4ff;
+}
+
+.qty-col--usable {
+  background: #e6f7ff;
 }
 
 .qty-col--damaged {

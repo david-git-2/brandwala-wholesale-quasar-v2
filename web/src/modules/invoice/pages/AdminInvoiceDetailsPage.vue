@@ -180,8 +180,8 @@
                     <div class="text-caption text-grey-7">
                       Cost: {{ item.cost ?? 0 }}
                     </div>
-                    <div class="text-caption text-grey-7">
-                      Available: {{ item.quantities.available }}
+                    <div class="invoice-search__usable text-grey-8">
+                      Usable: {{ item.quantities.usable }}
                     </div>
                   </div>
                 </div>
@@ -194,7 +194,7 @@
                       dense
                       outlined
                       min="1"
-                      :max="item.quantities.available"
+                      :max="item.quantities.usable"
                       style="width: 90px"
                       lazy-rules
                       :rules="[
@@ -222,7 +222,7 @@
                       no-caps
                       label="Add To Invoice"
                       :loading="Boolean(addLoadingByItemId[item.id])"
-                      :disable="item.quantities.available <= 0 || !invoice"
+                      :disable="item.quantities.usable <= 0 || !invoice"
                       @click="addItemToInvoice(item.id)"
                     />
                   </div>
@@ -380,8 +380,9 @@ const addItemToInvoice = async (inventoryItemId: number) => {
   }
 
   const previousAvailable = Number(item.quantities.available ?? 0)
-  if (previousAvailable <= 0) {
-    showWarningDialog('No available stock left for this item.')
+  const previousUsable = Number(item.quantities.usable ?? 0)
+  if (previousUsable <= 0) {
+    showWarningDialog('No usable stock left for this item.')
     return
   }
   const quantity = getAddQuantity(inventoryItemId)
@@ -389,8 +390,8 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     showWarningDialog('Please enter a valid quantity.')
     return
   }
-  if (quantity > previousAvailable) {
-    showWarningDialog('Quantity is greater than available stock.')
+  if (quantity > previousUsable) {
+    showWarningDialog('Quantity is greater than usable stock.')
     return
   }
 
@@ -642,10 +643,22 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
     return
   }
   const currentAvailable = Number(stock.available_quantity ?? 0)
+  const currentUsable =
+    Number(stock.available_quantity ?? 0) -
+    Number(stock.reserved_quantity ?? 0) -
+    Number(stock.damaged_quantity ?? 0) -
+    Number(stock.stolen_quantity ?? 0) -
+    Number(stock.expired_quantity ?? 0)
+  const safeCurrentUsable = Math.max(0, currentUsable)
+  const requestedDelta = Math.max(0, quantityDelta)
+  if (requestedDelta > safeCurrentUsable) {
+    showWarningDialog('Not enough usable stock for this quantity.')
+    return
+  }
   const nextAvailable = currentAvailable - quantityDelta
 
   if (nextAvailable < 0) {
-    showWarningDialog('Not enough available stock for this quantity.')
+    showWarningDialog('Not enough usable stock for this quantity.')
     return
   }
 
@@ -740,3 +753,10 @@ watch(searchDialogOpen, (open) => {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.invoice-search__usable {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+</style>

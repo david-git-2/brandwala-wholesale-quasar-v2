@@ -115,6 +115,7 @@ export const useInventoryStore = defineStore('inventory', {
             shipment: null,
             quantities: {
               available: 0,
+              usable: 0,
               reserved: 0,
               damaged: 0,
               stolen: 0,
@@ -150,6 +151,7 @@ export const useInventoryStore = defineStore('inventory', {
             const existingShipment = this.items[index]?.shipment ?? null
             const existingQuantities = this.items[index]?.quantities ?? {
               available: 0,
+              usable: 0,
               reserved: 0,
               damaged: 0,
               stolen: 0,

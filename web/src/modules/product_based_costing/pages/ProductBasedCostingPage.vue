@@ -52,6 +52,7 @@
       </div>
 
       <CostingFileCard :items="store.items"  @select="onSelect"
+  @copy="onCopy"
   @edit="openEditDialog"
   @delete="onDelete"/>
 
@@ -77,15 +78,18 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import CostingFileCard from '../components/CostingFileCard.vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { ProductBasedCostingFile } from '../types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import { productBasedCostingService } from '../services/productBasedCostingService'
 
 
 const store = useProductBasedCostingStore()
+const $q = useQuasar()
 const page = ref(1)
 const searchText = ref('')
 const statusFilter = ref<string | null>(null)
@@ -201,6 +205,68 @@ const onDelete = async (item: ProductBasedCostingFile) => {
   console.log('delete', item)
   await store.deleteProductBasedCostingFile(item.id)
   await loadFiles()
+}
+
+const onCopy = async (item: ProductBasedCostingFile) => {
+  const fileName = (item.name ?? '').trim()
+  const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${item.id} Copy`
+
+  const fileCreateResult = await productBasedCostingService.createProductBasedCostingFile({
+    tenant_id: item.tenant_id ?? null,
+    name: nextName,
+    order_for: item.order_for ?? null,
+    note: item.note ?? null,
+    vendor_code: item.vendor_code ?? null,
+    market_code: item.market_code ?? null,
+    cargo_rate_kg_gbp: item.cargo_rate_kg_gbp ?? null,
+    profit_rate: item.profit_rate ?? null,
+    conversion_rate: item.conversion_rate ?? null,
+    // Copy should always start as a draft file.
+    status: 'pending',
+  })
+
+  if (!fileCreateResult.success || !fileCreateResult.data?.id) {
+    return
+  }
+
+  const sourceItemsResult = await productBasedCostingService.listProductBasedCostingItems(item.id)
+  if (!sourceItemsResult.success) {
+    await loadFiles()
+    return
+  }
+
+  const copiedFileId = fileCreateResult.data.id
+  const sourceItems = sourceItemsResult.data ?? []
+  const copyItemTasks = sourceItems.map((sourceItem) =>
+    productBasedCostingService.createProductBasedCostingItem({
+      product_based_costing_file_id: copiedFileId,
+      product_id: sourceItem.product_id ?? null,
+      name: sourceItem.name ?? null,
+      image_url: sourceItem.image_url ?? null,
+      note: sourceItem.note ?? null,
+      quantity: sourceItem.quantity ?? null,
+      barcode: sourceItem.barcode ?? null,
+      product_code: sourceItem.product_code ?? null,
+      vendor_code: sourceItem.vendor_code ?? null,
+      market_code: sourceItem.market_code ?? null,
+      web_link: sourceItem.web_link ?? null,
+      price_gbp: sourceItem.price_gbp ?? null,
+      product_weight: sourceItem.product_weight ?? null,
+      package_weight: sourceItem.package_weight ?? null,
+      offer_price: sourceItem.offer_price ?? null,
+      // Reset copied items to draft state.
+      status: 'pending',
+      input_type: sourceItem.input_type ?? null,
+    }),
+  )
+
+  await Promise.allSettled(copyItemTasks)
+  await loadFiles()
+
+  $q.notify({
+    type: 'positive',
+    message: `Copied as #${copiedFileId} ${nextName}`,
+  })
 }
 
 const onApplyFilters = async () => {

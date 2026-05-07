@@ -32,16 +32,13 @@
             >
               <q-menu auto-close>
                 <q-list dense style="min-width: 140px">
+                  <q-item clickable v-ripple @click="handleCopy(item)">
+                    <q-item-section>Copy</q-item-section>
+                  </q-item>
                   <q-item clickable v-ripple @click="handleEdit(item)">
-                    <q-item-section avatar>
-                      <q-icon name="edit" />
-                    </q-item-section>
                     <q-item-section>Edit</q-item-section>
                   </q-item>
                   <q-item clickable v-ripple @click="handleDelete(item)">
-                    <q-item-section avatar>
-                      <q-icon name="delete_outline" color="negative" />
-                    </q-item-section>
                     <q-item-section class="text-negative">Delete</q-item-section>
                   </q-item>
                 </q-list>
@@ -64,6 +61,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (event: 'select', item: ProductBasedCostingFile): void
+  (event: 'copy', item: ProductBasedCostingFile): void
   (event: 'edit', item: ProductBasedCostingFile): void
   (event: 'delete', item: ProductBasedCostingFile): void
 }>()
@@ -76,6 +74,10 @@ const handleSelect = (item: ProductBasedCostingFile) => {
 
 const handleEdit = (item: ProductBasedCostingFile) => {
   emit('edit', item)
+}
+
+const handleCopy = (item: ProductBasedCostingFile) => {
+  emit('copy', item)
 }
 
 const handleDelete = (item: ProductBasedCostingFile) => {

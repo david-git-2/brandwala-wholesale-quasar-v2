@@ -4,6 +4,7 @@ export type ModuleKey =
   | 'order_management'
   | 'shipment'
   | 'inventory'
+  | 'investor'
   | 'vendor'
   | 'products'
   | 'product_based_costing'
@@ -82,6 +83,37 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Review stock levels and inventory operations',
         icon: 'inventory_2',
         routeSegment: 'inventory',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'investor',
+    name: 'Investor',
+    description: 'Manage investor profiles and investor transaction records.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Investor Profile',
+        caption: 'Manage investor profiles',
+        icon: 'groups',
+        routeSegment: 'investors/profile',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Investor Transaction',
+        caption: 'Manage investor transactions',
+        icon: 'sync_alt',
+        routeSegment: 'investors/transactions',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Investor Shipment',
+        caption: 'Manage shipment investments',
+        icon: 'local_shipping',
+        routeSegment: 'investors/shipments',
         requiredAction: 'view',
       },
     ],
@@ -173,6 +205,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Review invoice accounting entries and payments',
         icon: 'request_quote',
         routeSegment: 'accounting/invoice',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Shipment Accounting',
+        caption: 'Review shipments and open shipment accounting details',
+        icon: 'local_shipping',
+        routeSegment: 'accounting/shipment',
         requiredAction: 'view',
       },
     ],

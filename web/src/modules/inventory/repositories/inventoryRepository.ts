@@ -106,6 +106,20 @@ const toNumberOrZero = (value: unknown): number => {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
+const calculateUsableQuantity = ({
+  available,
+  reserved,
+  damaged,
+  stolen,
+  expired,
+}: {
+  available: number
+  reserved: number
+  damaged: number
+  stolen: number
+  expired: number
+}) => Math.max(0, available - reserved - damaged - stolen - expired)
+
 const toObjectRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null
@@ -276,6 +290,13 @@ const listInventoryItems = async (
     const damagedQuantity = toNumberOrZero(stockRecord?.damaged_quantity)
     const stolenQuantity = toNumberOrZero(stockRecord?.stolen_quantity)
     const expiredQuantity = toNumberOrZero(stockRecord?.expired_quantity)
+    const usableQuantity = calculateUsableQuantity({
+      available: availableQuantity,
+      reserved: reservedQuantity,
+      damaged: damagedQuantity,
+      stolen: stolenQuantity,
+      expired: expiredQuantity,
+    })
 
     return {
       id: toNumberOrZero(row.id),
@@ -314,6 +335,7 @@ const listInventoryItems = async (
         : null,
       quantities: {
         available: availableQuantity,
+        usable: usableQuantity,
         reserved: reservedQuantity,
         damaged: damagedQuantity,
         stolen: stolenQuantity,

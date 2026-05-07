@@ -72,6 +72,7 @@ export type InventoryStock = {
 
 export type InventoryQuantities = {
   available: number
+  usable: number
   reserved: number
   damaged: number
   stolen: number

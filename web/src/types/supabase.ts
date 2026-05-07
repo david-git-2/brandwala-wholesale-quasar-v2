@@ -779,6 +779,155 @@ export type Database = {
           },
         ]
       }
+      investor_balances: {
+        Row: {
+          available_balance: number
+          created_at: string
+          id: number
+          investor_id: number
+          tenant_id: number
+          total_deposit: number
+          total_invested_active: number
+          total_profit_payout: number
+          total_withdrawal: number
+          updated_at: string
+        }
+        Insert: {
+          available_balance?: number
+          created_at?: string
+          id?: number
+          investor_id: number
+          tenant_id: number
+          total_deposit?: number
+          total_invested_active?: number
+          total_profit_payout?: number
+          total_withdrawal?: number
+          updated_at?: string
+        }
+        Update: {
+          available_balance?: number
+          created_at?: string
+          id?: number
+          investor_id?: number
+          tenant_id?: number
+          total_deposit?: number
+          total_invested_active?: number
+          total_profit_payout?: number
+          total_withdrawal?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_balances_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "investors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_balances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investor_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          investor_id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note: string | null
+          tenant_id: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date?: string
+          id?: number
+          investor_id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note?: string | null
+          tenant_id: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: number
+          investor_id?: number
+          method?: Database["public"]["Enums"]["investor_payment_method"]
+          note?: string | null
+          tenant_id?: number
+          type?: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_transactions_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "investors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investors: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: number
+          name: string
+          phone: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: number
+          name: string
+          phone?: string | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: number
+          name?: string
+          phone?: string | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_accounting_payments: {
         Row: {
           amount: number
@@ -1596,6 +1745,64 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      shipment_investments: {
+        Row: {
+          actual_profit: number
+          created_at: string
+          id: number
+          invested_amount: number
+          investor_id: number
+          shipment_id: number
+          status: Database["public"]["Enums"]["shipment_investment_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          actual_profit?: number
+          created_at?: string
+          id?: number
+          invested_amount?: number
+          investor_id: number
+          shipment_id: number
+          status?: Database["public"]["Enums"]["shipment_investment_status"]
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          actual_profit?: number
+          created_at?: string
+          id?: number
+          invested_amount?: number
+          investor_id?: number
+          shipment_id?: number
+          status?: Database["public"]["Enums"]["shipment_investment_status"]
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_investments_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "investors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_investments_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_investments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2921,6 +3128,10 @@ export type Database = {
           region: string
         }[]
       }
+      refresh_investor_balance: {
+        Args: { p_investor_id: number; p_tenant_id: number }
+        Returns: undefined
+      }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -3223,6 +3434,8 @@ export type Database = {
         | "cancelled"
         | "completed"
       customer_group_role: "admin" | "negotiator" | "staff"
+      investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
+      investor_transaction_type: "deposit" | "withdrawal" | "profit_payout"
       order_status:
         | "customer_submit"
         | "direct_priced"
@@ -3233,6 +3446,7 @@ export type Database = {
         | "processing"
         | "invoicing"
         | "invoiced"
+      shipment_investment_status: "active" | "closed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3373,6 +3587,8 @@ export const Constants = {
         "completed",
       ],
       customer_group_role: ["admin", "negotiator", "staff"],
+      investor_payment_method: ["cash", "bank", "mobile_banking", "other"],
+      investor_transaction_type: ["deposit", "withdrawal", "profit_payout"],
       order_status: [
         "customer_submit",
         "direct_priced",
@@ -3384,6 +3600,7 @@ export const Constants = {
         "invoicing",
         "invoiced",
       ],
+      shipment_investment_status: ["active", "closed", "cancelled"],
     },
   },
 } as const
