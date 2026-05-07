@@ -30,8 +30,12 @@ export const getUnitTotalCostGbp = ({
 
 export const getUnitCostBdt = (
   input: Pick<OfferPriceInput, 'priceGbp' | 'productWeight' | 'packageWeight' | 'cargoRate' | 'conversionRate'>,
-) =>
-  Math.ceil(getUnitTotalCostGbp(input) * input.conversionRate)
+) => {
+  // Keep BDT cost aligned with the displayed GBP precision (2 decimals),
+  // so values like shown "2.90" convert consistently.
+  const unitTotalCostGbpRounded = Math.round(getUnitTotalCostGbp(input) * 100) / 100
+  return Math.ceil((unitTotalCostGbpRounded * input.conversionRate) - 1e-9)
+}
 
 export const calculateOfferPriceBdt = (input: OfferPriceInput) => {
   const costBdt = getUnitCostBdt(input)

@@ -214,6 +214,14 @@ const onStatusChange = async () => {
     return;
   }
 
+  await recalculateAndPersistOfferPrices();
+};
+
+const recalculateAndPersistOfferPrices = async () => {
+  if (!fileId.value) {
+    return;
+  }
+
   const cargoRate = cargoRateValue.value;
   const conversionRate = conversionRateValue.value;
   const profitRate = profitRateValue.value;
@@ -404,6 +412,7 @@ const onRateSave = async () => {
   };
 
   await store.updateProductBasedCostingFile(payload);
+  await recalculateAndPersistOfferPrices();
 };
 
 const onProductWeightChange = async (payload: WeightChangePayload) => {
