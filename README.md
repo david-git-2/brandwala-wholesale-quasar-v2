@@ -16,6 +16,23 @@ web/        Frontend app
 supabase/   Database migrations, local config, generated types
 ```
 
+## Cloudflare Pages Setup
+
+For this project, configure Cloudflare Pages with:
+
+- Root directory: `web`
+- Build command: `npm install && npm run build`
+- Build output directory: `dist/spa`
+
+Add these environment variables in Cloudflare Pages:
+
+```text
+NODE_VERSION=22
+SKIP_DEPENDENCY_INSTALL=true
+VITE_SUPABASE_ANON_KEY=<set-in-cloudflare-pages>
+VITE_SUPABASE_URL=<set-in-cloudflare-pages>
+```
+
 ## Current Auth Model
 
 Login uses Google OAuth through Supabase.
