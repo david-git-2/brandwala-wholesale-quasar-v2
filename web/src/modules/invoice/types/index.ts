@@ -110,8 +110,47 @@ export type DeleteInvoiceItemInput = { id: number }
 export type InvoiceStoreState = {
   invoices: Invoice[]
   invoiceItems: InvoiceItem[]
+  payments: Payment[]
+  paymentAllocations: PaymentAllocation[]
   selectedInvoice: Invoice | null
   loading: boolean
   saving: boolean
   error: string | null
+}
+
+export type PaymentMethod = 'cash' | 'bank' | 'mobile_banking' | 'other'
+
+export type Payment = {
+  id: number
+  tenant_id: number
+  billing_profile_id: number
+  amount: number
+  payment_date: string
+  method: PaymentMethod | null
+  reference: string | null
+  note: string | null
+  created_at: string
+}
+
+export type PaymentAllocation = {
+  id: number
+  tenant_id: number
+  payment_id: number
+  invoice_id: number
+  amount: number
+  created_at: string
+}
+
+export type CreatePaymentWithAllocationsInput = {
+  tenant_id: number
+  billing_profile_id: number
+  amount: number
+  payment_date: string
+  method?: PaymentMethod | null
+  reference?: string | null
+  note?: string | null
+  allocations: Array<{
+    invoice_id: number
+    amount: number
+  }>
 }

@@ -209,6 +209,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'app',
+        title: 'Customer Payments',
+        caption: 'Create customer payments and allocate across invoices',
+        icon: 'payments',
+        routeSegment: 'accounting/customer-payments',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
         title: 'Shipment Accounting',
         caption: 'Review shipments and open shipment accounting details',
         icon: 'local_shipping',

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { invoiceService } from '../services/invoiceService'
 import type {
+  CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
   DeleteInvoiceItemInput,
@@ -15,6 +16,8 @@ export const useInvoiceStore = defineStore('invoice', {
   state: (): InvoiceStoreState => ({
     invoices: [],
     invoiceItems: [],
+    payments: [],
+    paymentAllocations: [],
     selectedInvoice: null,
     loading: false,
     saving: false,
@@ -54,6 +57,67 @@ export const useInvoiceStore = defineStore('invoice', {
         return result
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchPayments(payload: InvoiceListQuery = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await invoiceService.listPayments(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load payments.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.payments = result.data?.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchPaymentAllocations(payload: InvoiceListQuery = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await invoiceService.listPaymentAllocations(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load payment allocations.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.paymentAllocations = result.data?.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createPaymentWithAllocations(payload: CreatePaymentWithAllocationsInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await invoiceService.createPaymentWithAllocations(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create payment.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.payments.unshift(result.data)
+        }
+
+        showSuccessNotification('Payment saved successfully.')
+        return result
+      } finally {
+        this.saving = false
       }
     },
 

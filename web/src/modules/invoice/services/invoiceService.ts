@@ -1,5 +1,6 @@
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type {
+  CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
   DeleteInvoiceItemInput,
@@ -9,6 +10,8 @@ import type {
   InvoiceListPage,
   InvoiceListQuery,
   InvoiceServiceResult,
+  Payment,
+  PaymentAllocation,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
 } from '../types/index'
@@ -37,6 +40,21 @@ export const invoiceService = {
     wrap<InvoiceListPage<InvoiceItem>>(
       () => invoiceRepository.listInvoiceItems(payload),
       'Failed to load invoice items.',
+    ),
+  listPayments: (payload: InvoiceListQuery = {}) =>
+    wrap<InvoiceListPage<Payment>>(
+      () => invoiceRepository.listPayments(payload),
+      'Failed to load payments.',
+    ),
+  listPaymentAllocations: (payload: InvoiceListQuery = {}) =>
+    wrap<InvoiceListPage<PaymentAllocation>>(
+      () => invoiceRepository.listPaymentAllocations(payload),
+      'Failed to load payment allocations.',
+    ),
+  createPaymentWithAllocations: (payload: CreatePaymentWithAllocationsInput) =>
+    wrap<Payment>(
+      () => invoiceRepository.createPaymentWithAllocations(payload),
+      'Failed to create payment.',
     ),
   createInvoice: (payload: CreateInvoiceInput) =>
     wrap<Invoice>(() => invoiceRepository.createInvoice(payload), 'Failed to create invoice.'),

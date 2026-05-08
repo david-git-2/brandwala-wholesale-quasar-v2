@@ -1442,6 +1442,106 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          invoice_id: number
+          payment_id: number
+          tenant_id: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          invoice_id: number
+          payment_id: number
+          tenant_id: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          invoice_id?: number
+          payment_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: number
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          reference: string | null
+          tenant_id: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          customer_id: number
+          id?: number
+          method?: string | null
+          note?: string | null
+          payment_date?: string
+          reference?: string | null
+          tenant_id: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: number
+          id?: number
+          method?: string | null
+          note?: string | null
+          payment_date?: string
+          reference?: string | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_based_costing_files: {
         Row: {
           cargo_rate_kg_gbp: number | null
@@ -2583,6 +2683,35 @@ export type Database = {
               website_url: string
             }[]
           }
+      create_customer_payment_with_allocations: {
+        Args: {
+          p_allocations: Json
+          p_amount: number
+          p_customer_id: number
+          p_method: string
+          p_note: string
+          p_payment_date: string
+          p_reference: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          customer_id: number
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          reference: string | null
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shipment: {
         Args: { p_name: string; p_tenant_id: number }
         Returns: {
@@ -3127,6 +3256,10 @@ export type Database = {
           name: string
           region: string
         }[]
+      }
+      recompute_invoice_payment_status: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
       }
       refresh_investor_balance: {
         Args: { p_investor_id: number; p_tenant_id: number }

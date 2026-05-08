@@ -1,5 +1,6 @@
 import { supabase } from 'src/boot/supabase'
 import type {
+  CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
   DeleteInvoiceItemInput,
@@ -9,6 +10,8 @@ import type {
   InvoiceItem,
   InvoiceListPage,
   InvoiceListQuery,
+  Payment,
+  PaymentAllocation,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
 } from '../types/index'
@@ -86,6 +89,27 @@ const INVOICE_ITEM_FIELDS = [
   'line_total_amount',
   'created_at',
   'updated_at',
+] as const
+
+const PAYMENT_FIELDS = [
+  'id',
+  'tenant_id',
+  'customer_id',
+  'amount',
+  'payment_date',
+  'method',
+  'reference',
+  'note',
+  'created_at',
+] as const
+
+const PAYMENT_ALLOCATION_FIELDS = [
+  'id',
+  'tenant_id',
+  'payment_id',
+  'invoice_id',
+  'amount',
+  'created_at',
 ] as const
 
 const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceListPage<Invoice>> => {
@@ -201,9 +225,102 @@ const listInvoiceItems = async (payload: InvoiceListQuery = {}): Promise<Invoice
   }
 }
 
+const listPayments = async (payload: InvoiceListQuery = {}): Promise<InvoiceListPage<Payment>> => {
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 50)
+  const page = sanitizePage(payload.page, 1)
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase.from('payments').select('*', { count: 'exact' })
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  query = applyFilters(query, payload.filters, payload.operators, PAYMENT_FIELDS)
+
+  const sortBy =
+    typeof payload.sortBy === 'string' && PAYMENT_FIELDS.includes(payload.sortBy as never)
+      ? payload.sortBy
+      : 'created_at'
+
+  const { data, error, count } = await query
+    .order(sortBy, { ascending: payload.sortOrder === 'asc' })
+    .range(from, to)
+  if (error) throw error
+
+  const total = count ?? 0
+  return {
+    data: (data as Payment[] | null) ?? [],
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
+}
+
+const listPaymentAllocations = async (
+  payload: InvoiceListQuery = {},
+): Promise<InvoiceListPage<PaymentAllocation>> => {
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 200)
+  const page = sanitizePage(payload.page, 1)
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase.from('payment_allocations').select('*', { count: 'exact' })
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  query = applyFilters(query, payload.filters, payload.operators, PAYMENT_ALLOCATION_FIELDS)
+
+  const sortBy =
+    typeof payload.sortBy === 'string' && PAYMENT_ALLOCATION_FIELDS.includes(payload.sortBy as never)
+      ? payload.sortBy
+      : 'created_at'
+
+  const { data, error, count } = await query
+    .order(sortBy, { ascending: payload.sortOrder === 'asc' })
+    .range(from, to)
+  if (error) throw error
+
+  const total = count ?? 0
+  return {
+    data: (data as PaymentAllocation[] | null) ?? [],
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
+}
+
+const createPaymentWithAllocations = async (
+  payload: CreatePaymentWithAllocationsInput,
+): Promise<Payment> => {
+  const { data, error } = await supabase.rpc('create_billing_profile_payment_with_allocations', {
+    p_tenant_id: payload.tenant_id,
+    p_billing_profile_id: payload.billing_profile_id,
+    p_amount: payload.amount,
+    p_payment_date: payload.payment_date,
+    p_method: payload.method ?? null,
+    p_reference: payload.reference ?? null,
+    p_note: payload.note ?? null,
+    p_allocations: payload.allocations ?? [],
+  })
+
+  if (error) throw error
+  if (!data) throw new Error('Payment was not created.')
+
+  return data as Payment
+}
+
 export const invoiceRepository = {
   listInvoices,
   listInvoiceItems,
+  listPayments,
+  listPaymentAllocations,
+  createPaymentWithAllocations,
   createInvoice,
   updateInvoice,
   deleteInvoice,

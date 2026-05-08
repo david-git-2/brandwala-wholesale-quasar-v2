@@ -32,6 +32,18 @@ const accountingRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: 'customer-payments',
+        name: 'app-accounting-customer-payments-page',
+        component: () => import('../pages/AdminCustomerPaymentsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'accounting',
+        }),
+      },
+      {
         path: 'shipment',
         name: 'app-accounting-shipment-page',
         component: () => import('../pages/AdminShipmentAccountingPage.vue'),
