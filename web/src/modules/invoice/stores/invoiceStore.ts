@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { invoiceService } from '../services/invoiceService'
 import type {
+  AddPaymentAllocationInput,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -10,6 +11,7 @@ import type {
   InvoiceStoreState,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
+  UpdatePaymentAllocationAmountInput,
 } from '../types/index'
 
 export const useInvoiceStore = defineStore('invoice', {
@@ -115,6 +117,50 @@ export const useInvoiceStore = defineStore('invoice', {
         }
 
         showSuccessNotification('Payment saved successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async addPaymentAllocation(payload: AddPaymentAllocationInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await invoiceService.addPaymentAllocation(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to add payment allocation.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        if (result.data) {
+          this.paymentAllocations.unshift(result.data)
+        }
+        showSuccessNotification('Allocation saved successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updatePaymentAllocationAmount(payload: UpdatePaymentAllocationAmountInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await invoiceService.updatePaymentAllocationAmount(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update payment allocation.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        if (result.data) {
+          const index = this.paymentAllocations.findIndex((row) => row.id === result.data?.id)
+          if (index >= 0) this.paymentAllocations.splice(index, 1, result.data)
+          else this.paymentAllocations.unshift(result.data)
+        }
+        showSuccessNotification('Allocation updated successfully.')
         return result
       } finally {
         this.saving = false

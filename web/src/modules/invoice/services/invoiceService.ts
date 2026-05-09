@@ -1,5 +1,6 @@
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type {
+  AddPaymentAllocationInput,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -14,6 +15,7 @@ import type {
   PaymentAllocation,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
+  UpdatePaymentAllocationAmountInput,
 } from '../types/index'
 
 const wrap = async <T>(
@@ -55,6 +57,16 @@ export const invoiceService = {
     wrap<Payment>(
       () => invoiceRepository.createPaymentWithAllocations(payload),
       'Failed to create payment.',
+    ),
+  addPaymentAllocation: (payload: AddPaymentAllocationInput) =>
+    wrap<PaymentAllocation>(
+      () => invoiceRepository.addPaymentAllocation(payload),
+      'Failed to add payment allocation.',
+    ),
+  updatePaymentAllocationAmount: (payload: UpdatePaymentAllocationAmountInput) =>
+    wrap<PaymentAllocation>(
+      () => invoiceRepository.updatePaymentAllocationAmount(payload),
+      'Failed to update payment allocation.',
     ),
   createInvoice: (payload: CreateInvoiceInput) =>
     wrap<Invoice>(() => invoiceRepository.createInvoice(payload), 'Failed to create invoice.'),

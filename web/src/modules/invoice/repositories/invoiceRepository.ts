@@ -1,5 +1,6 @@
 import { supabase } from 'src/boot/supabase'
 import type {
+  AddPaymentAllocationInput,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -14,6 +15,7 @@ import type {
   PaymentAllocation,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
+  UpdatePaymentAllocationAmountInput,
 } from '../types/index'
 
 const sanitizePage = (value: number | undefined, fallback: number) =>
@@ -94,7 +96,7 @@ const INVOICE_ITEM_FIELDS = [
 const PAYMENT_FIELDS = [
   'id',
   'tenant_id',
-  'customer_id',
+  'billing_profile_id',
   'amount',
   'payment_date',
   'method',
@@ -315,12 +317,39 @@ const createPaymentWithAllocations = async (
   return data as Payment
 }
 
+const addPaymentAllocation = async (payload: AddPaymentAllocationInput): Promise<PaymentAllocation> => {
+  const { data, error } = await supabase.rpc('add_payment_allocation', {
+    p_tenant_id: payload.tenant_id,
+    p_payment_id: payload.payment_id,
+    p_invoice_id: payload.invoice_id,
+    p_amount: payload.amount,
+  })
+  if (error) throw error
+  if (!data) throw new Error('Payment allocation was not created.')
+  return data as PaymentAllocation
+}
+
+const updatePaymentAllocationAmount = async (
+  payload: UpdatePaymentAllocationAmountInput,
+): Promise<PaymentAllocation> => {
+  const { data, error } = await supabase.rpc('update_payment_allocation_amount', {
+    p_tenant_id: payload.tenant_id,
+    p_allocation_id: payload.allocation_id,
+    p_amount: payload.amount,
+  })
+  if (error) throw error
+  if (!data) throw new Error('Payment allocation was not updated.')
+  return data as PaymentAllocation
+}
+
 export const invoiceRepository = {
   listInvoices,
   listInvoiceItems,
   listPayments,
   listPaymentAllocations,
   createPaymentWithAllocations,
+  addPaymentAllocation,
+  updatePaymentAllocationAmount,
   createInvoice,
   updateInvoice,
   deleteInvoice,

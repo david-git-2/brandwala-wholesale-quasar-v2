@@ -154,3 +154,16 @@ export type CreatePaymentWithAllocationsInput = {
     amount: number
   }>
 }
+
+export type AddPaymentAllocationInput = {
+  tenant_id: number
+  payment_id: number
+  invoice_id: number
+  amount: number
+}
+
+export type UpdatePaymentAllocationAmountInput = {
+  tenant_id: number
+  allocation_id: number
+  amount: number
+}

@@ -1494,8 +1494,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          billing_profile_id: number
           created_at: string
-          customer_id: number
           id: number
           method: string | null
           note: string | null
@@ -1505,8 +1505,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          billing_profile_id: number
           created_at?: string
-          customer_id: number
           id?: number
           method?: string | null
           note?: string | null
@@ -1516,8 +1516,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billing_profile_id?: number
           created_at?: string
-          customer_id?: number
           id?: number
           method?: string | null
           note?: string | null
@@ -1527,10 +1527,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "payments_customer_id_fkey"
-            columns: ["customer_id"]
+            foreignKeyName: "payments_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
             isOneToOne: false
-            referencedRelation: "customer_groups"
+            referencedRelation: "billing_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2273,6 +2273,28 @@ export type Database = {
         }
         Returns: Json
       }
+      add_payment_allocation: {
+        Args: {
+          p_amount: number
+          p_invoice_id: number
+          p_payment_id: number
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          id: number
+          invoice_id: number
+          payment_id: number
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payment_allocations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_shipment_item_from_product: {
         Args: {
           p_product_id: number
@@ -2606,6 +2628,35 @@ export type Database = {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
       }
+      create_billing_profile_payment_with_allocations: {
+        Args: {
+          p_allocations: Json
+          p_amount: number
+          p_billing_profile_id: number
+          p_method: string
+          p_note: string
+          p_payment_date: string
+          p_reference: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          billing_profile_id: number
+          created_at: string
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          reference: string | null
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_costing_file:
         | {
             Args: {
@@ -2683,35 +2734,6 @@ export type Database = {
               website_url: string
             }[]
           }
-      create_customer_payment_with_allocations: {
-        Args: {
-          p_allocations: Json
-          p_amount: number
-          p_customer_id: number
-          p_method: string
-          p_note: string
-          p_payment_date: string
-          p_reference: string
-          p_tenant_id: number
-        }
-        Returns: {
-          amount: number
-          created_at: string
-          customer_id: number
-          id: number
-          method: string | null
-          note: string | null
-          payment_date: string
-          reference: string | null
-          tenant_id: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "payments"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       create_shipment: {
         Args: { p_name: string; p_tenant_id: number }
         Returns: {
@@ -3442,6 +3464,23 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_payment_allocation_amount: {
+        Args: { p_allocation_id: number; p_amount: number; p_tenant_id: number }
+        Returns: {
+          amount: number
+          created_at: string
+          id: number
+          invoice_id: number
+          payment_id: number
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payment_allocations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_shipment: {
         Args: { p_field: string; p_id: number; p_value: string }

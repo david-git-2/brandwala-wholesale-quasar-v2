@@ -1,6 +1,15 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="text-h5 text-weight-bold q-mb-md">Invoice Details</div>
+    <div class="row items-center justify-between q-mb-md">
+      <div class="text-h5 text-weight-bold">Invoice Details</div>
+      <q-btn
+        outline
+        no-caps
+        icon="arrow_back"
+        label="Back"
+        @click="goBack"
+      />
+    </div>
     <div v-if="invoice" class="q-gutter-md">
         <div>
           <div class="text-caption text-grey-7">Invoice Name</div>
@@ -9,6 +18,14 @@
         <div>
           <div class="text-caption text-grey-7 q-mb-xs">Status</div>
           <div class="row justify-end items-center q-gutter-sm">
+            <q-btn
+              v-if="invoice?.status === 'issued'"
+              color="secondary"
+              no-caps
+              icon="visibility"
+              label="Preview"
+              @click="openInvoicePreview"
+            />
             <q-select
               v-model="selectedStatus"
               :options="statusOptions"
@@ -34,6 +51,41 @@
 
         <q-separator />
 
+        <div class="row q-col-gutter-md">
+          <div class="col-12 col-sm-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Total Sell</div>
+                <div class="text-h6 text-weight-bold">{{ formatAmount(totalSellAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Total Cost</div>
+                <div class="text-h6 text-weight-bold">{{ formatAmount(totalCostAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Total Profit</div>
+                <div class="text-h6 text-weight-bold text-positive">{{ formatAmount(totalProfitAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Paid Amount</div>
+                <div class="text-h6 text-weight-bold text-primary">{{ formatAmount(Number(invoice?.paid_amount ?? 0)) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
         <div class="q-gutter-sm">
           <div class="text-subtitle2">Invoice Item List</div>
           <div v-if="!invoiceStore.invoiceItems.length && !invoiceStore.loading" class="text-grey-7">
@@ -57,7 +109,11 @@
                 <td>{{ index + 1 }}</td>
                 <td>
                   <q-avatar rounded size="1in">
-                    <img :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl" alt="item image" />
+                    <img
+                      :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
+                      alt="item image"
+                      class="invoice-image"
+                    />
                   </q-avatar>
                 </td>
                 <td style="white-space: normal; word-break: break-word; min-width: 260px;">
@@ -170,7 +226,11 @@
               <q-card-section class="row items-center justify-between q-col-gutter-md">
                 <div class="row items-center no-wrap col">
                   <q-avatar rounded size="56px" class="q-mr-md">
-                    <img :src="item.image_url || fallbackImageUrl" alt="product image" />
+                    <img
+                      :src="item.image_url || fallbackImageUrl"
+                      alt="product image"
+                      class="invoice-image"
+                    />
                   </q-avatar>
                   <div>
                     <div class="text-body1 text-weight-medium">{{ item.name }}</div>
@@ -249,7 +309,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
 import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -260,6 +320,7 @@ import { useInvoiceStore } from '../stores/invoiceStore'
 import type { InvoiceStatus } from '../types/index'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const invoiceStore = useInvoiceStore()
 const inventoryStore = useInventoryStore()
@@ -302,6 +363,19 @@ const sortedSearchItems = computed(() =>
     return shipmentIdA - shipmentIdB
   }),
 )
+const totalSellAmount = computed(() =>
+  invoiceStore.invoiceItems.reduce(
+    (sum, row) => sum + Number(row.sell_price_amount ?? 0) * Number(row.quantity ?? 0),
+    0,
+  ),
+)
+const totalCostAmount = computed(() =>
+  invoiceStore.invoiceItems.reduce(
+    (sum, row) => sum + Number(row.cost_amount ?? 0) * Number(row.quantity ?? 0),
+    0,
+  ),
+)
+const totalProfitAmount = computed(() => totalSellAmount.value - totalCostAmount.value)
 
 const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
@@ -326,9 +400,38 @@ const load = async () => {
 
 const onUpdateStatus = async (value: InvoiceStatus | null) => {
   if (!invoice.value || !value || value === invoice.value.status) return
+  const nextTotal = Number(totalSellAmount.value.toFixed(2))
   await invoiceStore.updateInvoice({
     id: invoice.value.id,
-    patch: { status: value },
+    patch: {
+      status: value,
+      subtotal_amount: nextTotal,
+      total_amount: nextTotal,
+    },
+  })
+}
+
+const openInvoicePreview = async () => {
+  if (!invoice.value) return
+  await router.push({
+    name: 'app-invoice-preview-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? undefined,
+      invoiceId: invoice.value.id,
+    },
+  })
+}
+
+const goBack = async () => {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  await router.push({
+    name: 'app-invoice-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? undefined,
+    },
   })
 }
 
@@ -489,6 +592,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       sortBy: 'created_at',
       sortOrder: 'desc',
     })
+    await syncInvoiceSellTotal()
     await loadInvoiceItemImages()
   } finally {
     addLoadingByItemId.value = { ...addLoadingByItemId.value, [inventoryItemId]: false }
@@ -527,6 +631,7 @@ const setSellPrice = (itemId: number, value: string | number | null) => {
 
 const calculateLineTotal = (sellPrice: number, quantity: number) =>
   Number((Number(sellPrice || 0) * Number(quantity || 0)).toFixed(2))
+const formatAmount = (value: number) => Number(value ?? 0).toFixed(2)
 
 const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)
 
@@ -606,6 +711,7 @@ const onInlineUpdateSellPrice = async (invoiceItemId: number, value: string | nu
       gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
     },
   })
+  await syncInvoiceSellTotal()
 }
 
 const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | number | null) => {
@@ -716,6 +822,7 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
       gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
     },
   })
+  await syncInvoiceSellTotal()
 }
 
 const openDeleteInvoiceItem = (id: number) => {
@@ -733,8 +840,21 @@ const onDeleteInvoiceItem = async () => {
     }
     deleteInvoiceItemOpen.value = false
     selectedInvoiceItemId.value = null
+    await syncInvoiceSellTotal()
     await loadInvoiceItemImages()
   }
+}
+
+const syncInvoiceSellTotal = async () => {
+  if (!invoice.value) return
+  const nextTotal = Number(totalSellAmount.value.toFixed(2))
+  await invoiceStore.updateInvoice({
+    id: invoice.value.id,
+    patch: {
+      subtotal_amount: nextTotal,
+      total_amount: nextTotal,
+    },
+  })
 }
 
 watch(
@@ -758,5 +878,12 @@ onMounted(load)
 .invoice-search__usable {
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+.invoice-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
 }
 </style>

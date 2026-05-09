@@ -45,6 +45,24 @@ const invoiceRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/invoices/:invoiceId/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: createAccessGuard({
+      loginRoute: 'admin-login-page',
+      requiredScope: 'app',
+      requireTenantContext: true,
+      allowedRoles: ['admin', 'staff'],
+      requiredModule: 'invoice',
+    }),
+    children: [
+      {
+        path: '',
+        name: 'app-invoice-preview-page',
+        component: () => import('../pages/AdminInvoicePreviewPage.vue'),
+      },
+    ],
+  },
 ]
 
 export default invoiceRoutes
