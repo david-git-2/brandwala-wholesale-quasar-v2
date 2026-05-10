@@ -868,7 +868,7 @@ const marketOptions = computed(() => [
   })),
 ])
 const shipmentMarkerTagOptions = [
-  { label: 'None', value: null as null },
+  { label: 'None', value: null },
   { label: 'Price Reviewed', value: 'price_reviewed' as const },
   { label: 'Issue', value: 'issue' as const },
   { label: 'Done', value: 'done' as const },
