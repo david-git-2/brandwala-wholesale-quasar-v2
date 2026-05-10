@@ -47,6 +47,7 @@ export type ShipmentItem = {
   received_quantity: number
   damaged_quantity: number
   stolen_quantity: number
+  marker_tag: 'price_reviewed' | 'issue' | 'done' | null
   created_at: string
   updated_at: string
 }
@@ -147,6 +148,7 @@ export type UpdateShipmentItemInput = {
       | 'received_quantity'
       | 'damaged_quantity'
       | 'stolen_quantity'
+      | 'marker_tag'
       | 'product_weight'
       | 'package_weight'
     >

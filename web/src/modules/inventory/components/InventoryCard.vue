@@ -56,7 +56,11 @@
                 </div>
               </div>
               <div class="column items-end q-gutter-sm">
-
+                <q-checkbox
+                  :model-value="selectedIds.includes(item.id)"
+                  label="Select"
+                  @update:model-value="(checked) => emit('toggle-select', { itemId: item.id, checked: Boolean(checked) })"
+                />
 
               </div>
             </div>
@@ -186,6 +190,7 @@ import type { InventoryItemWithStock } from '../types'
 
 defineProps<{
   items: InventoryItemWithStock[]
+  selectedIds: number[]
 }>()
 
 type QuantityKey = 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired'
@@ -194,6 +199,7 @@ const emit = defineEmits<{
   (e: 'save-quantity', payload: { item: InventoryItemWithStock; field: QuantityKey; value: number }): void
   (e: 'save-date', payload: { item: InventoryItemWithStock; field: 'manufacturing_date' | 'expire_date'; value: string | null }): void
   (e: 'delete-item', item: InventoryItemWithStock): void
+  (e: 'toggle-select', payload: { itemId: number; checked: boolean }): void
 }>()
 
 const toNonNegativeInt = (value: unknown) => {

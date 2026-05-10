@@ -74,20 +74,22 @@
           </q-td>
 
           <q-td key="name" :props="slotProps" class="col-name">
-            <div class="row items-center no-wrap q-gutter-xs">
-              <span>{{ slotProps.row.name }}</span>
-              <q-btn
-                v-if="props.status === 'processing'"
-                icon="local_shipping"
-                :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
-                flat
-                round
-                dense
-                size="md"
-                @click="onShip(slotProps.row)"
-              >
-                <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
-              </q-btn>
+            <div class="name-cell-content">
+              <span class="name-cell-text">{{ slotProps.row.name }}</span>
+              <div class="name-cell-ship-btn">
+                <q-btn
+                  v-if="props.status === 'processing'"
+                  icon="local_shipping"
+                  :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
+                  flat
+                  round
+                  dense
+                  size="md"
+                  @click="onShip(slotProps.row)"
+                >
+                  <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+                </q-btn>
+              </div>
             </div>
           </q-td>
 
@@ -1385,6 +1387,29 @@ const totals = computed(() => {
   width: 200px;
   max-width: 200px;
   background: #ffffff;
+}
+
+.name-cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+
+.name-cell-text {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.name-cell-ship-btn {
+  width: 36px;
+  min-width: 36px;
+  display: flex;
+  justify-content: center;
 }
 
 .col-note {

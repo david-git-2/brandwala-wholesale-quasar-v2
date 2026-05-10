@@ -34,6 +34,7 @@ const buildProductBasedCostingFileCreatePayload = (
   profit_rate: payload.profit_rate ?? null,
   conversion_rate: payload.conversion_rate ?? null,
   status: normalizeText(payload.status),
+  default_shipment_id: payload.default_shipment_id ?? null,
 })
 
 const buildProductBasedCostingFileUpdatePayload = (
@@ -79,6 +80,10 @@ const buildProductBasedCostingFileUpdatePayload = (
 
   if (payload.status !== undefined) {
     updatePayload.status = normalizeText(payload.status)
+  }
+
+  if (payload.default_shipment_id !== undefined) {
+    updatePayload.default_shipment_id = payload.default_shipment_id
   }
 
   return updatePayload

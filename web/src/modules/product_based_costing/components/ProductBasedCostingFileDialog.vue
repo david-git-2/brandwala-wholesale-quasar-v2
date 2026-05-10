@@ -45,6 +45,7 @@
           />
 
           <q-select
+            v-if="isEditMode"
             v-model="form.vendor_code"
             :options="vendorOptions"
             emit-value
@@ -56,6 +57,7 @@
           />
 
           <q-select
+            v-if="isEditMode"
             v-model="form.market_code"
             :options="marketOptions"
             emit-value
@@ -155,10 +157,10 @@ watch(
   async (isOpen) => {
     if (isOpen) {
       fillForm(props.data)
-      if (!vendorStore.items.length) {
+      if (isEditMode.value && !vendorStore.items.length) {
         await vendorStore.fetchVendors()
       }
-      if (!marketStore.items.length) {
+      if (isEditMode.value && !marketStore.items.length) {
         await marketStore.fetchMarkets()
       }
     }

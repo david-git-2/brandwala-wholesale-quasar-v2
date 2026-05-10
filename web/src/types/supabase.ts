@@ -1547,6 +1547,7 @@ export type Database = {
           cargo_rate_kg_gbp: number | null
           conversion_rate: number | null
           created_at: string
+          default_shipment_id: number | null
           id: number
           invoice_id: number | null
           market_code: string | null
@@ -1563,6 +1564,7 @@ export type Database = {
           cargo_rate_kg_gbp?: number | null
           conversion_rate?: number | null
           created_at?: string
+          default_shipment_id?: number | null
           id?: number
           invoice_id?: number | null
           market_code?: string | null
@@ -1579,6 +1581,7 @@ export type Database = {
           cargo_rate_kg_gbp?: number | null
           conversion_rate?: number | null
           created_at?: string
+          default_shipment_id?: number | null
           id?: number
           invoice_id?: number | null
           market_code?: string | null
@@ -1592,6 +1595,13 @@ export type Database = {
           vendor_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_based_costing_files_default_shipment_id_fkey"
+            columns: ["default_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_based_costing_files_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -1913,6 +1923,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          marker_tag: string | null
           method: string
           name: string | null
           order_id: number | null
@@ -1933,6 +1944,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          marker_tag?: string | null
           method?: string
           name?: string | null
           order_id?: number | null
@@ -1953,6 +1965,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          marker_tag?: string | null
           method?: string
           name?: string | null
           order_id?: number | null
@@ -2307,6 +2320,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          marker_tag: string | null
           method: string
           name: string | null
           order_id: number | null
@@ -2350,6 +2364,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          marker_tag: string | null
           method: string
           name: string | null
           order_id: number | null
@@ -2379,6 +2394,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          marker_tag: string | null
           method: string
           name: string | null
           order_id: number | null

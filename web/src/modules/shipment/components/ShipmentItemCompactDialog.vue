@@ -3,7 +3,7 @@
     <q-card style="min-width: 420px; max-width: 90vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6">Add Shipment</div>
-        <q-btn flat round dense icon="close" @click="onCancel" />
+        <q-btn flat round dense icon="close" :disable="loading" @click="onCancel" />
       </q-card-section>
 
       <q-separator />
@@ -17,6 +17,7 @@
           emit-value
           map-options
           :rules="[requiredRule]"
+          :disable="loading"
         />
 
         <q-input
@@ -25,6 +26,7 @@
           type="number"
           outlined
           :rules="[requiredRule]"
+          :disable="loading"
         />
 
         <q-input
@@ -33,14 +35,15 @@
           type="number"
           step="0.01"
           outlined
+          :disable="loading"
         />
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="grey-7" @click="onCancel" />
-        <q-btn color="primary" label="Save" @click="onSave" />
+        <q-btn flat label="Cancel" color="grey-7" :disable="loading" @click="onCancel" />
+        <q-btn color="primary" label="Save" :loading="loading" :disable="loading" @click="onSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -59,11 +62,14 @@ const props = defineProps<{
   modelValue: boolean
   quantity?: number | null
   priceGbp?: number | null
+  defaultShipmentId?: number | null
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'save', payload: { shipment_id: number; quantity: number; price_gbp: number | null }): void
+  (e: 'shipment-change', shipmentId: number | null): void
 }>()
 
 const shipmentStore = useShipmentStore()
@@ -87,11 +93,20 @@ watch(
   () => props.modelValue,
   (opened) => {
     if (opened) {
-      form.shipment_id = null
+      form.shipment_id = props.defaultShipmentId ?? null
       form.quantity = props.quantity ?? null
       form.price_gbp = props.priceGbp ?? null
     }
   }
+)
+
+watch(
+  () => props.defaultShipmentId,
+  (value) => {
+    if (localOpen.value) {
+      form.shipment_id = value ?? null
+    }
+  },
 )
 
 watch(
@@ -129,6 +144,9 @@ const onCancel = () => {
 }
 
 const onSave = () => {
+  if (props.loading) {
+    return
+  }
   if (form.shipment_id == null || form.quantity == null) {
     return
   }
@@ -142,6 +160,14 @@ const onSave = () => {
         : Number(form.price_gbp),
   })
 
-  localOpen.value = false
 }
+
+watch(
+  () => form.shipment_id,
+  (value) => {
+    if (localOpen.value) {
+      emit('shipment-change', value ?? null)
+    }
+  },
+)
 </script>

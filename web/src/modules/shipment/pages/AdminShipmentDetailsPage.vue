@@ -166,6 +166,7 @@
               <th class="text-left shipment-image-col">Image</th>
               <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
               <th v-if="isColumnVisible('method')" class="text-left">Method</th>
+              <th class="text-left shipment-tag-col">Tag</th>
               <th v-if="isColumnVisible('price_gbp')" class="text-right">Price GBP</th>
               <th v-if="isColumnVisible('cost_bdt')" class="text-right">Cost BDT</th>
               <th
@@ -218,6 +219,50 @@
                 {{ item.name ?? '-' }}
               </td>
               <td v-if="isColumnVisible('method')" class="text-uppercase">{{ item.method ?? '-' }}</td>
+              <td class="shipment-tag-col">
+                <q-btn-dropdown
+                  flat
+                  no-caps
+                  no-icon-animation
+                  class="shipment-tag-dropdown"
+                >
+                  <template #label>
+                    <q-chip
+                      dense
+                      square
+                      size="sm"
+                      :color="getTagChipColor(item.marker_tag)"
+                      text-color="white"
+                      class="shipment-tag-chip"
+                    >
+                      {{ getTagLabel(item.marker_tag) }}
+                    </q-chip>
+                  </template>
+
+                  <q-list dense style="min-width: 160px">
+                    <q-item
+                      v-for="option in shipmentMarkerTagOptions"
+                      :key="String(option.label)"
+                      clickable
+                      v-close-popup
+                      @click="onMarkerTagChange(item, option.value)"
+                    >
+                      <q-item-section>
+                        <q-chip
+                          dense
+                          square
+                          size="sm"
+                          :color="getTagChipColor(option.value)"
+                          text-color="white"
+                          class="shipment-tag-chip"
+                        >
+                          {{ option.label }}
+                        </q-chip>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-btn-dropdown>
+              </td>
               <td v-if="isColumnVisible('price_gbp')" class="text-right">
                 <span class="cursor-pointer">{{ formatDecimal(item.price_gbp) }}</span>
                 <q-popup-edit
@@ -408,6 +453,7 @@
               <td class="shipment-image-col"></td>
               <td v-if="isColumnVisible('name')" class="shipment-name-col"></td>
               <td v-if="isColumnVisible('method')"></td>
+              <td class="shipment-tag-col"></td>
               <td v-if="isColumnVisible('price_gbp')" class="text-right text-weight-bold">
                 {{ formatFixed2(totals.price_gbp) }}
               </td>
@@ -821,6 +867,22 @@ const marketOptions = computed(() => [
     value: market.code,
   })),
 ])
+const shipmentMarkerTagOptions = [
+  { label: 'None', value: null as null },
+  { label: 'Price Reviewed', value: 'price_reviewed' as const },
+  { label: 'Issue', value: 'issue' as const },
+  { label: 'Done', value: 'done' as const },
+]
+const getTagChipColor = (tag: 'price_reviewed' | 'issue' | 'done' | null) => {
+  if (tag === 'price_reviewed') return 'indigo-6'
+  if (tag === 'issue') return 'negative'
+  if (tag === 'done') return 'positive'
+  return 'grey-6'
+}
+const getTagLabel = (tag: 'price_reviewed' | 'issue' | 'done' | null) => {
+  const option = shipmentMarkerTagOptions.find((item) => item.value === tag)
+  return option?.label ?? 'None'
+}
 
 const shipmentId = computed(() => Number(route.params.id))
 const statusOptions = SHIPMENT_STATUS_OPTIONS
@@ -845,7 +907,7 @@ const isAddToInventoryRateInvalid = computed(() => {
 const isColumnVisible = (column: ShipmentColumnKey) => visibleColumns.value.includes(column)
 
 const shipmentTableColspan = computed(() => {
-  const base = 2 // SL + Image are always visible
+  const base = 3 // SL + Image + Tag are always visible
   return (
     base +
     (isColumnVisible('name') ? 1 : 0) +
@@ -1197,6 +1259,22 @@ const onNumericPopupSave = async (
   }
 }
 
+const onMarkerTagChange = async (
+  item: ShipmentItem,
+  value: 'price_reviewed' | 'issue' | 'done' | null,
+) => {
+  const result = await shipmentStore.updateShipmentItem({
+    id: item.id,
+    patch: {
+      marker_tag: value,
+    },
+  })
+
+  if (!result.success) {
+    return
+  }
+}
+
 onMounted(async () => {
   if (!Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
     return
@@ -1296,6 +1374,33 @@ watch(showAddItemDialog, (open) => {
   max-width: 200px;
 }
 
+.shipment-tag-col {
+  width: 112px;
+  min-width: 112px;
+  max-width: 112px;
+}
+
+.shipment-tag-chip {
+  min-height: 20px;
+  height: 20px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 8px;
+  border-radius: 0;
+}
+
+.shipment-tag-dropdown {
+  padding: 0;
+  min-height: 22px;
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+}
+
+.shipment-tag-dropdown :deep(.q-btn-dropdown__arrow) {
+  display: none;
+}
+
 .shipment-sl-col {
   width: 60px;
   min-width: 60px;
@@ -1329,6 +1434,12 @@ watch(showAddItemDialog, (open) => {
   left: 60px;
 }
 
+.shipment-details-table :deep(td:nth-child(3)),
+.shipment-details-table :deep(th:nth-child(3)) {
+  position: sticky;
+  left: 148px;
+}
+
 .shipment-details-table :deep(td:first-child) {
   z-index: 1;
   background: #fff;
@@ -1339,11 +1450,20 @@ watch(showAddItemDialog, (open) => {
   background: #fff;
 }
 
+.shipment-details-table :deep(td:nth-child(3)) {
+  z-index: 1;
+  background: #fff;
+}
+
 .shipment-details-table :deep(tr:first-child th:first-child) {
   z-index: 3;
 }
 
 .shipment-details-table :deep(tr:first-child th:nth-child(2)) {
+  z-index: 3;
+}
+
+.shipment-details-table :deep(tr:first-child th:nth-child(3)) {
   z-index: 3;
 }
 

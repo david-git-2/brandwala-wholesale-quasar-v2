@@ -164,6 +164,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       received_quantity: item.received_quantity,
       damaged_quantity: item.damaged_quantity,
       stolen_quantity: item.stolen_quantity,
+      marker_tag: item.marker_tag ?? null,
     }))
 
     const { error: insertItemsError } = await db.from('shipment_items').insert(itemRows)

@@ -132,6 +132,9 @@
       v-model="showAddShipmentDialog"
       :quantity="selectedQuantity"
       :price-gbp="selectedPriceGbp"
+      :loading="shipmentStore.saving"
+      :default-shipment-id="(store.item?.default_shipment_id as number | null | undefined) ?? null"
+      @shipment-change="onDefaultShipmentChange"
       @save="onSaveShipment"
     />
 
@@ -264,8 +267,9 @@ const handleCreated = async () => {
     return;
   }
 
+  // Keep store in sync with backend using a single items fetch.
+  // Avoid shipment refresh here because it fans out into many API calls.
   await store.fetchProductBasedCostingItems(fileId.value);
-  await refreshShippedItemIndicators();
 };
 
 onMounted(async () => {
@@ -510,14 +514,12 @@ const refreshShippedItemIndicators = async () => {
   });
 
   const shippedIds = new Set<number>();
-  const shipmentsResult = await shipmentService.listShipments(tenantId);
-  if (!shipmentsResult.success) {
-    shippedItemIds.value = [];
-    return;
+  if (!shipmentStore.shipments.length) {
+    await shipmentStore.fetchShipments(tenantId);
   }
 
   const shipmentItemsResults = await Promise.all(
-    (shipmentsResult.data ?? []).map((shipment) => shipmentService.listShipmentItems(shipment.id)),
+    shipmentStore.shipments.map((shipment) => shipmentService.listShipmentItems(shipment.id)),
   );
 
   shipmentItemsResults.forEach((result) => {
@@ -562,13 +564,12 @@ const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => 
     return null;
   }
 
-  const shipmentsResult = await shipmentService.listShipments(tenantId);
-  if (!shipmentsResult.success) {
-    return null;
+  if (!shipmentStore.shipments.length) {
+    await shipmentStore.fetchShipments(tenantId);
   }
 
   const shipmentItemsResults = await Promise.all(
-    (shipmentsResult.data ?? []).map((shipment) => shipmentService.listShipmentItems(shipment.id)),
+    shipmentStore.shipments.map((shipment) => shipmentService.listShipmentItems(shipment.id)),
   );
 
   for (const result of shipmentItemsResults) {
@@ -643,7 +644,7 @@ const onSaveShipment = async (data: {
     return;
   }
 
-  await shipmentStore.addShipmentItemManual({
+  const addResult = await shipmentStore.addShipmentItemManual({
     shipment_id: data.shipment_id,
     order_id: null,
     method: 'costing',
@@ -661,9 +662,32 @@ const onSaveShipment = async (data: {
     stolen_quantity: 0,
   });
 
+  if (!addResult.success) {
+    return;
+  }
+
+  showAddShipmentDialog.value = false;
   selectedShipItem.value = null;
   selectedQuantity.value = null;
   selectedPriceGbp.value = null;
-  await refreshShippedItemIndicators();
+  if (!shippedItemIds.value.includes(rowItem.id)) {
+    shippedItemIds.value = [...shippedItemIds.value, rowItem.id];
+  }
+};
+
+const onDefaultShipmentChange = async (shipmentId: number | null) => {
+  if (!fileId.value) {
+    return;
+  }
+
+  const currentDefault = store.item?.default_shipment_id ?? null;
+  if (currentDefault === shipmentId) {
+    return;
+  }
+
+  await store.updateProductBasedCostingFile({
+    id: fileId.value,
+    default_shipment_id: shipmentId,
+  });
 };
 </script>

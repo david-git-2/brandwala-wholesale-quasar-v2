@@ -2,7 +2,30 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Inventory</div>
-      <q-btn color="primary" label="Add Item" @click="openAddDialog" />
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          v-if="inventoryStore.items.length"
+          flat
+          icon="select_all"
+          label="Select All"
+          @click="onSelectAllVisible"
+        />
+        <q-btn
+          v-if="selectedItemIds.length"
+          flat
+          icon="deselect"
+          label="Clear Selection"
+          @click="selectedItemIds = []"
+        />
+        <q-btn
+          v-if="selectedItemIds.length"
+          color="negative"
+          icon="delete"
+          :label="`Delete Selected (${selectedItemIds.length})`"
+          @click="onDeleteSelected"
+        />
+        <q-btn color="primary" label="Add Item" @click="openAddDialog" />
+      </div>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md">
@@ -56,9 +79,11 @@
     <InventoryItemDialog v-model="isAddDialogOpen" @save="onSaveItem" />
     <InventoryCard
       :items="inventoryStore.items"
+      :selected-ids="selectedItemIds"
       @save-quantity="onSaveQuantity"
       @save-date="onSaveDate"
       @delete-item="onDeleteItem"
+      @toggle-select="onToggleSelect"
     />
 
     <div v-if="totalPages > 1" class="row justify-center q-mt-md">
@@ -98,6 +123,7 @@ const searchField = ref<'name' | 'barcode' | 'product_code'>('name')
 const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
 const page = ref(1)
+const selectedItemIds = ref<number[]>([])
 
 const totalPages = computed(() =>
   Math.max(1, inventoryStore.total_pages || 1),
@@ -148,6 +174,9 @@ const fetchInventoryItems = async () => {
     sortBy: 'id',
     sortOrder: 'desc',
   })
+
+  const visibleIds = new Set(inventoryStore.items.map((item) => item.id))
+  selectedItemIds.value = selectedItemIds.value.filter((id) => visibleIds.has(id))
 }
 
 const openAddDialog = () => {
@@ -305,6 +334,48 @@ const onDeleteItem = (item: InventoryItemWithStock) => {
       await fetchInventoryItems()
     })()
   })
+}
+
+const onToggleSelect = (payload: { itemId: number; checked: boolean }) => {
+  if (payload.checked) {
+    if (!selectedItemIds.value.includes(payload.itemId)) {
+      selectedItemIds.value = [...selectedItemIds.value, payload.itemId]
+    }
+    return
+  }
+  selectedItemIds.value = selectedItemIds.value.filter((id) => id !== payload.itemId)
+}
+
+const onDeleteSelected = () => {
+  if (!selectedItemIds.value.length) return
+  const idsToDelete = [...selectedItemIds.value]
+  $q.dialog({
+    title: 'Delete Selected Inventory Items',
+    message: `Are you sure you want to delete ${idsToDelete.length} selected item(s)? This will also delete related stock records.`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Delete All',
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      for (const id of idsToDelete) {
+        const result = await inventoryStore.deleteInventoryItem({ id })
+        if (!result.success) {
+          handleApiFailure(result, result.error ?? 'Failed to delete one or more inventory items.')
+          return
+        }
+      }
+      selectedItemIds.value = []
+      await fetchInventoryItems()
+    })()
+  })
+}
+
+const onSelectAllVisible = () => {
+  selectedItemIds.value = inventoryStore.items.map((item) => item.id)
 }
 
 const onSaveDate = async (payload: {
