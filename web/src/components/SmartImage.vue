@@ -51,10 +51,33 @@ const toDirectGoogleImageUrl = (url: string | null | undefined) => {
   return `https://lh3.googleusercontent.com/d/${fileId}`
 }
 
+const toProxyImageUrl = (url: string | null | undefined) => {
+  if (!url) return ''
+  const trimmed = url.trim()
+  if (!trimmed || trimmed.startsWith('data:')) return trimmed
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return trimmed
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return trimmed
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  if (!supabaseUrl) return trimmed
+
+  return `${supabaseUrl}/functions/v1/image-proxy?url=${encodeURIComponent(trimmed)}`
+}
+
 const imageCandidates = computed(() => {
   const original = props.src || ''
   const direct = toDirectGoogleImageUrl(original)
-  return [...new Set([direct, original, fallbackImage].filter(Boolean))]
+  const proxied = toProxyImageUrl(direct || original)
+  return [...new Set([proxied, direct, original, fallbackImage].filter(Boolean))]
 })
 
 const currentImageSrc = computed(() => {
