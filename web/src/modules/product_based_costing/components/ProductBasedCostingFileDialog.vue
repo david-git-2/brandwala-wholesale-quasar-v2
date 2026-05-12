@@ -44,29 +44,6 @@
             dense
           />
 
-          <q-select
-            v-if="isEditMode"
-            v-model="form.vendor_code"
-            :options="vendorOptions"
-            emit-value
-            map-options
-            label="Default Vendor"
-            outlined
-            dense
-            clearable
-          />
-
-          <q-select
-            v-if="isEditMode"
-            v-model="form.market_code"
-            :options="marketOptions"
-            emit-value
-            map-options
-            label="Default Market"
-            outlined
-            dense
-            clearable
-          />
         </q-form>
       </q-card-section>
 
@@ -87,8 +64,6 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { useMarketStore } from 'src/modules/market/stores/marketStore'
 
 interface CostingFileForm {
   id: number | null
@@ -114,8 +89,6 @@ type FormRef = {
 }
 
 const formRef = ref<FormRef | null>(null)
-const vendorStore = useVendorStore()
-const marketStore = useMarketStore()
 
 const emptyForm = (): CostingFileForm => ({
   id: null,
@@ -154,34 +127,12 @@ watch(
 
 watch(
   () => props.modelValue,
-  async (isOpen) => {
+  (isOpen) => {
     if (isOpen) {
       fillForm(props.data)
-      if (isEditMode.value && !vendorStore.items.length) {
-        await vendorStore.fetchVendors()
-      }
-      if (isEditMode.value && !marketStore.items.length) {
-        await marketStore.fetchMarkets()
-      }
     }
   }
 )
-
-const vendorOptions = computed(() => [
-  { label: 'Other', value: null as string | null },
-  ...vendorStore.items.map((vendor) => ({
-    label: `${vendor.name} (${vendor.code})`,
-    value: vendor.code,
-  })),
-])
-
-const marketOptions = computed(() => [
-  { label: 'Other', value: null as string | null },
-  ...marketStore.items.map((market) => ({
-    label: `${market.name} (${market.code})`,
-    value: market.code,
-  })),
-])
 
 async function handleSubmit() {
   const isValid = await formRef.value?.validate()

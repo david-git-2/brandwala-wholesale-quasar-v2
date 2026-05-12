@@ -19,6 +19,8 @@ import type {
   InventoryMovement,
   InventoryServiceResult,
   InventoryStock,
+  RefreshShipmentInventoryAccountingInput,
+  ShipmentInventoryAccountingSummary,
   UpdateInventoryAccountingEntryInput,
   UpdateInventoryItemInput,
   UpdateInvoiceAccountingPaymentInput,
@@ -284,6 +286,40 @@ const createInventoryAccountingEntry = async (
   }
 }
 
+const listShipmentInventoryAccountingSummaries = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryServiceResult<InventoryListPage<ShipmentInventoryAccountingSummary>>> => {
+  try {
+    const data = await inventoryRepository.listShipmentInventoryAccountingSummaries(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to load shipment inventory accounting summaries.',
+    }
+  }
+}
+
+const refreshShipmentInventoryAccountingSummaries = async (
+  payload: RefreshShipmentInventoryAccountingInput,
+): Promise<InventoryServiceResult<number>> => {
+  try {
+    const data = await inventoryRepository.refreshShipmentInventoryAccountingSummaries(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to refresh shipment inventory accounting summaries.',
+    }
+  }
+}
+
 export const inventoryService = {
   listInventoryItems,
   getInventoryItemById,
@@ -304,6 +340,8 @@ export const inventoryService = {
   deleteInventoryMovement,
   listInventoryAccountingEntries,
   createInventoryAccountingEntry,
+  listShipmentInventoryAccountingSummaries,
+  refreshShipmentInventoryAccountingSummaries,
   updateInventoryAccountingEntry: async (payload: UpdateInventoryAccountingEntryInput) => {
     try {
       const data = await inventoryRepository.updateInventoryAccountingEntry(payload)

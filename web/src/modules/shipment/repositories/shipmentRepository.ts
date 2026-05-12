@@ -230,7 +230,7 @@ const addShipmentItemFromProduct = async (
   let createdRow = data as ShipmentItem
   const { data: updatedData, error: updateError } = await db
     .from('shipment_items')
-    .update({ method: 'costing' })
+    .update({ method: payload.method ?? 'costing' })
     .eq('id', createdRow.id)
     .select('*')
     .single()

@@ -76,8 +76,20 @@
       </div>
     </div>
 
+    <div class="row justify-end q-mb-md">
+      <q-btn-toggle
+        v-model="inventoryView"
+        unelevated
+        toggle-color="primary"
+        color="grey-3"
+        text-color="grey-8"
+        :options="inventoryViewOptions"
+      />
+    </div>
+
     <InventoryItemDialog v-model="isAddDialogOpen" @save="onSaveItem" />
     <InventoryCard
+      v-if="inventoryView === 'detailed'"
       :items="inventoryStore.items"
       :selected-ids="selectedItemIds"
       @save-quantity="onSaveQuantity"
@@ -85,6 +97,7 @@
       @delete-item="onDeleteItem"
       @toggle-select="onToggleSelect"
     />
+    <InventoryCompactCard v-else :items="inventoryStore.items" />
 
     <div v-if="totalPages > 1" class="row justify-center q-mt-md">
       <q-pagination
@@ -108,6 +121,7 @@ import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
 import InventoryCard from '../components/InventoryCard.vue'
+import InventoryCompactCard from '../components/InventoryCompactCard.vue'
 import InventoryItemDialog from '../components/InventoryItemDialog.vue'
 import { useInventoryStore } from '../stores/inventoryStore'
 import type { CreateInventoryItemInput, InventoryItemWithStock } from '../types'
@@ -124,6 +138,11 @@ const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
 const page = ref(1)
 const selectedItemIds = ref<number[]>([])
+const inventoryView = ref<'detailed' | 'compact'>('compact')
+const inventoryViewOptions = [
+  { icon: 'dashboard', value: 'detailed' as const },
+  { icon: 'grid_view', value: 'compact' as const },
+]
 
 const totalPages = computed(() =>
   Math.max(1, inventoryStore.total_pages || 1),
@@ -132,10 +151,12 @@ const totalPages = computed(() =>
 const shipmentOptions = computed(() =>
   [
     { label: 'All', value: null as number | null },
-    ...shipmentStore.shipments.map((shipment) => ({
-      label: shipment.name,
-      value: shipment.id,
-    })),
+    ...shipmentStore.shipments
+      .filter((shipment) => shipment.inventory_added === true)
+      .map((shipment) => ({
+        label: shipment.name,
+        value: shipment.id,
+      })),
   ],
 )
 

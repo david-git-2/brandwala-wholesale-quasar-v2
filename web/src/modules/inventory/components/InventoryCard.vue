@@ -254,6 +254,7 @@ const getShipmentId = (item: InventoryItemWithStock): number | null => {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: 8px;
 }
 
 .inventory-card__image {

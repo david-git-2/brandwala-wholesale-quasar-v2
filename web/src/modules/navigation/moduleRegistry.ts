@@ -223,6 +223,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'accounting/shipment',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Inventory Shipment Summary',
+        caption: 'View shipment-wise usable, damaged, stolen, and expired accounting totals',
+        icon: 'inventory_2',
+        routeSegment: 'accounting/inventory-shipment',
+        requiredAction: 'view',
+      },
     ],
   },
   {

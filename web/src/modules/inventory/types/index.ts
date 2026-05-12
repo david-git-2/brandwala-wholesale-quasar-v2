@@ -40,6 +40,30 @@ export type InventoryServiceResult<T> = {
   error?: string
 }
 
+export type ShipmentInventoryAccountingSummary = {
+  id: number
+  tenant_id: number
+  shipment_id: number
+  shipment_name: string | null
+  shipment_status: string | null
+  usable_quantity: number
+  damaged_quantity: number
+  stolen_quantity: number
+  expired_quantity: number
+  usable_cost_total: number
+  damaged_cost_total: number
+  stolen_cost_total: number
+  expired_cost_total: number
+  inventory_cost_total: number
+  created_at: string
+  updated_at: string
+}
+
+export type RefreshShipmentInventoryAccountingInput = {
+  tenant_id: number
+  shipment_id?: number | null
+}
+
 export type InventoryItem = {
   id: number
   tenant_id: number
@@ -156,6 +180,7 @@ export type InventoryStoreState = {
   items: InventoryItemWithStock[]
   stocks: InventoryStock[]
   movements: InventoryMovement[]
+  shipmentInventoryAccountingSummaries: ShipmentInventoryAccountingSummary[]
   selectedItem: InventoryItem | null
   selectedStock: InventoryStock | null
   selectedMovement: InventoryMovement | null

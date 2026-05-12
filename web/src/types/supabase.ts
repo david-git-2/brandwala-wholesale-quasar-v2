@@ -1858,6 +1858,72 @@ export type Database = {
           },
         ]
       }
+      shipment_inventory_accounting: {
+        Row: {
+          created_at: string
+          damaged_cost_total: number
+          damaged_quantity: number
+          expired_cost_total: number
+          expired_quantity: number
+          id: number
+          inventory_cost_total: number
+          shipment_id: number
+          stolen_cost_total: number
+          stolen_quantity: number
+          tenant_id: number
+          updated_at: string
+          usable_cost_total: number
+          usable_quantity: number
+        }
+        Insert: {
+          created_at?: string
+          damaged_cost_total?: number
+          damaged_quantity?: number
+          expired_cost_total?: number
+          expired_quantity?: number
+          id?: number
+          inventory_cost_total?: number
+          shipment_id: number
+          stolen_cost_total?: number
+          stolen_quantity?: number
+          tenant_id: number
+          updated_at?: string
+          usable_cost_total?: number
+          usable_quantity?: number
+        }
+        Update: {
+          created_at?: string
+          damaged_cost_total?: number
+          damaged_quantity?: number
+          expired_cost_total?: number
+          expired_quantity?: number
+          id?: number
+          inventory_cost_total?: number
+          shipment_id?: number
+          stolen_cost_total?: number
+          stolen_quantity?: number
+          tenant_id?: number
+          updated_at?: string
+          usable_cost_total?: number
+          usable_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_inventory_accounting_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_inventory_accounting_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_investments: {
         Row: {
           actual_profit: number
@@ -2011,12 +2077,14 @@ export type Database = {
           created_at: string
           id: number
           inventory_added: boolean
+          market_code: string | null
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
           status: string
           tenant_id: number
           updated_at: string
+          vendor_code: string | null
           weight: number | null
         }
         Insert: {
@@ -2025,12 +2093,14 @@ export type Database = {
           created_at?: string
           id?: number
           inventory_added?: boolean
+          market_code?: string | null
           name: string
           product_conversion_rate?: number | null
           received_weight?: number | null
           status?: string
           tenant_id: number
           updated_at?: string
+          vendor_code?: string | null
           weight?: number | null
         }
         Update: {
@@ -2039,21 +2109,37 @@ export type Database = {
           created_at?: string
           id?: number
           inventory_added?: boolean
+          market_code?: string | null
           name?: string
           product_conversion_rate?: number | null
           received_weight?: number | null
           status?: string
           tenant_id?: number
           updated_at?: string
+          vendor_code?: string | null
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shipments_market_code_fkey"
+            columns: ["market_code"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["code"]
+          },
           {
             foreignKeyName: "shipments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_code_fkey"
+            columns: ["vendor_code"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -2758,12 +2844,14 @@ export type Database = {
           created_at: string
           id: number
           inventory_added: boolean
+          market_code: string | null
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
           status: string
           tenant_id: number
           updated_at: string
+          vendor_code: string | null
           weight: number | null
         }
         SetofOptions: {
@@ -3303,6 +3391,10 @@ export type Database = {
         Args: { p_investor_id: number; p_tenant_id: number }
         Returns: undefined
       }
+      refresh_shipment_inventory_accounting: {
+        Args: { p_shipment_id?: number; p_tenant_id: number }
+        Returns: number
+      }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -3506,12 +3598,14 @@ export type Database = {
           created_at: string
           id: number
           inventory_added: boolean
+          market_code: string | null
           name: string
           product_conversion_rate: number | null
           received_weight: number | null
           status: string
           tenant_id: number
           updated_at: string
+          vendor_code: string | null
           weight: number | null
         }
         SetofOptions: {

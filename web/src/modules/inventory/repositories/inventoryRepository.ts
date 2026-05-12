@@ -18,6 +18,8 @@ import type {
   InventoryListPage,
   InventoryListQuery,
   InventoryMovement,
+  RefreshShipmentInventoryAccountingInput,
+  ShipmentInventoryAccountingSummary,
   InventoryStock,
   InvoiceAccountingPayment,
   UpdateInventoryAccountingEntryInput,
@@ -246,6 +248,23 @@ const INVOICE_ACCOUNTING_PAYMENT_FILTERABLE_FIELDS = [
   'reference_no',
   'note',
   'created_by',
+  'created_at',
+  'updated_at',
+] as const
+
+const SHIPMENT_INVENTORY_ACCOUNTING_FILTERABLE_FIELDS = [
+  'id',
+  'tenant_id',
+  'shipment_id',
+  'usable_quantity',
+  'damaged_quantity',
+  'stolen_quantity',
+  'expired_quantity',
+  'usable_cost_total',
+  'damaged_cost_total',
+  'stolen_cost_total',
+  'expired_cost_total',
+  'inventory_cost_total',
   'created_at',
   'updated_at',
 ] as const
@@ -757,6 +776,92 @@ const deleteInvoiceAccountingPayment = async (
   if (error) throw error
 }
 
+const listShipmentInventoryAccountingSummaries = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryListPage<ShipmentInventoryAccountingSummary>> => {
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
+  const page = sanitizePage(payload.page, 1)
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('shipment_inventory_accounting')
+    .select('*, shipments(id,name,status)', { count: 'exact' })
+
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+
+  query = applyFilters(
+    query,
+    payload.filters,
+    payload.operators,
+    SHIPMENT_INVENTORY_ACCOUNTING_FILTERABLE_FIELDS,
+  )
+
+  const safeSortBy = isAllowedField(payload.sortBy, SHIPMENT_INVENTORY_ACCOUNTING_FILTERABLE_FIELDS)
+    ? payload.sortBy
+    : 'shipment_id'
+  const ascending = payload.sortOrder === 'asc'
+
+  const { data, error, count } = await query
+    .order(safeSortBy, { ascending })
+    .range(from, to)
+
+  if (error) {
+    throw error
+  }
+
+  const rows = (data as Array<Record<string, unknown>> | null) ?? []
+  const mappedRows: ShipmentInventoryAccountingSummary[] = rows.map((row) => {
+    const shipment = toObjectRecord(row.shipments)
+    return {
+      id: toNumberOrZero(row.id),
+      tenant_id: toNumberOrZero(row.tenant_id),
+      shipment_id: toNumberOrZero(row.shipment_id),
+      shipment_name: toNullableText(shipment?.name),
+      shipment_status: toNullableText(shipment?.status),
+      usable_quantity: toNumberOrZero(row.usable_quantity),
+      damaged_quantity: toNumberOrZero(row.damaged_quantity),
+      stolen_quantity: toNumberOrZero(row.stolen_quantity),
+      expired_quantity: toNumberOrZero(row.expired_quantity),
+      usable_cost_total: toNumberOrZero(row.usable_cost_total),
+      damaged_cost_total: toNumberOrZero(row.damaged_cost_total),
+      stolen_cost_total: toNumberOrZero(row.stolen_cost_total),
+      expired_cost_total: toNumberOrZero(row.expired_cost_total),
+      inventory_cost_total: toNumberOrZero(row.inventory_cost_total),
+      created_at: toNullableText(row.created_at) ?? '',
+      updated_at: toNullableText(row.updated_at) ?? '',
+    }
+  })
+
+  const total = count ?? 0
+  return {
+    data: mappedRows,
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
+}
+
+const refreshShipmentInventoryAccountingSummaries = async (
+  payload: RefreshShipmentInventoryAccountingInput,
+): Promise<number> => {
+  const { data, error } = await supabase.rpc('refresh_shipment_inventory_accounting', {
+    p_tenant_id: payload.tenant_id,
+    p_shipment_id: payload.shipment_id ?? null,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return toNumberOrZero(data)
+}
+
 export const inventoryRepository = {
   listInventoryItems,
   getInventoryItemById,
@@ -783,4 +888,6 @@ export const inventoryRepository = {
   createInvoiceAccountingPayment,
   updateInvoiceAccountingPayment,
   deleteInvoiceAccountingPayment,
+  listShipmentInventoryAccountingSummaries,
+  refreshShipmentInventoryAccountingSummaries,
 }

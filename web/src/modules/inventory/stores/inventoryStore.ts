@@ -21,6 +21,7 @@ export const useInventoryStore = defineStore('inventory', {
     items: [],
     stocks: [],
     movements: [],
+    shipmentInventoryAccountingSummaries: [],
     accountingEntries: [],
     accountingPayments: [],
     selectedItem: null,
@@ -446,6 +447,46 @@ export const useInventoryStore = defineStore('inventory', {
         }
 
         showSuccessNotification('Inventory movement deleted successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchShipmentInventoryAccountingSummaries(payload: InventoryListQuery = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.listShipmentInventoryAccountingSummaries(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load shipment inventory accounting summaries.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.shipmentInventoryAccountingSummaries = result.data?.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async refreshShipmentInventoryAccountingSummaries(payload: {
+      tenant_id: number
+      shipment_id?: number | null
+    }) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.refreshShipmentInventoryAccountingSummaries(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to refresh shipment inventory accounting summaries.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
         return result
       } finally {
         this.saving = false

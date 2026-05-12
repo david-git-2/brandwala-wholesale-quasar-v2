@@ -11,6 +11,7 @@ export const SHIPMENT_STATUS_OPTIONS = [
   'Airport Arrival',
   'Airport Released',
   'Warehouse Received',
+  'Added to Inventory',
 ] as const
 
 export type ShipmentStatus = (typeof SHIPMENT_STATUS_OPTIONS)[number]
@@ -26,6 +27,8 @@ export type Shipment = {
   inventory_added: boolean
   weight: number | null
   received_weight: number | null
+  vendor_code: string | null
+  market_code: string | null
   created_at: string
   updated_at: string
 }
@@ -77,6 +80,8 @@ export type ShipmentUpdateField =
   | 'cargo_rate'
   | 'weight'
   | 'received_weight'
+  | 'vendor_code'
+  | 'market_code'
   | 'inventory_added'
 
 export type UpdateShipmentFieldInput = {
@@ -102,6 +107,7 @@ export type AddShipmentItemFromProductInput = {
   shipment_id: number
   product_id: number
   quantity: number
+  method?: ShipmentItemMethod | null
 }
 
 export type AddShipmentItemManualInput = {

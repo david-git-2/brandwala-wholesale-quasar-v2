@@ -68,6 +68,7 @@ const statusChipColor = (status: string | null | undefined) => {
   if (status === 'Airport Arrival') return 'deep-orange'
   if (status === 'Airport Released') return 'brown-7'
   if (status === 'Warehouse Received') return 'positive'
+  if (status === 'Added to Inventory') return 'green-8'
   return 'primary'
 }
 

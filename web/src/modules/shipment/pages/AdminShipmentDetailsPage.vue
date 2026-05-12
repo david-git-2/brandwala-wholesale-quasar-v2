@@ -61,12 +61,29 @@
           label="Search Item"
           @click="openAddItemDialog"
         />
+        <q-btn
+          v-if="shipmentStore.shipmentItems.length"
+          color="warning"
+          outline
+          no-caps
+          label="Reset Tags"
+          :loading="shipmentStore.saving"
+          @click="onResetTags"
+        />
         <q-btn flat round dense icon="view_column" aria-label="Select columns">
           <q-menu>
             <q-list style="min-width: 220px">
               <q-item>
                 <q-item-section>
                   <div class="text-subtitle2">Show Columns</div>
+                </q-item-section>
+              </q-item>
+              <q-item>
+                <q-item-section>
+                  <q-checkbox
+                    v-model="allSelectableColumnsSelected"
+                    label="Select / Deselect All"
+                  />
                 </q-item-section>
               </q-item>
               <q-item>
@@ -165,10 +182,13 @@
               <th class="text-right shipment-sl-col">SL</th>
               <th class="text-left shipment-image-col">Image</th>
               <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
-              <th v-if="isColumnVisible('method')" class="text-left">Method</th>
+              <th v-if="isColumnVisible('product_id')" class="text-left shipment-product-id-col">Product ID</th>
+              <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">Barcode</th>
+              <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">Product Code</th>
+              <th v-if="isColumnVisible('method')" class="text-left shipment-method-col">Method</th>
               <th class="text-left shipment-tag-col">Tag</th>
-              <th v-if="isColumnVisible('price_gbp')" class="text-right">Price GBP</th>
-              <th v-if="isColumnVisible('cost_bdt')" class="text-right">Cost BDT</th>
+              <th v-if="isColumnVisible('price_gbp')" class="text-right shipment-price-col">Price GBP</th>
+              <th v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">Cost BDT</th>
               <th
                 v-if="isColumnVisible('quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--quantity"
@@ -193,9 +213,9 @@
               >
                 Stolen Qty
               </th>
-              <th v-if="isColumnVisible('product_weight')" class="text-right">Product Wt</th>
-              <th v-if="isColumnVisible('package_weight')" class="text-right">Package Wt</th>
-              <th v-if="isColumnVisible('actions')" class="text-right">Actions</th>
+              <th v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">Product Wt</th>
+              <th v-if="isColumnVisible('package_weight')" class="text-right shipment-package-weight-col">Package Wt</th>
+              <th v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -218,7 +238,10 @@
               >
                 {{ item.name ?? '-' }}
               </td>
-              <td v-if="isColumnVisible('method')" class="text-uppercase">{{ item.method ?? '-' }}</td>
+              <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">{{ item.product_id ?? '-' }}</td>
+              <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">{{ item.barcode ?? '-' }}</td>
+              <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">{{ item.product_code ?? '-' }}</td>
+              <td v-if="isColumnVisible('method')" class="text-uppercase shipment-method-col">{{ item.method ?? '-' }}</td>
               <td class="shipment-tag-col">
                 <q-btn-dropdown
                   flat
@@ -263,7 +286,7 @@
                   </q-list>
                 </q-btn-dropdown>
               </td>
-              <td v-if="isColumnVisible('price_gbp')" class="text-right">
+              <td v-if="isColumnVisible('price_gbp')" class="text-right shipment-price-col">
                 <span class="cursor-pointer">{{ formatDecimal(item.price_gbp) }}</span>
                 <q-popup-edit
                   :model-value="item.price_gbp"
@@ -286,7 +309,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td v-if="isColumnVisible('cost_bdt')" class="text-right">
+              <td v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">
                 {{ formatFixed2(calculateItemCostBdt(item)) }}
               </td>
               <td
@@ -389,7 +412,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td v-if="isColumnVisible('product_weight')" class="text-right">
+              <td v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">
                 <span class="cursor-pointer">{{ formatDecimal(item.product_weight) }}</span>
                 <q-popup-edit
                   :model-value="item.product_weight"
@@ -412,7 +435,7 @@
                   />
                 </q-popup-edit>
               </td>
-              <td v-if="isColumnVisible('package_weight')" class="text-right">
+              <td v-if="isColumnVisible('package_weight')" class="text-right shipment-package-weight-col">
                 <span class="cursor-pointer">{{ formatDecimal(item.package_weight) }}</span>
                 <q-popup-edit
                   :model-value="item.package_weight"
@@ -435,7 +458,18 @@
                   />
                 </q-popup-edit>
               </td>
-              <td v-if="isColumnVisible('actions')" class="text-right">
+              <td v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">
+                <q-btn
+                  v-if="item.method === 'manual'"
+                  flat
+                  dense
+                  color="primary"
+                  round
+                  icon="edit"
+                  @click="openEditManualItemDialog(item)"
+                >
+                  <q-tooltip>Edit</q-tooltip>
+                </q-btn>
                 <q-btn
                   flat
                   dense
@@ -452,6 +486,9 @@
               <td class="shipment-sl-col"></td>
               <td class="shipment-image-col"></td>
               <td v-if="isColumnVisible('name')" class="shipment-name-col"></td>
+              <td v-if="isColumnVisible('product_id')"></td>
+              <td v-if="isColumnVisible('barcode')"></td>
+              <td v-if="isColumnVisible('product_code')"></td>
               <td v-if="isColumnVisible('method')"></td>
               <td class="shipment-tag-col"></td>
               <td v-if="isColumnVisible('price_gbp')" class="text-right text-weight-bold">
@@ -599,7 +636,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showAddProductDialog">
+    <q-dialog v-model="showAddProductDialog" persistent>
       <q-card style="min-width: 560px; max-width: 92vw">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6">Add Product + Add to Shipment</div>
@@ -637,6 +674,17 @@
             hide-bottom-space
             :rules="[(value: string) => Boolean(value?.trim()) || 'Image URL is required']"
           />
+          <div v-if="addProductForm.image_url?.trim()" class="shipment-form-preview">
+            <div class="text-caption text-grey-7 q-mb-xs">Image Preview</div>
+            <div class="shipment-form-preview-box">
+              <SmartImage
+                :src="addProductForm.image_url"
+                alt="product preview"
+                imgClass="shipment-form-preview-image"
+                fallbackClass="shipment-form-preview-fallback"
+              />
+            </div>
+          </div>
           <q-input
             v-model.number="addProductForm.price_gbp"
             label="Price GBP *"
@@ -675,6 +723,7 @@
             outlined
             dense
             hide-bottom-space
+            @update:model-value="onAddProductDefaultVendorChange"
           />
           <q-select
             v-model="addProductForm.market_code"
@@ -687,6 +736,7 @@
             outlined
             dense
             hide-bottom-space
+            @update:model-value="onAddProductDefaultMarketChange"
           />
           <q-input
             v-model.number="addProductForm.minimum_order_quantity"
@@ -727,6 +777,98 @@
             label="Delete"
             :loading="shipmentStore.saving"
             @click="onConfirmDelete"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showEditManualItemDialog" persistent>
+      <q-card style="min-width: 560px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">Edit Manual Shipment Item</div>
+          <q-btn icon="close" flat round dense @click="showEditManualItemDialog = false" />
+        </q-card-section>
+
+        <q-card-section>
+          <q-form ref="editManualItemFormRef" class="q-gutter-sm">
+            <q-input
+              v-model="editManualItemForm.name"
+              label="Name *"
+              outlined
+              dense
+              hide-bottom-space
+              :rules="[(value: string) => Boolean(value?.trim()) || 'Name is required']"
+            />
+            <q-input v-model="editManualItemForm.barcode" label="Barcode" outlined dense hide-bottom-space />
+            <q-input v-model="editManualItemForm.product_code" label="Product Code" outlined dense hide-bottom-space />
+            <q-input
+              v-model="editManualItemForm.image_url"
+              label="Image URL"
+              outlined
+              dense
+              hide-bottom-space
+            />
+            <div v-if="editManualItemForm.image_url?.trim()" class="shipment-form-preview">
+              <div class="text-caption text-grey-7 q-mb-xs">Image Preview</div>
+              <div class="shipment-form-preview-box">
+                <SmartImage
+                  :src="editManualItemForm.image_url"
+                  alt="manual item preview"
+                  imgClass="shipment-form-preview-image"
+                  fallbackClass="shipment-form-preview-fallback"
+                />
+              </div>
+            </div>
+            <q-input
+              v-model.number="editManualItemForm.quantity"
+              label="Quantity *"
+              type="number"
+              min="1"
+              outlined
+              dense
+              hide-bottom-space
+              :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
+            />
+            <q-input v-model.number="editManualItemForm.price_gbp" label="Price GBP" type="number" outlined dense hide-bottom-space />
+            <q-input v-model.number="editManualItemForm.product_weight" label="Product Weight" type="number" outlined dense hide-bottom-space />
+            <q-input v-model.number="editManualItemForm.package_weight" label="Package Weight" type="number" outlined dense hide-bottom-space />
+            <q-select
+              v-model="editManualItemForm.vendor_code"
+              :options="vendorOptions"
+              emit-value
+              map-options
+              option-value="value"
+              option-label="label"
+              label="Vendor"
+              outlined
+              dense
+              hide-bottom-space
+              @update:model-value="onAddProductDefaultVendorChange"
+            />
+            <q-select
+              v-model="editManualItemForm.market_code"
+              :options="marketOptions"
+              emit-value
+              map-options
+              option-value="value"
+              option-label="label"
+              label="Market"
+              outlined
+              dense
+              hide-bottom-space
+              @update:model-value="onAddProductDefaultMarketChange"
+            />
+          </q-form>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" @click="showEditManualItemDialog = false" />
+          <q-btn
+            color="primary"
+            no-caps
+            label="Save"
+            :loading="shipmentStore.saving"
+            @click="onSaveManualItemEdit"
           />
         </q-card-actions>
       </q-card>
@@ -786,10 +928,12 @@ const $q = useQuasar()
 const showAddItemDialog = ref(false)
 const showAddProductDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showEditManualItemDialog = ref(false)
 const showAddToInventoryConfirmDialog = ref(false)
 const showItemDetailsDialog = ref(false)
 const initialLoading = ref(true)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
+const editingManualItem = ref<ShipmentItem | null>(null)
 const selectedDetailsItem = ref<ShipmentItem | null>(null)
 const selectedStatus = ref<ShipmentStatus>('Draft')
 const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
@@ -807,6 +951,9 @@ const productSearchFieldOptions: Array<{
 const productQuantityById = reactive<Record<number, number>>({})
 const baseColumnSelectorOptions = [
   { label: 'Name', value: 'name' },
+  { label: 'Product ID', value: 'product_id' },
+  { label: 'Barcode', value: 'barcode' },
+  { label: 'Product Code', value: 'product_code' },
   { label: 'Method', value: 'method' },
   { label: 'Price GBP', value: 'price_gbp' },
   { label: 'Cost BDT', value: 'cost_bdt' },
@@ -835,11 +982,25 @@ const columnSelectorOptions = computed(() =>
 const columnSelectorOptionsUi = computed(() =>
   columnSelectorOptions.value.map((option) => ({ ...option })),
 )
+const allSelectableColumnsSelected = computed({
+  get: () => {
+    const current = new Set(visibleColumns.value)
+    return columnSelectorOptions.value.every((option) => current.has(option.value))
+  },
+  set: (checked: boolean) => {
+    if (checked) {
+      visibleColumns.value = columnSelectorOptions.value.map((option) => option.value)
+      return
+    }
+    visibleColumns.value = []
+  },
+})
 
 const visibleColumns = ref<ShipmentColumnKey[]>(
   [...baseColumnSelectorOptions, ...statusColumnSelectorOptions].map((option) => option.value),
 )
 const addProductFormRef = ref<QForm | null>(null)
+const editManualItemFormRef = ref<QForm | null>(null)
 const addProductForm = reactive({
   name: '',
   quantity: 1,
@@ -852,6 +1013,18 @@ const addProductForm = reactive({
   vendor_code: null as string | null,
   market_code: null as string | null,
   minimum_order_quantity: null as number | null,
+})
+const editManualItemForm = reactive({
+  name: '',
+  barcode: '',
+  product_code: '',
+  image_url: '',
+  quantity: 1,
+  price_gbp: null as number | null,
+  product_weight: null as number | null,
+  package_weight: null as number | null,
+  vendor_code: null as string | null,
+  market_code: null as string | null,
 })
 const vendorOptions = computed(() => [
   { label: 'Other', value: null as string | null },
@@ -911,6 +1084,9 @@ const shipmentTableColspan = computed(() => {
   return (
     base +
     (isColumnVisible('name') ? 1 : 0) +
+    (isColumnVisible('product_id') ? 1 : 0) +
+    (isColumnVisible('barcode') ? 1 : 0) +
+    (isColumnVisible('product_code') ? 1 : 0) +
     (isColumnVisible('method') ? 1 : 0) +
     (isColumnVisible('price_gbp') ? 1 : 0) +
     (isColumnVisible('cost_bdt') ? 1 : 0) +
@@ -962,8 +1138,8 @@ const resetAddProductForm = () => {
   addProductForm.price_gbp = null
   addProductForm.product_weight = null
   addProductForm.package_weight = null
-  addProductForm.vendor_code = null
-  addProductForm.market_code = null
+  addProductForm.vendor_code = shipmentStore.selectedShipment?.vendor_code ?? null
+  addProductForm.market_code = shipmentStore.selectedShipment?.market_code ?? null
   addProductForm.minimum_order_quantity = null
 }
 
@@ -984,6 +1160,25 @@ const onSetProductQuantity = (productId: number, value: string | number | null) 
 const openDeleteDialog = (item: ShipmentItem) => {
   pendingDeleteItem.value = item
   showDeleteDialog.value = true
+}
+
+const openEditManualItemDialog = (item: ShipmentItem) => {
+  const matchedProduct = item.product_id
+    ? productStore.items.find((product) => product.id === item.product_id)
+    : null
+
+  editingManualItem.value = item
+  editManualItemForm.name = item.name ?? ''
+  editManualItemForm.barcode = item.barcode ?? ''
+  editManualItemForm.product_code = item.product_code ?? ''
+  editManualItemForm.image_url = item.image_url ?? ''
+  editManualItemForm.quantity = Number(item.quantity ?? 1)
+  editManualItemForm.price_gbp = item.price_gbp ?? null
+  editManualItemForm.product_weight = item.product_weight ?? null
+  editManualItemForm.package_weight = item.package_weight ?? null
+  editManualItemForm.vendor_code = matchedProduct?.vendor_code ?? shipmentStore.selectedShipment?.vendor_code ?? null
+  editManualItemForm.market_code = matchedProduct?.market_code ?? shipmentStore.selectedShipment?.market_code ?? null
+  showEditManualItemDialog.value = true
 }
 
 const openItemDetailsDialog = (item: ShipmentItem) => {
@@ -1035,19 +1230,11 @@ const onAddProductToShipment = async (productId: number) => {
     shipment_id: shipmentId.value,
     product_id: productId,
     quantity,
+    method: 'manual',
   })
 
   if (!result.success) {
     return
-  }
-
-  if (result.data?.id) {
-    await shipmentStore.updateShipmentItem({
-      id: result.data.id,
-      patch: {
-        method: 'manual',
-      },
-    })
   }
 
   resetProductSearchDialog()
@@ -1100,23 +1287,47 @@ const onCreateProductAndAddToShipment = async () => {
     shipment_id: shipmentId.value,
     product_id: createProductResult.data.id,
     quantity,
+    method: 'manual',
   })
 
   if (!addResult.success) {
     return
   }
 
-  if (addResult.data?.id) {
-    await shipmentStore.updateShipmentItem({
-      id: addResult.data.id,
-      patch: {
-        method: 'manual',
-      },
-    })
-  }
-
   showAddProductDialog.value = false
   resetAddProductForm()
+}
+
+const onAddProductDefaultVendorChange = async (value: string | null) => {
+  const shipment = shipmentStore.selectedShipment
+  if (!shipment || !Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+  if ((shipment.vendor_code ?? null) === (value ?? null)) {
+    return
+  }
+  await shipmentStore.updateShipment({
+    id: shipmentId.value,
+    patch: {
+      vendor_code: value ?? null,
+    },
+  })
+}
+
+const onAddProductDefaultMarketChange = async (value: string | null) => {
+  const shipment = shipmentStore.selectedShipment
+  if (!shipment || !Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
+    return
+  }
+  if ((shipment.market_code ?? null) === (value ?? null)) {
+    return
+  }
+  await shipmentStore.updateShipment({
+    id: shipmentId.value,
+    patch: {
+      market_code: value ?? null,
+    },
+  })
 }
 
 const onConfirmDelete = async () => {
@@ -1133,6 +1344,54 @@ const onConfirmDelete = async () => {
 
   pendingDeleteItem.value = null
   showDeleteDialog.value = false
+}
+
+const onSaveManualItemEdit = async () => {
+  const item = editingManualItem.value
+  if (!item) {
+    return
+  }
+
+  const isValid = await editManualItemFormRef.value?.validate()
+  if (!isValid) {
+    return
+  }
+
+  const quantity = Math.max(1, Math.floor(Number(editManualItemForm.quantity ?? 1)))
+
+  const result = await shipmentStore.updateShipmentItem({
+    id: item.id,
+    patch: {
+      name: editManualItemForm.name.trim(),
+      barcode: editManualItemForm.barcode.trim() || null,
+      product_code: editManualItemForm.product_code.trim() || null,
+      image_url: editManualItemForm.image_url.trim() || null,
+      quantity,
+      price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
+      product_weight:
+        editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
+      package_weight:
+        editManualItemForm.package_weight == null ? null : Number(editManualItemForm.package_weight),
+    },
+  })
+
+  if (!result.success) {
+    return
+  }
+
+  if (item.product_id != null) {
+    const productUpdateResult = await productStore.updateProduct({
+      id: item.product_id,
+      vendor_code: editManualItemForm.vendor_code ?? null,
+      market_code: editManualItemForm.market_code ?? null,
+    })
+    if (!productUpdateResult.success) {
+      return
+    }
+  }
+
+  showEditManualItemDialog.value = false
+  editingManualItem.value = null
 }
 
 type EditableNumericField =
@@ -1273,6 +1532,52 @@ const onMarkerTagChange = async (
   if (!result.success) {
     return
   }
+}
+
+const onResetTags = () => {
+  if (!shipmentStore.shipmentItems.length) {
+    return
+  }
+
+  $q.dialog({
+    title: 'Reset All Tags',
+    message: 'Are you sure you want to reset all item tags to None?',
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Reset',
+      color: 'warning',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      const updates = await Promise.allSettled(
+        shipmentStore.shipmentItems.map((item) =>
+          shipmentStore.updateShipmentItem({
+            id: item.id,
+            patch: { marker_tag: null },
+          }),
+        ),
+      )
+
+      const failedCount = updates.filter(
+        (entry) => entry.status === 'rejected' || (entry.status === 'fulfilled' && !entry.value.success),
+      ).length
+
+      if (failedCount > 0) {
+        $q.notify({
+          type: 'warning',
+          message: `${shipmentStore.shipmentItems.length - failedCount} tag(s) reset, ${failedCount} failed.`,
+        })
+        return
+      }
+
+      $q.notify({
+        type: 'positive',
+        message: 'All tags reset successfully.',
+      })
+    })()
+  })
 }
 
 onMounted(async () => {
@@ -1420,6 +1725,66 @@ watch(showAddItemDialog, (open) => {
 .shipment-table-scroll-wrap {
   height: 70vh;
   overflow: auto;
+}
+
+.shipment-details-table :deep(table) {
+  table-layout: fixed;
+  min-width: max-content;
+  width: max-content;
+}
+
+.shipment-product-id-col {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.shipment-barcode-col {
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
+}
+
+.shipment-product-code-col {
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
+}
+
+.shipment-method-col {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.shipment-price-col {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.shipment-cost-col {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+}
+
+.shipment-product-weight-col {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.shipment-package-weight-col {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.shipment-actions-col {
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
 }
 
 .shipment-details-table :deep(td:first-child),

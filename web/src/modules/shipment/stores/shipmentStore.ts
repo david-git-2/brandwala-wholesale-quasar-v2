@@ -579,11 +579,16 @@ export const useShipmentStore = defineStore('shipment', {
 
         const updateShipmentResult = await this.updateShipment({
           id: shipment.id,
-          patch: { inventory_added: true },
+          patch: { inventory_added: true, status: 'Added to Inventory' },
         })
         if (!updateShipmentResult.success) {
           return updateShipmentResult
         }
+
+        await inventoryService.refreshShipmentInventoryAccountingSummaries({
+          tenant_id: shipment.tenant_id,
+          shipment_id: shipment.id,
+        })
 
         showSuccessNotification('Shipment items added to inventory successfully.')
         return { success: true as const }
