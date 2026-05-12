@@ -5,8 +5,19 @@
     :links="links"
   >
     <template #header-left>
-      <div v-if="tenantName" class="app-context__title">
-        {{ tenantName }}
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          v-if="showHeaderBackButton"
+          flat
+          round
+          dense
+          color="primary"
+          icon="keyboard_backspace"
+          @click="onHeaderBack"
+        />
+        <div v-if="tenantName" class="app-context__title">
+          {{ tenantName }}
+        </div>
       </div>
     </template>
 
@@ -34,6 +45,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -43,6 +55,8 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
+const route = useRoute()
+const router = useRouter()
 const { links } = useAppWorkspaceLinks()
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
@@ -57,6 +71,14 @@ const tenantOptions = computed(() =>
 )
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection()
+
+const showHeaderBackButton = computed(
+  () => route.name === 'product-based-costing-file-details-page',
+)
+
+const onHeaderBack = () => {
+  void router.push({ name: 'product-based-costing-page' })
+}
 
 const onSelectTenant = (tenantId: number | null) => {
   const tenant =

@@ -1,55 +1,15 @@
 <template>
   <div class="product-based-costing-table">
-    <div class="row justify-end q-mb-sm">
-      <q-btn
-        v-if="selectedRowIds.length"
-        color="negative"
-        no-caps
-        icon="delete_sweep"
-        label="Delete Selected"
-        class="q-mr-sm"
-        @click="showBulkDeleteConfirm = true"
-      />
-      <q-btn flat round dense icon="view_column" aria-label="Select columns">
-        <q-menu>
-          <q-list style="min-width: 240px">
-            <q-item>
-              <q-item-section>
-                <div class="text-subtitle2">Show Columns</div>
-              </q-item-section>
-            </q-item>
-            <q-item>
-              <q-item-section>
-                <q-checkbox
-                  v-model="allSelectableColumnsSelected"
-                  label="Select / Deselect All"
-                />
-              </q-item-section>
-            </q-item>
-            <q-item>
-              <q-item-section>
-                <q-option-group
-                  v-model="visibleColumns"
-                  type="checkbox"
-                  :options="columnSelectorOptions"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </q-btn>
-    </div>
-
     <q-table
       flat
       bordered
       :rows="tableRows"
       :columns="columns"
-      :visible-columns="visibleColumns"
+      :visible-columns="resolvedVisibleColumns"
       row-key="id"
       hide-pagination
       :pagination="{ rowsPerPage: 0 }"
-      :table-style="{ maxHeight: '72vh' }"
+      :table-style="{ maxHeight: '100%' }"
       class="costing-q-table"
     >
       <template #body="slotProps">
@@ -568,6 +528,7 @@ const props = withDefaults(
     profitRate?: number;
     status?: string | undefined;
     shippedItemIds?: number[];
+    visibleColumns?: string[];
   }>(),
   {
     cargoRate: 0,
@@ -607,6 +568,7 @@ const emit = defineEmits<{
     },
   ): void;
   (e: 'bulk-delete', ids: number[]): void;
+  (e: 'update:visible-columns', columns: string[]): void;
 }>();
 
 const $q = useQuasar();
@@ -927,50 +889,35 @@ const columns = computed<QTableColumn[]>(() => [
 
 type ColumnName = string
 const allColumnNames = computed<ColumnName[]>(() => columns.value.map((column) => String(column.name)))
-const visibleColumns = ref<ColumnName[]>([])
-const columnSelectorOptions = computed(() =>
-  columns.value
-    .filter((column) => !['select', 'sl', 'image', 'name'].includes(String(column.name)))
-    .map((column) => ({
-      label: String(column.label ?? column.name),
-      value: String(column.name),
-    })),
-)
-const isColumnVisible = (columnName: string) => visibleColumns.value.includes(columnName)
-const selectableColumnValues = computed(() => columnSelectorOptions.value.map((option) => option.value))
-const allSelectableColumnsSelected = computed({
-  get: () => selectableColumnValues.value.every((value) => visibleColumns.value.includes(value)),
-  set: (checked: boolean) => {
-    const alwaysVisible = ['select', 'sl', 'image', 'name']
-    const selectableSet = new Set(selectableColumnValues.value)
-    const nonSelectableVisible = Array.from(
-      new Set([
-        ...alwaysVisible,
-        ...visibleColumns.value.filter((value) => !selectableSet.has(value)),
-      ]),
-    )
-
-    visibleColumns.value = checked
-      ? [...nonSelectableVisible, ...selectableColumnValues.value]
-      : nonSelectableVisible
+const internalVisibleColumns = ref<ColumnName[]>([])
+const resolvedVisibleColumns = computed<ColumnName[]>({
+  get: () => props.visibleColumns ?? internalVisibleColumns.value,
+  set: (next) => {
+    if (props.visibleColumns !== undefined) {
+      emit('update:visible-columns', next)
+      return
+    }
+    internalVisibleColumns.value = next
   },
 })
+const isColumnVisible = (columnName: string) => resolvedVisibleColumns.value.includes(columnName)
 
 watch(
   allColumnNames,
   (names) => {
-    if (!visibleColumns.value.length) {
-      visibleColumns.value = [...names]
+    if (!resolvedVisibleColumns.value.length) {
+      resolvedVisibleColumns.value = [...names]
       return
     }
 
     const allowed = new Set(names)
-    visibleColumns.value = visibleColumns.value.filter((name) => allowed.has(name))
+    const next = resolvedVisibleColumns.value.filter((name) => allowed.has(name))
     names.forEach((name) => {
-      if (!visibleColumns.value.includes(name)) {
-        visibleColumns.value.push(name)
+      if (!next.includes(name)) {
+        next.push(name)
       }
     })
+    resolvedVisibleColumns.value = next
   },
   { immediate: true },
 )
@@ -1238,11 +1185,16 @@ const totals = computed(() => {
 .product-based-costing-table {
   width: 100%;
 }
-
 .costing-q-table {
   max-width: 100%;
-  max-height: 72vh;
+  height: clamp(400px, calc(100vh - 280px), 82vh);
   background: var(--bw-theme-base, #eef2f5);
+}
+
+.product-based-costing-table :deep(.costing-q-table .q-table__middle) {
+  height: 100%;
+  max-height: 100% !important;
+  overflow: auto;
 }
 
 :deep(.q-table) {
