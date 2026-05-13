@@ -1,21 +1,29 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <q-btn
-        flat
-        no-caps
-        color="primary"
-        icon="arrow_back"
-        label="Back to Shipment"
-        @click="onBack"
-      />
-    </div>
-
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">
-        #{{ shipmentStore.selectedShipment?.id }} {{ shipmentStore.selectedShipment?.name }}
-      </div>
-      <div class="row items-center q-gutter-sm">
+  <q-page class="q-pa-md shipment-details-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="row items-center q-gutter-sm">
+              <q-badge color="primary" outline class="text-weight-medium">
+                #{{ shipmentStore.selectedShipment?.id ?? '-' }}
+              </q-badge>
+              <div class="text-h6 text-weight-bold">
+                {{ shipmentStore.selectedShipment?.name ?? 'Shipment' }}
+              </div>
+            </div>
+          </div>
+          <div class="col-auto row items-center q-gutter-sm shipment-action-row">
+        <q-select
+          v-model="selectedStatus"
+          :options="statusOptions"
+          label="Shipment Status"
+          outlined
+          dense
+          class="shipment-status-select soft-input"
+          :disable="shipmentStore.saving"
+          @update:model-value="onStatusChange"
+        />
         <q-btn
           v-if="canAddToInventory"
           color="positive"
@@ -25,28 +33,6 @@
           :loading="shipmentStore.saving"
           @click="showAddToInventoryConfirmDialog = true"
         />
-        <q-btn
-          color="secondary"
-          flat
-          no-caps
-          icon="info"
-          label="Shipment Info"
-          aria-label="Open shipment info page"
-          @click="goToShipmentInfo"
-        >
-          <q-tooltip>Open shipment information page</q-tooltip>
-        </q-btn>
-        <q-btn
-          color="secondary"
-          flat
-          no-caps
-          icon="fact_check"
-          label="Batch Code"
-          aria-label="Open batch code entry page"
-          @click="goToBatchCodePage"
-        >
-          <q-tooltip>Open batch code paste page</q-tooltip>
-        </q-btn>
         <q-btn
           v-if="isDraftStatus"
           color="secondary"
@@ -61,16 +47,43 @@
           label="Search Item"
           @click="openAddItemDialog"
         />
-        <q-btn
-          v-if="shipmentStore.shipmentItems.length"
-          color="warning"
+        <q-btn-dropdown
+          color="primary"
           outline
           no-caps
-          label="Reset Tags"
-          :loading="shipmentStore.saving"
-          @click="onResetTags"
-        />
-        <q-btn flat round dense icon="view_column" aria-label="Select columns">
+          size="sm"
+          label="Actions"
+          class="pill-btn slim-btn"
+          dropdown-icon="expand_more"
+        >
+          <q-list dense>
+            <q-item clickable v-close-popup @click="goToShipmentInfo">
+              <q-item-section avatar>
+                <q-icon name="info" />
+              </q-item-section>
+              <q-item-section>Shipment Info</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="goToBatchCodePage">
+              <q-item-section avatar>
+                <q-icon name="fact_check" />
+              </q-item-section>
+              <q-item-section>Batch Code</q-item-section>
+            </q-item>
+            <q-item
+              v-if="shipmentStore.shipmentItems.length"
+              clickable
+              v-close-popup
+              :disable="shipmentStore.saving"
+              @click="onResetTags"
+            >
+              <q-item-section avatar>
+                <q-icon name="restart_alt" color="warning" />
+              </q-item-section>
+              <q-item-section>Reset Tags</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+        <q-btn flat round dense size="sm" icon="view_column" aria-label="Select columns">
           <q-menu>
             <q-list style="min-width: 220px">
               <q-item>
@@ -98,68 +111,56 @@
             </q-list>
           </q-menu>
         </q-btn>
-      </div>
-    </div>
-
-    <div v-if="shipmentStore.selectedShipment" class="q-mb-md row justify-end">
-      <q-select
-        v-model="selectedStatus"
-        :options="statusOptions"
-        label="Shipment Status"
-        outlined
-        dense
-        class="shipment-status-select"
-        :disable="shipmentStore.saving"
-        @update:model-value="onStatusChange"
-      />
-    </div>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <q-card
       v-if="shipmentStore.selectedShipment && !initialLoading"
       flat
-      bordered
-      class="q-mb-md bg-white"
+      class="q-mb-md floating-surface shadow-1"
     >
-      <q-card-section class="row q-col-gutter-md shipment-summary-grid">
+      <q-card-section class="q-py-sm row q-col-gutter-sm shipment-summary-grid">
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Quantity</div>
-          <div class="text-subtitle1 text-weight-bold">{{ totals.quantity }}</div>
+          <div class="text-body1 text-weight-bold">{{ totals.quantity }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Price GBP</div>
-          <div class="text-subtitle1 text-weight-bold">{{ formatFixed2(totals.price_gbp) }}</div>
+          <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.price_gbp) }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Cost BDT</div>
-          <div class="text-subtitle1 text-weight-bold">{{ formatFixed2(totals.cost_bdt) }}</div>
+          <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.cost_bdt) }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Weight</div>
-          <div class="text-subtitle1 text-weight-bold">{{ formatDecimal(totals.package_weight) }}</div>
+          <div class="text-body1 text-weight-bold">{{ formatDecimal(totals.total_weight_gm / 1000) }} kg</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Received Qty</div>
-          <div class="text-subtitle1 text-weight-bold text-positive">{{ totals.received_quantity }}</div>
+          <div class="text-body1 text-weight-bold text-positive">{{ totals.received_quantity }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Received Cost BDT</div>
-          <div class="text-subtitle1 text-weight-bold text-positive">{{ formatFixed2(totals.received_cost_bdt) }}</div>
+          <div class="text-body1 text-weight-bold text-positive">{{ formatFixed2(totals.received_cost_bdt) }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Damaged Qty</div>
-          <div class="text-subtitle1 text-weight-bold text-warning">{{ totals.damaged_quantity }}</div>
+          <div class="text-body1 text-weight-bold text-warning">{{ totals.damaged_quantity }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Damaged Cost BDT</div>
-          <div class="text-subtitle1 text-weight-bold text-warning">{{ formatFixed2(totals.damaged_cost_bdt) }}</div>
+          <div class="text-body1 text-weight-bold text-warning">{{ formatFixed2(totals.damaged_cost_bdt) }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Total Stolen Qty</div>
-          <div class="text-subtitle1 text-weight-bold text-negative">{{ totals.stolen_quantity }}</div>
+          <div class="text-body1 text-weight-bold text-negative">{{ totals.stolen_quantity }}</div>
         </div>
         <div class="shipment-summary-card">
           <div class="text-caption text-grey-8">Stolen Cost BDT</div>
-          <div class="text-subtitle1 text-weight-bold text-negative">{{ formatFixed2(totals.stolen_cost_bdt) }}</div>
+          <div class="text-body1 text-weight-bold text-negative">{{ formatFixed2(totals.stolen_cost_bdt) }}</div>
         </div>
       </q-card-section>
     </q-card>
@@ -174,7 +175,7 @@
       {{ shipmentStore.error }}
     </q-banner>
 
-    <q-card v-if="!initialLoading" flat bordered>
+    <q-card v-if="!initialLoading" flat class="floating-surface shadow-1">
       <q-card-section class="q-pa-none shipment-table-scroll-wrap">
         <q-markup-table flat class="shipment-details-table">
           <thead>
@@ -1100,11 +1101,6 @@ const shipmentTableColspan = computed(() => {
   )
 })
 
-const onBack = async () => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/shipment`)
-}
-
 const goToShipmentInfo = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
   await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/info`)
@@ -1437,6 +1433,8 @@ const totals = computed(() => {
       const receivedQty = Number(item.received_quantity ?? 0)
       const damagedQty = Number(item.damaged_quantity ?? 0)
       const stolenQty = Number(item.stolen_quantity ?? 0)
+      const productWeight = Number(item.product_weight ?? 0)
+      const packageWeight = Number(item.package_weight ?? 0)
 
       acc.price_gbp += Number(item.price_gbp ?? 0) * itemQuantity
       acc.cost_bdt += itemCostBdt * itemQuantity
@@ -1447,8 +1445,9 @@ const totals = computed(() => {
       acc.received_cost_bdt += itemCostBdt * receivedQty
       acc.damaged_cost_bdt += itemCostBdt * damagedQty
       acc.stolen_cost_bdt += itemCostBdt * stolenQty
-      acc.product_weight += Number(item.product_weight ?? 0)
-      acc.package_weight += Number(item.package_weight ?? 0)
+      acc.product_weight += productWeight
+      acc.package_weight += packageWeight
+      acc.total_weight_gm += (productWeight + packageWeight) * itemQuantity
       return acc
     },
     {
@@ -1463,6 +1462,7 @@ const totals = computed(() => {
       stolen_cost_bdt: 0,
       product_weight: 0,
       package_weight: 0,
+      total_weight_gm: 0,
     },
   )
 })
@@ -1627,6 +1627,31 @@ watch(showAddItemDialog, (open) => {
 </script>
 
 <style scoped>
+.shipment-details-page {
+  background: transparent;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.shipment-action-row :deep(.q-btn) {
+  min-height: 32px;
+  border-radius: 999px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
 .shipment-item-image-box {
   width: 64px;
   height: 64px;
@@ -1670,7 +1695,11 @@ watch(showAddItemDialog, (open) => {
 .shipment-summary-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
+}
+
+.shipment-summary-card {
+  line-height: 1.2;
 }
 
 .shipment-name-col {
@@ -1719,11 +1748,11 @@ watch(showAddItemDialog, (open) => {
 }
 
 .shipment-details-table :deep(th) {
-  background: #fff;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .shipment-table-scroll-wrap {
-  height: 70vh;
+  height: clamp(400px, calc(100vh - 320px), 80vh);
   overflow: auto;
 }
 

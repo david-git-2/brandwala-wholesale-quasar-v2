@@ -25,7 +25,11 @@
             outlined
             dense
             :disable="isProductListInputType"
-          />
+          >
+            <template #prepend>
+              <q-icon name="inventory_2" />
+            </template>
+          </q-input>
 
           <q-input
             v-model="form.image_url"
@@ -33,7 +37,11 @@
             outlined
             dense
             :disable="isProductListInputType"
-          />
+          >
+            <template #prepend>
+              <q-icon name="image" />
+            </template>
+          </q-input>
 
           <div v-if="form.image_url" class="q-mt-sm">
             <div class="text-subtitle2 q-mb-sm">Image Preview</div>
@@ -48,7 +56,11 @@
             outlined
             dense
             :disable="isProductListInputType"
-          />
+          >
+            <template #prepend>
+              <q-icon name="qr_code" />
+            </template>
+          </q-input>
 
           <q-input
             v-model="form.product_code"
@@ -56,7 +68,23 @@
             outlined
             dense
             :disable="isProductListInputType"
-          />
+          >
+            <template #prepend>
+              <q-icon name="badge" />
+            </template>
+          </q-input>
+
+          <q-input
+            v-model="form.brand"
+            label="Brand"
+            outlined
+            dense
+            :disable="isProductListInputType"
+          >
+            <template #prepend>
+              <q-icon name="sell" />
+            </template>
+          </q-input>
 
           <q-select
             v-model="form.vendor_code"
@@ -70,7 +98,11 @@
             :disable="isProductListInputType"
             :loading="store.saving"
             @update:model-value="onVendorOrMarketChange"
-          />
+          >
+            <template #prepend>
+              <q-icon name="storefront" />
+            </template>
+          </q-select>
 
           <q-select
             v-model="form.market_code"
@@ -84,7 +116,11 @@
             :disable="isProductListInputType"
             :loading="store.saving"
             @update:model-value="onVendorOrMarketChange"
-          />
+          >
+            <template #prepend>
+              <q-icon name="public" />
+            </template>
+          </q-select>
 
           <div>
             <div class="text-subtitle2 q-mb-xs">Item Note</div>
@@ -106,14 +142,22 @@
             type="number"
             outlined
             dense
-          />
+          >
+            <template #prepend>
+              <q-icon name="numbers" />
+            </template>
+          </q-input>
 
           <q-input
             v-model="form.web_link"
             label="Web Link"
             outlined
             dense
-          />
+          >
+            <template #prepend>
+              <q-icon name="link" />
+            </template>
+          </q-input>
 
           <q-input
             v-model.number="form.price_gbp"
@@ -121,7 +165,11 @@
             type="number"
             outlined
             dense
-          />
+          >
+            <template #prepend>
+              <q-icon name="currency_pound" />
+            </template>
+          </q-input>
 
           <q-input
             v-model.number="form.product_weight"
@@ -129,7 +177,11 @@
             type="number"
             outlined
             dense
-          />
+          >
+            <template #prepend>
+              <q-icon name="scale" />
+            </template>
+          </q-input>
 
           <q-input
             v-model.number="form.package_weight"
@@ -137,7 +189,11 @@
             type="number"
             outlined
             dense
-          />
+          >
+            <template #prepend>
+              <q-icon name="fitness_center" />
+            </template>
+          </q-input>
         </q-form>
       </q-card-section>
 
@@ -172,11 +228,13 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 interface ProductBasedCostingItemFormData {
   id?: number
   product_based_costing_file_id?: number | null
+  product_id?: number | null
   name?: string | null
   image_url?: string | null
   note?: string | null
   barcode?: string | null
   product_code?: string | null
+  brand?: string | null
   vendor_code?: string | null
   market_code?: string | null
   quantity?: number | null
@@ -223,6 +281,7 @@ const getInitialForm = () => ({
   note: '',
   barcode: '',
   product_code: '',
+  brand: '',
   vendor_code: props.defaultVendorCode ?? null,
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
@@ -245,6 +304,7 @@ const fillForm = () => {
       note: props.itemData.note ?? '',
       barcode: props.itemData.barcode ?? '',
       product_code: props.itemData.product_code ?? '',
+      brand: props.itemData.brand ?? '',
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
@@ -289,6 +349,7 @@ const submitForm = async () => {
       note: form.note,
       barcode: form.barcode,
       product_code: form.product_code,
+      brand: form.brand,
       vendor_code: form.vendor_code,
       market_code: form.market_code,
       quantity: form.quantity,
@@ -301,6 +362,13 @@ const submitForm = async () => {
 
     if (!result.success) {
       return
+    }
+
+    if (props.itemData.product_id != null) {
+      await productStore.updateProduct({
+        id: props.itemData.product_id,
+        brand: form.brand || null,
+      })
     }
 
     emit('updated')
@@ -317,7 +385,7 @@ const submitForm = async () => {
     product_code: form.product_code || null,
     price_gbp: form.price_gbp,
     country_of_origin: null,
-    brand: null,
+    brand: form.brand || null,
     category: null,
     available_units: null,
     tariff_code: null,
@@ -345,6 +413,7 @@ const submitForm = async () => {
     note: form.note,
     barcode: form.barcode,
     product_code: form.product_code,
+    brand: form.brand,
     vendor_code: form.vendor_code,
     market_code: form.market_code,
     quantity: form.quantity,

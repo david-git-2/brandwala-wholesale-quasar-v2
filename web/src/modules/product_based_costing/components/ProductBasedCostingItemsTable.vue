@@ -53,13 +53,49 @@
             </div>
           </q-td>
 
-          <q-td key="note" :props="slotProps" class="col-note">
+          <q-td key="brand" :props="slotProps" class="col-brand">
+            {{ slotProps.row.brand || '-' }}
+          </q-td>
+
+          <q-td key="note" :props="slotProps" class="col-note editable-cell">
             <div
               v-if="slotProps.row.noteHtml"
               class="item-note-html"
               v-html="slotProps.row.noteHtml"
             />
             <span v-else>-</span>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.noteHtml"
+              cover
+              :content-style="{ minWidth: '320px', maxWidth: '520px' }"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="
+                (value) => {
+                  slotProps.row.noteHtml = toText(value, '');
+                  onNoteSave(slotProps.row);
+                }
+              "
+            >
+              <q-editor
+                v-model="scope.value"
+                dense
+                flat
+                square
+                min-height="120px"
+                :toolbar="[
+                  ['bold', 'italic', 'underline'],
+                  ['removeFormat'],
+                  ['unordered', 'ordered'],
+                  ['undo', 'redo'],
+                ]"
+                autofocus
+              />
+            </q-popup-edit>
           </q-td>
 
           <q-td key="qty" :props="slotProps" class="col-qty text-center editable-cell">
@@ -354,6 +390,7 @@
           <q-td v-if="isColumnVisible('name')" class="totals-row__cell col-name">
             {{ tableRows.length }} Items
           </q-td>
+          <q-td v-if="isColumnVisible('brand')" class="totals-row__cell col-brand" />
           <q-td v-if="isColumnVisible('note')" class="totals-row__cell col-note" />
           <q-td v-if="isColumnVisible('qty')" class="totals-row__cell col-qty text-center">
             {{ formatNumber(totals.qty) }}
@@ -490,6 +527,7 @@ interface ProductBasedCostingItem {
   quantity: number | null;
   barcode: string | null;
   product_code: string | null;
+  brand?: string | null;
   web_link: string | null;
   price_gbp: number | null;
   product_weight: number | null;
@@ -504,6 +542,7 @@ interface ProductBasedCostingTableRow {
   id: number;
   sl: number;
   name: string;
+  brand: string;
   noteHtml: string;
   imageUrl: string | null;
   qty: number;
@@ -548,7 +587,7 @@ const emit = defineEmits<{
     payload: {
       item: ProductBasedCostingItem;
       row: ProductBasedCostingTableRow;
-      field: 'quantity' | 'offer_price' | 'status';
+      field: 'quantity' | 'offer_price' | 'status' | 'note';
     },
   ): void;
   (
@@ -657,6 +696,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       id: item.id,
       sl: index + 1,
       name: toText(item.name),
+      brand: toText(item.brand, ''),
       noteHtml: item.note ?? '',
       imageUrl: item.image_url ?? null,
       qty,
@@ -720,6 +760,13 @@ const columns = computed<QTableColumn[]>(() => [
     classes: 'col-name-wrap',
     headerClasses: 'col-name-wrap',
     style: 'text-align: center;',
+  },
+  {
+    name: 'brand',
+    label: 'Brand',
+    field: 'brand',
+    align: 'left',
+    style: 'text-align: left;',
   },
   {
     name: 'note',
@@ -979,7 +1026,7 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
-  field: 'quantity' | 'offer_price' | 'status',
+  field: 'quantity' | 'offer_price' | 'status' | 'note',
 ) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
@@ -988,6 +1035,7 @@ const emitRowChange = (
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
+    note: row.noteHtml,
   };
 
   row.raw = updatedItem;
@@ -1050,6 +1098,11 @@ const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
 const onStatusSave = (row: ProductBasedCostingTableRow) => {
   row.status = toText(row.status, 'pending').toLowerCase();
   emitRowChange(row, 'status');
+};
+
+const onNoteSave = (row: ProductBasedCostingTableRow) => {
+  row.noteHtml = toText(row.noteHtml, '');
+  emitRowChange(row, 'note');
 };
 
 const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
@@ -1364,11 +1417,20 @@ const totals = computed(() => {
   justify-content: center;
 }
 
+.col-brand {
+  min-width: 150px;
+  width: 150px;
+  max-width: 150px;
+  background: #ffffff;
+}
+
 .col-note {
   min-width: 260px;
   width: 260px;
   max-width: 260px;
   background: #fcfcfc;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .col-qty {
@@ -1552,8 +1614,27 @@ const totals = computed(() => {
 }
 
 .item-note-html {
-  white-space: normal;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   word-break: break-word;
+  overflow-wrap: anywhere;
   line-height: 1.35;
+}
+
+.item-note-html :deep(p),
+.item-note-html :deep(ul),
+.item-note-html :deep(ol) {
+  margin: 0;
+  padding-left: 0;
+}
+
+.item-note-html :deep(img),
+.item-note-html :deep(table),
+.item-note-html :deep(pre) {
+  max-width: 100%;
+  overflow: hidden;
 }
 </style>

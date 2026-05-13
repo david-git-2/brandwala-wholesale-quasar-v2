@@ -53,6 +53,7 @@ export interface ProductBasedCostingItem {
   quantity: number | null
   barcode: string | null
   product_code: string | null
+  brand?: string | null
   vendor_code?: string | null
   market_code?: string | null
   web_link: string | null
@@ -62,6 +63,7 @@ export interface ProductBasedCostingItem {
   offer_price: number | null
   status: string | null
   input_type?: 'manual' | 'product_list' | null
+  assigned_shipment_id?: number | null
   created_at: string
   updated_at: string
 }
@@ -74,6 +76,7 @@ export interface ProductBasedCostingItemCreateInput {
   quantity?: number | null
   barcode?: string | null
   product_code?: string | null
+  brand?: string | null
   vendor_code?: string | null
   market_code?: string | null
   web_link?: string | null
@@ -84,6 +87,7 @@ export interface ProductBasedCostingItemCreateInput {
   status?: string | null
   product_id?: number | null
   input_type?: 'manual' | 'product_list' | null
+  assigned_shipment_id?: number | null
 }
 
 export interface ProductBasedCostingItemUpdateInput

@@ -235,13 +235,14 @@ const confirmRemoveShipmentOpen = ref(false);
 const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
 const alwaysVisibleColumns = ['select', 'sl', 'image', 'name']
 const allColumnNames = [
-  'select', 'sl', 'image', 'name', 'note', 'qty', 'barcodeText', 'website', 'priceGbp',
+  'select', 'sl', 'image', 'name', 'brand', 'note', 'qty', 'barcodeText', 'website', 'priceGbp',
   'productWeight', 'packageWeight', 'totalWeight', 'cargoRate', 'cargoCostGbp', 'totalCostGbp',
   'rowTotalCostGbp', 'costBdt', 'totalCostBdt', 'offerPriceBdt', 'totalBdt', 'profitPerUnitBdt',
   'profitBdt', 'profitRate', 'status', 'action',
 ]
 const visibleColumns = ref<string[]>([...allColumnNames])
 const columnSelectorOptions = [
+  { label: 'Brand', value: 'brand' },
   { label: 'Note', value: 'note' },
   { label: 'Qty', value: 'qty' },
   { label: 'Barcode / Code / Product ID', value: 'barcodeText' },
@@ -356,7 +357,7 @@ onMounted(async () => {
   if (tenantId) {
     await shipmentStore.fetchShipments(tenantId);
   }
-  await refreshShippedItemIndicators();
+  refreshShippedItemIndicators();
 
   cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp ?? null;
   conversion_rate.value = store.item?.conversion_rate ?? null;
@@ -371,7 +372,7 @@ watch(
       return
     }
     await loadData();
-    await refreshShippedItemIndicators();
+    refreshShippedItemIndicators();
   },
 );
 
@@ -401,7 +402,7 @@ const onBulkDelete = async (ids: number[]) => {
   ).length
 
   await store.fetchProductBasedCostingItems(fileId.value)
-  await refreshShippedItemIndicators()
+  refreshShippedItemIndicators()
 
   if (failedCount > 0) {
     $q.notify({
@@ -420,7 +421,7 @@ const onBulkDelete = async (ids: number[]) => {
 type RowChangePayload = {
   item: ProductBasedCostingItem
   row: unknown
-  field: 'quantity' | 'offer_price' | 'status'
+  field: 'quantity' | 'offer_price' | 'status' | 'note'
 }
 
 type WeightChangePayload = {
@@ -536,89 +537,11 @@ const openShipmentDialog = (item: ProductBasedCostingItem) => {
 
 const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
 
-const buildItemMatchKeys = (item: ProductBasedCostingItem) => {
-  const keys: string[] = [];
-  if (item.product_id != null) {
-    keys.push(`product:${item.product_id}`);
-  }
-  const name = normalizeText(item.name);
-  const barcode = normalizeText(item.barcode);
-  const productCode = normalizeText(item.product_code);
-  if (name || barcode || productCode) {
-    keys.push(`meta:${name}|${barcode}|${productCode}`);
-  }
-  return keys;
-};
-
-const buildShipmentMatchKeys = (item: {
-  product_id: number | null
-  name: string | null
-  barcode: string | null
-  product_code: string | null
-}) => {
-  const keys: string[] = [];
-  if (item.product_id != null) {
-    keys.push(`product:${item.product_id}`);
-  }
-  const name = normalizeText(item.name);
-  const barcode = normalizeText(item.barcode);
-  const productCode = normalizeText(item.product_code);
-  if (name || barcode || productCode) {
-    keys.push(`meta:${name}|${barcode}|${productCode}`);
-  }
-  return keys;
-};
-
-const refreshShippedItemIndicators = async () => {
-  const tenantId = tenantStore.selectedTenant?.id;
-  if (!tenantId) {
-    shippedItemIds.value = [];
-    return;
-  }
-
+const refreshShippedItemIndicators = () => {
   const productItems = store.costingItems ?? [];
-  if (!productItems.length) {
-    shippedItemIds.value = [];
-    return;
-  }
-
-  const itemMap = new Map<string, Set<number>>();
-  productItems.forEach((item) => {
-    buildItemMatchKeys(item).forEach((key) => {
-      const current = itemMap.get(key) ?? new Set<number>();
-      current.add(item.id);
-      itemMap.set(key, current);
-    });
-  });
-
-  const shippedIds = new Set<number>();
-  if (!shipmentStore.shipments.length) {
-    await shipmentStore.fetchShipments(tenantId);
-  }
-
-  const shipmentItemsResults = await Promise.all(
-    shipmentStore.shipments.map((shipment) => shipmentService.listShipmentItems(shipment.id)),
-  );
-
-  shipmentItemsResults.forEach((result) => {
-    if (!result.success) {
-      return;
-    }
-
-    (result.data ?? [])
-      .filter((item) => item.method === 'costing')
-      .forEach((item) => {
-        buildShipmentMatchKeys(item).forEach((key) => {
-          const ids = itemMap.get(key);
-          if (!ids) {
-            return;
-          }
-          ids.forEach((id) => shippedIds.add(id));
-        });
-      });
-  });
-
-  shippedItemIds.value = Array.from(shippedIds);
+  shippedItemIds.value = Array.from(new Set(productItems
+    .filter((item) => item.assigned_shipment_id != null)
+    .map((item) => item.id)));
 };
 
 const onShip = (item: ProductBasedCostingItem) => {
@@ -632,39 +555,34 @@ const onShip = (item: ProductBasedCostingItem) => {
 };
 
 const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => {
-  const tenantId = tenantStore.selectedTenant?.id;
-  if (!tenantId) {
+  if (item.assigned_shipment_id == null) {
     return null;
   }
 
-  const itemKeys = new Set(buildItemMatchKeys(item));
-  if (!itemKeys.size) {
+  const result = await shipmentService.listShipmentItems(item.assigned_shipment_id);
+  if (!result.success) {
     return null;
   }
 
-  if (!shipmentStore.shipments.length) {
-    await shipmentStore.fetchShipments(tenantId);
-  }
-
-  const shipmentItemsResults = await Promise.all(
-    shipmentStore.shipments.map((shipment) => shipmentService.listShipmentItems(shipment.id)),
-  );
-
-  for (const result of shipmentItemsResults) {
-    if (!result.success) {
-      continue;
+  const shipmentItems = (result.data ?? []).filter((entry) => entry.method === 'costing');
+  const itemProductId = item.product_id ?? null;
+  const itemName = normalizeText(item.name);
+  const itemBarcode = normalizeText(item.barcode);
+  const itemProductCode = normalizeText(item.product_code);
+  const matched = shipmentItems.find((entry) => {
+    if (itemProductId != null && entry.product_id === itemProductId) {
+      return true;
     }
 
-    const matched = (result.data ?? [])
-      .filter((entry) => entry.method === 'costing')
-      .find((entry) => {
-        const entryKeys = buildShipmentMatchKeys(entry);
-        return entryKeys.some((key) => itemKeys.has(key));
-      });
+    return (
+      normalizeText(entry.name) === itemName &&
+      normalizeText(entry.barcode) === itemBarcode &&
+      normalizeText(entry.product_code) === itemProductCode
+    );
+  }) ?? null;
 
-    if (matched) {
-      return matched;
-    }
+  if (matched) {
+    return matched;
   }
 
   return null;
@@ -685,7 +603,7 @@ const onConfirmRemoveShipment = async () => {
     });
     confirmRemoveShipmentOpen.value = false;
     pendingRemoveShipItem.value = null;
-    await refreshShippedItemIndicators();
+    refreshShippedItemIndicators();
     return;
   }
 
@@ -694,9 +612,14 @@ const onConfirmRemoveShipment = async () => {
     return;
   }
 
+  await store.updateProductBasedCostingItem({
+    id: item.id,
+    assigned_shipment_id: null,
+  });
+
   confirmRemoveShipmentOpen.value = false;
   pendingRemoveShipItem.value = null;
-  await refreshShippedItemIndicators();
+  refreshShippedItemIndicators();
 };
 
 const onSaveShipment = async (data: {
@@ -743,6 +666,11 @@ const onSaveShipment = async (data: {
   if (!addResult.success) {
     return;
   }
+
+  await store.updateProductBasedCostingItem({
+    id: rowItem.id,
+    assigned_shipment_id: data.shipment_id,
+  });
 
   showAddShipmentDialog.value = false;
   selectedShipItem.value = null;

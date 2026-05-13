@@ -1634,7 +1634,9 @@ export type Database = {
       }
       product_based_costing_items: {
         Row: {
+          assigned_shipment_id: number | null
           barcode: string | null
+          brand: string | null
           created_at: string
           id: number
           image_url: string | null
@@ -1656,7 +1658,9 @@ export type Database = {
           web_link: string | null
         }
         Insert: {
+          assigned_shipment_id?: number | null
           barcode?: string | null
+          brand?: string | null
           created_at?: string
           id?: number
           image_url?: string | null
@@ -1678,7 +1682,9 @@ export type Database = {
           web_link?: string | null
         }
         Update: {
+          assigned_shipment_id?: number | null
           barcode?: string | null
+          brand?: string | null
           created_at?: string
           id?: number
           image_url?: string | null
@@ -1705,6 +1711,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_items_assigned_shipment_id_fkey"
+            columns: ["assigned_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
           {

@@ -23,6 +23,15 @@
           </div>
 
           <div class="row items-center q-gutter-xs">
+            <q-chip
+              dense
+              square
+              :color="statusChipColor(item.status)"
+              text-color="white"
+              class="costing-status-chip"
+            >
+              {{ item.status ?? 'pending' }}
+            </q-chip>
             <q-btn
               icon="more_vert"
               flat
@@ -90,4 +99,19 @@ const handleDelete = (item: ProductBasedCostingFile) => {
     emit('delete', item)
   })
 }
+
+const statusChipColor = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') return 'grey-7'
+  if (value === 'offered') return 'indigo'
+  if (value === 'processing') return 'teal'
+  if (value === 'cancelled') return 'negative'
+  return 'primary'
+}
 </script>
+
+<style scoped>
+.costing-status-chip {
+  border-radius: 0 !important;
+}
+</style>

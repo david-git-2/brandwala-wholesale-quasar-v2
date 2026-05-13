@@ -6,13 +6,60 @@
     </div>
     <CreateShipmentDialog v-model="showDialog" :initialData="selectedShipment" @submit="onSubmit" />
     <PageInitialLoader v-if="shipmentStore.loading" />
-    <ShipmentListCard
-      v-else
-      @edit="onShipmentEdit"
-      @copy="onShipmentCopy"
-      @delete="onShipmentDelete"
-      @select="onSelectShipment"
-    />
+    <q-card v-else flat bordered>
+      <q-markup-table flat>
+        <thead>
+          <tr>
+            <th class="text-left" style="width: 80px">ID</th>
+            <th class="text-left">Name</th>
+            <th class="text-left" style="width: 220px">Status</th>
+            <th class="text-right" style="width: 90px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="shipment in shipmentStore.shipments"
+            :key="shipment.id"
+            class="cursor-pointer"
+            @click="onSelectShipment(shipment)"
+          >
+            <td>#{{ shipment.id }}</td>
+            <td>{{ shipment.name }}</td>
+            <td>
+              <q-chip
+                dense
+                square
+                :color="statusChipColor(shipment.status)"
+                text-color="white"
+                class="shipment-status-chip"
+              >
+                {{ shipment.status }}
+              </q-chip>
+            </td>
+            <td class="text-right">
+              <q-btn flat round dense icon="more_vert" aria-label="Shipment actions" @click.stop>
+                <q-menu auto-close>
+                  <q-list dense style="min-width: 120px">
+                    <q-item clickable v-ripple @click="onShipmentEdit(shipment)">
+                      <q-item-section>Edit</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple @click="onShipmentCopy(shipment)">
+                      <q-item-section>Copy</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple @click="onShipmentDelete(shipment)">
+                      <q-item-section class="text-negative">Delete</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+            </td>
+          </tr>
+          <tr v-if="!shipmentStore.shipments.length">
+            <td colspan="4" class="text-center text-grey-6 q-pa-md">No shipments found</td>
+          </tr>
+        </tbody>
+      </q-markup-table>
+    </q-card>
 
     <q-dialog v-model="showDeleteDialog" persistent>
       <q-card style="min-width: 320px">
@@ -43,7 +90,6 @@ import CreateShipmentDialog from '../components/ShipmentDialog.vue'
 import { useShipmentStore } from '../stores/shipmentStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import ShipmentListCard from '../components/ShipmentListCard.vue'
 import type { Shipment } from '../types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
@@ -56,6 +102,21 @@ const showDialog = ref(false)
 const selectedShipment = ref<{ id?: number; name?: string } | null>(null)
 const showDeleteDialog = ref(false)
 const pendingDeleteShipment = ref<Shipment | null>(null)
+
+const statusChipColor = (status: string | null | undefined) => {
+  if (status === 'Draft') return 'grey-7'
+  if (status === 'Order Placed') return 'indigo'
+  if (status === 'Proforma Generated') return 'purple-7'
+  if (status === 'Payment Done') return 'teal'
+  if (status === 'Delivery Date Received') return 'cyan-8'
+  if (status === 'Uk Warehouse Delivery Received') return 'blue'
+  if (status === 'Air Shipment Date Set') return 'orange-8'
+  if (status === 'Airport Arrival') return 'deep-orange'
+  if (status === 'Airport Released') return 'brown-7'
+  if (status === 'Warehouse Received') return 'positive'
+  if (status === 'Added to Inventory') return 'green-8'
+  return 'primary'
+}
 
 const openCreate = () => {
   selectedShipment.value = null
@@ -125,3 +186,9 @@ onMounted(async () => {
   await shipmentStore.fetchShipments(tenantStore.selectedTenant?.id ?? 1)
 })
 </script>
+
+<style scoped>
+.shipment-status-chip {
+  border-radius: 0 !important;
+}
+</style>

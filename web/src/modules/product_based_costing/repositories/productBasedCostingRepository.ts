@@ -99,6 +99,7 @@ const buildProductBasedCostingItemCreatePayload = (
   quantity: payload.quantity ?? null,
   barcode: normalizeText(payload.barcode),
   product_code: normalizeText(payload.product_code),
+  brand: normalizeText(payload.brand),
   vendor_code: normalizeText(payload.vendor_code),
   market_code: normalizeText(payload.market_code),
   web_link: normalizeText(payload.web_link),
@@ -109,6 +110,7 @@ const buildProductBasedCostingItemCreatePayload = (
   status: normalizeText(payload.status),
   product_id: payload.product_id,
   input_type: normalizeText(payload.input_type),
+  assigned_shipment_id: payload.assigned_shipment_id ?? null,
 })
 
 const buildProductBasedCostingItemUpdatePayload = (
@@ -142,6 +144,10 @@ const buildProductBasedCostingItemUpdatePayload = (
 
   if (payload.product_code !== undefined) {
     updatePayload.product_code = normalizeText(payload.product_code)
+  }
+
+  if (payload.brand !== undefined) {
+    updatePayload.brand = normalizeText(payload.brand)
   }
 
   if (payload.vendor_code !== undefined) {
@@ -178,6 +184,10 @@ const buildProductBasedCostingItemUpdatePayload = (
 
   if (payload.input_type !== undefined) {
     updatePayload.input_type = normalizeText(payload.input_type)
+  }
+
+  if (payload.assigned_shipment_id !== undefined) {
+    updatePayload.assigned_shipment_id = payload.assigned_shipment_id
   }
 
   return updatePayload

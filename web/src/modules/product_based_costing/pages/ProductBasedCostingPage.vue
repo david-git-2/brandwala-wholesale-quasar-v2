@@ -1,6 +1,25 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="text-h6 q-mb-md">Product Based Costing</div>
+  <q-page class="q-pa-md costing-list-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">Product Based Costing</div>
+            <div class="text-caption text-grey-8">Manage costing files and open details</div>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              color="primary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              label="Create Costing File"
+              @click="openCreateDialog"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <PageInitialLoader v-if="store.loading" />
 
@@ -9,54 +28,116 @@
     </div>
 
     <div v-else>
-      <p>Product Based Costing Data</p>
+      <q-card flat class="q-mb-md floating-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row q-col-gutter-sm items-center">
+            <div class="col-12 col-md-5">
+              <q-input
+                v-model="searchText"
+                outlined
+                dense
+                class="soft-input"
+                label="Search"
+                clearable
+                @keyup.enter="onApplyFilters"
+              />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-select
+                v-model="statusFilter"
+                :options="statusFilterOptions"
+                outlined
+                dense
+                class="soft-input"
+                emit-value
+                map-options
+                label="Status"
+                @update:model-value="onApplyFilters"
+              />
+            </div>
+            <div class="col-12 col-md-auto">
+              <q-btn flat no-caps size="sm" class="pill-btn slim-btn" label="Reset" @click="onResetFilters" />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
-      <div class="row q-col-gutter-md q-mb-md">
-        <div class="col-12 col-md-4">
-          <q-input
-            v-model="searchText"
-            outlined
-            dense
-            label="Search"
-            clearable
-            @keyup.enter="onApplyFilters"
-          />
-        </div>
-        <div class="col-12 col-md-3">
-          <q-select
-            v-model="statusFilter"
-            :options="statusFilterOptions"
-            outlined
-            dense
-            emit-value
-            map-options
-            label="Status"
-            @update:model-value="onApplyFilters"
-          />
-        </div>
-        <div class="col-12 col-md-3 row items-center q-gutter-sm">
-          <q-btn flat label="Reset" @click="onResetFilters" />
-        </div>
-      </div>
-
-      <div class="row justify-end q-mb-md">
-        <q-btn
-          color="primary"
+      <div class="row justify-end q-mb-sm">
+        <q-btn-toggle
+          v-model="viewMode"
+          dense
+          unelevated
           no-caps
-          label="Create Costing File"
-          @click="openCreateDialog"
-
+          toggle-color="primary"
+          color="white"
+          text-color="primary"
+          :options="[
+            { icon: 'table_rows', value: 'table' },
+            { icon: 'grid_view', value: 'card' },
+          ]"
         />
-
-
       </div>
 
-      <CostingFileCard :items="store.items"  @select="onSelect"
-  @copy="onCopy"
-  @edit="openEditDialog"
-  @delete="onDelete"/>
+      <q-card v-if="viewMode === 'table'" flat class="floating-surface shadow-1">
+        <q-table
+          flat
+          :rows="store.items"
+          :columns="tableColumns"
+          row-key="id"
+          :loading="store.loading"
+          :pagination="tablePagination"
+          :rows-per-page-options="[10, 20, 50]"
+          @request="onTableRequest"
+          class="costing-list-table"
+        >
+          <template #body="slotProps">
+            <q-tr :props="slotProps" class="cursor-pointer" @click="onSelect(slotProps.row)">
+              <q-td key="id" :props="slotProps">#{{ slotProps.row.id }}</q-td>
+              <q-td key="name" :props="slotProps">{{ slotProps.row.name ?? '-' }}</q-td>
+              <q-td key="order_for" :props="slotProps">{{ slotProps.row.order_for ?? '-' }}</q-td>
+              <q-td key="status" :props="slotProps">
+                <q-chip
+                  dense
+                  square
+                  :color="statusChipColor(slotProps.row.status)"
+                  text-color="white"
+                  class="costing-status-chip"
+                >
+                  {{ slotProps.row.status ?? 'pending' }}
+                </q-chip>
+              </q-td>
+              <q-td key="actions" :props="slotProps" class="text-right">
+                <q-btn flat round dense icon="more_vert" aria-label="Costing file actions" @click.stop>
+                  <q-menu auto-close>
+                    <q-list dense style="min-width: 120px">
+                      <q-item clickable v-ripple @click="onCopy(slotProps.row)">
+                        <q-item-section>Copy</q-item-section>
+                      </q-item>
+                      <q-item clickable v-ripple @click="openEditDialog(slotProps.row)">
+                        <q-item-section>Edit</q-item-section>
+                      </q-item>
+                      <q-item clickable v-ripple @click="onDelete(slotProps.row)">
+                        <q-item-section class="text-negative">Delete</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card>
+      <div v-else>
+        <CostingFileCard
+          :items="store.items"
+          @select="onSelect"
+          @copy="onCopy"
+          @edit="openEditDialog"
+          @delete="onDelete"
+        />
+      </div>
 
-      <div v-if="store.total_pages > 1" class="row justify-center q-mt-md">
+      <div v-if="viewMode !== 'table' && store.total_pages > 1" class="row justify-center q-mt-md">
         <q-pagination
           v-model="page"
           :max="store.total_pages"
@@ -78,14 +159,14 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
-import CostingFileCard from '../components/CostingFileCard.vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { ProductBasedCostingFile } from '../types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { productBasedCostingService } from '../services/productBasedCostingService'
+import CostingFileCard from '../components/CostingFileCard.vue'
 
 
 const store = useProductBasedCostingStore()
@@ -93,6 +174,19 @@ const $q = useQuasar()
 const page = ref(1)
 const searchText = ref('')
 const statusFilter = ref<string | null>(null)
+const viewMode = ref<'table' | 'card'>('table')
+const tablePagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+})
+const tableColumns: QTableColumn[] = [
+  { name: 'id', label: 'ID', field: 'id', align: 'left' },
+  { name: 'name', label: 'Name', field: 'name', align: 'left' },
+  { name: 'order_for', label: 'Created For', field: 'order_for', align: 'left' },
+  { name: 'status', label: 'Status', field: 'status', align: 'left' },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
+]
 
 const statusFilterOptions = [
   { label: 'All', value: null as string | null },
@@ -123,6 +217,12 @@ const loadFiles = async () => {
   }
 
   await store.fetchProductBasedCostingFiles(payload)
+  tablePagination.value = {
+    ...tablePagination.value,
+    page: store.page,
+    rowsPerPage: store.page_size,
+    rowsNumber: store.total,
+  }
 }
 
 onMounted(() => {
@@ -236,7 +336,7 @@ const onCopy = async (item: ProductBasedCostingFile) => {
   }
 
   const copiedFileId = fileCreateResult.data.id
-  const sourceItems = sourceItemsResult.data ?? []
+  const sourceItems = sourceItemsResult.data?.data ?? []
   const copyItemTasks = sourceItems.map((sourceItem) =>
     productBasedCostingService.createProductBasedCostingItem({
       product_based_costing_file_id: copiedFileId,
@@ -247,6 +347,7 @@ const onCopy = async (item: ProductBasedCostingFile) => {
       quantity: sourceItem.quantity ?? null,
       barcode: sourceItem.barcode ?? null,
       product_code: sourceItem.product_code ?? null,
+      brand: sourceItem.brand ?? null,
       vendor_code: sourceItem.vendor_code ?? null,
       market_code: sourceItem.market_code ?? null,
       web_link: sourceItem.web_link ?? null,
@@ -257,6 +358,7 @@ const onCopy = async (item: ProductBasedCostingFile) => {
       // Reset copied items to draft state.
       status: 'pending',
       input_type: sourceItem.input_type ?? null,
+      assigned_shipment_id: null,
     }),
   )
 
@@ -274,6 +376,15 @@ const onApplyFilters = async () => {
   await loadFiles()
 }
 
+const statusChipColor = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') return 'grey-7'
+  if (value === 'offered') return 'indigo'
+  if (value === 'processing') return 'teal'
+  if (value === 'cancelled') return 'negative'
+  return 'primary'
+}
+
 const onResetFilters = async () => {
   searchText.value = ''
   statusFilter.value = null
@@ -285,4 +396,52 @@ const onPageChange = async (nextPage: number) => {
   page.value = nextPage
   await loadFiles()
 }
+
+const onTableRequest = async (payload: {
+  pagination: { page: number; rowsPerPage: number; rowsNumber?: number }
+}) => {
+  page.value = payload.pagination.page
+  store.page_size = payload.pagination.rowsPerPage
+  await loadFiles()
+}
 </script>
+
+<style scoped>
+.costing-list-page {
+  background: transparent;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.costing-list-table :deep(th) {
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+}
+
+.costing-status-chip {
+  border-radius: 4px !important;
+}
+</style>

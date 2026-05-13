@@ -10,9 +10,11 @@
           v-if="showHeaderBackButton"
           flat
           round
-          dense
+          size="md"
+          padding="8px"
           color="primary"
           icon="keyboard_backspace"
+          class="app-header-back-btn"
           @click="onHeaderBack"
         />
         <div v-if="tenantName" class="app-context__title">
@@ -73,10 +75,16 @@ const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId 
   useAdminTenantSelection()
 
 const showHeaderBackButton = computed(
-  () => route.name === 'product-based-costing-file-details-page',
+  () =>
+    route.name === 'product-based-costing-file-details-page' ||
+    route.name === 'app-shipment-details-page',
 )
 
 const onHeaderBack = () => {
+  if (route.name === 'app-shipment-details-page') {
+    void router.push({ name: 'app-shipment-page' })
+    return
+  }
   void router.push({ name: 'product-based-costing-page' })
 }
 
@@ -117,5 +125,9 @@ onMounted(() => {
 
 .app-layout__tenant-switcher {
   min-width: min(18rem, 48vw);
+}
+
+.app-header-back-btn {
+  font-weight: 700;
 }
 </style>
