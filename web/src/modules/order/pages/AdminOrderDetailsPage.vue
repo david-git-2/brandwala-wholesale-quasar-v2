@@ -5,7 +5,6 @@
         <div class="row items-center justify-start q-col-gutter-sm">
           <div class="col">
             <div class="row items-center q-gutter-sm">
-              <q-btn flat round dense color="primary" icon="arrow_back" aria-label="Back" @click="onBackToOrders" />
               <q-badge color="primary" outline class="text-weight-medium">
                 #{{ orderStore.selected?.id ?? '-' }}
               </q-badge>
@@ -14,10 +13,36 @@
               </div>
             </div>
             <div class="text-caption text-grey-8 q-mt-xs">
-              Customer Group: {{ orderStore.selected?.customer_group_name ?? 'N/A' }}
+              Customer: {{ orderCustomerName }} | Customer Group: {{ orderStore.selected?.customer_group_name ?? 'N/A' }}
             </div>
           </div>
           <div class="col-auto row items-center q-gutter-sm order-header-status-left">
+            <q-chip
+              dense
+              square
+              clickable
+              :style="statusChipStyle(selectedStatus)"
+              class="order-status-chip q-px-md q-py-sm"
+            >
+              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(selectedStatus) }" />
+              {{ selectedStatus ?? '-' }}
+              <q-menu>
+                <q-list dense style="min-width: 170px">
+                  <q-item v-for="option in statusOptions" :key="option" clickable v-close-popup @click="onStatusChange(option)">
+                    <q-item-section>{{ option }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-chip>
+            <q-btn
+              color="secondary"
+              dense
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              :label="showSummary ? 'Hide Summary' : 'Show Summary'"
+              @click="showSummary = !showSummary"
+            />
             <q-btn
               v-if="tableViewMode === 'detailed'"
               color="primary"
@@ -49,23 +74,6 @@
                 </q-list>
               </q-menu>
             </q-btn>
-            <q-chip
-              dense
-              square
-              clickable
-              :style="statusChipStyle(selectedStatus)"
-              class="order-status-chip q-px-md q-py-sm"
-            >
-              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(selectedStatus) }" />
-              {{ selectedStatus ?? '-' }}
-              <q-menu>
-                <q-list dense style="min-width: 170px">
-                  <q-item v-for="option in statusOptions" :key="option" clickable v-close-popup @click="onStatusChange(option)">
-                    <q-item-section>{{ option }}</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-menu>
-            </q-chip>
           </div>
         </div>
       </q-card-section>
@@ -74,58 +82,66 @@
     <PageInitialLoader v-if="orderStore.loading" />
 
     <template v-else>
-    <q-card flat class="q-mb-sm floating-surface shadow-1">
-      <q-card-section class="q-py-xs">
-    <div class="row q-gutter-sm q-my-sm items-end">
-      <q-input
-        filled
-        dense
-        v-model="conversionRate"
-        type="number"
-        class="soft-input"
-        label="Conversion Rate"
-        :disable="isRateEditingLocked"
-      />
-      <q-input
-        filled
-        dense
-        v-model="cargoRate"
-        type="number"
-        class="soft-input"
-        label="Cargo Rate / KG"
-        :disable="isRateEditingLocked"
-      />
-      <q-input
-        filled
-        dense
-        v-model="profitRate"
-        type="number"
-        class="soft-input"
-        label="Profit Rate"
-        :disable="isRateEditingLocked"
-      />
-      <q-btn
-        color="primary"
-        dense
-        no-caps
-        label="Save Rates"
-        class="pill-btn slim-btn q-px-sm"
-        :loading="orderStore.saving"
-        :disable="isRateEditingLocked"
-        @click="onSaveRates"
-      />
-      <q-btn
-        color="secondary"
-        dense
-        no-caps
-        :label="showSummary ? 'Hide Summary' : 'Show Summary'"
-        class="pill-btn slim-btn"
-        @click="showSummary = !showSummary"
-      />
+   <q-card flat class="q-mb-sm floating-surface shadow-1">
+  <q-card-section class="q-pa-xs">
+    <div class="row items-center justify-between q-col-gutter-md">
+
+      <!-- LEFT SIDE -->
+      <div class="row q-col-gutter-md col">
+        <div class="col-12 col-sm-4">
+          <q-input
+            filled
+            dense
+            v-model="conversionRate"
+            type="number"
+            class="soft-input"
+            label="Conversion Rate"
+            :disable="isRateEditingLocked"
+          />
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <q-input
+            filled
+            dense
+            v-model="cargoRate"
+            type="number"
+            class="soft-input"
+            label="Cargo Rate / KG"
+            :disable="isRateEditingLocked"
+          />
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <q-input
+            filled
+            dense
+            v-model="profitRate"
+            type="number"
+            class="soft-input"
+            label="Profit Rate"
+            :disable="isRateEditingLocked"
+          />
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE -->
+      <div class="col-auto self-center">
+        <q-btn
+          color="primary"
+          dense
+          no-caps
+          label="Save Rates"
+          class="pill-btn slim-btn q-px-md"
+          :loading="orderStore.saving"
+          :disable="isRateEditingLocked"
+          @click="onSaveRates"
+        />
+      </div>
 
     </div>
-      </q-card-section>
-    </q-card>
+  </q-card-section>
+</q-card>
     <q-card v-if="showSummary" flat bordered class="q-mt-sm q-mb-md bg-white">
       <q-card-section class="row q-pa-none admin-summary-grid">
         <div class="col-4 admin-summary-cell admin-summary-bg-qty">
@@ -168,6 +184,8 @@
       <q-btn-toggle
         class="q-ml-auto"
         v-model="tableViewMode"
+        dense
+        size="sm"
         no-caps
         unelevated
         toggle-color="primary"
@@ -194,7 +212,6 @@
       :cargo-rate="Number(cargoRate) || 0"
       :profit-rate="Number(profitRate) || 0"
       :show-column-selector="false"
-      :visible-column-names="selectedDetailColumns"
       @ship="onShipItem"
     />
 
@@ -285,25 +302,28 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useOrderStore } from '../stores/orderStore'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import OrderItemsTable from '../components/OrderItemsTable.vue'
 import type { OrderItem, OrderStatus } from '../types'
 import CompactOrderItemTable from '../components/CompactOrderItemTable.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import { shipmentService } from 'src/modules/shipment/services/shipmentService'
+import type { ShipmentItem as LinkedShipmentItem } from 'src/modules/shipment/types'
 
 
 
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const orderStore = useOrderStore()
 const shipmentStore = useShipmentStore()
 const tenantStore = useTenantStore()
+const storeStore = useStoreStore()
 
 const selectedStatus = ref<OrderStatus | null>(null)
 const tableViewMode = ref<'compact' | 'detailed'>('detailed')
@@ -321,6 +341,7 @@ const showSummary = ref(false)
 const selectedDetailColumns = ref<string[]>([])
 const negotiationChoice = ref<boolean>(false)
 const negotiationDialogShownForOrderId = ref<number | null>(null)
+const shipmentItemsByShipmentId = ref<Record<number, LinkedShipmentItem[]>>({})
 
 const negotiationOptions = [
   { label: 'Enable Negotiation', value: true },
@@ -394,12 +415,59 @@ const statusDetailColumns: Record<string, string[]> = {
 
 const detailColumnSelectorOptions = computed(() => {
   const status = selectedStatus.value ?? 'customer_submit'
-  const names = statusDetailColumns[status] ?? statusDetailColumns.customer_submit
+  const names = (statusDetailColumns[status] ?? statusDetailColumns.customer_submit) ?? []
   return names.map((name) => ({
     label: detailColumnLabelMap[name] ?? name,
     value: name,
   }))
 })
+
+const orderCustomerName = computed(() => {
+  const storeId = orderStore.selected?.store_id ?? null
+  if (storeId == null) {
+    return 'N/A'
+  }
+  const matchedStore = storeStore.items.find((entry) => entry.id === storeId)
+  return matchedStore?.name ?? 'N/A'
+})
+
+const linkedShipmentIds = computed(() =>
+  Array.from(
+    new Set(
+      (orderStore.selected?.order_items ?? [])
+        .map((item) => item.shipment_id)
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0),
+    ),
+  ),
+)
+
+const refreshLinkedShipmentItems = async (shipmentIds: number[]) => {
+  if (!shipmentIds.length) {
+    shipmentItemsByShipmentId.value = {}
+    return
+  }
+
+  const nextMap: Record<number, LinkedShipmentItem[]> = {}
+  const results = await Promise.allSettled(
+    shipmentIds.map(async (shipmentId) => {
+      const result = await shipmentService.listShipmentItems(shipmentId)
+      return { shipmentId, result }
+    }),
+  )
+
+  for (const entry of results) {
+    if (entry.status !== 'fulfilled') {
+      continue
+    }
+
+    const { shipmentId, result } = entry.value
+    if (result.success) {
+      nextMap[shipmentId] = result.data ?? []
+    }
+  }
+
+  shipmentItemsByShipmentId.value = nextMap
+}
 
 const normalizeNumericInput = (value: unknown) => {
   if (value == null) {
@@ -416,7 +484,12 @@ const normalizeNumericInput = (value: unknown) => {
 
 onMounted(async () => {
   await orderStore.fetchOrderById({ id: Number(route.params.id) })
-  await shipmentStore.fetchShipments(tenantStore.selectedTenant?.id ?? 1)
+  const tenantId = tenantStore.selectedTenant?.id ?? authStore.tenantId ?? 1
+  await Promise.all([
+    shipmentStore.fetchShipments(tenantId),
+    storeStore.fetchStoresAdmin(tenantId),
+  ])
+  await refreshLinkedShipmentItems(linkedShipmentIds.value)
 })
 
 watch(
@@ -424,8 +497,9 @@ watch(
   (status) => {
     selectedStatus.value = status ?? null
     const nextStatus = status ?? 'customer_submit'
+    const nextColumns = (statusDetailColumns[nextStatus] ?? statusDetailColumns.customer_submit) ?? []
     if (!selectedDetailColumns.value.length) {
-      selectedDetailColumns.value = [...(statusDetailColumns[nextStatus] ?? statusDetailColumns.customer_submit)]
+      selectedDetailColumns.value = [...nextColumns]
     }
   },
   { immediate: true }
@@ -456,6 +530,15 @@ watch(
   (items) => {
     const valid = new Set(items.map((item) => item.id))
     selectedItemIds.value = selectedItemIds.value.filter((id) => valid.has(id))
+    void refreshLinkedShipmentItems(
+      Array.from(
+        new Set(
+          items
+            .map((item) => item.shipment_id)
+            .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0),
+        ),
+      ),
+    )
   },
   { immediate: true },
 )
@@ -649,11 +732,6 @@ const onConfirmDeleteSelected = async () => {
   confirmDeleteSelectedOpen.value = false
 }
 
-const onBackToOrders = async () => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/orders`)
-}
-
 const openShipDialogForItem = (itemId: number) => {
   const rowItem = orderStore.selected?.order_items?.find((item) => item.id === itemId) ?? null
   if (!rowItem) {
@@ -805,6 +883,7 @@ const onSaveShipment = async (data: {
   selectedShipItemId.value = null
   selectedQuantity.value = null
   selectedPriceGbp.value = null
+  await refreshLinkedShipmentItems(linkedShipmentIds.value)
 }
 
 const onConfirmRemoveShipment = async () => {
@@ -824,12 +903,12 @@ const onConfirmRemoveShipment = async () => {
   }
 
   const shipmentId = rowItem.shipment_id
-  const itemsResult = await shipmentStore.fetchShipmentItems(shipmentId)
-  if (!itemsResult.success) {
-    return
+  let shipmentItems = shipmentItemsByShipmentId.value[shipmentId] ?? []
+  if (!shipmentItems.length) {
+    await refreshLinkedShipmentItems([shipmentId])
+    shipmentItems = shipmentItemsByShipmentId.value[shipmentId] ?? []
   }
 
-  const shipmentItems = shipmentStore.shipmentItems ?? []
   const exactProductMatch = shipmentItems.find(
     (item) =>
       item.order_id === rowItem.order_id &&
@@ -860,6 +939,7 @@ const onConfirmRemoveShipment = async () => {
     return
   }
 
+  await refreshLinkedShipmentItems(linkedShipmentIds.value)
   confirmRemoveShipmentOpen.value = false
   pendingRemoveShipItemId.value = null
 }
@@ -913,6 +993,14 @@ const onConfirmRemoveShipment = async () => {
 
 .order-header-status-left {
   padding-left: 8px;
+}
+
+.rates-row-compact {
+  margin-bottom: 2px;
+}
+
+.rates-save-wrap {
+  min-height: 40px;
 }
 
 .admin-summary-cell {

@@ -74,18 +74,47 @@ const tenantOptions = computed(() =>
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection()
 
-const showHeaderBackButton = computed(
-  () =>
-    route.name === 'product-based-costing-file-details-page' ||
-    route.name === 'app-shipment-details-page',
-)
+const routeName = computed(() => String(route.name ?? ''))
+
+const inferredBackRouteName = computed(() => {
+  const name = routeName.value
+  if (!name.includes('details')) {
+    return null
+  }
+
+  const mapped = name.replace(/-details-page$/, '-page')
+  if (mapped !== name && router.hasRoute(mapped)) {
+    return mapped
+  }
+
+  return null
+})
+
+const showHeaderBackButton = computed(() => {
+  const metaFlag = route.meta?.showHeaderBackButton
+  if (metaFlag === false) {
+    return false
+  }
+
+  if (metaFlag === true) {
+    return true
+  }
+
+  return routeName.value.includes('details')
+})
 
 const onHeaderBack = () => {
-  if (route.name === 'app-shipment-details-page') {
-    void router.push({ name: 'app-shipment-page' })
+  if (window.history.length > 1) {
+    router.back()
     return
   }
-  void router.push({ name: 'product-based-costing-page' })
+
+  if (inferredBackRouteName.value) {
+    void router.push({ name: inferredBackRouteName.value })
+    return
+  }
+
+  void router.push({ name: 'app-dashboard' })
 }
 
 const onSelectTenant = (tenantId: number | null) => {

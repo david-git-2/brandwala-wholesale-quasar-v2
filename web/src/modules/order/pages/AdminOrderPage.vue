@@ -268,12 +268,14 @@ const tableColumns: QTableColumn[] = [
 const statusFilterOptions = [
   { label: 'All', value: '__all__' },
   { label: 'Customer Submit', value: 'customer_submit' },
-  { label: 'In Review', value: 'in_review' },
+  { label: 'Direct Priced', value: 'direct_priced' },
   { label: 'Priced', value: 'priced' },
   { label: 'Negotiate', value: 'negotiate' },
   { label: 'Final Offered', value: 'final_offered' },
+  { label: 'Ordered', value: 'ordered' },
   { label: 'Order Placed', value: 'order_placed' },
   { label: 'Processing', value: 'processing' },
+  { label: 'Invoicing', value: 'invoicing' },
   { label: 'Invoiced', value: 'invoiced' },
 ]
 
@@ -394,22 +396,26 @@ const statusSurfaceStyle = (status: string | null | undefined, accentColor: stri
   const value = (status ?? '').toLowerCase()
   const accentFallback =
     value === 'customer_submit' ? '#d8a54a' :
-    value === 'in_review' ? '#6f93d8' :
+    value === 'direct_priced' ? '#5779bd' :
     value === 'priced' ? '#5cbfd6' :
     value === 'negotiate' ? '#df7f63' :
     value === 'final_offered' ? '#9a74d4' :
+    value === 'ordered' ? '#5b82d6' :
     value === 'order_placed' ? '#5b82d6' :
     value === 'processing' ? '#59aa7d' :
+    value === 'invoicing' ? '#df9549' :
     value === 'invoiced' ? '#449a69' :
     '#8ea0b8'
   const leftAccent = accentColor || accentFallback
   if (value === 'customer_submit') return { backgroundColor: '#fffbf2', borderLeft: `6px solid ${leftAccent}` }
-  if (value === 'in_review') return { backgroundColor: '#f3f7ff', borderLeft: `6px solid ${leftAccent}` }
+  if (value === 'direct_priced') return { backgroundColor: '#eef4ff', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'priced') return { backgroundColor: '#eefbff', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'negotiate') return { backgroundColor: '#fff3ef', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'final_offered') return { backgroundColor: '#f8f4ff', borderLeft: `6px solid ${leftAccent}` }
+  if (value === 'ordered') return { backgroundColor: '#eef4ff', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'order_placed') return { backgroundColor: '#eef4ff', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'processing') return { backgroundColor: '#f2fbf6', borderLeft: `6px solid ${leftAccent}` }
+  if (value === 'invoicing') return { backgroundColor: '#fff7ee', borderLeft: `6px solid ${leftAccent}` }
   if (value === 'invoiced') return { backgroundColor: '#edf9f2', borderLeft: `6px solid ${leftAccent}` }
   return { backgroundColor: '#f8f9fb', borderLeft: `6px solid ${leftAccent}` }
 }
@@ -417,12 +423,14 @@ const statusSurfaceStyle = (status: string | null | undefined, accentColor: stri
 const statusChipStyle = (status: string | null | undefined) => {
   const value = (status ?? '').toLowerCase()
   if (value === 'customer_submit') return { backgroundColor: '#efd399', color: '#6a4a14', border: '1px solid #d8b672' }
-  if (value === 'in_review') return { backgroundColor: '#c8d8f8', color: '#27487a', border: '1px solid #a9c4f3' }
+  if (value === 'direct_priced') return { backgroundColor: '#d8e4ff', color: '#2b4b85', border: '1px solid #bdd0f7' }
   if (value === 'priced') return { backgroundColor: '#bde9f4', color: '#1e5f71', border: '1px solid #9fd8e7' }
   if (value === 'negotiate') return { backgroundColor: '#f4c8ba', color: '#7f3420', border: '1px solid #e7ab98' }
   if (value === 'final_offered') return { backgroundColor: '#dccdfa', color: '#4e2d86', border: '1px solid #c6b1f1' }
+  if (value === 'ordered') return { backgroundColor: '#c4d5fa', color: '#274a8d', border: '1px solid #a9c2f2' }
   if (value === 'order_placed') return { backgroundColor: '#c4d5fa', color: '#274a8d', border: '1px solid #a9c2f2' }
   if (value === 'processing') return { backgroundColor: '#c3e8d2', color: '#1f5d3c', border: '1px solid #9fd4b7' }
+  if (value === 'invoicing') return { backgroundColor: '#f7d6af', color: '#7a4516', border: '1px solid #ecc08f' }
   if (value === 'invoiced') return { backgroundColor: '#b9e3ca', color: '#194f35', border: '1px solid #95cfaf' }
   return { backgroundColor: '#dbe5f3', color: '#3b4b66', border: '1px solid #b9c8dd' }
 }
@@ -430,12 +438,14 @@ const statusChipStyle = (status: string | null | undefined) => {
 const statusDotColor = (status: string | null | undefined) => {
   const value = (status ?? '').toLowerCase()
   if (value === 'customer_submit') return '#9a6a24'
-  if (value === 'in_review') return '#3f67b3'
+  if (value === 'direct_priced') return '#3d5f9e'
   if (value === 'priced') return '#308ca6'
   if (value === 'negotiate') return '#b65336'
   if (value === 'final_offered') return '#6f4ab2'
+  if (value === 'ordered') return '#3f67b3'
   if (value === 'order_placed') return '#3f67b3'
   if (value === 'processing') return '#2f8b5d'
+  if (value === 'invoicing') return '#b86d23'
   if (value === 'invoiced') return '#25784d'
   return '#66758c'
 }
