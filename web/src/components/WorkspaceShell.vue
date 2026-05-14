@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh Lpr lFf" class="workspace-shell" :class="themeClasses">
+  <q-layout view="hHh lpR fFf" class="workspace-shell" :class="themeClasses">
     <q-header class="workspace-shell__header">
       <q-toolbar class="workspace-shell__toolbar">
         <q-btn

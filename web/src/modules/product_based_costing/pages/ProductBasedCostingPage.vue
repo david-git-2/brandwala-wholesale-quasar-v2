@@ -28,41 +28,70 @@
     </div>
 
     <div v-else>
-      <q-card flat class="q-mb-md floating-surface shadow-1">
-        <q-card-section class="q-py-sm">
-          <div class="row q-col-gutter-sm items-center">
-            <div class="col-12 col-md-5">
-              <q-input
-                v-model="searchText"
-                outlined
-                dense
-                class="soft-input"
-                label="Search"
-                clearable
-                @keyup.enter="onApplyFilters"
-              />
-            </div>
-            <div class="col-12 col-md-3">
-              <q-select
-                v-model="statusFilter"
-                :options="statusFilterOptions"
-                outlined
-                dense
-                class="soft-input"
-                emit-value
-                map-options
-                label="Status"
-                @update:model-value="onApplyFilters"
-              />
-            </div>
-            <div class="col-12 col-md-auto">
-              <q-btn flat no-caps size="sm" class="pill-btn slim-btn" label="Reset" @click="onResetFilters" />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
+      <div class="row items-center justify-between q-mb-sm">
+        <div class="row items-center q-gutter-sm toolbar-left">
+          <q-btn
+            v-if="!showSearchInput"
+            flat
+            round
+            dense
+            icon="search"
+            aria-label="Show search"
+            @click="showSearchInput = true"
+          />
 
-      <div class="row justify-end q-mb-sm">
+          <q-input
+            v-else
+            v-model="searchText"
+            outlined
+            dense
+            class="soft-input toolbar-search"
+            label="Search"
+            clearable
+            autofocus
+            @keyup.enter="onApplyFilters"
+            @clear="onApplyFilters"
+          >
+            <template #prepend>
+              <q-icon name="search" />
+            </template>
+            <template #append>
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                aria-label="Hide search"
+                @click="
+                  () => {
+                    searchText = ''
+                    showSearchInput = false
+                    onApplyFilters()
+                  }
+                "
+              />
+            </template>
+          </q-input>
+
+          <q-btn
+            flat
+            round
+            dense
+            icon="filter_alt"
+            aria-label="Filters"
+            @click="openFilterDrawer"
+          >
+            <q-badge
+              v-if="activeFilterCount > 0"
+              color="primary"
+              rounded
+              floating
+            >
+              {{ activeFilterCount }}
+            </q-badge>
+          </q-btn>
+        </div>
+
         <q-btn-toggle
           v-model="viewMode"
           dense
@@ -91,7 +120,12 @@
           class="costing-list-table"
         >
           <template #body="slotProps">
-            <q-tr :props="slotProps" class="cursor-pointer" @click="onSelect(slotProps.row)">
+            <q-tr
+              :props="slotProps"
+              class="cursor-pointer"
+              :style="statusSurfaceStyle(slotProps.row.status)"
+              @click="onSelect(slotProps.row)"
+            >
               <q-td key="id" :props="slotProps">#{{ slotProps.row.id }}</q-td>
               <q-td key="name" :props="slotProps">{{ slotProps.row.name ?? '-' }}</q-td>
               <q-td key="order_for" :props="slotProps">{{ slotProps.row.order_for ?? '-' }}</q-td>
@@ -99,10 +133,10 @@
                 <q-chip
                   dense
                   square
-                  :color="statusChipColor(slotProps.row.status)"
-                  text-color="white"
+                  :style="statusChipStyle(slotProps.row.status)"
                   class="costing-status-chip"
                 >
+                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(slotProps.row.status) }" />
                   {{ slotProps.row.status ?? 'pending' }}
                 </q-chip>
               </q-td>
@@ -154,11 +188,29 @@
       :data="selectedRow"
       @submit="handleDialogSubmit"
     />
+
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <q-select
+        v-model="draftStatusFilter"
+        :options="statusFilterOptions"
+        outlined
+        dense
+        class="soft-input q-mb-md"
+        emit-value
+        map-options
+        label="Status"
+        @update:model-value="onDrawerStatusChange"
+      />
+      <div class="row q-gutter-sm justify-end">
+        <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+      </div>
+    </FilterSidebar>
+
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
@@ -167,13 +219,17 @@ import type { ProductBasedCostingFile } from '../types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { productBasedCostingService } from '../services/productBasedCostingService'
 import CostingFileCard from '../components/CostingFileCard.vue'
+import FilterSidebar from 'src/components/FilterSidebar.vue'
 
 
 const store = useProductBasedCostingStore()
 const $q = useQuasar()
 const page = ref(1)
 const searchText = ref('')
-const statusFilter = ref<string | null>(null)
+const showSearchInput = ref(false)
+const statusFilter = ref<string>('__all__')
+const draftStatusFilter = ref<string>('__all__')
+const filterDrawerOpen = ref(false)
 const viewMode = ref<'table' | 'card'>('table')
 const tablePagination = ref({
   page: 1,
@@ -189,12 +245,14 @@ const tableColumns: QTableColumn[] = [
 ]
 
 const statusFilterOptions = [
-  { label: 'All', value: null as string | null },
-  { label: 'Pending', value: 'pending' },
+  { label: 'All', value: '__all__' },
+  { label: 'Pending', value: '__pending__' },
   { label: 'Offered', value: 'offered' },
   { label: 'Processing', value: 'processing' },
   { label: 'Cancelled', value: 'cancelled' },
 ]
+
+const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0))
 
 const loadFiles = async () => {
   const payload: {
@@ -212,7 +270,9 @@ const loadFiles = async () => {
     payload.search = searchValue
   }
 
-  if (statusFilter.value !== null) {
+  if (statusFilter.value === '__pending__') {
+    payload.status = null
+  } else if (statusFilter.value !== '__all__') {
     payload.status = statusFilter.value
   }
 
@@ -336,7 +396,7 @@ const onCopy = async (item: ProductBasedCostingFile) => {
   }
 
   const copiedFileId = fileCreateResult.data.id
-  const sourceItems = sourceItemsResult.data?.data ?? []
+  const sourceItems = sourceItemsResult.data ?? []
   const copyItemTasks = sourceItems.map((sourceItem) =>
     productBasedCostingService.createProductBasedCostingItem({
       product_based_costing_file_id: copiedFileId,
@@ -376,19 +436,95 @@ const onApplyFilters = async () => {
   await loadFiles()
 }
 
-const statusChipColor = (status: string | null | undefined) => {
+const statusSurfaceStyle = (status: string | null | undefined) => {
   const value = (status ?? '').toLowerCase()
-  if (value === 'pending') return 'grey-7'
-  if (value === 'offered') return 'indigo'
-  if (value === 'processing') return 'teal'
-  if (value === 'cancelled') return 'negative'
-  return 'primary'
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#fffbf2',
+      boxShadow: 'inset 6px 0 0 #d8a54a',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#f3f7ff',
+      boxShadow: 'inset 6px 0 0 #6f93d8',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#f2fbf6',
+      boxShadow: 'inset 6px 0 0 #59aa7d',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#fff4f6',
+      boxShadow: 'inset 6px 0 0 #c97586',
+    }
+  }
+  return {
+    backgroundColor: '#f8f9fb',
+    boxShadow: 'inset 6px 0 0 #8ea0b8',
+  }
+}
+
+const statusChipStyle = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+      boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+      boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+      boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+      boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+    boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+  }
+}
+
+const statusDotColor = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'processing') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#66758c'
 }
 
 const onResetFilters = async () => {
   searchText.value = ''
-  statusFilter.value = null
+  statusFilter.value = '__all__'
+  draftStatusFilter.value = '__all__'
   page.value = 1
+  filterDrawerOpen.value = false
   await loadFiles()
 }
 
@@ -403,6 +539,21 @@ const onTableRequest = async (payload: {
   page.value = payload.pagination.page
   store.page_size = payload.pagination.rowsPerPage
   await loadFiles()
+}
+
+const openFilterDrawer = () => {
+  draftStatusFilter.value = statusFilter.value
+  filterDrawerOpen.value = true
+}
+
+const onApplyDrawerFilters = async () => {
+  statusFilter.value = draftStatusFilter.value
+  page.value = 1
+  await loadFiles()
+}
+
+const onDrawerStatusChange = async () => {
+  await onApplyDrawerFilters()
 }
 </script>
 
@@ -442,6 +593,26 @@ const onTableRequest = async (payload: {
 }
 
 .costing-status-chip {
-  border-radius: 4px !important;
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
 }
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.toolbar-left {
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: min(320px, 75vw);
+}
+
 </style>

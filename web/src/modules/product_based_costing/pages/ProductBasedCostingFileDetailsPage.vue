@@ -19,26 +19,51 @@
               </div>
             </div>
             <div class="col-auto row items-center q-gutter-sm">
-              <q-select
+              <q-chip
                 v-if="store.item"
-                v-model="status"
-                :options="statusOptions"
-                outlined
                 dense
-                options-dense
-                class="costing-status-select soft-input"
-                @update:model-value="onStatusChange"
+                square
+                clickable
+                :style="statusChipStyle(status)"
+                class="costing-file-status-chip q-px-md q-py-sm"
+              >
+                <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(status) }" />
+                {{ status }}
+                <q-menu>
+                  <q-list dense style="min-width: 150px">
+                    <q-item
+                      v-for="option in statusOptions"
+                      :key="option"
+                      clickable
+                      v-close-popup
+                      @click="onStatusMenuSelect(option)"
+                    >
+                      <q-item-section>{{ option }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-chip>
+              <q-btn
+                color="primary"
+                unelevated
+                no-caps
+                size="sm"
+                icon="add"
+                dense
+                label="Add Item"
+                class="q-px-md q-py-sm"
+                @click="openCreateDialog"
               />
-              <q-btn color="primary" icon="add" no-caps label="Add Item" size="sm" class="pill-btn slim-btn" @click="openCreateDialog" />
               <q-btn
                 color="primary"
                 outline
                 no-caps
                 size="sm"
                 icon="view_column"
+                dense
                 label="Columns"
                 aria-label="Select columns"
-                class="pill-btn slim-btn"
+                class="q-px-md q-py-sm"
               >
                 <q-menu>
                   <q-list style="min-width: 240px">
@@ -67,7 +92,16 @@
                   </q-list>
                 </q-menu>
               </q-btn>
-              <q-btn-dropdown color="primary" outline no-caps label="Actions" size="sm" class="pill-btn slim-btn" dropdown-icon="expand_more">
+              <q-btn-dropdown
+                color="indigo-8"
+                outline
+                no-caps
+                size="sm"
+                dense
+                label="Actions"
+                class="q-px-md q-py-sm"
+                dropdown-icon="expand_more"
+              >
                 <q-list dense>
                   <q-item clickable v-close-popup :disable="status === 'pending'" @click="openPreview">
                     <q-item-section avatar>
@@ -98,14 +132,14 @@
         </q-card-section>
       </q-card>
 
-      <q-card flat class="q-mb-md floating-surface shadow-1">
-        <q-card-section class="q-py-sm">
-          <div class="row items-center q-col-gutter-sm">
+      <q-card flat class="q-mb-sm floating-surface shadow-1">
+        <q-card-section class="q-py-xs">
+          <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-12 col-sm-3">
               <q-input
                 v-model.number="conversion_rate"
                 dense
-                outlined
+                filled
                 type="number"
                 class="soft-input"
                 label="Conversion Rate"
@@ -115,16 +149,16 @@
               <q-input
                 v-model.number="cargo_rate_kg_gbp"
                 dense
-                outlined
+                filled
                 type="number"
                 class="soft-input"
                 label="Cargo Rate (kg/GBP)"
               />
             </div>
             <div class="col-12 col-sm-3">
-              <q-input v-model.number="profit_rate" dense outlined type="number" class="soft-input" label="Profit Rate" />
+              <q-input v-model.number="profit_rate" dense filled   type="number" class="soft-input" label="Profit Rate" />
             </div>
-            <div class="col-12 col-sm-auto">
+            <div class="col-12 col-sm-auto row justify-end">
               <q-btn color="primary" label="Save" no-caps size="sm" class="pill-btn slim-btn rates-save-btn" @click="onRateSave" />
             </div>
           </div>
@@ -298,6 +332,60 @@ const onStatusChange = async () => {
 
   await recalculateAndPersistOfferPrices();
 };
+
+const onStatusMenuSelect = async (nextStatus: string) => {
+  if (status.value === nextStatus) {
+    return
+  }
+  status.value = nextStatus
+  await onStatusChange()
+}
+
+const statusChipStyle = (currentStatus: string) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+  }
+}
+
+const statusDotColor = (currentStatus: string) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'processing') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#66758c'
+}
 
 const recalculateAndPersistOfferPrices = async () => {
   if (!fileId.value) {
@@ -710,17 +798,26 @@ const onDefaultShipmentChange = async (shipmentId: number | null) => {
   backdrop-filter: blur(6px);
 }
 
-.costing-status-select {
-  min-width: 180px;
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 
 .hero-surface {
   border-radius: 16px;
 }
 
-.pill-btn {
-  border-radius: 999px;
-}
+
 
 .slim-btn {
   min-height: 32px;

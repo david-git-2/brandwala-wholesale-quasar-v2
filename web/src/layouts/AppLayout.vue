@@ -10,8 +10,8 @@
           v-if="showHeaderBackButton"
           flat
           round
+          dense
           size="md"
-          padding="8px"
           color="primary"
           icon="keyboard_backspace"
           class="app-header-back-btn"
@@ -129,5 +129,8 @@ onMounted(() => {
 
 .app-header-back-btn {
   font-weight: 700;
+  border: 1px solid var(--q-separator-color);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
 }
 </style>

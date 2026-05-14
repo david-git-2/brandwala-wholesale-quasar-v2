@@ -9,6 +9,7 @@
         class="q-pa-md cursor-pointer"
         bordered
         flat
+        :style="statusSurfaceStyle(item.status)"
         @click="handleSelect(item)"
       >
         <div class="row items-start justify-between no-wrap">
@@ -26,10 +27,10 @@
             <q-chip
               dense
               square
-              :color="statusChipColor(item.status)"
-              text-color="white"
+              :style="statusChipStyle(item.status)"
               class="costing-status-chip"
             >
+              <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
               {{ item.status ?? 'pending' }}
             </q-chip>
             <q-btn
@@ -100,18 +101,103 @@ const handleDelete = (item: ProductBasedCostingFile) => {
   })
 }
 
-const statusChipColor = (status: string | null | undefined) => {
+const statusSurfaceStyle = (status: string | null | undefined) => {
   const value = (status ?? '').toLowerCase()
-  if (value === 'pending') return 'grey-7'
-  if (value === 'offered') return 'indigo'
-  if (value === 'processing') return 'teal'
-  if (value === 'cancelled') return 'negative'
-  return 'primary'
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#fffbf2',
+      boxShadow: 'inset 6px 0 0 #d8a54a',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#f3f7ff',
+      boxShadow: 'inset 6px 0 0 #6f93d8',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#f2fbf6',
+      boxShadow: 'inset 6px 0 0 #59aa7d',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#fff4f6',
+      boxShadow: 'inset 6px 0 0 #c97586',
+    }
+  }
+  return {
+    backgroundColor: '#f8f9fb',
+    boxShadow: 'inset 6px 0 0 #8ea0b8',
+  }
+}
+
+const statusChipStyle = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+      boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+      boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+      boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+      boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+    boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+  }
+}
+
+const statusDotColor = (status: string | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'pending') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'processing') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#66758c'
 }
 </script>
 
 <style scoped>
 .costing-status-chip {
-  border-radius: 0 !important;
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>
