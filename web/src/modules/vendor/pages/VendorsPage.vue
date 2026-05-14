@@ -76,15 +76,9 @@
         >
           <template #body-cell-code="props">
             <q-td :props="props">
-              <q-badge color="primary" outline>{{ props.row.code }}</q-badge>
-            </q-td>
-          </template>
-
-          <template #body-cell-tenant_id="props">
-            <q-td :props="props">
-              <q-badge :color="props.row.tenant_id === null ? 'teal' : 'indigo'">
-                {{ props.row.tenant_id === null ? 'Global' : `Tenant #${props.row.tenant_id}` }}
-              </q-badge>
+              <q-chip dense square color="primary" text-color="white" class="vendor-code-chip">
+                {{ props.row.code }}
+              </q-chip>
             </q-td>
           </template>
 
@@ -178,7 +172,6 @@ const columns: QTableColumn[] = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   { name: 'code', label: 'Code', field: 'code', align: 'left', sortable: true },
   { name: 'market_code', label: 'Market', field: 'market_code', align: 'left', sortable: true },
-  { name: 'tenant_id', label: 'Scope', field: 'tenant_id', align: 'left', sortable: true },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
@@ -254,5 +247,9 @@ onMounted(() => {
 
 .toolbar-search {
   width: min(320px, 75vw);
+}
+
+.vendor-code-chip {
+  border-radius: 8px;
 }
 </style>

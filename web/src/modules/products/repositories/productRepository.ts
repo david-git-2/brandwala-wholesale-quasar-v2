@@ -207,6 +207,7 @@ const listProducts = async ({
   vendorCode,
   marketCode,
   isAvailable,
+  sortPrice,
 }: ListProductsParams): Promise<ProductListPage> => {
   const offset = (page - 1) * pageSize
   const { data, error } = await supabase.rpc('list_products_paginated' as never, {
