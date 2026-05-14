@@ -1,54 +1,106 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-sm">
-      <q-btn
-        flat
-        no-caps
-        color="primary"
-        icon="arrow_back"
-        label="Back to Orders"
-        @click="onBackToOrders"
-      />
-    </div>
-    <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
+  <q-page class="q-pa-md order-details-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-start q-col-gutter-sm">
+          <div class="col">
+            <div class="row items-center q-gutter-sm">
+              <q-btn flat round dense color="primary" icon="arrow_back" aria-label="Back" @click="onBackToOrders" />
+              <q-badge color="primary" outline class="text-weight-medium">
+                #{{ orderStore.selected?.id ?? '-' }}
+              </q-badge>
+              <div class="text-h6 text-weight-bold">
+                {{ orderStore.selected?.name ?? 'Order Details' }}
+              </div>
+            </div>
+            <div class="text-caption text-grey-8 q-mt-xs">
+              Customer Group: {{ orderStore.selected?.customer_group_name ?? 'N/A' }}
+            </div>
+          </div>
+          <div class="col-auto row items-center q-gutter-sm order-header-status-left">
+            <q-btn
+              v-if="tableViewMode === 'detailed'"
+              color="primary"
+              outline
+              no-caps
+              size="sm"
+              icon="view_column"
+              dense
+              label="Columns"
+              aria-label="Select columns"
+              class="q-px-md q-py-sm"
+            >
+              <q-menu>
+                <q-list style="min-width: 240px">
+                  <q-item>
+                    <q-item-section>
+                      <div class="text-subtitle2">Show Columns</div>
+                    </q-item-section>
+                  </q-item>
+                  <q-item>
+                    <q-item-section>
+                      <q-option-group
+                        v-model="selectedDetailColumns"
+                        type="checkbox"
+                        :options="detailColumnSelectorOptions"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+            <q-chip
+              dense
+              square
+              clickable
+              :style="statusChipStyle(selectedStatus)"
+              class="order-status-chip q-px-md q-py-sm"
+            >
+              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(selectedStatus) }" />
+              {{ selectedStatus ?? '-' }}
+              <q-menu>
+                <q-list dense style="min-width: 170px">
+                  <q-item v-for="option in statusOptions" :key="option" clickable v-close-popup @click="onStatusChange(option)">
+                    <q-item-section>{{ option }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-chip>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <PageInitialLoader v-if="orderStore.loading" />
 
     <template v-else>
-    <div class="q-mt-md q-mb-md row justify-end items-center q-gutter-sm" >
-      <q-select
-        v-model="selectedStatus"
-        outlined
-        dense
-        label="Order Status"
-        :options="statusOptions"
-        :loading="orderStore.saving"
-        @update:model-value="onStatusChange"
-      />
-    </div>
-
-    <div class="row q-gutter-sm q-my-sm">
+    <q-card flat class="q-mb-sm floating-surface shadow-1">
+      <q-card-section class="q-py-xs">
+    <div class="row q-gutter-sm q-my-sm items-end">
       <q-input
-        outlined
+        filled
         dense
         v-model="conversionRate"
         type="number"
+        class="soft-input"
         label="Conversion Rate"
         :disable="isRateEditingLocked"
       />
       <q-input
-        outlined
+        filled
         dense
         v-model="cargoRate"
         type="number"
+        class="soft-input"
         label="Cargo Rate / KG"
         :disable="isRateEditingLocked"
       />
       <q-input
-        outlined
+        filled
         dense
         v-model="profitRate"
         type="number"
+        class="soft-input"
         label="Profit Rate"
         :disable="isRateEditingLocked"
       />
@@ -57,7 +109,7 @@
         dense
         no-caps
         label="Save Rates"
-        class="q-px-sm"
+        class="pill-btn slim-btn q-px-sm"
         :loading="orderStore.saving"
         :disable="isRateEditingLocked"
         @click="onSaveRates"
@@ -67,10 +119,13 @@
         dense
         no-caps
         :label="showSummary ? 'Hide Summary' : 'Show Summary'"
+        class="pill-btn slim-btn"
         @click="showSummary = !showSummary"
       />
 
     </div>
+      </q-card-section>
+    </q-card>
     <q-card v-if="showSummary" flat bordered class="q-mt-sm q-mb-md bg-white">
       <q-card-section class="row q-pa-none admin-summary-grid">
         <div class="col-4 admin-summary-cell admin-summary-bg-qty">
@@ -132,11 +187,14 @@
     <OrderItemsTable
       v-else
       v-model:selected-ids="selectedItemIds"
+      v-model:visible-column-names="selectedDetailColumns"
       :items="orderStore.selected?.order_items ?? []"
       :status="selectedStatus ?? 'customer_submit'"
       :conversion-rate="Number(conversionRate) || 0"
       :cargo-rate="Number(cargoRate) || 0"
       :profit-rate="Number(profitRate) || 0"
+      :show-column-selector="false"
+      :visible-column-names="selectedDetailColumns"
       @ship="onShipItem"
     />
 
@@ -248,7 +306,7 @@ const shipmentStore = useShipmentStore()
 const tenantStore = useTenantStore()
 
 const selectedStatus = ref<OrderStatus | null>(null)
-const tableViewMode = ref<'compact' | 'detailed'>('compact')
+const tableViewMode = ref<'compact' | 'detailed'>('detailed')
 const confirmDisableNegotiationOpen = ref(false)
 const confirmDeleteSelectedOpen = ref(false)
 const confirmRemoveShipmentOpen = ref(false)
@@ -260,6 +318,7 @@ const selectedShipItemId = ref<number | null>(null)
 const pendingRemoveShipItemId = ref<number | null>(null)
 const showNegotiationDialog = ref(false)
 const showSummary = ref(false)
+const selectedDetailColumns = ref<string[]>([])
 const negotiationChoice = ref<boolean>(false)
 const negotiationDialogShownForOrderId = ref<number | null>(null)
 
@@ -286,9 +345,61 @@ const statusOptions = computed<OrderStatus[]>(() =>
 )
 
 const tableViewOptions = [
-  { label: 'Compact', value: 'compact' },
-  { label: 'Detailed', value: 'detailed' },
+  { icon: 'view_agenda', value: 'compact' },
+  { icon: 'table_rows', value: 'detailed' },
 ]
+
+const detailColumnLabelMap: Record<string, string> = {
+  name: 'Name',
+  ship: 'Ship',
+  product_meta: 'Product Details',
+  ordered_quantity: 'Ordered Qty',
+  product_weight: 'Product Weight',
+  package_weight: 'Package Weight',
+  total_weight: 'Total Weight',
+  price_gbp: 'Price (GBP)',
+  line_total_purchese_cost_gbp: 'Line Purchase Cost GBP',
+  cargo_rate: 'Cargo Rate',
+  unit_line_cost_gbp: 'Unit Cost GBP',
+  cost_bdt: 'Cost BDT',
+  line_total_cost_bdt: 'Line Cost BDT',
+  seller_first_offer_bdt: 'First Offer',
+  seller_first_offer_bdt_total: 'First Offer Total',
+  seller_first_offer_profit_pc: 'First Offer Profit/Unit',
+  seler_first_offer_profit_pc_perc: 'First Offer Profit %',
+  seller_first_offer_profit_total: 'First Offer Profit Total',
+  customer_offer_bdt: 'Customer Offer',
+  customer_offer_bdt_total: 'Customer Offer Total',
+  customer_offer_profit_pc: 'Customer Offer Profit/Unit',
+  customer_offer_profit_total: 'Customer Offer Profit Total',
+  customer_offer_profit_pc_perc: 'Customer Offer Profit %',
+  final_offer_bdt: 'Final Offer',
+  final_offer_bdt_total: 'Final Offer Total',
+  final_offer_profit_pc: 'Final Offer Profit/Unit',
+  final_offer_profit_total: 'Final Offer Profit Total',
+  final_offer_profit_pc_perc: 'Final Offer Profit %',
+}
+
+const statusDetailColumns: Record<string, string[]> = {
+  customer_submit: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total'],
+  direct_priced: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total'],
+  priced: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc'],
+  negotiate: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+  final_offered: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+  ordered: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+  processing: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+  invoicing: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+  invoiced: ['name', 'ship', 'product_meta', 'ordered_quantity', 'product_weight', 'package_weight', 'total_weight', 'price_gbp', 'line_total_purchese_cost_gbp', 'cargo_rate', 'unit_line_cost_gbp', 'cost_bdt', 'line_total_cost_bdt', 'seller_first_offer_bdt', 'seller_first_offer_bdt_total', 'seller_first_offer_profit_pc', 'seler_first_offer_profit_pc_perc', 'seller_first_offer_profit_total', 'customer_offer_bdt', 'customer_offer_bdt_total', 'customer_offer_profit_pc', 'customer_offer_profit_total', 'customer_offer_profit_pc_perc', 'final_offer_bdt', 'final_offer_bdt_total', 'final_offer_profit_pc', 'final_offer_profit_total', 'final_offer_profit_pc_perc'],
+}
+
+const detailColumnSelectorOptions = computed(() => {
+  const status = selectedStatus.value ?? 'customer_submit'
+  const names = statusDetailColumns[status] ?? statusDetailColumns.customer_submit
+  return names.map((name) => ({
+    label: detailColumnLabelMap[name] ?? name,
+    value: name,
+  }))
+})
 
 const normalizeNumericInput = (value: unknown) => {
   if (value == null) {
@@ -312,6 +423,10 @@ watch(
   () => orderStore.selected?.status,
   (status) => {
     selectedStatus.value = status ?? null
+    const nextStatus = status ?? 'customer_submit'
+    if (!selectedDetailColumns.value.length) {
+      selectedDetailColumns.value = [...(statusDetailColumns[nextStatus] ?? statusDetailColumns.customer_submit)]
+    }
   },
   { immediate: true }
 )
@@ -410,6 +525,34 @@ const ceilInt = (n: number) => Math.ceil(n)
 const roundUpTo5 = (n: number) => Math.ceil(n / 5) * 5
 const formatFixed2 = (value: number | null | undefined) =>
   value == null ? '-' : Number(value).toFixed(2)
+
+const statusChipStyle = (status: OrderStatus | null) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'customer_submit') return { backgroundColor: '#efd399', color: '#6a4a14', border: '1px solid #d8b672' }
+  if (value === 'direct_priced') return { backgroundColor: '#d8e4ff', color: '#2b4b85', border: '1px solid #bdd0f7' }
+  if (value === 'priced') return { backgroundColor: '#bde9f4', color: '#1e5f71', border: '1px solid #9fd8e7' }
+  if (value === 'negotiate') return { backgroundColor: '#f4c8ba', color: '#7f3420', border: '1px solid #e7ab98' }
+  if (value === 'final_offered') return { backgroundColor: '#dccdfa', color: '#4e2d86', border: '1px solid #c6b1f1' }
+  if (value === 'ordered') return { backgroundColor: '#c4d5fa', color: '#274a8d', border: '1px solid #a9c2f2' }
+  if (value === 'processing') return { backgroundColor: '#c3e8d2', color: '#1f5d3c', border: '1px solid #9fd4b7' }
+  if (value === 'invoicing') return { backgroundColor: '#f7d6af', color: '#7a4516', border: '1px solid #ecc08f' }
+  if (value === 'invoiced') return { backgroundColor: '#b9e3ca', color: '#194f35', border: '1px solid #95cfaf' }
+  return { backgroundColor: '#dbe5f3', color: '#3b4b66', border: '1px solid #b9c8dd' }
+}
+
+const statusDotColor = (status: OrderStatus | null) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'customer_submit') return '#9a6a24'
+  if (value === 'direct_priced') return '#3d5f9e'
+  if (value === 'priced') return '#308ca6'
+  if (value === 'negotiate') return '#b65336'
+  if (value === 'final_offered') return '#6f4ab2'
+  if (value === 'ordered') return '#3f67b3'
+  if (value === 'processing') return '#2f8b5d'
+  if (value === 'invoicing') return '#b86d23'
+  if (value === 'invoiced') return '#25784d'
+  return '#66758c'
+}
 
 const onStatusChange = async (status: OrderStatus | null) => {
   if (!status || !orderStore.selected?.id) return
@@ -724,6 +867,54 @@ const onConfirmRemoveShipment = async () => {
 </script>
 
 <style scoped>
+.order-details-page {
+  background: transparent;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.order-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.order-header-status-left {
+  padding-left: 8px;
+}
+
 .admin-summary-cell {
   width: calc(33.3333% - 8px);
   border-radius: 6px;

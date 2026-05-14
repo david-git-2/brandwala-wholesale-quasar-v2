@@ -1,6 +1,6 @@
 <template>
   <div class="order-items-table">
-    <div class="row justify-end q-mb-sm">
+    <div v-if="showColumnSelector" class="row justify-end q-mb-sm">
       <q-btn flat round dense icon="view_column" aria-label="Select columns">
         <q-menu>
           <q-list style="min-width: 240px">
@@ -338,6 +338,8 @@ const props = withDefaults(
     cargoRate?: number
     profitRate?: number
     selectedIds?: number[]
+    visibleColumnNames?: string[]
+    showColumnSelector?: boolean
   }>(),
   {
     items: () => [],
@@ -346,11 +348,14 @@ const props = withDefaults(
     cargoRate: 0,
     profitRate: 0,
     selectedIds: () => [],
+    visibleColumnNames: () => [],
+    showColumnSelector: true,
   }
 )
 const emit = defineEmits<{
   (e: 'update:selectedIds', value: number[]): void
   (e: 'ship', value: number): void
+  (e: 'update:visibleColumnNames', value: string[]): void
 }>()
 
 const { tableRows } = useOrderItemTableRows({
@@ -1012,6 +1017,23 @@ watch(
     }
   },
   { immediate: true },
+)
+
+watch(
+  () => props.visibleColumnNames,
+  (names) => {
+    if (!names?.length) return
+    selectedColumnNames.value = [...names]
+  },
+  { immediate: true },
+)
+
+watch(
+  selectedColumnNames,
+  (names) => {
+    emit('update:visibleColumnNames', [...names])
+  },
+  { deep: true },
 )
 
 const customerOfferColumns = computed(() => {

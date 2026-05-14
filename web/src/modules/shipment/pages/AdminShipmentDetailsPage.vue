@@ -14,16 +14,29 @@
             </div>
           </div>
           <div class="col-auto row items-center q-gutter-sm shipment-action-row">
-        <q-select
-          v-model="selectedStatus"
-          :options="statusOptions"
-          label="Shipment Status"
-          outlined
+        <q-chip
           dense
-          class="shipment-status-select soft-input"
-          :disable="shipmentStore.saving"
-          @update:model-value="onStatusChange"
-        />
+          square
+          clickable
+          :style="statusChipStyle(selectedStatus)"
+          class="shipment-status-chip q-px-md q-py-sm"
+        >
+          <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(selectedStatus) }" />
+          {{ selectedStatus }}
+          <q-menu>
+            <q-list dense style="min-width: 170px">
+              <q-item
+                v-for="option in statusOptions"
+                :key="option"
+                clickable
+                v-close-popup
+                @click="onStatusMenuSelect(option)"
+              >
+                <q-item-section>{{ option }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-chip>
         <q-btn
           v-if="canAddToInventory"
           color="positive"
@@ -1195,6 +1208,46 @@ const onStatusChange = async (value: ShipmentStatus | null) => {
   })
 }
 
+const onStatusMenuSelect = async (value: ShipmentStatus) => {
+  if (selectedStatus.value === value) {
+    return
+  }
+  selectedStatus.value = value
+  await onStatusChange(value)
+}
+
+const statusChipStyle = (status: ShipmentStatus | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'draft') return { backgroundColor: '#efd399', color: '#6a4a14', border: '1px solid #d8b672' }
+  if (value === 'order placed') return { backgroundColor: '#c8d8f8', color: '#27487a', border: '1px solid #a9c4f3' }
+  if (value === 'proforma generated') return { backgroundColor: '#dccdfa', color: '#4e2d86', border: '1px solid #c6b1f1' }
+  if (value === 'payment done') return { backgroundColor: '#bfeadc', color: '#1c5f4b', border: '1px solid #9edcc8' }
+  if (value === 'delivery date received') return { backgroundColor: '#bde9f4', color: '#1e5f71', border: '1px solid #9fd8e7' }
+  if (value === 'uk warehouse delivery received') return { backgroundColor: '#c4d5fa', color: '#274a8d', border: '1px solid #a9c2f2' }
+  if (value === 'air shipment date set') return { backgroundColor: '#f7d6af', color: '#7a4516', border: '1px solid #ecc08f' }
+  if (value === 'airport arrival') return { backgroundColor: '#f4c8ba', color: '#7f3420', border: '1px solid #e7ab98' }
+  if (value === 'airport released') return { backgroundColor: '#decebf', color: '#5d4635', border: '1px solid #cdb9a8' }
+  if (value === 'warehouse received') return { backgroundColor: '#c3e8d2', color: '#1f5d3c', border: '1px solid #9fd4b7' }
+  if (value === 'added to inventory') return { backgroundColor: '#b9e3ca', color: '#194f35', border: '1px solid #95cfaf' }
+  return { backgroundColor: '#dbe5f3', color: '#3b4b66', border: '1px solid #b9c8dd' }
+}
+
+const statusDotColor = (status: ShipmentStatus | null | undefined) => {
+  const value = (status ?? '').toLowerCase()
+  if (value === 'draft') return '#9a6a24'
+  if (value === 'order placed') return '#3f67b3'
+  if (value === 'proforma generated') return '#6f4ab2'
+  if (value === 'payment done') return '#2f8f72'
+  if (value === 'delivery date received') return '#308ca6'
+  if (value === 'uk warehouse delivery received') return '#3f67b3'
+  if (value === 'air shipment date set') return '#b86d23'
+  if (value === 'airport arrival') return '#b65336'
+  if (value === 'airport released') return '#7a5e48'
+  if (value === 'warehouse received') return '#2f8b5d'
+  if (value === 'added to inventory') return '#25784d'
+  return '#66758c'
+}
+
 const onConfirmAddToInventory = async () => {
   const result = await shipmentStore.addShipmentToInventory()
   if (result.success) {
@@ -1686,10 +1739,18 @@ watch(showAddItemDialog, (open) => {
   cursor: pointer;
 }
 
-.shipment-status-select {
-  min-width: 260px;
-  width: fit-content;
-  max-width: 100%;
+.shipment-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 
 .shipment-summary-grid {
