@@ -3,6 +3,7 @@ import type {
   Product,
   ProductCreateInput,
   ProductDeleteInput,
+  ProductListPage,
   ProductUpdateInput,
 } from '../types'
 
@@ -16,6 +17,7 @@ type ListProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  marketCode?: string | null | undefined
   isAvailable?: boolean | null | undefined
 }
 
@@ -23,9 +25,7 @@ type ProductServiceResult<T> = {
   success: boolean
   data?: T
   error?: string
-  total?: number
-  page?: number
-  pageSize?: number
+  meta?: ProductListPage['meta']
 }
 
 const listBrands = async (): Promise<ProductServiceResult<string[]>> => {
@@ -69,17 +69,29 @@ const listProducts = async (
     return {
       success: true,
       data: result.data,
-      total: result.total,
-      page: result.page,
-      pageSize: result.pageSize,
+      meta: result.meta,
     }
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load products.',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load products.',
+    }
+  }
+}
+
+const getProductById = async (
+  id: number,
+): Promise<ProductServiceResult<Product>> => {
+  try {
+    const data = await productRepository.getProductById(id)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load product.',
     }
   }
 }
@@ -142,6 +154,7 @@ export const productService = {
   listBrands,
   listCategories,
   listProducts,
+  getProductById,
   createProduct,
   updateProduct,
   deleteProduct,

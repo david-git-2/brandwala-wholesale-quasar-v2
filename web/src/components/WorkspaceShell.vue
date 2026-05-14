@@ -264,6 +264,7 @@ const handleLogout = async () => {
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
+  --workspace-header-offset: 58px;
   --shell-base: var(--bw-theme-base, #eef2f5);
   --shell-surface: var(--bw-theme-surface, rgb(255 255 255 / 0.92));
   --shell-border: var(--bw-theme-border, rgb(40 56 74 / 0.12));
@@ -326,8 +327,19 @@ const handleLogout = async () => {
   background: transparent;
 }
 
+.workspace-shell :deep(.q-drawer) {
+  position: fixed !important;
+  top: var(--workspace-header-offset) !important;
+  bottom: 0 !important;
+}
+
+.workspace-shell :deep(.q-drawer__content) {
+  height: calc(100vh - var(--workspace-header-offset)) !important;
+  overflow: hidden;
+}
+
 .workspace-shell__drawer-inner {
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
@@ -374,6 +386,7 @@ const handleLogout = async () => {
 
 .workspace-shell__drawer-scroll {
   flex: 1;
+  min-height: 0;
 }
 
 .workspace-shell__nav {
@@ -431,11 +444,24 @@ const handleLogout = async () => {
   color: #fffaf1;
 }
 
+.workspace-shell__drawer-bottom {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
+  border-top: 1px solid var(--shell-border);
+}
+
 .workspace-shell__page-container {
   padding: clamp(0.5rem, 1.2vw, 0.9rem);
 }
 
 @media (max-width: 599px) {
+  .workspace-shell {
+    --workspace-header-offset: 54px;
+  }
+
   .workspace-shell__toolbar {
     padding: 0.5rem 0.6rem;
   }

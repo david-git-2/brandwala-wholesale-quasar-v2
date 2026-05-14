@@ -22,6 +22,7 @@ type FetchProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  marketCode?: string | null | undefined
   isAvailable?: boolean | null | undefined
   append?: boolean
 }
@@ -41,6 +42,7 @@ type ProductStoreState = {
   sortPrice: 'asc' | 'desc'
   tenantId: number | undefined
   vendorCode: string | undefined
+  marketCode: string | undefined
   isAvailable: boolean | undefined
 }
 
@@ -60,6 +62,7 @@ export const useProductStore = defineStore('product', {
     sortPrice: 'asc',
     tenantId: undefined,
     vendorCode: undefined,
+    marketCode: undefined,
     isAvailable: undefined,
   }),
 
@@ -78,6 +81,7 @@ export const useProductStore = defineStore('product', {
       if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
       if (params.tenantId !== undefined) this.tenantId = params.tenantId ?? undefined
       if (params.vendorCode !== undefined) this.vendorCode = params.vendorCode ?? undefined
+      if (params.marketCode !== undefined) this.marketCode = params.marketCode ?? undefined
       if (params.isAvailable !== undefined) this.isAvailable = params.isAvailable ?? undefined
     },
 
@@ -91,6 +95,7 @@ export const useProductStore = defineStore('product', {
       this.sortPrice = 'asc'
       this.tenantId = undefined
       this.vendorCode = undefined
+      this.marketCode = undefined
       this.isAvailable = undefined
     },
 
@@ -113,6 +118,7 @@ export const useProductStore = defineStore('product', {
           sortPrice: this.sortPrice,
           tenantId: this.tenantId ?? null,
           vendorCode: this.vendorCode || null,
+          marketCode: this.marketCode || null,
           isAvailable: this.isAvailable ?? null,
         })
 
@@ -138,9 +144,9 @@ export const useProductStore = defineStore('product', {
         } else {
           this.items = incomingItems
         }
-        this.total = result.total ?? 0
-        this.page = result.page ?? this.page
-        this.pageSize = result.pageSize ?? this.pageSize
+        this.total = result.meta?.total ?? 0
+        this.page = result.meta?.page ?? this.page
+        this.pageSize = result.meta?.page_size ?? this.pageSize
 
         return result
       } finally {

@@ -34,6 +34,11 @@ const productRoutes: RouteRecordRaw[] = [
         path: '',
         component: () => import('../pages/ProductsPage.vue'),
       },
+      {
+        path: ':id',
+        name: 'app-product-details-page',
+        component: () => import('../pages/ProductDetailsPage.vue'),
+      },
     ],
   },
 ]

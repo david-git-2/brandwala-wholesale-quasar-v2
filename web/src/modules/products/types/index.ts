@@ -15,6 +15,16 @@ export type ProductServiceResult<T> = {
   error?: string
 }
 
+export type ProductListPage = {
+  data: Product[]
+  meta: {
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }
+}
+
 export type ProductStoreState = {
   items: Product[]
   loading: boolean

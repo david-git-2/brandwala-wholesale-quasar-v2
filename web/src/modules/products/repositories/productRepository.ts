@@ -4,6 +4,7 @@ import type {
   Product,
   ProductCreateInput,
   ProductDeleteInput,
+  ProductListPage,
   ProductUpdateInput,
 } from '../types'
 
@@ -126,13 +127,6 @@ const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
   return updateData
 }
 
-type PaginatedProducts = {
-  data: Product[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 type ListProductsParams = {
   page?: number
   pageSize?: number
@@ -143,6 +137,7 @@ type ListProductsParams = {
   sortPrice?: 'asc' | 'desc'
   tenantId?: number | null | undefined
   vendorCode?: string | null | undefined
+  marketCode?: string | null | undefined
   isAvailable?: boolean | null | undefined
 }
 
@@ -210,68 +205,50 @@ const listProducts = async ({
   brand,
   tenantId,
   vendorCode,
+  marketCode,
   isAvailable,
-}: ListProductsParams): Promise<PaginatedProducts> => {
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
-
-  let query = supabase
-    .from('products')
-    .select('*', { count: 'exact' })
-
-  if (tenantId != null) {
-    query = query.eq('tenant_id', tenantId)
-  }
-
-  if (vendorCode) {
-    query = query.eq('vendor_code', vendorCode)
-  }
-
-  if (typeof isAvailable === 'boolean') {
-    query = query.eq('is_available', isAvailable)
-  }
-
-  const trimmedSearch = search.trim()
-  if (trimmedSearch) {
-    if (searchField === 'id') {
-      const parsedId = Number(trimmedSearch)
-      if (!Number.isFinite(parsedId)) {
-        query = query.eq('id', -1)
-      } else {
-        query = query.eq('id', Math.floor(parsedId))
-      }
-    } else if (searchField === 'barcode') {
-      query = query.ilike('barcode', `%${trimmedSearch}%`)
-    } else if (searchField === 'product_code') {
-      query = query.ilike('product_code', `%${trimmedSearch}%`)
-    } else {
-      query = query.ilike('name', `%${trimmedSearch}%`)
-    }
-  }
-
-  if (category) {
-    query = query.eq('category', category)
-  }
-
-  if (brand) {
-    query = query.eq('brand', brand)
-  }
-
-  query = query
-    .order('name', { ascending: true })
-    .range(from, to)
-
-  const { data, error, count } = await query
+}: ListProductsParams): Promise<ProductListPage> => {
+  const offset = (page - 1) * pageSize
+  const { data, error } = await supabase.rpc('list_products_paginated' as never, {
+    p_tenant_id: tenantId ?? null,
+    p_search: search ?? null,
+    p_search_field: searchField ?? 'name',
+    p_category: category ?? null,
+    p_brand: brand ?? null,
+    p_vendor_code: vendorCode ?? null,
+    p_market_code: marketCode ?? null,
+    p_is_available: typeof isAvailable === 'boolean' ? isAvailable : null,
+    p_sort_by: 'name',
+    p_sort_dir: sortPrice ?? 'asc',
+    p_limit: pageSize,
+    p_offset: offset,
+  } as never)
 
   if (error) {
     throw error
   }
 
+  const response = (data as ProductListPage | null) ?? null
+  if (!response) {
+    return {
+      data: [],
+      meta: {
+        total: 0,
+        page,
+        page_size: pageSize,
+        total_pages: 1,
+      },
+    }
+  }
+
   return {
-    data: (data as Product[] | null) ?? [],
-    total: count ?? 0,
-    page,
-    pageSize,
+    data: response.data ?? [],
+    meta: {
+      total: response.meta?.total ?? 0,
+      page: response.meta?.page ?? page,
+      page_size: response.meta?.page_size ?? pageSize,
+      total_pages: response.meta?.total_pages ?? 1,
+    },
   }
 }
 
@@ -288,6 +265,24 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
 
   if (!data) {
     throw new Error('Product was not created.')
+  }
+
+  return data as Product
+}
+
+const getProductById = async (id: number): Promise<Product> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Product not found.')
   }
 
   return data as Product
@@ -339,6 +334,7 @@ export const productRepository = {
   listBrands,
   listCategories,
   listProducts,
+  getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
