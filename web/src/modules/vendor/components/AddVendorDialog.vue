@@ -6,7 +6,11 @@
       </q-card-section>
 
       <q-card-section class="q-gutter-md">
-        <q-input v-model="form.name" label="Name" outlined dense />
+        <q-input v-model="form.name" label="Name" outlined dense>
+          <template #prepend>
+            <q-icon name="storefront" />
+          </template>
+        </q-input>
 
         <q-input
           v-model="form.code"
@@ -18,6 +22,9 @@
           :loading="checkingCode"
           @update:model-value="onCodeInput"
         >
+          <template #prepend>
+            <q-icon name="badge" />
+          </template>
           <template #append>
             <q-icon
               v-if="normalizedCode && !checkingCode && codeAvailable === true"
@@ -48,12 +55,32 @@
           map-options
           label="Market"
           :options="marketOptions"
-        />
+        >
+          <template #prepend>
+            <q-icon name="public" />
+          </template>
+        </q-select>
 
-        <q-input v-model="form.email" label="Email" outlined dense />
-        <q-input v-model="form.phone" label="Phone" outlined dense />
-        <q-input v-model="form.website" label="Website" outlined dense />
-        <q-input v-model="form.address" label="Address" type="textarea" autogrow outlined />
+        <q-input v-model="form.email" label="Email" outlined dense>
+          <template #prepend>
+            <q-icon name="mail" />
+          </template>
+        </q-input>
+        <q-input v-model="form.phone" label="Phone" outlined dense>
+          <template #prepend>
+            <q-icon name="call" />
+          </template>
+        </q-input>
+        <q-input v-model="form.website" label="Website" outlined dense>
+          <template #prepend>
+            <q-icon name="language" />
+          </template>
+        </q-input>
+        <q-input v-model="form.address" label="Address" type="textarea" autogrow outlined>
+          <template #prepend>
+            <q-icon name="location_on" />
+          </template>
+        </q-input>
       </q-card-section>
 
       <q-card-actions align="right">
