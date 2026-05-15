@@ -27,6 +27,7 @@ DEFAULT_STORAGE_BUCKET = str(os.getenv("PY_SUPABASE_STORAGE_BUCKET") or "product
 DEFAULT_STORAGE_PREFIX = str(os.getenv("PY_SUPABASE_STORAGE_PREFIX") or "uk/pc").strip().strip("/")
 DEFAULT_IMAGES_DIR = ROOT_DIR / "python" / "images" / "uk" / "out_images"
 SNAPSHOT_RETENTION_DAYS = 7
+PC_VENDOR_CODE = "PC"
 
 
 def load_env_file(path: Path) -> None:
@@ -528,6 +529,107 @@ def chunked(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+def normalize_lookup_name(value: Any) -> str | None:
+    text = to_text(value)
+    return text or None
+
+
+def fetch_lookup_values_for_vendor(
+    client: SupabaseRestClient,
+    table: str,
+    vendor_code: str,
+) -> set[str]:
+    rows: list[dict[str, Any]] = []
+    offset = 0
+    limit = 1000
+    while True:
+        params = {
+            "select": "value",
+            "vendor_code": f"eq.{vendor_code}",
+            "limit": str(limit),
+            "offset": str(offset),
+        }
+        batch = client.get_rows(table, params)
+        rows.extend(batch)
+        if len(batch) < limit:
+            break
+        offset += limit
+
+    return {
+        to_text(row.get("value")).lower()
+        for row in rows
+        if to_text(row.get("value"))
+    }
+
+
+def ensure_lookup_rows_for_new_inserts(
+    client: SupabaseRestClient,
+    vendor_code: str,
+    inserts: list[dict[str, Any]],
+    chunk_size: int,
+    dry_run: bool,
+    write_retries: int,
+) -> None:
+    if not inserts:
+        return
+
+    existing_brand_values = fetch_lookup_values_for_vendor(client, "product_brands", vendor_code)
+    existing_category_values = fetch_lookup_values_for_vendor(client, "product_categories", vendor_code)
+
+    missing_brands: list[dict[str, Any]] = []
+    missing_categories: list[dict[str, Any]] = []
+    seen_brand_values: set[str] = set()
+    seen_category_values: set[str] = set()
+
+    for row in inserts:
+        brand_name = normalize_lookup_name(row.get("brand"))
+        category_name = normalize_lookup_name(row.get("category"))
+
+        if brand_name:
+            brand_value = brand_name.lower()
+            if brand_value not in existing_brand_values and brand_value not in seen_brand_values:
+                seen_brand_values.add(brand_value)
+                missing_brands.append({
+                    "name": brand_name,
+                    "vendor_code": vendor_code,
+                })
+
+        if category_name:
+            category_value = category_name.lower()
+            if category_value not in existing_category_values and category_value not in seen_category_values:
+                seen_category_values.add(category_value)
+                missing_categories.append({
+                    "name": category_name,
+                    "vendor_code": vendor_code,
+                })
+
+    if dry_run:
+        if missing_brands:
+            print(f"[dry-run] would insert {len(missing_brands)} missing brand lookup row(s).", flush=True)
+        if missing_categories:
+            print(f"[dry-run] would insert {len(missing_categories)} missing category lookup row(s).", flush=True)
+        return
+
+    for batch in chunked(missing_brands, max(1, chunk_size)):
+        run_with_retries(
+            lambda b=batch: client.insert_rows("product_brands", b),
+            retries=max(1, write_retries),
+        )
+
+    for batch in chunked(missing_categories, max(1, chunk_size)):
+        run_with_retries(
+            lambda b=batch: client.insert_rows("product_categories", b),
+            retries=max(1, write_retries),
+        )
+
+    if missing_brands or missing_categories:
+        print(
+            "Lookup sync summary: "
+            f"inserted_brands={len(missing_brands)}, inserted_categories={len(missing_categories)}",
+            flush=True,
+        )
+
+
 def format_duration(seconds: float) -> str:
     seconds = max(0, int(seconds))
     h = seconds // 3600
@@ -605,6 +707,11 @@ def main() -> int:
         raise ValueError("Vendor code cannot be empty.")
     if not market_code:
         raise ValueError("Market code cannot be empty.")
+    if vendor_code != PC_VENDOR_CODE:
+        raise ValueError(
+            f"This PC sync script only supports vendor '{PC_VENDOR_CODE}'. "
+            f"Received vendor='{vendor_code}'."
+        )
 
     tenant_id = prompt_tenant_id(to_text(args.tenant_id))
 
@@ -713,6 +820,14 @@ def main() -> int:
     )
 
     if args.dry_run:
+        ensure_lookup_rows_for_new_inserts(
+            client=client,
+            vendor_code=vendor_code,
+            inserts=inserts,
+            chunk_size=max(1, args.chunk_size),
+            dry_run=True,
+            write_retries=max(1, args.write_retries),
+        )
         print("Dry run complete. No DB writes.")
         return 0
 
@@ -783,6 +898,15 @@ def main() -> int:
     print("Applying availability reset (set false for current scope)...", flush=True)
     client.update_rows("products", scope_params, {"is_available": False})
     print("Availability reset complete.", flush=True)
+
+    ensure_lookup_rows_for_new_inserts(
+        client=client,
+        vendor_code=vendor_code,
+        inserts=inserts,
+        chunk_size=max(1, args.chunk_size),
+        dry_run=False,
+        write_retries=max(1, args.write_retries),
+    )
 
     updates_total = len(updates)
     updates_start = time.perf_counter()
