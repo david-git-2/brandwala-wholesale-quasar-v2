@@ -141,60 +141,148 @@ type ListProductsParams = {
   isAvailable?: boolean | null | undefined
 }
 
-const listBrands = async (): Promise<string[]> => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('brand')
-    .order('brand', { ascending: true })
-
-  if (error) {
-    throw error
-  }
-
-  const seen = new Set<string>()
-  const rows = (data as Array<{ brand: string | null }> | null) ?? []
-
-  return rows
-    .map((row) => row.brand?.trim() ?? '')
-    .filter((brand) => brand.length > 0)
-    .filter((brand) => {
-      const key = brand.toLowerCase()
-
-      if (seen.has(key)) {
-        return false
-      }
-
-      seen.add(key)
-      return true
-    })
+type ListProductLookupParams = {
+  vendorCode?: string | null | undefined
 }
 
-const listCategories = async (): Promise<string[]> => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('category')
-    .order('category', { ascending: true })
+let isListProductsPaginatedRpcAvailable = true
+
+const buildEmptyProductPage = (page: number, pageSize: number): ProductListPage => ({
+  data: [],
+  meta: {
+    total: 0,
+    page,
+    page_size: pageSize,
+    total_pages: 1,
+  },
+})
+
+const isMissingListProductsRpcError = (error: { code?: string; message?: string } | null) =>
+  error?.code === 'PGRST202' && (error.message ?? '').includes('list_products_paginated')
+
+const listProductsFallback = async ({
+  page = 1,
+  pageSize = 20,
+  search = '',
+  searchField = 'name',
+  category,
+  brand,
+  tenantId,
+  vendorCode,
+  marketCode,
+  isAvailable,
+  sortPrice,
+}: ListProductsParams): Promise<ProductListPage> => {
+  const offset = (page - 1) * pageSize
+  const normalizedSearch = normalizeText(search)
+  const normalizedCategory = normalizeText(category ?? null)
+  const normalizedBrand = normalizeText(brand ?? null)
+  const normalizedVendorCode = normalizeText(vendorCode ?? null)?.toUpperCase() ?? null
+  const normalizedMarketCode = normalizeText(marketCode ?? null)?.toUpperCase() ?? null
+
+  let query = supabase.from('products').select('*', { count: 'exact' })
+
+  if (tenantId !== null && tenantId !== undefined) {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  if (normalizedCategory) {
+    query = query.ilike('category', normalizedCategory)
+  }
+
+  if (normalizedBrand) {
+    query = query.ilike('brand', normalizedBrand)
+  }
+
+  if (normalizedVendorCode) {
+    query = query.ilike('vendor_code', normalizedVendorCode)
+  }
+
+  if (normalizedMarketCode) {
+    query = query.ilike('market_code', normalizedMarketCode)
+  }
+
+  if (typeof isAvailable === 'boolean') {
+    query = query.eq('is_available', isAvailable)
+  }
+
+  if (normalizedSearch) {
+    if (searchField === 'id') {
+      const maybeId = Number(normalizedSearch)
+      if (!Number.isNaN(maybeId) && Number.isFinite(maybeId)) {
+        query = query.eq('id', maybeId)
+      } else {
+        return buildEmptyProductPage(page, pageSize)
+      }
+    } else {
+      query = query.ilike(searchField, `%${normalizedSearch}%`)
+    }
+  }
+
+  const { data, error, count } = await query
+    .order('name', { ascending: sortPrice !== 'desc', nullsFirst: false })
+    .order('id', { ascending: true })
+    .range(offset, offset + pageSize - 1)
 
   if (error) {
     throw error
   }
 
-  const seen = new Set<string>()
-  const rows = (data as Array<{ category: string | null }> | null) ?? []
+  const total = count ?? 0
 
-  return rows
-    .map((row) => row.category?.trim() ?? '')
+  return {
+    data: (data as Product[] | null) ?? [],
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  }
+}
+
+const listBrands = async ({ vendorCode }: ListProductLookupParams = {}): Promise<string[]> => {
+  let query = supabase
+    .from('product_brands')
+    .select('name')
+    .order('name', { ascending: true })
+
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  if (normalizedVendorCode) {
+    query = query.eq('vendor_code', normalizedVendorCode)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw error
+  }
+
+  return ((data as Array<{ name: string | null }> | null) ?? [])
+    .map((row) => row.name?.trim() ?? '')
+    .filter((brand) => brand.length > 0)
+}
+
+const listCategories = async ({ vendorCode }: ListProductLookupParams = {}): Promise<string[]> => {
+  let query = supabase
+    .from('product_categories')
+    .select('name')
+    .order('name', { ascending: true })
+
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  if (normalizedVendorCode) {
+    query = query.eq('vendor_code', normalizedVendorCode)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw error
+  }
+
+  return ((data as Array<{ name: string | null }> | null) ?? [])
+    .map((row) => row.name?.trim() ?? '')
     .filter((category) => category.length > 0)
-    .filter((category) => {
-      const key = category.toLowerCase()
-
-      if (seen.has(key)) {
-        return false
-      }
-
-      seen.add(key)
-      return true
-    })
 }
 const listProducts = async ({
   page = 1,
@@ -209,6 +297,29 @@ const listProducts = async ({
   isAvailable,
   sortPrice,
 }: ListProductsParams): Promise<ProductListPage> => {
+  if (!isListProductsPaginatedRpcAvailable) {
+    const fallbackParams: ListProductsParams = {
+      page,
+      pageSize,
+      search,
+      searchField,
+      category,
+      brand,
+      tenantId,
+      vendorCode,
+      marketCode,
+      isAvailable,
+    }
+
+    if (sortPrice) {
+      fallbackParams.sortPrice = sortPrice
+    }
+
+    return listProductsFallback({
+      ...fallbackParams,
+    })
+  }
+
   const offset = (page - 1) * pageSize
   const { data, error } = await supabase.rpc('list_products_paginated' as never, {
     p_tenant_id: tenantId ?? null,
@@ -226,20 +337,36 @@ const listProducts = async ({
   } as never)
 
   if (error) {
+    if (isMissingListProductsRpcError(error)) {
+      isListProductsPaginatedRpcAvailable = false
+
+      const fallbackParams: ListProductsParams = {
+        page,
+        pageSize,
+        search,
+        searchField,
+        category,
+        brand,
+        tenantId,
+        vendorCode,
+        marketCode,
+        isAvailable,
+      }
+
+      if (sortPrice) {
+        fallbackParams.sortPrice = sortPrice
+      }
+
+      return listProductsFallback({
+        ...fallbackParams,
+      })
+    }
     throw error
   }
 
   const response = (data as ProductListPage | null) ?? null
   if (!response) {
-    return {
-      data: [],
-      meta: {
-        total: 0,
-        page,
-        page_size: pageSize,
-        total_pages: 1,
-      },
-    }
+    return buildEmptyProductPage(page, pageSize)
   }
 
   return {

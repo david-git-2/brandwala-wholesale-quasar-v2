@@ -19,7 +19,12 @@ if [[ -z "${PROJECT_NAME}" ]]; then
 fi
 
 rm -rf web/node_modules web/.quasar web/dist
-npm --prefix web ci --include=optional
+
+if ! npm --prefix web ci --include=optional; then
+  echo "npm ci failed (likely lockfile drift). Running npm install to resync dependencies..."
+  npm --prefix web install --include=optional
+fi
+
 npm --prefix web exec -- wrangler login
 npm --prefix web run build
 npm --prefix web exec -- wrangler pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true

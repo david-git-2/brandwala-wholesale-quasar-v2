@@ -1729,6 +1729,60 @@ export type Database = {
           },
         ]
       }
+      product_brands: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          updated_at: string
+          value: string | null
+          vendor_code: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          updated_at?: string
+          value?: string | null
+          vendor_code?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          updated_at?: string
+          value?: string | null
+          vendor_code?: string | null
+        }
+        Relationships: []
+      }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          updated_at: string
+          value: string | null
+          vendor_code: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          updated_at?: string
+          value?: string | null
+          vendor_code?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          updated_at?: string
+          value?: string | null
+          vendor_code?: string | null
+        }
+        Relationships: []
+      }
       product_sync_snapshots: {
         Row: {
           barcode: string | null
@@ -3319,6 +3373,23 @@ export type Database = {
           p_search?: string
           p_status?: string
           p_tenant_id?: number
+        }
+        Returns: Json
+      }
+      list_products_paginated: {
+        Args: {
+          p_brand?: string
+          p_category?: string
+          p_is_available?: boolean
+          p_limit?: number
+          p_market_code?: string
+          p_offset?: number
+          p_search?: string
+          p_search_field?: string
+          p_sort_by?: string
+          p_sort_dir?: string
+          p_tenant_id?: number
+          p_vendor_code?: string
         }
         Returns: Json
       }

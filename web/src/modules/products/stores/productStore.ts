@@ -27,6 +27,10 @@ type FetchProductsParams = {
   append?: boolean
 }
 
+type FetchProductLookupParams = {
+  vendorCode?: string | null | undefined
+}
+
 type ProductStoreState = {
   items: Product[]
   loading: boolean
@@ -44,6 +48,8 @@ type ProductStoreState = {
   vendorCode: string | undefined
   marketCode: string | undefined
   isAvailable: boolean | undefined
+  brandOptions: string[]
+  categoryOptions: string[]
 }
 
 export const useProductStore = defineStore('product', {
@@ -64,6 +70,8 @@ export const useProductStore = defineStore('product', {
     vendorCode: undefined,
     marketCode: undefined,
     isAvailable: undefined,
+    brandOptions: [],
+    categoryOptions: [],
   }),
 
   actions: {
@@ -178,6 +186,36 @@ export const useProductStore = defineStore('product', {
       } finally {
         this.saving = false
       }
+    },
+
+    async fetchBrandOptions(params?: FetchProductLookupParams) {
+      const result = await productService.listBrands({
+        vendorCode: params?.vendorCode ?? null,
+      })
+
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to load brands.'
+        handleApiFailure(result, this.error)
+        return result
+      }
+
+      this.brandOptions = result.data ?? []
+      return result
+    },
+
+    async fetchCategoryOptions(params?: FetchProductLookupParams) {
+      const result = await productService.listCategories({
+        vendorCode: params?.vendorCode ?? null,
+      })
+
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to load categories.'
+        handleApiFailure(result, this.error)
+        return result
+      }
+
+      this.categoryOptions = result.data ?? []
+      return result
     },
 
     async updateProduct(payload: ProductUpdateInput) {

@@ -18,8 +18,6 @@
           outlined
           use-input
           dense
-          hide-selected
-          fill-input
           input-debounce="300"
           emit-value
           map-options
@@ -36,8 +34,6 @@
           outlined
           use-input
           dense
-          hide-selected
-          fill-input
           input-debounce="300"
           emit-value
           map-options
@@ -88,7 +84,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import ProductCard from '../components/ProductCard.vue'
-import { productService } from 'src/modules/products/services/productService'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductBasedCostingStore } from '../../product_based_costing/stores/productBasedCostingStore'
@@ -159,11 +154,13 @@ const loadBrands = async () => {
   brandLoading.value = true
 
   try {
-    const result = await productService.listBrands()
+    const result = await productStore.fetchBrandOptions({
+      vendorCode: 'PC',
+    })
 
     if (result.success) {
-      brandNames.value = result.data ?? []
-      filteredBrandNames.value = result.data ?? []
+      brandNames.value = productStore.brandOptions
+      filteredBrandNames.value = productStore.brandOptions
     }
   } finally {
     brandLoading.value = false
@@ -174,11 +171,13 @@ const loadCategories = async () => {
   categoryLoading.value = true
 
   try {
-    const result = await productService.listCategories()
+    const result = await productStore.fetchCategoryOptions({
+      vendorCode: 'PC',
+    })
 
     if (result.success) {
-      categoryNames.value = result.data ?? []
-      filteredCategoryNames.value = result.data ?? []
+      categoryNames.value = productStore.categoryOptions
+      filteredCategoryNames.value = productStore.categoryOptions
     }
   } finally {
     categoryLoading.value = false

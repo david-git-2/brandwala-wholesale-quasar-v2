@@ -21,6 +21,10 @@ type ListProductsParams = {
   isAvailable?: boolean | null | undefined
 }
 
+type ListProductLookupParams = {
+  vendorCode?: string | null | undefined
+}
+
 type ProductServiceResult<T> = {
   success: boolean
   data?: T
@@ -28,9 +32,11 @@ type ProductServiceResult<T> = {
   meta?: ProductListPage['meta']
 }
 
-const listBrands = async (): Promise<ProductServiceResult<string[]>> => {
+const listBrands = async (
+  params: ListProductLookupParams = {}
+): Promise<ProductServiceResult<string[]>> => {
   try {
-    const data = await productRepository.listBrands()
+    const data = await productRepository.listBrands(params)
 
     return {
       success: true,
@@ -44,9 +50,11 @@ const listBrands = async (): Promise<ProductServiceResult<string[]>> => {
   }
 }
 
-const listCategories = async (): Promise<ProductServiceResult<string[]>> => {
+const listCategories = async (
+  params: ListProductLookupParams = {}
+): Promise<ProductServiceResult<string[]>> => {
   try {
-    const data = await productRepository.listCategories()
+    const data = await productRepository.listCategories(params)
 
     return {
       success: true,

@@ -1,5 +1,27 @@
 <template>
   <div class="product-based-costing-table">
+    <div v-if="selectedRowIds.length" class="bulk-selection-bar row items-center justify-between q-mb-sm">
+      <div class="text-body2 text-weight-medium">
+        {{ selectedRowIds.length }} item(s) selected
+      </div>
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          flat
+          no-caps
+          color="grey-8"
+          label="Clear Selection"
+          @click="selectedRowIds = []"
+        />
+        <q-btn
+          color="negative"
+          no-caps
+          icon="delete"
+          label="Delete Selected"
+          @click="showBulkDeleteConfirm = true"
+        />
+      </div>
+    </div>
+
     <q-table
       flat
       bordered
@@ -129,7 +151,11 @@
           </q-td>
 
           <q-td key="barcodeText" :props="slotProps" class="col-barcode">
-            {{ slotProps.row.barcodeText }}
+            <div class="barcode-lines">
+              <div><strong>Barcode:</strong> {{ slotProps.row.barcode || '-' }}</div>
+              <div><strong>Code:</strong> {{ slotProps.row.productCode || '-' }}</div>
+              <div><strong>Product ID:</strong> {{ slotProps.row.productId || '-' }}</div>
+            </div>
           </q-td>
 
           <q-td key="website" :props="slotProps" class="col-website">
@@ -546,7 +572,9 @@ interface ProductBasedCostingTableRow {
   noteHtml: string;
   imageUrl: string | null;
   qty: number;
-  barcodeText: string;
+  barcode: string;
+  productCode: string;
+  productId: string;
   website: string | null;
   priceGbp: number;
   productWeight: number;
@@ -675,7 +703,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
   return (props.items ?? []).map((item, index) => {
     const barcode = toText(item.barcode, '');
     const productCode = toText(item.product_code, '');
-    const barcodeParts = [barcode, productCode, item.product_id != null ? String(item.product_id) : ''].filter(Boolean);
+    const productId = item.product_id != null ? String(item.product_id) : '';
     const qty = toNumber(item.quantity);
     const priceGbp = toNumber(item.price_gbp);
     const productWeight = toNumber(item.product_weight);
@@ -700,7 +728,9 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       noteHtml: item.note ?? '',
       imageUrl: item.image_url ?? null,
       qty,
-      barcodeText: barcodeParts.length ? barcodeParts.join(' / ') : '-',
+      barcode,
+      productCode,
+      productId,
       website: item.web_link ?? null,
       priceGbp,
       productWeight,
@@ -1237,6 +1267,13 @@ const totals = computed(() => {
 <style scoped>
 .product-based-costing-table {
   width: 100%;
+}
+
+.bulk-selection-bar {
+  padding: 10px 12px;
+  border: 1px solid #f0c9c9;
+  border-radius: 10px;
+  background: #fff8f8;
 }
 .costing-q-table {
   max-width: 100%;

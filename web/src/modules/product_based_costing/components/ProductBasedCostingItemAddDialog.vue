@@ -142,6 +142,7 @@
             type="number"
             outlined
             dense
+            @wheel.prevent
           >
             <template #prepend>
               <q-icon name="numbers" />

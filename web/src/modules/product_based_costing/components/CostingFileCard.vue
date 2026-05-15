@@ -101,8 +101,13 @@ const handleDelete = (item: ProductBasedCostingFile) => {
   })
 }
 
+const normalizeStatus = (status: string | null | undefined) => {
+  const value = (status ?? '').trim().toLowerCase()
+  return value || 'pending'
+}
+
 const statusSurfaceStyle = (status: string | null | undefined) => {
-  const value = (status ?? '').toLowerCase()
+  const value = normalizeStatus(status)
   if (value === 'pending') {
     return {
       backgroundColor: '#fffbf2',
@@ -134,7 +139,7 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
 }
 
 const statusChipStyle = (status: string | null | undefined) => {
-  const value = (status ?? '').toLowerCase()
+  const value = normalizeStatus(status)
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
@@ -176,7 +181,7 @@ const statusChipStyle = (status: string | null | undefined) => {
 }
 
 const statusDotColor = (status: string | null | undefined) => {
-  const value = (status ?? '').toLowerCase()
+  const value = normalizeStatus(status)
   if (value === 'pending') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
   if (value === 'processing') return '#2f8b5d'
