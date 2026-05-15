@@ -6,6 +6,15 @@
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col">
+              <div class="q-mb-xs">
+                <q-btn
+                  color="primary"
+                  flat
+                  icon="arrow_back"
+                  label="Back"
+                  @click="goBack"
+                />
+              </div>
               <div class="row items-center q-gutter-sm">
                 <q-badge color="primary" outline class="text-weight-medium">
                   #{{ store?.item?.id ?? '-' }}
@@ -332,6 +341,15 @@ const onStatusChange = async () => {
 
   await recalculateAndPersistOfferPrices();
 };
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+
+  void router.push({ name: 'product-based-costing-page' })
+}
 
 const onStatusMenuSelect = async (nextStatus: string) => {
   if (status.value === nextStatus) {
