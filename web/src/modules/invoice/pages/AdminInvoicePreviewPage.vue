@@ -6,10 +6,17 @@
           <div class="text-h6 text-weight-bold">Invoice</div>
           <div class="text-body2 text-grey-7">{{ invoice?.invoice_no ?? '-' }}</div>
         </div>
-        <div class="text-right text-body2">
-          <div><strong>Status:</strong> {{ invoice?.status ?? '-' }}</div>
-          <div><strong>Date:</strong> {{ invoice?.invoice_date ?? '-' }}</div>
-          <div><strong>Due:</strong> {{ invoice?.due_date ?? '-' }}</div>
+        <div class="column items-end q-gutter-sm">
+          <div class="text-right text-body2">
+            <div><strong>Status:</strong> {{ invoice?.status ?? '-' }}</div>
+            <div><strong>Date:</strong> {{ invoice?.invoice_date ?? '-' }}</div>
+            <div><strong>Due:</strong> {{ invoice?.due_date ?? '-' }}</div>
+          </div>
+          <q-checkbox
+            v-model="showImages"
+            dense
+            label="Show Images"
+          />
         </div>
       </div>
 
@@ -17,6 +24,7 @@
         <thead>
           <tr>
             <th class="text-left">SL</th>
+            <th v-if="showImages" class="text-left">Image</th>
             <th class="text-left">Description</th>
             <th class="text-right">Qty</th>
             <th class="text-right">Sell Price</th>
@@ -25,10 +33,19 @@
         </thead>
         <tbody>
           <tr v-if="!invoiceStore.invoiceItems.length">
-            <td colspan="5" class="text-center text-grey-7">No invoice items found.</td>
+            <td :colspan="showImages ? 6 : 5" class="text-center text-grey-7">No invoice items found.</td>
           </tr>
           <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
             <td>{{ index + 1 }}</td>
+            <td v-if="showImages">
+              <q-avatar rounded size="48px">
+                <img
+                  :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
+                  alt="item image"
+                  class="invoice-image"
+                />
+              </q-avatar>
+            </td>
             <td>{{ row.name_snapshot }}</td>
             <td class="text-right">{{ getNetQuantity(row) }}</td>
             <td class="text-right">{{ formatAmount(row.sell_price_amount) }}</td>
@@ -50,15 +67,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { inventoryService } from 'src/modules/inventory/services/inventoryService'
 import { useInvoiceStore } from '../stores/invoiceStore'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const invoiceStore = useInvoiceStore()
+const showImages = ref(false)
+const invoiceItemImageMap = ref<Record<number, string>>({})
+const fallbackImageUrl = 'https://placehold.co/56x56?text=No+Image'
 
 const invoiceId = computed(() => Number(route.params.invoiceId))
 const invoice = computed(() => invoiceStore.invoices.find((row) => row.id === invoiceId.value) ?? null)
@@ -76,7 +98,7 @@ const totalSell = computed(() =>
   ),
 )
 
-const formatAmount = (value: number | null | undefined) => Number(value ?? 0).toFixed(2)
+const formatAmount = (value: number | null | undefined) => formatAmountBdt(value)
 
 const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
@@ -98,6 +120,29 @@ const load = async () => {
     sortBy: 'created_at',
     sortOrder: 'asc',
   })
+  await loadInvoiceItemImages()
+}
+
+const loadInvoiceItemImages = async () => {
+  const ids = Array.from(
+    new Set(
+      invoiceStore.invoiceItems
+        .map((item) => item.inventory_item_id)
+        .filter((id): id is number => typeof id === 'number'),
+    ),
+  )
+  if (!ids.length) {
+    invoiceItemImageMap.value = {}
+    return
+  }
+
+  const entries = await Promise.all(
+    ids.map(async (id) => {
+      const result = await inventoryService.getInventoryItemById(id)
+      return [id, result.success ? (result.data?.image_url ?? fallbackImageUrl) : fallbackImageUrl] as const
+    }),
+  )
+  invoiceItemImageMap.value = Object.fromEntries(entries)
 }
 
 onMounted(() => {
@@ -125,6 +170,12 @@ onMounted(() => {
   width: 320px;
   border: 1px solid #e6e8ec;
   padding: 12px;
+}
+
+.invoice-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 @media print {

@@ -100,6 +100,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import InvestorProfileDialog from '../components/InvestorProfileDialog.vue'
 import { useInvestorStore } from '../stores/investorStore'
 import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from '../types'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()
 const investorStore = useInvestorStore()
@@ -147,7 +148,7 @@ const onClickDeleteInvestor = (investor: Investor) => {
 const getAvailableBalance = (investorId: number) =>
   Number(balancesByInvestorId.value[investorId]?.available_balance ?? 0)
 
-const formatAmount = (value: number) => value.toFixed(2)
+const formatAmount = (value: number) => formatAmountBdt(value)
 
 const handleSaveInvestor = async (payload: InvestorCreateInput & { id?: number }) => {
   if (typeof payload.id === 'number') {

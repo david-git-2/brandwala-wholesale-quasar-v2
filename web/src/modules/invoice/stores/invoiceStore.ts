@@ -8,10 +8,12 @@ import type {
   CreateInvoiceItemInput,
   CreateInvoiceInput,
   DeleteInvoiceItemInput,
+  DeletePaymentInput,
   InvoiceListQuery,
   InvoiceStoreState,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
+  UpdatePaymentInput,
   UpdatePaymentAllocationAmountInput,
 } from '../types/index'
 
@@ -162,6 +164,47 @@ export const useInvoiceStore = defineStore('invoice', {
           else this.paymentAllocations.unshift(result.data)
         }
         showSuccessNotification('Allocation updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updatePayment(payload: UpdatePaymentInput) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.updatePayment(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update payment.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        if (result.data) {
+          const index = this.payments.findIndex((row) => row.id === result.data?.id)
+          if (index >= 0) this.payments.splice(index, 1, result.data)
+          else this.payments.unshift(result.data)
+        }
+        showSuccessNotification('Payment updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deletePayment(payload: DeletePaymentInput) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.deletePayment(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete payment.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        this.payments = this.payments.filter((row) => row.id !== payload.payment_id)
+        this.paymentAllocations = this.paymentAllocations.filter((row) => row.payment_id !== payload.payment_id)
+        showSuccessNotification('Payment deleted successfully.')
         return result
       } finally {
         this.saving = false

@@ -1,15 +1,70 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md inventory-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">Inventory</div>
+            <div class="text-caption text-grey-8">Manage stock, quantities, and item-level inventory records</div>
+          </div>
+          <div class="col-auto row items-center q-gutter-sm">
+            <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Add Item" @click="openAddDialog" />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Inventory</div>
-      <div class="row items-center q-gutter-sm">
+      <div class="row items-center q-gutter-sm toolbar-left">
         <q-btn
-          v-if="inventoryStore.items.length"
+          v-if="!showSearchInput"
           flat
-          icon="select_all"
-          label="Select All"
-          @click="onSelectAllVisible"
+          round
+          dense
+          icon="search"
+          aria-label="Show search"
+          @click="showSearchInput = true"
         />
+        <q-select
+          v-if="showSearchInput"
+          v-model="searchField"
+          :options="searchFieldOptions"
+          filled
+          dense
+          emit-value
+          map-options
+          class="soft-input"
+          label="Search By"
+          style="min-width: 140px;"
+          @update:model-value="onSearchFieldChange"
+        />
+        <q-input
+          v-if="showSearchInput"
+          v-model="searchText"
+          filled
+          dense
+          clearable
+          class="soft-input toolbar-search"
+          :label="`Search ${searchFieldLabel}`"
+          @keyup.enter="() => { page = 1; void fetchInventoryItems() }"
+          @clear="() => { page = 1; void fetchInventoryItems() }"
+        >
+          <template #prepend>
+            <q-icon name="search" />
+          </template>
+          <template #append>
+            <q-btn flat round dense icon="close" aria-label="Hide search" @click="onCloseSearch" />
+          </template>
+        </q-input>
+
+        <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="filterDrawerOpen = true">
+          <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+            {{ activeFilterCount }}
+          </q-badge>
+        </q-btn>
+      </div>
+
+      <div class="row items-center q-gutter-sm">
         <q-btn
           v-if="selectedItemIds.length"
           flat
@@ -20,71 +75,20 @@
         <q-btn
           v-if="selectedItemIds.length"
           color="negative"
+          no-caps
           icon="delete"
           :label="`Delete Selected (${selectedItemIds.length})`"
           @click="onDeleteSelected"
         />
-        <q-btn color="primary" label="Add Item" @click="openAddDialog" />
-      </div>
-    </div>
-
-    <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-12 col-md-6">
-        <div class="row no-wrap q-col-gutter-sm">
-          <div class="col-5">
-            <q-select
-              v-model="searchField"
-              :options="searchFieldOptions"
-              emit-value
-              map-options
-              outlined
-              dense
-              label="Search by"
-            />
-          </div>
-          <div class="col-7">
-            <q-input
-              v-model="searchText"
-              outlined
-              dense
-              :label="`Search ${searchFieldLabel}`"
-              clearable
-              @keyup.enter="() => { page = 1; void fetchInventoryItems() }"
-            />
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-md-3">
-        <q-select
-          v-model="shipmentIdFilter"
-          :options="shipmentOptions"
-          emit-value
-          map-options
-          outlined
-          dense
-          label="Filter by shipment"
-          clearable
-          @update:model-value="() => { page = 1; void fetchInventoryItems() }"
+        <q-btn-toggle
+          v-model="inventoryView"
+          unelevated
+          toggle-color="primary"
+          color="grey-3"
+          text-color="grey-8"
+          :options="inventoryViewOptions"
         />
       </div>
-      <div class="col-12 col-md-4 row items-center q-gutter-sm">
-        <q-btn
-          flat
-          label="Reset"
-          @click="() => { searchText = ''; searchField = 'name'; shipmentIdFilter = null; page = 1; void fetchInventoryItems() }"
-        />
-      </div>
-    </div>
-
-    <div class="row justify-end q-mb-md">
-      <q-btn-toggle
-        v-model="inventoryView"
-        unelevated
-        toggle-color="primary"
-        color="grey-3"
-        text-color="grey-8"
-        :options="inventoryViewOptions"
-      />
     </div>
 
     <InventoryItemDialog v-model="isAddDialogOpen" @save="onSaveItem" />
@@ -97,7 +101,80 @@
       @delete-item="onDeleteItem"
       @toggle-select="onToggleSelect"
     />
+    <q-markup-table v-else-if="inventoryView === 'table'" flat bordered wrap-cells>
+      <thead>
+        <tr>
+          <th class="text-left" style="width: 44px;">
+            <q-checkbox
+              :model-value="isAllVisibleSelected"
+              @update:model-value="onToggleSelectAllCheckbox"
+            />
+          </th>
+          <th class="text-left" style="width: 72px;">Image</th>
+          <th class="text-left">Name</th>
+          <th class="text-left">Barcode</th>
+          <th class="text-left">Product Code</th>
+          <th class="text-left">Shipment</th>
+          <th class="text-right">Available</th>
+          <th class="text-right">Reserved</th>
+          <th class="text-right">Damaged</th>
+          <th class="text-right">Stolen</th>
+          <th class="text-right">Expired</th>
+          <th class="text-right">Open Box</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-if="!inventoryStore.items.length">
+          <td colspan="12" class="text-center text-grey-7">No inventory items found.</td>
+        </tr>
+        <tr v-for="item in inventoryStore.items" :key="item.id">
+          <td>
+            <q-checkbox
+              :model-value="selectedItemIds.includes(item.id)"
+              @update:model-value="(checked) => onToggleSelect({ itemId: item.id, checked: Boolean(checked) })"
+            />
+          </td>
+          <td>
+            <q-avatar rounded size="42px">
+              <img
+                :src="item.image_url || 'https://placehold.co/56x56?text=No+Image'"
+                alt="item image"
+                style="object-fit: contain;"
+              />
+            </q-avatar>
+          </td>
+          <td>{{ item.name }}</td>
+          <td>{{ item.barcode ?? '-' }}</td>
+          <td>{{ item.product_code ?? '-' }}</td>
+          <td>{{ item.shipment?.shipment?.name ?? '-' }}</td>
+          <td class="text-right">{{ item.quantities.available }}</td>
+          <td class="text-right">{{ item.quantities.reserved }}</td>
+          <td class="text-right">{{ item.quantities.damaged }}</td>
+          <td class="text-right">{{ item.quantities.stolen }}</td>
+          <td class="text-right">{{ item.quantities.expired }}</td>
+          <td class="text-right">{{ item.quantities.open_box }}</td>
+        </tr>
+      </tbody>
+    </q-markup-table>
     <InventoryCompactCard v-else :items="inventoryStore.items" />
+
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <q-select
+        v-model="shipmentIdFilter"
+        :options="shipmentOptions"
+        emit-value
+        map-options
+        filled
+        dense
+        clearable
+        class="soft-input q-mb-md"
+        label="Shipment"
+        @update:model-value="onShipmentFilterChange"
+      />
+      <div class="row q-gutter-sm justify-end">
+        <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+      </div>
+    </FilterSidebar>
 
     <div v-if="totalPages > 1" class="row justify-center q-mt-md">
       <q-pagination
@@ -120,6 +197,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
+import FilterSidebar from 'src/components/FilterSidebar.vue'
 import InventoryCard from '../components/InventoryCard.vue'
 import InventoryCompactCard from '../components/InventoryCompactCard.vue'
 import InventoryItemDialog from '../components/InventoryItemDialog.vue'
@@ -138,11 +216,18 @@ const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
 const page = ref(1)
 const selectedItemIds = ref<number[]>([])
-const inventoryView = ref<'detailed' | 'compact'>('compact')
+const inventoryView = ref<'detailed' | 'compact' | 'table'>('compact')
+const showSearchInput = ref(false)
+const filterDrawerOpen = ref(false)
 const inventoryViewOptions = [
   { icon: 'dashboard', value: 'detailed' as const },
+  { icon: 'table_rows', value: 'table' as const },
   { icon: 'grid_view', value: 'compact' as const },
 ]
+const isAllVisibleSelected = computed(() =>
+  inventoryStore.items.length > 0 &&
+  inventoryStore.items.every((item) => selectedItemIds.value.includes(item.id)),
+)
 
 const totalPages = computed(() =>
   Math.max(1, inventoryStore.total_pages || 1),
@@ -154,7 +239,7 @@ const shipmentOptions = computed(() =>
     ...shipmentStore.shipments
       .filter((shipment) => shipment.inventory_added === true)
       .map((shipment) => ({
-        label: shipment.name,
+        label: `#${shipment.id} ${shipment.name}`,
         value: shipment.id,
       })),
   ],
@@ -170,6 +255,12 @@ const searchFieldLabel = computed(() => {
   if (searchField.value === 'barcode') return 'Barcode'
   if (searchField.value === 'product_code') return 'Product Code'
   return 'Name'
+})
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (searchField.value !== 'name') count += 1
+  if (shipmentIdFilter.value != null) count += 1
+  return count
 })
 
 const fetchInventoryItems = async () => {
@@ -202,6 +293,34 @@ const fetchInventoryItems = async () => {
 
 const openAddDialog = () => {
   isAddDialogOpen.value = true
+}
+
+const onCloseSearch = () => {
+  showSearchInput.value = false
+  if (!searchText.value) return
+  searchText.value = ''
+  page.value = 1
+  void fetchInventoryItems()
+}
+
+const onResetFilters = () => {
+  searchField.value = 'name'
+  shipmentIdFilter.value = null
+  searchText.value = ''
+  showSearchInput.value = false
+  page.value = 1
+  filterDrawerOpen.value = false
+  void fetchInventoryItems()
+}
+
+const onSearchFieldChange = () => {
+  page.value = 1
+  void fetchInventoryItems()
+}
+
+const onShipmentFilterChange = () => {
+  page.value = 1
+  void fetchInventoryItems()
 }
 
 const onSaveItem = async (
@@ -401,6 +520,15 @@ const onDeleteSelected = () => {
 const onSelectAllVisible = () => {
   selectedItemIds.value = inventoryStore.items.map((item) => item.id)
 }
+const onToggleSelectAllCheckbox = (checked: boolean | null) => {
+  if (checked) {
+    onSelectAllVisible()
+    return
+  }
+  selectedItemIds.value = selectedItemIds.value.filter(
+    (id) => !inventoryStore.items.some((item) => item.id === id),
+  )
+}
 
 const onSaveDate = async (payload: {
   item: InventoryItemWithStock
@@ -435,3 +563,25 @@ onMounted(() => {
   ])
 })
 </script>
+<style scoped>
+.inventory-page {
+  background: transparent;
+}
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+.hero-surface {
+  border-radius: 16px;
+}
+.pill-btn { border-radius: 999px; }
+.slim-btn { min-height: 32px; padding-left: 10px; padding-right: 10px; }
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+.toolbar-left { min-width: 0; }
+.toolbar-search { width: min(320px, 75vw); }
+</style>

@@ -13,29 +13,158 @@
       </div>
     </div>
 
+    <div class="q-mb-md">
+      <q-card flat bordered class="q-mb-sm bg-blue-1">
+        <q-card-section class="row items-center q-col-gutter-md">
+          <div class="col-12 col-md-7">
+            <div class="text-subtitle1 text-weight-bold">Billing Profile Insights</div>
+            <div class="text-caption text-grey-8">
+              Quick summary of unpaid invoices and total outstanding amount for this customer.
+            </div>
+          </div>
+          <div class="col-12 col-md-5">
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-card flat bordered class="bg-white">
+                  <q-card-section class="q-py-sm">
+                    <div class="text-caption text-grey-7">Invoices To Pay</div>
+                    <div class="text-h6 text-weight-bold text-primary">{{ dueInvoiceCount }}</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+              <div class="col-6">
+                <q-card flat bordered class="bg-white">
+                  <q-card-section class="q-py-sm">
+                    <div class="text-caption text-grey-7">Outstanding Amount</div>
+                    <div class="text-h6 text-weight-bold text-negative">{{ formatAmountBdt(totalDueAmount) }}</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <q-markup-table flat bordered wrap-cells>
+        <thead>
+          <tr>
+            <th class="text-left">Status</th>
+            <th class="text-left">Invoice ID</th>
+            <th class="text-left">Invoice No</th>
+            <th class="text-left">Date</th>
+            <th class="text-right">Due Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!billingProfileInvoices.length">
+            <td colspan="5" class="text-center text-grey-7">No due invoices found for this customer.</td>
+          </tr>
+          <tr v-for="invoice in billingProfileInvoices" :key="invoice.id">
+            <td>
+              <q-chip dense square color="orange-1" text-color="orange-10" icon="pending_actions">
+                Due
+              </q-chip>
+            </td>
+            <td>#{{ invoice.id }}</td>
+            <td>{{ invoice.invoice_no }}</td>
+            <td>{{ invoice.invoice_date ?? '-' }}</td>
+            <td class="text-right text-weight-bold text-negative">{{ formatAmountBdt(invoiceDue(invoice)) }}</td>
+          </tr>
+        </tbody>
+      </q-markup-table>
+    </div>
+
     <q-markup-table flat bordered wrap-cells>
       <thead>
         <tr>
           <th class="text-left">Payment ID</th>
-          <th class="text-right">Amount</th>
           <th class="text-left">Date</th>
           <th class="text-left">Method</th>
           <th class="text-left">Reference</th>
+          <th class="text-right">Amount</th>
+          <th class="text-right">Remaining (Not Split)</th>
+          <th class="text-right" style="width: 120px;">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!customerPayments.length && !invoiceStore.loading">
-          <td colspan="5" class="text-center text-grey-7">No transactions found.</td>
+          <td colspan="7" class="text-center text-grey-7">No transactions found.</td>
         </tr>
         <tr v-for="row in customerPayments" :key="row.id" class="cursor-pointer" @click="openTransactionDetails(row.id)">
           <td>#{{ row.id }}</td>
-          <td class="text-right">{{ Number(row.amount).toFixed(2) }}</td>
           <td>{{ row.payment_date }}</td>
           <td>{{ row.method ?? '-' }}</td>
           <td>{{ row.reference ?? '-' }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.amount) }}</td>
+          <td class="text-right text-primary">{{ formatAmountBdt(paymentRemainingById[row.id]) }}</td>
+          <td class="text-right">
+            <q-btn flat round dense icon="more_vert" @click.stop>
+              <q-menu anchor="bottom right" self="top right">
+                <q-list dense style="min-width: 140px;">
+                  <q-item clickable v-close-popup @click="openEditPaymentDialog(row)">
+                    <q-item-section>Edit</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="openDeletePaymentDialog(row)">
+                    <q-item-section class="text-negative">Delete</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+          </td>
         </tr>
       </tbody>
     </q-markup-table>
+
+    <q-dialog v-model="editPaymentDialogOpen">
+      <q-card style="width: 540px; max-width: 92vw;">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Edit Transaction</div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="row q-col-gutter-md">
+          <div class="col-12 col-sm-6">
+            <q-input v-model.number="editPaymentAmount" type="number" min="0.01" step="0.01" label="Amount" outlined dense />
+          </div>
+          <div class="col-12 col-sm-6">
+            <q-input v-model="editPaymentDate" label="Payment Date" outlined dense readonly>
+              <template #append>
+                <q-icon name="event" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="editPaymentDate" mask="YYYY-MM-DD" />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-sm-6">
+            <q-select v-model="editPaymentMethod" :options="methodOptions" label="Method" outlined dense emit-value map-options />
+          </div>
+          <div class="col-12 col-sm-6">
+            <q-input v-model="editPaymentReference" label="Reference" outlined dense />
+          </div>
+          <div class="col-12">
+            <q-input v-model="editPaymentNote" label="Note" outlined dense />
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn color="primary" no-caps label="Save" :loading="invoiceStore.saving" :disable="!canSaveEditPayment" @click="saveEditPayment" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="deletePaymentDialogOpen">
+      <q-card style="width: 420px; max-width: 92vw;">
+        <q-card-section class="text-h6">Delete Transaction</q-card-section>
+        <q-card-section>
+          Are you sure you want to delete transaction #{{ selectedPaymentForEdit?.id }}?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn color="negative" no-caps label="Delete" :loading="invoiceStore.saving" @click="confirmDeletePayment" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="detailsDialogOpen">
       <q-card style="width: 1100px; max-width: 95vw;">
@@ -49,7 +178,7 @@
             <q-card flat bordered>
               <q-card-section>
                 <div class="text-caption text-grey-7">Payment Amount</div>
-                <div class="text-h6">{{ Number(selectedPayment.amount ?? 0).toFixed(2) }}</div>
+                <div class="text-h6">{{ formatAmountBdt(selectedPayment.amount) }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -57,7 +186,7 @@
             <q-card flat bordered>
               <q-card-section>
                 <div class="text-caption text-grey-7">Allocated</div>
-                <div class="text-h6">{{ selectedPaymentAllocatedAmount.toFixed(2) }}</div>
+                <div class="text-h6">{{ formatAmountBdt(selectedPaymentAllocatedAmount) }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -65,7 +194,7 @@
             <q-card flat bordered>
               <q-card-section>
                 <div class="text-caption text-grey-7">Remaining</div>
-                <div class="text-h6 text-primary">{{ selectedPaymentRemainingAmount.toFixed(2) }}</div>
+                <div class="text-h6 text-primary">{{ formatAmountBdt(selectedPaymentRemainingAmount) }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -87,7 +216,7 @@
               </tr>
               <tr v-for="allocation in selectedPaymentAllocations" :key="allocation.id">
                 <td>#{{ allocation.invoice_id }}</td>
-                <td class="text-right">{{ Number(allocation.amount ?? 0).toFixed(2) }}</td>
+                <td class="text-right">{{ formatAmountBdt(allocation.amount) }}</td>
                 <td class="text-right">
                   <q-btn
                     flat
@@ -105,8 +234,8 @@
         <q-card-section v-if="selectedPaymentRemainingAmount > 0">
           <div class="text-subtitle1 text-weight-medium q-mb-sm">Allocate Remaining To Invoice</div>
           <q-banner class="bg-grey-2 q-mb-md">
-            New Allocated: <strong>{{ detailsAllocatedAmount.toFixed(2) }}</strong>
-            | After Allocate Remaining: <strong>{{ detailsRemainingAmount.toFixed(2) }}</strong>
+            New Allocated: <strong>{{ formatAmountBdt(detailsAllocatedAmount) }}</strong>
+            | After Allocate Remaining: <strong>{{ formatAmountBdt(detailsRemainingAmount) }}</strong>
           </q-banner>
 
           <q-markup-table flat bordered wrap-cells>
@@ -123,7 +252,7 @@
               </tr>
               <tr v-for="invoice in billingProfileInvoices" :key="invoice.id">
                 <td>#{{ invoice.id }} ({{ invoice.invoice_no }})</td>
-                <td class="text-right">{{ invoiceDue(invoice).toFixed(2) }}</td>
+                <td class="text-right">{{ formatAmountBdt(invoiceDue(invoice)) }}</td>
                 <td class="text-right" style="width: 180px;">
                   <q-input
                     v-model.number="detailsAllocationMap[invoice.id]"
@@ -229,8 +358,8 @@
 
         <q-card-section>
           <q-banner class="bg-grey-2 q-mb-md">
-            Allocated: <strong>{{ allocatedAmount.toFixed(2) }}</strong>
-            | Remaining: <strong>{{ remainingAmount.toFixed(2) }}</strong>
+            Allocated: <strong>{{ formatAmountBdt(allocatedAmount) }}</strong>
+            | Remaining: <strong>{{ formatAmountBdt(remainingAmount) }}</strong>
           </q-banner>
 
           <q-markup-table flat bordered wrap-cells>
@@ -249,18 +378,19 @@
               </tr>
               <tr v-for="invoice in billingProfileInvoices" :key="invoice.id">
                 <td>#{{ invoice.id }} ({{ invoice.invoice_no }})</td>
-                <td class="text-right">{{ Number(invoice.total_amount).toFixed(2) }}</td>
-                <td class="text-right">{{ Number(invoice.paid_amount).toFixed(2) }}</td>
-                <td class="text-right">{{ invoiceDue(invoice).toFixed(2) }}</td>
+                <td class="text-right">{{ formatAmountBdt(invoice.total_amount) }}</td>
+                <td class="text-right">{{ formatAmountBdt(invoice.paid_amount) }}</td>
+                <td class="text-right">{{ formatAmountBdt(invoiceDue(invoice)) }}</td>
                 <td class="text-right" style="width: 180px;">
                   <q-input
-                    v-model.number="allocationMap[invoice.id]"
+                    :model-value="allocationMap[invoice.id]"
                     type="number"
                     min="0"
                     :max="invoiceDue(invoice)"
                     step="0.01"
                     dense
                     outlined
+                    @update:model-value="(value) => setCreateAllocation(invoice.id, value)"
                   />
                 </td>
               </tr>
@@ -285,6 +415,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useBillingProfileStore } from 'src/modules/invoice/stores/billingProfileStore'
 import { useInvoiceStore } from 'src/modules/invoice/stores/invoiceStore'
 import type { Invoice, Payment, PaymentAllocation, PaymentMethod } from 'src/modules/invoice/types'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
 const router = useRouter()
@@ -306,6 +437,14 @@ const detailsAllocationMap = ref<Record<number, number | null>>({})
 const editAllocationDialogOpen = ref(false)
 const selectedAllocationForEdit = ref<PaymentAllocation | null>(null)
 const editAllocationAmount = ref<number | null>(null)
+const editPaymentDialogOpen = ref(false)
+const deletePaymentDialogOpen = ref(false)
+const selectedPaymentForEdit = ref<Payment | null>(null)
+const editPaymentAmount = ref<number | null>(null)
+const editPaymentDate = ref(new Date().toISOString().slice(0, 10))
+const editPaymentMethod = ref<PaymentMethod | null>('cash')
+const editPaymentReference = ref('')
+const editPaymentNote = ref('')
 
 const methodOptions = [
   { label: 'Cash', value: 'cash' },
@@ -321,6 +460,21 @@ const selectedCustomer = computed(() =>
 const customerPayments = computed(() =>
   invoiceStore.payments.filter((item) => item.billing_profile_id === billingProfileId.value),
 )
+const paymentRemainingById = computed<Record<number, number>>(() => {
+  const allocatedByPaymentId = invoiceStore.paymentAllocations.reduce<Record<number, number>>((sum, allocation) => {
+    const paymentId = Number(allocation.payment_id ?? 0)
+    if (!paymentId) return sum
+    sum[paymentId] = Number(sum[paymentId] ?? 0) + Number(allocation.amount ?? 0)
+    return sum
+  }, {})
+
+  return customerPayments.value.reduce<Record<number, number>>((sum, payment) => {
+    const amount = Number(payment.amount ?? 0)
+    const allocated = Number(allocatedByPaymentId[payment.id] ?? 0)
+    sum[payment.id] = Math.max(0, Number((amount - allocated).toFixed(2)))
+    return sum
+  }, {})
+})
 const selectedPayment = computed<Payment | null>(() =>
   customerPayments.value.find((item) => item.id === selectedPaymentId.value) ?? null,
 )
@@ -330,6 +484,10 @@ const selectedPaymentAllocations = computed<PaymentAllocation[]>(() =>
 
 const invoiceDue = (invoice: Invoice) =>
   Math.max(0, Number(invoice.total_amount ?? 0) - Number(invoice.paid_amount ?? 0))
+const dueInvoiceCount = computed(() => billingProfileInvoices.value.length)
+const totalDueAmount = computed(() =>
+  billingProfileInvoices.value.reduce((sum, invoice) => sum + invoiceDue(invoice), 0),
+)
 
 const allocatedAmount = computed<number>(() =>
   Object.values(allocationMap.value).reduce<number>((sum, item) => sum + Number(item ?? 0), 0),
@@ -373,6 +531,14 @@ const canSaveEditAllocation = computed(() =>
       Number(editAllocationAmount.value ?? 0) > 0,
   ),
 )
+const canSaveEditPayment = computed(() =>
+  Boolean(
+    authStore.tenantId &&
+      selectedPaymentForEdit.value &&
+      Number(editPaymentAmount.value ?? 0) > 0 &&
+      editPaymentDate.value,
+  ),
+)
 
 const loadBillingProfiles = async () => {
   const tenantId = authStore.tenantId
@@ -389,7 +555,7 @@ const loadBillingProfiles = async () => {
 const loadPayments = async () => {
   const tenantId = authStore.tenantId
   if (!tenantId || !billingProfileId.value) return
-  await invoiceStore.fetchPayments({
+  const result = await invoiceStore.fetchPayments({
     tenant_id: tenantId,
     filters: { billing_profile_id: billingProfileId.value },
     operators: { billing_profile_id: 'eq' },
@@ -397,6 +563,25 @@ const loadPayments = async () => {
     page_size: 500,
     sortBy: 'id',
     sortOrder: 'desc',
+  })
+  if (!result.success) return
+
+  const paymentIds = (invoiceStore.payments ?? [])
+    .map((item) => Number(item.id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+  if (!paymentIds.length) {
+    invoiceStore.paymentAllocations = []
+    return
+  }
+
+  await invoiceStore.fetchPaymentAllocations({
+    tenant_id: tenantId,
+    filters: { payment_id: paymentIds },
+    operators: { payment_id: 'in' },
+    page: 1,
+    page_size: 2000,
+    sortBy: 'id',
+    sortOrder: 'asc',
   })
 }
 
@@ -461,6 +646,21 @@ const openEditAllocationDialog = (allocation: PaymentAllocation) => {
   editAllocationDialogOpen.value = true
 }
 
+const openEditPaymentDialog = (payment: Payment) => {
+  selectedPaymentForEdit.value = payment
+  editPaymentAmount.value = Number(payment.amount ?? 0)
+  editPaymentDate.value = payment.payment_date ?? new Date().toISOString().slice(0, 10)
+  editPaymentMethod.value = payment.method ?? 'cash'
+  editPaymentReference.value = payment.reference ?? ''
+  editPaymentNote.value = payment.note ?? ''
+  editPaymentDialogOpen.value = true
+}
+
+const openDeletePaymentDialog = (payment: Payment) => {
+  selectedPaymentForEdit.value = payment
+  deletePaymentDialogOpen.value = true
+}
+
 const savePayment = async () => {
   const tenantId = authStore.tenantId
   if (!tenantId || !canSave.value) return
@@ -486,6 +686,19 @@ const savePayment = async () => {
 
   openDialog.value = false
   await Promise.all([loadPayments(), loadInvoicesByBillingProfile()])
+}
+
+const setCreateAllocation = (invoiceId: number, value: string | number | null) => {
+  const raw = Number(value ?? 0)
+  if (!Number.isFinite(raw) || raw <= 0) {
+    allocationMap.value = { ...allocationMap.value, [invoiceId]: null }
+    return
+  }
+
+  const invoice = billingProfileInvoices.value.find((item) => item.id === invoiceId)
+  const due = invoice ? invoiceDue(invoice) : 0
+  const clamped = Math.min(Number(raw.toFixed(2)), Number(due.toFixed(2)))
+  allocationMap.value = { ...allocationMap.value, [invoiceId]: clamped }
 }
 
 const saveDetailsSplit = async () => {
@@ -535,6 +748,42 @@ const saveEditAllocation = async () => {
     loadInvoicesByBillingProfile(),
     loadPayments(),
   ])
+}
+
+const saveEditPayment = async () => {
+  const tenantId = authStore.tenantId
+  const payment = selectedPaymentForEdit.value
+  if (!tenantId || !payment || !canSaveEditPayment.value) return
+
+  const result = await invoiceStore.updatePayment({
+    tenant_id: tenantId,
+    payment_id: payment.id,
+    patch: {
+      amount: Number(editPaymentAmount.value ?? 0),
+      payment_date: editPaymentDate.value,
+      method: editPaymentMethod.value,
+      reference: editPaymentReference.value || null,
+      note: editPaymentNote.value || null,
+    },
+  })
+  if (!result.success) return
+
+  editPaymentDialogOpen.value = false
+  await Promise.all([loadPayments(), loadInvoicesByBillingProfile()])
+}
+
+const confirmDeletePayment = async () => {
+  const tenantId = authStore.tenantId
+  const payment = selectedPaymentForEdit.value
+  if (!tenantId || !payment) return
+  const result = await invoiceStore.deletePayment({
+    tenant_id: tenantId,
+    payment_id: payment.id,
+  })
+  if (!result.success) return
+  deletePaymentDialogOpen.value = false
+  detailsDialogOpen.value = false
+  await Promise.all([loadPayments(), loadInvoicesByBillingProfile()])
 }
 
 const goBack = async () => {

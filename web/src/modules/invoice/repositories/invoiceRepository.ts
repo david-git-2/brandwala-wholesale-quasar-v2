@@ -15,6 +15,8 @@ import type {
   InvoiceListQuery,
   Payment,
   PaymentAllocation,
+  DeletePaymentInput,
+  UpdatePaymentInput,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
   UpdatePaymentAllocationAmountInput,
@@ -379,6 +381,48 @@ const updatePaymentAllocationAmount = async (
   return data as PaymentAllocation
 }
 
+const updatePayment = async (payload: UpdatePaymentInput): Promise<Payment> => {
+  const { data, error } = await supabase
+    .from('payments')
+    .update(payload.patch)
+    .eq('tenant_id', payload.tenant_id)
+    .eq('id', payload.payment_id)
+    .select('*')
+    .single()
+  if (error) throw error
+  if (!data) throw new Error('Payment was not updated.')
+  return data as Payment
+}
+
+const deletePayment = async (payload: DeletePaymentInput): Promise<void> => {
+  const { data: allocations, error: allocationReadError } = await supabase
+    .from('payment_allocations')
+    .select('invoice_id')
+    .eq('tenant_id', payload.tenant_id)
+    .eq('payment_id', payload.payment_id)
+  if (allocationReadError) throw allocationReadError
+
+  const invoiceIds = Array.from(new Set((allocations ?? []).map((row) => Number(row.invoice_id)).filter(Number.isFinite)))
+
+  const { error: allocationDeleteError } = await supabase
+    .from('payment_allocations')
+    .delete()
+    .eq('tenant_id', payload.tenant_id)
+    .eq('payment_id', payload.payment_id)
+  if (allocationDeleteError) throw allocationDeleteError
+
+  const { error } = await supabase
+    .from('payments')
+    .delete()
+    .eq('tenant_id', payload.tenant_id)
+    .eq('id', payload.payment_id)
+  if (error) throw error
+
+  for (const invoiceId of invoiceIds) {
+    await recomputeInvoicePaymentStatus(invoiceId)
+  }
+}
+
 export const invoiceRepository = {
   listInvoices,
   listInvoiceItems,
@@ -387,6 +431,8 @@ export const invoiceRepository = {
   createPaymentWithAllocations,
   addPaymentAllocation,
   updatePaymentAllocationAmount,
+  updatePayment,
+  deletePayment,
   createInvoice,
   updateInvoice,
   deleteInvoice,

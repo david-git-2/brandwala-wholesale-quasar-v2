@@ -130,6 +130,7 @@ import { useInvestorStore } from '../stores/investorStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
 import type { ShipmentInvestment } from '../types'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
 const router = useRouter()
@@ -169,7 +170,7 @@ const totalShipmentCost = computed(() => {
 const canSave = computed(() => Number(investedAmount.value ?? 0) > 0 && Number(selectedInvestorId.value ?? 0) > 0)
 const isEditMode = computed(() => Boolean(editingInvestment.value))
 
-const formatAmount = (value: number | null | undefined) => Number(value ?? 0).toFixed(2)
+const formatAmount = (value: number | null | undefined) => formatAmountBdt(value)
 const formatCoveragePercentage = (investedAmount: number | null | undefined) => {
   const shipmentCost = Number(totalShipmentCost.value ?? 0)
   if (shipmentCost <= 0) {

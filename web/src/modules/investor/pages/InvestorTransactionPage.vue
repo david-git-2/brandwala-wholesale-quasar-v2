@@ -46,7 +46,7 @@
           </template>
 
           <template #body-cell-amount="props">
-            <q-td :props="props">{{ Number(props.row.amount).toFixed(2) }}</q-td>
+            <q-td :props="props">{{ formatAmountBdt(props.row.amount) }}</q-td>
           </template>
 
           <template #body-cell-type="props">
@@ -78,6 +78,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import InvestorTransactionDialog from '../components/InvestorTransactionDialog.vue'
 import { useInvestorStore } from '../stores/investorStore'
 import type { InvestorTransactionCreateInput } from '../types'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()
 const investorStore = useInvestorStore()

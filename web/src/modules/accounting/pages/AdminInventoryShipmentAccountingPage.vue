@@ -45,6 +45,14 @@
           </q-card-section>
         </q-card>
       </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-caption text-grey-8">Open Box Qty</div>
+            <div class="text-h6 text-weight-bold">{{ totals.openBoxQty }}</div>
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
 
     <q-markup-table flat bordered wrap-cells>
@@ -57,16 +65,18 @@
           <th class="text-right">Damaged Qty</th>
           <th class="text-right">Stolen Qty</th>
           <th class="text-right">Expired Qty</th>
+          <th class="text-right">Open Box Qty</th>
           <th class="text-right">Usable Cost</th>
           <th class="text-right">Damaged Cost</th>
           <th class="text-right">Stolen Cost</th>
           <th class="text-right">Expired Cost</th>
+          <th class="text-right">Open Box Cost</th>
           <th class="text-right">Total Inventory Cost</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!visibleSummaries.length && !inventoryStore.loading">
-          <td colspan="12" class="text-center text-grey-7">No shipment inventory accounting summary found.</td>
+          <td colspan="14" class="text-center text-grey-7">No shipment inventory accounting summary found.</td>
         </tr>
         <tr
           v-for="(row, index) in visibleSummaries"
@@ -79,10 +89,12 @@
           <td class="text-right">{{ row.damaged_quantity }}</td>
           <td class="text-right">{{ row.stolen_quantity }}</td>
           <td class="text-right">{{ row.expired_quantity }}</td>
+          <td class="text-right">{{ row.open_box_quantity }}</td>
           <td class="text-right">{{ formatFixed2(row.usable_cost_total) }}</td>
           <td class="text-right">{{ formatFixed2(row.damaged_cost_total) }}</td>
           <td class="text-right">{{ formatFixed2(row.stolen_cost_total) }}</td>
           <td class="text-right">{{ formatFixed2(row.expired_cost_total) }}</td>
+          <td class="text-right">{{ formatFixed2(row.open_box_cost_total) }}</td>
           <td class="text-right text-weight-bold">{{ formatFixed2(row.inventory_cost_total) }}</td>
         </tr>
         <tr v-if="visibleSummaries.length" class="text-weight-bold">
@@ -91,10 +103,12 @@
           <td class="text-right">{{ totals.damagedQty }}</td>
           <td class="text-right">{{ totals.stolenQty }}</td>
           <td class="text-right">{{ totals.expiredQty }}</td>
+          <td class="text-right">{{ totals.openBoxQty }}</td>
           <td class="text-right">{{ formatFixed2(totals.usableCost) }}</td>
           <td class="text-right">{{ formatFixed2(totals.damagedCost) }}</td>
           <td class="text-right">{{ formatFixed2(totals.stolenCost) }}</td>
           <td class="text-right">{{ formatFixed2(totals.expiredCost) }}</td>
+          <td class="text-right">{{ formatFixed2(totals.openBoxCost) }}</td>
           <td class="text-right">{{ formatFixed2(totals.totalCost) }}</td>
         </tr>
       </tbody>
@@ -107,6 +121,7 @@ import { computed, onMounted } from 'vue'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()
 const inventoryStore = useInventoryStore()
@@ -118,6 +133,7 @@ const visibleSummaries = computed(() =>
       Number(row.damaged_quantity ?? 0) > 0 ||
       Number(row.stolen_quantity ?? 0) > 0 ||
       Number(row.expired_quantity ?? 0) > 0 ||
+      Number(row.open_box_quantity ?? 0) > 0 ||
       Number(row.inventory_cost_total ?? 0) > 0,
   ),
 )
@@ -129,10 +145,12 @@ const totals = computed(() =>
       damagedQty: sum.damagedQty + row.damaged_quantity,
       stolenQty: sum.stolenQty + row.stolen_quantity,
       expiredQty: sum.expiredQty + row.expired_quantity,
+      openBoxQty: sum.openBoxQty + row.open_box_quantity,
       usableCost: sum.usableCost + row.usable_cost_total,
       damagedCost: sum.damagedCost + row.damaged_cost_total,
       stolenCost: sum.stolenCost + row.stolen_cost_total,
       expiredCost: sum.expiredCost + row.expired_cost_total,
+      openBoxCost: sum.openBoxCost + row.open_box_cost_total,
       totalCost: sum.totalCost + row.inventory_cost_total,
     }),
     {
@@ -140,19 +158,18 @@ const totals = computed(() =>
       damagedQty: 0,
       stolenQty: 0,
       expiredQty: 0,
+      openBoxQty: 0,
       usableCost: 0,
       damagedCost: 0,
       stolenCost: 0,
       expiredCost: 0,
+      openBoxCost: 0,
       totalCost: 0,
     },
   ),
 )
 
-const formatFixed2 = (value: number | null | undefined) => {
-  const parsed = Number(value ?? 0)
-  return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'
-}
+const formatFixed2 = (value: number | null | undefined) => formatAmountBdt(value)
 
 const loadSummaries = async () => {
   const tenantId = authStore.tenantId

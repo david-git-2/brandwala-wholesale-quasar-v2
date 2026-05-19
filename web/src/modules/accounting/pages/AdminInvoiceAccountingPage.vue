@@ -31,11 +31,11 @@
           <td>{{ row.shipment_id ?? '-' }}</td>
           <td>{{ row.product_id ?? '-' }}</td>
           <td class="text-right">{{ row.quantity }}</td>
-          <td class="text-right">{{ row.cost_amount }}</td>
-          <td class="text-right">{{ row.sell_price_amount }}</td>
-          <td class="text-right">{{ row.total_cost_amount }}</td>
-          <td class="text-right">{{ row.total_sell_amount }}</td>
-          <td class="text-right">{{ row.gross_profit_amount }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.cost_amount) }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.sell_price_amount) }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.total_cost_amount) }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.total_sell_amount) }}</td>
+          <td class="text-right">{{ formatAmountBdt(row.gross_profit_amount) }}</td>
           <td class="text-capitalize">{{ row.status }}</td>
           <td>{{ row.entry_date }}</td>
         </tr>
@@ -48,6 +48,7 @@
 import { onMounted } from 'vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAccountingStore } from '../stores/accountingStore'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()
 const accountingStore = useAccountingStore()

@@ -115,6 +115,7 @@ const handleConsole = () => {
   console.log('Product:', props.product)
   void costingFileStore.createProductBasedCostingItem({
     name: props.product.name || '',
+    brand: props.product.brand || null,
     image_url: props.product.image_url || '',
     quantity: 1,
     barcode: props.product.barcode || '',

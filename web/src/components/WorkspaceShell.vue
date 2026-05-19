@@ -389,6 +389,10 @@ const handleLogout = async () => {
   min-height: 0;
 }
 
+.workspace-shell__drawer-scroll :deep(.q-scrollarea__content) {
+  padding-bottom: 88px;
+}
+
 .workspace-shell__nav {
   padding: 0 0.6rem 0.75rem;
 }

@@ -46,6 +46,14 @@
               label="Search Stock"
               @click="searchDialogOpen = true"
             />
+            <q-btn
+              color="secondary"
+              no-caps
+              icon="payments"
+              label="Customer Payment"
+              :disable="!invoice?.billing_profile_id"
+              @click="openCustomerPaymentDetails"
+            />
           </div>
         </div>
 
@@ -139,9 +147,9 @@
                 <td style="white-space: normal; word-break: break-word; min-width: 260px;">
                   {{ row.name_snapshot }}
                 </td>
-                <td class="text-right">{{ row.cost_amount }}</td>
+                <td class="text-right">{{ formatAmountBdt(row.cost_amount) }}</td>
                 <td class="text-right">
-                  <span class="cursor-pointer text-primary">{{ row.sell_price_amount }}</span>
+                  <span class="cursor-pointer text-primary">{{ formatAmountBdt(row.sell_price_amount) }}</span>
                   <q-popup-edit
                     :model-value="row.sell_price_amount"
                     buttons
@@ -429,6 +437,7 @@ import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
 import { showWarningDialog } from 'src/utils/appFeedback'
 import { useInvoiceStore } from '../stores/invoiceStore'
 import type { InvoiceStatus } from '../types/index'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
 const router = useRouter()
@@ -559,6 +568,18 @@ const openInvoicePreview = async () => {
     params: {
       tenantSlug: authStore.tenantSlug ?? undefined,
       invoiceId: invoice.value.id,
+    },
+  })
+}
+
+const openCustomerPaymentDetails = async () => {
+  const billingProfileId = Number(invoice.value?.billing_profile_id ?? 0)
+  if (!billingProfileId) return
+  await router.push({
+    name: 'app-accounting-customer-payment-details-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? undefined,
+      billingProfileId,
     },
   })
 }
@@ -882,7 +903,7 @@ const onConfirmReturn = async () => {
   await syncInvoiceSellTotal()
 }
 
-const formatAmount = (value: number) => Number(value ?? 0).toFixed(2)
+const formatAmount = (value: number) => formatAmountBdt(value)
 const formatQuantity = (value: number) => Number(value ?? 0).toFixed(3)
 
 const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)

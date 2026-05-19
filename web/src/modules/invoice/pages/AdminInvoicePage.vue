@@ -42,7 +42,7 @@
             <div class="text-caption text-grey-7">Date</div>
             <div class="text-body2">{{ row.invoice_date }}</div>
             <div class="text-caption text-grey-7 q-mt-sm">Total</div>
-            <div class="text-body1 text-weight-bold">{{ row.total_amount }}</div>
+            <div class="text-body1 text-weight-bold">{{ formatAmountBdt(row.total_amount) }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -146,6 +146,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useBillingProfileStore } from '../stores/billingProfileStore'
 import { useInvoiceStore } from '../stores/invoiceStore'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const router = useRouter()
 const authStore = useAuthStore()

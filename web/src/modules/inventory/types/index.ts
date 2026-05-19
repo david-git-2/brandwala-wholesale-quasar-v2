@@ -50,10 +50,12 @@ export type ShipmentInventoryAccountingSummary = {
   damaged_quantity: number
   stolen_quantity: number
   expired_quantity: number
+  open_box_quantity: number
   usable_cost_total: number
   damaged_cost_total: number
   stolen_cost_total: number
   expired_cost_total: number
+  open_box_cost_total: number
   inventory_cost_total: number
   created_at: string
   updated_at: string

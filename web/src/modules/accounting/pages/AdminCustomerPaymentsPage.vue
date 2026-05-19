@@ -9,29 +9,22 @@
           <th class="text-left">Phone</th>
           <th class="text-left">Email</th>
           <th class="text-left">Address</th>
-          <th class="text-right">Action</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!billingProfileStore.items.length && !billingProfileStore.loading">
-          <td colspan="5" class="text-center text-grey-7">No customers found.</td>
+          <td colspan="4" class="text-center text-grey-7">No customers found.</td>
         </tr>
         <tr
           v-for="customer in billingProfileStore.items"
           :key="customer.id"
+          class="cursor-pointer"
+          @click="openCustomerTransactions(customer.id)"
         >
           <td>{{ customer.name }}</td>
           <td>{{ customer.phone ?? '-' }}</td>
           <td>{{ customer.email ?? '-' }}</td>
           <td>{{ customer.address ?? '-' }}</td>
-          <td class="text-right">
-            <q-btn
-              color="primary"
-              no-caps
-              label="View Transactions"
-              @click="openCustomerTransactions(customer.id)"
-            />
-          </td>
         </tr>
       </tbody>
     </q-markup-table>

@@ -186,3 +186,14 @@ export type UpdatePaymentAllocationAmountInput = {
   allocation_id: number
   amount: number
 }
+
+export type UpdatePaymentInput = {
+  tenant_id: number
+  payment_id: number
+  patch: Partial<Pick<Payment, 'amount' | 'payment_date' | 'method' | 'reference' | 'note'>>
+}
+
+export type DeletePaymentInput = {
+  tenant_id: number
+  payment_id: number
+}

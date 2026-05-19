@@ -7,6 +7,7 @@ import type {
   CreateInvoiceItemInput,
   CreateInvoiceInput,
   DeleteInvoiceItemInput,
+  DeletePaymentInput,
   DeleteInvoiceInput,
   Invoice,
   InvoiceItem,
@@ -17,6 +18,7 @@ import type {
   PaymentAllocation,
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
+  UpdatePaymentInput,
   UpdatePaymentAllocationAmountInput,
 } from '../types/index'
 
@@ -27,9 +29,24 @@ const wrap = async <T>(
   try {
     return { success: true, data: await fn() }
   } catch (error) {
+    const getErrorMessage = (unknownError: unknown): string | null => {
+      if (unknownError instanceof Error && unknownError.message) {
+        return unknownError.message
+      }
+      if (unknownError && typeof unknownError === 'object') {
+        const maybe = unknownError as { message?: unknown; details?: unknown; error_description?: unknown }
+        if (typeof maybe.message === 'string' && maybe.message.trim()) return maybe.message
+        if (typeof maybe.details === 'string' && maybe.details.trim()) return maybe.details
+        if (typeof maybe.error_description === 'string' && maybe.error_description.trim()) {
+          return maybe.error_description
+        }
+      }
+      return null
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : fallback,
+      error: getErrorMessage(error) ?? fallback,
     }
   }
 }
@@ -70,6 +87,10 @@ export const invoiceService = {
       () => invoiceRepository.updatePaymentAllocationAmount(payload),
       'Failed to update payment allocation.',
     ),
+  updatePayment: (payload: UpdatePaymentInput) =>
+    wrap<Payment>(() => invoiceRepository.updatePayment(payload), 'Failed to update payment.'),
+  deletePayment: (payload: DeletePaymentInput) =>
+    wrap<void>(() => invoiceRepository.deletePayment(payload), 'Failed to delete payment.'),
   createInvoice: (payload: CreateInvoiceInput) =>
     wrap<Invoice>(() => invoiceRepository.createInvoice(payload), 'Failed to create invoice.'),
   updateInvoice: (payload: UpdateInvoiceInput) =>

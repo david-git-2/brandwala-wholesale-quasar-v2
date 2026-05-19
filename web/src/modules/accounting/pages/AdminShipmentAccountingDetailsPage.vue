@@ -90,6 +90,14 @@
         <div class="col-12 col-sm-6 col-md-3">
           <q-card flat bordered>
             <q-card-section>
+              <div class="text-caption text-grey-8">Paid Amount (BDT)</div>
+              <div class="text-h6 text-weight-bold text-primary">{{ formatFixed2(totalInvoicePaidBdt) }}</div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-card flat bordered>
+            <q-card-section>
               <div class="text-caption text-grey-8">Remaining Inventory Cost (BDT)</div>
               <div class="text-h6 text-weight-bold">{{ formatFixed2(remainingInventoryCostBdt) }}</div>
             </q-card-section>
@@ -219,16 +227,20 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
 import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
+import { useInvoiceStore } from 'src/modules/invoice/stores/invoiceStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
+import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const shipmentStore = useShipmentStore()
+const invoiceStore = useInvoiceStore()
 const shipmentAccountingEntries = ref<InventoryAccountingEntry[]>([])
 const accountingLoading = ref(false)
 const accountingError = ref<string | null>(null)
+const shipmentInvoicePaidById = ref<Record<number, number>>({})
 
 const shipmentId = computed(() => {
   const parsed = Number(route.params.id)
@@ -292,6 +304,9 @@ const totalRealizedProfitBdt = computed(() =>
 const totalSoldQuantity = computed(() =>
   shipmentAccountingEntries.value.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0),
 )
+const totalInvoicePaidBdt = computed(() =>
+  Object.values(shipmentInvoicePaidById.value).reduce((sum, value) => sum + Number(value ?? 0), 0),
+)
 
 const remainingInventoryCostBdt = computed(() =>
   Math.max(0, usableCostBdt.value - totalInvoiceCogsBdt.value),
@@ -301,10 +316,7 @@ const profitLossVsShipmentCostBdt = computed(
   () => totalInvoiceRevenueBdt.value - totalReceivedCostBdt.value,
 )
 
-const formatFixed2 = (value: number | null | undefined) => {
-  const parsed = Number(value ?? 0)
-  return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'
-}
+const formatFixed2 = (value: number | null | undefined) => formatAmountBdt(value)
 
 const fetchDetails = async () => {
   if (!shipmentId.value) {
@@ -341,9 +353,49 @@ const fetchAccountingEntries = async () => {
     }
 
     shipmentAccountingEntries.value = result.data?.data ?? []
+    await fetchShipmentInvoicePaidAmounts()
   } finally {
     accountingLoading.value = false
   }
+}
+
+const fetchShipmentInvoicePaidAmounts = async () => {
+  const tenantId = authStore.tenantId
+  if (!tenantId) {
+    shipmentInvoicePaidById.value = {}
+    return
+  }
+
+  const invoiceIds = Array.from(
+    new Set(
+      shipmentAccountingEntries.value
+        .map((row) => Number(row.invoice_id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
+  )
+
+  if (!invoiceIds.length) {
+    shipmentInvoicePaidById.value = {}
+    return
+  }
+
+  const invoicesResult = await invoiceStore.fetchInvoices({
+    tenant_id: tenantId,
+    filters: { id: invoiceIds },
+    operators: { id: 'in' },
+    page: 1,
+    page_size: Math.max(invoiceIds.length, 100),
+    sortBy: 'id',
+    sortOrder: 'asc',
+  })
+  if (!invoicesResult.success) {
+    shipmentInvoicePaidById.value = {}
+    return
+  }
+
+  shipmentInvoicePaidById.value = Object.fromEntries(
+    (invoiceStore.invoices ?? []).map((invoice) => [invoice.id, Number(invoice.paid_amount ?? 0)]),
+  )
 }
 
 const onBack = async () => {
