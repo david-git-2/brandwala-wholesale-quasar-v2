@@ -85,6 +85,24 @@
             </q-card>
           </div>
         </div>
+        <div class="row q-col-gutter-md">
+          <div class="col-12 col-sm-6">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Total Returned Amount</div>
+                <div class="text-h6 text-weight-bold text-warning">{{ formatAmount(totalReturnedAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-6">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Outstanding Amount</div>
+                <div class="text-h6 text-weight-bold text-negative">{{ formatAmount(outstandingAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
 
         <div class="q-gutter-sm">
           <div class="text-subtitle2">Invoice Item List</div>
@@ -100,6 +118,8 @@
                 <th class="text-right">Cost</th>
                 <th class="text-right">Sell Price</th>
                 <th class="text-right">Quantity</th>
+                <th class="text-right">Returned</th>
+                <th class="text-right">Return Amount</th>
                 <th class="text-right">Line Total</th>
                 <th class="text-right" style="width: 90px">Actions</th>
               </tr>
@@ -156,15 +176,28 @@
                     />
                   </q-popup-edit>
                 </td>
-                <td class="text-right">{{ calculateLineTotal(row.sell_price_amount, row.quantity) }}</td>
+                <td class="text-right">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
+                <td class="text-right">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
+                <td class="text-right">{{ formatAmount(getNetSellAmount(row)) }}</td>
                 <td class="text-right">
+                  <q-btn
+                    flat
+                    round
+                    icon="assignment_return"
+                    color="warning"
+                    @click="openReturnDialog(row.id)"
+                  >
+                    <q-tooltip>Return</q-tooltip>
+                  </q-btn>
                   <q-btn
                     flat
                     round
                     icon="delete"
                     color="negative"
                     @click="openDeleteInvoiceItem(row.id)"
-                  />
+                  >
+                    <q-tooltip>Delete</q-tooltip>
+                  </q-btn>
                 </td>
               </tr>
             </tbody>
@@ -243,10 +276,18 @@
                     <div class="invoice-search__usable text-grey-8">
                       Usable: {{ item.quantities.usable }}
                     </div>
+                    <div class="invoice-search__usable text-grey-8">
+                      Open Box: {{ item.quantities.open_box }}
+                    </div>
                   </div>
                 </div>
                 <div>
                   <div class="row items-center q-gutter-sm">
+                    <q-checkbox
+                      :model-value="isOpenBoxFirstEnabled(item.id)"
+                      label="Open box first"
+                      @update:model-value="(value) => setOpenBoxFirst(item.id, Boolean(value))"
+                    />
                     <q-input
                       :model-value="getAddQuantity(item.id)"
                       type="number"
@@ -304,6 +345,76 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="returnDialogOpen">
+      <q-card style="min-width: 420px; width: 92vw; max-width: 540px">
+        <q-card-section class="text-h6">Invoice Item Return</q-card-section>
+        <q-card-section class="q-gutter-sm">
+          <div v-if="selectedReturnInvoiceItem" class="text-caption text-grey-8">
+            <div><strong>{{ selectedReturnInvoiceItem.name_snapshot }}</strong></div>
+            <div>Sold Qty: {{ formatQuantity(selectedReturnInvoiceItem.quantity) }}</div>
+            <div>Already Returned Qty: {{ formatQuantity(getReturnedQuantity(selectedReturnInvoiceItem)) }}</div>
+            <div>Remaining Return Qty: {{ formatQuantity(getRemainingReturnQty(selectedReturnInvoiceItem)) }}</div>
+            <div>Remaining Return Amount: {{ formatAmount(getRemainingReturnAmount(selectedReturnInvoiceItem)) }}</div>
+          </div>
+          <div class="text-caption text-grey-7">
+            Returned qty cannot exceed sold qty. Open box return and normal return are tracked separately.
+          </div>
+          <q-input
+            v-model.number="returnNormalQtyInput"
+            type="number"
+            outlined
+            dense
+            min="0"
+            label="Normal Return Qty"
+          />
+          <q-input
+            v-model.number="returnOpenBoxQtyInput"
+            type="number"
+            outlined
+            dense
+            min="0"
+            label="Open Box Return Qty"
+          />
+          <q-input
+            v-model.number="returnAmountInput"
+            type="number"
+            outlined
+            dense
+            min="0"
+            label="Return Amount"
+          />
+          <div class="row q-gutter-sm">
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="warning"
+              label="Use Max Remaining Qty"
+              @click="setMaxRemainingQtyForReturn"
+            />
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="warning"
+              label="Use Max Remaining Amount"
+              @click="setMaxRemainingAmountForReturn"
+            />
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            color="warning"
+            no-caps
+            label="Apply Return"
+            :loading="invoiceStore.saving || inventoryStore.saving"
+            @click="onConfirmReturn"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -328,9 +439,15 @@ const searchDialogOpen = ref(false)
 const addLoadingByItemId = ref<Record<number, boolean>>({})
 const addQuantityByItemId = ref<Record<number, number | null>>({})
 const sellPriceByItemId = ref<Record<number, number | null>>({})
+const openBoxFirstByItemId = ref<Record<number, boolean>>({})
 const invoiceItemImageMap = ref<Record<number, string>>({})
 const deleteInvoiceItemOpen = ref(false)
 const selectedInvoiceItemId = ref<number | null>(null)
+const returnDialogOpen = ref(false)
+const selectedReturnInvoiceItemId = ref<number | null>(null)
+const returnNormalQtyInput = ref<number>(0)
+const returnOpenBoxQtyInput = ref<number>(0)
+const returnAmountInput = ref<number>(0)
 const fallbackImageUrl = 'https://placehold.co/56x56?text=No+Image'
 
 const selectedStatus = ref<InvoiceStatus | null>(null)
@@ -363,19 +480,43 @@ const sortedSearchItems = computed(() =>
     return shipmentIdA - shipmentIdB
   }),
 )
+const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0)
+const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
+const getNetSellAmount = (row: { quantity: number; sell_price_amount: number; return_amount?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) * Number(row.sell_price_amount ?? 0) - Number(row.return_amount ?? 0))
+const getNetCostAmount = (row: { quantity: number; cost_amount: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Math.max(0, getNetQuantity(row) * Number(row.cost_amount ?? 0))
 const totalSellAmount = computed(() =>
   invoiceStore.invoiceItems.reduce(
-    (sum, row) => sum + Number(row.sell_price_amount ?? 0) * Number(row.quantity ?? 0),
+    (sum, row) => sum + getNetSellAmount(row),
     0,
   ),
 )
 const totalCostAmount = computed(() =>
   invoiceStore.invoiceItems.reduce(
-    (sum, row) => sum + Number(row.cost_amount ?? 0) * Number(row.quantity ?? 0),
+    (sum, row) => sum + getNetCostAmount(row),
     0,
   ),
 )
+const totalReturnedAmount = computed(() =>
+  invoiceStore.invoiceItems.reduce(
+    (sum, row) => sum + Number(row.return_amount ?? 0),
+    0,
+  ),
+)
+const outstandingAmount = computed(() =>
+  Math.max(0, Number(invoice.value?.total_amount ?? 0) - Number(invoice.value?.paid_amount ?? 0)),
+)
 const totalProfitAmount = computed(() => totalSellAmount.value - totalCostAmount.value)
+const selectedReturnInvoiceItem = computed(() =>
+  invoiceStore.invoiceItems.find((item) => item.id === selectedReturnInvoiceItemId.value) ?? null,
+)
+const getRemainingReturnQty = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
+const getRemainingReturnAmount = (row: { quantity: number; sell_price_amount: number; return_amount?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) * Number(row.sell_price_amount ?? 0) - Number(row.return_amount ?? 0))
 
 const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
@@ -484,6 +625,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
 
   const previousAvailable = Number(item.quantities.available ?? 0)
   const previousUsable = Number(item.quantities.usable ?? 0)
+  const previousOpenBox = Number(item.quantities.open_box ?? 0)
   if (previousUsable <= 0) {
     showWarningDialog('No usable stock left for this item.')
     return
@@ -519,6 +661,9 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       barcode_snapshot: item.barcode ?? null,
       product_code_snapshot: item.product_code ?? null,
       quantity,
+      return_normal_quantity: 0,
+      return_open_box_quantity: 0,
+      return_amount: 0,
       cost_amount: costAmount,
       sell_price_amount: sellPriceAmount,
       line_discount_amount: 0,
@@ -536,10 +681,14 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     }
 
     const nextAvailable = previousAvailable - quantity
+    const nextOpenBox = isOpenBoxFirstEnabled(inventoryItemId)
+      ? Math.max(0, previousOpenBox - quantity)
+      : previousOpenBox
     const updateStockResult = await inventoryStore.updateInventoryStock({
       id: stock.id,
       patch: {
         available_quantity: nextAvailable,
+        open_box_quantity: nextOpenBox,
       },
     })
 
@@ -568,6 +717,8 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       shipment_item_id: (item.shipment?.shipment_item?.id as number | null | undefined) ?? null,
       product_id: item.product_id ?? null,
       quantity,
+      return_quantity: 0,
+      return_amount: 0,
       cost_amount: costAmount,
       sell_price_amount: sellPriceAmount,
       total_cost_amount: totalCostAmount,
@@ -581,6 +732,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
 
     addQuantityByItemId.value = { ...addQuantityByItemId.value, [inventoryItemId]: null }
     sellPriceByItemId.value = { ...sellPriceByItemId.value, [inventoryItemId]: null }
+    openBoxFirstByItemId.value = { ...openBoxFirstByItemId.value, [inventoryItemId]: false }
     searchTerm.value = ''
     inventoryStore.items = []
     await invoiceStore.fetchInvoiceItems({
@@ -629,9 +781,109 @@ const setSellPrice = (itemId: number, value: string | number | null) => {
   sellPriceByItemId.value = { ...sellPriceByItemId.value, [itemId]: parsed }
 }
 
-const calculateLineTotal = (sellPrice: number, quantity: number) =>
-  Number((Number(sellPrice || 0) * Number(quantity || 0)).toFixed(2))
+const isOpenBoxFirstEnabled = (itemId: number) => Boolean(openBoxFirstByItemId.value[itemId])
+const setOpenBoxFirst = (itemId: number, value: boolean) => {
+  openBoxFirstByItemId.value = { ...openBoxFirstByItemId.value, [itemId]: value }
+}
+
+const openReturnDialog = (invoiceItemId: number) => {
+  selectedReturnInvoiceItemId.value = invoiceItemId
+  returnNormalQtyInput.value = 0
+  returnOpenBoxQtyInput.value = 0
+  returnAmountInput.value = 0
+  returnDialogOpen.value = true
+}
+
+const setMaxRemainingQtyForReturn = () => {
+  const item = selectedReturnInvoiceItem.value
+  if (!item) return
+  returnNormalQtyInput.value = getRemainingReturnQty(item)
+  returnOpenBoxQtyInput.value = 0
+}
+
+const setMaxRemainingAmountForReturn = () => {
+  const item = selectedReturnInvoiceItem.value
+  if (!item) return
+  returnAmountInput.value = Number(getRemainingReturnAmount(item).toFixed(2))
+}
+
+const getDefaultReturnAmount = () => {
+  const item = selectedReturnInvoiceItem.value
+  if (!item) return 0
+  const totalQty = Number(returnNormalQtyInput.value ?? 0) + Number(returnOpenBoxQtyInput.value ?? 0)
+  const amount = totalQty * Number(item.sell_price_amount ?? 0)
+  return Number(Math.max(0, amount).toFixed(2))
+}
+
+const onConfirmReturn = async () => {
+  if (!authStore.tenantId || !invoice.value || !selectedReturnInvoiceItemId.value) return
+  const invoiceItem = invoiceStore.invoiceItems.find((item) => item.id === selectedReturnInvoiceItemId.value)
+  if (!invoiceItem) {
+    showWarningDialog('Invoice item not found.')
+    return
+  }
+  if (!invoiceItem.inventory_item_id) {
+    showWarningDialog('Inventory item is missing for this invoice item.')
+    return
+  }
+
+  const returnNormal = Math.max(0, Number(returnNormalQtyInput.value ?? 0))
+  const returnOpenBox = Math.max(0, Number(returnOpenBoxQtyInput.value ?? 0))
+  const returnAmount = Math.max(0, Number(returnAmountInput.value ?? 0))
+  const returnQty = returnNormal + returnOpenBox
+
+  if (returnQty <= 0 && returnAmount <= 0) {
+    showWarningDialog('Enter return quantity or return amount.')
+    return
+  }
+
+  const existingReturnedQty = getReturnedQuantity(invoiceItem)
+  const nextReturnedQty = existingReturnedQty + returnQty
+  const soldQty = Number(invoiceItem.quantity ?? 0)
+  const remainingQty = getRemainingReturnQty(invoiceItem)
+
+  if (returnQty > remainingQty || nextReturnedQty > soldQty) {
+    showWarningDialog('Return quantity exceeds remaining returnable quantity.')
+    return
+  }
+
+  const nextReturnAmount = Number(invoiceItem.return_amount ?? 0) + returnAmount
+  const remainingAmount = getRemainingReturnAmount(invoiceItem)
+  const maxSellAmount = Number(invoiceItem.quantity ?? 0) * Number(invoiceItem.sell_price_amount ?? 0)
+  if (returnAmount > remainingAmount || nextReturnAmount > maxSellAmount) {
+    showWarningDialog('Return amount exceeds remaining returnable amount.')
+    return
+  }
+
+  const applyReturnResult = await invoiceStore.applyInvoiceItemReturn({
+    tenant_id: authStore.tenantId,
+    invoice_item_id: invoiceItem.id,
+    return_normal_quantity: Number(returnNormal.toFixed(3)),
+    return_open_box_quantity: Number(returnOpenBox.toFixed(3)),
+    return_amount: Number(returnAmount.toFixed(2)),
+    actor: authStore.user?.id ?? null,
+  })
+  if (!applyReturnResult.success) return
+
+  returnDialogOpen.value = false
+  selectedReturnInvoiceItemId.value = null
+  returnNormalQtyInput.value = 0
+  returnOpenBoxQtyInput.value = 0
+  returnAmountInput.value = 0
+  await invoiceStore.fetchInvoiceItems({
+    tenant_id: authStore.tenantId,
+    filters: { invoice_id: invoice.value.id },
+    operators: { invoice_id: 'eq' },
+    page: 1,
+    page_size: 100,
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+  })
+  await syncInvoiceSellTotal()
+}
+
 const formatAmount = (value: number) => Number(value ?? 0).toFixed(2)
+const formatQuantity = (value: number) => Number(value ?? 0).toFixed(3)
 
 const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)
 
@@ -658,6 +910,7 @@ const resetSearchDialogState = () => {
   addLoadingByItemId.value = {}
   addQuantityByItemId.value = {}
   sellPriceByItemId.value = {}
+  openBoxFirstByItemId.value = {}
   inventoryStore.items = []
 }
 
@@ -699,13 +952,19 @@ const onInlineUpdateSellPrice = async (invoiceItemId: number, value: string | nu
 
   const accountingEntry = await findAccountingEntryByInvoiceItemId(invoiceItemId)
   if (!accountingEntry) return
-  const quantity = Number(row.quantity ?? 0)
-  const totalSellAmount = Number((sellPriceAmount * quantity).toFixed(2))
-  const totalCostAmount = Number((Number(row.cost_amount ?? 0) * quantity).toFixed(2))
+  const soldQuantity = Number(row.quantity ?? 0)
+  const returnedQuantity = getReturnedQuantity(row)
+  const netQuantity = Math.max(0, soldQuantity - returnedQuantity)
+  const returnAmount = Number(row.return_amount ?? 0)
+  const totalSellAmount = Number(Math.max(0, sellPriceAmount * soldQuantity - returnAmount).toFixed(2))
+  const totalCostAmount = Number((Number(row.cost_amount ?? 0) * netQuantity).toFixed(2))
   await accountingService.updateInventoryAccountingEntry({
     id: accountingEntry.id,
     patch: {
+      quantity: netQuantity,
       sell_price_amount: sellPriceAmount,
+      return_quantity: Number(returnedQuantity.toFixed(3)),
+      return_amount: Number(returnAmount.toFixed(2)),
       total_sell_amount: totalSellAmount,
       total_cost_amount: totalCostAmount,
       gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
@@ -719,6 +978,11 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
   const row = invoiceStore.invoiceItems.find((item) => item.id === invoiceItemId)
   if (!row) return
   const quantity = Math.max(1, Math.floor(Number(value ?? 1)))
+  const returnedQuantity = getReturnedQuantity(row)
+  if (quantity < returnedQuantity) {
+    showWarningDialog('Quantity cannot be less than already returned quantity.')
+    return
+  }
   const previousQuantity = Number(row.quantity ?? 0)
   const quantityDelta = quantity - previousQuantity
 
@@ -754,7 +1018,8 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
     Number(stock.reserved_quantity ?? 0) -
     Number(stock.damaged_quantity ?? 0) -
     Number(stock.stolen_quantity ?? 0) -
-    Number(stock.expired_quantity ?? 0)
+    Number(stock.expired_quantity ?? 0) -
+    Number(stock.open_box_quantity ?? 0)
   const safeCurrentUsable = Math.max(0, currentUsable)
   const requestedDelta = Math.max(0, quantityDelta)
   if (requestedDelta > safeCurrentUsable) {
@@ -809,14 +1074,18 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
   if (!accountingEntry) return
   const sellPriceAmount = Number(row.sell_price_amount ?? 0)
   const costAmount = Number(row.cost_amount ?? 0)
-  const totalSellAmount = Number((sellPriceAmount * quantity).toFixed(2))
-  const totalCostAmount = Number((costAmount * quantity).toFixed(2))
+  const returnAmount = Number(row.return_amount ?? 0)
+  const netQuantity = Math.max(0, quantity - returnedQuantity)
+  const totalSellAmount = Number(Math.max(0, sellPriceAmount * quantity - returnAmount).toFixed(2))
+  const totalCostAmount = Number((costAmount * netQuantity).toFixed(2))
   await accountingService.updateInventoryAccountingEntry({
     id: accountingEntry.id,
     patch: {
-      quantity,
+      quantity: netQuantity,
       sell_price_amount: sellPriceAmount,
       cost_amount: costAmount,
+      return_quantity: Number(returnedQuantity.toFixed(3)),
+      return_amount: Number(returnAmount.toFixed(2)),
       total_sell_amount: totalSellAmount,
       total_cost_amount: totalCostAmount,
       gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
@@ -832,9 +1101,57 @@ const openDeleteInvoiceItem = (id: number) => {
 
 const onDeleteInvoiceItem = async () => {
   if (!selectedInvoiceItemId.value) return
+  if (!authStore.tenantId) return
+  const row = invoiceStore.invoiceItems.find((item) => item.id === selectedInvoiceItemId.value)
+  if (!row) return
+
+  const netQuantity = Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
+  let stockIdToUpdate: number | null = null
+  let previousAvailable = 0
+
+  if (row.inventory_item_id && netQuantity > 0) {
+    const stockResult = await inventoryService.listInventoryStocks({
+      tenant_id: authStore.tenantId,
+      filters: { inventory_item_id: row.inventory_item_id },
+      operators: { inventory_item_id: 'eq' },
+      page: 1,
+      page_size: 1,
+    })
+    if (!stockResult.success || !stockResult.data?.data.length) {
+      showWarningDialog(stockResult.error ?? 'Failed to load stock for delete rollback.')
+      return
+    }
+    const stock = stockResult.data.data[0]
+    if (!stock) {
+      showWarningDialog('Stock record is missing for this invoice item.')
+      return
+    }
+    stockIdToUpdate = stock.id
+    previousAvailable = Number(stock.available_quantity ?? 0)
+  }
+
   const accountingEntry = await findAccountingEntryByInvoiceItemId(selectedInvoiceItemId.value)
   const result = await invoiceStore.deleteInvoiceItem({ id: selectedInvoiceItemId.value })
   if (result.success) {
+    if (stockIdToUpdate != null && netQuantity > 0) {
+      const nextAvailable = previousAvailable + netQuantity
+      const updateStockResult = await inventoryStore.updateInventoryStock({
+        id: stockIdToUpdate,
+        patch: { available_quantity: nextAvailable },
+      })
+      if (updateStockResult.success && row.inventory_item_id) {
+        await inventoryStore.createInventoryMovement({
+          inventory_item_id: row.inventory_item_id,
+          type: 'adjustment',
+          quantity: netQuantity,
+          previous_quantity: previousAvailable,
+          new_quantity: nextAvailable,
+          note: `Invoice item deleted from #${invoice.value?.invoice_no ?? '-'}`,
+          created_by: authStore.user?.id ?? null,
+        })
+      }
+    }
+
     if (accountingEntry) {
       await accountingService.deleteInventoryAccountingEntry({ id: accountingEntry.id })
     }
@@ -847,13 +1164,25 @@ const onDeleteInvoiceItem = async () => {
 
 const syncInvoiceSellTotal = async () => {
   if (!invoice.value) return
-  const nextTotal = Number(totalSellAmount.value.toFixed(2))
-  await invoiceStore.updateInvoice({
+  const nextSubtotal = Number(totalSellAmount.value.toFixed(2))
+  const discountAmount = Number(invoice.value.discount_amount ?? 0)
+  const nextTotal = Number(Math.max(0, nextSubtotal - discountAmount).toFixed(2))
+  const updateResult = await invoiceStore.updateInvoice({
     id: invoice.value.id,
     patch: {
-      subtotal_amount: nextTotal,
+      subtotal_amount: nextSubtotal,
       total_amount: nextTotal,
     },
+  })
+  if (!updateResult.success) return
+  await invoiceStore.recomputeInvoicePaymentStatus(invoice.value.id)
+  if (!authStore.tenantId) return
+  await invoiceStore.fetchInvoices({
+    tenant_id: authStore.tenantId,
+    filters: { id: invoice.value.id },
+    operators: { id: 'eq' },
+    page: 1,
+    page_size: 1,
   })
 }
 
@@ -870,6 +1199,13 @@ watch(searchDialogOpen, (open) => {
     resetSearchDialogState()
   }
 })
+
+watch(
+  [returnNormalQtyInput, returnOpenBoxQtyInput, selectedReturnInvoiceItem],
+  () => {
+    returnAmountInput.value = getDefaultReturnAmount()
+  },
+)
 
 onMounted(load)
 </script>

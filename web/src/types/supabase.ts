@@ -517,6 +517,8 @@ export type Database = {
           note: string | null
           product_id: number | null
           quantity: number
+          return_amount: number
+          return_quantity: number
           sell_price_amount: number
           shipment_id: number | null
           shipment_item_id: number | null
@@ -539,6 +541,8 @@ export type Database = {
           note?: string | null
           product_id?: number | null
           quantity: number
+          return_amount?: number
+          return_quantity?: number
           sell_price_amount?: number
           shipment_id?: number | null
           shipment_item_id?: number | null
@@ -561,6 +565,8 @@ export type Database = {
           note?: string | null
           product_id?: number | null
           quantity?: number
+          return_amount?: number
+          return_quantity?: number
           sell_price_amount?: number
           shipment_id?: number | null
           shipment_item_id?: number | null
@@ -743,6 +749,7 @@ export type Database = {
           expired_quantity: number
           id: number
           inventory_item_id: number
+          open_box_quantity: number
           reserved_quantity: number
           stolen_quantity: number
           updated_at: string
@@ -754,6 +761,7 @@ export type Database = {
           expired_quantity?: number
           id?: number
           inventory_item_id: number
+          open_box_quantity?: number
           reserved_quantity?: number
           stolen_quantity?: number
           updated_at?: string
@@ -765,6 +773,7 @@ export type Database = {
           expired_quantity?: number
           id?: number
           inventory_item_id?: number
+          open_box_quantity?: number
           reserved_quantity?: number
           stolen_quantity?: number
           updated_at?: string
@@ -1000,6 +1009,9 @@ export type Database = {
           product_code_snapshot: string | null
           product_id: number | null
           quantity: number
+          return_amount: number
+          return_normal_quantity: number
+          return_open_box_quantity: number
           sell_price_amount: number
           shipment_id: number | null
           source_item_id: number
@@ -1021,6 +1033,9 @@ export type Database = {
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity: number
+          return_amount?: number
+          return_normal_quantity?: number
+          return_open_box_quantity?: number
           sell_price_amount?: number
           shipment_id?: number | null
           source_item_id: number
@@ -1042,6 +1057,9 @@ export type Database = {
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity?: number
+          return_amount?: number
+          return_normal_quantity?: number
+          return_open_box_quantity?: number
           sell_price_amount?: number
           shipment_id?: number | null
           source_item_id?: number

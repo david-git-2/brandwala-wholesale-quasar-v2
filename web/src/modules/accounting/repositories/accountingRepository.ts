@@ -54,6 +54,8 @@ const INVENTORY_ACCOUNTING_ENTRY_FIELDS = [
   'shipment_item_id',
   'product_id',
   'quantity',
+  'return_quantity',
+  'return_amount',
   'cost_amount',
   'sell_price_amount',
   'total_cost_amount',

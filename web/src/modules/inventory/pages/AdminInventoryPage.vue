@@ -278,6 +278,7 @@ const onSaveItem = async (
     damaged_quantity: 0,
     stolen_quantity: 0,
     expired_quantity: 0,
+    open_box_quantity: 0,
   })
 
   if (!stockResult.success) {
@@ -288,7 +289,7 @@ const onSaveItem = async (
 
 const onSaveQuantity = async (payload: {
   item: InventoryItemWithStock
-  field: 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired'
+  field: 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired' | 'open_box'
   value: number
 }) => {
   const { item, field, value } = payload
@@ -299,6 +300,7 @@ const onSaveQuantity = async (payload: {
     damaged_quantity: item.quantities.damaged,
     stolen_quantity: item.quantities.stolen,
     expired_quantity: item.quantities.expired,
+    open_box_quantity: item.quantities.open_box,
   }
 
   if (field === 'available') baseQuantities.available_quantity = value
@@ -306,6 +308,7 @@ const onSaveQuantity = async (payload: {
   if (field === 'damaged') baseQuantities.damaged_quantity = value
   if (field === 'stolen') baseQuantities.stolen_quantity = value
   if (field === 'expired') baseQuantities.expired_quantity = value
+  if (field === 'open_box') baseQuantities.open_box_quantity = value
 
   if (!item.stock) {
     const createResult = await inventoryStore.createInventoryStock({

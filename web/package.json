@@ -17,6 +17,7 @@
   "dependencies": {
     "@quasar/extras": "^1.16.4",
     "@supabase/supabase-js": "^2.101.0",
+    "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
     "pinia": "^3.0.1",

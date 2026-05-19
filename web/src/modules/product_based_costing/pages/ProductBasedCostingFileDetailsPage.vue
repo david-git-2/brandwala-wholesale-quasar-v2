@@ -124,6 +124,12 @@
                     </q-item-section>
                     <q-item-section>PDF</q-item-section>
                   </q-item>
+                  <q-item clickable v-close-popup @click="downloadExcel">
+                    <q-item-section avatar>
+                      <q-icon name="table_view" />
+                    </q-item-section>
+                    <q-item-section>Download Excel</q-item-section>
+                  </q-item>
                   <q-item
                     clickable
                     v-close-popup
@@ -572,6 +578,82 @@ const openPrintPage = () => {
     params: { id: fileId.value },
   })
   window.open(printRoute.href, '_blank', 'noopener')
+}
+
+const safeNamePart = (value: string) =>
+  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '')
+
+const downloadExcel = async () => {
+  if (!store.item) {
+    $q.notify({ type: 'warning', message: 'No costing file selected.' })
+    return
+  }
+
+  try {
+    const ExcelJS = await import('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Costing Items')
+
+    worksheet.columns = [
+      { header: 'Name', key: 'name', width: 34 },
+      { header: 'Brand', key: 'brand', width: 22 },
+      { header: 'Barcode', key: 'barcode', width: 22 },
+      { header: 'Product Code', key: 'product_code', width: 22 },
+      { header: 'Product ID', key: 'product_id', width: 12 },
+      { header: 'Qty', key: 'quantity', width: 10 },
+      { header: 'Price GBP', key: 'price_gbp', width: 12 },
+      { header: 'Offer Price', key: 'offer_price', width: 12 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Note', key: 'note', width: 40 },
+    ]
+
+    const headerRow = worksheet.getRow(1)
+    headerRow.font = { bold: true }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    headerRow.height = 22
+
+    const items = store.costingItems ?? []
+    for (const item of items) {
+      const row = worksheet.addRow({
+        name: item.name ?? '',
+        brand: item.brand ?? '',
+        barcode: item.barcode ?? '',
+        product_code: item.product_code ?? '',
+        product_id: item.product_id ?? '',
+        quantity: item.quantity ?? '',
+        price_gbp: item.price_gbp ?? '',
+        offer_price: item.offer_price ?? '',
+        status: item.status ?? '',
+        note: item.note ?? '',
+      })
+
+      row.height = 24
+      row.alignment = { vertical: 'middle', wrapText: true }
+    }
+
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+    worksheet.autoFilter = {
+      from: 'A1',
+      to: 'J1',
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    const fileTitle = safeNamePart(store.item.name ?? `costing_file_${store.item.id}`)
+    anchor.href = url
+    anchor.download = `${fileTitle || `costing_file_${store.item.id}`}.xlsx`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: error instanceof Error ? error.message : 'Failed to generate Excel.',
+    })
+  }
 }
 
 const openEditDialog = (item: ProductBasedCostingItem) => {

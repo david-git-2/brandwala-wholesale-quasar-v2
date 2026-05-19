@@ -67,7 +67,7 @@
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
-                  fit="cover"
+                  fit="contain"
                   class="costing-page__image"
                 />
                 <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -190,7 +190,7 @@
                   <q-img
                     v-if="props.row.imageUrl"
                     :src="props.row.imageUrl"
-                    fit="cover"
+                    fit="contain"
                     class="costing-page__image"
                   />
                   <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -310,7 +310,7 @@
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
-                  fit="cover"
+                  fit="contain"
                   class="costing-page__image"
                 />
                 <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -489,7 +489,7 @@
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
-                  fit="cover"
+                  fit="contain"
                   class="costing-page__image"
                 />
                 <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -1480,14 +1480,23 @@ watch(
 
 .costing-page__image-table-cell {
   width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .costing-page__image {
+  display: block;
   width: 96px;
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--bw-theme-surface);
+}
+
+.costing-page__image :deep(.q-img__image) {
+  object-fit: contain !important;
+  object-position: center;
 }
 
 .costing-page__image--placeholder {

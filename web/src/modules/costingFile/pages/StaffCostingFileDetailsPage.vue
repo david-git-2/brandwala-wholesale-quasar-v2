@@ -2,14 +2,50 @@
   <q-page class="bw-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section class="costing-page__header">
+      <section class="costing-page__header floating-surface hero-surface shadow-1">
         <div class="costing-page__heading">
           <div class="text-overline">Costing File</div>
-          <h1 class="text-h5 q-my-none">Costing file details</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
+          <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
+          <p class="text-caption text-grey-8 q-mt-xs q-mb-none">{{ subtitle }}</p>
         </div>
 
         <div class="costing-page__toolbar">
+          <q-btn
+            outline
+            color="primary"
+            icon="view_column"
+            label="Columns"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+          >
+            <q-menu>
+              <q-list style="min-width: 240px">
+                <q-item>
+                  <q-item-section>
+                    <div class="text-subtitle2">Show Columns</div>
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-checkbox
+                      v-model="allSelectableColumnsSelected"
+                      label="Select / Deselect All"
+                    />
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-option-group
+                      v-model="visibleColumns"
+                      type="checkbox"
+                      :options="columnSelectorOptions"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
           <q-chip
             v-if="selectedFile"
             dense
@@ -23,6 +59,9 @@
             outline
             color="primary"
             label="Add item"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
             :disable="!canEditFile"
             @click="addItemDialogOpen = true"
           />
@@ -30,6 +69,9 @@
             color="primary"
             unelevated
             label="Send to review"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
             :disable="!canSendToReview"
             :loading="savingStatus"
             @click="handleSendToReview"
@@ -53,7 +95,7 @@
             bordered
             row-key="id"
             :rows="productRows"
-            :columns="productColumns"
+            :columns="visibleProductColumns"
             :pagination="{ rowsPerPage: 0 }"
             hide-bottom
             class="costing-page__table"
@@ -70,7 +112,7 @@
                   <q-img
                     v-if="props.row.imageUrl"
                     :src="toExternalUrl(props.row.imageUrl)"
-                    fit="cover"
+                    fit="contain"
                     class="costing-page__image"
                   />
                   <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -143,7 +185,7 @@
             <template #bottom-row>
               <q-tr class="costing-page__totals-row">
                 <q-td
-                  v-for="column in productColumns"
+                  v-for="column in visibleProductColumns"
                   :key="column.name"
                   class="costing-page__totals-cell"
                   :class="getProductTotalsCellClass(column.name)"
@@ -274,6 +316,26 @@ const productColumns = [
   { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
   { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
+
+const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name'] as const
+const selectableColumns = productColumns
+  .map((column) => column.name)
+  .filter((name) => !alwaysVisibleColumns.includes(name as (typeof alwaysVisibleColumns)[number]))
+const visibleColumns = ref<string[]>([...alwaysVisibleColumns, ...selectableColumns])
+const columnSelectorOptions = productColumns
+  .filter((column) => selectableColumns.includes(column.name))
+  .map((column) => ({ label: column.label, value: column.name }))
+const allSelectableColumnsSelected = computed({
+  get: () => selectableColumns.every((name) => visibleColumns.value.includes(name)),
+  set: (checked: boolean) => {
+    visibleColumns.value = checked
+      ? [...alwaysVisibleColumns, ...selectableColumns]
+      : [...alwaysVisibleColumns]
+  },
+})
+const visibleProductColumns = computed(() =>
+  productColumns.filter((column) => visibleColumns.value.includes(column.name)),
+)
 
 const subtitle = computed(() =>
   selectedFile.value
@@ -482,11 +544,33 @@ watch(editDialogOpen, (isOpen) => {
   gap: 1.25rem;
 }
 
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .costing-page__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.9rem 1rem;
 }
 
 .costing-page__heading {
@@ -597,14 +681,23 @@ watch(editDialogOpen, (isOpen) => {
 
 .costing-page__image-cell {
   width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .costing-page__image {
+  display: block;
   width: 96px;
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--bw-theme-surface);
+}
+
+.costing-page__image :deep(.q-img__image) {
+  object-fit: contain !important;
+  object-position: center;
 }
 
 .costing-page__image--placeholder {

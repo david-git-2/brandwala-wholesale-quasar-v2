@@ -2,49 +2,110 @@
   <q-page class="bw-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section class="costing-page__header">
+      <section class="costing-page__header floating-surface hero-surface shadow-1">
         <div class="costing-page__heading">
-          <h1 class="text-h5 q-my-none">Costing file details</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
+          <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
+          <p class="text-caption text-grey-8 q-mt-xs q-mb-none">{{ subtitle }}</p>
         </div>
 
         <div class="costing-page__toolbar">
+          <q-chip
+            v-if="selectedFile"
+            dense
+            square
+            clickable
+            :disable="savingStatus"
+            :style="statusChipStyle(statusForm)"
+            class="costing-file-status-chip q-px-md q-py-sm"
+          >
+            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(statusForm) }" />
+            {{ statusForm }}
+            <q-menu>
+              <q-list dense style="min-width: 180px">
+                <q-item
+                  v-for="option in fileStatuses"
+                  :key="option"
+                  clickable
+                  v-close-popup
+                  @click="handleSaveStatus(option)"
+                >
+                  <q-item-section>{{ option }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-chip>
 
           <q-btn
             outline
             color="primary"
+            icon="view_column"
+            label="Columns"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+          >
+            <q-menu>
+              <q-list style="min-width: 240px">
+                <q-item>
+                  <q-item-section>
+                    <div class="text-subtitle2">Show Columns</div>
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-checkbox
+                      v-model="allSelectableProductColumnsSelected"
+                      label="Select / Deselect All"
+                    />
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-option-group
+                      v-model="visibleProductColumnNames"
+                      type="checkbox"
+                      :options="productColumnSelectorOptions"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+
+          <q-btn
+            color="primary"
             label="Add item"
-            :disable="
-              !selectedFile ||
-              (selectedFile.status !== 'draft' && selectedFile.status !== 'customer_submitted')
-            "
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            :disable="!selectedFile"
             @click="addItemDialogOpen = true"
+          />
+          <q-btn
+            v-if="selectedFile?.status === 'offered'"
+            outline
+            color="primary"
+            icon="visibility"
+            label="Preview"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            @click="openPreview"
           />
           <q-btn
             outline
             color="primary"
             icon="people"
             label="Manage viewers"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
             :disable="!selectedFile"
             @click="goToViewerManagement"
           />
         </div>
 
       </section>
-      <div class="row justify-end">
-           <q-select
-            v-model="statusForm"
-            :options="fileStatuses"
-            label="File status"
-            outlined
-            dense
-            :disable="!selectedFile || savingStatus"
-            :loading="savingStatus"
-            style="width: 200px;"
-            @update:model-value="handleSaveStatus"
-          />
-        </div>
-
       <section v-if="selectedFile?.status === 'draft'" class="costing-page__draft-state">
         <div class="text-subtitle1">Items not added yet</div>
         <p class="text-body2 text-grey-7 q-mb-none">
@@ -65,7 +126,7 @@
           bordered
           row-key="id"
           :rows="productRows"
-          :columns="productColumns"
+          :columns="visibleProductColumns"
           :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
@@ -83,7 +144,7 @@
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
-                  fit="cover"
+                  fit="contain"
                   class="costing-page__image"
                 />
                 <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -95,15 +156,20 @@
 
           <template #body-cell-websiteUrl="props">
             <q-td :props="props" class="costing-page__link-cell">
-              <a
+              <q-btn
+                v-if="props.row.websiteUrl"
+                flat
+                dense
+                no-caps
+                size="sm"
+                color="primary"
+                icon="open_in_new"
+                label="Open link"
+                class="pill-btn slim-btn costing-page__open-link-btn"
                 :href="props.row.websiteUrl"
-                :title="props.row.websiteUrl"
-                class="costing-page__link"
                 target="_blank"
                 rel="noopener noreferrer"
-              >
-                {{ props.row.websiteUrl }}
-              </a>
+              />
             </q-td>
           </template>
 
@@ -297,7 +363,7 @@
           <template #bottom-row>
             <q-tr class="costing-page__totals-row">
               <q-td
-                v-for="column in productColumns"
+                v-for="column in visibleProductColumns"
                 :key="column.name"
                 class="costing-page__totals-cell"
                 :class="getProductTotalsCellClass(column.name)"
@@ -318,50 +384,65 @@
         class="costing-page__pricing-section"
       >
 
-        <div class="costing-page__pricing-grid">
-          <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate less than 10 (per KG)</div>
-            <q-input v-model.number="pricingForm.cargoRate1Kg" type="number" outlined dense class="costing-page__pricing-input" />
-          </div>
-          <div class="costing-page__field">
-            <div class="costing-page__field-label">Cargo rate greater than 10 (per KG)</div>
-            <q-input v-model.number="pricingForm.cargoRate2Kg" type="number" outlined dense class="costing-page__pricing-input" />
-          </div>
-          <div class="costing-page__field">
-            <div class="costing-page__field-label">Conversion rate</div>
-            <q-input v-model.number="pricingForm.conversionRate" type="number" outlined dense class="costing-page__pricing-input" />
-          </div>
-          <div class="costing-page__field">
-            <div class="costing-page__field-label">Admin profit rate (%)</div>
-            <q-input v-model.number="pricingForm.adminProfitRate" type="number" outlined dense class="costing-page__pricing-input" />
-          </div>
-          <div class="costing-page__field costing-page__field--action">
-            <div class="costing-page__field-label costing-page__field-label--ghost">Action</div>
-            <q-btn
-              color="primary"
-              unelevated
-              label="Save pricing"
-              :loading="savingPricing"
-              :disable="!selectedFile"
-              @click="handleSavePricing"
-            />
-          </div>
-        </div>
-
-        <div class="costing-page__pricing-actions">
-          <q-btn-toggle
-            v-model="reviewTableMode"
-            unelevated
-            no-caps
-            toggle-color="primary"
-            color="white"
-            text-color="primary"
-            :options="[
-              { label: 'Detailed', value: 'detailed' },
-              { label: 'Compact', value: 'compact' },
-            ]"
-          />
-        </div>
+        <q-card flat class="floating-surface shadow-1 q-mb-sm">
+          <q-card-section class="q-py-xs">
+            <div class="row items-end justify-between q-col-gutter-sm">
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.conversionRate"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Conversion rate"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.cargoRate1Kg"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Cargo rate < 10 (per KG)"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.cargoRate2Kg"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Cargo rate > 10 (per KG)"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.adminProfitRate"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Admin profit rate (%)"
+                />
+              </div>
+              <div class="col-12 col-md-2 row justify-end">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  label="Save"
+                  no-caps
+                  size="sm"
+                  class="pill-btn slim-btn rates-save-btn"
+                  :loading="savingPricing"
+                  :disable="!selectedFile"
+                  @click="handleSavePricing"
+                />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
 
           <q-table
             flat
@@ -387,7 +468,7 @@
                 <q-img
                   v-if="props.row.imageUrl"
                   :src="props.row.imageUrl"
-                  fit="cover"
+                  fit="contain"
                   class="costing-page__image"
                 />
                 <div v-else class="costing-page__image costing-page__image--placeholder">
@@ -399,15 +480,20 @@
 
           <template #body-cell-websiteUrl="props">
             <q-td :props="props" class="costing-page__link-cell">
-              <a
+              <q-btn
+                v-if="props.row.websiteUrl"
+                flat
+                dense
+                no-caps
+                size="sm"
+                color="primary"
+                icon="open_in_new"
+                label="Open link"
+                class="pill-btn slim-btn costing-page__open-link-btn"
                 :href="props.row.websiteUrl"
-                :title="props.row.websiteUrl"
-                class="costing-page__link"
                 target="_blank"
                 rel="noopener noreferrer"
-              >
-                {{ props.row.websiteUrl }}
-              </a>
+              />
             </q-td>
           </template>
 
@@ -686,6 +772,17 @@
 
           <template #body-cell-actions="props">
             <q-td :props="props" class="costing-page__actions-cell">
+              <q-btn
+                flat
+                dense
+                color="primary"
+                icon="edit"
+                round
+                aria-label="Edit item"
+                :disable="savingItemId === props.row.id"
+                @click="openEditDialog(props.row.id)"
+              />
+
               <template
                 v-if="
                   selectedFile?.status === 'offered' ||
@@ -833,7 +930,6 @@ const addItemDialogOpen = ref(false)
 const initialLoading = ref(true)
 const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
-const reviewTableMode = ref<'detailed' | 'compact'>('detailed')
 const offerDrafts = reactive<Record<number, number | null>>({})
 const quantityDrafts = reactive<Record<number, number | null>>({})
 const itemFieldDrafts = reactive<Record<string, number | null>>({})
@@ -865,6 +961,41 @@ const fileStatuses = computed<CostingFileStatus[]>(() => {
 const subtitle = computed(() =>
   selectedFile.value ? `${selectedFile.value.name} items and pricing.` : 'Loading costing file details.'
 )
+
+const openPreview = () => {
+  if (!selectedFile.value || selectedFile.value.status !== 'offered') {
+    return
+  }
+
+  const targetRoute = router.resolve({
+    name: 'admin-costing-file-preview-page',
+    params: { id: String(selectedFile.value.id) },
+  })
+
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
+}
+
+const statusChipStyle = (currentStatus: string) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'draft'
+  if (value === 'draft') return { backgroundColor: '#e2e8f0', color: '#334155' }
+  if (value === 'customer_submitted') return { backgroundColor: '#dbeafe', color: '#1e40af' }
+  if (value === 'in_review') return { backgroundColor: '#fef3c7', color: '#92400e' }
+  if (value === 'offered') return { backgroundColor: '#dcfce7', color: '#166534' }
+  if (value === 'po_placed') return { backgroundColor: '#ede9fe', color: '#5b21b6' }
+  if (value === 'cancelled') return { backgroundColor: '#fee2e2', color: '#991b1b' }
+  return { backgroundColor: '#e2e8f0', color: '#334155' }
+}
+
+const statusDotColor = (currentStatus: string) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'draft'
+  if (value === 'draft') return '#64748b'
+  if (value === 'customer_submitted') return '#2563eb'
+  if (value === 'in_review') return '#d97706'
+  if (value === 'offered') return '#16a34a'
+  if (value === 'po_placed') return '#7c3aed'
+  if (value === 'cancelled') return '#dc2626'
+  return '#64748b'
+}
 
 const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
@@ -936,6 +1067,31 @@ const productColumns = [
     headerStyle: 'width: 72px; min-width: 72px;',
   },
 ]
+
+const alwaysVisibleProductColumns = ['actions', 'sl', 'image', 'name'] as const
+const selectableProductColumnNames = productColumns
+  .map((column) => column.name)
+  .filter(
+    (name) => !alwaysVisibleProductColumns.includes(name as (typeof alwaysVisibleProductColumns)[number]),
+  )
+const visibleProductColumnNames = ref<string[]>([
+  ...alwaysVisibleProductColumns,
+  ...selectableProductColumnNames,
+])
+const productColumnSelectorOptions = productColumns
+  .filter((column) => selectableProductColumnNames.includes(column.name))
+  .map((column) => ({ label: column.label, value: column.name }))
+const allSelectableProductColumnsSelected = computed({
+  get: () => selectableProductColumnNames.every((name) => visibleProductColumnNames.value.includes(name)),
+  set: (checked: boolean) => {
+    visibleProductColumnNames.value = checked
+      ? [...alwaysVisibleProductColumns, ...selectableProductColumnNames]
+      : [...alwaysVisibleProductColumns]
+  },
+})
+const visibleProductColumns = computed(() =>
+  productColumns.filter((column) => visibleProductColumnNames.value.includes(column.name)),
+)
 
 const reviewRows = computed(() =>
   buildAdminReviewRows(costingFileItems.value, {
@@ -1127,26 +1283,8 @@ const reviewColumns = [
   { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
 ]
 
-const compactReviewColumnNames = [
-  'sl',
-  'image',
-  'name',
-  'itemType',
-  'priceInWebGbp',
-  'status',
-  'costingPriceGbp',
-  'costingPriceBdt',
-  'offerPriceBdt',
-  'profitRate',
-  'profitAmount',
-  'actions',
-] as const
-
 const visibleReviewColumns = computed(() => {
-  const columns =
-    reviewTableMode.value === 'compact'
-      ? reviewColumns.filter((column) => compactReviewColumnNames.includes(column.name as (typeof compactReviewColumnNames)[number]))
-      : reviewColumns
+  const columns = reviewColumns
 
   if (selectedFile.value?.status === 'in_review') {
     return columns
@@ -1449,10 +1587,7 @@ const handleCreateItem = async (payload: {
   priceInWebGbp: number
   deliveryPriceGbp: number
 }) => {
-  if (
-    !selectedFile.value ||
-    (selectedFile.value.status !== 'draft' && selectedFile.value.status !== 'customer_submitted')
-  ) {
+  if (!selectedFile.value) {
     return
   }
 
@@ -1596,6 +1731,51 @@ onMounted(async () => {
   gap: 1.25rem;
 }
 
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.rates-save-btn {
+  min-width: 90px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
 .costing-page > * {
   min-width: 0;
 }
@@ -1605,6 +1785,7 @@ onMounted(async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.9rem 1rem;
 }
 
 .costing-page__heading {
@@ -1626,16 +1807,14 @@ onMounted(async () => {
 
 .costing-page__draft-state {
   display: grid;
-  gap: 0.5rem;
-  padding: 1rem 0;
-  border-top: 1px solid var(--bw-theme-border);
+  gap: 0.35rem;
+  padding: 0.5rem 0;
 }
 
 .costing-page__pricing-section {
   display: grid;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--bw-theme-border);
+  gap: 0.6rem;
+  padding-top: 0.5rem;
 }
 
 .costing-page__pricing-grid {
@@ -1680,7 +1859,36 @@ onMounted(async () => {
 .costing-page__table {
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
+  height: clamp(400px, calc(100vh - 300px), 82vh);
+  background: var(--bw-theme-base, #eef2f5);
+}
+
+.costing-page__table :deep(.q-table__middle) {
+  height: 100%;
+  max-height: 100% !important;
+  overflow: auto;
+}
+
+.costing-page__table :deep(.q-table) {
+  min-width: max-content;
+  width: max-content;
+}
+
+.costing-page__table :deep(table) {
+  table-layout: fixed;
+  min-width: max-content;
+  width: max-content;
+}
+
+.costing-page__table :deep(.q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.costing-page__table :deep(.q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 1;
 }
 
 .costing-page__table :deep(.q-table th),
@@ -1819,14 +2027,23 @@ onMounted(async () => {
 
 .costing-page__image-cell {
   width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .costing-page__image {
+  display: block;
   width: 96px;
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--bw-theme-surface);
+}
+
+.costing-page__image :deep(.q-img__image) {
+  object-fit: contain !important;
+  object-position: center;
 }
 
 .costing-page__image--placeholder {
@@ -1853,6 +2070,10 @@ onMounted(async () => {
   white-space: nowrap;
   color: var(--bw-theme-primary);
   text-decoration: none;
+}
+
+.costing-page__open-link-btn {
+  white-space: nowrap;
 }
 
 .costing-page__name-cell {
@@ -2002,6 +2223,21 @@ onMounted(async () => {
 .costing-page :deep(th.costing-page__tone-amber),
 .costing-page :deep(th.costing-page__tone-emerald) {
   font-weight: 700;
+}
+
+.costing-page :deep(th.costing-page__tone-indigo) {
+  background: #e6f4ea !important;
+  color: #1f6a43 !important;
+}
+
+.costing-page :deep(th.costing-page__tone-amber) {
+  background: #fff8e1 !important;
+  color: #7a5313 !important;
+}
+
+.costing-page :deep(th.costing-page__tone-emerald) {
+  background: #f3e5f5 !important;
+  color: #6b2f7a !important;
 }
 
 .costing-page__totals-row {

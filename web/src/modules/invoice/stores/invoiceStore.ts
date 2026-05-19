@@ -3,6 +3,7 @@ import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback
 import { invoiceService } from '../services/invoiceService'
 import type {
   AddPaymentAllocationInput,
+  ApplyInvoiceItemReturnInput,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -288,6 +289,38 @@ export const useInvoiceStore = defineStore('invoice', {
         }
         this.invoiceItems = this.invoiceItems.filter((row) => row.id !== payload.id)
         showSuccessNotification('Invoice item deleted successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async recomputeInvoicePaymentStatus(invoiceId: number) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.recomputeInvoicePaymentStatus(invoiceId)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to recompute invoice payment status.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async applyInvoiceItemReturn(payload: ApplyInvoiceItemReturnInput) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.applyInvoiceItemReturn(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to apply invoice item return.'
+          handleApiFailure(result, this.error)
+          return result
+        }
         return result
       } finally {
         this.saving = false

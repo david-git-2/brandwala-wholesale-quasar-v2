@@ -86,6 +86,17 @@
               v-if="shipmentStore.shipmentItems.length"
               clickable
               v-close-popup
+              @click="downloadShipmentExcel"
+            >
+              <q-item-section avatar>
+                <q-icon name="table_view" />
+              </q-item-section>
+              <q-item-section>Download Excel</q-item-section>
+            </q-item>
+            <q-item
+              v-if="shipmentStore.shipmentItems.length"
+              clickable
+              v-close-popup
               :disable="shipmentStore.saving"
               @click="onResetTags"
             >
@@ -1631,6 +1642,106 @@ const onResetTags = () => {
       })
     })()
   })
+}
+
+const safeNamePart = (value: string | null | undefined) =>
+  (value ?? '')
+    .trim()
+    .replace(/[^a-zA-Z0-9-_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+const downloadShipmentExcel = async () => {
+  if (!shipmentStore.shipmentItems.length) {
+    $q.notify({ type: 'warning', message: 'No shipment items to export.' })
+    return
+  }
+
+  const ExcelJS = await import('exceljs')
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Shipment Items')
+
+  const headers = [
+    'SL',
+    'Name',
+    'Product ID',
+    'Barcode',
+    'Product Code',
+    'Method',
+    'Tag',
+    'Price GBP',
+    'Cost BDT',
+    'Quantity',
+    'Received Qty',
+    'Damaged Qty',
+    'Stolen Qty',
+    'Product Weight',
+    'Package Weight',
+  ]
+
+  sheet.addRow(headers)
+
+  sheet.getRow(1).font = { bold: true }
+  sheet.views = [{ state: 'frozen', ySplit: 1 }]
+  sheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: headers.length },
+  }
+
+  shipmentStore.shipmentItems.forEach((item, index) => {
+    sheet.addRow([
+      index + 1,
+      item.name ?? '',
+      item.product_id ?? '',
+      item.barcode ?? '',
+      item.product_code ?? '',
+      item.method ?? '',
+      getTagLabel(item.marker_tag ?? null),
+      Number(item.price_gbp ?? 0),
+      Number(calculateItemCostBdt(item) ?? 0),
+      Number(item.quantity ?? 0),
+      Number(item.received_quantity ?? 0),
+      Number(item.damaged_quantity ?? 0),
+      Number(item.stolen_quantity ?? 0),
+      Number(item.product_weight ?? 0),
+      Number(item.package_weight ?? 0),
+    ])
+  })
+
+  sheet.columns = [
+    { width: 8 },
+    { width: 40 },
+    { width: 14 },
+    { width: 20 },
+    { width: 18 },
+    { width: 12 },
+    { width: 16 },
+    { width: 12 },
+    { width: 12 },
+    { width: 10 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 14 },
+    { width: 14 },
+  ]
+
+  const numberColumns = [8, 9, 10, 11, 12, 13, 14, 15]
+  numberColumns.forEach((columnIndex) => {
+    sheet.getColumn(columnIndex).numFmt = '#,##0.00'
+  })
+
+  const shipmentCode = safeNamePart(shipmentStore.selectedShipment?.name ?? '') || 'shipment'
+  const shipmentIdValue = shipmentStore.selectedShipment?.id ?? shipmentId.value
+  const filename = `shipment_${shipmentIdValue}_${shipmentCode}.xlsx`
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 onMounted(async () => {

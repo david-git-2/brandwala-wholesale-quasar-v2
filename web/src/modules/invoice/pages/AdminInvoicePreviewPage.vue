@@ -30,9 +30,9 @@
           <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
             <td>{{ index + 1 }}</td>
             <td>{{ row.name_snapshot }}</td>
-            <td class="text-right">{{ row.quantity }}</td>
+            <td class="text-right">{{ getNetQuantity(row) }}</td>
             <td class="text-right">{{ formatAmount(row.sell_price_amount) }}</td>
-            <td class="text-right">{{ formatAmount(Number(row.sell_price_amount) * Number(row.quantity)) }}</td>
+            <td class="text-right">{{ formatAmount(getNetSellAmount(row)) }}</td>
           </tr>
         </tbody>
       </q-markup-table>
@@ -62,10 +62,16 @@ const invoiceStore = useInvoiceStore()
 
 const invoiceId = computed(() => Number(route.params.invoiceId))
 const invoice = computed(() => invoiceStore.invoices.find((row) => row.id === invoiceId.value) ?? null)
+const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0)
+const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
+const getNetSellAmount = (row: { quantity: number; sell_price_amount: number; return_amount?: number }) =>
+  Math.max(0, Number(row.quantity ?? 0) * Number(row.sell_price_amount ?? 0) - Number(row.return_amount ?? 0))
 
 const totalSell = computed(() =>
   invoiceStore.invoiceItems.reduce(
-    (sum, row) => sum + Number(row.sell_price_amount ?? 0) * Number(row.quantity ?? 0),
+    (sum, row) => sum + getNetSellAmount(row),
     0,
   ),
 )

@@ -1,40 +1,102 @@
 <template>
-  <q-page class="bw-page">
+  <q-page class="q-pa-md costing-list-page">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-overline">Operations</div>
-          <h1 class="text-h5 q-my-none">Costing files</h1>
-        </div>
-        <div class="col-auto">
-          <q-btn
-            color="primary"
-            unelevated
-            label="Create costing file"
-            :disable="!tenantStore.selectedTenant?.id"
-            @click="openCreateDialog"
-          />
-        </div>
-      </section>
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Costing files</div>
+              <div class="text-caption text-grey-8">Manage costing files and open details</div>
+            </div>
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                label="Create costing file"
+                :disable="!tenantStore.selectedTenant?.id"
+                @click="openCreateDialog"
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
-      <section class="row items-end q-col-gutter-md">
-        <div class="col-12 col-sm-5 col-md-4">
-          <q-select
-            v-model="selectedCustomerGroupId"
-            label="Customer group"
+      <div class="row items-center justify-between q-mb-sm">
+        <div class="row items-center q-gutter-sm toolbar-left">
+          <q-btn
+            v-if="!showSearchInput"
+            flat
+            round
+            dense
+            icon="search"
+            aria-label="Show search"
+            @click="showSearchInput = true"
+          />
+
+          <q-input
+            v-else
+            v-model="searchText"
             outlined
             dense
-            emit-value
-            map-options
-            :options="customerGroupFilterOptions"
-            @update:model-value="handleCustomerGroupFilterChange"
-          />
+            class="soft-input toolbar-search"
+            label="Search"
+            clearable
+            autofocus
+            @keyup.enter="loadFiles"
+            @clear="loadFiles"
+          >
+            <template #prepend>
+              <q-icon name="search" />
+            </template>
+            <template #append>
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                aria-label="Hide search"
+                @click="
+                  () => {
+                    searchText = ''
+                    showSearchInput = false
+                    loadFiles()
+                  }
+                "
+              />
+            </template>
+          </q-input>
+
+          <q-btn
+            flat
+            round
+            dense
+            icon="filter_alt"
+            aria-label="Filters"
+            @click="filterDrawerOpen = true"
+          >
+            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+              {{ activeFilterCount }}
+            </q-badge>
+          </q-btn>
         </div>
-        <div class="col-auto text-body2 text-grey-7">
-          Showing {{ files.length }} of {{ totalItems }} files
-        </div>
-      </section>
+
+        <q-btn-toggle
+          v-model="viewMode"
+          dense
+          unelevated
+          no-caps
+          toggle-color="primary"
+          color="white"
+          text-color="primary"
+          :options="[
+            { icon: 'table_rows', value: 'table' },
+            { icon: 'grid_view', value: 'card' },
+          ]"
+        />
+      </div>
 
       <q-banner v-if="error" class="bw-status-banner text-white" rounded>
         {{ error }}
@@ -47,14 +109,68 @@
       </q-card>
 
       <template v-if="files.length">
-        <section class="costing-page__grid">
+        <q-card v-if="viewMode === 'table'" flat class="floating-surface shadow-1">
+          <q-table
+            flat
+            :rows="filteredFiles"
+            :columns="tableColumns"
+            row-key="id"
+            :loading="loadingFiles"
+            hide-pagination
+            class="costing-list-table"
+          >
+            <template #body="slotProps">
+              <q-tr
+                :props="slotProps"
+                class="cursor-pointer"
+                :style="statusSurfaceStyle(slotProps.row.status)"
+                @click="openFile(slotProps.row.id)"
+              >
+                <q-td key="id" :props="slotProps">#{{ slotProps.row.id }}</q-td>
+                <q-td key="name" :props="slotProps">{{ slotProps.row.name ?? '-' }}</q-td>
+                <q-td key="market" :props="slotProps">{{ slotProps.row.market ?? 'Not set' }}</q-td>
+                <q-td key="group" :props="slotProps">{{ customerGroupNameById(slotProps.row.customer_group_id) }}</q-td>
+                <q-td key="status" :props="slotProps">
+                  <q-chip
+                    dense
+                    square
+                    :style="statusChipStyle(slotProps.row.status)"
+                    class="costing-status-chip"
+                  >
+                    <span class="status-dot" :style="{ backgroundColor: statusDotColor(slotProps.row.status) }" />
+                    {{ slotProps.row.status ?? 'pending' }}
+                  </q-chip>
+                </q-td>
+                <q-td key="actions" :props="slotProps" class="text-right">
+                  <q-btn flat round dense icon="more_vert" aria-label="Costing file actions" @click.stop>
+                    <q-menu auto-close>
+                      <q-list dense style="min-width: 120px">
+                        <q-item clickable v-ripple @click="openEditDialog(slotProps.row.id)">
+                          <q-item-section>Edit</q-item-section>
+                        </q-item>
+                        <q-item clickable v-ripple @click="openDeleteDialog(slotProps.row.id)">
+                          <q-item-section class="text-negative">Delete</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card>
+
+        <section v-else class="costing-page__grid">
           <q-card
-            v-for="file in files"
+            v-for="file in filteredFiles"
             :key="file.id"
             flat
             bordered
             class="costing-page__card cursor-pointer"
-            :style="{ '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id) }"
+            :style="{
+              '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id),
+              ...statusSurfaceStyle(file.status),
+            }"
             @click="openFile(file.id)"
           >
             <q-card-section>
@@ -62,11 +178,11 @@
                 <q-chip
                   dense
                   square
-                  :color="statusChipColor(file.status)"
-                  text-color="white"
-                  class="costing-page__status-chip"
+                  :style="statusChipStyle(file.status)"
+                  class="costing-status-chip"
                 >
-                  {{ formatStatusLabel(file.status) }}
+                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(file.status) }" />
+                  {{ file.status ?? 'pending' }}
                 </q-chip>
               </div>
               <div class="text-overline q-mt-xs">Costing file #{{ file.id }}</div>
@@ -80,8 +196,18 @@
               </div>
             </q-card-section>
             <q-card-actions align="right">
-              <q-btn flat round dense icon="edit" aria-label="Edit costing file" @click.stop="openEditDialog(file.id)" />
-              <q-btn flat round dense color="negative" icon="delete" aria-label="Delete costing file" @click.stop="openDeleteDialog(file.id)" />
+              <q-btn flat round dense icon="more_vert" aria-label="Costing file actions" @click.stop>
+                <q-menu auto-close>
+                  <q-list dense style="min-width: 120px">
+                    <q-item clickable v-ripple @click="openEditDialog(file.id)">
+                      <q-item-section>Edit</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple @click="openDeleteDialog(file.id)">
+                      <q-item-section class="text-negative">Delete</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </q-card-actions>
           </q-card>
         </section>
@@ -189,6 +315,34 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+
+      <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+        <q-select
+          v-model="selectedCustomerGroupId"
+          label="Customer group"
+          outlined
+          dense
+          class="soft-input q-mb-md"
+          emit-value
+          map-options
+          :options="customerGroupFilterOptions"
+          @update:model-value="handleCustomerGroupFilterChange"
+        />
+        <div class="row q-gutter-sm justify-end">
+          <q-btn
+            flat
+            no-caps
+            label="Reset"
+            @click="
+              () => {
+                selectedCustomerGroupId = null
+                page = 1
+                loadFiles()
+              }
+            "
+          />
+        </div>
+      </FilterSidebar>
     </section>
   </q-page>
 </template>
@@ -204,6 +358,8 @@ import { customerGroupService } from 'src/modules/tenant/services/customerGroupS
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
 import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
+import { type QTableColumn } from 'quasar'
+import FilterSidebar from 'src/components/FilterSidebar.vue'
 
 const router = useRouter()
 const tenantStore = useTenantStore()
@@ -221,6 +377,40 @@ const editingFileId = ref<number | null>(null)
 const deletingFileId = ref<number | null>(null)
 const page = ref(1)
 const pageSize = 20
+const viewMode = ref<'table' | 'card'>('table')
+const showSearchInput = ref(false)
+const searchText = ref('')
+const filterDrawerOpen = ref(false)
+const tableColumns: QTableColumn[] = [
+  { name: 'id', label: 'ID', field: 'id', align: 'left' },
+  { name: 'name', label: 'Name', field: 'name', align: 'left' },
+  { name: 'market', label: 'Market', field: 'market', align: 'left' },
+  { name: 'group', label: 'Customer group', field: 'customer_group_id', align: 'left' },
+  { name: 'status', label: 'Status', field: 'status', align: 'left' },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
+]
+const activeFilterCount = computed(() => (selectedCustomerGroupId.value == null ? 0 : 1))
+const filteredFiles = computed(() => {
+  const query = searchText.value.trim().toLowerCase()
+  if (!query) {
+    return files.value
+  }
+
+  return files.value.filter((file) => {
+    const idText = String(file.id ?? '')
+    const name = String(file.name ?? '').toLowerCase()
+    const market = String(file.market ?? '').toLowerCase()
+    const status = String(file.status ?? '').toLowerCase()
+    const customerGroup = customerGroupNameById(file.customer_group_id).toLowerCase()
+    return (
+      idText.includes(query) ||
+      name.includes(query) ||
+      market.includes(query) ||
+      status.includes(query) ||
+      customerGroup.includes(query)
+    )
+  })
+})
 
 const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>([])
 const selectedCustomerGroupId = ref<number | null>(null)
@@ -263,18 +453,36 @@ const buildCreateFileName = (customerGroupId: number | null) => {
     customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? 'Costing File'
   return formatCurrentDateTimeForName(customerGroupName)
 }
-const statusChipColor = (status: string) => {
-  if (status === 'draft') return 'grey-7'
-  if (status === 'customer_submitted') return 'indigo'
-  if (status === 'in_review') return 'amber-8'
-  if (status === 'offered') return 'positive'
-  return 'primary'
+const statusChipStyle = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return { backgroundColor: '#e2e8f0', color: '#334155' }
+  if (value === 'customer_submitted') return { backgroundColor: '#dbeafe', color: '#1e40af' }
+  if (value === 'in_review') return { backgroundColor: '#fef3c7', color: '#92400e' }
+  if (value === 'offered') return { backgroundColor: '#dcfce7', color: '#166534' }
+  if (value === 'po_placed') return { backgroundColor: '#ede9fe', color: '#5b21b6' }
+  if (value === 'cancelled') return { backgroundColor: '#fee2e2', color: '#991b1b' }
+  return { backgroundColor: '#e2e8f0', color: '#334155' }
 }
-const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-
+const statusDotColor = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return '#64748b'
+  if (value === 'customer_submitted') return '#2563eb'
+  if (value === 'in_review') return '#d97706'
+  if (value === 'offered') return '#16a34a'
+  if (value === 'po_placed') return '#7c3aed'
+  if (value === 'cancelled') return '#dc2626'
+  return '#64748b'
+}
+const statusSurfaceStyle = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return { backgroundColor: '#f8fafc' }
+  if (value === 'customer_submitted') return { backgroundColor: '#eff6ff' }
+  if (value === 'in_review') return { backgroundColor: '#fffbeb' }
+  if (value === 'offered') return { backgroundColor: '#f0fdf4' }
+  if (value === 'po_placed') return { backgroundColor: '#f5f3ff' }
+  if (value === 'cancelled') return { backgroundColor: '#fef2f2' }
+  return { backgroundColor: '#f8fafc' }
+}
 const customerGroupFilterOptions = computed(() => [
   { label: 'All customer groups', value: null },
   ...customerGroupOptions.value,
@@ -501,6 +709,63 @@ watch(
 </script>
 
 <style scoped>
+.costing-list-page {
+  background: transparent;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.toolbar-left {
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: min(320px, 75vw);
+}
+
+.costing-list-table :deep(th) {
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+}
+
+.costing-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
 .costing-page__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 260px));

@@ -5,48 +5,76 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="costing-item-add-dialog">
-      <q-card-section>
-        <div class="text-h6">Add item</div>
-        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-          Add a new costing item with complete product details.
-        </p>
+      <q-card-section class="costing-item-add-dialog__header">
+        <div>
+          <div class="text-h6">Add item</div>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Add a new costing item with complete product details.
+          </p>
+        </div>
+        <q-btn
+          flat
+          dense
+          round
+          icon="close"
+          aria-label="Close"
+          :disable="loading"
+          @click="emit('update:modelValue', false)"
+        />
       </q-card-section>
 
       <q-card-section class="costing-item-add-dialog__grid">
-        <q-input
-          v-model="form.websiteUrl"
-          label="Website URL"
-          outlined
-          dense
-          :rules="[(value) => !!String(value ?? '').trim() || 'Website URL is required.']"
-        />
-        <q-input
-          v-model.number="form.quantity"
-          label="Quantity"
-          type="number"
-          outlined
-          dense
-          min="1"
-          :rules="[
-            (value) =>
-              (value !== null && value !== '' && Number(value) > 0) ||
-              'Quantity is required.',
-          ]"
-        />
-        <q-input
-          v-model="form.imageUrl"
-          label="Product image URL"
-          outlined
-          dense
-          :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
-        />
-        <div v-if="previewImageUrl" class="costing-item-add-dialog__preview">
-          <q-img
-            :src="previewImageUrl"
-            fit="contain"
-            class="costing-item-add-dialog__preview-image"
-          />
+        <div class="costing-item-add-dialog__preview-pane">
+          <div v-if="previewImageUrl" class="costing-item-add-dialog__preview">
+            <q-img
+              :src="previewImageUrl"
+              fit="contain"
+              class="costing-item-add-dialog__preview-image"
+            />
+          </div>
+          <div v-else class="costing-item-add-dialog__preview costing-item-add-dialog__preview--empty">
+            <q-icon name="image" size="32px" />
+            <div class="text-caption q-mt-sm">Image preview</div>
+          </div>
+
+          <div class="costing-item-add-dialog__preview-fields">
+            <q-input
+              v-model="form.imageUrl"
+              label="Product URL"
+              outlined
+              dense
+              :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
+            >
+              <template #prepend><q-icon name="image" /></template>
+            </q-input>
+            <q-input
+              v-model="form.websiteUrl"
+              label="Website URL"
+              outlined
+              dense
+              :rules="[(value) => !!String(value ?? '').trim() || 'Website URL is required.']"
+            >
+              <template #prepend><q-icon name="link" /></template>
+            </q-input>
+            <q-input
+              v-model.number="form.quantity"
+              label="Quantity"
+              type="number"
+              outlined
+              dense
+              min="1"
+              :rules="[
+                (value) =>
+                  (value !== null && value !== '' && Number(value) > 0) ||
+                  'Quantity is required.',
+              ]"
+            >
+              <template #prepend><q-icon name="inventory_2" /></template>
+            </q-input>
+          </div>
         </div>
+
+        <div class="costing-item-add-dialog__form-pane">
         <q-input
           v-model="form.name"
           label="Name"
@@ -54,7 +82,9 @@
           type="textarea"
           dense
           :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
-        />
+        >
+          <template #prepend><q-icon name="badge" /></template>
+        </q-input>
         <q-select
           v-model="form.itemType"
           :options="itemTypeOptions"
@@ -63,20 +93,26 @@
           dense
           clearable
           hint="Pick the closest product type."
-        />
+        >
+          <template #prepend><q-icon name="category" /></template>
+        </q-select>
         <q-input
           v-model="form.size"
           label="Size"
           outlined
           dense
           hint="Example: XL, 250ml, 42"
-        />
+        >
+          <template #prepend><q-icon name="straighten" /></template>
+        </q-input>
         <q-input
           v-model="form.color"
           label="Color"
           outlined
           dense
-        />
+        >
+          <template #prepend><q-icon name="palette" /></template>
+        </q-input>
         <q-input
           v-model="form.extraInformation1"
           label="Extra information 1"
@@ -84,7 +120,9 @@
           dense
           type="textarea"
           autogrow
-        />
+        >
+          <template #prepend><q-icon name="notes" /></template>
+        </q-input>
         <q-input
           v-model="form.extraInformation2"
           label="Extra information 2"
@@ -92,7 +130,9 @@
           dense
           type="textarea"
           autogrow
-        />
+        >
+          <template #prepend><q-icon name="notes" /></template>
+        </q-input>
         <q-input
           v-model.number="form.priceInWebGbp"
           label="Web price (GBP)"
@@ -105,7 +145,9 @@
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
               'Web price is required.',
           ]"
-        />
+        >
+          <template #prepend><q-icon name="currency_pound" /></template>
+        </q-input>
         <q-input
           v-model.number="form.productWeight"
           label="Product weight (g/ml)"
@@ -118,7 +160,9 @@
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
               'Product weight is required.',
           ]"
-        />
+        >
+          <template #prepend><q-icon name="fitness_center" /></template>
+        </q-input>
         <q-input
           v-model.number="form.packageWeight"
           label="Package weight (g/ml)"
@@ -131,7 +175,9 @@
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
               'Package weight is required.',
           ]"
-        />
+        >
+          <template #prepend><q-icon name="scale" /></template>
+        </q-input>
         <q-input
           v-model.number="form.deliveryPriceGbp"
           label="Delivery charge (GBP)"
@@ -144,7 +190,10 @@
               (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
               'Delivery charge is required.',
           ]"
-        />
+        >
+          <template #prepend><q-icon name="local_shipping" /></template>
+        </q-input>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -281,13 +330,38 @@ watch(
 
 <style scoped>
 .costing-item-add-dialog {
-  width: min(560px, 92vw);
+  width: min(1080px, 97vw);
+}
+
+.costing-item-add-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .costing-item-add-dialog__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 1rem;
+  align-items: start;
+}
+
+.costing-item-add-dialog__preview-pane {
+  position: sticky;
+  top: 0;
+}
+
+.costing-item-add-dialog__preview-fields {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.costing-item-add-dialog__form-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
 }
 
 .costing-item-add-dialog__preview {
@@ -298,6 +372,27 @@ watch(
 }
 
 .costing-item-add-dialog__preview-image {
-  height: 180px;
+  height: 240px;
+}
+
+.costing-item-add-dialog__preview--empty {
+  height: 240px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+}
+
+@media (max-width: 900px) {
+  .costing-item-add-dialog__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .costing-item-add-dialog__preview-pane {
+    position: static;
+  }
+
+  .costing-item-add-dialog__form-pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

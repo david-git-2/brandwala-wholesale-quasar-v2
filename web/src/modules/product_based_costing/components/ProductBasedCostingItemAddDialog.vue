@@ -24,7 +24,6 @@
             label="Name"
             outlined
             dense
-            :disable="isProductListInputType"
           >
             <template #prepend>
               <q-icon name="inventory_2" />

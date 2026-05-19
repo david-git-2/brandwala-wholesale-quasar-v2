@@ -91,6 +91,9 @@ export type InvoiceItem = {
   barcode_snapshot: string | null
   product_code_snapshot: string | null
   quantity: number
+  return_normal_quantity: number
+  return_open_box_quantity: number
+  return_amount: number
   cost_amount: number
   sell_price_amount: number
   line_discount_amount: number
@@ -106,6 +109,22 @@ export type UpdateInvoiceItemInput = {
   patch: Partial<Omit<InvoiceItem, 'id' | 'tenant_id' | 'invoice_id' | 'created_at' | 'updated_at'>>
 }
 export type DeleteInvoiceItemInput = { id: number }
+
+export type ApplyInvoiceItemReturnInput = {
+  tenant_id: number
+  invoice_item_id: number
+  return_normal_quantity: number
+  return_open_box_quantity: number
+  return_amount: number
+  actor?: string | null
+}
+
+export type ApplyInvoiceItemReturnResult = {
+  invoice_id: number
+  invoice_item_id: number
+  return_quantity: number
+  return_amount: number
+}
 
 export type InvoiceStoreState = {
   invoices: Invoice[]

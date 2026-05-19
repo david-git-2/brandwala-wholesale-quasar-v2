@@ -61,7 +61,6 @@
                   label="Select"
                   @update:model-value="(checked) => emit('toggle-select', { itemId: item.id, checked: Boolean(checked) })"
                 />
-
               </div>
             </div>
 <div class="row justify-end q-mt-md"> <q-btn
@@ -90,6 +89,7 @@
                 <th class="qty-col qty-col--damaged">Damaged</th>
                 <th class="qty-col qty-col--stolen">Stolen</th>
                 <th class="qty-col qty-col--expired">Expired</th>
+                <th class="qty-col qty-col--open-box">Open Box</th>
               </tr>
             </thead>
             <tbody>
@@ -174,6 +174,21 @@
                     </q-popup-edit>
                   </div>
                 </td>
+                <td class="qty-col qty-col--open-box">
+                  <div class="cursor-pointer inventory-card__qty-value">
+                    {{ item.quantities.open_box }}
+                    <q-popup-edit
+                      :model-value="item.quantities.open_box"
+                      buttons
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      @save="(value) => onQuantitySave(item, 'open_box', value)"
+                      v-slot="scope"
+                    >
+                      <q-input v-model.number="scope.value" type="number" dense autofocus />
+                    </q-popup-edit>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -193,7 +208,7 @@ defineProps<{
   selectedIds: number[]
 }>()
 
-type QuantityKey = 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired'
+type QuantityKey = 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired' | 'open_box'
 
 const emit = defineEmits<{
   (e: 'save-quantity', payload: { item: InventoryItemWithStock; field: QuantityKey; value: number }): void

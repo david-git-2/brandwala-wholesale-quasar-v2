@@ -1,6 +1,8 @@
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type {
   AddPaymentAllocationInput,
+  ApplyInvoiceItemReturnInput,
+  ApplyInvoiceItemReturnResult,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -86,4 +88,14 @@ export const invoiceService = {
     ),
   deleteInvoiceItem: (payload: DeleteInvoiceItemInput) =>
     wrap<void>(() => invoiceRepository.deleteInvoiceItem(payload), 'Failed to delete invoice item.'),
+  recomputeInvoicePaymentStatus: (invoiceId: number) =>
+    wrap<void>(
+      () => invoiceRepository.recomputeInvoicePaymentStatus(invoiceId),
+      'Failed to recompute invoice payment status.',
+    ),
+  applyInvoiceItemReturn: (payload: ApplyInvoiceItemReturnInput) =>
+    wrap<ApplyInvoiceItemReturnResult>(
+      () => invoiceRepository.applyInvoiceItemReturn(payload),
+      'Failed to apply invoice item return.',
+    ),
 }

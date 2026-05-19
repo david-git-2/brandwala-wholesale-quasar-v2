@@ -53,7 +53,7 @@
                   <q-img
                     v-if="props.row.imageUrl"
                     :src="props.row.imageUrl"
-                    fit="cover"
+                    fit="contain"
                     class="viewer-page__image"
                   />
                   <div v-else class="viewer-page__image viewer-page__image--placeholder">
@@ -451,6 +451,13 @@ onMounted(async () => {
   height: 72px;
   width: 72px;
   border-radius: 12px;
+  overflow: hidden;
+  background: var(--bw-theme-surface);
+}
+
+.viewer-page__image :deep(.q-img__image) {
+  object-fit: contain !important;
+  object-position: center;
 }
 
 .viewer-page__image--placeholder {

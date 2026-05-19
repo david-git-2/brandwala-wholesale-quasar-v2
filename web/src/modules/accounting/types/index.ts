@@ -41,6 +41,8 @@ export type InventoryAccountingEntry = {
   shipment_item_id: number | null
   product_id: number | null
   quantity: number
+  return_quantity: number
+  return_amount: number
   cost_amount: number
   sell_price_amount: number
   total_cost_amount: number

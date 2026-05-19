@@ -205,6 +205,24 @@ const costingFileRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/costing/admin/:id/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'admin-costing-file-preview-page',
+        component: () => import('../pages/AdminCostingFilePreviewPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          requiredModule: 'costing_file',
+        }),
+      },
+    ],
+  },
 ]
 
 export default costingFileRoutes

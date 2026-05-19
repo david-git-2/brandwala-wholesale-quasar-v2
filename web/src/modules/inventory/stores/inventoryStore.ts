@@ -121,6 +121,7 @@ export const useInventoryStore = defineStore('inventory', {
               damaged: 0,
               stolen: 0,
               expired: 0,
+              open_box: 0,
             },
           })
         }
@@ -157,6 +158,7 @@ export const useInventoryStore = defineStore('inventory', {
               damaged: 0,
               stolen: 0,
               expired: 0,
+              open_box: 0,
             }
             this.items.splice(index, 1, {
               ...result.data,

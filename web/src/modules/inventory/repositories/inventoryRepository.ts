@@ -114,13 +114,15 @@ const calculateUsableQuantity = ({
   damaged,
   stolen,
   expired,
+  openBox,
 }: {
   available: number
   reserved: number
   damaged: number
   stolen: number
   expired: number
-}) => Math.max(0, available - reserved - damaged - stolen - expired)
+  openBox: number
+}) => Math.max(0, available - reserved - damaged - stolen - expired - openBox)
 
 const toObjectRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -200,6 +202,7 @@ const INVENTORY_STOCK_FILTERABLE_FIELDS = [
   'damaged_quantity',
   'stolen_quantity',
   'expired_quantity',
+  'open_box_quantity',
   'created_at',
   'updated_at',
 ] as const
@@ -225,6 +228,8 @@ const INVENTORY_ACCOUNTING_ENTRY_FILTERABLE_FIELDS = [
   'shipment_item_id',
   'product_id',
   'quantity',
+  'return_quantity',
+  'return_amount',
   'cost_amount',
   'sell_price_amount',
   'total_cost_amount',
@@ -309,12 +314,14 @@ const listInventoryItems = async (
     const damagedQuantity = toNumberOrZero(stockRecord?.damaged_quantity)
     const stolenQuantity = toNumberOrZero(stockRecord?.stolen_quantity)
     const expiredQuantity = toNumberOrZero(stockRecord?.expired_quantity)
+    const openBoxQuantity = toNumberOrZero(stockRecord?.open_box_quantity)
     const usableQuantity = calculateUsableQuantity({
       available: availableQuantity,
       reserved: reservedQuantity,
       damaged: damagedQuantity,
       stolen: stolenQuantity,
       expired: expiredQuantity,
+      openBox: openBoxQuantity,
     })
 
     return {
@@ -342,6 +349,7 @@ const listInventoryItems = async (
             damaged_quantity: damagedQuantity,
             stolen_quantity: stolenQuantity,
             expired_quantity: expiredQuantity,
+            open_box_quantity: openBoxQuantity,
             created_at: toNullableText(stockRecord.created_at) ?? '',
             updated_at: toNullableText(stockRecord.updated_at) ?? '',
           }
@@ -359,6 +367,7 @@ const listInventoryItems = async (
         damaged: damagedQuantity,
         stolen: stolenQuantity,
         expired: expiredQuantity,
+        open_box: openBoxQuantity,
       },
     }
   })

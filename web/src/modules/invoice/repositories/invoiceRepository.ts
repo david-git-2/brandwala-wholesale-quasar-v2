@@ -1,6 +1,8 @@
 import { supabase } from 'src/boot/supabase'
 import type {
   AddPaymentAllocationInput,
+  ApplyInvoiceItemReturnInput,
+  ApplyInvoiceItemReturnResult,
   CreatePaymentWithAllocationsInput,
   CreateInvoiceItemInput,
   CreateInvoiceInput,
@@ -84,6 +86,9 @@ const INVOICE_ITEM_FIELDS = [
   'barcode_snapshot',
   'product_code_snapshot',
   'quantity',
+  'return_normal_quantity',
+  'return_open_box_quantity',
+  'return_amount',
   'cost_amount',
   'sell_price_amount',
   'line_discount_amount',
@@ -192,6 +197,38 @@ const updateInvoiceItem = async (payload: UpdateInvoiceItemInput) => {
 const deleteInvoiceItem = async (payload: DeleteInvoiceItemInput) => {
   const { error } = await supabase.from('invoice_items').delete().eq('id', payload.id)
   if (error) throw error
+}
+
+const recomputeInvoicePaymentStatus = async (invoiceId: number) => {
+  const { error } = await supabase.rpc('recompute_invoice_payment_status', {
+    p_invoice_id: invoiceId,
+  })
+  if (error) throw error
+}
+
+const applyInvoiceItemReturn = async (
+  payload: ApplyInvoiceItemReturnInput,
+): Promise<ApplyInvoiceItemReturnResult> => {
+  const { data, error } = await supabase.rpc('apply_invoice_item_return', {
+    p_tenant_id: payload.tenant_id,
+    p_invoice_item_id: payload.invoice_item_id,
+    p_return_normal_quantity: payload.return_normal_quantity,
+    p_return_open_box_quantity: payload.return_open_box_quantity,
+    p_return_amount: payload.return_amount,
+    p_actor: payload.actor ?? null,
+  })
+  if (error) throw error
+  if (!data || typeof data !== 'object') {
+    throw new Error('Return operation did not return a valid response.')
+  }
+
+  const row = data as Record<string, unknown>
+  return {
+    invoice_id: Number(row.invoice_id ?? 0),
+    invoice_item_id: Number(row.invoice_item_id ?? 0),
+    return_quantity: Number(row.return_quantity ?? 0),
+    return_amount: Number(row.return_amount ?? 0),
+  }
 }
 
 const listInvoiceItems = async (payload: InvoiceListQuery = {}): Promise<InvoiceListPage<InvoiceItem>> => {
@@ -356,4 +393,6 @@ export const invoiceRepository = {
   createInvoiceItem,
   updateInvoiceItem,
   deleteInvoiceItem,
+  recomputeInvoicePaymentStatus,
+  applyInvoiceItemReturn,
 }

@@ -568,6 +568,7 @@ export const useShipmentStore = defineStore('shipment', {
           damaged_quantity: 0,
           stolen_quantity: 0,
           expired_quantity: 0,
+          open_box_quantity: 0,
         }))
 
         const createStocksResult = await inventoryService.createInventoryStocksBulk(stocksPayload)
