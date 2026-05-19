@@ -24,5 +24,8 @@
     "backend:types": "sh -c 'mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
     "deploy:backend": "npm run backend:push && npm run backend:types",
     "backend:all": "npm run backend:push:all && npm run backend:types"
+  },
+  "devDependencies": {
+    "wrangler": "^4.92.0"
   }
 }
