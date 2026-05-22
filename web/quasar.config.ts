@@ -3,7 +3,19 @@
 
 import { defineConfig } from '#q-app/wrappers';
 
-export default defineConfig((/* ctx */) => {
+export default defineConfig((ctx) => {
+  const checkerVitePlugin: [string, Record<string, unknown>, { server: boolean }] = [
+    'vite-plugin-checker',
+    {
+      vueTsc: true,
+      eslint: {
+        lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+        useFlatConfig: true,
+      },
+    },
+    { server: false },
+  ]
+
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
@@ -66,19 +78,17 @@ export default defineConfig((/* ctx */) => {
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
 
-      vitePlugins: [
-        [
-          'vite-plugin-checker',
-          {
-            vueTsc: true,
-            eslint: {
-              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
-              useFlatConfig: true,
-            },
+      vitePlugins: ctx.dev ? [checkerVitePlugin] : [],
+
+      // Keep production output file count lower (helps Cloudflare Pages upload stability).
+      extendViteConf() {
+        return {
+          build: {
+            cssCodeSplit: false,
+            assetsInlineLimit: 8192,
           },
-          { server: false },
-        ],
-      ],
+        }
+      },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver

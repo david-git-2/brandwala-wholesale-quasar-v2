@@ -26,6 +26,6 @@
     "backend:all": "npm run backend:push:all && npm run backend:types"
   },
   "devDependencies": {
-    "wrangler": "^4.92.0"
+    "wrangler": "^4.93.1"
   }
 }

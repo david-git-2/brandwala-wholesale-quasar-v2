@@ -1931,6 +1931,8 @@ const downloadShipmentExcel = async () => {
     'Product ID',
     'Barcode',
     'Product Code',
+    'Batch Code',
+    'Manufacturing Date',
     'Method',
     'Tag',
     'Price GBP',
@@ -1953,12 +1955,26 @@ const downloadShipmentExcel = async () => {
   }
 
   shipmentStore.shipmentItems.forEach((item, index) => {
+    const batchRows = getMatchedBatchRows(item)
+    const uniqueBatchCodes = Array.from(
+      new Set(batchRows.map((row) => row.batch_id?.trim()).filter((value): value is string => Boolean(value))),
+    )
+    const uniqueManufacturingDates = Array.from(
+      new Set(
+        batchRows
+          .map((row) => formatIsoDateToDdMmYyyy(row.manufacturing_date))
+          .filter((value) => value !== '-'),
+      ),
+    )
+
     sheet.addRow([
       index + 1,
       item.name ?? '',
       item.product_id ?? '',
       item.barcode ?? '',
       item.product_code ?? '',
+      uniqueBatchCodes.join(', '),
+      uniqueManufacturingDates.join(', '),
       item.method ?? '',
       getTagLabel(item.marker_tag ?? null),
       Number(item.price_gbp ?? 0),
@@ -1978,6 +1994,8 @@ const downloadShipmentExcel = async () => {
     { width: 14 },
     { width: 20 },
     { width: 18 },
+    { width: 28 },
+    { width: 28 },
     { width: 12 },
     { width: 16 },
     { width: 12 },
@@ -1990,7 +2008,7 @@ const downloadShipmentExcel = async () => {
     { width: 14 },
   ]
 
-  const numberColumns = [8, 9, 10, 11, 12, 13, 14, 15]
+  const numberColumns = [10, 11, 12, 13, 14, 15, 16, 17]
   numberColumns.forEach((columnIndex) => {
     sheet.getColumn(columnIndex).numFmt = '#,##0.00'
   })
@@ -2017,7 +2035,7 @@ onMounted(async () => {
     await Promise.all([
       shipmentStore.fetchShipmentById(shipmentId.value),
       shipmentStore.fetchBatchCodePcByShipment(shipmentId.value),
-      vendorStore.fetchVendors(),
+      vendorStore.fetchVendors(authStore.tenantId ?? null),
       marketStore.fetchMarkets(),
     ])
   } finally {

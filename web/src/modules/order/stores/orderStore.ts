@@ -156,7 +156,11 @@ export const useOrderStore = defineStore('order', {
       this.error = null
 
       try {
-        const result = await orderService.updateOrder(payload)
+        const tenantScopedPayload: OrderUpdateInput = {
+          ...payload,
+          tenant_id: payload.tenant_id ?? this.selected?.tenant_id ?? null,
+        }
+        const result = await orderService.updateOrder(tenantScopedPayload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to update order.'
@@ -262,7 +266,12 @@ export const useOrderStore = defineStore('order', {
       this.error = null
 
       try {
-        const result = await orderService.deleteOrder(payload)
+        const orderTenantId = this.items.find((item) => item.id === payload.id)?.tenant_id ?? this.selected?.tenant_id ?? null
+        const tenantScopedPayload: OrderDeleteInput = {
+          ...payload,
+          tenant_id: payload.tenant_id ?? orderTenantId ?? null,
+        }
+        const result = await orderService.deleteOrder(tenantScopedPayload)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to delete order.'
@@ -490,6 +499,7 @@ export const useOrderStore = defineStore('order', {
         }
 
         const createOrderResult = await orderService.createOrder({
+          tenant_id: payload.tenant_id,
           invoice_id: null,
           name: payload.customer_group_name,
           customer_group_id: payload.customer_group_id,

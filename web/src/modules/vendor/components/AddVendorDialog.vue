@@ -18,7 +18,7 @@
           outlined
           dense
           maxlength="40"
-          hint="Code must be unique. Availability is checked as you type."
+          :hint="codeHint"
           :loading="checkingCode"
           @update:model-value="onCodeInput"
         >
@@ -45,6 +45,14 @@
           class="bg-negative text-white"
         >
           This vendor code is already in use.
+        </q-banner>
+
+        <q-banner
+          v-if="effectiveCodePreview && effectiveCodePreview !== normalizedCode"
+          rounded
+          class="bg-primary text-white"
+        >
+          Saved as: <strong>{{ effectiveCodePreview }}</strong>
         </q-banner>
 
         <q-select
@@ -145,10 +153,27 @@ const getDefaultForm = (): VendorForm => ({
 const form = reactive<VendorForm>(getDefaultForm())
 const checkingCode = ref(false)
 const codeAvailable = ref<boolean | null>(null)
+const originalNormalizedCode = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const isEdit = computed(() => typeof form.id === 'number')
 const normalizedCode = computed(() => form.code.trim().toUpperCase())
+const effectiveCodePreview = computed(() => {
+  if (!normalizedCode.value) return ''
+  if (typeof form.tenant_id !== 'number') return normalizedCode.value
+
+  const suffix = `-${form.tenant_id}`
+  return normalizedCode.value.endsWith(suffix)
+    ? normalizedCode.value
+    : `${normalizedCode.value}${suffix}`
+})
+const codeHint = computed(() => {
+  if (typeof form.tenant_id !== 'number') {
+    return 'Code must be unique. Availability is checked as you type.'
+  }
+
+  return `Tenant vendor code is saved as CODE-${form.tenant_id}.`
+})
 
 const marketOptions = computed(() =>
   props.markets.map((market) => ({
@@ -177,6 +202,11 @@ const onCodeInput = () => {
 const runCodeCheck = () => {
   if (!normalizedCode.value) {
     codeAvailable.value = null
+    return
+  }
+
+  if (isEdit.value && normalizedCode.value === originalNormalizedCode.value) {
+    codeAvailable.value = true
     return
   }
 
@@ -224,6 +254,7 @@ watch(
         }
 
     Object.assign(form, next)
+    originalNormalizedCode.value = normalizeCode(initialData?.code ?? '')
     codeAvailable.value = null
     runCodeCheck()
   },

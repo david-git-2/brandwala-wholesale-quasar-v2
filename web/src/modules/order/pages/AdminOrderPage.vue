@@ -316,7 +316,9 @@ const storeOptions = computed(() =>
 )
 
 const loadOrders = async (nextPage = 1) => {
+  const tenantId = authStore.tenantId
   await orderStore.fetchOrders({
+    tenant_id: tenantId ?? null,
     store_id: storeStore.selectedStore?.id ?? null,
     page: 1,
     page_size: 20,
@@ -336,7 +338,7 @@ onMounted(async () => {
 })
 
 const deleteOrder = async (id: number) => {
-  await orderStore.deleteOrder({ id })
+  await orderStore.deleteOrder({ id, tenant_id: authStore.tenantId ?? null })
   await loadOrders(page.value)
 }
 

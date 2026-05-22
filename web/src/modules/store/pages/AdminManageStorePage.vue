@@ -212,7 +212,7 @@ const handleDelete = async () => {
 }
 
 onMounted(async () => {
-  await vendorStore.fetchVendors()
+  await vendorStore.fetchVendors(tenantStore.selectedTenant?.id ?? null)
   await storeStore.fetchStoresAdmin(tenantStore.selectedTenant?.id || 0)
 })
 </script>

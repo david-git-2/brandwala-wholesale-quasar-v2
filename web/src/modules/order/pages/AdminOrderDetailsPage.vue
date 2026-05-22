@@ -483,7 +483,10 @@ const normalizeNumericInput = (value: unknown) => {
 }
 
 onMounted(async () => {
-  await orderStore.fetchOrderById({ id: Number(route.params.id) })
+  await orderStore.fetchOrderById({
+    id: Number(route.params.id),
+    tenant_id: authStore.tenantId ?? null,
+  })
   const tenantId = tenantStore.selectedTenant?.id ?? authStore.tenantId ?? 1
   await Promise.all([
     shipmentStore.fetchShipments(tenantId),

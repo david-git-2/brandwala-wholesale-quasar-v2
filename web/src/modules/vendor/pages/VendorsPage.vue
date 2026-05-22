@@ -178,7 +178,7 @@ const columns: QTableColumn[] = [
 ]
 
 const refresh = async () => {
-  await Promise.all([vendorStore.fetchMarkets(), vendorStore.fetchVendors()])
+  await Promise.all([vendorStore.fetchMarkets(), vendorStore.fetchVendors(resolvedTenantId.value)])
 }
 
 const onClickAddVendor = () => {
@@ -202,7 +202,7 @@ const onClickDeleteVendor = (vendor: Vendor) => {
 }
 
 const checkVendorCodeAvailability = async (code: string, excludeId?: number | null) => {
-  const result = await vendorStore.checkCodeAvailability(code, excludeId)
+  const result = await vendorStore.checkCodeAvailability(code, resolvedTenantId.value, excludeId)
   return Boolean(result.success && result.data)
 }
 
@@ -227,6 +227,7 @@ const confirmDeleteVendor = async () => {
 
   const payload: VendorDeleteInput = {
     id: vendorToDelete.value.id,
+    tenant_id: resolvedTenantId.value,
   }
 
   await vendorStore.deleteVendor(payload)

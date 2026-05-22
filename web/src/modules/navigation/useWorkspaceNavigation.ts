@@ -178,12 +178,17 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'investor',
     )
+    const hasProductsModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'products',
+    )
 
     if (
       !hasStoreModuleAccess &&
       !hasInvoiceModuleAccess &&
       !hasAccountingModuleAccess &&
-      !hasInvestorModuleAccess
+      !hasInvestorModuleAccess &&
+      !hasProductsModuleAccess
     ) {
       return [...baseLinks, ...moduleLinks]
     }
@@ -194,12 +199,21 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'store' &&
           routeDefinition.moduleKey !== 'invoice' &&
           routeDefinition.moduleKey !== 'accounting' &&
-          routeDefinition.moduleKey !== 'investor',
+          routeDefinition.moduleKey !== 'investor' &&
+          routeDefinition.moduleKey !== 'products',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
+        to: routeDefinition.to,
+      }))
+    const productsChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'products')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
         to: routeDefinition.to,
       }))
     const investorChildren = scopedModuleRouteDefinitions
@@ -294,6 +308,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
                   to: `${tenantPrefix}/app/stores/store-products`,
                 },
               ],
+            },
+          ]
+        : []),
+      ...(hasProductsModuleAccess
+        ? [
+            {
+              title: 'Product',
+              caption: 'Product module',
+              icon: 'inventory_2',
+              children: productsChildren,
             },
           ]
         : []),

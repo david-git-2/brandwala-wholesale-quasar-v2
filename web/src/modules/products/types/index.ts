@@ -31,3 +31,21 @@ export type ProductStoreState = {
   saving: boolean
   error: string | null
 }
+
+export type ProductBrand = Database['public']['Tables']['product_brands']['Row']
+export type ProductBrandCreateInput = Database['public']['Tables']['product_brands']['Insert']
+export type ProductBrandUpdateInput = Database['public']['Tables']['product_brands']['Update'] & {
+  id: number
+}
+export type ProductBrandDeleteInput = {
+  id: number
+}
+
+export type ProductCategory = Database['public']['Tables']['product_categories']['Row']
+export type ProductCategoryCreateInput = Database['public']['Tables']['product_categories']['Insert']
+export type ProductCategoryUpdateInput = Database['public']['Tables']['product_categories']['Update'] & {
+  id: number
+}
+export type ProductCategoryDeleteInput = {
+  id: number
+}

@@ -37,6 +37,8 @@ type OrderListRow = Order & {
 
 const ORDER_FIELDS = [
   'id',
+  'tenant_id',
+  'tenant_order_id',
   'name',
   'customer_group_id',
   'can_see_price',
@@ -103,6 +105,9 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
 
   if (payload.customer_group_id != null) {
     query = query.eq('customer_group_id', payload.customer_group_id)
+  }
+  if (payload.tenant_id != null) {
+    query = query.eq('tenant_id', payload.tenant_id)
   }
 
   if (payload.store_id != null) {
@@ -176,12 +181,17 @@ const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems>
   const itemSelect = pickFields(payload.item_fields, ORDER_ITEM_FIELDS)
   const select = `${orderSelect},order_items(${itemSelect})`
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('orders')
     .select(select)
     .eq('id', payload.id)
     .order('id', { ascending: true, foreignTable: 'order_items' })
-    .single()
+
+  if (payload.tenant_id != null) {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+
+  const { data, error } = await query.single()
 
   if (error) {
     throw error
@@ -195,12 +205,16 @@ const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems>
 }
 
 const updateOrder = async (payload: OrderUpdateInput): Promise<Order> => {
-  const { data, error } = await supabase
+  let query = supabase
     .from('orders')
     .update(payload.patch)
     .eq('id', payload.id)
-    .select('*')
-    .single()
+
+  if (payload.tenant_id != null) {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+
+  const { data, error } = await query.select('*').single()
 
   if (error) {
     throw error
@@ -327,7 +341,11 @@ const bulkUpdateOrderItems = async (
 }
 
 const deleteOrder = async (payload: OrderDeleteInput): Promise<void> => {
-  const { error } = await supabase.from('orders').delete().eq('id', payload.id)
+  let query = supabase.from('orders').delete().eq('id', payload.id)
+  if (payload.tenant_id != null) {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { error } = await query
 
   if (error) {
     throw error

@@ -7,6 +7,17 @@
 
       <q-card-section>
         <q-form ref="formRef" class="q-gutter-md">
+          <q-select
+            v-model="form.shipment_id"
+            :options="shipmentOptions"
+            emit-value
+            map-options
+            clearable
+            outlined
+            dense
+            label="Shipment (Warehouse Received)"
+          />
+
           <q-input
             v-model="form.name"
             label="Name *"
@@ -99,6 +110,7 @@ import type { QForm } from 'quasar'
 import type { CreateInventoryItemInput } from '../types'
 
 type InventoryItemForm = {
+  shipment_id: number | null
   name: string
   image_url: string
   barcode: string
@@ -111,6 +123,7 @@ type InventoryItemForm = {
 
 const props = defineProps<{
   modelValue: boolean
+  shipmentOptions?: Array<{ label: string; value: number }>
 }>()
 
 const emit = defineEmits<{
@@ -119,6 +132,7 @@ const emit = defineEmits<{
     e: 'save',
     value: Omit<CreateInventoryItemInput, 'tenant_id' | 'source_type' | 'source_id' | 'status'> & {
       available_quantity: number
+      shipment_id: number | null
     },
   ): void
 }>()
@@ -129,6 +143,7 @@ const localModelValue = computed({
 })
 
 const getDefaultForm = (): InventoryItemForm => ({
+  shipment_id: null,
   name: '',
   image_url: '',
   barcode: '',
@@ -163,6 +178,7 @@ const onSave = async () => {
   if (!isValid) return
 
   emit('save', {
+    shipment_id: form.shipment_id,
     name: form.name.trim(),
     image_url: form.image_url.trim() || null,
     barcode: form.barcode.trim() || null,
@@ -175,4 +191,6 @@ const onSave = async () => {
 
   localModelValue.value = false
 }
+
+const shipmentOptions = computed(() => props.shipmentOptions ?? [])
 </script>

@@ -1,5 +1,13 @@
 import { productRepository } from '../repositories/productRepository'
 import type {
+  ProductBrand,
+  ProductBrandCreateInput,
+  ProductBrandDeleteInput,
+  ProductBrandUpdateInput,
+  ProductCategory,
+  ProductCategoryCreateInput,
+  ProductCategoryDeleteInput,
+  ProductCategoryUpdateInput,
   Product,
   ProductCreateInput,
   ProductDeleteInput,
@@ -158,9 +166,129 @@ const deleteProduct = async (
   }
 }
 
+const listProductBrands = async (
+  params: ListProductLookupParams = {},
+): Promise<ProductServiceResult<ProductBrand[]>> => {
+  try {
+    const data = await productRepository.listProductBrands(params)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load product brands.',
+    }
+  }
+}
+
+const createProductBrand = async (
+  payload: ProductBrandCreateInput,
+): Promise<ProductServiceResult<ProductBrand>> => {
+  try {
+    const data = await productRepository.createProductBrand(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create product brand.',
+    }
+  }
+}
+
+const updateProductBrand = async (
+  payload: ProductBrandUpdateInput,
+): Promise<ProductServiceResult<ProductBrand>> => {
+  try {
+    const data = await productRepository.updateProductBrand(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update product brand.',
+    }
+  }
+}
+
+const deleteProductBrand = async (
+  payload: ProductBrandDeleteInput,
+): Promise<ProductServiceResult<null>> => {
+  try {
+    await productRepository.deleteProductBrand(payload)
+    return { success: true, data: null }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete product brand.',
+    }
+  }
+}
+
+const listProductCategories = async (
+  params: ListProductLookupParams = {},
+): Promise<ProductServiceResult<ProductCategory[]>> => {
+  try {
+    const data = await productRepository.listProductCategories(params)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load product categories.',
+    }
+  }
+}
+
+const createProductCategory = async (
+  payload: ProductCategoryCreateInput,
+): Promise<ProductServiceResult<ProductCategory>> => {
+  try {
+    const data = await productRepository.createProductCategory(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create product category.',
+    }
+  }
+}
+
+const updateProductCategory = async (
+  payload: ProductCategoryUpdateInput,
+): Promise<ProductServiceResult<ProductCategory>> => {
+  try {
+    const data = await productRepository.updateProductCategory(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update product category.',
+    }
+  }
+}
+
+const deleteProductCategory = async (
+  payload: ProductCategoryDeleteInput,
+): Promise<ProductServiceResult<null>> => {
+  try {
+    await productRepository.deleteProductCategory(payload)
+    return { success: true, data: null }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete product category.',
+    }
+  }
+}
+
 export const productService = {
   listBrands,
   listCategories,
+  listProductBrands,
+  createProductBrand,
+  updateProductBrand,
+  deleteProductBrand,
+  listProductCategories,
+  createProductCategory,
+  updateProductCategory,
+  deleteProductCategory,
   listProducts,
   getProductById,
   createProduct,

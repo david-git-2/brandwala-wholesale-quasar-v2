@@ -40,7 +40,9 @@ import CustomerOrderTable from '../components/CustomerOrderTable.vue';
 import { formatStatus } from 'src/composables/useFormatStatus';
 import CustomerOrderCard from '../components/CustomerOrderCard.vue';
 import { useStoreStore } from 'src/modules/store/stores/storeStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 const storeStore = useStoreStore()
+const authStore = useAuthStore()
 
 
 
@@ -90,6 +92,7 @@ const itemFields = [
 
 void orderStore.fetchOrderById({
   id: Number(route.params.id),
+  tenant_id: authStore.tenantId ?? null,
   item_fields: itemFields,
   order_fields: ['accent_color', 'can_see_price', 'customer_group_id', 'id', 'name','negotiate','status','store_id']
 })})

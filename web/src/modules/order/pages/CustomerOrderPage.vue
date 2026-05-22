@@ -102,6 +102,7 @@ const storeOptions = computed(() =>
 
 const loadOrders = async (nextPage = 1) => {
   await orderStore.fetchOrders({
+    tenant_id: authStore.tenantId ?? null,
     customer_group_id: authStore.customerGroupId ?? null,
     store_id: storeStore.selectedStore?.id ?? null,
     page: nextPage,

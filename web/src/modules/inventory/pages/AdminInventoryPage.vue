@@ -7,9 +7,7 @@
             <div class="text-h6 text-weight-bold">Inventory</div>
             <div class="text-caption text-grey-8">Manage stock, quantities, and item-level inventory records</div>
           </div>
-          <div class="col-auto row items-center q-gutter-sm">
-            <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Add Item" @click="openAddDialog" />
-          </div>
+          <div class="col-auto row items-center q-gutter-sm" />
         </div>
       </q-card-section>
     </q-card>
@@ -128,7 +126,11 @@
       </div>
     </div>
 
-    <InventoryItemDialog v-model="isAddDialogOpen" @save="onSaveItem" />
+    <InventoryItemDialog
+      v-model="isAddDialogOpen"
+      :shipment-options="warehouseReceivedShipmentOptions"
+      @save="onSaveItem"
+    />
     <InventoryCard
       v-if="inventoryView === 'detailed'"
       :items="inventoryStore.items"
@@ -333,6 +335,15 @@ const shipmentOptions = computed(() =>
   ],
 )
 
+const warehouseReceivedShipmentOptions = computed(() =>
+  shipmentStore.shipments
+    .filter((shipment) => shipment.status?.trim().toLowerCase() === 'warehouse received')
+    .map((shipment) => ({
+      label: `#${shipment.id} ${shipment.name}`,
+      value: shipment.id,
+    })),
+)
+
 const searchFieldOptions = [
   { label: 'Name', value: 'name' as const },
   { label: 'Barcode', value: 'barcode' as const },
@@ -379,10 +390,6 @@ const fetchInventoryItems = async () => {
   selectedItemIds.value = selectedItemIds.value.filter((id) => visibleIds.has(id))
 }
 
-const openAddDialog = () => {
-  isAddDialogOpen.value = true
-}
-
 const onCloseSearch = () => {
   showSearchInput.value = false
   if (!searchText.value) return
@@ -414,6 +421,7 @@ const onShipmentFilterChange = () => {
 const onSaveItem = async (
   payload: Omit<CreateInventoryItemInput, 'tenant_id' | 'source_type' | 'source_id' | 'status'> & {
     available_quantity: number
+    shipment_id: number | null
   },
 ) => {
   const tenantId = authStore.tenantId
@@ -423,7 +431,7 @@ const onSaveItem = async (
     return
   }
 
-  const { available_quantity, ...itemPayload } = payload
+  const { available_quantity, shipment_id, ...itemPayload } = payload
 
   const createProductResult = await productStore.createProduct({
     tenant_id: tenantId,
@@ -458,8 +466,9 @@ const onSaveItem = async (
 
   const result = await inventoryStore.createInventoryItem({
     tenant_id: tenantId,
-    source_type: 'manual',
-    source_id: createProductResult.data.id,
+    source_type: shipment_id != null ? 'shipment' : 'manual',
+    source_id: shipment_id ?? createProductResult.data.id,
+    product_id: createProductResult.data.id,
     status: 'active',
     ...itemPayload,
   })

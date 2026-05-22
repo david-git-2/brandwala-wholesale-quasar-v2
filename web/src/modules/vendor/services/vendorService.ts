@@ -8,9 +8,9 @@ import type {
   VendorUpdateInput,
 } from '../types'
 
-const listVendors = async (): Promise<VendorServiceResult<Vendor[]>> => {
+const listVendors = async (tenantId?: number | null): Promise<VendorServiceResult<Vendor[]>> => {
   try {
-    const data = await vendorRepository.listVendors()
+    const data = await vendorRepository.listVendors(tenantId)
 
     return {
       success: true,
@@ -42,10 +42,11 @@ const listVendorMarkets = async (): Promise<VendorServiceResult<VendorMarket[]>>
 
 const isVendorCodeAvailable = async (
   code: string,
+  tenantId?: number | null,
   excludeId?: number | null,
 ): Promise<VendorServiceResult<boolean>> => {
   try {
-    const data = await vendorRepository.isVendorCodeAvailable(code, excludeId)
+    const data = await vendorRepository.isVendorCodeAvailable(code, tenantId, excludeId)
 
     return {
       success: true,

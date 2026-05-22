@@ -4,6 +4,7 @@ export type ModuleKey =
   | 'order_management'
   | 'shipment'
   | 'inventory'
+  | 'commerce_shop'
   | 'investor'
   | 'vendor'
   | 'products'
@@ -88,6 +89,29 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'commerce_shop',
+    name: 'Commerce Shop',
+    description: 'Browse sellable products directly from inventory.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Commerce Shop',
+        caption: 'View inventory-backed catalog for commerce operations',
+        icon: 'storefront',
+        routeSegment: 'commerce-shop',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Commerce Shop',
+        caption: 'Browse products available from inventory',
+        icon: 'storefront',
+        routeSegment: 'commerce-shop',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
     key: 'investor',
     name: 'Investor',
     description: 'Manage investor profiles and investor transaction records.',
@@ -144,6 +168,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage tenant product catalog',
         icon: 'inventory_2',
         routeSegment: 'products',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Brands',
+        caption: 'Manage product brands',
+        icon: 'inventory_2',
+        routeSegment: 'products/brands',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Categories',
+        caption: 'Manage product categories',
+        icon: 'inventory_2',
+        routeSegment: 'products/categories',
         requiredAction: 'view',
       },
     ],

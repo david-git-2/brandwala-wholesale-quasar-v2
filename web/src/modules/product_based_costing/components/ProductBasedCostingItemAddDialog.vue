@@ -73,18 +73,6 @@
             </template>
           </q-input>
 
-          <q-input
-            v-model="form.brand"
-            label="Brand"
-            outlined
-            dense
-            :disable="isProductListInputType"
-          >
-            <template #prepend>
-              <q-icon name="sell" />
-            </template>
-          </q-input>
-
           <q-select
             v-model="form.vendor_code"
             :options="vendorOptions"
@@ -120,6 +108,76 @@
               <q-icon name="public" />
             </template>
           </q-select>
+
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col">
+              <q-select
+                v-model="form.brand"
+                :options="filteredBrandOptions"
+                use-input
+                fill-input
+                input-debounce="0"
+                clearable
+                emit-value
+                map-options
+                label="Brand"
+                outlined
+                dense
+                :disable="isProductListInputType || !canPickBrandCategory"
+                @filter="filterBrandOptions"
+                @input-value="onBrandInputValue"
+              >
+                <template #prepend>
+                  <q-icon name="sell" />
+                </template>
+              </q-select>
+            </div>
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                no-caps
+                outline
+                label="Add"
+                :disable="isProductListInputType || !canAddBrand"
+                @click="addBrandOption"
+              />
+            </div>
+          </div>
+
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col">
+              <q-select
+                v-model="form.category"
+                :options="filteredCategoryOptions"
+                use-input
+                fill-input
+                input-debounce="0"
+                clearable
+                emit-value
+                map-options
+                label="Category"
+                outlined
+                dense
+                :disable="isProductListInputType || !canPickBrandCategory"
+                @filter="filterCategoryOptions"
+                @input-value="onCategoryInputValue"
+              >
+                <template #prepend>
+                  <q-icon name="category" />
+                </template>
+              </q-select>
+            </div>
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                no-caps
+                outline
+                label="Add"
+                :disable="isProductListInputType || !canAddCategory"
+                @click="addCategoryOption"
+              />
+            </div>
+          </div>
 
           <div>
             <div class="text-subtitle2 q-mb-xs">Item Note</div>
@@ -217,13 +275,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, reactive } from 'vue'
+import { computed, watch, reactive, ref } from 'vue'
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { productService } from 'src/modules/products/services/productService'
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 
 interface ProductBasedCostingItemFormData {
   id?: number
@@ -235,6 +295,7 @@ interface ProductBasedCostingItemFormData {
   barcode?: string | null
   product_code?: string | null
   brand?: string | null
+  category?: string | null
   vendor_code?: string | null
   market_code?: string | null
   quantity?: number | null
@@ -281,7 +342,8 @@ const getInitialForm = () => ({
   note: '',
   barcode: '',
   product_code: '',
-  brand: '',
+  brand: null as string | null,
+  category: null as string | null,
   vendor_code: props.defaultVendorCode ?? null,
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
@@ -304,7 +366,8 @@ const fillForm = () => {
       note: props.itemData.note ?? '',
       barcode: props.itemData.barcode ?? '',
       product_code: props.itemData.product_code ?? '',
-      brand: props.itemData.brand ?? '',
+      brand: props.itemData.brand ?? null,
+      category: props.itemData.category ?? null,
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
@@ -339,7 +402,190 @@ const marketOptions = computed(() => [
   })),
 ])
 
+const brandNames = ref<string[]>([])
+const categoryNames = ref<string[]>([])
+const filteredBrandNames = ref<string[]>([])
+const filteredCategoryNames = ref<string[]>([])
+const brandInputValue = ref('')
+const categoryInputValue = ref('')
+
+const filteredBrandOptions = computed(() => {
+  const seen = new Set<string>()
+  const options = filteredBrandNames.value
+    .map((item) => (item ?? '').trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => item.toLowerCase() !== 'other')
+    .filter((item) => {
+      const key = item.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map((item) => ({
+      label: item,
+      value: item,
+    }))
+
+  return [{ label: 'Other', value: null as string | null }, ...options]
+})
+
+const filteredCategoryOptions = computed(() => {
+  const seen = new Set<string>()
+  const options = filteredCategoryNames.value
+    .map((item) => (item ?? '').trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => item.toLowerCase() !== 'other')
+    .filter((item) => {
+      const key = item.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map((item) => ({
+      label: item,
+      value: item,
+    }))
+
+  return [{ label: 'Other', value: null as string | null }, ...options]
+})
+
+const canPickBrandCategory = computed(
+  () => Boolean(form.vendor_code) && Boolean(form.market_code),
+)
+
+const normalized = (value: string | null | undefined) => (value ?? '').trim()
+
+const normalizeKey = (value: string | null | undefined) =>
+  normalized(value).toLowerCase()
+
+const canAddBrand = computed(() => {
+  if (!canPickBrandCategory.value || !form.vendor_code) return false
+  const candidate = normalized(brandInputValue.value || form.brand)
+  if (!candidate) return false
+  return !brandNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
+})
+
+const canAddCategory = computed(() => {
+  if (!canPickBrandCategory.value || !form.vendor_code) return false
+  const candidate = normalized(categoryInputValue.value || form.category)
+  if (!candidate) return false
+  return !categoryNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
+})
+
+const loadBrandCategoryOptions = async () => {
+  if (!form.vendor_code || !form.market_code) {
+    brandNames.value = []
+    categoryNames.value = []
+    filteredBrandNames.value = []
+    filteredCategoryNames.value = []
+    return
+  }
+
+  const [brandResult, categoryResult] = await Promise.all([
+    productService.listBrands({ vendorCode: form.vendor_code }),
+    productService.listCategories({ vendorCode: form.vendor_code }),
+  ])
+
+  if (brandResult.success) {
+    brandNames.value = brandResult.data ?? []
+    filteredBrandNames.value = [...brandNames.value]
+  } else {
+    handleApiFailure(brandResult, brandResult.error ?? 'Failed to load brands.')
+  }
+
+  if (categoryResult.success) {
+    categoryNames.value = categoryResult.data ?? []
+    filteredCategoryNames.value = [...categoryNames.value]
+  } else {
+    handleApiFailure(categoryResult, categoryResult.error ?? 'Failed to load categories.')
+  }
+}
+
+const filterBrandOptions = (val: string, update: (callback: () => void) => void) => {
+  const needle = normalizeKey(val)
+  update(() => {
+    if (!needle) {
+      filteredBrandNames.value = [...brandNames.value]
+      return
+    }
+    filteredBrandNames.value = brandNames.value.filter(
+      (item) => normalizeKey(item).includes(needle),
+    )
+  })
+}
+
+const filterCategoryOptions = (val: string, update: (callback: () => void) => void) => {
+  const needle = normalizeKey(val)
+  update(() => {
+    if (!needle) {
+      filteredCategoryNames.value = [...categoryNames.value]
+      return
+    }
+    filteredCategoryNames.value = categoryNames.value.filter(
+      (item) => normalizeKey(item).includes(needle),
+    )
+  })
+}
+
+const onBrandInputValue = (value: string) => {
+  brandInputValue.value = value
+}
+
+const onCategoryInputValue = (value: string) => {
+  categoryInputValue.value = value
+}
+
+const addBrandOption = async () => {
+  const name = normalized(brandInputValue.value || form.brand)
+  if (!name || !form.vendor_code) return
+
+  const result = await productService.createProductBrand({
+    name,
+    value: name.toLowerCase(),
+    vendor_code: form.vendor_code,
+  })
+
+  if (!result.success) {
+    handleApiFailure(result, result.error ?? 'Failed to add brand.')
+    return
+  }
+
+  showSuccessNotification('Brand added successfully.')
+  await loadBrandCategoryOptions()
+  form.brand = name
+  brandInputValue.value = ''
+}
+
+const addCategoryOption = async () => {
+  const name = normalized(categoryInputValue.value || form.category)
+  if (!name || !form.vendor_code) return
+
+  const result = await productService.createProductCategory({
+    name,
+    value: name.toLowerCase(),
+    vendor_code: form.vendor_code,
+  })
+
+  if (!result.success) {
+    handleApiFailure(result, result.error ?? 'Failed to add category.')
+    return
+  }
+
+  showSuccessNotification('Category added successfully.')
+  await loadBrandCategoryOptions()
+  form.category = name
+  categoryInputValue.value = ''
+}
+
 const submitForm = async () => {
+  if (!form.vendor_code || !form.market_code) {
+    handleApiFailure(
+      { success: false, error: 'Please select vendor and market first.' },
+      'Please select vendor and market first.',
+    )
+    return
+  }
+
   if (isEditMode.value && props.itemData?.id) {
     const result = await store.updateProductBasedCostingItem({
       id: props.itemData.id,
@@ -368,6 +614,7 @@ const submitForm = async () => {
       await productStore.updateProduct({
         id: props.itemData.product_id,
         brand: form.brand || null,
+        category: form.category || null,
       })
     }
 
@@ -385,8 +632,8 @@ const submitForm = async () => {
     product_code: form.product_code || null,
     price_gbp: form.price_gbp,
     country_of_origin: null,
-    brand: form.brand || null,
-    category: null,
+        brand: form.brand || null,
+        category: form.category || null,
     available_units: null,
     tariff_code: null,
     languages: null,
@@ -439,11 +686,12 @@ watch(
     if (value) {
       fillForm()
       if (!vendorStore.items.length) {
-        await vendorStore.fetchVendors()
+        await vendorStore.fetchVendors(authStore.tenantId ?? null)
       }
       if (!marketStore.items.length) {
         await marketStore.fetchMarkets()
       }
+      await loadBrandCategoryOptions()
     }
   },
   { immediate: true, deep: true },
@@ -465,10 +713,17 @@ watch(
     }
     form.vendor_code = vendorCode ?? null
     form.market_code = marketCode ?? null
+    void loadBrandCategoryOptions()
   },
 )
 
-const onVendorOrMarketChange = async () => {
+  const onVendorOrMarketChange = async () => {
+  if (!isEditMode.value) {
+    form.brand = null
+    form.category = null
+  }
+  await loadBrandCategoryOptions()
+
   const result = await store.updateProductBasedCostingFile({
     id: props.productBasedCostingFileId,
     vendor_code: form.vendor_code,

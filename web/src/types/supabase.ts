@@ -1409,6 +1409,8 @@ export type Database = {
           profit_rate: number | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: number | null
+          tenant_id: number
+          tenant_order_id: number
           updated_at: string
         }
         Insert: {
@@ -1425,6 +1427,8 @@ export type Database = {
           profit_rate?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
+          tenant_id: number
+          tenant_order_id: number
           updated_at?: string
         }
         Update: {
@@ -1441,6 +1445,8 @@ export type Database = {
           profit_rate?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: number | null
+          tenant_id?: number
+          tenant_order_id?: number
           updated_at?: string
         }
         Relationships: [
@@ -1456,6 +1462,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2168,6 +2181,7 @@ export type Database = {
           received_weight: number | null
           status: string
           tenant_id: number
+          tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
           weight: number | null
@@ -2184,6 +2198,7 @@ export type Database = {
           received_weight?: number | null
           status?: string
           tenant_id: number
+          tenant_shipment_id: number
           updated_at?: string
           vendor_code?: string | null
           weight?: number | null
@@ -2200,6 +2215,7 @@ export type Database = {
           received_weight?: number | null
           status?: string
           tenant_id?: number
+          tenant_shipment_id?: number
           updated_at?: string
           vendor_code?: string | null
           weight?: number | null
@@ -2343,6 +2359,38 @@ export type Database = {
           },
           {
             foreignKeyName: "tenant_modules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_scoped_counters: {
+        Row: {
+          created_at: string
+          last_value: number
+          scope: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          last_value?: number
+          scope: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          last_value?: number
+          scope?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_scoped_counters_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2556,6 +2604,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      apply_invoice_item_return: {
+        Args: {
+          p_actor?: string
+          p_invoice_item_id: number
+          p_return_amount: number
+          p_return_normal_quantity: number
+          p_return_open_box_quantity: number
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       bulk_add_shipment_items_from_product_ids: {
         Args: { p_items: Json; p_shipment_id: number }
@@ -2935,6 +2994,7 @@ export type Database = {
           received_weight: number | null
           status: string
           tenant_id: number
+          tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
           weight: number | null
@@ -3485,6 +3545,10 @@ export type Database = {
           region: string
         }[]
       }
+      next_tenant_scoped_counter: {
+        Args: { p_scope: string; p_tenant_id: number }
+        Returns: number
+      }
       recompute_invoice_payment_status: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -3706,6 +3770,7 @@ export type Database = {
           received_weight: number | null
           status: string
           tenant_id: number
+          tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
           weight: number | null

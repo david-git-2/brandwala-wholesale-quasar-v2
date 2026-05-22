@@ -1,6 +1,14 @@
 import { supabase } from 'src/boot/supabase'
 
 import type {
+  ProductBrand,
+  ProductBrandCreateInput,
+  ProductBrandDeleteInput,
+  ProductBrandUpdateInput,
+  ProductCategory,
+  ProductCategoryCreateInput,
+  ProductCategoryDeleteInput,
+  ProductCategoryUpdateInput,
   Product,
   ProductCreateInput,
   ProductDeleteInput,
@@ -458,9 +466,133 @@ const deleteProduct = async (payload: ProductDeleteInput): Promise<Product> => {
   return data as Product
 }
 
+const listProductBrands = async ({
+  vendorCode,
+}: ListProductLookupParams = {}): Promise<ProductBrand[]> => {
+  let query = supabase
+    .from('product_brands')
+    .select('*')
+    .order('name', { ascending: true })
+
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  if (normalizedVendorCode) {
+    query = query.eq('vendor_code', normalizedVendorCode)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data as ProductBrand[] | null) ?? []
+}
+
+const createProductBrand = async (payload: ProductBrandCreateInput): Promise<ProductBrand> => {
+  const name = normalizeText(payload.name) ?? ''
+  if (!name) throw new Error('Brand name is required.')
+  const vendorCode = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+  const value = normalizeText(payload.value)?.toLowerCase() ?? name.toLowerCase()
+
+  const { data, error } = await supabase
+    .from('product_brands')
+    .insert([{ name, value, vendor_code: vendorCode }])
+    .select('*')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Brand was not created.')
+  return data as ProductBrand
+}
+
+const updateProductBrand = async (payload: ProductBrandUpdateInput): Promise<ProductBrand> => {
+  const patch: ProductBrandUpdateInput = { id: payload.id }
+  if (payload.name !== undefined) patch.name = normalizeText(payload.name) ?? ''
+  if (payload.value !== undefined) patch.value = normalizeText(payload.value)?.toLowerCase() ?? null
+  if (payload.vendor_code !== undefined) patch.vendor_code = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+
+  const { data, error } = await supabase
+    .from('product_brands')
+    .update(patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Brand was not updated.')
+  return data as ProductBrand
+}
+
+const deleteProductBrand = async (payload: ProductBrandDeleteInput): Promise<void> => {
+  const { error } = await supabase.from('product_brands').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
+const listProductCategories = async ({
+  vendorCode,
+}: ListProductLookupParams = {}): Promise<ProductCategory[]> => {
+  let query = supabase
+    .from('product_categories')
+    .select('*')
+    .order('name', { ascending: true })
+
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  if (normalizedVendorCode) {
+    query = query.eq('vendor_code', normalizedVendorCode)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data as ProductCategory[] | null) ?? []
+}
+
+const createProductCategory = async (payload: ProductCategoryCreateInput): Promise<ProductCategory> => {
+  const name = normalizeText(payload.name) ?? ''
+  if (!name) throw new Error('Category name is required.')
+  const vendorCode = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+  const value = normalizeText(payload.value)?.toLowerCase() ?? name.toLowerCase()
+
+  const { data, error } = await supabase
+    .from('product_categories')
+    .insert([{ name, value, vendor_code: vendorCode }])
+    .select('*')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Category was not created.')
+  return data as ProductCategory
+}
+
+const updateProductCategory = async (payload: ProductCategoryUpdateInput): Promise<ProductCategory> => {
+  const patch: ProductCategoryUpdateInput = { id: payload.id }
+  if (payload.name !== undefined) patch.name = normalizeText(payload.name) ?? ''
+  if (payload.value !== undefined) patch.value = normalizeText(payload.value)?.toLowerCase() ?? null
+  if (payload.vendor_code !== undefined) patch.vendor_code = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+
+  const { data, error } = await supabase
+    .from('product_categories')
+    .update(patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Category was not updated.')
+  return data as ProductCategory
+}
+
+const deleteProductCategory = async (payload: ProductCategoryDeleteInput): Promise<void> => {
+  const { error } = await supabase.from('product_categories').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
 export const productRepository = {
   listBrands,
   listCategories,
+  listProductBrands,
+  createProductBrand,
+  updateProductBrand,
+  deleteProductBrand,
+  listProductCategories,
+  createProductCategory,
+  updateProductCategory,
+  deleteProductCategory,
   listProducts,
   getProductById,
   createProduct,

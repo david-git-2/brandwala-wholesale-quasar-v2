@@ -35,6 +35,7 @@ export type VendorUpdateInput = VendorCreateInput & {
 
 export type VendorDeleteInput = {
   id: number
+  tenant_id?: number | null
 }
 
 export type VendorServiceResult<T> = {

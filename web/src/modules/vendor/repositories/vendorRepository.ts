@@ -8,11 +8,31 @@ import type {
   VendorUpdateInput,
 } from '../types'
 
-const listVendors = async (): Promise<Vendor[]> => {
-  const { data, error } = await supabase
+const normalizeVendorCode = (code: string) => code.trim().toUpperCase()
+
+const toTenantScopedVendorCode = (code: string, tenantId?: number | null) => {
+  const normalized = normalizeVendorCode(code)
+  if (!normalized || typeof tenantId !== 'number') {
+    return normalized
+  }
+
+  const suffix = `-${tenantId}`
+  return normalized.endsWith(suffix) ? normalized : `${normalized}${suffix}`
+}
+
+const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
+  let query = supabase
     .from('vendors')
     .select('*')
     .order('id', { ascending: true })
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  } else if (tenantId === null) {
+    query = query.is('tenant_id', null)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     throw error
@@ -33,27 +53,42 @@ const listVendorMarkets = async (): Promise<VendorMarket[]> => {
 
 const isVendorCodeAvailable = async (
   code: string,
+  tenantId?: number | null,
   excludeId?: number | null,
 ): Promise<boolean> => {
-  const { data, error } = await supabase.rpc('is_vendor_code_available', {
-    p_code: code,
-    p_exclude_id: excludeId ?? null,
-  })
+  const candidateCode = toTenantScopedVendorCode(code, tenantId)
+  let query = supabase
+    .from('vendors')
+    .select('id', { count: 'exact', head: true })
+    .eq('code', candidateCode)
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  } else if (tenantId === null) {
+    query = query.is('tenant_id', null)
+  }
+
+  if (typeof excludeId === 'number') {
+    query = query.neq('id', excludeId)
+  }
+
+  const { count, error } = await query
 
   if (error) {
     throw error
   }
 
-  return Boolean(data)
+  return (count ?? 0) === 0
 }
 
 const createVendor = async (payload: VendorCreateInput): Promise<Vendor> => {
+  const vendorCode = toTenantScopedVendorCode(payload.code, payload.tenant_id)
   const { data, error } = await supabase
     .from('vendors')
     .insert([
       {
         name: payload.name.trim(),
-        code: payload.code.trim().toUpperCase(),
+        code: vendorCode,
         market_code: payload.market_code.trim().toUpperCase(),
         tenant_id: payload.tenant_id,
         email: payload.email?.trim() || null,
@@ -77,11 +112,12 @@ const createVendor = async (payload: VendorCreateInput): Promise<Vendor> => {
 }
 
 const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
-  const { data, error } = await supabase
+  const vendorCode = toTenantScopedVendorCode(payload.code, payload.tenant_id)
+  let query = supabase
     .from('vendors')
     .update({
       name: payload.name.trim(),
-      code: payload.code.trim().toUpperCase(),
+      code: vendorCode,
       market_code: payload.market_code.trim().toUpperCase(),
       tenant_id: payload.tenant_id,
       email: payload.email?.trim() || null,
@@ -90,8 +126,14 @@ const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
       website: payload.website?.trim() || null,
     })
     .eq('id', payload.id)
-    .select()
-    .single()
+
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  } else if (payload.tenant_id === null) {
+    query = query.is('tenant_id', null)
+  }
+
+  const { data, error } = await query.select().single()
 
   if (error) {
     throw error
@@ -105,10 +147,18 @@ const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
 }
 
 const deleteVendor = async (payload: VendorDeleteInput): Promise<void> => {
-  const { error } = await supabase
+  let query = supabase
     .from('vendors')
     .delete()
     .eq('id', payload.id)
+
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  } else if (payload.tenant_id === null) {
+    query = query.is('tenant_id', null)
+  }
+
+  const { error } = await query
 
   if (error) {
     throw error

@@ -284,7 +284,7 @@ onMounted(async () => {
   const [brandResult, categoryResult] = await Promise.all([
     productService.listBrands(),
     productService.listCategories(),
-    vendorStore.fetchVendors(),
+    vendorStore.fetchVendors(authStore.tenantId ?? null),
     marketStore.fetchMarkets(),
   ])
 

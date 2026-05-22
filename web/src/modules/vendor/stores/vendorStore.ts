@@ -23,12 +23,12 @@ export const useVendorStore = defineStore('vendor', {
       this.error = null
     },
 
-    async fetchVendors() {
+    async fetchVendors(tenantId?: number | null) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await vendorService.listVendors()
+        const result = await vendorService.listVendors(tenantId)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load vendors.'
@@ -56,8 +56,8 @@ export const useVendorStore = defineStore('vendor', {
       return result
     },
 
-    async checkCodeAvailability(code: string, excludeId?: number | null) {
-      return vendorService.isVendorCodeAvailable(code, excludeId)
+    async checkCodeAvailability(code: string, tenantId?: number | null, excludeId?: number | null) {
+      return vendorService.isVendorCodeAvailable(code, tenantId, excludeId)
     },
 
     async createVendor(payload: VendorCreateInput) {

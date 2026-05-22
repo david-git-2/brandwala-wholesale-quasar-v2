@@ -11,6 +11,8 @@ export type OrderStatus =
 
 export type Order = {
   id: number
+  tenant_id: number
+  tenant_order_id: number
   invoice_id: number | null
   name: string
   customer_group_id: number
@@ -57,6 +59,7 @@ export type OrderWithItems = Order & {
 }
 
 export type OrderListInput = {
+  tenant_id?: number | null
   fields?: string[]
   customer_group_id?: number | null
   store_id?: number | null
@@ -80,18 +83,20 @@ export type OrderListPage = {
 
 export type OrderGetByIdInput = {
   id: number
+  tenant_id?: number | null
   order_fields?: string[]
   item_fields?: string[]
 }
 
 export type OrderUpdateInput = {
   id: number
-  patch: Partial<Omit<Order, 'id' | 'created_at' | 'updated_at'>>
+  tenant_id?: number | null
+  patch: Partial<Omit<Order, 'id' | 'tenant_id' | 'tenant_order_id' | 'created_at' | 'updated_at'>>
 }
 
 export type OrderCreateInput = Omit<
   Order,
-  'id' | 'created_at' | 'updated_at'
+  'id' | 'tenant_order_id' | 'created_at' | 'updated_at'
 >
 
 export type OrderItemUpdateInput = {
@@ -101,6 +106,7 @@ export type OrderItemUpdateInput = {
 
 export type OrderDeleteInput = {
   id: number
+  tenant_id?: number | null
 }
 
 export type OrderItemDeleteInput = {

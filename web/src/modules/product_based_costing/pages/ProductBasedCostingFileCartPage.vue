@@ -153,11 +153,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ProductCard from '../components/ProductCard.vue'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useRoute } from 'vue-router'
 import { useProductBasedCostingStore } from '../../product_based_costing/stores/productBasedCostingStore'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 const costingFileStore = useProductBasedCostingStore()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const productStore = useProductStore()
 const vendorStore = useVendorStore()
@@ -393,7 +395,7 @@ const loadCostingFileItems = async () => {
 
 onMounted(() => {
   void Promise.all([
-    vendorStore.fetchVendors(),
+    vendorStore.fetchVendors(authStore.tenantId ?? null),
     loadBrands(),
     loadCategories(),
     loadProducts(),
