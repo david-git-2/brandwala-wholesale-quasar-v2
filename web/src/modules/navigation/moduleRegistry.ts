@@ -95,10 +95,26 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Commerce Shop',
-        caption: 'View inventory-backed catalog for commerce operations',
+        title: 'Commerce Shop Manage',
+        caption: 'Manage commerce shop stores',
         icon: 'storefront',
-        routeSegment: 'commerce-shop',
+        routeSegment: 'commerce-shop/manage-store',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Commerce Shop Access',
+        caption: 'Manage commerce shop customer-group access',
+        icon: 'lock_open',
+        routeSegment: 'commerce-shop/manage-access',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Commerce Shop Products',
+        caption: 'Manage products for commerce shop stores',
+        icon: 'inventory_2',
+        routeSegment: 'commerce-shop/store-products',
         requiredAction: 'view',
       },
       {

@@ -3306,7 +3306,25 @@ export type Database = {
         }[]
       }
       get_store_access_admin: {
-        Args: { p_store_id?: number }
+        Args: { p_store_id?: number; p_tenant_id?: number }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          see_price: boolean
+          status: boolean
+          store_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "store_access"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_store_access_admin_v2: {
+        Args: { p_store_id?: number; p_tenant_id?: number }
         Returns: {
           created_at: string
           customer_group_id: number

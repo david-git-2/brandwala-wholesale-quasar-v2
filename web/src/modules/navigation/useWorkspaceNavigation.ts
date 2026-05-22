@@ -182,13 +182,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'products',
     )
+    const hasCommerceShopModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_shop',
+    )
 
     if (
       !hasStoreModuleAccess &&
       !hasInvoiceModuleAccess &&
       !hasAccountingModuleAccess &&
       !hasInvestorModuleAccess &&
-      !hasProductsModuleAccess
+      !hasProductsModuleAccess &&
+      !hasCommerceShopModuleAccess
     ) {
       return [...baseLinks, ...moduleLinks]
     }
@@ -200,7 +205,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'invoice' &&
           routeDefinition.moduleKey !== 'accounting' &&
           routeDefinition.moduleKey !== 'investor' &&
-          routeDefinition.moduleKey !== 'products',
+          routeDefinition.moduleKey !== 'products' &&
+          routeDefinition.moduleKey !== 'commerce_shop',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -241,6 +247,14 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey === 'accounting' &&
           routeDefinition.title !== 'Accounting',
       )
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceShopChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_shop')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
@@ -318,6 +332,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
               caption: 'Product module',
               icon: 'inventory_2',
               children: productsChildren,
+            },
+          ]
+        : []),
+      ...(hasCommerceShopModuleAccess
+        ? [
+            {
+              title: 'Commerce Shop',
+              caption: 'Commerce shop module',
+              icon: 'storefront',
+              children: commerceShopChildren,
             },
           ]
         : []),

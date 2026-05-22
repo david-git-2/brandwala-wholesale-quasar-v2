@@ -179,7 +179,8 @@ const getGroupLabel = (groupId: number) =>
   customerGroupStore.groups.find((group) => group.id === groupId)?.name ?? `#${groupId}`
 
 const fetchAccessRows = async () => {
-  await storeStore.fetchStoreAccessAdmin(null)
+  const tenantId = tenantStore.selectedTenant?.id ?? null
+  await storeStore.fetchStoreAccessAdmin(null, tenantId)
 }
 
 const openCreate = () => {

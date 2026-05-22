@@ -75,9 +75,10 @@ const deleteStore = async (
 
 const getStoreAccessAdmin = async (
   storeId?: number | null,
+  tenantId?: number | null,
 ): Promise<StoreServiceResult<StoreAccess[]>> => {
   try {
-    const data = await storeRepository.getStoreAccessAdmin(storeId)
+    const data = await storeRepository.getStoreAccessAdmin(storeId, tenantId)
     return { success: true, data }
   } catch (error) {
     return {

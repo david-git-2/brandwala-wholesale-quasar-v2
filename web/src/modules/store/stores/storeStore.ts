@@ -178,12 +178,12 @@ export const useStoreStore = defineStore('store', {
       }
     },
 
-    async fetchStoreAccessAdmin(storeId?: number | null) {
+    async fetchStoreAccessAdmin(storeId?: number | null, tenantId?: number | null) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await storeService.getStoreAccessAdmin(storeId)
+        const result = await storeService.getStoreAccessAdmin(storeId, tenantId)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load store access.'

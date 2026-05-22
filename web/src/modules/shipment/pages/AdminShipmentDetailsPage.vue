@@ -604,6 +604,35 @@
                 option-label="label"
               />
             </div>
+            <div style="width: 220px; min-width: 220px">
+              <q-select
+                v-model="productSearchVendorCode"
+                :options="vendorOptions"
+                label="Vendor"
+                outlined
+                dense
+                emit-value
+                map-options
+                option-value="value"
+                option-label="label"
+                clearable
+                @update:model-value="onSearchVendorChange"
+              />
+            </div>
+            <div style="width: 220px; min-width: 220px">
+              <q-select
+                v-model="productSearchCategory"
+                :options="categoryOptions"
+                label="Category"
+                outlined
+                dense
+                emit-value
+                map-options
+                option-value="value"
+                option-label="label"
+                clearable
+              />
+            </div>
             <div class="col">
               <q-input
                 v-model="productSearch"
@@ -766,7 +795,19 @@
             outlined
             dense
             hide-bottom-space
-            @update:model-value="onAddProductDefaultVendorChange"
+            @update:model-value="onAddProductVendorChange"
+          />
+          <q-select
+            v-model="addProductForm.category"
+            :options="categoryOptions"
+            emit-value
+            map-options
+            option-value="value"
+            option-label="label"
+            label="Category"
+            outlined
+            dense
+            hide-bottom-space
           />
           <q-select
             v-model="addProductForm.market_code"
@@ -1081,6 +1122,8 @@ const selectedStatus = ref<ShipmentStatus>('Draft')
 const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
 const productSearch = ref('')
 const productSearchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name')
+const productSearchVendorCode = ref<string | null>(null)
+const productSearchCategory = ref<string | null>(null)
 const productSearchFieldOptions: Array<{
   label: string
   value: 'name' | 'barcode' | 'product_code' | 'id'
@@ -1154,6 +1197,7 @@ const addProductForm = reactive({
   product_weight: null as number | null,
   package_weight: null as number | null,
   vendor_code: null as string | null,
+  category: null as string | null,
   market_code: null as string | null,
   minimum_order_quantity: null as number | null,
 })
@@ -1174,6 +1218,13 @@ const vendorOptions = computed(() => [
   ...vendorStore.items.map((vendor) => ({
     label: `${vendor.name} (${vendor.code})`,
     value: vendor.code,
+  })),
+])
+const categoryOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...productStore.categoryOptions.map((category) => ({
+    label: category,
+    value: category,
   })),
 ])
 const marketOptions = computed(() => [
@@ -1403,6 +1454,8 @@ const goToBatchCodePage = async () => {
 const resetProductSearchDialog = () => {
   productSearch.value = ''
   productSearchField.value = 'name'
+  productSearchVendorCode.value = shipmentStore.selectedShipment?.vendor_code ?? null
+  productSearchCategory.value = null
   Object.keys(productQuantityById).forEach((key) => {
     delete productQuantityById[Number(key)]
   })
@@ -1411,6 +1464,7 @@ const resetProductSearchDialog = () => {
 
 const openAddItemDialog = () => {
   resetProductSearchDialog()
+  void loadCategoryOptionsForVendor(productSearchVendorCode.value)
   showAddItemDialog.value = true
 }
 
@@ -1424,8 +1478,10 @@ const resetAddProductForm = () => {
   addProductForm.product_weight = null
   addProductForm.package_weight = null
   addProductForm.vendor_code = shipmentStore.selectedShipment?.vendor_code ?? null
+  addProductForm.category = null
   addProductForm.market_code = shipmentStore.selectedShipment?.market_code ?? null
   addProductForm.minimum_order_quantity = null
+  void loadCategoryOptionsForVendor(addProductForm.vendor_code)
 }
 
 const openAddProductDialog = () => {
@@ -1537,6 +1593,8 @@ const onSearchProducts = async () => {
     pageSize: 40,
     search: productSearch.value,
     searchField: productSearchField.value,
+    vendorCode: productSearchVendorCode.value,
+    category: productSearchCategory.value,
     tenantId: authStore.tenantId,
   })
 }
@@ -1590,7 +1648,7 @@ const onCreateProductAndAddToShipment = async () => {
     price_gbp: priceGbp,
     country_of_origin: null,
     brand: null,
-    category: null,
+    category: addProductForm.category,
     available_units: null,
     tariff_code: null,
     languages: null,
@@ -1621,6 +1679,26 @@ const onCreateProductAndAddToShipment = async () => {
 
   showAddProductDialog.value = false
   resetAddProductForm()
+}
+
+const loadCategoryOptionsForVendor = async (vendorCode: string | null) => {
+  await productStore.fetchCategoryOptions({
+    vendorCode: vendorCode ?? null,
+    tenantId: authStore.tenantId ?? null,
+  })
+}
+
+const onSearchVendorChange = async (value: string | null) => {
+  productSearchVendorCode.value = value ?? null
+  productSearchCategory.value = null
+  await loadCategoryOptionsForVendor(productSearchVendorCode.value)
+}
+
+const onAddProductVendorChange = async (value: string | null) => {
+  addProductForm.vendor_code = value ?? null
+  addProductForm.category = null
+  await loadCategoryOptionsForVendor(addProductForm.vendor_code)
+  await onAddProductDefaultVendorChange(addProductForm.vendor_code)
 }
 
 const onAddProductDefaultVendorChange = async (value: string | null) => {

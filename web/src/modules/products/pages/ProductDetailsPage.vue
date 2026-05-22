@@ -361,7 +361,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import type { Product } from '../types'
@@ -372,7 +372,6 @@ import type { Vendor } from 'src/modules/vendor/types'
 import type { QForm } from 'quasar'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(false)

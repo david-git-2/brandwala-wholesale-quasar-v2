@@ -85,10 +85,30 @@ const deleteStore = async (payload: StoreDeleteInput): Promise<void> => {
   }
 }
 
-const getStoreAccessAdmin = async (storeId?: number | null): Promise<StoreAccess[]> => {
-  const { data, error } = await supabase.rpc('get_store_access_admin' as never, {
+const getStoreAccessAdmin = async (
+  storeId?: number | null,
+  tenantId?: number | null,
+): Promise<StoreAccess[]> => {
+  const params = {
     p_store_id: storeId ?? null,
-  } as never)
+    p_tenant_id: tenantId ?? null,
+  } as never
+
+  let { data, error } = await supabase.rpc('get_store_access_admin_v2' as never, params)
+
+  if (error?.code === 'PGRST202') {
+    const fallbackV1Tenant = await supabase.rpc('get_store_access_admin' as never, params)
+    data = fallbackV1Tenant.data
+    error = fallbackV1Tenant.error
+  }
+
+  if (error?.code === 'PGRST202') {
+    const fallbackLegacy = await supabase.rpc('get_store_access_admin' as never, {
+      p_store_id: storeId ?? null,
+    } as never)
+    data = fallbackLegacy.data
+    error = fallbackLegacy.error
+  }
 
   if (error) {
     throw error
