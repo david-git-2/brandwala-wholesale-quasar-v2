@@ -1,50 +1,54 @@
 <template>
   <div>
     <PageInitialLoader v-if="initialLoading" />
-    <q-page v-else class="q-pa-md">
-    <div class="text-h6 q-mb-md">Store Products</div>
+    <q-page v-else class="q-pa-md store-products-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">Store Products</div>
+            <div class="text-caption text-grey-8">Browse store products and manage cart items</div>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-    <div class="row q-col-gutter-md items-end q-mb-md">
-      <div class="col-12 col-sm-4 col-md-3">
-        <q-input v-model="search" outlined dense type="text" label="Search" />
-      </div>
-
-      <div class="col-12 col-sm-4 col-md-3">
-        <q-select
-          v-model="brand"
-          outlined
-          use-input
+    <div class="row items-center justify-between q-mb-md">
+      <div class="row items-center q-gutter-sm toolbar-left">
+        <q-btn
+          v-if="!showSearchInput"
+          flat
+          round
           dense
-          hide-selected
-          fill-input
-          input-debounce="300"
-          emit-value
-          map-options
-          :options="filteredBrandOptions"
-          label="Brand"
-          @filter="filterBrands"
+          icon="search"
+          aria-label="Show search"
+          @click="showSearchInput = true"
         />
-      </div>
-
-      <div class="col-12 col-sm-4 col-md-3">
-        <q-select
-          v-model="category"
-          outlined
-          use-input
+        <q-input
+          v-else
+          v-model="search"
+          filled
           dense
-          hide-selected
-          fill-input
-          input-debounce="300"
-          emit-value
-          map-options
-          :options="filteredCategoryOptions"
-          label="Category"
-          @filter="filterCategories"
-        />
-      </div>
+          type="text"
+          class="soft-input toolbar-search"
+          label="Search"
+          clearable
+          autofocus
+          @clear="onSearchHide"
+        >
+          <template #prepend>
+            <q-icon name="search" />
+          </template>
+          <template #append>
+            <q-btn flat round dense icon="close" aria-label="Hide search" @click="onSearchHide" />
+          </template>
+        </q-input>
 
-      <div class="col-12 col-sm-4 col-md-3">
-        <q-btn color="negative" outline label="Reset"  @click="onResetFilters" />
+        <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="filterDrawerOpen = true">
+          <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+            {{ activeFilterCount }}
+          </q-badge>
+        </q-btn>
       </div>
     </div>
     <q-btn-toggle
@@ -81,6 +85,44 @@
         @update:model-value="onPageChange"
       />
     </div>
+
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <q-select
+        v-model="brand"
+        filled
+        use-input
+        dense
+        hide-selected
+        fill-input
+        input-debounce="300"
+        emit-value
+        map-options
+        :options="filteredBrandOptions"
+        class="soft-input q-mb-sm"
+        label="Brand"
+        @filter="filterBrands"
+      />
+
+      <q-select
+        v-model="category"
+        filled
+        use-input
+        dense
+        hide-selected
+        fill-input
+        input-debounce="300"
+        emit-value
+        map-options
+        :options="filteredCategoryOptions"
+        class="soft-input q-mb-md"
+        label="Category"
+        @filter="filterCategories"
+      />
+
+      <div class="row q-gutter-sm justify-end">
+        <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+      </div>
+    </FilterSidebar>
     </q-page>
   </div>
 </template>
@@ -89,10 +131,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
+import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { storeService } from '../services/storeService'
 import { useStoreStore } from '../stores/storeStore'
 import ProductCardGrid from './ProductCardGrid.vue'
 
@@ -107,6 +150,7 @@ const props = withDefaults(
 
 const tenantStore = useTenantStore()
 const storeStore = useStoreStore()
+const productStore = useProductStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 
@@ -155,6 +199,8 @@ const selectedStoreId = ref<number | null>(null)
 const initialLoading = ref(true)
 const storeOptions = ref<Array<{ label: string; value: number }>>([])
 const search = ref('')
+const showSearchInput = ref(false)
+const filterDrawerOpen = ref(false)
 const category = ref<string | null>(null)
 const brand = ref<string | null>(null)
 let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
@@ -174,6 +220,12 @@ const filteredCategoryOptions = computed<FilterOption[]>(() => [
   allCategoryOption,
   ...filteredCategoryNames.value.map((item) => ({ label: item, value: item })),
 ])
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (brand.value) count += 1
+  if (category.value) count += 1
+  return count
+})
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(storeStore.productsTotal / storeStore.productsPageSize)),
@@ -257,21 +309,25 @@ const fields =
   })
 }
 
-const loadBrands = async (storeId: number) => {
-  const result = await storeService.getStoreProductBrands(storeId)
+const loadBrands = async (vendorCode?: string | null) => {
+  const result = await productStore.fetchBrandOptions({
+    vendorCode: vendorCode ?? null,
+  })
 
   if (result.success) {
-    brandNames.value = result.data ?? []
-    filteredBrandNames.value = result.data ?? []
+    brandNames.value = productStore.brandOptions
+    filteredBrandNames.value = productStore.brandOptions
   }
 }
 
-const loadCategories = async (storeId: number) => {
-  const result = await storeService.getStoreProductCategories(storeId)
+const loadCategories = async (vendorCode?: string | null) => {
+  const result = await productStore.fetchCategoryOptions({
+    vendorCode: vendorCode ?? null,
+  })
 
   if (result.success) {
-    categoryNames.value = result.data ?? []
-    filteredCategoryNames.value = result.data ?? []
+    categoryNames.value = productStore.categoryOptions
+    filteredCategoryNames.value = productStore.categoryOptions
   }
 }
 
@@ -291,7 +347,7 @@ const onStoreSelectionChange = async (storeId: number | string | null) => {
   try {
     brand.value = null
     category.value = null
-    await Promise.all([loadBrands(numericStoreId), loadCategories(numericStoreId)])
+    await Promise.all([loadBrands(selectedStore?.vendor_code), loadCategories(selectedStore?.vendor_code)])
   } finally {
     suppressFilterWatch.value = false
   }
@@ -381,6 +437,7 @@ const onResetFilters = async () => {
 
   try {
     search.value = ''
+    showSearchInput.value = false
     brand.value = null
     category.value = null
     filteredBrandNames.value = [...brandNames.value]
@@ -388,6 +445,13 @@ const onResetFilters = async () => {
     await loadProducts(selectedStoreId.value, 1)
   } finally {
     suppressFilterWatch.value = false
+  }
+}
+const onSearchHide = () => {
+  search.value = ''
+  showSearchInput.value = false
+  if (selectedStoreId.value) {
+    void loadProducts(selectedStoreId.value, 1)
   }
 }
 
@@ -472,7 +536,7 @@ onMounted(async () => {
     if (props.mode === 'customer') {
       storeStore.productsCanSeePrice = Boolean(firstStore.see_price)
     }
-    await Promise.all([loadBrands(firstStore.id), loadCategories(firstStore.id)])
+    await Promise.all([loadBrands(firstStore.vendor_code), loadCategories(firstStore.vendor_code)])
     await loadProducts(firstStore.id, 1)
 
     if (props.mode === 'customer') {
@@ -496,3 +560,19 @@ onBeforeUnmount(() => {
   }
 })
 </script>
+<style scoped>
+.store-products-page { background: transparent; }
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+.hero-surface { border-radius: 16px; }
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+.toolbar-left { min-width: 0; }
+.toolbar-search { width: min(320px, 75vw); }
+</style>

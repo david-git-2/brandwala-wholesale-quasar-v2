@@ -210,6 +210,7 @@
               <th v-if="isColumnVisible('product_id')" class="text-left shipment-product-id-col">Product ID</th>
               <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">Barcode</th>
               <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">Product Code</th>
+              <th v-if="isColumnVisible('batch_manufacture')" class="text-left shipment-batch-col">Batch / MFG Date</th>
               <th v-if="isColumnVisible('method')" class="text-left shipment-method-col">Method</th>
               <th class="text-left shipment-tag-col">Tag</th>
               <th v-if="isColumnVisible('price_gbp')" class="text-right shipment-price-col">Price GBP</th>
@@ -266,6 +267,22 @@
               <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">{{ item.product_id ?? '-' }}</td>
               <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">{{ item.barcode ?? '-' }}</td>
               <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">{{ item.product_code ?? '-' }}</td>
+              <td v-if="isColumnVisible('batch_manufacture')" class="shipment-batch-col">
+                <div class="shipment-batch-cell" @click="openBatchEditorDialog(item)">
+                <template v-if="getBatchManufactureLines(item).length">
+                  <div
+                    v-for="(line, lineIndex) in getBatchManufactureLines(item)"
+                    :key="`${item.id}-batch-line-${lineIndex}`"
+                    class="shipment-batch-line"
+                  >
+                    <span class="shipment-batch-code">{{ line.batchId }}</span>
+                    <span class="shipment-batch-date"> / {{ line.manufacturingDate }}</span>
+                    <span class="shipment-batch-remaining"> ({{ line.remainingMonthsLabel }})</span>
+                  </div>
+                </template>
+                <span v-else>-</span>
+                </div>
+              </td>
               <td v-if="isColumnVisible('method')" class="text-uppercase shipment-method-col">{{ item.method ?? '-' }}</td>
               <td class="shipment-tag-col">
                 <q-btn-dropdown
@@ -514,6 +531,7 @@
               <td v-if="isColumnVisible('product_id')"></td>
               <td v-if="isColumnVisible('barcode')"></td>
               <td v-if="isColumnVisible('product_code')"></td>
+              <td v-if="isColumnVisible('batch_manufacture')"></td>
               <td v-if="isColumnVisible('method')"></td>
               <td class="shipment-tag-col"></td>
               <td v-if="isColumnVisible('price_gbp')" class="text-right text-weight-bold">
@@ -917,6 +935,102 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="showBatchEditorDialog" persistent>
+      <q-card style="min-width: 760px; max-width: 96vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div>
+            <div class="text-h6">Edit Batch Codes</div>
+            <div class="text-caption text-grey-7">
+              {{ batchEditorItem?.name ?? '-' }} ({{ batchEditorItem?.product_code ?? '-' }})
+            </div>
+          </div>
+          <q-btn icon="close" flat round dense @click="showBatchEditorDialog = false" />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-markup-table flat bordered class="shipment-batch-editor-table">
+            <thead>
+              <tr>
+                <th class="text-left">Batch Code</th>
+                <th class="text-left">Manufacturing Date</th>
+                <th class="text-right" style="width: 56px">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in batchEditorRows" :key="`batch-edit-${index}`">
+                <td>
+                  <q-input
+                    v-model="row.batch_id"
+                    dense
+                    outlined
+                    placeholder="Batch code"
+                  />
+                </td>
+                <td>
+                  <q-input
+                    v-model="row.manufacturing_date"
+                    dense
+                    outlined
+                    mask="##/##/####"
+                    fill-mask
+                    placeholder="DD/MM/YYYY (e.g. 25/12/2026)"
+                  >
+                    <template #append>
+                      <q-icon name="event" class="cursor-pointer" />
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date
+                          v-model="row.manufacturing_date"
+                          mask="DD/MM/YYYY"
+                        >
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </template>
+                  </q-input>
+                </td>
+                <td class="text-right">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="delete"
+                    @click="removeBatchEditorRow(index)"
+                  />
+                </td>
+              </tr>
+              <tr v-if="!batchEditorRows.length">
+                <td colspan="3" class="text-center text-grey-7 q-py-sm">
+                  No batch rows yet. Add one below.
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+          <div class="q-mt-sm">
+            <q-btn
+              flat
+              no-caps
+              color="primary"
+              icon="add"
+              label="Add Row"
+              @click="addBatchEditorRow"
+            />
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" @click="showBatchEditorDialog = false" />
+          <q-btn
+            color="primary"
+            no-caps
+            label="Save"
+            :loading="shipmentStore.saving"
+            @click="saveBatchEditorRows"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <ShipmentItemDetailsDialog
       v-model="showItemDetailsDialog"
       :item="selectedDetailsItem"
@@ -939,7 +1053,7 @@ import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useShipmentStore } from '../stores/shipmentStore'
-import { SHIPMENT_STATUS_OPTIONS, type ShipmentItem, type ShipmentStatus } from '../types'
+import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -956,10 +1070,13 @@ const showDeleteDialog = ref(false)
 const showEditManualItemDialog = ref(false)
 const showAddToInventoryConfirmDialog = ref(false)
 const showItemDetailsDialog = ref(false)
+const showBatchEditorDialog = ref(false)
 const initialLoading = ref(true)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
 const editingManualItem = ref<ShipmentItem | null>(null)
 const selectedDetailsItem = ref<ShipmentItem | null>(null)
+const batchEditorItem = ref<ShipmentItem | null>(null)
+const batchEditorRows = ref<Array<{ id: number | null; batch_id: string; manufacturing_date: string }>>([])
 const selectedStatus = ref<ShipmentStatus>('Draft')
 const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
 const productSearch = ref('')
@@ -979,6 +1096,7 @@ const baseColumnSelectorOptions = [
   { label: 'Product ID', value: 'product_id' },
   { label: 'Barcode', value: 'barcode' },
   { label: 'Product Code', value: 'product_code' },
+  { label: 'Batch / MFG Date', value: 'batch_manufacture' },
   { label: 'Method', value: 'method' },
   { label: 'Price GBP', value: 'price_gbp' },
   { label: 'Cost BDT', value: 'cost_bdt' },
@@ -1112,6 +1230,7 @@ const shipmentTableColspan = computed(() => {
     (isColumnVisible('product_id') ? 1 : 0) +
     (isColumnVisible('barcode') ? 1 : 0) +
     (isColumnVisible('product_code') ? 1 : 0) +
+    (isColumnVisible('batch_manufacture') ? 1 : 0) +
     (isColumnVisible('method') ? 1 : 0) +
     (isColumnVisible('price_gbp') ? 1 : 0) +
     (isColumnVisible('cost_bdt') ? 1 : 0) +
@@ -1124,6 +1243,152 @@ const shipmentTableColspan = computed(() => {
     (isColumnVisible('actions') ? 1 : 0)
   )
 })
+
+const formatIsoDateToDdMmYyyy = (value: string | null | undefined) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = String(date.getFullYear())
+  return `${day}/${month}/${year}`
+}
+
+const normalizeDdMmYyyyToIso = (value: string | null | undefined) => {
+  const raw = (value ?? '').trim()
+  if (!raw) return null
+  const match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return null
+  const [, dd, mm, yyyy] = match
+  const day = Number(dd)
+  const month = Number(mm)
+  const year = Number(yyyy)
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const iso = `${yyyy}-${mm}-${dd}`
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return iso
+}
+
+const getRemainingMonthsLabelFromIsoDate = (manufacturingDateIso: string | null | undefined) => {
+  if (!manufacturingDateIso) return 'N/A'
+  const mfg = new Date(manufacturingDateIso)
+  if (Number.isNaN(mfg.getTime())) return 'N/A'
+
+  const expiry = new Date(mfg)
+  expiry.setMonth(expiry.getMonth() + 36)
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const end = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate())
+
+  if (end.getTime() <= start.getTime()) return 'Expired'
+
+  let months =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth())
+
+  let anchor = new Date(start)
+  anchor.setMonth(anchor.getMonth() + months)
+  if (anchor.getTime() > end.getTime()) {
+    months -= 1
+    anchor = new Date(start)
+    anchor.setMonth(anchor.getMonth() + months)
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000
+  const days = Math.max(0, Math.round((end.getTime() - anchor.getTime()) / msPerDay))
+  const monthText = `${months} month${months === 1 ? '' : 's'}`
+  const dayText = `${days} day${days === 1 ? '' : 's'}`
+  return `${monthText} ${dayText} left`
+}
+
+const getMatchedBatchRows = (item: ShipmentItem): BatchCodePc[] => {
+  const matchedByShipmentItem = shipmentStore.batchCodePcRows.filter(
+    (row) => row.shipment_item_id === item.id,
+  )
+  return matchedByShipmentItem.length > 0
+    ? matchedByShipmentItem
+    : shipmentStore.batchCodePcRows.filter(
+        (row) => row.product_code != null && row.product_code === item.product_code,
+      )
+}
+
+const getBatchManufactureLines = (item: ShipmentItem) => {
+  const matchedRows = getMatchedBatchRows(item)
+
+  if (!matchedRows.length) return []
+
+  const seen = new Set<string>()
+  const parts: Array<{ batchId: string; manufacturingDate: string; remainingMonthsLabel: string }> = []
+  matchedRows.forEach((row) => {
+    const batchId = row.batch_id?.trim() || '-'
+    const manufacturingDate = formatIsoDateToDdMmYyyy(row.manufacturing_date)
+    const remainingMonthsLabel = getRemainingMonthsLabelFromIsoDate(row.manufacturing_date)
+    const key = `${batchId}__${manufacturingDate}`
+    if (seen.has(key)) return
+    seen.add(key)
+    parts.push({ batchId, manufacturingDate, remainingMonthsLabel })
+  })
+
+  return parts
+}
+
+const openBatchEditorDialog = (item: ShipmentItem) => {
+  batchEditorItem.value = item
+  batchEditorRows.value = getMatchedBatchRows(item).map((row) => ({
+    id: row.id,
+    batch_id: row.batch_id ?? '',
+    manufacturing_date: row.manufacturing_date ? formatIsoDateToDdMmYyyy(row.manufacturing_date) : '',
+  }))
+  showBatchEditorDialog.value = true
+}
+
+const addBatchEditorRow = () => {
+  batchEditorRows.value.push({ id: null, batch_id: '', manufacturing_date: '' })
+}
+
+const removeBatchEditorRow = (index: number) => {
+  batchEditorRows.value.splice(index, 1)
+}
+
+const saveBatchEditorRows = async () => {
+  const item = batchEditorItem.value
+  if (!item || !shipmentStore.selectedShipment) return
+
+  const existingRows = getMatchedBatchRows(item)
+  const deleteResults = await Promise.all(
+    existingRows.map((row) => shipmentStore.deleteBatchCodePc({ id: row.id })),
+  )
+  if (deleteResults.some((result) => !result.success)) {
+    return
+  }
+
+  const rowsToCreate = batchEditorRows.value
+    .map((row) => ({
+      batch_id: row.batch_id.trim(),
+      manufacturing_date: row.manufacturing_date.trim(),
+    }))
+    .filter((row) => row.batch_id || row.manufacturing_date)
+    .map((row) => ({
+      shipment_id: shipmentStore.selectedShipment!.id,
+      shipment_item_id: item.id,
+      product_code: item.product_code ?? null,
+      batch_id: row.batch_id || null,
+      manufacturing_date: normalizeDdMmYyyyToIso(row.manufacturing_date),
+      expire_date: null,
+    }))
+
+  if (rowsToCreate.length) {
+    const createResult = await shipmentStore.bulkCreateBatchCodePc({ rows: rowsToCreate })
+    if (!createResult.success) {
+      return
+    }
+  }
+
+  await shipmentStore.fetchBatchCodePcByShipment(shipmentStore.selectedShipment.id)
+  showBatchEditorDialog.value = false
+}
 
 const goToShipmentInfo = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
@@ -1751,6 +2016,7 @@ onMounted(async () => {
   try {
     await Promise.all([
       shipmentStore.fetchShipmentById(shipmentId.value),
+      shipmentStore.fetchBatchCodePcByShipment(shipmentId.value),
       vendorStore.fetchVendors(),
       marketStore.fetchMarkets(),
     ])
@@ -1919,19 +2185,37 @@ watch(showAddItemDialog, (open) => {
   max-width: 88px;
 }
 
-.shipment-details-table :deep(th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+.shipment-table-scroll-wrap {
+  overflow: visible;
 }
 
-.shipment-table-scroll-wrap {
+.shipment-details-table {
+  min-width: 0;
+  max-width: 100%;
   height: clamp(400px, calc(100vh - 320px), 80vh);
+  background: var(--bw-theme-base, #eef2f5);
   overflow: auto;
 }
 
 .shipment-details-table :deep(table) {
   table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: max-content;
   width: max-content;
+}
+
+.shipment-details-table :deep(thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+  box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.25);
+}
+
+.shipment-details-table :deep(thead tr:first-child th) {
+  top: 0;
+  z-index: 1;
 }
 
 .shipment-product-id-col {
@@ -1950,6 +2234,46 @@ watch(showAddItemDialog, (open) => {
   width: 170px;
   min-width: 170px;
   max-width: 170px;
+}
+
+.shipment-batch-col {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  white-space: normal;
+}
+
+.shipment-batch-cell {
+  cursor: pointer;
+}
+
+.shipment-batch-line {
+  line-height: 1.25;
+  word-break: break-word;
+  margin-bottom: 4px;
+}
+
+.shipment-batch-line:last-child {
+  margin-bottom: 0;
+}
+
+.shipment-batch-code {
+  display: inline-block;
+  font-weight: 700;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.shipment-batch-date {
+  color: #475569;
+}
+
+.shipment-batch-remaining {
+  color: #64748b;
+  font-size: 12px;
 }
 
 .shipment-method-col {
@@ -2008,29 +2332,36 @@ watch(showAddItemDialog, (open) => {
 
 .shipment-details-table :deep(td:first-child) {
   z-index: 1;
-  background: #fff;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .shipment-details-table :deep(td:nth-child(2)) {
   z-index: 1;
-  background: #fff;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .shipment-details-table :deep(td:nth-child(3)) {
   z-index: 1;
-  background: #fff;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .shipment-details-table :deep(tr:first-child th:first-child) {
-  z-index: 3;
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .shipment-details-table :deep(tr:first-child th:nth-child(2)) {
-  z-index: 3;
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .shipment-details-table :deep(tr:first-child th:nth-child(3)) {
-  z-index: 3;
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.shipment-details-table :deep(tbody) {
+  scroll-margin-top: 48px;
 }
 
 .shipment-qty-col--quantity {

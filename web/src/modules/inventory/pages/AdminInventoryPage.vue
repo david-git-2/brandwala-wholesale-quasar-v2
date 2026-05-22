@@ -66,6 +66,43 @@
 
       <div class="row items-center q-gutter-sm">
         <q-btn
+          v-if="inventoryView === 'table'"
+          outline
+          color="primary"
+          icon="view_column"
+          label="Columns"
+          no-caps
+          size="sm"
+          class="pill-btn slim-btn"
+        >
+          <q-menu>
+            <q-list style="min-width: 240px">
+              <q-item>
+                <q-item-section>
+                  <div class="text-subtitle2">Show Columns</div>
+                </q-item-section>
+              </q-item>
+              <q-item>
+                <q-item-section>
+                  <q-checkbox
+                    v-model="allSelectableTableColumnsSelected"
+                    label="Select / Deselect All"
+                  />
+                </q-item-section>
+              </q-item>
+              <q-item>
+                <q-item-section>
+                  <q-option-group
+                    v-model="selectedTableColumnNames"
+                    type="checkbox"
+                    :options="tableColumnSelectorOptions"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+        <q-btn
           v-if="selectedItemIds.length"
           flat
           icon="deselect"
@@ -101,61 +138,54 @@
       @delete-item="onDeleteItem"
       @toggle-select="onToggleSelect"
     />
-    <q-markup-table v-else-if="inventoryView === 'table'" flat bordered wrap-cells>
-      <thead>
-        <tr>
-          <th class="text-left" style="width: 44px;">
-            <q-checkbox
-              :model-value="isAllVisibleSelected"
-              @update:model-value="onToggleSelectAllCheckbox"
+    <q-table
+      v-else-if="inventoryView === 'table'"
+      flat
+      bordered
+      row-key="id"
+      :rows="inventoryStore.items"
+      :columns="inventoryTableColumns"
+      :visible-columns="visibleInventoryTableColumnNames"
+      :pagination="{ rowsPerPage: 0 }"
+      hide-bottom
+      class="inventory-page__table inventory-q-table"
+    >
+      <template #body-cell-select="props">
+        <q-td :props="props">
+          <q-checkbox
+            :model-value="selectedItemIds.includes(props.row.id)"
+            @update:model-value="(checked) => onToggleSelect({ itemId: props.row.id, checked: Boolean(checked) })"
+          />
+        </q-td>
+      </template>
+      <template #body-cell-image="props">
+        <q-td :props="props">
+          <q-avatar rounded size="42px">
+            <img
+              :src="props.row.image_url || 'https://placehold.co/56x56?text=No+Image'"
+              alt="item image"
+              style="object-fit: contain;"
             />
-          </th>
-          <th class="text-left" style="width: 72px;">Image</th>
-          <th class="text-left">Name</th>
-          <th class="text-left">Barcode</th>
-          <th class="text-left">Product Code</th>
-          <th class="text-left">Shipment</th>
-          <th class="text-right">Available</th>
-          <th class="text-right">Reserved</th>
-          <th class="text-right">Damaged</th>
-          <th class="text-right">Stolen</th>
-          <th class="text-right">Expired</th>
-          <th class="text-right">Open Box</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-if="!inventoryStore.items.length">
-          <td colspan="12" class="text-center text-grey-7">No inventory items found.</td>
-        </tr>
-        <tr v-for="item in inventoryStore.items" :key="item.id">
-          <td>
-            <q-checkbox
-              :model-value="selectedItemIds.includes(item.id)"
-              @update:model-value="(checked) => onToggleSelect({ itemId: item.id, checked: Boolean(checked) })"
-            />
-          </td>
-          <td>
-            <q-avatar rounded size="42px">
-              <img
-                :src="item.image_url || 'https://placehold.co/56x56?text=No+Image'"
-                alt="item image"
-                style="object-fit: contain;"
-              />
-            </q-avatar>
-          </td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.barcode ?? '-' }}</td>
-          <td>{{ item.product_code ?? '-' }}</td>
-          <td>{{ item.shipment?.shipment?.name ?? '-' }}</td>
-          <td class="text-right">{{ item.quantities.available }}</td>
-          <td class="text-right">{{ item.quantities.reserved }}</td>
-          <td class="text-right">{{ item.quantities.damaged }}</td>
-          <td class="text-right">{{ item.quantities.stolen }}</td>
-          <td class="text-right">{{ item.quantities.expired }}</td>
-          <td class="text-right">{{ item.quantities.open_box }}</td>
-        </tr>
-      </tbody>
-    </q-markup-table>
+          </q-avatar>
+        </q-td>
+      </template>
+      <template #body-cell-shipment="props">
+        <q-td :props="props">
+          {{ props.row.shipment?.shipment?.name ?? '-' }}
+        </q-td>
+      </template>
+      <template #header-cell-select="props">
+        <q-th :props="props">
+          <q-checkbox
+            :model-value="isAllVisibleSelected"
+            @update:model-value="onToggleSelectAllCheckbox"
+          />
+        </q-th>
+      </template>
+      <template #no-data>
+        <div class="full-width text-center text-grey-7 q-py-md">No inventory items found.</div>
+      </template>
+    </q-table>
     <InventoryCompactCard v-else :items="inventoryStore.items" />
 
     <FilterSidebar v-model="filterDrawerOpen" title="Filters">
@@ -224,6 +254,64 @@ const inventoryViewOptions = [
   { icon: 'table_rows', value: 'table' as const },
   { icon: 'grid_view', value: 'compact' as const },
 ]
+const inventoryTableColumns = [
+  {
+    name: 'select',
+    label: '',
+    field: 'select',
+    align: 'left' as const,
+    style: 'width: 44px; min-width: 44px;',
+    headerStyle: 'width: 44px; min-width: 44px;',
+    classes: 'inventory-page__sticky-col inventory-page__sticky-col--select',
+    headerClasses: 'inventory-page__sticky-col inventory-page__sticky-col--select',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'image_url',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+    classes: 'inventory-page__sticky-col inventory-page__sticky-col--image',
+    headerClasses: 'inventory-page__sticky-col inventory-page__sticky-col--image',
+  },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'min-width: 220px; white-space: normal;',
+    classes: 'inventory-page__name-cell',
+    headerStyle: 'min-width: 220px;',
+  },
+  { name: 'barcode', label: 'Barcode', field: 'barcode', align: 'left' as const },
+  { name: 'product_code', label: 'Product Code', field: 'product_code', align: 'left' as const },
+  { name: 'shipment', label: 'Shipment', field: 'shipment', align: 'left' as const },
+  { name: 'available', label: 'Available', field: (row: InventoryItemWithStock) => row.quantities.available, align: 'right' as const },
+  { name: 'reserved', label: 'Reserved', field: (row: InventoryItemWithStock) => row.quantities.reserved, align: 'right' as const },
+  { name: 'damaged', label: 'Damaged', field: (row: InventoryItemWithStock) => row.quantities.damaged, align: 'right' as const },
+  { name: 'stolen', label: 'Stolen', field: (row: InventoryItemWithStock) => row.quantities.stolen, align: 'right' as const },
+  { name: 'expired', label: 'Expired', field: (row: InventoryItemWithStock) => row.quantities.expired, align: 'right' as const },
+  { name: 'open_box', label: 'Open Box', field: (row: InventoryItemWithStock) => row.quantities.open_box, align: 'right' as const },
+]
+const alwaysVisibleInventoryTableColumns = ['select', 'image', 'name'] as const
+const selectableInventoryTableColumns = inventoryTableColumns
+  .map((column) => column.name)
+  .filter((name) => !alwaysVisibleInventoryTableColumns.includes(name as (typeof alwaysVisibleInventoryTableColumns)[number]))
+const selectedTableColumnNames = ref<string[]>([...selectableInventoryTableColumns])
+const tableColumnSelectorOptions = inventoryTableColumns
+  .filter((column) => selectableInventoryTableColumns.includes(column.name))
+  .map((column) => ({ label: column.label, value: column.name }))
+const allSelectableTableColumnsSelected = computed({
+  get: () => selectableInventoryTableColumns.every((name) => selectedTableColumnNames.value.includes(name)),
+  set: (checked: boolean) => {
+    selectedTableColumnNames.value = checked ? [...selectableInventoryTableColumns] : []
+  },
+})
+const visibleInventoryTableColumnNames = computed<string[]>(() => [
+  ...alwaysVisibleInventoryTableColumns,
+  ...selectedTableColumnNames.value,
+])
 const isAllVisibleSelected = computed(() =>
   inventoryStore.items.length > 0 &&
   inventoryStore.items.every((item) => selectedItemIds.value.includes(item.id)),
@@ -584,4 +672,51 @@ onMounted(() => {
 }
 .toolbar-left { min-width: 0; }
 .toolbar-search { width: min(320px, 75vw); }
+.inventory-page__table :deep(.q-table__middle) {
+  max-height: calc(100vh - 340px);
+  overflow: auto;
+}
+.inventory-page__table :deep(.q-table) {
+  table-layout: auto;
+  min-width: 1200px;
+}
+.inventory-page__table :deep(.q-table th),
+.inventory-page__table :deep(.q-table td) {
+  white-space: nowrap;
+}
+.inventory-page__table :deep(.inventory-q-table thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+.inventory-page__table :deep(.inventory-q-table td:first-child),
+.inventory-page__table :deep(.inventory-q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+.inventory-page__table :deep(.inventory-q-table td:nth-child(2)),
+.inventory-page__table :deep(.inventory-q-table th:nth-child(2)) {
+  position: sticky;
+  left: 44px;
+}
+.inventory-page__table :deep(.inventory-q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+.inventory-page__table :deep(.inventory-q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+.inventory-page__table :deep(.inventory-q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+.inventory-page__table :deep(.inventory-q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+.inventory-page__table :deep(.inventory-page__name-cell) {
+  white-space: nowrap !important;
+}
 </style>

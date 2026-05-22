@@ -67,7 +67,7 @@
               :disable="cartStore.saving"
               @click="decrementItem(item.id, item.minimum_quantity)"
             />
-            <div class="text-body2">{{ getDraftQty(item.id, item.quantity) }}</div>
+            <div class="quantity-value">{{ getDraftQty(item.id, item.quantity) }}</div>
             <q-btn
               dense
               round
@@ -419,13 +419,19 @@ watch(
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
 }
 
 .store-switch {
-  padding: 8px;
-  background: #ffffff;
-  border: 1px solid #e7e2d8;
-  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
 }
 
 .empty-banner {
@@ -436,21 +442,26 @@ watch(
 }
 
 .cart-list {
-  background: #ffffff;
-  border: 1px solid #e7e2d8;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 16px;
   overflow: hidden;
 }
 
 .cart-row {
-  padding-block: 12px;
+  padding: 14px 12px;
+  transition: background-color 0.18s ease;
+}
+
+.cart-row:hover {
+  background: rgba(59, 130, 246, 0.04);
 }
 
 .cart-image-wrap {
-  width: 68px;
-  height: 68px;
+  width: 74px;
+  height: 74px;
   border-radius: 12px;
-  border: 1px solid #ece6db;
+  border: 1px solid #e6eaf2;
   background: #ffffff;
   padding: 6px;
 }
@@ -467,11 +478,18 @@ watch(
 .qty-box {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 6px;
-  border: 1px solid #e6e0d4;
+  gap: 8px;
+  padding: 2px 8px;
+  border: 1px solid #e5e7eb;
   border-radius: 999px;
-  background: #faf8f3;
+  background: #ffffff;
+}
+
+.quantity-value {
+  min-width: 24px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .cart-actions {
@@ -489,10 +507,12 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px;
-  border: 1px solid #e7e2d8;
-  border-radius: 12px;
-  background: #fff;
+  padding: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
 }
 
 @media (max-width: 680px) {

@@ -130,7 +130,52 @@ For list table:
 }
 ```
 
-## 8) Status Visual Pattern
+## 8) Table Behavior (Height, Scroll, Column Selector)
+
+Use this behavior for details pages and data-heavy list pages.
+
+### Height and scroll
+- Keep table inside floating card and apply a fixed viewport height to table middle area.
+- Enable internal scroll on table body; header stays visible.
+- Use sticky columns only where needed (example: `SL`, `Image`, `Name`).
+- Keep horizontal scroll enabled when many columns exist.
+
+```css
+.costing-page__table :deep(.q-table__middle) {
+  max-height: calc(100vh - 320px);
+  overflow: auto;
+}
+
+.costing-page__table :deep(.q-table) {
+  table-layout: fixed;
+}
+```
+
+If a page has an extra toolbar/filter area, reduce the available table height:
+- example pattern: `max-height: calc(100vh - 360px)` or `calc(100vh - 400px)` as needed.
+
+### Column selector (required pattern)
+- Add a `Columns` button in header actions.
+- In menu:
+  - `Select / Deselect All` checkbox
+  - `q-option-group` checkbox list for selectable columns
+- Keep core columns always visible (for example: `actions`, `sl`, `image`, `name`).
+- Keep selected columns in a reactive array (`selected...ColumnNames`).
+- Build visible list as:
+  - `alwaysVisible + selectedSelectable`
+- Bind table with:
+  - `:columns="allColumns"`
+  - `:visible-columns="visibleColumnNames"`
+- For totals row/footer loops, iterate over visible columns only.
+- If page has multiple status-based tables (submitted/review/offered), all tables must consume the same `visibleColumnNames` source so behavior is identical.
+
+### Example wiring rule
+- `q-option-group v-model` should update only selectable columns.
+- `allSelectable...` computed should toggle selectable set only.
+- `visibleColumnNames` computed should merge always-visible + selected selectable.
+- `q-table` must use `visible-columns` (not only filtered `columns`) for reliable hide/show with scoped slots.
+
+## 9) Status Visual Pattern
 
 Status must be consistent across list cards/table/details.
 
@@ -163,21 +208,21 @@ Always normalize status before style mapping:
 - lowercase
 - fallback to `pending`
 
-## 9) Details Page Secondary Controls
+## 10) Details Page Secondary Controls
 
 Keep conversion/cargo/profit controls inside a separate floating card below header:
 - 3 numeric inputs (`dense filled soft-input`)
 - right-aligned `Save` button
 - use responsive columns (`col-12 col-sm-3`, etc.)
 
-## 10) Spacing + Layout Rules
+## 11) Spacing + Layout Rules
 
 - Outer cards: `q-mb-md` / `q-mb-sm`
 - Toolbar under header: `q-mb-sm`
 - Control clusters: `row items-center q-gutter-sm`
 - Use `no-caps` for operational buttons to keep visual consistency.
 
-## 11) Reuse Checklist for New Pages
+## 12) Reuse Checklist for New Pages
 
 When creating/updating a page, verify:
 
@@ -189,8 +234,9 @@ When creating/updating a page, verify:
 6. Status chips/dots use same mapping + normalization.
 7. Use layout header back navigation instead of local page back button (when layout header exists).
 8. Table header tint and row/card spacing match pattern.
+9. Table uses fixed-height internal scroll and shared column-selector behavior.
 
-## 12) Suggested Shared Extraction (Optional Next Step)
+## 13) Suggested Shared Extraction (Optional Next Step)
 
 To reduce duplication, consider moving these into shared UI utilities:
 - shared CSS tokens for `floating-surface`, `soft-input`, `pill-btn`, `slim-btn`

@@ -62,7 +62,7 @@
                 <q-item>
                   <q-item-section>
                     <q-option-group
-                      v-model="visibleProductColumnNames"
+                      v-model="selectedProductColumnNames"
                       type="checkbox"
                       :options="productColumnSelectorOptions"
                     />
@@ -126,7 +126,8 @@
           bordered
           row-key="id"
           :rows="productRows"
-          :columns="visibleProductColumns"
+          :columns="productColumns"
+          :visible-columns="visibleProductColumnNames"
           :pagination="{ rowsPerPage: 0 }"
           :loading="loadingItems"
           hide-bottom
@@ -1074,21 +1075,22 @@ const selectableProductColumnNames = productColumns
   .filter(
     (name) => !alwaysVisibleProductColumns.includes(name as (typeof alwaysVisibleProductColumns)[number]),
   )
-const visibleProductColumnNames = ref<string[]>([
-  ...alwaysVisibleProductColumns,
-  ...selectableProductColumnNames,
-])
+const selectedProductColumnNames = ref<string[]>([...selectableProductColumnNames])
 const productColumnSelectorOptions = productColumns
   .filter((column) => selectableProductColumnNames.includes(column.name))
   .map((column) => ({ label: column.label, value: column.name }))
 const allSelectableProductColumnsSelected = computed({
-  get: () => selectableProductColumnNames.every((name) => visibleProductColumnNames.value.includes(name)),
+  get: () => selectableProductColumnNames.every((name) => selectedProductColumnNames.value.includes(name)),
   set: (checked: boolean) => {
-    visibleProductColumnNames.value = checked
-      ? [...alwaysVisibleProductColumns, ...selectableProductColumnNames]
-      : [...alwaysVisibleProductColumns]
+    selectedProductColumnNames.value = checked
+      ? [...selectableProductColumnNames]
+      : []
   },
 })
+const visibleProductColumnNames = computed<string[]>(() => [
+  ...alwaysVisibleProductColumns,
+  ...selectedProductColumnNames.value,
+])
 const visibleProductColumns = computed(() =>
   productColumns.filter((column) => visibleProductColumnNames.value.includes(column.name)),
 )
@@ -1284,13 +1286,13 @@ const reviewColumns = [
 ]
 
 const visibleReviewColumns = computed(() => {
-  const columns = reviewColumns
-
-  if (selectedFile.value?.status === 'in_review') {
-    return columns
-  }
-
-  return columns.filter((column) => column.name !== 'actions')
+  const selectedNames = new Set(visibleProductColumnNames.value)
+  return reviewColumns.filter((column) => {
+    if (column.name === 'actions') {
+      return selectedFile.value?.status === 'in_review'
+    }
+    return selectedNames.has(column.name)
+  })
 })
 
 const getProductTotalsValue = (columnName: string) => {

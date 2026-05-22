@@ -292,14 +292,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'invoices/billing-profiles',
         requiredAction: 'view',
       },
-      {
-        scope: 'shop',
-        title: 'Invoices',
-        caption: 'View customer-facing invoice records',
-        icon: 'receipt',
-        routeSegment: 'invoices',
-        requiredAction: 'view',
-      },
     ],
   },
 ] as const
