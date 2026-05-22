@@ -19,7 +19,7 @@
 
     <template v-else-if="shipmentStore.selectedShipment">
       <p class="text-h6 text-weight-bold q-mb-sm">
-        #{{ shipmentStore.selectedShipment.id }} {{ shipmentStore.selectedShipment.name }}
+        #{{ shipmentStore.selectedShipment.tenant_shipment_id ?? shipmentStore.selectedShipment.id }} {{ shipmentStore.selectedShipment.name }}
       </p>
       <p class="text-body2 text-grey-8 q-mb-xs">Status: {{ shipmentStore.selectedShipment.status }}</p>
       <p class="text-body2 text-grey-8 q-mb-md">Items: {{ shipmentStore.shipmentItems.length }}</p>

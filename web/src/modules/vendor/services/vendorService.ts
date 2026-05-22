@@ -24,6 +24,25 @@ const listVendors = async (tenantId?: number | null): Promise<VendorServiceResul
   }
 }
 
+const getVendorById = async (
+  id: number,
+  tenantId?: number | null,
+): Promise<VendorServiceResult<Vendor | null>> => {
+  try {
+    const data = await vendorRepository.getVendorById(id, tenantId)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load vendor.',
+    }
+  }
+}
+
 const listVendorMarkets = async (): Promise<VendorServiceResult<VendorMarket[]>> => {
   try {
     const data = await vendorRepository.listVendorMarkets()
@@ -116,6 +135,7 @@ const deleteVendor = async (
 
 export const vendorService = {
   listVendors,
+  getVendorById,
   listVendorMarkets,
   isVendorCodeAvailable,
   createVendor,

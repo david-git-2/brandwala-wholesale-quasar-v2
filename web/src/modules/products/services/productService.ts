@@ -31,6 +31,8 @@ type ListProductsParams = {
 
 type ListProductLookupParams = {
   vendorCode?: string | null | undefined
+  vendorId?: number | null | undefined
+  tenantId?: number | null | undefined
 }
 
 type ProductServiceResult<T> = {

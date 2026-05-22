@@ -10,16 +10,6 @@ import type {
 
 const normalizeVendorCode = (code: string) => code.trim().toUpperCase()
 
-const toTenantScopedVendorCode = (code: string, tenantId?: number | null) => {
-  const normalized = normalizeVendorCode(code)
-  if (!normalized || typeof tenantId !== 'number') {
-    return normalized
-  }
-
-  const suffix = `-${tenantId}`
-  return normalized.endsWith(suffix) ? normalized : `${normalized}${suffix}`
-}
-
 const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
   let query = supabase
     .from('vendors')
@@ -41,6 +31,24 @@ const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
   return (data as Vendor[] | null) ?? []
 }
 
+const getVendorById = async (id: number, tenantId?: number | null): Promise<Vendor | null> => {
+  let query = supabase.from('vendors').select('*').eq('id', id)
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  } else if (tenantId === null) {
+    query = query.is('tenant_id', null)
+  }
+
+  const { data, error } = await query.maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return (data as Vendor | null)
+}
+
 const listVendorMarkets = async (): Promise<VendorMarket[]> => {
   const { data, error } = await supabase.rpc('list_vendor_markets')
 
@@ -56,7 +64,7 @@ const isVendorCodeAvailable = async (
   tenantId?: number | null,
   excludeId?: number | null,
 ): Promise<boolean> => {
-  const candidateCode = toTenantScopedVendorCode(code, tenantId)
+  const candidateCode = normalizeVendorCode(code)
   let query = supabase
     .from('vendors')
     .select('id', { count: 'exact', head: true })
@@ -82,7 +90,7 @@ const isVendorCodeAvailable = async (
 }
 
 const createVendor = async (payload: VendorCreateInput): Promise<Vendor> => {
-  const vendorCode = toTenantScopedVendorCode(payload.code, payload.tenant_id)
+  const vendorCode = normalizeVendorCode(payload.code)
   const { data, error } = await supabase
     .from('vendors')
     .insert([
@@ -112,7 +120,7 @@ const createVendor = async (payload: VendorCreateInput): Promise<Vendor> => {
 }
 
 const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
-  const vendorCode = toTenantScopedVendorCode(payload.code, payload.tenant_id)
+  const vendorCode = normalizeVendorCode(payload.code)
   let query = supabase
     .from('vendors')
     .update({
@@ -167,6 +175,7 @@ const deleteVendor = async (payload: VendorDeleteInput): Promise<void> => {
 
 export const vendorRepository = {
   listVendors,
+  getVendorById,
   listVendorMarkets,
   isVendorCodeAvailable,
   createVendor,

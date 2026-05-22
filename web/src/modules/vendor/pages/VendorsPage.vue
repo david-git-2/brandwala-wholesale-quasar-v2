@@ -73,29 +73,14 @@
           :dense="$q.screen.lt.md"
           :pagination="{ rowsPerPage: 0 }"
           hide-pagination
+          @row-click="onClickRow"
+          class="cursor-pointer"
         >
           <template #body-cell-code="props">
             <q-td :props="props">
               <q-chip dense square color="primary" text-color="white" class="vendor-code-chip">
                 {{ props.row.code }}
               </q-chip>
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-right">
-              <q-btn flat round dense icon="more_vert" aria-label="Vendor actions" @click.stop>
-                <q-menu auto-close>
-                  <q-list dense style="min-width: 120px">
-                    <q-item clickable v-ripple @click="onClickEditVendor(props.row)">
-                      <q-item-section>Edit</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple @click="onClickDeleteVendor(props.row)">
-                      <q-item-section class="text-negative">Delete</q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
             </q-td>
           </template>
         </q-table>
@@ -111,44 +96,28 @@
       :check-code-availability="checkVendorCodeAvailability"
       @save="handleSaveVendor"
     />
-
-    <q-dialog v-model="openDeleteDialog" persistent>
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <div class="text-h6">Confirm Delete</div>
-        </q-card-section>
-
-        <q-card-section>
-          Are you sure you want to delete <strong>{{ vendorToDelete?.name }}</strong>?
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteDialog = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteVendor" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import type { QTableColumn } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import AddVendorDialog from '../components/AddVendorDialog.vue'
 import { useVendorStore } from '../stores/vendorStore'
-import type { Vendor, VendorCreateInput, VendorDeleteInput, VendorUpdateInput } from '../types'
+import type { Vendor, VendorCreateInput, VendorUpdateInput } from '../types'
 
 const authStore = useAuthStore()
 const vendorStore = useVendorStore()
+const router = useRouter()
+const route = useRoute()
 const { items, markets, loading, error } = storeToRefs(vendorStore)
 
 const openEditDialog = ref(false)
-const openDeleteDialog = ref(false)
 const selectedVendor = ref<Vendor | null>(null)
-const vendorToDelete = ref<Vendor | null>(null)
 const showSearchInput = ref(false)
 const searchText = ref('')
 
@@ -174,7 +143,6 @@ const columns: QTableColumn[] = [
   { name: 'market_code', label: 'Market', field: 'market_code', align: 'left', sortable: true },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
 ]
 
 const refresh = async () => {
@@ -191,14 +159,9 @@ const onCloseSearch = () => {
   searchText.value = ''
 }
 
-const onClickEditVendor = (vendor: Vendor) => {
-  selectedVendor.value = { ...vendor }
-  openEditDialog.value = true
-}
-
-const onClickDeleteVendor = (vendor: Vendor) => {
-  vendorToDelete.value = vendor
-  openDeleteDialog.value = true
+const onClickRow = (evt: Event, row: Vendor) => {
+  const routeName = authStore.scope === 'platform' ? 'platform-vendor-details-page' : 'app-vendor-details-page'
+  void router.push({ name: routeName, params: { ...route.params, id: row.id } })
 }
 
 const checkVendorCodeAvailability = async (code: string, excludeId?: number | null) => {
@@ -220,19 +183,6 @@ const handleSaveVendor = async (payload: VendorCreateInput & { id?: number }) =>
     ...payload,
   }
   await vendorStore.createVendor(createPayload)
-}
-
-const confirmDeleteVendor = async () => {
-  if (!vendorToDelete.value) return
-
-  const payload: VendorDeleteInput = {
-    id: vendorToDelete.value.id,
-    tenant_id: resolvedTenantId.value,
-  }
-
-  await vendorStore.deleteVendor(payload)
-  vendorToDelete.value = null
-  openDeleteDialog.value = false
 }
 
 onMounted(() => {

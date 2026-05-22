@@ -56,6 +56,7 @@ type Shipment = {
   id: number
   name: string
   status?: string | null
+  tenant_shipment_id?: number | null
 }
 
 const props = defineProps<{
@@ -131,7 +132,7 @@ const shipmentOptions = computed(() =>
   (shipmentStore.shipments ?? [])
     .filter((shipment: Shipment) => shipment.status === 'Draft')
     .map((shipment: Shipment) => ({
-      label: `#${shipment.id} ${shipment.name}`,
+      label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
       value: shipment.id,
     }))
 )

@@ -482,8 +482,8 @@ const loadBrandCategoryOptions = async () => {
   }
 
   const [brandResult, categoryResult] = await Promise.all([
-    productService.listBrands({ vendorCode: form.vendor_code }),
-    productService.listCategories({ vendorCode: form.vendor_code }),
+    productService.listBrands({ vendorCode: form.vendor_code, tenantId: authStore.tenantId ?? null }),
+    productService.listCategories({ vendorCode: form.vendor_code, tenantId: authStore.tenantId ?? null }),
   ])
 
   if (brandResult.success) {
@@ -539,10 +539,12 @@ const addBrandOption = async () => {
   const name = normalized(brandInputValue.value || form.brand)
   if (!name || !form.vendor_code) return
 
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
   const result = await productService.createProductBrand({
     name,
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
+    vendor_id: selectedVendor ? selectedVendor.id : null,
   })
 
   if (!result.success) {
@@ -560,10 +562,12 @@ const addCategoryOption = async () => {
   const name = normalized(categoryInputValue.value || form.category)
   if (!name || !form.vendor_code) return
 
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
   const result = await productService.createProductCategory({
     name,
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
+    vendor_id: selectedVendor ? selectedVendor.id : null,
   })
 
   if (!result.success) {

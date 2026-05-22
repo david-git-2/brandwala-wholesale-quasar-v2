@@ -117,7 +117,7 @@ const shipmentOptions = computed(() => [
   ...shipmentStore.shipments
     .filter((shipment) => shipment.inventory_added === true)
     .map((shipment) => ({
-      label: `#${shipment.id} ${shipment.name}`,
+      label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
       value: shipment.id,
     })),
 ])

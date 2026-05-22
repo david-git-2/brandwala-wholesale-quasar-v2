@@ -38,6 +38,11 @@ const vendorRoutes: RouteRecordRaw[] = [
         name: 'app-vendors-page',
         component: () => import('../pages/VendorsPage.vue'),
       },
+      {
+        path: ':id',
+        name: 'app-vendor-details-page',
+        component: () => import('../pages/VendorDetailsPage.vue'),
+      },
     ],
   },
   {
@@ -53,6 +58,11 @@ const vendorRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'platform-vendors-page',
         component: () => import('../pages/VendorsPage.vue'),
+      },
+      {
+        path: ':id',
+        name: 'platform-vendor-details-page',
+        component: () => import('../pages/VendorDetailsPage.vue'),
       },
     ],
   },

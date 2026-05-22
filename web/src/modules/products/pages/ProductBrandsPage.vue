@@ -156,7 +156,10 @@ const filteredRows = computed(() => {
 const activeFilterCount = computed(() => (vendorCode.value ? 1 : 0))
 
 const load = async () => {
-  const result = await productService.listProductBrands({ vendorCode: vendorCode.value })
+  const result = await productService.listProductBrands({
+    vendorCode: vendorCode.value,
+    tenantId: authStore.tenantId ?? null,
+  })
   if (!result.success) {
     handleApiFailure(result, result.error ?? 'Failed to load brands.')
     return
@@ -181,10 +184,12 @@ const openEdit = (row: ProductBrand) => {
 }
 
 const save = async () => {
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
   const payload = {
     name: form.name.trim(),
     value: (form.value.trim() || form.name.trim()).toLowerCase(),
     vendor_code: form.vendor_code,
+    vendor_id: selectedVendor ? selectedVendor.id : null,
   }
 
   if (!payload.name) return

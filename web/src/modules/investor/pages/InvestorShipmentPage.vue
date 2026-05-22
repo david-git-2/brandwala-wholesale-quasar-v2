@@ -23,7 +23,7 @@
           @click="onSelectShipment(shipment.id)"
         >
           <td>{{ index + 1 }}</td>
-          <td>#{{ shipment.id }}</td>
+          <td>#{{ shipment.tenant_shipment_id }}</td>
           <td>{{ shipment.name ?? '-' }}</td>
           <td>{{ shipment.status ?? '-' }}</td>
           <td>{{ shipment.created_at ?? '-' }}</td>

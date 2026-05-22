@@ -12,7 +12,7 @@
     </div>
 
     <div class="text-h5 q-mb-md">
-      Shipment Info #{{ shipmentStore.selectedShipment?.id ?? shipmentId }}
+      Shipment Info #{{ shipmentStore.selectedShipment?.tenant_shipment_id ?? shipmentStore.selectedShipment?.id ?? shipmentId }}
     </div>
 
     <PageInitialLoader v-if="initialLoading" />
@@ -25,99 +25,139 @@
       {{ shipmentStore.error }}
     </q-banner>
 
-    <q-card v-if="!initialLoading" flat bordered>
-      <q-card-section class="q-gutter-md">
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Name</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'name'">
-              <q-input v-model="draft.name" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('name')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ shipmentStore.selectedShipment?.name || '-' }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('name')" />
-            </template>
-          </div>
-        </div>
+    <div v-if="!initialLoading" class="row q-col-gutter-md">
+      <!-- Left Column: General & Conversion Rates -->
+      <div class="col-12 col-md-6">
+        <q-card flat bordered class="full-height">
+          <q-card-section class="q-gutter-md">
+            <div class="text-subtitle1 text-weight-bold q-mb-sm text-primary">General & Conversion Rates</div>
+            
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Name</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'name'">
+                  <q-input v-model="draft.name" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="assignment" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('name')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ shipmentStore.selectedShipment?.name || '-' }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('name')" />
+                </template>
+              </div>
+            </div>
 
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Product Conversion Rate</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'product_conversion_rate'">
-              <q-input v-model.number="draft.product_conversion_rate" type="number" step="0.0001" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('product_conversion_rate')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.product_conversion_rate) }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('product_conversion_rate')" />
-            </template>
-          </div>
-        </div>
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Product Conversion Rate</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'product_conversion_rate'">
+                  <q-input v-model.number="draft.product_conversion_rate" type="number" step="0.0001" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="currency_exchange" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('product_conversion_rate')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.product_conversion_rate) }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('product_conversion_rate')" />
+                </template>
+              </div>
+            </div>
 
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Cargo Conversion Rate</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'cargo_conversion_rate'">
-              <q-input v-model.number="draft.cargo_conversion_rate" type="number" step="0.0001" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('cargo_conversion_rate')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_conversion_rate) }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('cargo_conversion_rate')" />
-            </template>
-          </div>
-        </div>
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Cargo Conversion Rate</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'cargo_conversion_rate'">
+                  <q-input v-model.number="draft.cargo_conversion_rate" type="number" step="0.0001" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="currency_exchange" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('cargo_conversion_rate')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_conversion_rate) }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('cargo_conversion_rate')" />
+                </template>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Cargo Rate</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'cargo_rate'">
-              <q-input v-model.number="draft.cargo_rate" type="number" step="0.0001" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('cargo_rate')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_rate) }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('cargo_rate')" />
-            </template>
-          </div>
-        </div>
+      <!-- Right Column: Cargo & Weight Info -->
+      <div class="col-12 col-md-6">
+        <q-card flat bordered class="full-height">
+          <q-card-section class="q-gutter-md">
+            <div class="text-subtitle1 text-weight-bold q-mb-sm text-primary">Cargo & Weight Info</div>
 
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Weight</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'weight'">
-              <q-input v-model.number="draft.weight" type="number" step="0.001" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('weight')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.weight) }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('weight')" />
-            </template>
-          </div>
-        </div>
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Cargo Rate</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'cargo_rate'">
+                  <q-input v-model.number="draft.cargo_rate" type="number" step="0.0001" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="local_shipping" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('cargo_rate')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_rate) }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('cargo_rate')" />
+                </template>
+              </div>
+            </div>
 
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-12 col-md-4 text-weight-medium">Received Weight</div>
-          <div class="col-12 col-md-8 row items-center q-gutter-sm">
-            <template v-if="editingField === 'received_weight'">
-              <q-input v-model.number="draft.received_weight" type="number" step="0.001" outlined dense class="col" />
-              <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('received_weight')" />
-              <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-            </template>
-            <template v-else>
-              <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.received_weight) }}</div>
-              <q-btn flat round dense icon="edit" @click="startEdit('received_weight')" />
-            </template>
-          </div>
-        </div>
-      </q-card-section>
-    </q-card>
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Weight</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'weight'">
+                  <q-input v-model.number="draft.weight" type="number" step="0.001" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="scale" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('weight')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.weight) }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('weight')" />
+                </template>
+              </div>
+            </div>
+
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-4 text-weight-medium">Received Weight</div>
+              <div class="col-12 col-sm-8 row items-center q-gutter-sm">
+                <template v-if="editingField === 'received_weight'">
+                  <q-input v-model.number="draft.received_weight" type="number" step="0.001" outlined dense class="col">
+                    <template #prepend>
+                      <q-icon name="done_all" />
+                    </template>
+                  </q-input>
+                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('received_weight')" />
+                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
+                </template>
+                <template v-else>
+                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.received_weight) }}</div>
+                  <q-btn flat round dense icon="edit" @click="startEdit('received_weight')" />
+                </template>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
   </q-page>
 </template>
 

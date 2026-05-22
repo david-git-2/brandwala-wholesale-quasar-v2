@@ -9,7 +9,7 @@
         <q-card-section>
           <div class="row items-center justify-between q-gutter-sm">
             <div class="text-subtitle1 text-weight-medium">
-              #{{ shipment.id }} {{ shipment.name }}
+              #{{ shipment.tenant_shipment_id }} {{ shipment.name }}
             </div>
             <q-chip
               dense

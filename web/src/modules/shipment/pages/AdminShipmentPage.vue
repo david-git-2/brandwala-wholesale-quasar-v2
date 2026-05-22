@@ -114,7 +114,7 @@
               :style="statusSurfaceStyle(slotProps.row.status)"
               @click="onSelectShipment(slotProps.row)"
             >
-              <q-td key="id" :props="slotProps">#{{ slotProps.row.id }}</q-td>
+              <q-td key="id" :props="slotProps">#{{ slotProps.row.tenant_shipment_id }}</q-td>
               <q-td key="name" :props="slotProps">{{ slotProps.row.name ?? '-' }}</q-td>
               <q-td key="status" :props="slotProps">
                 <q-chip dense square :style="statusChipStyle(slotProps.row.status)" class="shipment-status-chip">
@@ -154,7 +154,7 @@
           >
             <q-card-section>
               <div class="row items-center justify-between q-gutter-sm">
-                <div class="text-subtitle1 text-weight-medium">#{{ shipment.id }} {{ shipment.name }}</div>
+                <div class="text-subtitle1 text-weight-medium">#{{ shipment.tenant_shipment_id }} {{ shipment.name }}</div>
                 <q-chip dense square :style="statusChipStyle(shipment.status)" class="shipment-status-chip">
                   <span class="status-dot" :style="{ backgroundColor: statusDotColor(shipment.status) }" />
                   {{ shipment.status }}
@@ -265,7 +265,7 @@ const tablePagination = ref({
 })
 
 const tableColumns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left' },
+  { name: 'id', label: 'ID', field: 'tenant_shipment_id', align: 'left' },
   { name: 'name', label: 'Name', field: 'name', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
@@ -293,7 +293,7 @@ const filteredShipments = computed(() => {
   return shipmentStore.shipments.filter((shipment) => {
     const matchesSearch =
       search.length === 0 ||
-      String(shipment.id).includes(search) ||
+      String(shipment.tenant_shipment_id).includes(search) ||
       shipment.name.toLowerCase().includes(search)
     const matchesStatus = statusFilter.value === '__all__' || shipment.status === statusFilter.value
     return matchesSearch && matchesStatus

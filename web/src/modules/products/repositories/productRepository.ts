@@ -151,6 +151,8 @@ type ListProductsParams = {
 
 type ListProductLookupParams = {
   vendorCode?: string | null | undefined
+  vendorId?: number | null | undefined
+  tenantId?: number | null | undefined
 }
 
 let isListProductsPaginatedRpcAvailable = true
@@ -249,11 +251,14 @@ const listProductsFallback = async ({
   }
 }
 
-const listBrands = async ({ vendorCode }: ListProductLookupParams = {}): Promise<string[]> => {
-  let query = supabase
-    .from('product_brands')
-    .select('name')
-    .order('name', { ascending: true })
+const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<string[]> => {
+  let query = supabase.from('product_brands').select('name')
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  query = query.order('name', { ascending: true })
 
   const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
   if (normalizedVendorCode) {
@@ -271,11 +276,14 @@ const listBrands = async ({ vendorCode }: ListProductLookupParams = {}): Promise
     .filter((brand) => brand.length > 0)
 }
 
-const listCategories = async ({ vendorCode }: ListProductLookupParams = {}): Promise<string[]> => {
-  let query = supabase
-    .from('product_categories')
-    .select('name')
-    .order('name', { ascending: true })
+const listCategories = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<string[]> => {
+  let query = supabase.from('product_categories').select('name')
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  query = query.order('name', { ascending: true })
 
   const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
   if (normalizedVendorCode) {
@@ -468,31 +476,47 @@ const deleteProduct = async (payload: ProductDeleteInput): Promise<Product> => {
 
 const listProductBrands = async ({
   vendorCode,
+  vendorId,
+  tenantId,
 }: ListProductLookupParams = {}): Promise<ProductBrand[]> => {
-  let query = supabase
-    .from('product_brands')
-    .select('*')
-    .order('name', { ascending: true })
+  let query = supabase.from('product_brands').select('*')
 
-  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-  if (normalizedVendorCode) {
-    query = query.eq('vendor_code', normalizedVendorCode)
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  query = query.order('name', { ascending: true })
+
+  if (typeof vendorId === 'number') {
+    query = query.eq('vendor_id', vendorId)
+  } else {
+    const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+    if (normalizedVendorCode) {
+      query = query.eq('vendor_code', normalizedVendorCode)
+    }
   }
 
   const { data, error } = await query
   if (error) throw error
+  
   return (data as ProductBrand[] | null) ?? []
 }
 
 const createProductBrand = async (payload: ProductBrandCreateInput): Promise<ProductBrand> => {
-  const name = normalizeText(payload.name) ?? ''
+  const name = normalizeText(payload.name)?.toUpperCase() ?? ''
   if (!name) throw new Error('Brand name is required.')
   const vendorCode = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
-  const value = normalizeText(payload.value)?.toLowerCase() ?? name.toLowerCase()
+
+  const insertData: ProductBrandCreateInput = {
+    name,
+    vendor_code: vendorCode,
+    vendor_id: payload.vendor_id ?? null,
+    tenant_id: payload.tenant_id ?? null,
+  }
 
   const { data, error } = await supabase
     .from('product_brands')
-    .insert([{ name, value, vendor_code: vendorCode }])
+    .insert([insertData])
     .select('*')
     .single()
 
@@ -503,9 +527,10 @@ const createProductBrand = async (payload: ProductBrandCreateInput): Promise<Pro
 
 const updateProductBrand = async (payload: ProductBrandUpdateInput): Promise<ProductBrand> => {
   const patch: ProductBrandUpdateInput = { id: payload.id }
-  if (payload.name !== undefined) patch.name = normalizeText(payload.name) ?? ''
-  if (payload.value !== undefined) patch.value = normalizeText(payload.value)?.toLowerCase() ?? null
+  if (payload.name !== undefined) patch.name = normalizeText(payload.name)?.toUpperCase() ?? ''
   if (payload.vendor_code !== undefined) patch.vendor_code = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+  if (payload.vendor_id !== undefined) patch.vendor_id = payload.vendor_id
+  if (payload.tenant_id !== undefined) patch.tenant_id = payload.tenant_id
 
   const { data, error } = await supabase
     .from('product_brands')
@@ -526,19 +551,29 @@ const deleteProductBrand = async (payload: ProductBrandDeleteInput): Promise<voi
 
 const listProductCategories = async ({
   vendorCode,
+  vendorId,
+  tenantId,
 }: ListProductLookupParams = {}): Promise<ProductCategory[]> => {
-  let query = supabase
-    .from('product_categories')
-    .select('*')
-    .order('name', { ascending: true })
+  let query = supabase.from('product_categories').select('*')
 
-  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-  if (normalizedVendorCode) {
-    query = query.eq('vendor_code', normalizedVendorCode)
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  query = query.order('name', { ascending: true })
+
+  if (typeof vendorId === 'number') {
+    query = query.eq('vendor_id', vendorId)
+  } else {
+    const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+    if (normalizedVendorCode) {
+      query = query.eq('vendor_code', normalizedVendorCode)
+    }
   }
 
   const { data, error } = await query
   if (error) throw error
+  
   return (data as ProductCategory[] | null) ?? []
 }
 
@@ -546,11 +581,17 @@ const createProductCategory = async (payload: ProductCategoryCreateInput): Promi
   const name = normalizeText(payload.name) ?? ''
   if (!name) throw new Error('Category name is required.')
   const vendorCode = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
-  const value = normalizeText(payload.value)?.toLowerCase() ?? name.toLowerCase()
+
+  const insertData: ProductCategoryCreateInput = {
+    name,
+    vendor_code: vendorCode,
+    vendor_id: payload.vendor_id ?? null,
+    tenant_id: payload.tenant_id ?? null,
+  }
 
   const { data, error } = await supabase
     .from('product_categories')
-    .insert([{ name, value, vendor_code: vendorCode }])
+    .insert([insertData])
     .select('*')
     .single()
 
@@ -562,8 +603,9 @@ const createProductCategory = async (payload: ProductCategoryCreateInput): Promi
 const updateProductCategory = async (payload: ProductCategoryUpdateInput): Promise<ProductCategory> => {
   const patch: ProductCategoryUpdateInput = { id: payload.id }
   if (payload.name !== undefined) patch.name = normalizeText(payload.name) ?? ''
-  if (payload.value !== undefined) patch.value = normalizeText(payload.value)?.toLowerCase() ?? null
   if (payload.vendor_code !== undefined) patch.vendor_code = normalizeText(payload.vendor_code)?.toUpperCase() ?? null
+  if (payload.vendor_id !== undefined) patch.vendor_id = payload.vendor_id
+  if (payload.tenant_id !== undefined) patch.tenant_id = payload.tenant_id
 
   const { data, error } = await supabase
     .from('product_categories')

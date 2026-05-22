@@ -282,8 +282,8 @@ const openDetails = async (productId: number) => {
 
 onMounted(async () => {
   const [brandResult, categoryResult] = await Promise.all([
-    productService.listBrands(),
-    productService.listCategories(),
+    productService.listBrands({ tenantId: authStore.tenantId ?? null }),
+    productService.listCategories({ tenantId: authStore.tenantId ?? null }),
     vendorStore.fetchVendors(authStore.tenantId ?? null),
     marketStore.fetchMarkets(),
   ])

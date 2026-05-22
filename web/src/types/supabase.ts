@@ -1658,13 +1658,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "product_based_costing_files_vendor_code_fkey"
-            columns: ["vendor_code"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["code"]
-          },
-          {
             foreignKeyName: "product_based_costing_files_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -1785,6 +1778,7 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          tenant_id: number | null
           updated_at: string
           value: string | null
           vendor_code: string | null
@@ -1794,6 +1788,7 @@ export type Database = {
           created_at?: string
           id?: number
           name: string
+          tenant_id?: number | null
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
@@ -1803,12 +1798,20 @@ export type Database = {
           created_at?: string
           id?: number
           name?: string
+          tenant_id?: number | null
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_brands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_brands_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1823,6 +1826,7 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          tenant_id: number | null
           updated_at: string
           value: string | null
           vendor_code: string | null
@@ -1832,6 +1836,7 @@ export type Database = {
           created_at?: string
           id?: number
           name: string
+          tenant_id?: number | null
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
@@ -1841,12 +1846,20 @@ export type Database = {
           created_at?: string
           id?: number
           name?: string
+          tenant_id?: number | null
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_categories_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -2002,13 +2015,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_vendor_code_fkey"
-            columns: ["vendor_code"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "products_vendor_id_fkey"
@@ -2300,13 +2306,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipments_vendor_code_fkey"
-            columns: ["vendor_code"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "shipments_vendor_id_fkey"

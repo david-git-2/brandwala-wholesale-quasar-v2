@@ -29,6 +29,7 @@ type FetchProductsParams = {
 
 type FetchProductLookupParams = {
   vendorCode?: string | null | undefined
+  tenantId?: number | null | undefined
 }
 
 type ProductStoreState = {
@@ -191,6 +192,7 @@ export const useProductStore = defineStore('product', {
     async fetchBrandOptions(params?: FetchProductLookupParams) {
       const result = await productService.listBrands({
         vendorCode: params?.vendorCode ?? null,
+        tenantId: params?.tenantId ?? null,
       })
 
       if (!result.success) {
@@ -206,6 +208,7 @@ export const useProductStore = defineStore('product', {
     async fetchCategoryOptions(params?: FetchProductLookupParams) {
       const result = await productService.listCategories({
         vendorCode: params?.vendorCode ?? null,
+        tenantId: params?.tenantId ?? null,
       })
 
       if (!result.success) {

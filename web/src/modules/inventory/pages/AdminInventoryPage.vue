@@ -329,7 +329,7 @@ const shipmentOptions = computed(() =>
     ...shipmentStore.shipments
       .filter((shipment) => shipment.inventory_added === true)
       .map((shipment) => ({
-        label: `#${shipment.id} ${shipment.name}`,
+        label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
         value: shipment.id,
       })),
   ],
@@ -339,7 +339,7 @@ const warehouseReceivedShipmentOptions = computed(() =>
   shipmentStore.shipments
     .filter((shipment) => shipment.status?.trim().toLowerCase() === 'warehouse received')
     .map((shipment) => ({
-      label: `#${shipment.id} ${shipment.name}`,
+      label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
       value: shipment.id,
     })),
 )

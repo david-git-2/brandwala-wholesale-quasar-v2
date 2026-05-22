@@ -43,6 +43,24 @@ export const useVendorStore = defineStore('vendor', {
       }
     },
 
+    async getVendorById(id: number, tenantId?: number | null) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await vendorService.getVendorById(id, tenantId)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load vendor details.'
+          handleApiFailure(result, this.error)
+        }
+
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchMarkets() {
       const result = await vendorService.listVendorMarkets()
 

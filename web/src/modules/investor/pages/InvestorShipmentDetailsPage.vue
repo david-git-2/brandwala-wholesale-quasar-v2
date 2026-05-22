@@ -6,7 +6,7 @@
 
     <div v-if="shipmentStore.selectedShipment" class="q-mb-md">
       <div class="text-h6 text-weight-bold">
-        #{{ shipmentStore.selectedShipment.id }} {{ shipmentStore.selectedShipment.name }}
+        #{{ shipmentStore.selectedShipment.tenant_shipment_id ?? shipmentStore.selectedShipment.id }} {{ shipmentStore.selectedShipment.name }}
       </div>
       <div class="text-body2 text-grey-8">Status: {{ shipmentStore.selectedShipment.status }}</div>
       <div class="text-body2 text-grey-8">Total Shipment Cost (BDT): {{ formatAmount(totalShipmentCost) }}</div>

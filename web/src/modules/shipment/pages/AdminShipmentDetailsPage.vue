@@ -6,7 +6,7 @@
           <div class="col">
             <div class="row items-center q-gutter-sm">
               <q-badge color="primary" outline class="text-weight-medium">
-                #{{ shipmentStore.selectedShipment?.id ?? '-' }}
+                #{{ shipmentStore.selectedShipment?.tenant_shipment_id ?? shipmentStore.selectedShipment?.id ?? '-' }}
               </q-badge>
               <div class="text-h6 text-weight-bold">
                 {{ shipmentStore.selectedShipment?.name ?? 'Shipment' }}

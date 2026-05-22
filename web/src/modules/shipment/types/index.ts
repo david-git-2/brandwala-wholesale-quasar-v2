@@ -19,6 +19,7 @@ export type ShipmentStatus = (typeof SHIPMENT_STATUS_OPTIONS)[number]
 export type Shipment = {
   id: number
   tenant_id: number
+  tenant_shipment_id: number
   name: string
   status: ShipmentStatus
   product_conversion_rate: number | null
