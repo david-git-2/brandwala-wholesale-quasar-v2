@@ -1590,6 +1590,7 @@ export type Database = {
           tenant_id: number | null
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }
         Insert: {
           cargo_rate_kg_gbp?: number | null
@@ -1607,6 +1608,7 @@ export type Database = {
           tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Update: {
           cargo_rate_kg_gbp?: number | null
@@ -1624,6 +1626,7 @@ export type Database = {
           tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Relationships: [
           {
@@ -1661,6 +1664,13 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "product_based_costing_files_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_based_costing_items: {
@@ -1686,6 +1696,7 @@ export type Database = {
           status: string | null
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
           web_link: string | null
         }
         Insert: {
@@ -1710,6 +1721,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
           web_link?: string | null
         }
         Update: {
@@ -1734,6 +1746,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
           web_link?: string | null
         }
         Relationships: [
@@ -1758,6 +1771,13 @@ export type Database = {
             referencedRelation: "product_based_costing_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_based_costing_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_brands: {
@@ -1768,6 +1788,7 @@ export type Database = {
           updated_at: string
           value: string | null
           vendor_code: string | null
+          vendor_id: number | null
         }
         Insert: {
           created_at?: string
@@ -1776,6 +1797,7 @@ export type Database = {
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Update: {
           created_at?: string
@@ -1784,8 +1806,17 @@ export type Database = {
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
+          vendor_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_brands_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_categories: {
         Row: {
@@ -1795,6 +1826,7 @@ export type Database = {
           updated_at: string
           value: string | null
           vendor_code: string | null
+          vendor_id: number | null
         }
         Insert: {
           created_at?: string
@@ -1803,6 +1835,7 @@ export type Database = {
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Update: {
           created_at?: string
@@ -1811,8 +1844,17 @@ export type Database = {
           updated_at?: string
           value?: string | null
           vendor_code?: string | null
+          vendor_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_sync_snapshots: {
         Row: {
@@ -1827,6 +1869,7 @@ export type Database = {
           run_id: string
           tenant_id: number | null
           vendor_code: string
+          vendor_id: number | null
         }
         Insert: {
           barcode?: string | null
@@ -1840,6 +1883,7 @@ export type Database = {
           run_id: string
           tenant_id?: number | null
           vendor_code: string
+          vendor_id?: number | null
         }
         Update: {
           barcode?: string | null
@@ -1853,8 +1897,17 @@ export type Database = {
           run_id?: string
           tenant_id?: number | null
           vendor_code?: string
+          vendor_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_sync_snapshots_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1881,6 +1934,7 @@ export type Database = {
           tenant_id: number | null
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }
         Insert: {
           available_units?: number | null
@@ -1906,6 +1960,7 @@ export type Database = {
           tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Update: {
           available_units?: number | null
@@ -1931,6 +1986,7 @@ export type Database = {
           tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Relationships: [
           {
@@ -1953,6 +2009,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "products_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2184,6 +2247,7 @@ export type Database = {
           tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
           weight: number | null
         }
         Insert: {
@@ -2201,6 +2265,7 @@ export type Database = {
           tenant_shipment_id: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
           weight?: number | null
         }
         Update: {
@@ -2218,6 +2283,7 @@ export type Database = {
           tenant_shipment_id?: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
           weight?: number | null
         }
         Relationships: [
@@ -2241,6 +2307,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2297,6 +2370,7 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }
         Insert: {
           created_at?: string
@@ -2305,6 +2379,7 @@ export type Database = {
           tenant_id: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Update: {
           created_at?: string
@@ -2313,6 +2388,7 @@ export type Database = {
           tenant_id?: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_id?: number | null
         }
         Relationships: [
           {
@@ -2320,6 +2396,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -2997,6 +3080,7 @@ export type Database = {
           tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
           weight: number | null
         }
         SetofOptions: {
@@ -3015,6 +3099,7 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }
         SetofOptions: {
           from: "*"
@@ -3260,6 +3345,7 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }[]
         SetofOptions: {
           from: "*"
@@ -3773,6 +3859,7 @@ export type Database = {
           tenant_shipment_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
           weight: number | null
         }
         SetofOptions: {
@@ -3791,6 +3878,7 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_id: number | null
         }
         SetofOptions: {
           from: "*"

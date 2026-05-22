@@ -28,6 +28,7 @@ DEFAULT_STORAGE_PREFIX = str(os.getenv("PY_SUPABASE_STORAGE_PREFIX") or "uk/pc")
 DEFAULT_IMAGES_DIR = ROOT_DIR / "python" / "images" / "uk" / "out_images"
 SNAPSHOT_RETENTION_DAYS = 7
 PC_VENDOR_CODE = "PC"
+PC_VENDOR_ID = 3
 
 
 def load_env_file(path: Path) -> None:
@@ -277,6 +278,7 @@ def product_key(row: dict[str, Any]) -> tuple[str, str]:
 def build_sync_payloads(
     row: dict[str, Any],
     vendor_code: str,
+    vendor_id: int,
     market_code: str,
     tenant_id: int | None,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
@@ -295,6 +297,7 @@ def build_sync_payloads(
     # Insert payload can include null-capable values for new rows.
     insert_payload: dict[str, Any] = {
         "tenant_id": tenant_id,
+        "vendor_id": vendor_id,
         "vendor_code": vendor_code,
         "market_code": market_code,
         "barcode": barcode,
@@ -317,7 +320,7 @@ def build_sync_payloads(
     # so existing DB values (e.g. prefilled product_weight/package_weight) stay untouched.
     update_payload: dict[str, Any] = {}
     for key, value in insert_payload.items():
-        if key in ("tenant_id", "vendor_code", "market_code", "barcode", "product_code"):
+        if key in ("tenant_id", "vendor_id", "vendor_code", "market_code", "barcode", "product_code"):
             continue
         if value is not None:
             update_payload[key] = value
@@ -387,7 +390,7 @@ class SupabaseRestClient:
 
 def fetch_all_scoped_products(
     client: SupabaseRestClient,
-    vendor_code: str,
+    vendor_id: int,
     market_code: str,
     tenant_id: int | None,
 ) -> list[dict[str, Any]]:
@@ -397,7 +400,7 @@ def fetch_all_scoped_products(
     while True:
         params: dict[str, Any] = {
             "select": "id,barcode,product_code",
-            "vendor_code": f"eq.{vendor_code}",
+            "vendor_id": f"eq.{vendor_id}",
             "market_code": f"eq.{market_code}",
             "limit": str(limit),
             "offset": str(offset),
@@ -416,7 +419,7 @@ def fetch_all_scoped_products(
 
 def fetch_all_scoped_products_full(
     client: SupabaseRestClient,
-    vendor_code: str,
+    vendor_id: int,
     market_code: str,
     tenant_id: int | None,
 ) -> list[dict[str, Any]]:
@@ -426,7 +429,7 @@ def fetch_all_scoped_products_full(
     while True:
         params: dict[str, Any] = {
             "select": "*",
-            "vendor_code": f"eq.{vendor_code}",
+            "vendor_id": f"eq.{vendor_id}",
             "market_code": f"eq.{market_code}",
             "limit": str(limit),
             "offset": str(offset),
@@ -445,7 +448,7 @@ def fetch_all_scoped_products_full(
 
 def fetch_vendor_market_rows_any_tenant(
     client: SupabaseRestClient,
-    vendor_code: str,
+    vendor_id: int,
     market_code: str,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
@@ -453,7 +456,7 @@ def fetch_vendor_market_rows_any_tenant(
         "products",
         {
             "select": "id,tenant_id,barcode,product_code",
-            "vendor_code": f"eq.{vendor_code}",
+            "vendor_id": f"eq.{vendor_id}",
             "market_code": f"eq.{market_code}",
             "limit": str(limit),
         },
@@ -461,12 +464,12 @@ def fetch_vendor_market_rows_any_tenant(
 
 
 def build_scope_params(
-    vendor_code: str,
+    vendor_id: int,
     market_code: str,
     tenant_id: int | None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
-        "vendor_code": f"eq.{vendor_code}",
+        "vendor_id": f"eq.{vendor_id}",
         "market_code": f"eq.{market_code}",
     }
     if tenant_id is None:
@@ -482,17 +485,39 @@ def ensure_vendor_exists(
     market_code: str,
     tenant_id: int | None,
     dry_run: bool,
-) -> None:
-    rows = client.get_rows(
-        "vendors",
-        {
-            "select": "id,code",
-            "code": f"eq.{vendor_code}",
-            "limit": "1",
-        },
+) -> dict[str, Any]:
+    preferred_code = (
+        f"{vendor_code}-{tenant_id}".upper()
+        if tenant_id is not None
+        else vendor_code.upper()
     )
+    candidate_codes = [vendor_code]
+    if tenant_id is not None:
+        candidate_codes.append(f"{vendor_code}-{tenant_id}")
+
+    code_filter = ",".join(candidate_codes)
+    params = {
+        "select": "id,code,tenant_id,market_code",
+        "code": f"in.({code_filter})",
+        "market_code": f"eq.{market_code}",
+        "limit": "50",
+    }
+    if tenant_id is None:
+        params["tenant_id"] = "is.null"
+    else:
+        params["tenant_id"] = f"eq.{tenant_id}"
+
+    rows = client.get_rows("vendors", params)
     if rows:
-        return
+        rows_sorted = sorted(
+            rows,
+            key=lambda row: (
+                0 if to_text(row.get("code")).upper() == preferred_code else 1,
+                int(row.get("id") or 0),
+            ),
+        )
+        return rows_sorted[0]
+
     payload = {
         "name": vendor_code,
         "code": vendor_code,
@@ -501,9 +526,49 @@ def ensure_vendor_exists(
     }
     if dry_run:
         print(f"[dry-run] would create missing vendor: {payload}")
-        return
+        # optimistic dry-run preview for later flow
+        preview_code = f"{vendor_code}-{tenant_id}" if tenant_id is not None else vendor_code
+        return {
+            "id": -1,
+            "code": preview_code,
+            "tenant_id": tenant_id,
+            "market_code": market_code,
+        }
+
     client.insert_rows("vendors", [payload])
     print(f"Created missing vendor code={vendor_code} market_code={market_code}")
+
+    rows_after = client.get_rows("vendors", params)
+    if not rows_after:
+        raise RuntimeError("Vendor was created but could not be resolved by scope.")
+    rows_sorted = sorted(
+        rows_after,
+        key=lambda row: (
+            0 if to_text(row.get("code")).upper() == preferred_code else 1,
+            int(row.get("id") or 0),
+        ),
+    )
+    return rows_sorted[0]
+
+
+def get_vendor_by_id(
+    client: SupabaseRestClient,
+    vendor_id: int,
+) -> dict[str, Any]:
+    rows = client.get_rows(
+        "vendors",
+        {
+            "select": "id,code,tenant_id,market_code",
+            "id": f"eq.{vendor_id}",
+            "limit": "1",
+        },
+    )
+    if not rows:
+        raise RuntimeError(
+            f"Vendor id={vendor_id} not found. "
+            "Create/fix this vendor row first, then rerun PC sync."
+        )
+    return rows[0]
 
 
 def ensure_market_exists(
@@ -537,7 +602,7 @@ def normalize_lookup_name(value: Any) -> str | None:
 def fetch_lookup_values_for_vendor(
     client: SupabaseRestClient,
     table: str,
-    vendor_code: str,
+    vendor_id: int,
 ) -> set[str]:
     rows: list[dict[str, Any]] = []
     offset = 0
@@ -545,7 +610,7 @@ def fetch_lookup_values_for_vendor(
     while True:
         params = {
             "select": "value",
-            "vendor_code": f"eq.{vendor_code}",
+            "vendor_id": f"eq.{vendor_id}",
             "limit": str(limit),
             "offset": str(offset),
         }
@@ -564,6 +629,7 @@ def fetch_lookup_values_for_vendor(
 
 def ensure_lookup_rows_for_new_inserts(
     client: SupabaseRestClient,
+    vendor_id: int,
     vendor_code: str,
     inserts: list[dict[str, Any]],
     chunk_size: int,
@@ -573,8 +639,8 @@ def ensure_lookup_rows_for_new_inserts(
     if not inserts:
         return
 
-    existing_brand_values = fetch_lookup_values_for_vendor(client, "product_brands", vendor_code)
-    existing_category_values = fetch_lookup_values_for_vendor(client, "product_categories", vendor_code)
+    existing_brand_values = fetch_lookup_values_for_vendor(client, "product_brands", vendor_id)
+    existing_category_values = fetch_lookup_values_for_vendor(client, "product_categories", vendor_id)
 
     missing_brands: list[dict[str, Any]] = []
     missing_categories: list[dict[str, Any]] = []
@@ -591,6 +657,7 @@ def ensure_lookup_rows_for_new_inserts(
                 seen_brand_values.add(brand_value)
                 missing_brands.append({
                     "name": brand_name,
+                    "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
                 })
 
@@ -600,6 +667,7 @@ def ensure_lookup_rows_for_new_inserts(
                 seen_category_values.add(category_value)
                 missing_categories.append({
                     "name": category_name,
+                    "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
                 })
 
@@ -729,6 +797,19 @@ def main() -> int:
     storage_prefix = to_text(os.getenv("PY_SUPABASE_STORAGE_PREFIX") or DEFAULT_STORAGE_PREFIX).strip("/")
     images_dir = Path(args.images_dir).expanduser().resolve()
 
+    client = SupabaseRestClient(supabase_url, supabase_admin_key)
+    ensure_market_exists(client, market_code)
+    vendor_row = get_vendor_by_id(client, PC_VENDOR_ID)
+    resolved_vendor_id = PC_VENDOR_ID
+    resolved_vendor_code = to_text(vendor_row.get("code")).upper() or vendor_code
+
+    vendor_market_code = to_text(vendor_row.get("market_code")).upper()
+    if vendor_market_code and vendor_market_code != market_code:
+        raise ValueError(
+            f"Vendor id {PC_VENDOR_ID} market mismatch. "
+            f"Vendor market={vendor_market_code}, input market={market_code}."
+        )
+
     rows = load_products(input_path)
     key_counts: dict[tuple[str, str], int] = {}
     deduped_inserts: dict[tuple[str, str], dict[str, Any]] = {}
@@ -737,7 +818,8 @@ def main() -> int:
     for row in rows:
         payloads = build_sync_payloads(
             row,
-            vendor_code,
+            resolved_vendor_code,
+            resolved_vendor_id,
             market_code,
             tenant_id,
         )
@@ -750,12 +832,8 @@ def main() -> int:
         deduped_inserts[key] = insert_payload
         deduped_updates[key] = update_payload
 
-    client = SupabaseRestClient(supabase_url, supabase_admin_key)
-    ensure_market_exists(client, market_code)
-    ensure_vendor_exists(client, vendor_code, market_code, tenant_id, args.dry_run)
-
     if tenant_id is None:
-        sample_rows = fetch_vendor_market_rows_any_tenant(client, vendor_code, market_code, limit=50)
+        sample_rows = fetch_vendor_market_rows_any_tenant(client, resolved_vendor_id, market_code, limit=50)
         tenant_bound = [r for r in sample_rows if r.get("tenant_id") is not None]
         if tenant_bound:
             tenant_sample = ", ".join(
@@ -767,8 +845,8 @@ def main() -> int:
                 "Set PY_PRODUCTS_TENANT_ID in web/.env (or pass --tenant-id) and rerun."
             )
 
-    scope_params = build_scope_params(vendor_code, market_code, tenant_id)
-    existing_rows_full = fetch_all_scoped_products_full(client, vendor_code, market_code, tenant_id)
+    scope_params = build_scope_params(resolved_vendor_id, market_code, tenant_id)
+    existing_rows_full = fetch_all_scoped_products_full(client, resolved_vendor_id, market_code, tenant_id)
     existing_rows = [
         {
             "id": item.get("id"),
@@ -808,7 +886,11 @@ def main() -> int:
     print(f"Planned availability reset to false: {len(existing_rows)}")
     print(f"Planned updates: {len(updates)}")
     print(f"Planned inserts: {len(inserts)}")
-    print(f"Scope: vendor={vendor_code} market={market_code} tenant_id={'NULL' if tenant_id is None else tenant_id}")
+    print(
+        "Scope: "
+        f"vendor_code={resolved_vendor_code} vendor_id={resolved_vendor_id} "
+        f"market={market_code} tenant_id={'NULL' if tenant_id is None else tenant_id}"
+    )
     print(f"Image upload phase: local_dir={images_dir}")
     print(f"Image URL source: backend storage path ({storage_bucket}/{storage_prefix}/<product_id><ext>)")
     print(
@@ -822,7 +904,8 @@ def main() -> int:
     if args.dry_run:
         ensure_lookup_rows_for_new_inserts(
             client=client,
-            vendor_code=vendor_code,
+            vendor_id=resolved_vendor_id,
+            vendor_code=resolved_vendor_code,
             inserts=inserts,
             chunk_size=max(1, args.chunk_size),
             dry_run=True,
@@ -846,7 +929,8 @@ def main() -> int:
                 "captured_at": snapshot_now.isoformat(),
                 "expires_at": snapshot_expires_at.isoformat(),
                 "tenant_id": row.get("tenant_id"),
-                "vendor_code": vendor_code,
+                "vendor_id": row.get("vendor_id"),
+                "vendor_code": resolved_vendor_code,
                 "market_code": market_code,
                 "product_id": int(product_id),
                 "barcode": to_text(row.get("barcode")) or None,
@@ -901,7 +985,8 @@ def main() -> int:
 
     ensure_lookup_rows_for_new_inserts(
         client=client,
-        vendor_code=vendor_code,
+        vendor_id=resolved_vendor_id,
+        vendor_code=resolved_vendor_code,
         inserts=inserts,
         chunk_size=max(1, args.chunk_size),
         dry_run=False,
@@ -967,7 +1052,7 @@ def main() -> int:
     if not local_images:
         print(f"No local images found in: {images_dir}", flush=True)
 
-    rows_after_sync = fetch_all_scoped_products(client, vendor_code, market_code, tenant_id)
+    rows_after_sync = fetch_all_scoped_products(client, resolved_vendor_id, market_code, tenant_id)
     ids_by_key: dict[tuple[str, str], list[int]] = {}
     for item in rows_after_sync:
         k = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
