@@ -5,6 +5,9 @@ export type ModuleKey =
   | 'shipment'
   | 'inventory'
   | 'commerce_shop'
+  | 'commerce_order'
+  | 'commerce_invoice'
+  | 'commerce_cart'
   | 'investor'
   | 'vendor'
   | 'products'
@@ -91,7 +94,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'commerce_shop',
     name: 'Commerce Shop',
-    description: 'Browse sellable products directly from inventory.',
+    description: 'Isolated commerce module using dedicated pricing and inventory summary flow.',
     routes: [
       {
         scope: 'app',
@@ -120,9 +123,70 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'shop',
         title: 'Commerce Shop',
-        caption: 'Browse products available from inventory',
+        caption: 'Browse products in isolated commerce flow',
         icon: 'storefront',
         routeSegment: 'commerce-shop',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'commerce_order',
+    name: 'Commerce Order',
+    description: 'Dedicated order module for commerce shop flows.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Commerce Orders',
+        caption: 'Manage commerce orders',
+        icon: 'receipt_long',
+        routeSegment: 'commerce-shop/orders',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Commerce Orders',
+        caption: 'Track your commerce orders',
+        icon: 'shopping_bag',
+        routeSegment: 'commerce-shop/orders',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'commerce_invoice',
+    name: 'Commerce Invoice',
+    description: 'Dedicated invoice module for commerce shop flows.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Commerce Invoices',
+        caption: 'Manage commerce invoices',
+        icon: 'description',
+        routeSegment: 'commerce-shop/invoices',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Commerce Billing Profiles',
+        caption: 'Manage billing profiles for commerce invoices',
+        icon: 'badge',
+        routeSegment: 'commerce-shop/invoices/billing-profiles',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'commerce_cart',
+    name: 'Commerce Cart',
+    description: 'Dedicated cart module for commerce shop workflows.',
+    routes: [
+      {
+        scope: 'shop',
+        title: 'Commerce Cart',
+        caption: 'Review and manage your commerce cart',
+        icon: 'shopping_cart',
+        routeSegment: 'commerce-shop/cart',
         requiredAction: 'view',
       },
     ],

@@ -186,6 +186,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_shop',
     )
+    const hasCommerceOrderModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_order',
+    )
+    const hasCommerceInvoiceModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_invoice',
+    )
+    const hasCommerceCartModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.moduleKey === 'commerce_cart',
+    )
 
     if (
       !hasStoreModuleAccess &&
@@ -193,7 +205,10 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       !hasAccountingModuleAccess &&
       !hasInvestorModuleAccess &&
       !hasProductsModuleAccess &&
-      !hasCommerceShopModuleAccess
+      !hasCommerceShopModuleAccess &&
+      !hasCommerceOrderModuleAccess &&
+      !hasCommerceInvoiceModuleAccess &&
+      !hasCommerceCartModuleAccess
     ) {
       return [...baseLinks, ...moduleLinks]
     }
@@ -206,7 +221,10 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'accounting' &&
           routeDefinition.moduleKey !== 'investor' &&
           routeDefinition.moduleKey !== 'products' &&
-          routeDefinition.moduleKey !== 'commerce_shop',
+          routeDefinition.moduleKey !== 'commerce_shop' &&
+          routeDefinition.moduleKey !== 'commerce_order' &&
+          routeDefinition.moduleKey !== 'commerce_invoice' &&
+          routeDefinition.moduleKey !== 'commerce_cart',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -255,6 +273,30 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       }))
     const commerceShopChildren = scopedModuleRouteDefinitions
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_shop')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceOrderChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_order')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceInvoiceChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_invoice')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceCartChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_cart')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
@@ -335,13 +377,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             },
           ]
         : []),
-      ...(hasCommerceShopModuleAccess
+      ...(hasCommerceShopModuleAccess || hasCommerceOrderModuleAccess || hasCommerceInvoiceModuleAccess || hasCommerceCartModuleAccess
         ? [
             {
               title: 'Commerce Shop',
-              caption: 'Commerce shop module',
+              caption: 'Isolated commerce module',
               icon: 'storefront',
-              children: commerceShopChildren,
+              children: [
+                ...commerceShopChildren,
+                ...commerceOrderChildren,
+                ...commerceInvoiceChildren,
+                ...commerceCartChildren,
+              ],
             },
           ]
         : []),

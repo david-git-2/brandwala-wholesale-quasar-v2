@@ -123,7 +123,9 @@ export type Database = {
           id: number
           image_url: string | null
           minimum_quantity: number
+          minimum_sell_price_bdt: number | null
           name: string
+          price_bdt: number | null
           price_gbp: number | null
           product_id: number | null
           quantity: number
@@ -135,7 +137,9 @@ export type Database = {
           id?: number
           image_url?: string | null
           minimum_quantity?: number
+          minimum_sell_price_bdt?: number | null
           name: string
+          price_bdt?: number | null
           price_gbp?: number | null
           product_id?: number | null
           quantity?: number
@@ -147,7 +151,9 @@ export type Database = {
           id?: number
           image_url?: string | null
           minimum_quantity?: number
+          minimum_sell_price_bdt?: number | null
           name?: string
+          price_bdt?: number | null
           price_gbp?: number | null
           product_id?: number | null
           quantity?: number
@@ -208,6 +214,63 @@ export type Database = {
           },
           {
             foreignKeyName: "carts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_inventory_product_summaries: {
+        Row: {
+          available_quantity: number
+          damaged_quantity: number
+          expired_quantity: number
+          id: number
+          open_box_quantity: number
+          product_id: number
+          reserved_quantity: number
+          stolen_quantity: number
+          tenant_id: number
+          updated_at: string
+          usable_quantity: number
+        }
+        Insert: {
+          available_quantity?: number
+          damaged_quantity?: number
+          expired_quantity?: number
+          id?: number
+          open_box_quantity?: number
+          product_id: number
+          reserved_quantity?: number
+          stolen_quantity?: number
+          tenant_id: number
+          updated_at?: string
+          usable_quantity?: number
+        }
+        Update: {
+          available_quantity?: number
+          damaged_quantity?: number
+          expired_quantity?: number
+          id?: number
+          open_box_quantity?: number
+          product_id?: number
+          reserved_quantity?: number
+          stolen_quantity?: number
+          tenant_id?: number
+          updated_at?: string
+          usable_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_inventory_product_summaries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_product_summaries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2361,6 +2424,64 @@ export type Database = {
           },
         ]
       }
+      store_product_prices: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          minimum_sell_price_bdt: number
+          price_bdt: number
+          product_id: number
+          store_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          minimum_sell_price_bdt: number
+          price_bdt: number
+          product_id: number
+          store_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          minimum_sell_price_bdt?: number
+          price_bdt?: number
+          product_id?: number
+          store_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_product_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_product_prices_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_product_prices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           created_at: string
@@ -2578,8 +2699,9 @@ export type Database = {
           p_customer_group_id?: number
           p_image_url?: string
           p_minimum_quantity?: number
+          p_minimum_sell_price_bdt?: number
           p_name?: string
-          p_price_gbp?: number
+          p_price_bdt?: number
           p_product_id?: number
           p_quantity?: number
           p_store_id?: number
@@ -2686,6 +2808,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      adjust_inventory_reserved_for_product: {
+        Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
+        Returns: undefined
       }
       apply_invoice_item_return: {
         Args: {
@@ -3681,6 +3807,14 @@ export type Database = {
       }
       recompute_invoice_payment_status: {
         Args: { p_invoice_id: number }
+        Returns: undefined
+      }
+      refresh_commerce_inventory_product_summaries: {
+        Args: { p_tenant_id?: number }
+        Returns: undefined
+      }
+      refresh_commerce_inventory_product_summary_single: {
+        Args: { p_product_id: number; p_tenant_id: number }
         Returns: undefined
       }
       refresh_investor_balance: {

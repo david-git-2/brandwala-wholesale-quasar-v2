@@ -4,7 +4,7 @@
       <div>
         <div class="text-h5 text-weight-bold">Cart</div>
         <div class="text-caption text-grey-7">
-          {{ cartSummary.totalItems }} items <span v-if="storeStore.selectedStore?.see_price"> | Subtotal £{{ formatPrice(cartSummary.subtotal) }}</span>
+          {{ cartSummary.totalItems }} items <span v-if="storeStore.selectedStore?.see_price"> | Subtotal {{ priceSymbol }}{{ formatPrice(cartSummary.subtotal) }}</span>
         </div>
       </div>
       <q-btn
@@ -53,7 +53,7 @@
             Qty: {{ getDraftQty(item.id, item.quantity) }} | MOQ: {{ item.minimum_quantity }}
           </q-item-label>
           <q-item-label v-if="storeStore.selectedStore?.see_price" class="text-caption text-grey-7 q-mt-xs">
-            Unit Price: £{{ formatPrice(item.price_gbp) }}
+            Unit Price: {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item)) }}
           </q-item-label>
         </q-item-section>
 
@@ -79,7 +79,7 @@
           </div>
 
           <div v-if="storeStore.selectedStore?.see_price" class="text-right text-weight-medium q-mb-xs">
-            £{{ formatPrice((item.price_gbp ?? 0) * getDraftQty(item.id, item.quantity)) }}
+            {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item) * getDraftQty(item.id, item.quantity)) }}
           </div>
           <div class="action-buttons">
             <q-btn
@@ -111,7 +111,7 @@
 
     <div class="cart-footer q-mt-lg">
       <div class="text-caption text-grey-7">
-        Total items: {{ cartSummary.totalItems }} <span v-if="storeStore.selectedStore?.see_price">  | Subtotal: £{{ formatPrice(cartSummary.subtotal) }}</span>
+        Total items: {{ cartSummary.totalItems }} <span v-if="storeStore.selectedStore?.see_price">  | Subtotal: {{ priceSymbol }}{{ formatPrice(cartSummary.subtotal) }}</span>
       </div>
       <q-btn
         color="primary"
@@ -196,6 +196,13 @@ const storeOptions = computed(() =>
   })),
 )
 
+const priceSymbol = computed(() =>
+  cartStore.items.some((item) => item.price_bdt != null) ? '৳' : '£',
+)
+
+const getDisplayPrice = (item: { price_bdt?: number | null; price_gbp?: number | null }) =>
+  Number(item.price_bdt ?? item.price_gbp ?? 0)
+
 const cartSummary = computed(() => {
   const totalItems = cartStore.items.reduce((sum, item) => {
     return sum + (draftQuantities.value[item.id] ?? item.quantity)
@@ -203,7 +210,7 @@ const cartSummary = computed(() => {
 
   const subtotal = cartStore.items.reduce((sum, item) => {
     const qty = draftQuantities.value[item.id] ?? item.quantity
-    const price = item.price_gbp ?? 0
+    const price = item.price_bdt ?? item.price_gbp ?? 0
     return sum + qty * price
   }, 0)
 
@@ -305,6 +312,7 @@ const onPlaceOrder = async (): Promise<number | null> => {
     number,
     {
       price_gbp: number | null
+      price_bdt?: number | null
       barcode: string | null
       product_code: string | null
       product_weight: number | null
@@ -321,6 +329,7 @@ const onPlaceOrder = async (): Promise<number | null> => {
 
     detailByProductId.set(productId, {
       price_gbp: (product['price_gbp'] as number | null) ?? null,
+      price_bdt: (product['price_bdt'] as number | null) ?? null,
       barcode: (product['barcode'] as string | null) ?? null,
       product_code: (product['product_code'] as string | null) ?? null,
       product_weight: (product['product_weight'] as number | null) ?? null,
@@ -342,6 +351,7 @@ const onPlaceOrder = async (): Promise<number | null> => {
         name: item.name,
         image_url: item.image_url ?? null,
         price_gbp: item.price_gbp ?? productDetail?.price_gbp ?? null,
+        price_bdt: item.price_bdt ?? productDetail?.price_bdt ?? productDetail?.price_gbp ?? null,
         barcode: productDetail?.barcode ?? null,
         product_code: productDetail?.product_code ?? null,
         product_weight: productDetail?.product_weight ?? null,

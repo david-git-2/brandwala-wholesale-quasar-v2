@@ -167,6 +167,8 @@ const createCartItem = async (payload: CartItemCreateInput): Promise<CartItem> =
         name: payload.name,
         image_url: payload.image_url ?? null,
         price_gbp: payload.price_gbp ?? null,
+        price_bdt: payload.price_bdt ?? null,
+        minimum_sell_price_bdt: payload.minimum_sell_price_bdt ?? null,
         quantity: payload.quantity ?? 1,
         minimum_quantity: payload.minimum_quantity ?? 1,
       },
@@ -275,7 +277,7 @@ const getCartDetails = async (cartId: number): Promise<CartWithItemDetails> => {
 }
 
 const addItemToCart = async (payload: AddItemToCartInput): Promise<AddItemToCartResult> => {
-  const { data, error } = await supabase.rpc('add_item_to_cart' as never, {
+  let { data, error } = await supabase.rpc('add_item_to_cart' as never, {
     p_tenant_id: payload.tenant_id,
     p_store_id: payload.store_id ?? null,
     p_customer_group_id: payload.customer_group_id ?? null,
@@ -283,10 +285,28 @@ const addItemToCart = async (payload: AddItemToCartInput): Promise<AddItemToCart
     p_product_id: payload.product_id ?? null,
     p_name: payload.name,
     p_image_url: payload.image_url ?? null,
-    p_price_gbp: payload.price_gbp ?? null,
+    p_price_bdt: payload.price_bdt ?? payload.price_gbp ?? null,
+    p_minimum_sell_price_bdt: payload.minimum_sell_price_bdt ?? null,
     p_quantity: payload.quantity,
     p_minimum_quantity: payload.minimum_quantity ?? 1,
   } as never)
+
+  if (error?.code === 'PGRST202') {
+    const fallback = await supabase.rpc('add_item_to_cart' as never, {
+      p_tenant_id: payload.tenant_id,
+      p_store_id: payload.store_id ?? null,
+      p_customer_group_id: payload.customer_group_id ?? null,
+      p_can_see_price: payload.can_see_price ?? false,
+      p_product_id: payload.product_id ?? null,
+      p_name: payload.name,
+      p_image_url: payload.image_url ?? null,
+      p_price_gbp: payload.price_gbp ?? payload.price_bdt ?? null,
+      p_quantity: payload.quantity,
+      p_minimum_quantity: payload.minimum_quantity ?? 1,
+    } as never)
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) {
     throw error

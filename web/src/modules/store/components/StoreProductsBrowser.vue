@@ -64,6 +64,8 @@
     <ProductCardGrid
       :items="productCardItems"
       :show-price="props.mode === 'admin' || customerCanSeePrice"
+      :price-field="props.moduleVariant === 'commerce_v2' ? 'price_bdt' : 'price_gbp'"
+      :price-symbol="props.moduleVariant === 'commerce_v2' ? '৳' : '£'"
       :show-cart="props.mode === 'customer'"
       :show-info="props.mode === 'admin'"
       :store-id="selectedStoreId"
@@ -142,9 +144,11 @@ import ProductCardGrid from './ProductCardGrid.vue'
 const props = withDefaults(
   defineProps<{
     mode?: 'admin' | 'customer'
+    moduleVariant?: 'legacy' | 'commerce_v2'
   }>(),
   {
     mode: 'admin',
+    moduleVariant: 'legacy',
   },
 )
 
@@ -168,6 +172,8 @@ type ProductCardItem = {
   image_url?: string | null
   languages?: string | null
   price_gbp?: number | null
+  price_bdt?: number | null
+  minimum_sell_price_bdt?: number | null
   tenant_id?: number
   created_at?: string
   updated_at?: string
@@ -248,7 +254,10 @@ const customerCanSeePrice = computed(() => {
   }
 
   return storeStore.productItems.some((item) => {
-    const price = item['price_gbp']
+    const price =
+      props.moduleVariant === 'commerce_v2'
+        ? item['price_bdt'] ?? item['price_gbp']
+        : item['price_gbp']
     return price !== null && price !== undefined
   })
 })
@@ -289,13 +298,16 @@ const fields =
         'image_url',
         'is_available',
         'name',
-        'price_gbp',
+        ...(props.moduleVariant === 'commerce_v2'
+          ? ['price_bdt', 'minimum_sell_price_bdt']
+          : ['price_gbp']),
         'minimum_order_quantity',
         'country_of_origin',
       ]
     : null
   await storeStore.fetchStoreProducts({
     store_id: storeId,
+    module_variant: props.moduleVariant,
     search: search.value || null,
     category: category.value || null,
     brand: brand.value || null,
@@ -481,6 +493,8 @@ const onAddToCart = async (payload: {
     name: payload.item.name,
     image_url: payload.item.image_url ?? null,
     price_gbp: payload.item.price_gbp ?? null,
+    price_bdt: payload.item.price_bdt ?? payload.item.price_gbp ?? null,
+    minimum_sell_price_bdt: payload.item.minimum_sell_price_bdt ?? null,
     quantity: payload.quantity,
     minimum_quantity: payload.minimum_quantity,
   })

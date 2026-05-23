@@ -243,7 +243,12 @@ const checkStorePriceAccess = async (storeId: number): Promise<boolean> => {
 const listStoreProducts = async (
   payload: StoreProductsQueryInput,
 ): Promise<StoreProductsPage> => {
-  let { data, error } = await supabase.rpc('list_store_products_inventory_aggregated' as never, {
+  const rpcName =
+    payload.module_variant === 'commerce_v2'
+      ? 'list_store_products_inventory_aggregated'
+      : 'list_store_products'
+
+  let { data, error } = await supabase.rpc(rpcName as never, {
     p_store_id: payload.store_id,
     p_fields: payload.fields ?? null,
     p_search: payload.search ?? null,
@@ -256,7 +261,7 @@ const listStoreProducts = async (
     p_offset: payload.offset ?? 0,
   } as never)
 
-  if (error?.code === 'PGRST202') {
+  if (error?.code === 'PGRST202' && payload.module_variant === 'commerce_v2') {
     const fallback = await supabase.rpc('list_store_products' as never, {
       p_store_id: payload.store_id,
       p_fields: payload.fields ?? null,
@@ -409,6 +414,8 @@ const createCartItem = async (
         name: payload.name,
         image_url: payload.image_url ?? null,
         price_gbp: payload.price_gbp ?? null,
+        price_bdt: payload.price_bdt ?? null,
+        minimum_sell_price_bdt: payload.minimum_sell_price_bdt ?? null,
         quantity: payload.quantity ?? 1,
         minimum_quantity: payload.minimum_quantity ?? 1,
       },

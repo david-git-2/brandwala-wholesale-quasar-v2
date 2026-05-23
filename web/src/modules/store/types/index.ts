@@ -59,6 +59,7 @@ export type StoreServiceResult<T> = {
 
 export type StoreProductsQueryInput = {
   store_id: number
+  module_variant?: 'legacy' | 'commerce_v2'
   fields?: string[] | null
   search?: string | null
   category?: string | null
@@ -116,6 +117,8 @@ export type StoreCartItem = {
   name: string
   image_url: string | null
   price_gbp: number | null
+  price_bdt?: number | null
+  minimum_sell_price_bdt?: number | null
   quantity: number
   minimum_quantity: number
   created_at: string
@@ -157,6 +160,8 @@ export type StoreCartItemCreateInput = {
   name: string
   image_url?: string | null
   price_gbp?: number | null
+  price_bdt?: number | null
+  minimum_sell_price_bdt?: number | null
   quantity?: number
   minimum_quantity?: number
 }
@@ -168,6 +173,8 @@ export type StoreCartItemUpdateInput = {
   name?: string
   image_url?: string | null
   price_gbp?: number | null
+  price_bdt?: number | null
+  minimum_sell_price_bdt?: number | null
   quantity?: number
   minimum_quantity?: number
 }

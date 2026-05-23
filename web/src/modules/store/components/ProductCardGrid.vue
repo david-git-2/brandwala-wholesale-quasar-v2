@@ -35,7 +35,7 @@
         <div class="product-meta q-mt-sm">
           <div>Origin: {{ item.country_of_origin || '-' }}</div>
           <div v-if="props.showInfo">Available Units: {{ item.available_units ?? 0 }}</div>
-          <div v-if="props.showPrice" class="product-price">Price: £{{ formatPrice(item.price_gbp) }}</div>
+          <div v-if="props.showPrice" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
         </div>
       </q-card-section>
 
@@ -191,8 +191,8 @@
             v-if="props.showPrice"
             class="detail-item"
           >
-            <div class="detail-label">Price GBP</div>
-            <div class="detail-value">£{{ formatPrice(selectedItem.price_gbp) }}</div>
+            <div class="detail-label">Price</div>
+            <div class="detail-value">{{ props.priceSymbol }}{{ formatPrice(getItemPrice(selectedItem)) }}</div>
           </div>
 
           <div class="detail-item">
@@ -223,6 +223,8 @@ type ProductItem = {
   image_url?: string | null
   languages?: string | null
   price_gbp?: number | null
+  price_bdt?: number | null
+  minimum_sell_price_bdt?: number | null
   tenant_id?: number
   created_at?: string
   updated_at?: string
@@ -243,6 +245,8 @@ type ProductItem = {
 const props = withDefaults(defineProps<{
   items: ProductItem[]
   showPrice?: boolean
+  priceField?: 'price_gbp' | 'price_bdt'
+  priceSymbol?: string
   showCart?: boolean
   showInfo?: boolean
   storeId?: number | null
@@ -250,6 +254,8 @@ const props = withDefaults(defineProps<{
   cartQuantityByProductId?: Record<number, number>
 }>(), {
   showPrice: true,
+  priceField: 'price_gbp',
+  priceSymbol: '£',
   showCart: true,
   showInfo: true,
   storeId: null,
@@ -262,6 +268,13 @@ const emit = defineEmits<{
   removeFromCart: [payload: { cart_item_id: number; product_id: number }]
   updateCartQty: [payload: { cart_item_id: number; product_id: number; quantity: number; minimum_quantity: number }]
 }>()
+
+const getItemPrice = (item: ProductItem) => {
+  if (props.priceField === 'price_bdt') {
+    return item.price_bdt ?? item.price_gbp ?? null
+  }
+  return item.price_gbp ?? item.price_bdt ?? null
+}
 
 const detailsOpen = ref(false)
 const selectedItem = ref<ProductItem | null>(null)
