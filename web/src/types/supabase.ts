@@ -3316,6 +3316,7 @@ export type Database = {
         Args: { p_costing_file_id: number }
         Returns: string
       }
+      current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
       delete_shipment: { Args: { p_id: number }; Returns: undefined }
       delete_shipment_item_quantity: {

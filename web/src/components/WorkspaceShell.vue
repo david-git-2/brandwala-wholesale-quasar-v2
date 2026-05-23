@@ -90,7 +90,9 @@
                 <q-item
                   v-else-if="link.to"
                   clickable
-                  :to="link.to"
+                  :to="link.target ? undefined : link.to"
+                  :href="link.target ? link.to : undefined"
+                  :target="link.target"
                   class="workspace-shell__nav-item"
                   active-class="workspace-shell__nav-item--active"
                 >
@@ -138,6 +140,7 @@ export interface WorkspaceLink {
   caption: string
   icon: string
   to?: string
+  target?: string
   children?: WorkspaceLink[]
 }
 

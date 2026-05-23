@@ -20,6 +20,7 @@ type BaseWorkspaceLinkDefinition = {
   scopes: readonly WorkspaceScope[]
   allowedRoles?: readonly AccessRole[]
   requiresTenantContext?: boolean
+  target?: string
 }
 
 const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
@@ -64,6 +65,15 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/superadmins',
   },
   {
+    title: 'Documentation',
+    caption: 'Global platform & module manuals',
+    icon: 'menu_book',
+    scopes: ['platform'],
+    allowedRoles: ['superadmin'],
+    route: () => '/platform/documentation',
+    target: '_blank',
+  },
+  {
     title: 'Dashboard',
     caption: 'Internal activity and quick actions',
     icon: 'insights',
@@ -80,6 +90,16 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     allowedRoles: ['admin', 'staff'],
     route: ({ tenantSlug }) =>
       tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants',
+  },
+  {
+    title: 'Documentation',
+    caption: 'User guides and feature manuals',
+    icon: 'menu_book',
+    scopes: ['app'],
+    allowedRoles: ['admin', 'staff', 'viewer'],
+    route: ({ tenantSlug }) =>
+      tenantSlug ? `/${tenantSlug}/app/documentation` : '/app/documentation',
+    target: '_blank',
   },
   {
     title: 'Dashboard',
@@ -125,12 +145,18 @@ const getBaseWorkspaceLinks = ({
     }
 
     return true
-  }).map((definition) => ({
-    title: definition.title,
-    caption: definition.caption,
-    icon: definition.icon,
-    to: definition.route({ scope, tenantSlug }),
-  }))
+  }).map((definition) => {
+    const link: WorkspaceLink = {
+      title: definition.title,
+      caption: definition.caption,
+      icon: definition.icon,
+      to: definition.route({ scope, tenantSlug }),
+    }
+    if (definition.target) {
+      link.target = definition.target
+    }
+    return link
+  })
 }
 
 export const useWorkspaceLinks = (scope: WorkspaceScope) => {
