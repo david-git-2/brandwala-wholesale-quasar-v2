@@ -130,9 +130,11 @@ const deleteStoreAccess = async (
   }
 }
 
-const getStoresForCustomer = async (): Promise<StoreServiceResult<Store[]>> => {
+const getStoresForCustomer = async (
+  tenantId?: number | null,
+): Promise<StoreServiceResult<Store[]>> => {
   try {
-    const data = await storeRepository.getStoresForCustomer()
+    const data = await storeRepository.getStoresForCustomer(tenantId)
     return { success: true, data }
   } catch (error) {
     return {

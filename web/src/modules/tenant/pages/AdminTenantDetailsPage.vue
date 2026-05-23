@@ -1,138 +1,101 @@
 <template>
-  <q-page class="q-pa-sm">
-    <div class="q-mb-md row items-center justify-between">
-      <div class="row items-center q-gutter-sm">
-        <q-btn flat round icon="arrow_back" @click="goBack" />
-        <div>
-          <div class="text-h5 text-weight-bold">Tenant Details</div>
-          <div v-if="tenant" class="text-grey-7">
-            {{ tenant.name }} · {{ tenant.slug }}
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <section class="tenant-details-hero">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-12 col-md">
+            <div class="text-overline">Operations</div>
+            <h1 class="text-h5 q-my-none">Tenant Details</h1>
+            <p v-if="tenant" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+              {{ tenant.name }} · {{ tenant.slug }}
+            </p>
+          </div>
+          <div class="col-12 col-md-auto row q-gutter-sm items-center">
+            <q-chip class="tenant-details-hero-chip" :color="tenant?.is_active ? 'positive' : 'grey-6'" text-color="white">
+              {{ tenant?.is_active ? 'Active' : 'Inactive' }}
+            </q-chip>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
-      {{ pageError }}
-    </q-banner>
+      <q-banner v-if="pageError" class="bw-status-banner text-white" rounded>
+        {{ pageError }}
+      </q-banner>
 
-    <div v-if="pageLoading" class="text-grey-7">Loading tenant details...</div>
+      <q-card v-if="pageLoading" flat bordered>
+        <q-card-section class="text-grey-7">Loading tenant details...</q-card-section>
+      </q-card>
 
-    <div v-else-if="!tenant" class="text-grey-7">Tenant not found.</div>
+      <q-card v-else-if="!tenant" flat bordered>
+        <q-card-section class="text-grey-7">Tenant not found.</q-card-section>
+      </q-card>
 
-    <div v-else class="row q-col-gutter-lg">
-      <div class="col-12 col-lg-6">
-        <q-card flat bordered class="q-mb-lg">
-          <q-card-section class="row items-start justify-between">
-            <div>
-              <div class="text-h6">{{ tenant.name }}</div>
-              <div class="text-caption text-grey-7">{{ tenant.slug }}</div>
-            </div>
-
-            <q-badge :color="tenant.is_active ? 'positive' : 'grey-6'">
-              {{ tenant.is_active ? 'Active' : 'Inactive' }}
-            </q-badge>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section class="q-gutter-md">
-            <div><strong>ID:</strong> #{{ tenant.id }}</div>
-            <div><strong>Name:</strong> {{ tenant.name }}</div>
-            <div><strong>Slug:</strong> {{ tenant.slug }}</div>
-            <div class="row items-center justify-between q-gutter-sm">
-              <div class="col min-w-0">
-                <strong>Admin Login:</strong>
-                <a
-                  :href="adminLoginUrl"
-                  class="text-primary"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{ adminLoginUrl }}
-                </a>
+      <div v-else class="row q-col-gutter-md">
+        <div class="col-12 col-lg-7">
+          <q-card flat bordered class="tenant-details-card">
+            <q-card-section class="row items-start justify-between q-col-gutter-sm">
+              <div class="col">
+                <div class="text-overline">Tenant #{{ tenant.id }}</div>
+                <div class="text-h6 text-weight-bold">{{ tenant.name }}</div>
+                <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
               </div>
               <div class="col-auto">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="content_copy"
-                  aria-label="Copy admin login URL"
-                  @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
-                />
+                <q-chip class="tenant-status-chip" :color="tenant.is_active ? 'positive' : 'grey-6'" text-color="white">
+                  {{ tenant.is_active ? 'Active' : 'Inactive' }}
+                </q-chip>
               </div>
-            </div>
-            <div class="row items-center justify-between q-gutter-sm">
-              <div class="col min-w-0">
-                <strong>Customer Login:</strong>
-                <a
-                  :href="customerLoginUrl"
-                  class="text-primary"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{ customerLoginUrl }}
-                </a>
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-section class="q-gutter-md">
+              <div><strong>ID:</strong> #{{ tenant.id }}</div>
+              <div><strong>Name:</strong> {{ tenant.name }}</div>
+              <div><strong>Slug:</strong> {{ tenant.slug }}</div>
+
+              <q-card flat bordered class="q-pa-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">Admin Login</div>
+                <div class="row items-center justify-between q-gutter-sm">
+                  <a :href="adminLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                    {{ adminLoginUrl }}
+                  </a>
+                  <q-btn flat round dense icon="content_copy" aria-label="Copy admin login URL" @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')" />
+                </div>
+              </q-card>
+
+              <q-card flat bordered class="q-pa-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">Customer Login</div>
+                <div class="row items-center justify-between q-gutter-sm">
+                  <a :href="customerLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                    {{ customerLoginUrl }}
+                  </a>
+                  <q-btn flat round dense icon="content_copy" aria-label="Copy customer login URL" @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')" />
+                </div>
+              </q-card>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <q-card flat bordered class="tenant-details-card">
+            <q-card-section>
+              <div class="text-h6 text-weight-bold">Management</div>
+              <div class="text-body2 text-grey-7 q-mt-xs">
+                Open each area on a dedicated page to keep workflows clean.
               </div>
-              <div class="col-auto">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="content_copy"
-                  aria-label="Copy customer login URL"
-                  @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
-                />
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-section class="column q-gutter-sm">
+              <q-btn color="primary" icon="groups" label="Customer Group Management" no-caps unelevated class="full-width" @click="goToSection('customer-groups')" />
+              <q-btn color="primary" icon="manage_accounts" label="Staff Management" no-caps unelevated class="full-width" @click="goToSection('staff')" />
+              <q-btn color="primary" icon="extension" label="Enable Modules" no-caps unelevated class="full-width" @click="goToSection('modules')" />
+            </q-card-section>
+          </q-card>
+        </div>
       </div>
-
-      <div class="col-12 col-lg-6">
-        <q-card flat bordered>
-          <q-card-section>
-            <div class="text-h6">Management</div>
-            <div class="text-caption text-grey-7">
-              Open each area on a separate page for a cleaner workflow.
-            </div>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section class="column q-gutter-sm">
-            <q-btn
-              color="primary"
-              icon="groups"
-              label="Customer Group Management"
-              no-caps
-              unelevated
-              class="full-width"
-              @click="goToSection('customer-groups')"
-            />
-            <q-btn
-              color="primary"
-              icon="manage_accounts"
-              label="Staff Management"
-              no-caps
-              unelevated
-              class="full-width"
-              @click="goToSection('staff')"
-            />
-            <q-btn
-              color="primary"
-              icon="extension"
-              label="Enable Modules"
-              no-caps
-              unelevated
-              class="full-width"
-              @click="goToSection('modules')"
-            />
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
+    </section>
   </q-page>
 </template>
 
@@ -213,11 +176,6 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
   }
 }
 
-const goBack = () => {
-  const tenantSlug = tenantStore.selectedTenantSlug
-  void router.push(tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants')
-}
-
 const goToSection = (section: 'customer-groups' | 'staff' | 'modules') => {
   const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null
   const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
@@ -243,3 +201,26 @@ onMounted(() => {
   void loadPageData()
 })
 </script>
+
+<style scoped>
+.tenant-details-hero {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  padding: 1rem;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08)),
+    #ffffff;
+}
+
+.tenant-details-hero-chip {
+  font-weight: 600;
+}
+
+.tenant-details-card {
+  border-radius: 12px;
+}
+
+.tenant-status-chip {
+  font-weight: 600;
+}
+</style>

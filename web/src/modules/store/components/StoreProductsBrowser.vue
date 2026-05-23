@@ -515,7 +515,7 @@ const onUpdateCartQty = async (payload: {
 onMounted(async () => {
   try {
     if (props.mode === 'customer') {
-      await storeStore.fetchStoresForCustomer()
+      await storeStore.fetchStoresForCustomer(authStore.tenantId ?? null)
     } else {
       const tenantId = tenantStore.selectedTenant?.id ?? 0
       await storeStore.fetchStoresAdmin(tenantId)

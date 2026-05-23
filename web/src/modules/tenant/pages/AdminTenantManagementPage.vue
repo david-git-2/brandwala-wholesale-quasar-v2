@@ -1,18 +1,28 @@
 <template>
-  <q-page class="q-pa-sm">
-    <div class="q-mb-md row items-center justify-between">
-      <div class="row items-center q-gutter-sm">
-        <q-btn flat round icon="arrow_back" @click="goBack" />
-        <div>
-          <div class="text-h5 text-weight-bold">{{ pageTitle }}</div>
-          <div v-if="tenant" class="text-grey-7">
-            {{ tenant.name }} · {{ tenant.slug }}
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <section class="tenant-management-hero">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-12 col-md">
+            <div class="text-overline">Operations</div>
+            <h1 class="text-h5 q-my-none">{{ pageTitle }}</h1>
+            <p v-if="tenant" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+              {{ tenant.name }} · {{ tenant.slug }}
+            </p>
+          </div>
+          <div class="col-12 col-md-auto">
+            <q-chip
+              class="tenant-management-hero-chip"
+              :color="tenant?.is_active ? 'positive' : 'grey-6'"
+              text-color="white"
+            >
+              {{ tenant?.is_active ? 'Active' : 'Inactive' }}
+            </q-chip>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
+    <q-banner v-if="pageError" class="bw-status-banner text-white" rounded>
       {{ pageError }}
     </q-banner>
 
@@ -889,13 +899,14 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
 
@@ -924,7 +935,6 @@ const props = withDefaults(
 )
 
 const route = useRoute()
-const router = useRouter()
 const $q = useQuasar()
 
 const tenantStore = useTenantStore()
@@ -1430,15 +1440,6 @@ const loadPageData = async () => {
   }
 }
 
-const goBack = () => {
-  const tenantSlug = tenantStore.selectedTenantSlug
-  void router.push(
-    tenantSlug
-      ? `/${tenantSlug}/app/tenants/${tenantId.value}`
-      : `/app/tenants/${tenantId.value}`,
-  )
-}
-
 watch(
   tenant,
   (value) => {
@@ -1849,6 +1850,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tenant-management-hero {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  padding: 1rem;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08)),
+    #ffffff;
+}
+
+.tenant-management-hero-chip {
+  font-weight: 600;
+}
+
 .customer-group-admin-block {
   padding-top: 0.5rem;
   border-top: 1px solid rgba(0, 0, 0, 0.08);

@@ -126,7 +126,7 @@ const goToOrder = async (id: number) => {
 }
 
 onMounted(async () => {
-  await storeStore.fetchStoresForCustomer()
+  await storeStore.fetchStoresForCustomer(authStore.tenantId ?? null)
   if (!storeStore.selectedStore || !storeStore.items.some((item) => item.id === storeStore.selectedStore?.id)) {
     storeStore.setSelectedStore(storeStore.items[0] ?? null)
   }

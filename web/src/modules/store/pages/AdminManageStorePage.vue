@@ -40,6 +40,7 @@
       :data="selectedStore"
       @close="dialogOpen = false"
       @save="handleSave"
+      @add-vendor="goToVendorPage"
     />
 
     <q-dialog v-model="deleteDialogOpen">
@@ -70,10 +71,12 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import StoreDialog from '../components/StoreDialog.vue'
 import { useStoreStore } from '../stores/storeStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useQuasar, type QTableColumn } from 'quasar'
 
 type StoreItem = {
@@ -86,8 +89,10 @@ type StoreItem = {
 }
 
 const $q = useQuasar()
+const router = useRouter()
 
 const tenantStore = useTenantStore()
+const authStore = useAuthStore()
 const vendorStore = useVendorStore()
 const storeStore = useStoreStore()
 
@@ -140,6 +145,11 @@ const openEdit = (row: StoreItem) => {
 const openDelete = (row: StoreItem) => {
   selectedStore.value = { ...row }
   deleteDialogOpen.value = true
+}
+
+const goToVendorPage = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  await router.push(`${tenantPrefix}/app/vendors`)
 }
 
 const handleSave = async (payload: {

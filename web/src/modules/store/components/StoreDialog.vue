@@ -14,16 +14,31 @@
           outlined
           dense
         />
-        <q-select
-          :options="vendorStore.items"
-          option-label="name"
-          option-value="code"
-          emit-value
-          v-model="form.vendor_code"
-          label="Vendor Code"
-          outlined
-          dense
-        />
+        <div>
+          <div class="row items-center justify-between q-mb-xs">
+            <div class="text-caption text-grey-8">Vendor</div>
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="xs"
+              icon="add"
+              label="Add New"
+              class="quick-add-btn"
+              @click="emit('add-vendor')"
+            />
+          </div>
+          <q-select
+            :options="vendorStore.items"
+            option-label="name"
+            option-value="code"
+            emit-value
+            v-model="form.vendor_code"
+            label="Vendor Code"
+            outlined
+            dense
+          />
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -57,6 +72,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'save', payload: StoreFormData): void
+  (e: 'add-vendor'): void
 }>()
 
 const form = reactive<StoreFormData>({
@@ -109,3 +125,10 @@ const handleSave = () => {
   handleClose()
 }
 </script>
+
+<style scoped>
+.quick-add-btn {
+  min-height: 22px;
+  padding: 0 4px;
+}
+</style>

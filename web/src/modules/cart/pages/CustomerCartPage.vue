@@ -381,7 +381,7 @@ const formatPrice = (value: number | null) => {
 }
 
 onMounted(async () => {
-  await storeStore.fetchStoresForCustomer()
+  await storeStore.fetchStoresForCustomer(authStore.tenantId ?? null)
   const selectedId = storeStore.selectedStore?.id ?? null
   const selectedExists = selectedId != null && storeStore.items.some((store) => store.id === selectedId)
   if (!selectedExists) {

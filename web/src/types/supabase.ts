@@ -3383,6 +3383,18 @@ export type Database = {
           vendor_code: string
         }[]
       }
+      get_stores_for_customer_v2: {
+        Args: { p_tenant_id?: number }
+        Returns: {
+          created_at: string
+          id: number
+          name: string
+          see_price: boolean
+          tenant_id: number
+          updated_at: string
+          vendor_code: string
+        }[]
+      }
       get_tenant_details_by_membership: {
         Args: {
           p_email?: string
@@ -3575,6 +3587,21 @@ export type Database = {
         Returns: Json
       }
       list_store_products: {
+        Args: {
+          p_brand?: string
+          p_category?: string
+          p_fields?: string[]
+          p_is_available?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_dir?: string
+          p_store_id: number
+        }
+        Returns: Json
+      }
+      list_store_products_inventory_aggregated: {
         Args: {
           p_brand?: string
           p_category?: string

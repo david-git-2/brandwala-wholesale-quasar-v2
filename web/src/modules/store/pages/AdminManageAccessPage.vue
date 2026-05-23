@@ -68,25 +68,59 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-select
-            v-model="form.store_id"
-            label="Store"
-            emit-value
-            map-options
-            option-value="value"
-            option-label="label"
-            :options="storeOptions"
-          />
+          <div>
+            <div class="row items-center justify-between q-mb-xs">
+              <div class="text-caption text-grey-8">Store</div>
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="xs"
+                icon="add"
+                label="Add New"
+                class="quick-add-btn"
+                @click="openManageStorePage"
+              />
+            </div>
+            <q-select
+              v-model="form.store_id"
+              label="Store"
+              outlined
+              dense
+              emit-value
+              map-options
+              option-value="value"
+              option-label="label"
+              :options="storeOptions"
+            />
+          </div>
 
-          <q-select
-            v-model="form.customer_group_id"
-            label="Customer Group"
-            emit-value
-            map-options
-            option-value="value"
-            option-label="label"
-            :options="groupOptions"
-          />
+          <div>
+            <div class="row items-center justify-between q-mb-xs">
+              <div class="text-caption text-grey-8">Customer Group</div>
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="xs"
+                icon="group_add"
+                label="Add New"
+                class="quick-add-btn"
+                @click="openCustomerGroupPage"
+              />
+            </div>
+            <q-select
+              v-model="form.customer_group_id"
+              label="Customer Group"
+              outlined
+              dense
+              emit-value
+              map-options
+              option-value="value"
+              option-label="label"
+              :options="groupOptions"
+            />
+          </div>
 
           <q-toggle v-model="form.status" label="Active" color="positive" />
           <q-toggle v-model="form.see_price" label="See Price" color="primary" />
@@ -119,14 +153,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useStoreStore } from '../stores/storeStore'
 import type { StoreAccess } from '../types'
 
 const $q = useQuasar()
+const route = useRoute()
+const router = useRouter()
 
+const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const customerGroupStore = useCustomerGroupStore()
 const storeStore = useStoreStore()
@@ -181,6 +220,27 @@ const getGroupLabel = (groupId: number) =>
 const fetchAccessRows = async () => {
   const tenantId = tenantStore.selectedTenant?.id ?? null
   await storeStore.fetchStoreAccessAdmin(null, tenantId)
+}
+
+const openManageStorePage = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  const targetPath = route.path.includes('/commerce-shop/')
+    ? `${tenantPrefix}/app/commerce-shop/manage-store`
+    : `${tenantPrefix}/app/stores/manage-store`
+  await router.push(targetPath)
+}
+
+const openCustomerGroupPage = async () => {
+  const tenantId = tenantStore.selectedTenant?.id ?? authStore.tenantId ?? null
+  if (!tenantId) {
+    $q.notify({ type: 'warning', message: 'Tenant is not selected.' })
+    return
+  }
+
+  await router.push({
+    name: 'admin-tenant-customer-groups',
+    params: { id: tenantId },
+  })
 }
 
 const openCreate = () => {
@@ -279,3 +339,10 @@ onMounted(async () => {
   await fetchAccessRows()
 })
 </script>
+
+<style scoped>
+.quick-add-btn {
+  min-height: 22px;
+  padding: 0 4px;
+}
+</style>

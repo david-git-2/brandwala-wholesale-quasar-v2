@@ -80,12 +80,12 @@ export const useStoreStore = defineStore('store', {
       }
     },
 
-    async fetchStoresForCustomer() {
+    async fetchStoresForCustomer(tenantId?: number | null) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await storeService.getStoresForCustomer()
+        const result = await storeService.getStoresForCustomer(tenantId)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load stores.'
@@ -93,7 +93,11 @@ export const useStoreStore = defineStore('store', {
           return result
         }
 
-        this.items = result.data ?? []
+        const nextItems = result.data ?? []
+        this.items =
+          typeof tenantId === 'number'
+            ? nextItems.filter((item) => item.tenant_id === tenantId)
+            : nextItems
         this.syncSelectedStoreFromItems()
         return result
       } finally {

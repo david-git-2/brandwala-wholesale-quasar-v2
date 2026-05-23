@@ -222,7 +222,41 @@ Keep conversion/cargo/profit controls inside a separate floating card below head
 - Control clusters: `row items-center q-gutter-sm`
 - Use `no-caps` for operational buttons to keep visual consistency.
 
-## 12) Reuse Checklist for New Pages
+## 12) Inline Extra Action Button Pattern (Add New Near Field)
+
+Use this when a selector may need new master data (for example Store / Customer Group / Brand / Category).
+
+- Keep main input as `outlined dense`.
+- Place a small helper action above the input, aligned right.
+- Button style:
+  - `flat dense no-caps size="xs"`
+  - optional icon: `add` or `group_add`
+  - compact class (example): `quick-add-btn`
+- Keep label short: `Add New`.
+- Behavior:
+  - Route to the relevant management page (for example store manage or customer-group manage).
+  - Do not place large secondary buttons in the same row as input controls.
+
+Example layout:
+
+```vue
+<div>
+  <div class="row items-center justify-between q-mb-xs">
+    <div class="text-caption text-grey-8">Store</div>
+    <q-btn flat dense no-caps size="xs" icon="add" label="Add New" class="quick-add-btn" />
+  </div>
+  <q-select outlined dense label="Store" />
+</div>
+```
+
+```css
+.quick-add-btn {
+  min-height: 22px;
+  padding: 0 4px;
+}
+```
+
+## 13) Reuse Checklist for New Pages
 
 When creating/updating a page, verify:
 
@@ -236,7 +270,7 @@ When creating/updating a page, verify:
 8. Table header tint and row/card spacing match pattern.
 9. Table uses fixed-height internal scroll and shared column-selector behavior.
 
-## 13) Suggested Shared Extraction (Optional Next Step)
+## 14) Suggested Shared Extraction (Optional Next Step)
 
 To reduce duplication, consider moving these into shared UI utilities:
 - shared CSS tokens for `floating-surface`, `soft-input`, `pill-btn`, `slim-btn`

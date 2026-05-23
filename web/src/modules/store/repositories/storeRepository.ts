@@ -172,8 +172,16 @@ const deleteStoreAccess = async (payload: StoreAccessDeleteInput): Promise<void>
   }
 }
 
-const getStoresForCustomer = async (): Promise<Store[]> => {
-  const { data, error } = await supabase.rpc('get_stores_for_customer' as never)
+const getStoresForCustomer = async (tenantId?: number | null): Promise<Store[]> => {
+  let { data, error } = await supabase.rpc('get_stores_for_customer_v2' as never, {
+    p_tenant_id: tenantId ?? null,
+  } as never)
+
+  if (error?.code === 'PGRST202') {
+    const fallback = await supabase.rpc('get_stores_for_customer' as never)
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) {
     throw error
@@ -235,7 +243,7 @@ const checkStorePriceAccess = async (storeId: number): Promise<boolean> => {
 const listStoreProducts = async (
   payload: StoreProductsQueryInput,
 ): Promise<StoreProductsPage> => {
-  const { data, error } = await supabase.rpc('list_store_products' as never, {
+  let { data, error } = await supabase.rpc('list_store_products_inventory_aggregated' as never, {
     p_store_id: payload.store_id,
     p_fields: payload.fields ?? null,
     p_search: payload.search ?? null,
@@ -247,6 +255,23 @@ const listStoreProducts = async (
     p_limit: payload.limit ?? 20,
     p_offset: payload.offset ?? 0,
   } as never)
+
+  if (error?.code === 'PGRST202') {
+    const fallback = await supabase.rpc('list_store_products' as never, {
+      p_store_id: payload.store_id,
+      p_fields: payload.fields ?? null,
+      p_search: payload.search ?? null,
+      p_category: payload.category ?? null,
+      p_brand: payload.brand ?? null,
+      p_is_available: payload.is_available ?? null,
+      p_sort_by: payload.sort_by ?? 'id',
+      p_sort_dir: payload.sort_dir ?? 'asc',
+      p_limit: payload.limit ?? 20,
+      p_offset: payload.offset ?? 0,
+    } as never)
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) {
     throw error
