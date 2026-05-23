@@ -121,6 +121,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         requiredAction: 'view',
       },
       {
+        scope: 'app',
+        title: 'Commerce Shop Pricing',
+        caption: 'Manage prices and sell prices for store products',
+        icon: 'payments',
+        routeSegment: 'commerce-shop/pricing',
+        requiredAction: 'view',
+      },
+      {
         scope: 'shop',
         title: 'Commerce Shop',
         caption: 'Browse products in isolated commerce flow',

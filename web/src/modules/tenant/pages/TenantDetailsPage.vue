@@ -152,12 +152,6 @@
         <q-card flat bordered class="tenant-details-page__card">
           <q-card-section class="row items-center justify-between q-pa-md tenant-details-page__section-head">
             <div class="text-h6">Module Features</div>
-            <q-btn
-              color="primary"
-              icon="add"
-              label="Add Feature"
-              @click="onClickAddFeature"
-            />
           </q-card-section>
 
           <q-separator />
@@ -166,52 +160,44 @@
             Loading module features...
           </q-card-section>
 
-          <q-card-section v-else-if="modules.length === 0" class="text-grey-7 q-pa-md">
-            No module features found.
+          <q-card-section v-else class="q-pa-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Available Features</div>
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="feature in availableModules" :key="feature.id">
+                    <q-item-section>
+                      <q-item-label>{{ feature.name }}</q-item-label>
+                      <q-item-label caption>{{ feature.key }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn color="primary" dense flat label="Add" @click="addTenantFeature(feature.key)" />
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="availableModules.length === 0">
+                    <q-item-section class="text-grey-7">No available features.</q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Tenant Features</div>
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="feature in modules" :key="feature.id">
+                    <q-item-section>
+                      <q-item-label>{{ feature.module_key }}</q-item-label>
+                      <q-item-label caption>{{ feature.is_active ? 'Active' : 'Inactive' }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn color="negative" dense flat label="Remove" @click="removeTenantFeature(feature.id)" />
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="modules.length === 0">
+                    <q-item-section class="text-grey-7">No tenant features assigned.</q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </div>
           </q-card-section>
-
-          <q-table
-            v-else
-            flat
-            bordered
-            row-key="id"
-            :rows="modules"
-            :columns="moduleFeatureColumns"
-            :dense="$q.screen.lt.md"
-            hide-bottom
-            :pagination="{ rowsPerPage: 0 }"
-            class="tenant-details-page__table"
-          >
-            <template #body-cell-module_key="props">
-              <q-td :props="props">
-                {{ props.row.module_key }}
-              </q-td>
-            </template>
-
-            <template #body-cell-active="props">
-              <q-td :props="props">
-                <q-toggle
-                  :model-value="props.row.is_active"
-                  color="positive"
-                  keep-color
-                  @update:model-value="(value) => onToggleModuleActive(props.row, value)"
-                />
-              </q-td>
-            </template>
-
-            <template #body-cell-delete="props">
-              <q-td :props="props">
-                <q-btn
-                  size="sm"
-                  color="negative"
-                  flat
-                  round
-                  icon="delete"
-                  @click="onClickDeleteModule(props.row)"
-                />
-              </q-td>
-            </template>
-          </q-table>
 
         </q-card>
       </div>
@@ -292,56 +278,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="openAddFeatureDialog" persistent>
-      <q-card style="min-width: 420px">
-        <q-card-section>
-          <div class="text-h6">Add Feature</div>
-        </q-card-section>
-
-        <q-card-section class="q-gutter-md">
-          <q-select
-            v-model="featureForm.module_key"
-            label="Module Key"
-            outlined
-            dense
-            :options="moduleStore.items.map((m) => m.key)"
-          />
-
-          <div class="row items-center justify-between">
-            <div class="text-subtitle2">Status</div>
-            <q-toggle
-              v-model="featureForm.is_active"
-              :label="featureForm.is_active ? 'Active' : 'Inactive'"
-              color="positive"
-              keep-color
-            />
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openAddFeatureDialog = false" />
-          <q-btn color="primary" label="Save" @click="handleSaveFeature" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="openDeleteModuleDialog" persistent>
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <div class="text-h6">Confirm Delete</div>
-        </q-card-section>
-
-        <q-card-section>
-          Are you sure you want to delete feature
-          <strong>{{ moduleToDelete?.module_key }}</strong>?
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteModuleDialog = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteModule" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    
   </q-page>
 </template>
 
@@ -356,7 +293,7 @@ import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
-import type { Tenant, TenantModule, TenantUpdateInput } from '../types'
+import type { Tenant, TenantUpdateInput } from '../types'
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
 
 type TenantForm = {
@@ -384,20 +321,12 @@ const openEditDialog = ref(false)
 const openDeleteDialog = ref(false)
 const openAddAdminDialog = ref(false)
 const openDeleteAdminDialog = ref(false)
-const openAddFeatureDialog = ref(false)
-const openDeleteModuleDialog = ref(false)
 
 const selectedTenant = ref<TenantForm | null>(null)
 const adminToDelete = ref<Membership | null>(null)
-const moduleToDelete = ref<TenantModule | null>(null)
 
 const adminEmail = ref('')
 const adminIsActive = ref(true)
-
-const featureForm = ref({
-  module_key: '',
-  is_active: true,
-})
 
 const tenantAdmins = ref<Membership[]>([])
 const tenantAdminsLoading = ref(false)
@@ -417,11 +346,13 @@ const tenantAdminColumns = [
   { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
 ]
 
-const moduleFeatureColumns = [
-  { name: 'module_key', label: 'Feature', field: 'module_key', align: 'left' as const },
-  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
-  { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
-]
+const tenantModuleKeys = computed(
+  () => new Set(modules.value.map((item) => item.module_key)),
+)
+
+const availableModules = computed(() =>
+  moduleStore.items.filter((item) => item.is_active && !tenantModuleKeys.value.has(item.key)),
+)
 
 const loadTenantAdmins = async () => {
   if (!tenant.value?.id) return
@@ -592,68 +523,23 @@ const confirmDeleteAdmin = async () => {
   }
 }
 
-const onClickAddFeature = () => {
-  featureForm.value = {
-    module_key: '',
-    is_active: true,
-  }
-  openAddFeatureDialog.value = true
-}
-
-const handleSaveFeature = async () => {
-  if (!tenant.value?.id || !featureForm.value.module_key.trim()) return
-
+const addTenantFeature = async (moduleKey: string) => {
+  if (!tenant.value?.id) return
   const result = await tenantModuleStore.createTenantModule({
     tenant_id: tenant.value.id,
-    module_key: featureForm.value.module_key.trim(),
-    is_active: featureForm.value.is_active,
+    module_key: moduleKey,
+    is_active: true,
   })
-
   if (!result.success) {
-    pageError.value = result.error ?? 'Failed to create feature.'
-    return
-  }
-
-  openAddFeatureDialog.value = false
-  await loadTenantModules()
-}
-
-const onToggleModuleActive = async (module: TenantModule, value: boolean) => {
-  const previousValue = module.is_active
-  module.is_active = value
-
-  const result = await tenantModuleStore.updateTenantModule({
-    id: module.id,
-    is_active: value,
-  })
-
-  if (!result.success) {
-    module.is_active = previousValue
-    pageError.value = result.error ?? 'Failed to update feature.'
-    return
+    pageError.value = result.error ?? 'Failed to add feature.'
   }
 }
 
-const onClickDeleteModule = (module: TenantModule) => {
-  moduleToDelete.value = module
-  openDeleteModuleDialog.value = true
-}
-
-const confirmDeleteModule = async () => {
-  if (!moduleToDelete.value) return
-
-  const result = await tenantModuleStore.deleteTenantModule({
-    id: moduleToDelete.value.id,
-  })
-
+const removeTenantFeature = async (moduleId: number) => {
+  const result = await tenantModuleStore.deleteTenantModule({ id: moduleId })
   if (!result.success) {
-    pageError.value = result.error ?? 'Failed to delete feature.'
-    return
+    pageError.value = result.error ?? 'Failed to remove feature.'
   }
-
-  openDeleteModuleDialog.value = false
-  moduleToDelete.value = null
-  await loadTenantModules()
 }
 
 onMounted(async () => {

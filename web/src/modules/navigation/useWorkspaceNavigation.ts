@@ -222,9 +222,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'investor' &&
           routeDefinition.moduleKey !== 'products' &&
           routeDefinition.moduleKey !== 'commerce_shop' &&
-          routeDefinition.moduleKey !== 'commerce_order' &&
-          routeDefinition.moduleKey !== 'commerce_invoice' &&
-          routeDefinition.moduleKey !== 'commerce_cart',
+          routeDefinition.moduleKey !== 'commerce_invoice',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -274,15 +272,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
     const commerceShopChildren = scopedModuleRouteDefinitions
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_shop')
       .map((routeDefinition) => ({
-        title: routeDefinition.title,
-        caption: routeDefinition.caption,
-        icon: 'chevron_right',
-        to: routeDefinition.to,
-      }))
-    const commerceOrderChildren = scopedModuleRouteDefinitions
-      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_order')
-      .map((routeDefinition) => ({
-        title: routeDefinition.title,
+        title:
+          routeDefinition.title === 'Commerce Shop Manage'
+            ? 'Manage Store'
+            : routeDefinition.title === 'Commerce Shop Access'
+              ? 'Manage Access'
+              : routeDefinition.title === 'Commerce Shop Products'
+                ? 'Store Products'
+                : routeDefinition.title === 'Commerce Shop Pricing'
+                  ? 'Product Pricing'
+                  : routeDefinition.title,
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
@@ -290,15 +289,12 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
     const commerceInvoiceChildren = scopedModuleRouteDefinitions
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_invoice')
       .map((routeDefinition) => ({
-        title: routeDefinition.title,
-        caption: routeDefinition.caption,
-        icon: 'chevron_right',
-        to: routeDefinition.to,
-      }))
-    const commerceCartChildren = scopedModuleRouteDefinitions
-      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_cart')
-      .map((routeDefinition) => ({
-        title: routeDefinition.title,
+        title:
+          routeDefinition.title === 'Commerce Invoices'
+            ? 'Invoice Management'
+            : routeDefinition.title === 'Commerce Billing Profiles'
+              ? 'Billing Profiles'
+              : routeDefinition.title,
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
@@ -377,18 +373,23 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             },
           ]
         : []),
-      ...(hasCommerceShopModuleAccess || hasCommerceOrderModuleAccess || hasCommerceInvoiceModuleAccess || hasCommerceCartModuleAccess
+      ...(hasCommerceShopModuleAccess
         ? [
             {
               title: 'Commerce Shop',
-              caption: 'Isolated commerce module',
+              caption: 'Commerce shop management',
               icon: 'storefront',
-              children: [
-                ...commerceShopChildren,
-                ...commerceOrderChildren,
-                ...commerceInvoiceChildren,
-                ...commerceCartChildren,
-              ],
+              children: commerceShopChildren,
+            },
+          ]
+        : []),
+      ...(hasCommerceInvoiceModuleAccess
+        ? [
+            {
+              title: 'Commerce Invoices',
+              caption: 'Commerce invoice module',
+              icon: 'description',
+              children: commerceInvoiceChildren,
             },
           ]
         : []),

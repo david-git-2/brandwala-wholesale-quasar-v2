@@ -54,6 +54,18 @@ const commerceShopRoutes: RouteRecordRaw[] = [
         component: () => import('src/modules/commerce_shop/pages/AdminCommerceShopProductsPage.vue'),
       },
       {
+        path: 'pricing',
+        name: 'app-commerce-shop-pricing-page',
+        component: () => import('src/modules/commerce_shop/pages/AdminCommerceShopPricingPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin', 'staff'],
+          requireTenantContext: true,
+          requiredModule: 'commerce_shop',
+        }),
+      },
+      {
         path: 'orders',
         name: 'app-commerce-order-page',
         component: () => import('src/modules/order/pages/AdminOrderPage.vue'),

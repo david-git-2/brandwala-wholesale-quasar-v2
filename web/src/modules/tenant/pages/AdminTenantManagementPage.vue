@@ -535,34 +535,59 @@
             Loading module features...
           </q-card-section>
 
-          <q-card-section v-else-if="modules.length === 0" class="text-grey-7">
-            No module features found.
+          <q-card-section v-else>
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Available Features</div>
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="feature in availableModules" :key="feature.id">
+                    <q-item-section>
+                      <q-item-label>{{ feature.name }}</q-item-label>
+                      <q-item-label caption>{{ feature.key }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn
+                        color="primary"
+                        dense
+                        flat
+                        label="Add"
+                        @click="addTenantFeature(feature.key)"
+                      />
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="availableModules.length === 0">
+                    <q-item-section class="text-grey-7">No available features.</q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Tenant Features</div>
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="feature in modules" :key="feature.id">
+                    <q-item-section>
+                      <q-item-label>{{ feature.module_key }}</q-item-label>
+                      <q-item-label caption>
+                        {{ feature.is_active ? 'Active' : 'Inactive' }}
+                      </q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn
+                        color="negative"
+                        dense
+                        flat
+                        label="Remove"
+                        @click="removeTenantFeature(feature.id)"
+                      />
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="modules.length === 0">
+                    <q-item-section class="text-grey-7">No tenant features assigned.</q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </div>
           </q-card-section>
-
-          <q-table
-            v-else
-            flat
-            bordered
-            row-key="id"
-            :rows="modules"
-            :columns="moduleFeatureColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            :dense="$q.screen.lt.md"
-            hide-bottom
-            class="tenant-detail-card__table"
-          >
-            <template #body-cell-module_key="props">
-              <q-td :props="props">{{ props.row.module_key }}</q-td>
-            </template>
-
-            <template #body-cell-active="props">
-              <q-td :props="props">
-                <q-badge :color="props.row.is_active ? 'positive' : 'grey-6'">
-                  {{ props.row.is_active ? 'Active' : 'Inactive' }}
-                </q-badge>
-              </q-td>
-            </template>
-          </q-table>
         </q-card>
       </div>
     </div>
@@ -913,6 +938,7 @@ import { watch } from 'vue'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
+import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
 import type { CostingFileListEntry } from 'src/modules/costingFile/types'
 import { formatAppDateTime } from 'src/utils/dateTime'
 import { useCustomerGroupStore } from '../stores/customerGroupStore'
@@ -939,11 +965,13 @@ const $q = useQuasar()
 
 const tenantStore = useTenantStore()
 const tenantModuleStore = useTenantModuleStore()
+const moduleStore = useModuleStore()
 const membershipStore = useMembershipStore()
 const customerGroupStore = useCustomerGroupStore()
 const costingFileStore = useCostingFileStore()
 
 const { items } = storeToRefs(tenantStore)
+const { items: catalogModules } = storeToRefs(moduleStore)
 const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
 const {
   items: costingFiles,
@@ -1146,10 +1174,15 @@ const costingFileColumns = [
   { name: 'actions', label: 'Actions', field: 'id', align: 'left' as const },
 ]
 
-const moduleFeatureColumns = [
-  { name: 'module_key', label: 'Feature', field: 'module_key', align: 'left' as const },
-  { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
-]
+const tenantModuleKeys = computed(
+  () => new Set(modules.value.map((item) => item.module_key)),
+)
+
+const availableModules = computed(() =>
+  catalogModules.value.filter(
+    (item) => item.is_active && !tenantModuleKeys.value.has(item.key),
+  ),
+)
 
 const customerGroupMemberColumns = [
   { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
@@ -1359,10 +1392,44 @@ const loadCostingFiles = async () => {
 const loadTenantModules = async () => {
   if (!tenant.value?.id) return
 
-  const result = await tenantModuleStore.fetchTenantModules(tenant.value.id)
+  const [tenantModulesResult, catalogModulesResult] = await Promise.all([
+    tenantModuleStore.fetchTenantModules(tenant.value.id),
+    moduleStore.fetchModules(),
+  ])
+
+  if (!tenantModulesResult.success) {
+    pageError.value = tenantModulesResult.error || 'Failed to load module features.'
+    return
+  }
+
+  if (!catalogModulesResult.success) {
+    pageError.value = catalogModulesResult.error || 'Failed to load module catalog.'
+  }
+}
+
+const addTenantFeature = async (moduleKey: string) => {
+  if (!tenant.value?.id) {
+    return
+  }
+
+  const result = await tenantModuleStore.createTenantModule({
+    tenant_id: tenant.value.id,
+    module_key: moduleKey,
+    is_active: true,
+  })
 
   if (!result.success) {
-    pageError.value = result.error || 'Failed to load module features.'
+    pageError.value = result.error ?? 'Failed to add tenant feature.'
+  }
+}
+
+const removeTenantFeature = async (moduleId: number) => {
+  const result = await tenantModuleStore.deleteTenantModule({
+    id: moduleId,
+  })
+
+  if (!result.success) {
+    pageError.value = result.error ?? 'Failed to remove tenant feature.'
   }
 }
 

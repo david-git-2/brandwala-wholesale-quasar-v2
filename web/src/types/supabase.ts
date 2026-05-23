@@ -3712,6 +3712,17 @@ export type Database = {
         }
         Returns: Json
       }
+      list_store_product_pricing: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_shipment_id?: number
+          p_store_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_store_products: {
         Args: {
           p_brand?: string
