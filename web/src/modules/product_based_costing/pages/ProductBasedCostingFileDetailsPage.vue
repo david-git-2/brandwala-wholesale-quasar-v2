@@ -531,7 +531,7 @@ const onBulkDelete = async (ids: number[]) => {
 type RowChangePayload = {
   item: ProductBasedCostingItem
   row: unknown
-  field: 'quantity' | 'offer_price' | 'status' | 'note'
+  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity'
 }
 
 type WeightChangePayload = {

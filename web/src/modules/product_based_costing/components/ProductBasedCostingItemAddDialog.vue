@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="dialogModel" persistent>
-    <q-card style="min-width: 520px; max-width: 90vw;">
+    <q-card style="width: 960px; max-width: 95vw;">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6 text-weight-bold">
           {{ isEditMode ? 'Edit Product Based Costing Item' : 'Add Product Based Costing Item' }}
@@ -17,254 +17,281 @@
 
       <q-separator />
 
-      <q-card-section>
-        <q-form class="q-gutter-md" @submit.prevent="submitForm">
-          <q-input
-            v-model="form.name"
-            label="Name"
-            outlined
-            dense
-          >
-            <template #prepend>
-              <q-icon name="inventory_2" />
-            </template>
-          </q-input>
+      <q-card-section class="q-pa-md">
+        <q-form @submit.prevent="submitForm">
+          <div class="row q-col-gutter-lg">
+            <!-- Left Column (Image & Identification) -->
+            <div class="col-12 col-md-5 q-gutter-y-md">
+              <div class="image-preview-container border rounded-borders q-pa-sm bg-grey-1 text-center">
+                <div v-if="form.image_url" class="image-preview-box">
+                  <SmartImage :src="form.image_url" style="max-height: 200px; max-width: 100%; object-fit: contain; margin: 0 auto;" />
+                </div>
+                <div v-else class="image-preview-placeholder flex flex-center text-grey-6" style="height: 200px;">
+                  <div class="column items-center">
+                    <q-icon name="image" size="48px" />
+                    <div class="text-caption q-mt-sm">No Image Preview</div>
+                  </div>
+                </div>
+              </div>
 
-          <q-input
-            v-model="form.image_url"
-            label="Image URL"
-            outlined
-            dense
-            :disable="isProductListInputType"
-          >
-            <template #prepend>
-              <q-icon name="image" />
-            </template>
-          </q-input>
-
-          <div v-if="form.image_url" class="q-mt-sm">
-            <div class="text-subtitle2 q-mb-sm">Image Preview</div>
-            <div style="margin: 0 auto; width: fit-content;">
-              <SmartImage :src="form.image_url" style="max-width: 150px;" />
-            </div>
-          </div>
-
-          <q-input
-            v-model="form.barcode"
-            label="Barcode"
-            outlined
-            dense
-            :disable="isProductListInputType"
-          >
-            <template #prepend>
-              <q-icon name="qr_code" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="form.product_code"
-            label="Product Code"
-            outlined
-            dense
-            :disable="isProductListInputType"
-          >
-            <template #prepend>
-              <q-icon name="badge" />
-            </template>
-          </q-input>
-
-          <q-select
-            v-model="form.vendor_code"
-            :options="vendorOptions"
-            emit-value
-            map-options
-            label="Vendor"
-            outlined
-            dense
-            clearable
-            :disable="isProductListInputType"
-            :loading="store.saving"
-            @update:model-value="onVendorOrMarketChange"
-          >
-            <template #prepend>
-              <q-icon name="storefront" />
-            </template>
-          </q-select>
-
-          <q-select
-            v-model="form.market_code"
-            :options="marketOptions"
-            emit-value
-            map-options
-            label="Market"
-            outlined
-            dense
-            clearable
-            :disable="isProductListInputType"
-            :loading="store.saving"
-            @update:model-value="onVendorOrMarketChange"
-          >
-            <template #prepend>
-              <q-icon name="public" />
-            </template>
-          </q-select>
-
-          <div class="row items-center q-col-gutter-sm">
-            <div class="col">
-              <q-select
-                v-model="form.brand"
-                :options="filteredBrandOptions"
-                use-input
-                fill-input
-                input-debounce="0"
-                clearable
-                emit-value
-                map-options
-                label="Brand"
+              <q-input
+                v-model="form.image_url"
+                label="Image URL"
                 outlined
                 dense
-                :disable="isProductListInputType || !canPickBrandCategory"
-                @filter="filterBrandOptions"
-                @input-value="onBrandInputValue"
+                :disable="isProductListInputType"
               >
                 <template #prepend>
-                  <q-icon name="sell" />
+                  <q-icon name="image" />
                 </template>
-              </q-select>
-            </div>
-            <div class="col-auto">
-              <q-btn
-                color="primary"
-                no-caps
-                outline
-                label="Add"
-                :disable="isProductListInputType || !canAddBrand"
-                @click="addBrandOption"
-              />
-            </div>
-          </div>
+              </q-input>
 
-          <div class="row items-center q-col-gutter-sm">
-            <div class="col">
-              <q-select
-                v-model="form.category"
-                :options="filteredCategoryOptions"
-                use-input
-                fill-input
-                input-debounce="0"
-                clearable
-                emit-value
-                map-options
-                label="Category"
+              <q-input
+                v-model="form.name"
+                label="Name"
+                type="textarea"
+                autogrow
                 outlined
                 dense
-                :disable="isProductListInputType || !canPickBrandCategory"
-                @filter="filterCategoryOptions"
-                @input-value="onCategoryInputValue"
               >
                 <template #prepend>
-                  <q-icon name="category" />
+                  <q-icon name="inventory_2" />
                 </template>
-              </q-select>
+              </q-input>
+
+              <q-input
+                v-model="form.barcode"
+                label="Barcode"
+                outlined
+                dense
+                :disable="isProductListInputType"
+              >
+                <template #prepend>
+                  <q-icon name="qr_code" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.product_code"
+                label="Product Code"
+                outlined
+                dense
+                :disable="isProductListInputType"
+              >
+                <template #prepend>
+                  <q-icon name="badge" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.web_link"
+                label="Web Link"
+                outlined
+                dense
+              >
+                <template #prepend>
+                  <q-icon name="link" />
+                </template>
+              </q-input>
             </div>
-            <div class="col-auto">
-              <q-btn
-                color="primary"
-                no-caps
-                outline
-                label="Add"
-                :disable="isProductListInputType || !canAddCategory"
-                @click="addCategoryOption"
-              />
+
+            <!-- Right Column (Metadata, Parameters & Note) -->
+            <div class="col-12 col-md-7 q-gutter-y-md">
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="form.vendor_code"
+                    :options="vendorOptions"
+                    emit-value
+                    map-options
+                    label="Vendor"
+                    outlined
+                    dense
+                    clearable
+                    :disable="isProductListInputType"
+                    :loading="store.saving"
+                    @update:model-value="onVendorOrMarketChange"
+                  >
+                    <template #prepend>
+                      <q-icon name="storefront" />
+                    </template>
+                  </q-select>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="form.market_code"
+                    :options="marketOptions"
+                    emit-value
+                    map-options
+                    label="Market"
+                    outlined
+                    dense
+                    clearable
+                    :disable="isProductListInputType"
+                    :loading="store.saving"
+                    @update:model-value="onVendorOrMarketChange"
+                  >
+                    <template #prepend>
+                      <q-icon name="public" />
+                    </template>
+                  </q-select>
+                </div>
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <div class="row items-center q-col-gutter-sm no-wrap">
+                    <div class="col">
+                      <q-select
+                        v-model="form.brand"
+                        :options="filteredBrandOptions"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        clearable
+                        emit-value
+                        map-options
+                        label="Brand"
+                        outlined
+                        dense
+                        :disable="isProductListInputType || !canPickBrandCategory"
+                        @filter="filterBrandOptions"
+                        @input-value="onBrandInputValue"
+                      >
+                        <template #prepend>
+                          <q-icon name="sell" />
+                        </template>
+                      </q-select>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        color="primary"
+                        no-caps
+                        outline
+                        label="Add"
+                        :disable="isProductListInputType || !canAddBrand"
+                        @click="addBrandOption"
+                        style="height: 40px;"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <div class="row items-center q-col-gutter-sm no-wrap">
+                    <div class="col">
+                      <q-select
+                        v-model="form.category"
+                        :options="filteredCategoryOptions"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        clearable
+                        emit-value
+                        map-options
+                        label="Category"
+                        outlined
+                        dense
+                        :disable="isProductListInputType || !canPickBrandCategory"
+                        @filter="filterCategoryOptions"
+                        @input-value="onCategoryInputValue"
+                      >
+                        <template #prepend>
+                          <q-icon name="category" />
+                        </template>
+                      </q-select>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        color="primary"
+                        no-caps
+                        outline
+                        label="Add"
+                        :disable="isProductListInputType || !canAddCategory"
+                        @click="addCategoryOption"
+                        style="height: 40px;"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.quantity"
+                    label="Quantity"
+                    type="number"
+                    outlined
+                    dense
+                    @wheel.prevent
+                  >
+                    <template #prepend>
+                      <q-icon name="numbers" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.price_gbp"
+                    label="Price GBP"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="currency_pound" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.product_weight"
+                    label="Product Weight"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="scale" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.package_weight"
+                    label="Package Weight"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="fitness_center" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+
+              <div>
+                <div class="text-subtitle2 q-mb-xs text-weight-medium text-grey-8">Item Note</div>
+                <q-editor
+                  v-model="form.note"
+                  min-height="120px"
+                  :toolbar="[
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['unordered', 'ordered'],
+                    ['quote', 'hr'],
+                    ['undo', 'redo'],
+                  ]"
+                />
+              </div>
             </div>
           </div>
-
-          <div>
-            <div class="text-subtitle2 q-mb-xs">Item Note</div>
-            <q-editor
-              v-model="form.note"
-              min-height="140px"
-              :toolbar="[
-                ['bold', 'italic', 'underline', 'strike'],
-                ['unordered', 'ordered'],
-                ['quote', 'hr'],
-                ['undo', 'redo'],
-              ]"
-            />
-          </div>
-
-          <q-input
-            v-model.number="form.quantity"
-            label="Quantity"
-            type="number"
-            outlined
-            dense
-            @wheel.prevent
-          >
-            <template #prepend>
-              <q-icon name="numbers" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model.number="form.delivered_quantity"
-            label="Delivered Quantity"
-            type="number"
-            outlined
-            dense
-            @wheel.prevent
-          >
-            <template #prepend>
-              <q-icon name="local_shipping" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="form.web_link"
-            label="Web Link"
-            outlined
-            dense
-          >
-            <template #prepend>
-              <q-icon name="link" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model.number="form.price_gbp"
-            label="Price GBP"
-            type="number"
-            outlined
-            dense
-          >
-            <template #prepend>
-              <q-icon name="currency_pound" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model.number="form.product_weight"
-            label="Product Weight"
-            type="number"
-            outlined
-            dense
-          >
-            <template #prepend>
-              <q-icon name="scale" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model.number="form.package_weight"
-            label="Package Weight"
-            type="number"
-            outlined
-            dense
-          >
-            <template #prepend>
-              <q-icon name="fitness_center" />
-            </template>
-          </q-input>
         </q-form>
       </q-card-section>
 
@@ -312,7 +339,6 @@ interface ProductBasedCostingItemFormData {
   vendor_code?: string | null
   market_code?: string | null
   quantity?: number | null
-  delivered_quantity?: number | null
   web_link?: string | null
   price_gbp?: number | null
   product_weight?: number | null
@@ -361,7 +387,6 @@ const getInitialForm = () => ({
   vendor_code: props.defaultVendorCode ?? null,
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
-  delivered_quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
   product_weight: null as number | null,
@@ -386,7 +411,6 @@ const fillForm = () => {
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
-      delivered_quantity: props.itemData.delivered_quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
       product_weight: props.itemData.product_weight ?? null,
@@ -619,7 +643,6 @@ const submitForm = async () => {
       vendor_code: form.vendor_code,
       market_code: form.market_code,
       quantity: form.quantity,
-      delivered_quantity: form.delivered_quantity,
       web_link: form.web_link,
       price_gbp: form.price_gbp,
       product_weight: form.product_weight,
@@ -685,7 +708,6 @@ const submitForm = async () => {
     vendor_code: form.vendor_code,
     market_code: form.market_code,
     quantity: form.quantity,
-    delivered_quantity: form.delivered_quantity,
     web_link: form.web_link,
     price_gbp: form.price_gbp,
     product_weight: form.product_weight,
@@ -761,5 +783,25 @@ watch(
 <style scoped>
 .border {
   border: 1px solid #e0e0e0;
+}
+.image-preview-container {
+  border: 1px dashed #cfd8dc;
+  border-radius: 8px;
+  background-color: #fafafa;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.image-preview-container:hover {
+  border-color: var(--q-primary);
+  background-color: #f5f7fa;
+}
+.image-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+.image-preview-placeholder {
+  min-height: 200px;
 }
 </style>

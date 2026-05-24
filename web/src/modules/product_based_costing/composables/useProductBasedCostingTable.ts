@@ -6,6 +6,7 @@ export interface ProductBasedCostingItem {
   name: string | null
   image_url: string | null
   quantity: number | null
+  delivered_quantity: number | null
   barcode: string | null
   product_code: string | null
   web_link: string | null

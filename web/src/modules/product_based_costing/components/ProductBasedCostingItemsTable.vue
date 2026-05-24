@@ -584,6 +584,7 @@ interface ProductBasedCostingItem {
   image_url: string | null;
   note: string | null;
   quantity: number | null;
+  delivered_quantity: number | null;
   barcode: string | null;
   product_code: string | null;
   brand?: string | null;
