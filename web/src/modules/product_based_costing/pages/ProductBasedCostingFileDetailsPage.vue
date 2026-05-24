@@ -370,6 +370,20 @@ const statusChipStyle = (currentStatus: string) => {
       border: '1px solid #9fd4b7',
     }
   }
+  if (value === 'invoicing') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'invoiced') {
+    return {
+      backgroundColor: '#e0f2f1',
+      color: '#00695c',
+      border: '1px solid #b2dfdb',
+    }
+  }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
@@ -389,6 +403,8 @@ const statusDotColor = (currentStatus: string) => {
   if (value === 'pending') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
   if (value === 'processing') return '#2f8b5d'
+  if (value === 'invoicing') return '#3f51b5'
+  if (value === 'invoiced') return '#009688'
   if (value === 'cancelled') return '#a64c62'
   return '#66758c'
 }
@@ -433,7 +449,7 @@ const loadData = async () => {
   ]);
 };
 
-const statusOptions = ['pending', 'offered', 'processing', 'cancelled'];
+const statusOptions = ['pending', 'offered', 'processing', 'invoicing', 'invoiced', 'cancelled'];
 
 const handleCreated = async () => {
   if (!fileId.value) {

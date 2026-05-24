@@ -207,6 +207,19 @@
           </q-input>
 
           <q-input
+            v-model.number="form.delivered_quantity"
+            label="Delivered Quantity"
+            type="number"
+            outlined
+            dense
+            @wheel.prevent
+          >
+            <template #prepend>
+              <q-icon name="local_shipping" />
+            </template>
+          </q-input>
+
+          <q-input
             v-model="form.web_link"
             label="Web Link"
             outlined
@@ -299,6 +312,7 @@ interface ProductBasedCostingItemFormData {
   vendor_code?: string | null
   market_code?: string | null
   quantity?: number | null
+  delivered_quantity?: number | null
   web_link?: string | null
   price_gbp?: number | null
   product_weight?: number | null
@@ -347,6 +361,7 @@ const getInitialForm = () => ({
   vendor_code: props.defaultVendorCode ?? null,
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
+  delivered_quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
   product_weight: null as number | null,
@@ -371,6 +386,7 @@ const fillForm = () => {
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
+      delivered_quantity: props.itemData.delivered_quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
       product_weight: props.itemData.product_weight ?? null,
@@ -603,6 +619,7 @@ const submitForm = async () => {
       vendor_code: form.vendor_code,
       market_code: form.market_code,
       quantity: form.quantity,
+      delivered_quantity: form.delivered_quantity,
       web_link: form.web_link,
       price_gbp: form.price_gbp,
       product_weight: form.product_weight,
@@ -668,6 +685,7 @@ const submitForm = async () => {
     vendor_code: form.vendor_code,
     market_code: form.market_code,
     quantity: form.quantity,
+    delivered_quantity: form.delivered_quantity,
     web_link: form.web_link,
     price_gbp: form.price_gbp,
     product_weight: form.product_weight,

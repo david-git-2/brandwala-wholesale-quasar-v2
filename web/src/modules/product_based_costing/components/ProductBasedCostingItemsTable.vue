@@ -150,6 +150,36 @@
             </q-popup-edit>
           </q-td>
 
+          <q-td key="deliveredQty" :props="slotProps" class="col-delivered-qty text-center editable-cell">
+            <div class="editable-value">
+              {{ slotProps.row.deliveredQty }}
+            </div>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.deliveredQty"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="
+                (value) => {
+                  slotProps.row.deliveredQty = toNumber(value);
+                  onDeliveredQtySave(slotProps.row);
+                }
+              "
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
+          </q-td>
+
           <q-td key="barcodeText" :props="slotProps" class="col-barcode">
             <div class="barcode-lines">
               <div><strong>Barcode:</strong> {{ slotProps.row.barcode || '-' }}</div>
@@ -421,6 +451,9 @@
           <q-td v-if="isColumnVisible('qty')" class="totals-row__cell col-qty text-center">
             {{ formatNumber(totals.qty) }}
           </q-td>
+          <q-td v-if="isColumnVisible('deliveredQty')" class="totals-row__cell col-delivered-qty text-center">
+            {{ formatNumber(totals.deliveredQty) }}
+          </q-td>
           <q-td v-if="isColumnVisible('barcodeText')" class="totals-row__cell col-barcode" />
           <q-td v-if="isColumnVisible('website')" class="totals-row__cell col-website" />
           <q-td v-if="isColumnVisible('priceGbp')" class="totals-row__cell col-price-gbp text-right">
@@ -572,6 +605,7 @@ interface ProductBasedCostingTableRow {
   noteHtml: string;
   imageUrl: string | null;
   qty: number;
+  deliveredQty: number;
   barcode: string;
   productCode: string;
   productId: string;
@@ -615,7 +649,7 @@ const emit = defineEmits<{
     payload: {
       item: ProductBasedCostingItem;
       row: ProductBasedCostingTableRow;
-      field: 'quantity' | 'offer_price' | 'status' | 'note';
+      field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity';
     },
   ): void;
   (
@@ -705,6 +739,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const productCode = toText(item.product_code, '');
     const productId = item.product_id != null ? String(item.product_id) : '';
     const qty = toNumber(item.quantity);
+    const deliveredQty = toNumber(item.delivered_quantity);
     const priceGbp = toNumber(item.price_gbp);
     const productWeight = toNumber(item.product_weight);
     const packageWeight = toNumber(item.package_weight);
@@ -728,6 +763,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       noteHtml: item.note ?? '',
       imageUrl: item.image_url ?? null,
       qty,
+      deliveredQty,
       barcode,
       productCode,
       productId,
@@ -806,6 +842,13 @@ const columns = computed<QTableColumn[]>(() => [
     style: 'text-align: left;',
   },
   { name: 'qty', label: 'Qty', field: 'qty', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'deliveredQty',
+    label: 'Delivered Qty',
+    field: 'deliveredQty',
+    align: 'center',
+    style: 'text-align: center;',
+  },
   {
     name: 'barcodeText',
     label: 'Barcode / Code / Product ID',
@@ -1056,11 +1099,12 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
-  field: 'quantity' | 'offer_price' | 'status' | 'note',
+  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity',
 ) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
     quantity: row.qty,
+    delivered_quantity: row.deliveredQty,
     offer_price: row.offerPriceBdt,
     status: row.status,
     product_weight: row.productWeight,
@@ -1118,6 +1162,11 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
 const onQtySave = (row: ProductBasedCostingTableRow) => {
   row.qty = toNumber(row.qty);
   emitRowChange(row, 'quantity');
+};
+
+const onDeliveredQtySave = (row: ProductBasedCostingTableRow) => {
+  row.deliveredQty = toNumber(row.deliveredQty);
+  emitRowChange(row, 'delivered_quantity');
 };
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
@@ -1221,6 +1270,7 @@ const getStatusColor = (status: string | null) => {
 const totals = computed(() => {
   const initial = {
     qty: 0,
+    deliveredQty: 0,
     priceGbp: 0,
     productWeight: 0,
     packageWeight: 0,
@@ -1240,6 +1290,7 @@ const totals = computed(() => {
 
   const sum = tableRows.value.reduce((acc, row) => {
     acc.qty += row.qty;
+    acc.deliveredQty += row.deliveredQty;
     acc.priceGbp += row.priceGbp;
     acc.productWeight += row.productWeight;
     acc.packageWeight += row.packageWeight;
@@ -1474,6 +1525,13 @@ const totals = computed(() => {
   min-width: 100px;
   width: 100px;
   max-width: 100px;
+  background: #f8f9fa;
+}
+
+.col-delivered-qty {
+  min-width: 120px;
+  width: 120px;
+  max-width: 120px;
   background: #f8f9fa;
 }
 

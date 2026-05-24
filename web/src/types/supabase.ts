@@ -1735,6 +1735,7 @@ export type Database = {
           barcode: string | null
           brand: string | null
           created_at: string
+          delivered_quantity: number | null
           id: number
           image_url: string | null
           input_type: string | null
@@ -1760,6 +1761,7 @@ export type Database = {
           barcode?: string | null
           brand?: string | null
           created_at?: string
+          delivered_quantity?: number | null
           id?: number
           image_url?: string | null
           input_type?: string | null
@@ -1785,6 +1787,7 @@ export type Database = {
           barcode?: string | null
           brand?: string | null
           created_at?: string
+          delivered_quantity?: number | null
           id?: number
           image_url?: string | null
           input_type?: string | null

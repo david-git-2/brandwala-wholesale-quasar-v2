@@ -249,6 +249,8 @@ const statusFilterOptions = [
   { label: 'Pending', value: '__pending__' },
   { label: 'Offered', value: 'offered' },
   { label: 'Processing', value: 'processing' },
+  { label: 'Invoicing', value: 'invoicing' },
+  { label: 'Invoiced', value: 'invoiced' },
   { label: 'Cancelled', value: 'cancelled' },
 ]
 
@@ -461,6 +463,18 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
       boxShadow: 'inset 6px 0 0 #59aa7d',
     }
   }
+  if (value === 'invoicing') {
+    return {
+      backgroundColor: '#f8f9fa',
+      boxShadow: 'inset 6px 0 0 #3f51b5',
+    }
+  }
+  if (value === 'invoiced') {
+    return {
+      backgroundColor: '#f2fbfb',
+      boxShadow: 'inset 6px 0 0 #009688',
+    }
+  }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#fff4f6',
@@ -499,6 +513,22 @@ const statusChipStyle = (status: string | null | undefined) => {
       boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
     }
   }
+  if (value === 'invoicing') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+      boxShadow: '0 1px 2px rgba(40, 53, 147, 0.18)',
+    }
+  }
+  if (value === 'invoiced') {
+    return {
+      backgroundColor: '#e0f2f1',
+      color: '#00695c',
+      border: '1px solid #b2dfdb',
+      boxShadow: '0 1px 2px rgba(0, 105, 92, 0.18)',
+    }
+  }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
@@ -520,6 +550,8 @@ const statusDotColor = (status: string | null | undefined) => {
   if (value === 'pending') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
   if (value === 'processing') return '#2f8b5d'
+  if (value === 'invoicing') return '#3f51b5'
+  if (value === 'invoiced') return '#009688'
   if (value === 'cancelled') return '#a64c62'
   return '#66758c'
 }
