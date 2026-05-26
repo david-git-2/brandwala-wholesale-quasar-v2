@@ -38,3 +38,30 @@ wts-scrape:
 
 wts-sync:
 	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --tenant-id 10 --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
+
+KOBA_RETAIL_JSON ?= ../web/public/uk/koba_retail_data.json
+KOBA_RETAIL_VENDOR ?= KOBA_RETAIL
+KOBA_RETAIL_MARKET ?= GB
+
+koba-retail:
+	python scripts/uk/export_koba_retail_data.py
+
+koba-retail-scrape:
+	python scripts/uk/export_koba_retail_data.py
+
+koba-retail-sync:
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_RETAIL_JSON)" --vendor "$(KOBA_RETAIL_VENDOR)" --market "$(KOBA_RETAIL_MARKET)" --tenant-id 10 --skip-image-upload
+
+KOBA_WHOLESALE_JSON ?= ../web/public/uk/koba_wholesale_data.json
+KOBA_WHOLESALE_VENDOR ?= KOBA_WHOLESALE
+KOBA_WHOLESALE_MARKET ?= GB
+
+koba-wholesale:
+	python scripts/uk/export_koba_wholesale_data.py
+
+koba-wholesale-scrape:
+	python scripts/uk/export_koba_wholesale_data.py
+
+koba-wholesale-sync:
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_WHOLESALE_JSON)" --vendor "$(KOBA_WHOLESALE_VENDOR)" --market "$(KOBA_WHOLESALE_MARKET)" --tenant-id 10 --skip-image-upload
+

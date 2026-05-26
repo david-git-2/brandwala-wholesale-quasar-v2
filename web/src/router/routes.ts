@@ -19,6 +19,7 @@ import accountingRoutes from 'src/modules/accounting/routes';
 import investorRoutes from 'src/modules/investor/routes';
 import commerceShopRoutes from 'src/modules/commerce_shop/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
+import kobaRoutes from 'src/modules/koba/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -95,6 +96,7 @@ const routes: RouteRecordRaw[] = [
   ...costingFileRoutes,
   ...membershipRoutes,
   ...documentationRoutes,
+  ...kobaRoutes,
 
   // Always leave this as last one
   {

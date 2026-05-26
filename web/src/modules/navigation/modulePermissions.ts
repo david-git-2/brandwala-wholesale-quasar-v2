@@ -34,6 +34,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: NO_ACCESS,
     accounting: ['view'],
     invoice: ['view'],
+    koba_retail: ['view'],
   },
   admin: {
     order_management: ['view'],
@@ -52,6 +53,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: NO_ACCESS,
     accounting: ['view'],
     invoice: ['view'],
+    koba_retail: ['view'],
   },
   staff: {
     order_management: ['view'],
@@ -70,6 +72,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: NO_ACCESS,
     accounting: NO_ACCESS,
     invoice: ['view'],
+    koba_retail: ['view'],
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -88,6 +91,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: NO_ACCESS,
     accounting: NO_ACCESS,
     invoice: NO_ACCESS,
+    koba_retail: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -106,6 +110,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: ['view'],
     accounting: NO_ACCESS,
     invoice: ['view'],
+    koba_retail: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -124,6 +129,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: ['view'],
     accounting: NO_ACCESS,
     invoice: ['view'],
+    koba_retail: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -142,6 +148,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     cart: ['view'],
     accounting: NO_ACCESS,
     invoice: ['view'],
+    koba_retail: NO_ACCESS,
   },
 }
 

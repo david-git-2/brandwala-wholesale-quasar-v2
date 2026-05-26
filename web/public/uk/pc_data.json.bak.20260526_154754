@@ -15,7 +15,7 @@
     "note": "Image upload moved to sync step (DB product_id based key).",
     "productIdRule": "product_id = barcode + '_' + product_code",
     "hazardousRowsRemoved": 476,
-    "normalizedAt": "2026-05-26T09:47:54.073809Z",
+    "normalizedAt": "2026-05-08T16:58:14.735083Z",
     "normalizedStage": "minimum_quantity",
     "removedHazardousRows": 0,
     "minimumQuantityRule": "OUTER/CASE -> outer_case; INNER -> max(inner_case, 6); otherwise 1"

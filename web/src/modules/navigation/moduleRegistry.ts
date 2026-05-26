@@ -17,6 +17,25 @@ export type ModuleKey =
   | 'cart'
   | 'accounting'
   | 'invoice'
+  | 'koba_retail'
+  | 'koba_wholesale'
+  | 'order_management'
+  | 'shipment'
+  | 'inventory'
+  | 'commerce_shop'
+  | 'commerce_order'
+  | 'commerce_invoice'
+  | 'commerce_cart'
+  | 'investor'
+  | 'vendor'
+  | 'products'
+  | 'product_based_costing'
+  | 'costing_file'
+  | 'store'
+  | 'cart'
+  | 'accounting'
+  | 'invoice'
+  | 'koba_retail'
 
 export type ModuleAction = 'view'
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
@@ -418,6 +437,36 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage billing profile records for invoices',
         icon: 'badge',
         routeSegment: 'invoices/billing-profiles',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'koba_retail',
+    name: 'Koba Retail',
+    description: 'Browse scraped Koba Retail products catalog.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Koba Retail',
+        caption: 'Browse Koba Retail products',
+        icon: 'shopping_bag',
+        routeSegment: 'koba/retail',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'koba_wholesale',
+    name: 'Koba Wholesale',
+    description: 'Browse scraped Koba Wholesale products catalog.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Koba Wholesale',
+        caption: 'Browse Koba Wholesale products',
+        icon: 'shopping_cart',
+        routeSegment: 'koba/wholesale',
         requiredAction: 'view',
       },
     ],

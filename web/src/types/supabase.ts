@@ -1256,6 +1256,173 @@ export type Database = {
           },
         ]
       }
+      koba_brands: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_brands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_categories: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_products: {
+        Row: {
+          barcode: string | null
+          brand_id: number | null
+          category_id: number | null
+          commission: number | null
+          commission_percentage: number | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          in_stock: boolean
+          name: string
+          permalink: string | null
+          price: number
+          raw_data: Json
+          regular_price: number | null
+          sale_price: number | null
+          sku: string | null
+          slug: string | null
+          source_id: string
+          source_type: string
+          stock_quantity: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand_id?: number | null
+          category_id?: number | null
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean
+          name: string
+          permalink?: string | null
+          price?: number
+          raw_data: Json
+          regular_price?: number | null
+          sale_price?: number | null
+          sku?: string | null
+          slug?: string | null
+          source_id: string
+          source_type: string
+          stock_quantity?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          brand_id?: number | null
+          category_id?: number | null
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean
+          name?: string
+          permalink?: string | null
+          price?: number
+          raw_data?: Json
+          regular_price?: number | null
+          sale_price?: number | null
+          sku?: string | null
+          slug?: string | null
+          source_id?: string
+          source_type?: string
+          stock_quantity?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "koba_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "koba_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "koba_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "koba_products_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           code: string

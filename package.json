@@ -9,6 +9,8 @@
     "lint": "npm --prefix web run lint",
     "python:pc": "bash scripts/run-python-pc.sh",
     "python:wts": "bash scripts/run-python-wts.sh",
+    "python:koba-retail": "bash scripts/run-python-koba-retail.sh",
+    "python:koba-wholesale": "bash scripts/run-python-koba-wholesale.sh",
     "python:normalize:pc": "python3 python/scripts/uk/normalize_pc_data.py --input web/public/uk/pc_data.json",
     "python:taxonomy:pc": "python3 python/scripts/uk/export_pc_taxonomy.py --input web/public/uk/pc_data.json",
     "python:clean:vat-names": "python3 python/scripts/uk/remove_vat_from_names.py --input web/public/uk/pc_data.json",
