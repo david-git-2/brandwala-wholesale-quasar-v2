@@ -247,6 +247,20 @@
                   </q-input>
                 </div>
               </div>
+              <div class="row items-center justify-between q-mt-sm">
+                <div class="text-subtitle2 text-weight-medium text-grey-8">Weights (g)</div>
+                <q-btn
+                  color="purple"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  icon="auto_awesome"
+                  label="Autofill weights via Gemini"
+                  :loading="aiLoading"
+                  @click="autofillWeights"
+                />
+              </div>
 
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-6">
@@ -324,6 +338,8 @@ import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { productService } from 'src/modules/products/services/productService'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
+import { useQuasar } from 'quasar'
+import { fetchWeightsFromGemini } from 'src/utils/gemini'
 
 interface ProductBasedCostingItemFormData {
   id?: number
@@ -366,6 +382,97 @@ const productStore = useProductStore()
 const vendorStore = useVendorStore()
 const marketStore = useMarketStore()
 const authStore = useAuthStore()
+const $q = useQuasar()
+
+const aiLoading = ref(false)
+
+const autofillWeights = async () => {
+  if (!form.name || !form.name.trim()) {
+    $q.notify({
+      type: 'negative',
+      message: 'Please enter a product name first to find its weights.',
+    })
+    return
+  }
+
+  const apiKey =
+    localStorage.getItem('gemini_api_key') ||
+    (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
+    process.env.GEMINI_API_KEY;
+
+  if (!apiKey || !apiKey.trim()) {
+    $q.dialog({
+      title: 'Configure Gemini API Key',
+      message: 'To use the AI autofill feature for free, please enter your Gemini API Key from Google AI Studio:',
+      prompt: {
+        model: '',
+        type: 'text',
+        isValid: (val) => val.trim().length > 0,
+      },
+      cancel: true,
+      persistent: true,
+    }).onOk((key: string) => {
+      localStorage.setItem('gemini_api_key', key.trim())
+      $q.notify({
+        type: 'positive',
+        message: 'Gemini API Key saved locally! Retrying...',
+      })
+      void runAIFill()
+    })
+    return
+  }
+
+  await runAIFill()
+}
+
+const runAIFill = async () => {
+  aiLoading.value = true
+  try {
+    const name = form.name || ''
+    const mlRegex = /\b(\d+(?:\.\d+)?)\s*ml\b/i
+    const mlMatch = name.match(mlRegex)
+
+    let productWeight: number | null = null
+    let packageWeight: number | null = null
+
+    if (mlMatch && typeof mlMatch[1] === 'string') {
+      productWeight = parseFloat(mlMatch[1])
+    }
+
+    const result = await fetchWeightsFromGemini(name)
+
+    if (productWeight === null && result.product_weight_g !== null) {
+      productWeight = result.product_weight_g
+    }
+
+    if (result.package_weight_g !== null) {
+      packageWeight = result.package_weight_g + 20
+    } else {
+      packageWeight = 20
+    }
+
+    if (productWeight !== null) {
+      form.product_weight = productWeight
+    }
+    if (packageWeight !== null) {
+      form.package_weight = packageWeight
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Weights successfully auto-filled!',
+    })
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('Gemini error:', error)
+    $q.notify({
+      type: 'negative',
+      message: errMsg || 'Failed to fetch weights.',
+    })
+  } finally {
+    aiLoading.value = false
+  }
+}
 
 const dialogModel = computed({
   get: () => props.modelValue,
@@ -498,17 +605,20 @@ const normalized = (value: string | null | undefined) => (value ?? '').trim()
 const normalizeKey = (value: string | null | undefined) =>
   normalized(value).toLowerCase()
 
+const lastTypedBrand = ref('')
+const lastTypedCategory = ref('')
+
 const canAddBrand = computed(() => {
   if (!canPickBrandCategory.value || !form.vendor_code) return false
-  const candidate = normalized(brandInputValue.value || form.brand)
-  if (!candidate) return false
+  const candidate = normalized(lastTypedBrand.value || brandInputValue.value || form.brand)
+  if (!candidate || candidate.toLowerCase() === 'other') return false
   return !brandNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
 })
 
 const canAddCategory = computed(() => {
   if (!canPickBrandCategory.value || !form.vendor_code) return false
-  const candidate = normalized(categoryInputValue.value || form.category)
-  if (!candidate) return false
+  const candidate = normalized(lastTypedCategory.value || categoryInputValue.value || form.category)
+  if (!candidate || candidate.toLowerCase() === 'other') return false
   return !categoryNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
 })
 
@@ -568,16 +678,24 @@ const filterCategoryOptions = (val: string, update: (callback: () => void) => vo
 }
 
 const onBrandInputValue = (value: string) => {
+  const cleaned = (value || '').trim()
+  if (cleaned && cleaned.toLowerCase() !== 'other') {
+    lastTypedBrand.value = cleaned
+  }
   brandInputValue.value = value
 }
 
 const onCategoryInputValue = (value: string) => {
+  const cleaned = (value || '').trim()
+  if (cleaned && cleaned.toLowerCase() !== 'other') {
+    lastTypedCategory.value = cleaned
+  }
   categoryInputValue.value = value
 }
 
 const addBrandOption = async () => {
-  const name = normalized(brandInputValue.value || form.brand)
-  if (!name || !form.vendor_code) return
+  const name = normalized(lastTypedBrand.value || brandInputValue.value || form.brand)
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return
 
   const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
   const result = await productService.createProductBrand({
@@ -585,6 +703,7 @@ const addBrandOption = async () => {
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
+    tenant_id: authStore.tenantId ?? null,
   })
 
   if (!result.success) {
@@ -594,13 +713,14 @@ const addBrandOption = async () => {
 
   showSuccessNotification('Brand added successfully.')
   await loadBrandCategoryOptions()
-  form.brand = name
+  form.brand = result.data?.name || name.toUpperCase()
   brandInputValue.value = ''
+  lastTypedBrand.value = ''
 }
 
 const addCategoryOption = async () => {
-  const name = normalized(categoryInputValue.value || form.category)
-  if (!name || !form.vendor_code) return
+  const name = normalized(lastTypedCategory.value || categoryInputValue.value || form.category)
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return
 
   const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
   const result = await productService.createProductCategory({
@@ -608,6 +728,7 @@ const addCategoryOption = async () => {
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
+    tenant_id: authStore.tenantId ?? null,
   })
 
   if (!result.success) {
@@ -617,8 +738,9 @@ const addCategoryOption = async () => {
 
   showSuccessNotification('Category added successfully.')
   await loadBrandCategoryOptions()
-  form.category = name
+  form.category = result.data?.name || name
   categoryInputValue.value = ''
+  lastTypedCategory.value = ''
 }
 
 const submitForm = async () => {

@@ -287,6 +287,22 @@ If you are adding a new table or function later, keep this order in mind:
 
 That is the path that has been working reliably in this project.
 
+## Data Imports & Scrapers
+
+This project contains Python automation scripts under the `python/` folder to export, normalize, and sync catalog data for various vendors:
+
+* **Price Check (PC)**: Local Excel file export and DB synchronization.
+  ```bash
+  npm run python:pc
+  ```
+* **Wholesale Trading Supplies (WTS)**: Web scraper that pulls live product listings and syncs them to Supabase.
+  ```bash
+  npm run python:wts
+  ```
+
+For setup and detailed usage, see the [python/readme.md](file:///Users/daviditc/Documents/Personal%20Project/brandwala-wholesale-quasar-v2/python/readme.md).
+
+
 color pallet
 
 --powder-blush: #ffadadff;

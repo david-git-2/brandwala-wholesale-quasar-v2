@@ -89,7 +89,7 @@ def load_products(payload: Any) -> list[dict[str, Any]]:
 
 def get_first_value(row: dict[str, Any], keys: list[str], default: Any = "") -> Any:
     for key in keys:
-        if key in row:
+        if key in row and row.get(key) is not None and to_text(row.get(key)) != "":
             return row.get(key)
     return default
 
@@ -134,7 +134,7 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         1,
         to_int(get_first_value(row, ["case_size", "CASE SIZE", "INNER CASE", "inner_case"], 1), 1),
     )
-    normalized["name"] = to_text(get_first_value(row, ["name", "DESCRIPTION"], ""))
+    normalized["name"] = to_text(get_first_value(row, ["name", "title", "DESCRIPTION"], ""))
     normalized["price"] = to_float(get_first_value(row, ["price", "PIECE PRICE £", "piece_price"], 0), 0.0)
     normalized["country_of_origin"] = to_text(
         get_first_value(row, ["country_of_origin", "COUNTRY OF ORIGIN"], "")
@@ -160,7 +160,7 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
     image_value = get_first_value(row, ["image", "IMAGE"], None)
     if image_value is not None:
         normalized["image"] = image_value
-    image_url_value = get_first_value(row, ["imageUrl", "image_url"], None)
+    image_url_value = get_first_value(row, ["imageUrl", "image_url", "original_image_url", "image", "IMAGE"], None)
     if image_url_value is not None:
         normalized["imageUrl"] = image_url_value
     normalized["expire_date"] = format_optional_expire_date(
@@ -170,7 +170,14 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
     if not product_id and normalized["barcode"] and normalized["product_code"]:
         product_id = f"{normalized['barcode']}_{normalized['product_code']}"
     normalized["product_id"] = product_id
-    normalized["minimum_quantity"] = compute_minimum_quantity(normalized)
+    
+    normalized["minimum_quantity"] = to_int(row.get("minimum_quantity"), 0)
+    if normalized["minimum_quantity"] <= 0:
+        if to_text(normalized.get("sales_unit")) != "":
+            normalized["minimum_quantity"] = compute_minimum_quantity(normalized)
+        else:
+            normalized["minimum_quantity"] = normalized["case_size"]
+            
     return normalized
 
 

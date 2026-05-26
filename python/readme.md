@@ -37,7 +37,32 @@ npm run python:pc
    - If matched: update existing row(s)
    - If not matched: insert new row
 
-Export brand and category lists from the generated PC JSON:
+### Wholesale Trading Supplies (WTS) Scraper & Sync
+
+To scrape products from `wholesaletradingsupplies.com` and sync them into Supabase, run from root:
+
+```bash
+npm run python:wts
+```
+
+This script will:
+1. Fetch all product pages via sitemaps (concurrently with 10 threads).
+2. Download all product images to `python/images/uk/wts_images`.
+3. Normalize product names and clean VAT/sizes in `web/public/uk/wts_data.json`.
+4. Upload images to Supabase Storage and sync products to the database with `vendor_code=WTS`, `market_code=GB`.
+
+You can also run separate steps:
+
+* **Scrape only**:
+  ```bash
+  python scripts/uk/export_wts_data.py --workers 10
+  ```
+* **Sync database only**:
+  ```bash
+  python scripts/uk/sync_pc_products_to_supabase.py --input ../web/public/uk/wts_data.json --vendor WTS --market GB --images-dir images/uk/wts_images
+  ```
+
+Export brand and category lists from the generated JSON:
 
 ```bash
 python scripts/uk/export_pc_taxonomy.py --input ../web/public/uk/pc_data.json

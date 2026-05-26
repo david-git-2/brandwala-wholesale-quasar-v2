@@ -98,6 +98,17 @@ def parse_args() -> argparse.Namespace:
         help="Tenant id scope. Empty value means tenant_id IS NULL.",
     )
     parser.add_argument(
+        "--vendor-id",
+        dest="vendor_id",
+        default=os.getenv("PY_PRODUCTS_VENDOR_ID", "").strip(),
+        help="Vendor id scope. Overrides default vendor code resolution if provided.",
+    )
+    parser.add_argument(
+        "--skip-image-upload",
+        action="store_true",
+        help="Skip local image upload phase and use image URLs from JSON.",
+    )
+    parser.add_argument(
         "--chunk-size",
         dest="chunk_size",
         type=int,
@@ -156,12 +167,26 @@ def to_text(value: Any) -> str:
 
 def prompt_tenant_id(default_raw: str) -> int | None:
     default_text = to_text(default_raw)
+    
+    # Skip prompting if a valid tenant id was passed as an argument
+    if default_text.isdigit() and int(default_text) > 0:
+        return int(default_text)
+        
     label = "Enter tenant id"
     if default_text:
         label += f" [{default_text}]"
     label += ": "
 
+    import sys
     while True:
+        # If not running in a TTY, don't try to read input
+        if not sys.stdin.isatty():
+            if default_text == "":
+                return None
+            if default_text.isdigit() and int(default_text) > 0:
+                return int(default_text)
+            return None
+            
         raw = input(label).strip()
         if raw == "":
             raw = default_text
@@ -295,6 +320,7 @@ def build_sync_payloads(
         minimum_order_quantity = 1
 
     # Insert payload can include null-capable values for new rows.
+    image_url = row.get("imageUrl") or row.get("image_url") or row.get("original_image_url") or row.get("image")
     insert_payload: dict[str, Any] = {
         "tenant_id": tenant_id,
         "vendor_id": vendor_id,
@@ -302,7 +328,7 @@ def build_sync_payloads(
         "market_code": market_code,
         "barcode": barcode,
         "product_code": product_code,
-        "name": normalize_nullable_text(row.get("name")),
+        "name": normalize_nullable_text(row.get("name") or row.get("title")),
         "price_gbp": to_float_or_none(row.get("price")),
         "country_of_origin": normalize_nullable_text(row.get("country_of_origin")),
         "brand": normalize_nullable_text(row.get("brand")),
@@ -314,6 +340,7 @@ def build_sync_payloads(
         "expire_date": normalize_nullable_text(row.get("expire_date")),
         "minimum_order_quantity": minimum_order_quantity,
         "is_available": (available_units > 0) if available_units is not None else None,
+        "image_url": normalize_nullable_text(image_url),
     }
 
     # Update payload is PATCH-style: only write fields with concrete values,
@@ -775,11 +802,6 @@ def main() -> int:
         raise ValueError("Vendor code cannot be empty.")
     if not market_code:
         raise ValueError("Market code cannot be empty.")
-    if vendor_code != PC_VENDOR_CODE:
-        raise ValueError(
-            f"This PC sync script only supports vendor '{PC_VENDOR_CODE}'. "
-            f"Received vendor='{vendor_code}'."
-        )
 
     tenant_id = prompt_tenant_id(to_text(args.tenant_id))
 
@@ -799,14 +821,23 @@ def main() -> int:
 
     client = SupabaseRestClient(supabase_url, supabase_admin_key)
     ensure_market_exists(client, market_code)
-    vendor_row = get_vendor_by_id(client, PC_VENDOR_ID)
-    resolved_vendor_id = PC_VENDOR_ID
+
+    if args.vendor_id and str(args.vendor_id).strip():
+        resolved_vendor_id = int(args.vendor_id)
+        vendor_row = get_vendor_by_id(client, resolved_vendor_id)
+    elif vendor_code == PC_VENDOR_CODE:
+        vendor_row = get_vendor_by_id(client, PC_VENDOR_ID)
+        resolved_vendor_id = PC_VENDOR_ID
+    else:
+        vendor_row = ensure_vendor_exists(client, vendor_code, market_code, tenant_id, args.dry_run)
+        resolved_vendor_id = vendor_row["id"]
+
     resolved_vendor_code = to_text(vendor_row.get("code")).upper() or vendor_code
 
     vendor_market_code = to_text(vendor_row.get("market_code")).upper()
     if vendor_market_code and vendor_market_code != market_code:
         raise ValueError(
-            f"Vendor id {PC_VENDOR_ID} market mismatch. "
+            f"Vendor id {resolved_vendor_id} market mismatch. "
             f"Vendor market={vendor_market_code}, input market={market_code}."
         )
 
@@ -1046,88 +1077,90 @@ def main() -> int:
                 if done % 5 == 0 or done == batch_total:
                     print_progress("Insert batches", done, batch_total, batch_start)
 
-    # Phase 2: upload images by real DB product id and then update image_url.
-    print("Starting image upload phase...", flush=True)
-    local_images = index_local_images_by_key(images_dir)
-    if not local_images:
-        print(f"No local images found in: {images_dir}", flush=True)
-
-    rows_after_sync = fetch_all_scoped_products(client, resolved_vendor_id, market_code, tenant_id)
-    ids_by_key: dict[tuple[str, str], list[int]] = {}
-    for item in rows_after_sync:
-        k = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
-        if not k[0] or not k[1]:
-            continue
-        ids_by_key.setdefault(k, []).append(int(item["id"]))
-
-    image_tasks: list[tuple[int, Path]] = []
-    missing_image_keys = 0
-    ambiguous_db_keys = 0
-    for key in deduped_inserts.keys():
-        source_row = deduped_inserts[key]
-        image_key = build_image_key(
-            source_row,
-            to_text(source_row.get("barcode")),
-            to_text(source_row.get("product_code")),
-        ).strip().lower()
-        local_image_path = local_images.get(image_key)
-        if local_image_path is None:
-            missing_image_keys += 1
-            continue
-
-        target_ids = ids_by_key.get(key, [])
-        if len(target_ids) > 1:
-            ambiguous_db_keys += 1
-            print(
-                "Ambiguous DB match for key "
-                f"(barcode={key[0]}, product_code={key[1]}): {len(target_ids)} rows. "
-                "Skipping image update for this key.",
-                flush=True,
-            )
-            continue
-        for product_id in target_ids:
-            image_tasks.append((product_id, local_image_path))
-
-    image_total = len(image_tasks)
-    image_start = time.perf_counter()
     image_uploaded = 0
     image_failed = 0
+    missing_image_keys = 0
+    ambiguous_db_keys = 0
 
-    if image_total > 0:
-        print(f"Uploading images for {image_total} product row(s)...", flush=True)
+    if args.skip_image_upload:
+        print("Skipping image upload phase (using image URLs from JSON).", flush=True)
+    else:
+        # Phase 2: upload images by real DB product id and then update image_url.
+        print("Starting image upload phase...", flush=True)
+        local_images = index_local_images_by_key(images_dir)
+        if not local_images:
+            print(f"No local images found in: {images_dir}", flush=True)
 
-    def run_image_task(product_id: int, local_path: Path) -> None:
-        def task() -> None:
-            ext = local_path.suffix.lower().strip() or ".jpg"
-            if not ext.startswith("."):
-                ext = f".{ext}"
-            object_path = build_storage_object_path(storage_prefix, f"{product_id}{ext}")
-            public_url = upload_to_supabase_storage(
-                supabase_url=supabase_url,
-                api_key=supabase_admin_key,
-                bucket=storage_bucket,
-                object_path=object_path,
-                local_path=local_path,
-                content_type=guess_content_type(local_path),
-            )
+        rows_after_sync = fetch_all_scoped_products(client, resolved_vendor_id, market_code, tenant_id)
+        ids_by_key: dict[tuple[str, str], list[int]] = {}
+        for item in rows_after_sync:
+            k = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
+            if not k[0] or not k[1]:
+                continue
+            ids_by_key.setdefault(k, []).append(int(item["id"]))
+
+        image_tasks: list[tuple[int, Path]] = []
+        for key in deduped_inserts.keys():
+            source_row = deduped_inserts[key]
+            image_key = build_image_key(
+                source_row,
+                to_text(source_row.get("barcode")),
+                to_text(source_row.get("product_code")),
+            ).strip().lower()
+            local_image_path = local_images.get(image_key)
+            if local_image_path is None:
+                missing_image_keys += 1
+                continue
+            
+            pids = ids_by_key.get(key)
+            if not pids:
+                continue
+            if len(pids) > 1:
+                ambiguous_db_keys += 1
+                print(
+                    f"Ambiguous product key mapping to multiple database IDs: {key}. "
+                    "Skipping image update for this key.",
+                    flush=True,
+                )
+                continue
+            
+            product_id = pids[0]
+            image_tasks.append((product_id, local_image_path))
+
+        image_total = len(image_tasks)
+        image_start = time.perf_counter()
+
+        if image_total > 0:
+            print(f"Uploading images for {image_total} product row(s)...", flush=True)
+
+        def run_image_task(product_id: int, local_path: Path) -> None:
+            # helper closure to do upload
+            ext = local_path.suffix.lower()
+            storage_path = f"{storage_prefix}/{product_id}{ext}"
+            content_type = guess_content_type(local_path)
+            
+            def upload():
+                with local_path.open("rb") as f:
+                    client.upload_file(storage_bucket, storage_path, f.read(), content_type)
+            run_with_retries(upload, retries=3)
+            
+            public_url = client.get_public_url(storage_bucket, storage_path)
             client.update_row_by_id("products", product_id, {"image_url": public_url})
 
-        run_with_retries(task, retries=max(1, args.write_retries))
-
-    if image_total > 0:
-        with ThreadPoolExecutor(max_workers=max(1, args.image_workers)) as executor:
-            futures = [executor.submit(run_image_task, product_id, local_path) for product_id, local_path in image_tasks]
-            done = 0
-            for future in as_completed(futures):
-                done += 1
-                try:
-                    future.result()
-                    image_uploaded += 1
-                except Exception as exc:
-                    image_failed += 1
-                    print(f"Image phase failed: {exc}", flush=True)
-                if done % 25 == 0 or done == image_total:
-                    print_progress("Image uploads", done, image_total, image_start)
+        if image_total > 0:
+            with ThreadPoolExecutor(max_workers=max(1, args.image_workers)) as executor:
+                futures = [executor.submit(run_image_task, product_id, local_path) for product_id, local_path in image_tasks]
+                done = 0
+                for future in as_completed(futures):
+                    done += 1
+                    try:
+                        future.result()
+                        image_uploaded += 1
+                    except Exception as exc:
+                        image_failed += 1
+                        print(f"Image phase failed: {exc}", flush=True)
+                    if done % 25 == 0 or done == image_total:
+                        print_progress("Image uploads", done, image_total, image_start)
 
     print(
         "Image phase summary: "

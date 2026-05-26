@@ -12,6 +12,7 @@
       :rows="storeStore.items"
       :columns="columns"
       :loading="storeStore.loading"
+      :pagination="pagination"
     >
       <template #body-cell-actions="props">
         <q-td align="right">
@@ -100,6 +101,10 @@ const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const deleting = ref(false)
 const selectedStore = ref<StoreItem | null>(null)
+
+const pagination = ref({
+  rowsPerPage: 0
+})
 
 const columns: QTableColumn<StoreItem>[] = [
   {

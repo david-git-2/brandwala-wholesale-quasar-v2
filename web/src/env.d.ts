@@ -7,5 +7,7 @@ declare namespace NodeJS {
     VITE_PRODUCTION_APP_URL: string | undefined;
     VITE_SUPABASE_ANON_KEY: string | undefined;
     VITE_SUPABASE_URL: string | undefined;
+    VITE_GEMINI_API_KEY: string | undefined;
+    GEMINI_API_KEY: string | undefined;
   }
 }

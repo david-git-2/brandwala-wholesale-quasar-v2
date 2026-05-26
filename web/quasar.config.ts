@@ -45,8 +45,9 @@ export default defineConfig((ctx) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
     build: {
          env: {
-         SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-    SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+          SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+     SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+     GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,
       },
       target: {
         browser: 'baseline-widely-available',
