@@ -201,23 +201,24 @@ def get_supabase_creds() -> Tuple[str, str]:
     return url.strip(), key.strip()
 
 def upsert_brand(session: requests.Session, base_url: str, headers: dict, tenant_id: int, name: str) -> Optional[int]:
-    url = f"{base_url}/rest/v1/koba_brands"
+    url = f"{base_url}/rest/v1/koba_brands?on_conflict=tenant_id,name"
     payload = {"tenant_id": tenant_id, "name": name}
     req_headers = dict(headers)
     req_headers["Prefer"] = "return=representation,resolution=merge-duplicates"
     try:
-        resp = session.post(url, json=payload, headers=req_headers, timeout=30)
+        resp = session.post(url, json=[payload], headers=req_headers, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
                 return data[0].get("id")
     except Exception as e:
         print(f"Warning upserting brand '{name}': {e}")
-        
-    # Fallback lookup
+
+    # Fallback: plain GET lookup
     try:
-        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}"}
-        resp = session.get(url, headers=headers, params=params, timeout=30)
+        lookup_url = f"{base_url}/rest/v1/koba_brands"
+        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}", "select": "id"}
+        resp = session.get(lookup_url, headers=headers, params=params, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
@@ -226,24 +227,26 @@ def upsert_brand(session: requests.Session, base_url: str, headers: dict, tenant
         print(f"Warning fetching brand '{name}': {e}")
     return None
 
+
 def upsert_category(session: requests.Session, base_url: str, headers: dict, tenant_id: int, name: str) -> Optional[int]:
-    url = f"{base_url}/rest/v1/koba_categories"
+    url = f"{base_url}/rest/v1/koba_categories?on_conflict=tenant_id,name"
     payload = {"tenant_id": tenant_id, "name": name}
     req_headers = dict(headers)
     req_headers["Prefer"] = "return=representation,resolution=merge-duplicates"
     try:
-        resp = session.post(url, json=payload, headers=req_headers, timeout=30)
+        resp = session.post(url, json=[payload], headers=req_headers, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
                 return data[0].get("id")
     except Exception as e:
         print(f"Warning upserting category '{name}': {e}")
-        
-    # Fallback lookup
+
+    # Fallback: plain GET lookup
     try:
-        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}"}
-        resp = session.get(url, headers=headers, params=params, timeout=30)
+        lookup_url = f"{base_url}/rest/v1/koba_categories"
+        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}", "select": "id"}
+        resp = session.get(lookup_url, headers=headers, params=params, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
@@ -290,19 +293,25 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
             unique_categories.add(c_name)
 
     # 2. Upsert brands & categories to resolve their IDs
-    print(f"Resolving {len(unique_brands)} brands...")
-    brand_ids = {}
-    for b_name in unique_brands:
+    print(f"  Resolving {len(unique_brands)} brand(s)...")
+    brand_ids: Dict[str, int] = {}
+    for b_name in sorted(unique_brands):
         bid = upsert_brand(session, url, headers, tenant_id, b_name)
         if bid:
             brand_ids[b_name] = bid
+            print(f"    ✅ Brand: '{b_name}' → id={bid}")
+        else:
+            print(f"    ⚠️ Brand: '{b_name}' → could not resolve ID")
 
-    print(f"Resolving {len(unique_categories)} categories...")
-    category_ids = {}
-    for c_name in unique_categories:
+    print(f"  Resolving {len(unique_categories)} category/categories...")
+    category_ids: Dict[str, int] = {}
+    for c_name in sorted(unique_categories):
         cid = upsert_category(session, url, headers, tenant_id, c_name)
         if cid:
             category_ids[c_name] = cid
+            print(f"    ✅ Category: '{c_name}' → id={cid}")
+        else:
+            print(f"    ⚠️ Category: '{c_name}' → could not resolve ID")
 
     # 3. Map products to db schema
     mapped_products = []
@@ -310,10 +319,10 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
         name = p.get("name", "")
         b_name = extract_brand(name)
         c_name = guess_category(name)
-        
+
         sku = p.get("sku") or ""
         prod_id = p.get("id") or ""
-        
+
         # Store price as provided (assumed GBP)
         price = round(float(p.get("price") or 0), 2)
 
@@ -321,11 +330,11 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
         commission = p.get("commission")
         if commission is not None:
             commission = round(float(commission), 2)
-            
+
         stock_qty = int(p.get("stock_quantity") or 0)
         in_stock = p.get("status") == "in_stock"
         image_url = p.get("image_url") or ""
-        
+
         db_product = {
             "tenant_id": tenant_id,
             "source_type": "retail",
@@ -334,7 +343,7 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
             "sku": sku,
             "barcode": sku,
             "slug": slugify(name),
-            "permalink": f"https://www.kobareseller.com/dashboard/products",
+            "permalink": "https://www.kobareseller.com/dashboard/products",
             "description": p.get("description", ""),
             "stock_quantity": stock_qty,
             "in_stock": in_stock,
@@ -345,18 +354,24 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
             "brand_id": brand_ids.get(b_name),
             "category_id": category_ids.get(c_name),
             "image_url": image_url,
-            "raw_data": p
+            "raw_data": p,
         }
         mapped_products.append(db_product)
 
     # 4. Batch upsert products
     batch_size = 100
-    print(f"Upserting products in batches of {batch_size}...")
+    print(f"  Upserting {len(mapped_products)} product(s) in batches of {batch_size}...")
     for i in range(0, len(mapped_products), batch_size):
-        batch = mapped_products[i:i + batch_size]
+        batch = mapped_products[i : i + batch_size]
         upsert_products_batch(session, url, headers, batch)
+        print(f"    ✅ Batch {i // batch_size + 1}: upserted {len(batch)} product(s)")
 
-    print("✅ Supabase staging sync complete.")
+    print(
+        f"\n✅ Supabase sync complete — "
+        f"{len(mapped_products)} products, "
+        f"{len(brand_ids)}/{len(unique_brands)} brands, "
+        f"{len(category_ids)}/{len(unique_categories)} categories."
+    )
 
 def main():
     args = parse_args()

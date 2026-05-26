@@ -1288,6 +1288,116 @@ export type Database = {
           },
         ]
       }
+      koba_cart_items: {
+        Row: {
+          barcode: string | null
+          brand: string | null
+          cart_id: number
+          case_size: number
+          commission: number | null
+          commission_percentage: number | null
+          created_at: string
+          id: number
+          image_url: string | null
+          koba_product_id: string | null
+          name: string
+          product_code: string | null
+          product_id: string
+          quantity: number
+          unit_price_gbp: number | null
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand?: string | null
+          cart_id: number
+          case_size?: number
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          koba_product_id?: string | null
+          name: string
+          product_code?: string | null
+          product_id: string
+          quantity?: number
+          unit_price_gbp?: number | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          brand?: string | null
+          cart_id?: number
+          case_size?: number
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          koba_product_id?: string | null
+          name?: string
+          product_code?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price_gbp?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "koba_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "koba_cart_items_koba_product_id_fkey"
+            columns: ["koba_product_id"]
+            isOneToOne: false
+            referencedRelation: "koba_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_carts: {
+        Row: {
+          created_at: string
+          id: number
+          market_id: string | null
+          status: string
+          tenant_id: number
+          updated_at: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          market_id?: string | null
+          status?: string
+          tenant_id: number
+          updated_at?: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          market_id?: string | null
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_carts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       koba_categories: {
         Row: {
           created_at: string
@@ -1313,6 +1423,142 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "koba_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_order_items: {
+        Row: {
+          barcode: string | null
+          brand: string | null
+          case_size: number
+          commission: number | null
+          commission_percentage: number | null
+          created_at: string
+          delivered_quantity: number
+          id: number
+          image_url: string | null
+          name: string
+          order_id: number
+          product_code: string | null
+          product_id: string
+          quantity: number
+          unit_price_gbp: number | null
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand?: string | null
+          case_size?: number
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          delivered_quantity?: number
+          id?: number
+          image_url?: string | null
+          name: string
+          order_id: number
+          product_code?: string | null
+          product_id: string
+          quantity?: number
+          unit_price_gbp?: number | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          brand?: string | null
+          case_size?: number
+          commission?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          delivered_quantity?: number
+          id?: number
+          image_url?: string | null
+          name?: string
+          order_id?: number
+          product_code?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price_gbp?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "koba_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_orders: {
+        Row: {
+          created_at: string
+          free_delivery: boolean
+          id: number
+          item_count: number
+          market_id: string | null
+          note: string | null
+          shipping_address: string | null
+          shipping_district: string | null
+          shipping_name: string | null
+          shipping_phone: string | null
+          shipping_thana: string | null
+          status: Database["public"]["Enums"]["koba_order_status"]
+          subtotal_gbp: number | null
+          tenant_id: number
+          total_commission: number | null
+          updated_at: string
+          user_email: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          free_delivery?: boolean
+          id?: number
+          item_count?: number
+          market_id?: string | null
+          note?: string | null
+          shipping_address?: string | null
+          shipping_district?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          shipping_thana?: string | null
+          status?: Database["public"]["Enums"]["koba_order_status"]
+          subtotal_gbp?: number | null
+          tenant_id: number
+          total_commission?: number | null
+          updated_at?: string
+          user_email: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          free_delivery?: boolean
+          id?: number
+          item_count?: number
+          market_id?: string | null
+          note?: string | null
+          shipping_address?: string | null
+          shipping_district?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          shipping_thana?: string | null
+          status?: Database["public"]["Enums"]["koba_order_status"]
+          subtotal_gbp?: number | null
+          tenant_id?: number
+          total_commission?: number | null
+          updated_at?: string
+          user_email?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_orders_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3579,6 +3825,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_koba_cart: {
+        Args: { p_market_id?: string; p_tenant_id: number }
+        Returns: Json
+      }
       get_shop_bootstrap_context: {
         Args: {
           p_customer_group_member_id?: number
@@ -3755,6 +4005,8 @@ export type Database = {
         Args: { p_code: string; p_exclude_id?: number }
         Returns: boolean
       }
+      koba_cart_owner: { Args: { p_cart_id: number }; Returns: boolean }
+      koba_order_owner: { Args: { p_order_id: number }; Returns: boolean }
       list_costing_file_items: {
         Args: { p_costing_file_id: number }
         Returns: {
@@ -3840,6 +4092,35 @@ export type Database = {
           p_page_size?: number
           p_sort_by?: string
           p_sort_order?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_koba_brands_for_tenant: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      list_koba_categories_for_tenant: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      list_koba_orders: {
+        Args: {
+          p_market_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_status?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_koba_retail_products: {
+        Args: {
+          p_brand_id?: number
+          p_category_id?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
           p_tenant_id: number
         }
         Returns: Json
@@ -3986,6 +4267,19 @@ export type Database = {
       next_tenant_scoped_counter: {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: number
+      }
+      place_koba_order: {
+        Args: {
+          p_free_delivery?: boolean
+          p_market_id?: string
+          p_shipping_address?: string
+          p_shipping_district?: string
+          p_shipping_name?: string
+          p_shipping_phone?: string
+          p_shipping_thana?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       recompute_invoice_payment_status: {
         Args: { p_invoice_id: number }
@@ -4333,6 +4627,13 @@ export type Database = {
       customer_group_role: "admin" | "negotiator" | "staff"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
       investor_transaction_type: "deposit" | "withdrawal" | "profit_payout"
+      koba_order_status:
+        | "pending"
+        | "confirmed"
+        | "processing"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
       order_status:
         | "customer_submit"
         | "direct_priced"
@@ -4486,6 +4787,14 @@ export const Constants = {
       customer_group_role: ["admin", "negotiator", "staff"],
       investor_payment_method: ["cash", "bank", "mobile_banking", "other"],
       investor_transaction_type: ["deposit", "withdrawal", "profit_payout"],
+      koba_order_status: [
+        "pending",
+        "confirmed",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
       order_status: [
         "customer_submit",
         "direct_priced",

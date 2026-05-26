@@ -14,23 +14,35 @@
     </template>
 
     <template #header-extra>
-      <q-btn
-        v-if="canShowCartIcon"
-        flat
-        round
-        dense
-        icon="shopping_cart"
-        class="shop-cart-btn"
-        @click="goToCart"
-      >
-        <q-badge
-          v-if="cartItemCount > 0"
-          color="negative"
-          floating
-          rounded
-          :label="cartItemCount"
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          v-if="canShowOrdersIcon"
+          flat
+          color="primary"
+          icon="receipt_long"
+          label="Orders"
+          no-caps
+          @click="goToOrders"
         />
-      </q-btn>
+        <q-btn
+          v-if="canShowCartIcon"
+          color="primary"
+          icon="shopping_cart"
+          label="Cart"
+          no-caps
+          unelevated
+          class="shop-cart-btn"
+          @click="goToCart"
+        >
+          <q-badge
+            v-if="cartItemCount > 0"
+            color="negative"
+            floating
+            rounded
+            :label="cartItemCount"
+          />
+        </q-btn>
+      </div>
     </template>
 
     <router-view />
@@ -38,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
@@ -71,7 +83,19 @@ const logoutTo = computed(() =>
 )
 
 const cartItemCount = computed(() => cartStore.items.length)
-const canShowCartIcon = computed(() =>
+
+const isCommerceCartActive = computed(() =>
+  canAccessModule({
+    scope: authStore.scope,
+    tenantId: authStore.tenantId,
+    customerGroupId: authStore.customerGroupId,
+    role: authStore.matchedRole,
+    moduleKey: 'commerce_cart',
+    activeModuleKeys: authStore.activeModuleKeys,
+  }),
+)
+
+const isStandardCartActive = computed(() =>
   canAccessModule({
     scope: authStore.scope,
     tenantId: authStore.tenantId,
@@ -82,10 +106,58 @@ const canShowCartIcon = computed(() =>
   }),
 )
 
+const canShowCartIcon = computed(() => isCommerceCartActive.value || isStandardCartActive.value)
+
+const isCommerceOrderActive = computed(() =>
+  canAccessModule({
+    scope: authStore.scope,
+    tenantId: authStore.tenantId,
+    customerGroupId: authStore.customerGroupId,
+    role: authStore.matchedRole,
+    moduleKey: 'commerce_order',
+    activeModuleKeys: authStore.activeModuleKeys,
+  }),
+)
+
+const isStandardOrderActive = computed(() =>
+  canAccessModule({
+    scope: authStore.scope,
+    tenantId: authStore.tenantId,
+    customerGroupId: authStore.customerGroupId,
+    role: authStore.matchedRole,
+    moduleKey: 'order_management',
+    activeModuleKeys: authStore.activeModuleKeys,
+  }),
+)
+
+const canShowOrdersIcon = computed(() => isCommerceOrderActive.value || isStandardOrderActive.value)
+
 const goToCart = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/shop/cart`)
+  if (isCommerceCartActive.value) {
+    await router.push(`${tenantPrefix}/shop/commerce-shop/cart`)
+  } else {
+    await router.push(`${tenantPrefix}/shop/cart`)
+  }
 }
+
+const goToOrders = async () => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  if (isCommerceOrderActive.value) {
+    await router.push(`${tenantPrefix}/shop/commerce-shop/orders`)
+  } else {
+    await router.push(`${tenantPrefix}/shop/orders`)
+  }
+}
+
+onMounted(() => {
+  if (authStore.tenantId) {
+    void cartStore.fetchItemsForContext({
+      tenant_id: authStore.tenantId,
+      customer_group_id: authStore.customerGroupId,
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -113,6 +185,6 @@ const goToCart = async () => {
 }
 
 .shop-cart-btn {
-  color: var(--bw-theme-ink);
+  border-radius: 999px;
 }
 </style>

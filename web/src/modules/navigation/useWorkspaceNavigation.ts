@@ -184,6 +184,46 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         to: routeDefinition.to,
       }))
 
+    if (scope === 'shop') {
+      const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
+        (routeDefinition) => routeDefinition.moduleKey === 'koba_retail',
+      )
+
+      if (!hasKobaRetailModuleAccess) {
+        return [...baseLinks, ...moduleLinks]
+      }
+
+      const moduleLinksWithoutGrouped = scopedModuleRouteDefinitions
+        .filter((routeDefinition) => routeDefinition.moduleKey !== 'koba_retail')
+        .map((routeDefinition) => ({
+          title: routeDefinition.title,
+          caption: routeDefinition.caption,
+          icon: routeDefinition.icon,
+          to: routeDefinition.to,
+        }))
+
+      const kobaRetailChildren = scopedModuleRouteDefinitions
+        .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
+        .map((routeDefinition) => ({
+          title: routeDefinition.title,
+          caption: routeDefinition.caption,
+          icon: 'chevron_right',
+          to: routeDefinition.to,
+        }))
+
+      const groupedLinks = [
+        ...moduleLinksWithoutGrouped,
+        {
+          title: 'Koba Retail',
+          caption: 'Koba Retail module',
+          icon: 'shopping_bag',
+          children: kobaRetailChildren,
+        },
+      ]
+
+      return [...baseLinks, ...groupedLinks]
+    }
+
     if (scope !== 'app') {
       return [...baseLinks, ...moduleLinks]
     }
@@ -224,6 +264,10 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.moduleKey === 'commerce_cart',
     )
+    const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'koba_retail',
+    )
 
     if (
       !hasStoreModuleAccess &&
@@ -234,7 +278,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       !hasCommerceShopModuleAccess &&
       !hasCommerceOrderModuleAccess &&
       !hasCommerceInvoiceModuleAccess &&
-      !hasCommerceCartModuleAccess
+      !hasCommerceCartModuleAccess &&
+      !hasKobaRetailModuleAccess
     ) {
       return [...baseLinks, ...moduleLinks]
     }
@@ -248,7 +293,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'investor' &&
           routeDefinition.moduleKey !== 'products' &&
           routeDefinition.moduleKey !== 'commerce_shop' &&
-          routeDefinition.moduleKey !== 'commerce_invoice',
+          routeDefinition.moduleKey !== 'commerce_invoice' &&
+          routeDefinition.moduleKey !== 'koba_retail',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -321,6 +367,22 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             : routeDefinition.title === 'Commerce Billing Profiles'
               ? 'Billing Profiles'
               : routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const kobaRetailChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
+      .filter((routeDefinition) => {
+        const role = authStore.matchedRole
+        const isAdminOrSuper = role === 'admin' || role === 'superadmin'
+        if (isAdminOrSuper && routeDefinition.title === 'Cart') {
+          return false
+        }
+        return true
+      })
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
@@ -416,6 +478,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
               caption: 'Commerce invoice module',
               icon: 'description',
               children: commerceInvoiceChildren,
+            },
+          ]
+        : []),
+      ...(hasKobaRetailModuleAccess
+        ? [
+            {
+              title: 'Koba Retail',
+              caption: 'Koba Retail module',
+              icon: 'shopping_bag',
+              children: kobaRetailChildren,
             },
           ]
         : []),

@@ -90,12 +90,12 @@ def get_supabase_creds() -> Tuple[str, str]:
     return url.strip(), key.strip()
 
 def upsert_brand(session: requests.Session, base_url: str, headers: dict, tenant_id: int, name: str) -> Optional[int]:
-    url = f"{base_url}/rest/v1/koba_brands"
+    url = f"{base_url}/rest/v1/koba_brands?on_conflict=tenant_id,name"
     payload = {"tenant_id": tenant_id, "name": name}
     req_headers = dict(headers)
     req_headers["Prefer"] = "return=representation,resolution=merge-duplicates"
     try:
-        resp = session.post(url, json=payload, headers=req_headers, timeout=30)
+        resp = session.post(url, json=[payload], headers=req_headers, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
@@ -105,8 +105,9 @@ def upsert_brand(session: requests.Session, base_url: str, headers: dict, tenant
         
     # Fallback lookup
     try:
-        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}"}
-        resp = session.get(url, headers=headers, params=params, timeout=30)
+        lookup_url = f"{base_url}/rest/v1/koba_brands"
+        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}", "select": "id"}
+        resp = session.get(lookup_url, headers=headers, params=params, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
@@ -116,12 +117,12 @@ def upsert_brand(session: requests.Session, base_url: str, headers: dict, tenant
     return None
 
 def upsert_category(session: requests.Session, base_url: str, headers: dict, tenant_id: int, name: str) -> Optional[int]:
-    url = f"{base_url}/rest/v1/koba_categories"
+    url = f"{base_url}/rest/v1/koba_categories?on_conflict=tenant_id,name"
     payload = {"tenant_id": tenant_id, "name": name}
     req_headers = dict(headers)
     req_headers["Prefer"] = "return=representation,resolution=merge-duplicates"
     try:
-        resp = session.post(url, json=payload, headers=req_headers, timeout=30)
+        resp = session.post(url, json=[payload], headers=req_headers, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):
@@ -131,8 +132,9 @@ def upsert_category(session: requests.Session, base_url: str, headers: dict, ten
         
     # Fallback lookup
     try:
-        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}"}
-        resp = session.get(url, headers=headers, params=params, timeout=30)
+        lookup_url = f"{base_url}/rest/v1/koba_categories"
+        params = {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{name}", "select": "id"}
+        resp = session.get(lookup_url, headers=headers, params=params, timeout=30)
         if resp.ok:
             data = resp.json()
             if data and isinstance(data, list):

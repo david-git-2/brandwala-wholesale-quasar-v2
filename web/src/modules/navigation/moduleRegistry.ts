@@ -19,23 +19,6 @@ export type ModuleKey =
   | 'invoice'
   | 'koba_retail'
   | 'koba_wholesale'
-  | 'order_management'
-  | 'shipment'
-  | 'inventory'
-  | 'commerce_shop'
-  | 'commerce_order'
-  | 'commerce_invoice'
-  | 'commerce_cart'
-  | 'investor'
-  | 'vendor'
-  | 'products'
-  | 'product_based_costing'
-  | 'costing_file'
-  | 'store'
-  | 'cart'
-  | 'accounting'
-  | 'invoice'
-  | 'koba_retail'
 
 export type ModuleAction = 'view'
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
@@ -448,10 +431,50 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Koba Retail',
+        title: 'Products',
         caption: 'Browse Koba Retail products',
         icon: 'shopping_bag',
         routeSegment: 'koba/retail',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Cart',
+        caption: 'Review and manage your retail cart',
+        icon: 'shopping_cart',
+        routeSegment: 'koba/retail/cart',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Orders',
+        caption: 'Track placed retail orders',
+        icon: 'receipt_long',
+        routeSegment: 'koba/retail/orders',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Products',
+        caption: 'Browse Koba Retail products',
+        icon: 'shopping_bag',
+        routeSegment: 'koba/retail',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Cart',
+        caption: 'Review and manage your retail cart',
+        icon: 'shopping_cart',
+        routeSegment: 'koba/retail/cart',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'Orders',
+        caption: 'Track placed retail orders',
+        icon: 'receipt_long',
+        routeSegment: 'koba/retail/orders',
         requiredAction: 'view',
       },
     ],

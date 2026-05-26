@@ -76,8 +76,8 @@ const navigateToGroupAccess = async (groupId: number) => {
   await router.push(`${tenantPrefix}/app/stores/manage-access/group/${groupId}`)
 }
 
-const onRowClick = (_evt: any, row: CustomerGroup) => {
-  navigateToGroupAccess(row.id)
+const onRowClick = (_evt: unknown, row: CustomerGroup) => {
+  void navigateToGroupAccess(row.id)
 }
 
 onMounted(async () => {
