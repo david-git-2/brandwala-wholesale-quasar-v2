@@ -1,9 +1,17 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
+import {
+  handleApiFailure,
+  showSuccessNotification,
+} from 'src/utils/appFeedback'
+
 import { kobaCartService } from '../services/kobaCartService'
 import { kobaOrderService } from '../services/kobaOrderService'
-import type { KobaCart, KobaCartItem } from '../repositories/kobaCartRepository'
+
+import type {
+  KobaCart,
+  KobaCartItem,
+} from '../repositories/kobaCartRepository'
 
 export interface KobaCartProductInput {
   id: string
@@ -38,114 +46,208 @@ export const useKobaCartStore = defineStore('kobaCart', {
     error: null,
   }),
 
+  getters: {
+    itemCount: (state) =>
+      state.items.reduce((sum, item) => sum + item.quantity, 0),
+
+    subtotal: (state) =>
+      state.items.reduce(
+        (sum, item) =>
+          sum + (Number(item.unit_price_gbp || 0) * item.quantity),
+        0
+      ),
+  },
+
   actions: {
     async fetchCart() {
       const authStore = useAuthStore()
+
       const tenantId = authStore.tenantId ?? KOBA_TENANT_ID
-      const marketId = null // default marketId for Koba
+
+      const customerGroupId =
+        authStore.customerGroupId != null
+          ? Number(authStore.customerGroupId)
+          : null
 
       this.loading = true
       this.error = null
 
       try {
-        const result = await kobaCartService.getCart(tenantId, marketId)
+        const result = await kobaCartService.getCart(
+          tenantId,
+          customerGroupId
+        )
+
         if (!result.success) {
           this.error = result.error ?? 'Failed to load Koba cart.'
           handleApiFailure(result, this.error)
           return result
         }
 
-        if (result.data) {
-          this.cart = result.data.cart
-          this.items = result.data.items
-        } else {
-          this.cart = null
-          this.items = []
-        }
+        this.cart = result.data?.cart ?? null
+        this.items = result.data?.items ?? []
+
         return result
       } finally {
         this.loading = false
       }
     },
 
-    async addToCart(product: KobaCartProductInput, quantity: number) {
+    async addToCart(
+      product: KobaCartProductInput,
+      quantity: number
+    ) {
       const authStore = useAuthStore()
-      const tenantId = authStore.tenantId ?? KOBA_TENANT_ID
-      const userEmail = authStore.user?.email
-      const marketId = null
 
-      if (!userEmail) {
-        this.error = 'User email is required to add items to cart.'
-        return { success: false, error: this.error }
+      const tenantId = authStore.tenantId ?? KOBA_TENANT_ID
+
+      const customerGroupId =
+        authStore.customerGroupId != null
+          ? Number(authStore.customerGroupId)
+          : null
+
+      if (!customerGroupId) {
+        this.error = 'Customer group is required.'
+        return {
+          success: false,
+          error: this.error,
+        }
       }
 
       this.saving = true
       this.error = null
 
       try {
-        // 1. Resolve or create cart
-        let activeCart = this.cart
-        if (!activeCart) {
-          const cartResult = await kobaCartService.createCart(tenantId, userEmail, marketId)
-          if (!cartResult.success || !cartResult.data) {
-            this.error = cartResult.error ?? 'Failed to create active cart.'
-            handleApiFailure(cartResult, this.error)
-            return cartResult
-          }
-          activeCart = cartResult.data
-          this.cart = activeCart
+        // Resolve or create cart
+        const cartResult =
+          await kobaCartService.getOrCreateCart(
+            tenantId,
+            customerGroupId
+          )
+
+        if (!cartResult.success || !cartResult.data) {
+          this.error =
+            cartResult.error ?? 'Failed to load cart.'
+
+          handleApiFailure(cartResult, this.error)
+
+          return cartResult
         }
 
-        // 2. Insert cart item
+        this.cart = cartResult.data.cart
+
+        // Check if item already exists
+        const existingItem = this.items.find(
+          (item) => item.product_id === product.id
+        )
+
+        if (existingItem) {
+          return await this.updateItemQty(
+            existingItem.id,
+            existingItem.quantity + quantity
+          )
+        }
+
         const itemPayload: Partial<KobaCartItem> = {
-          cart_id: activeCart.id,
+          cart_id: this.cart.id,
+
           koba_product_id: product.id,
-          product_id: product.id, // unique key for this product in cart
+
+          product_id: product.id,
+
           product_code: product.sku || null,
+
           barcode: product.barcode || null,
+
           name: product.name,
+
           brand: product.brand || null,
+
           image_url: product.image_url || null,
+
           case_size: product.case_size ?? 1,
-          unit_price_gbp: product.price_gbp ?? product.price ?? 0,
-          commission: product.commission ?? 0,
-          commission_percentage: product.commission_percentage ?? 0,
+
+          unit_price_gbp:
+            product.price_gbp ??
+            product.price ??
+            0,
+
+          commission:
+            product.commission ?? 0,
+
+          commission_percentage:
+            product.commission_percentage ?? 0,
+
           quantity,
         }
 
-        const result = await kobaCartService.createCartItem(itemPayload)
+        const result =
+          await kobaCartService.createCartItem(
+            itemPayload
+          )
+
         if (!result.success || !result.data) {
-          this.error = result.error ?? 'Failed to add item to cart.'
+          this.error =
+            result.error ??
+            'Failed to add item to cart.'
+
           handleApiFailure(result, this.error)
+
           return result
         }
 
         this.items.push(result.data)
-        showSuccessNotification('Item added to Koba cart.')
+
+        showSuccessNotification(
+          'Item added to Koba cart.'
+        )
+
         return result
       } finally {
         this.saving = false
       }
     },
 
-    async updateItemQty(itemId: number, quantity: number) {
+    async updateItemQty(
+      itemId: number,
+      quantity: number
+    ) {
       this.saving = true
       this.error = null
 
       try {
-        const result = await kobaCartService.updateCartItem(itemId, { quantity })
+        if (quantity <= 0) {
+          return await this.removeItem(itemId)
+        }
+
+        const result =
+          await kobaCartService.updateCartItem(
+            itemId,
+            { quantity }
+          )
+
         if (!result.success || !result.data) {
-          this.error = result.error ?? 'Failed to update item quantity.'
+          this.error =
+            result.error ??
+            'Failed to update item quantity.'
+
           handleApiFailure(result, this.error)
+
           return result
         }
 
-        const index = this.items.findIndex((item) => item.id === itemId)
+        const index = this.items.findIndex(
+          (item) => item.id === itemId
+        )
+
         if (index >= 0) {
           this.items.splice(index, 1, result.data)
         }
 
-        showSuccessNotification('Cart quantity updated.')
+        showSuccessNotification(
+          'Cart quantity updated.'
+        )
+
         return result
       } finally {
         this.saving = false
@@ -157,15 +259,29 @@ export const useKobaCartStore = defineStore('kobaCart', {
       this.error = null
 
       try {
-        const result = await kobaCartService.deleteCartItem(itemId)
+        const result =
+          await kobaCartService.deleteCartItem(
+            itemId
+          )
+
         if (!result.success) {
-          this.error = result.error ?? 'Failed to remove item.'
+          this.error =
+            result.error ??
+            'Failed to remove item.'
+
           handleApiFailure(result, this.error)
+
           return result
         }
 
-        this.items = this.items.filter((item) => item.id !== itemId)
-        showSuccessNotification('Item removed from cart.')
+        this.items = this.items.filter(
+          (item) => item.id !== itemId
+        )
+
+        showSuccessNotification(
+          'Item removed from cart.'
+        )
+
         return result
       } finally {
         this.saving = false
@@ -173,20 +289,35 @@ export const useKobaCartStore = defineStore('kobaCart', {
     },
 
     async clearCart() {
-      if (!this.cart) return { success: true }
+      if (!this.cart) {
+        return { success: true }
+      }
+
       this.saving = true
       this.error = null
 
       try {
-        const result = await kobaCartService.clearCartItems(this.cart.id)
+        const result =
+          await kobaCartService.clearCartItems(
+            this.cart.id
+          )
+
         if (!result.success) {
-          this.error = result.error ?? 'Failed to clear cart.'
+          this.error =
+            result.error ??
+            'Failed to clear cart.'
+
           handleApiFailure(result, this.error)
+
           return result
         }
 
         this.items = []
-        showSuccessNotification('Cart cleared.')
+
+        showSuccessNotification(
+          'Cart cleared.'
+        )
+
         return result
       } finally {
         this.saving = false
@@ -200,35 +331,79 @@ export const useKobaCartStore = defineStore('kobaCart', {
       thana: string
       address: string
       free_delivery: boolean
+      extra_profit_user?: number
+      extra_profit_company?: number
+      delivery_adjustment?: number
+      cod_charge?: number
+      packing_charge?: number
+      invoice_charge?: number
+      net_order_commission?: number
     }) {
       const authStore = useAuthStore()
-      const tenantId = authStore.tenantId ?? KOBA_TENANT_ID
-      const marketId = null
+
+      const tenantId =
+        authStore.tenantId ?? KOBA_TENANT_ID
+
+      const customerGroupId =
+        authStore.customerGroupId != null
+          ? Number(authStore.customerGroupId)
+          : null
 
       this.saving = true
       this.error = null
 
       try {
-        const result = await kobaOrderService.placeOrder({
-          tenant_id: tenantId,
-          market_id: marketId,
-          shipping_name: shipping.name,
-          shipping_phone: shipping.phone,
-          shipping_district: shipping.district,
-          shipping_thana: shipping.thana,
-          shipping_address: shipping.address,
-          free_delivery: shipping.free_delivery,
-        })
+        const result =
+          await kobaOrderService.placeOrder({
+            tenant_id: tenantId,
+
+            customer_group_id:
+              customerGroupId,
+
+            shipping_name:
+              shipping.name,
+
+            shipping_phone:
+              shipping.phone,
+
+            shipping_district:
+              shipping.district,
+
+            shipping_thana:
+              shipping.thana,
+
+            shipping_address:
+              shipping.address,
+
+            free_delivery:
+              shipping.free_delivery,
+
+            extra_profit_user: shipping.extra_profit_user,
+            extra_profit_company: shipping.extra_profit_company,
+            delivery_adjustment: shipping.delivery_adjustment,
+            cod_charge: shipping.cod_charge,
+            packing_charge: shipping.packing_charge,
+            invoice_charge: shipping.invoice_charge,
+            net_order_commission: shipping.net_order_commission,
+          })
 
         if (!result.success || !result.data) {
-          this.error = result.error ?? 'Failed to place order.'
+          this.error =
+            result.error ??
+            'Failed to place order.'
+
           handleApiFailure(result, this.error)
+
           return result
         }
 
         this.cart = null
         this.items = []
-        showSuccessNotification('Koba order placed successfully!')
+
+        showSuccessNotification(
+          'Koba order placed successfully!'
+        )
+
         return result
       } finally {
         this.saving = false

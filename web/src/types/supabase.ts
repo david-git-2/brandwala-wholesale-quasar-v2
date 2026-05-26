@@ -1363,32 +1363,33 @@ export type Database = {
       koba_carts: {
         Row: {
           created_at: string
+          customer_group_id: number | null
           id: number
-          market_id: string | null
-          status: string
           tenant_id: number
           updated_at: string
-          user_email: string
         }
         Insert: {
           created_at?: string
+          customer_group_id?: number | null
           id?: number
-          market_id?: string | null
-          status?: string
           tenant_id: number
           updated_at?: string
-          user_email: string
         }
         Update: {
           created_at?: string
+          customer_group_id?: number | null
           id?: number
-          market_id?: string | null
-          status?: string
           tenant_id?: number
           updated_at?: string
-          user_email?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "koba_carts_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "koba_carts_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1498,10 +1499,10 @@ export type Database = {
       koba_orders: {
         Row: {
           created_at: string
+          customer_group_id: number | null
           free_delivery: boolean
           id: number
           item_count: number
-          market_id: string | null
           note: string | null
           shipping_address: string | null
           shipping_district: string | null
@@ -1513,15 +1514,14 @@ export type Database = {
           tenant_id: number
           total_commission: number | null
           updated_at: string
-          user_email: string
           user_name: string | null
         }
         Insert: {
           created_at?: string
+          customer_group_id?: number | null
           free_delivery?: boolean
           id?: number
           item_count?: number
-          market_id?: string | null
           note?: string | null
           shipping_address?: string | null
           shipping_district?: string | null
@@ -1533,15 +1533,14 @@ export type Database = {
           tenant_id: number
           total_commission?: number | null
           updated_at?: string
-          user_email: string
           user_name?: string | null
         }
         Update: {
           created_at?: string
+          customer_group_id?: number | null
           free_delivery?: boolean
           id?: number
           item_count?: number
-          market_id?: string | null
           note?: string | null
           shipping_address?: string | null
           shipping_district?: string | null
@@ -1553,10 +1552,16 @@ export type Database = {
           tenant_id?: number
           total_commission?: number | null
           updated_at?: string
-          user_email?: string
           user_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "koba_orders_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "koba_orders_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -3826,7 +3831,7 @@ export type Database = {
         }[]
       }
       get_koba_cart: {
-        Args: { p_market_id?: string; p_tenant_id: number }
+        Args: { p_customer_group_id?: number; p_tenant_id: number }
         Returns: Json
       }
       get_shop_bootstrap_context: {
@@ -4005,8 +4010,12 @@ export type Database = {
         Args: { p_code: string; p_exclude_id?: number }
         Returns: boolean
       }
-      koba_cart_owner: { Args: { p_cart_id: number }; Returns: boolean }
-      koba_order_owner: { Args: { p_order_id: number }; Returns: boolean }
+      koba_cart_allowed: { Args: { p_cart_id: number }; Returns: boolean }
+      koba_context_access_allowed: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: boolean
+      }
+      koba_order_allowed: { Args: { p_order_id: number }; Returns: boolean }
       list_costing_file_items: {
         Args: { p_costing_file_id: number }
         Returns: {
@@ -4106,7 +4115,7 @@ export type Database = {
       }
       list_koba_orders: {
         Args: {
-          p_market_id?: string
+          p_customer_group_id?: number
           p_page?: number
           p_page_size?: number
           p_status?: string
@@ -4270,8 +4279,8 @@ export type Database = {
       }
       place_koba_order: {
         Args: {
+          p_customer_group_id?: number
           p_free_delivery?: boolean
-          p_market_id?: string
           p_shipping_address?: string
           p_shipping_district?: string
           p_shipping_name?: string

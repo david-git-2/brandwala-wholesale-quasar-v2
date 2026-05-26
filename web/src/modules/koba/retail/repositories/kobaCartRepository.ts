@@ -3,8 +3,7 @@ import { supabase } from 'src/boot/supabase'
 export interface KobaCart {
   id: number
   tenant_id: number
-  market_id: string | null
-  status: 'active' | 'ordered' | 'cleared'
+  customer_group_id: number | null
   created_at: string
   updated_at: string
 }
@@ -33,30 +32,33 @@ export interface KobaCartSnapshot {
   items: KobaCartItem[]
 }
 
-const getCart = async (tenantId: number, marketId: string | null): Promise<KobaCartSnapshot | null> => {
+const getCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCartSnapshot | null> => {
   const { data, error } = await supabase.rpc('get_koba_cart', {
     p_tenant_id: tenantId,
-    p_market_id: marketId,
+    p_customer_group_id: customerGroupId,
   })
 
   if (error) {
-    // If no active cart is found or error occurs, return null or handle accordingly
-    if (error.code === 'PGRST116') return null
-    throw error
+    console.error(error)
+    return null
   }
 
   return data as KobaCartSnapshot | null
 }
 
-const createCart = async (tenantId: number, userEmail: string, marketId: string | null): Promise<KobaCart> => {
+const createCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCart> => {
   const { data, error } = await supabase
     .from('koba_carts')
     .insert([
       {
         tenant_id: tenantId,
-        user_email: userEmail,
-        market_id: marketId,
-        status: 'active',
+        customer_group_id: customerGroupId,
       },
     ])
     .select()
@@ -73,7 +75,27 @@ const createCart = async (tenantId: number, userEmail: string, marketId: string 
   return data as KobaCart
 }
 
-const createCartItem = async (payload: Partial<KobaCartItem>): Promise<KobaCartItem> => {
+const getOrCreateCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCartSnapshot> => {
+  const existingCart = await getCart(tenantId, customerGroupId)
+
+  if (existingCart) {
+    return existingCart
+  }
+
+  const cart = await createCart(tenantId, customerGroupId)
+
+  return {
+    cart,
+    items: [],
+  }
+}
+
+const createCartItem = async (
+  payload: Partial<KobaCartItem>
+): Promise<KobaCartItem> => {
   const { data, error } = await supabase
     .from('koba_cart_items')
     .insert([payload])
@@ -91,7 +113,10 @@ const createCartItem = async (payload: Partial<KobaCartItem>): Promise<KobaCartI
   return data as KobaCartItem
 }
 
-const updateCartItem = async (itemId: number, payload: Partial<KobaCartItem>): Promise<KobaCartItem> => {
+const updateCartItem = async (
+  itemId: number,
+  payload: Partial<KobaCartItem>
+): Promise<KobaCartItem> => {
   const { data, error } = await supabase
     .from('koba_cart_items')
     .update(payload)
@@ -143,6 +168,7 @@ const clearCartItems = async (cartId: number): Promise<void> => {
 export const kobaCartRepository = {
   getCart,
   createCart,
+  getOrCreateCart,
   createCartItem,
   updateCartItem,
   deleteCartItem,

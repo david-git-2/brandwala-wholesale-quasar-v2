@@ -1,17 +1,29 @@
 import { defineStore } from 'pinia'
+
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+
 import { handleApiFailure } from 'src/utils/appFeedback'
+
 import { kobaOrderService } from '../services/kobaOrderService'
-import type { KobaOrder, KobaOrderItem } from '../repositories/kobaOrderRepository'
+
+import type {
+  KobaOrder,
+  KobaOrderItem,
+  KobaOrderStatus,
+} from '../repositories/kobaOrderRepository'
 
 export interface KobaOrderState {
   orders: KobaOrder[]
+
   orderDetail: {
     order: KobaOrder
     items: KobaOrderItem[]
   } | null
+
   loading: boolean
+
   error: string | null
+
   meta: {
     total: number
     page: number
@@ -25,9 +37,13 @@ const KOBA_TENANT_ID = 12
 export const useKobaOrderStore = defineStore('kobaOrder', {
   state: (): KobaOrderState => ({
     orders: [],
+
     orderDetail: null,
+
     loading: false,
+
     error: null,
+
     meta: {
       total: 0,
       page: 1,
@@ -36,47 +52,129 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
     },
   }),
 
+  getters: {
+    pendingOrders: (state) =>
+      state.orders.filter(
+        (order) => order.status === 'pending'
+      ),
+
+    completedOrders: (state) =>
+      state.orders.filter(
+        (order) =>
+          order.status === 'delivered'
+      ),
+  },
+
   actions: {
-    async fetchOrders(page: number = 1, status: string | null = null) {
+    async fetchOrders(
+      page: number = 1,
+      status: KobaOrderStatus | null = null
+    ) {
       const authStore = useAuthStore()
-      const tenantId = authStore.tenantId ?? KOBA_TENANT_ID
-      const marketId = null
+
+      const tenantId =
+        authStore.tenantId ??
+        KOBA_TENANT_ID
+
+      const customerGroupId =
+        authStore.customerGroupId != null
+          ? Number(
+              authStore.customerGroupId
+            )
+          : null
 
       this.loading = true
+
       this.error = null
 
       try {
-        const result = await kobaOrderService.listOrders(tenantId, marketId, page, this.meta.page_size, status)
-        if (!result.success || !result.data) {
-          this.error = result.error ?? 'Failed to load orders.'
-          handleApiFailure(result, this.error)
+        const result =
+          await kobaOrderService.listOrders(
+            tenantId,
+            customerGroupId,
+            page,
+            this.meta.page_size,
+            status
+          )
+
+        if (
+          !result.success ||
+          !result.data
+        ) {
+          this.error =
+            result.error ??
+            'Failed to load orders.'
+
+          handleApiFailure(
+            result,
+            this.error
+          )
+
           return result
         }
 
-        this.orders = result.data.data
-        this.meta = result.data.meta
+        this.orders =
+          result.data.data
+
+        this.meta =
+          result.data.meta
+
         return result
       } finally {
         this.loading = false
       }
     },
 
-    async fetchOrderDetails(orderId: number) {
+    async fetchOrderDetails(
+      orderId: number
+    ) {
       this.loading = true
+
       this.error = null
 
       try {
-        const result = await kobaOrderService.getOrderWithItems(orderId)
-        if (!result.success || !result.data) {
-          this.error = result.error ?? 'Failed to load order details.'
-          handleApiFailure(result, this.error)
+        const result =
+          await kobaOrderService.getOrderWithItems(
+            orderId
+          )
+
+        if (
+          !result.success ||
+          !result.data
+        ) {
+          this.error =
+            result.error ??
+            'Failed to load order details.'
+
+          handleApiFailure(
+            result,
+            this.error
+          )
+
           return result
         }
 
-        this.orderDetail = result.data
+        this.orderDetail =
+          result.data
+
         return result
       } finally {
         this.loading = false
+      }
+    },
+
+    clearOrderDetails() {
+      this.orderDetail = null
+    },
+
+    clearOrders() {
+      this.orders = []
+
+      this.meta = {
+        total: 0,
+        page: 1,
+        page_size: 20,
+        total_pages: 1,
       }
     },
   },

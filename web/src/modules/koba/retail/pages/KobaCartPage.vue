@@ -132,19 +132,55 @@
           <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md">Order Summary</div>
           
           <div class="row justify-between q-py-xs text-grey-8">
-            <div>Total Items</div>
-            <div class="text-weight-bold">{{ totalQty }} units</div>
+            <div>Total units</div>
+            <div class="text-weight-bold">{{ totalQty }}</div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8">
-            <div>Total Commission</div>
-            <div class="text-weight-bold text-positive">৳{{ totalCommission.toFixed(2) }}</div>
+            <div>Subtotal</div>
+            <div class="text-weight-bold">৳{{ totalPrice.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8">
+            <div>Delivery</div>
+            <div class="text-weight-bold">৳{{ deliveryCharge.toFixed(2) }}</div>
           </div>
           
           <q-separator class="q-my-sm" />
           
           <div class="row justify-between q-py-xs text-h6 text-weight-bold text-grey-9">
-            <div>Estimated Total</div>
-            <div class="text-primary">৳{{ totalPrice.toFixed(2) }}</div>
+            <div>Total</div>
+            <div class="text-primary">৳{{ finalTotal.toFixed(2) }}</div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <div class="row justify-between q-py-xs text-grey-8">
+            <div>Products Commission</div>
+            <div class="text-weight-bold text-positive">৳{{ totalCommission.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8" v-if="extraProfitTotal > 0">
+            <div>Extra Profit Share (You 90% | Company 10%)</div>
+            <div class="text-weight-bold text-positive">+৳{{ extraProfitUser.toFixed(2) }} | +৳{{ extraProfitCompany.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8" v-if="deliveryAdjustment > 0">
+            <div>Delivery Adjustment</div>
+            <div class="text-weight-bold text-positive">+৳{{ deliveryAdjustment.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8" v-if="codCharge > 0">
+            <div>COD Charge (1.00%)</div>
+            <div class="text-weight-bold text-negative">-৳{{ codCharge.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8" v-if="packingCharge > 0">
+            <div>Packing Charge</div>
+            <div class="text-weight-bold text-negative">-৳{{ packingCharge.toFixed(2) }}</div>
+          </div>
+          <div class="row justify-between q-py-xs text-grey-8" v-if="invoiceCharge > 0">
+            <div>Invoice Charge</div>
+            <div class="text-weight-bold text-negative">-৳{{ invoiceCharge.toFixed(2) }}</div>
+          </div>
+          
+          <div class="row justify-between q-py-xs text-subtitle1 text-weight-bold text-positive q-mt-sm">
+            <div>Order Commission</div>
+            <div>৳{{ netOrderCommission.toFixed(2) }}</div>
           </div>
 
           <q-separator class="q-my-md" />
@@ -310,6 +346,22 @@ const totalCommission = computed(() => {
   return cartStore.items.reduce((sum, item) => sum + (item.commission || 0) * getDraftQty(item), 0)
 })
 
+const deliveryCharge = ref(0)
+const finalTotal = computed(() => totalPrice.value + deliveryCharge.value)
+
+const extraProfitTotal = ref(0)
+const extraProfitUser = computed(() => extraProfitTotal.value * 0.9)
+const extraProfitCompany = computed(() => extraProfitTotal.value * 0.1)
+
+const deliveryAdjustment = ref(0)
+const codCharge = computed(() => finalTotal.value * 0.01)
+const packingCharge = computed(() => totalQty.value > 0 ? 37 : 0) // Placeholder logic based on text
+const invoiceCharge = computed(() => totalQty.value > 0 ? 1 : 0) // Placeholder logic based on text
+
+const netOrderCommission = computed(() => {
+  return totalCommission.value + extraProfitUser.value + deliveryAdjustment.value - codCharge.value - packingCharge.value - invoiceCharge.value
+})
+
 async function onSaveItem(item: KobaCartItem) {
   const targetQty = getDraftQty(item)
   await cartStore.updateItemQty(item.id, targetQty)
@@ -345,7 +397,14 @@ async function onCheckout() {
     district: shipping.value.district,
     thana: shipping.value.thana,
     address: shipping.value.address,
-    free_delivery: shipping.value.free_delivery
+    free_delivery: shipping.value.free_delivery,
+    extra_profit_user: extraProfitUser.value,
+    extra_profit_company: extraProfitCompany.value,
+    delivery_adjustment: deliveryAdjustment.value,
+    cod_charge: codCharge.value,
+    packing_charge: packingCharge.value,
+    invoice_charge: invoiceCharge.value,
+    net_order_commission: netOrderCommission.value,
   })
 
   if (result.success) {

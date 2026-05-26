@@ -27,16 +27,7 @@
 
         <q-space />
 
-        <!-- Toggle Right Drawer Button (Mobile/Tablet TOC) -->
-        <q-btn
-          flat
-          round
-          dense
-          icon="toc"
-          class="lt-lg q-mr-md"
-          color="primary"
-          @click="rightDrawerOpen = !rightDrawerOpen"
-        />
+
 
         <!-- Close Tab Action -->
         <q-btn
@@ -118,41 +109,7 @@
       </div>
     </q-drawer>
 
-    <!-- Quasar Right Drawer: "On This Page" Table of Contents -->
-    <q-drawer
-      v-model="rightDrawerOpen"
-      side="right"
-      show-if-above
-      bordered
-      :width="220"
-      class="bg-grey-1"
-    >
-      <div class="q-pa-md full-height column no-wrap">
-        <div class="text-overline text-weight-bold text-grey-7 q-mb-sm letter-spacing-wide">ON THIS PAGE</div>
-        <q-separator class="q-mb-sm" />
-        <q-scroll-area class="col-grow">
-          <ul v-if="headings.length > 0" class="toc-list q-pa-none">
-            <li
-              v-for="heading in headings"
-              :key="heading.id"
-              :class="`toc-item-level-${heading.level}`"
-              class="toc-li"
-            >
-              <a
-                href="javascript:void(0)"
-                class="toc-link block ellipsis"
-                @click="scrollToHeading(heading.id)"
-              >
-                {{ heading.text }}
-              </a>
-            </li>
-          </ul>
-          <div v-else class="text-caption text-grey-5 q-py-sm italic">
-            No headings on this page
-          </div>
-        </q-scroll-area>
-      </div>
-    </q-drawer>
+
 
     <!-- Center Reading View Container -->
     <q-page-container class="bg-grey-2 doc-page-container">
@@ -171,16 +128,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { DOCUMENTATION_REGISTRY, type DocItem } from '../utils/docRegistry'
-import { useDocToc } from '../composables/useDocToc'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { headings } = useDocToc()
 
 const search = ref('')
 const leftDrawerOpen = ref(false)
-const rightDrawerOpen = ref(false)
 
 const currentScope = computed<'app' | 'platform'>(() => {
   return route.path.startsWith('/platform') ? 'platform' : 'app'
@@ -238,12 +192,7 @@ const onSelectDoc = (doc: DocItem) => {
   }
 }
 
-const scrollToHeading = (id: string) => {
-  const el = document.getElementById(id)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-}
+
 
 const closeTab = () => {
   if (typeof window !== 'undefined') {
@@ -335,48 +284,5 @@ onMounted(() => {
   color: var(--bw-theme-ink);
 }
 
-/* TOC (On this page) styling */
-.toc-container {
-  padding: 8px 6px;
-}
 
-.toc-scroll-area {
-  height: calc(100vh - 200px);
-}
-
-.toc-list {
-  list-style: none;
-}
-
-.toc-li {
-  margin-bottom: 0.5rem;
-}
-
-.toc-link {
-  font-size: 0.85rem;
-  color: var(--bw-theme-muted);
-  text-decoration: none;
-  transition: color 0.18s ease;
-  
-  &:hover {
-    color: var(--bw-theme-primary);
-  }
-}
-
-.toc-item-level-1 {
-  font-weight: 600;
-}
-
-.toc-item-level-2 {
-  padding-left: 12px;
-}
-
-.toc-item-level-3 {
-  padding-left: 24px;
-  font-size: 0.8rem;
-}
-
-.letter-spacing-wide {
-  letter-spacing: 0.08em;
-}
 </style>

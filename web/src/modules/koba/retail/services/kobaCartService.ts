@@ -1,5 +1,9 @@
 import { kobaCartRepository } from '../repositories/kobaCartRepository'
-import type { KobaCart, KobaCartItem, KobaCartSnapshot } from '../repositories/kobaCartRepository'
+import type {
+  KobaCart,
+  KobaCartItem,
+  KobaCartSnapshot,
+} from '../repositories/kobaCartRepository'
 
 export interface KobaCartServiceResult<T> {
   success: boolean
@@ -7,9 +11,12 @@ export interface KobaCartServiceResult<T> {
   error?: string
 }
 
-const getCart = async (tenantId: number, marketId: string | null): Promise<KobaCartServiceResult<KobaCartSnapshot | null>> => {
+const getCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCartServiceResult<KobaCartSnapshot | null>> => {
   try {
-    const data = await kobaCartRepository.getCart(tenantId, marketId)
+    const data = await kobaCartRepository.getCart(tenantId, customerGroupId)
     return { success: true, data }
   } catch (error) {
     return {
@@ -19,9 +26,12 @@ const getCart = async (tenantId: number, marketId: string | null): Promise<KobaC
   }
 }
 
-const createCart = async (tenantId: number, userEmail: string, marketId: string | null): Promise<KobaCartServiceResult<KobaCart>> => {
+const createCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCartServiceResult<KobaCart>> => {
   try {
-    const data = await kobaCartRepository.createCart(tenantId, userEmail, marketId)
+    const data = await kobaCartRepository.createCart(tenantId, customerGroupId)
     return { success: true, data }
   } catch (error) {
     return {
@@ -31,7 +41,24 @@ const createCart = async (tenantId: number, userEmail: string, marketId: string 
   }
 }
 
-const createCartItem = async (payload: Partial<KobaCartItem>): Promise<KobaCartServiceResult<KobaCartItem>> => {
+const getOrCreateCart = async (
+  tenantId: number,
+  customerGroupId: number | null
+): Promise<KobaCartServiceResult<KobaCartSnapshot>> => {
+  try {
+    const data = await kobaCartRepository.getOrCreateCart(tenantId, customerGroupId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load or create Koba cart.',
+    }
+  }
+}
+
+const createCartItem = async (
+  payload: Partial<KobaCartItem>
+): Promise<KobaCartServiceResult<KobaCartItem>> => {
   try {
     const data = await kobaCartRepository.createCartItem(payload)
     return { success: true, data }
@@ -43,7 +70,10 @@ const createCartItem = async (payload: Partial<KobaCartItem>): Promise<KobaCartS
   }
 }
 
-const updateCartItem = async (itemId: number, payload: Partial<KobaCartItem>): Promise<KobaCartServiceResult<KobaCartItem>> => {
+const updateCartItem = async (
+  itemId: number,
+  payload: Partial<KobaCartItem>
+): Promise<KobaCartServiceResult<KobaCartItem>> => {
   try {
     const data = await kobaCartRepository.updateCartItem(itemId, payload)
     return { success: true, data }
@@ -55,7 +85,9 @@ const updateCartItem = async (itemId: number, payload: Partial<KobaCartItem>): P
   }
 }
 
-const deleteCartItem = async (itemId: number): Promise<KobaCartServiceResult<KobaCartItem>> => {
+const deleteCartItem = async (
+  itemId: number
+): Promise<KobaCartServiceResult<KobaCartItem>> => {
   try {
     const data = await kobaCartRepository.deleteCartItem(itemId)
     return { success: true, data }
@@ -67,7 +99,9 @@ const deleteCartItem = async (itemId: number): Promise<KobaCartServiceResult<Kob
   }
 }
 
-const clearCartItems = async (cartId: number): Promise<KobaCartServiceResult<void>> => {
+const clearCartItems = async (
+  cartId: number
+): Promise<KobaCartServiceResult<void>> => {
   try {
     await kobaCartRepository.clearCartItems(cartId)
     return { success: true }
@@ -82,6 +116,7 @@ const clearCartItems = async (cartId: number): Promise<KobaCartServiceResult<voi
 export const kobaCartService = {
   getCart,
   createCart,
+  getOrCreateCart,
   createCartItem,
   updateCartItem,
   deleteCartItem,

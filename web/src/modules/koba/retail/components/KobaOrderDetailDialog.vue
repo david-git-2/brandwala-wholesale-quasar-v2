@@ -40,16 +40,52 @@
           </div>
           <div class="col-12 col-sm-6">
             <div class="info-block">
+              <span class="info-label">Total Units</span>
+              <span class="info-val">{{ totalQuantity }}</span>
+            </div>
+            <div class="info-block q-mt-sm">
               <span class="info-label">Subtotal</span>
+              <span class="info-val">৳{{ Number(order.subtotal_gbp || 0).toFixed(2) }}</span>
+            </div>
+            <div class="info-block q-mt-sm">
+              <span class="info-label">Delivery</span>
+              <span class="info-val">৳0.00</span>
+            </div>
+            <div class="info-block q-mt-sm">
+              <span class="info-label text-primary">Total</span>
               <span class="info-val text-primary text-weight-bold">৳{{ Number(order.subtotal_gbp || 0).toFixed(2) }}</span>
             </div>
+            
+            <q-separator class="q-my-sm" />
+            
             <div class="info-block q-mt-sm">
-              <span class="info-label">Total Commission</span>
+              <span class="info-label">Products Commission</span>
               <span class="info-val text-positive text-weight-bold">৳{{ Number(order.total_commission || 0).toFixed(2) }}</span>
             </div>
-            <div class="info-block q-mt-sm">
-              <span class="info-label">Items Count</span>
-              <span class="info-val">{{ order.item_count }}</span>
+            <div class="info-block q-mt-sm" v-if="order.extra_profit_user || order.extra_profit_company">
+              <span class="info-label">Extra Profit Share (You 90% | Company 10%)</span>
+              <span class="info-val text-positive">+৳{{ Number(order.extra_profit_user || 0).toFixed(2) }} | +৳{{ Number(order.extra_profit_company || 0).toFixed(2) }}</span>
+            </div>
+            <div class="info-block q-mt-sm" v-if="order.delivery_adjustment">
+              <span class="info-label">Delivery Adjustment</span>
+              <span class="info-val text-positive">+৳{{ Number(order.delivery_adjustment || 0).toFixed(2) }}</span>
+            </div>
+            <div class="info-block q-mt-sm" v-if="order.cod_charge">
+              <span class="info-label">COD Charge (1.00%)</span>
+              <span class="info-val text-negative">-৳{{ Number(order.cod_charge || 0).toFixed(2) }}</span>
+            </div>
+            <div class="info-block q-mt-sm" v-if="order.packing_charge">
+              <span class="info-label">Packing Charge</span>
+              <span class="info-val text-negative">-৳{{ Number(order.packing_charge || 0).toFixed(2) }}</span>
+            </div>
+            <div class="info-block q-mt-sm" v-if="order.invoice_charge">
+              <span class="info-label">Invoice Charge</span>
+              <span class="info-val text-negative">-৳{{ Number(order.invoice_charge || 0).toFixed(2) }}</span>
+            </div>
+            
+            <div class="info-block q-mt-sm bg-blue-1">
+              <span class="info-label text-primary">Order Commission</span>
+              <span class="info-val text-primary text-weight-bold">৳{{ netOrderCommission.toFixed(2) }}</span>
             </div>
           </div>
         </div>
@@ -136,6 +172,26 @@ const emit = defineEmits<{
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
+})
+
+const totalQuantity = computed(() => {
+  return props.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+})
+
+const netOrderCommission = computed(() => {
+  if (!props.order) return 0
+  
+  if (props.order.net_order_commission) {
+    return Number(props.order.net_order_commission)
+  }
+  
+  // Fallback calculation if db value is missing
+  return Number(props.order.total_commission || 0) + 
+         Number(props.order.extra_profit_user || 0) + 
+         Number(props.order.delivery_adjustment || 0) - 
+         Number(props.order.cod_charge || 0) - 
+         Number(props.order.packing_charge || 0) - 
+         Number(props.order.invoice_charge || 0)
 })
 
 const statusColor = computed(() => {

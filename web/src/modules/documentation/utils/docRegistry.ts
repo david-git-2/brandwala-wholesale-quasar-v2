@@ -19,6 +19,13 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     scope: 'both',
   },
   {
+    key: 'package_commands',
+    title: 'Automation & Script Commands',
+    description: 'Detailed walkthrough and descriptions of package.json automation commands, scrapers, and database sync scripts.',
+    filename: 'doc/package_commands.md',
+    scope: 'both',
+  },
+  {
     key: 'backend_features',
     title: 'Backend Features Description',
     description: 'Detailed analysis of background tasks, sync routines, and database roles.',

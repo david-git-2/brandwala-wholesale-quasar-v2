@@ -9,6 +9,8 @@
     "lint": "npm --prefix web run lint",
     "python:pc": "bash scripts/run-python-pc.sh",
     "python:wts": "bash scripts/run-python-wts.sh",
+    "python:scrape:pc": "bash -c 'cd python && source ../.venv/bin/activate && python3 scripts/uk/export_pricecheck_scraper.py'",
+    "python:sync:scraped-pc": "bash -c 'cd python && source ../.venv/bin/activate && python3 scripts/uk/sync_scraped_pc_to_supabase.py'",
     "python:koba-retail": "bash scripts/run-python-koba-retail.sh",
     "python:koba-wholesale": "bash scripts/run-python-koba-wholesale.sh",
     "python:normalize:pc": "python3 python/scripts/uk/normalize_pc_data.py --input web/public/uk/pc_data.json",

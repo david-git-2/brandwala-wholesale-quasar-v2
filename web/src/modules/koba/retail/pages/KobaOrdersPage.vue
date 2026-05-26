@@ -128,6 +128,7 @@ import { date } from 'quasar'
 import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
+import type { KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import KobaOrderDetailDialog from 'src/modules/koba/retail/components/KobaOrderDetailDialog.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
@@ -139,7 +140,7 @@ const productsRouteName = computed(() => {
   return authStore.scope === 'shop' ? 'shop-koba-retail-page' : 'app-koba-retail-page'
 })
 
-const filterStatus = ref<string | null>(null)
+const filterStatus = ref<KobaOrderStatus | null>(null)
 const detailOpen = ref(false)
 const filterDrawerOpen = ref(false)
 
