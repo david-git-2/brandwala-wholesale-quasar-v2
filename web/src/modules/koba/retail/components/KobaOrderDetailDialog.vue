@@ -60,7 +60,7 @@
             
             <div class="info-block q-mt-sm">
               <span class="info-label">Products Commission</span>
-              <span class="info-val text-positive text-weight-bold">৳{{ Number(order.total_commission || 0).toFixed(2) }}</span>
+              <span class="info-val text-positive text-weight-bold">৳{{ productsCommissionDisplay.toFixed(2) }}</span>
             </div>
             <div class="info-block q-mt-sm" v-if="order.extra_profit_user || order.extra_profit_company">
               <span class="info-label">Extra Profit Share (You 90% | Company 10%)</span>
@@ -138,13 +138,16 @@
                 Qty: <span class="text-weight-medium text-grey-8">{{ item.quantity }}</span> (Case Size: {{ item.case_size }})
               </q-item-label>
               <q-item-label caption v-if="item.commission">
-                Commission: <span class="text-weight-medium text-positive">৳{{ Number(item.commission).toFixed(2) }}</span> / unit
+                Commission: <span class="text-weight-medium text-positive">৳{{ Number(Math.max(0, (item.commission || 0) - (settingsStore.settings?.gateway_charge_flat ?? 20))).toFixed(2) }}</span> / unit
               </q-item-label>
             </q-item-section>
 
             <q-item-section side class="text-right">
-              <div class="text-weight-bold text-primary">৳{{ Number((item.unit_price_gbp || 0) * item.quantity).toFixed(2) }}</div>
-              <div class="text-caption text-grey-6">৳{{ Number(item.unit_price_gbp || 0).toFixed(2) }} each</div>
+              <div class="text-weight-bold text-primary">৳{{ Number((item.custom_price_gbp || item.unit_price_gbp || 0) * item.quantity).toFixed(2) }}</div>
+              <div class="text-caption text-grey-6">৳{{ Number(item.custom_price_gbp || item.unit_price_gbp || 0).toFixed(2) }} each</div>
+              <div v-if="item.custom_price_gbp && item.custom_price_gbp > (item.unit_price_gbp || 0)" class="text-caption text-grey-5 text-strike">
+                Orig: ৳{{ Number(item.unit_price_gbp || 0).toFixed(2) }}
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -154,8 +157,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { date } from 'quasar'
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
 import type { KobaOrder, KobaOrderItem } from '../repositories/kobaOrderRepository'
 
 const props = defineProps<{
@@ -164,6 +168,12 @@ const props = defineProps<{
   items: KobaOrderItem[]
   loading: boolean
 }>()
+
+const settingsStore = useKobaSettingsStore()
+
+onMounted(() => {
+  void settingsStore.fetchSettings()
+})
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
@@ -178,6 +188,11 @@ const totalQuantity = computed(() => {
   return props.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
 })
 
+const productsCommissionDisplay = computed(() => {
+  if (!props.order) return 0
+  return Number(props.order.total_commission || 0) + Number(props.order.extra_profit_user || 0)
+})
+
 const netOrderCommission = computed(() => {
   if (!props.order) return 0
   
@@ -186,8 +201,7 @@ const netOrderCommission = computed(() => {
   }
   
   // Fallback calculation if db value is missing
-  return Number(props.order.total_commission || 0) + 
-         Number(props.order.extra_profit_user || 0) + 
+  return productsCommissionDisplay.value + 
          Number(props.order.delivery_adjustment || 0) - 
          Number(props.order.cod_charge || 0) - 
          Number(props.order.packing_charge || 0) - 

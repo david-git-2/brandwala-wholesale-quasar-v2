@@ -454,6 +454,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         requiredAction: 'view',
       },
       {
+        scope: 'app',
+        title: 'Settings',
+        caption: 'Configure retail settings and charges',
+        icon: 'settings',
+        routeSegment: 'koba/retail/settings',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Customers',
+        caption: 'View customer profiles and order frequency',
+        icon: 'people',
+        routeSegment: 'koba/retail/customers',
+        requiredAction: 'view',
+      },
+      {
         scope: 'shop',
         title: 'Products',
         caption: 'Browse Koba Retail products',

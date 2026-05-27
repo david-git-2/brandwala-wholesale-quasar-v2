@@ -9,6 +9,16 @@
           {{ store.meta.total }} products
         </div>
       </div>
+      <div v-if="isAdminOrSuper" class="row items-center q-gutter-sm">
+        <q-btn
+          flat
+          no-caps
+          color="primary"
+          icon="settings"
+          label="Settings"
+          :to="{ name: 'app-koba-retail-settings-page' }"
+        />
+      </div>
     </div>
 
     <!-- Filter Toolbar -->
@@ -118,6 +128,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaRetailStore } from 'src/modules/koba/retail/stores/kobaRetailStore'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
 import ProductCard from 'src/modules/koba/retail/components/ProductCard.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
@@ -125,6 +136,7 @@ import FilterSidebar from 'src/components/FilterSidebar.vue'
 const store = useKobaRetailStore()
 const cartStore = useKobaCartStore()
 const authStore = useAuthStore()
+const settingsStore = useKobaSettingsStore()
 
 const isAdminOrSuper = computed(() => {
   const role = authStore.matchedRole
@@ -204,6 +216,7 @@ onMounted(async () => {
   const promises: Promise<unknown>[] = [
     store.fetchLookups(),
     store.fetchProducts(1),
+    settingsStore.fetchSettings(),
   ]
   if (!isAdminOrSuper.value) {
     promises.push(cartStore.fetchCart())

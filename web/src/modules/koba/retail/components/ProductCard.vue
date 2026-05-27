@@ -5,6 +5,7 @@
     <div class="product-image-wrap">
       <!-- Details Info Button -->
       <q-btn
+        v-if="isAdminOrSuper"
         flat round dense
         color="grey-7"
         icon="info"
@@ -196,8 +197,10 @@ import { computed, ref, watch } from 'vue'
 import { marked } from 'marked'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
 
 const authStore = useAuthStore()
+const settingsStore = useKobaSettingsStore()
 
 const isAdminOrSuper = computed(() => {
   const role = authStore.matchedRole
@@ -261,9 +264,9 @@ const formattedPrice = computed(() => {
 })
 
 const formattedCommission = computed(() => {
-  return Number(props.product.commission ?? 0).toFixed(2)
+  const gatewayChargeFlat = settingsStore.settings?.gateway_charge_flat ?? 20
+  return (Number(props.product.commission ?? 0) - gatewayChargeFlat).toFixed(2)
 })
-
 // --- qty stepper ---
 const step = computed(() => Math.max(1, props.product.case_size ?? props.product.minimum_quantity ?? 1))
 const qty = ref(step.value)

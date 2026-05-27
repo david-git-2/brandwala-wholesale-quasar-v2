@@ -21,6 +21,15 @@
           :to="{ name: ordersRouteName }"
         />
         <q-btn
+          v-if="isAdminOrSuper"
+          flat
+          no-caps
+          color="primary"
+          icon="settings"
+          label="Settings"
+          :to="{ name: settingsRouteName }"
+        />
+        <q-btn
           v-if="cartStore.items.length > 0"
           outline
           color="negative"
@@ -85,7 +94,7 @@
                   </div>
 
                   <q-btn
-                    v-if="isDirty(item)"
+                    v-if="isDirty(item) || isPriceDirty(item)"
                     color="primary"
                     icon="save"
                     label="Save"
@@ -112,13 +121,18 @@
 
               <q-item-section side class="text-right">
                 <div class="text-h6 text-primary text-weight-bold">
-                  ৳{{ Number((item.unit_price_gbp || 0) * getDraftQty(item)).toFixed(2) }}
+                  ৳{{ Number(getDraftPrice(item) * getDraftQty(item)).toFixed(2) }}
                 </div>
-                <div class="text-caption text-grey-6">
-                  ৳{{ Number(item.unit_price_gbp || 0).toFixed(2) }} each
+                <div class="text-caption text-grey-6 row items-center justify-end q-gutter-x-xs">
+                  <span>৳{{ Number(getDraftPrice(item)).toFixed(2) }} each</span>
+                  <q-btn flat round dense icon="edit" size="xs" color="primary" class="q-ml-xs">
+                    <q-popup-edit v-model="draftPrice[item.id]" :validate="val => val >= (item.unit_price_gbp || 0)" title="Set Selling Price" buttons v-slot="scope">
+                      <q-input type="number" v-model.number="scope.value" dense autofocus :rules="[val => val >= (item.unit_price_gbp || 0) || 'Cannot be lower than base price']" @keyup.enter="scope.set" />
+                    </q-popup-edit>
+                  </q-btn>
                 </div>
                 <div class="text-caption text-positive q-mt-xs" v-if="item.commission">
-                  Commission: ৳{{ Number(item.commission * getDraftQty(item)).toFixed(2) }}
+                  Commission: ৳{{ Number(((item.commission || 0) - gatewayChargeFlat) * getDraftQty(item)).toFixed(2) }}
                 </div>
               </q-item-section>
             </q-item>
@@ -155,7 +169,7 @@
 
           <div class="row justify-between q-py-xs text-grey-8">
             <div>Products Commission</div>
-            <div class="text-weight-bold text-positive">৳{{ totalCommission.toFixed(2) }}</div>
+            <div class="text-weight-bold text-positive">৳{{ productsCommissionDisplay.toFixed(2) }}</div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="extraProfitTotal > 0">
             <div>Extra Profit Share (You 90% | Company 10%)</div>
@@ -166,7 +180,7 @@
             <div class="text-weight-bold text-positive">+৳{{ deliveryAdjustment.toFixed(2) }}</div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="codCharge > 0">
-            <div>COD Charge (1.00%)</div>
+            <div>COD Charge ({{ settingsStore.settings?.cod_charge_pct || 1 }}%)</div>
             <div class="text-weight-bold text-negative">-৳{{ codCharge.toFixed(2) }}</div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="packingCharge > 0">
@@ -213,13 +227,20 @@
               use-input
               input-debounce="0"
               @filter="filterDistricts"
+              @update:model-value="onDistrictChange"
               :rules="[val => !!val || 'District is required']"
             />
-            <q-input
+            <q-select
               v-model="shipping.thana"
-              label="Thana *"
+              :label="!shipping.district ? 'Select district first *' : loadingThanas ? 'Loading thanas... *' : thanaOptions.length ? 'Thana *' : 'No thanas found *'"
               outlined dense
+              :options="thanaOptions"
+              use-input
+              input-debounce="0"
+              @filter="filterThanas"
               :rules="[val => !!val || 'Thana is required']"
+              :disable="!shipping.district || loadingThanas"
+              :loading="loadingThanas"
             />
             <q-input
               v-model="shipping.address"
@@ -259,9 +280,11 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
 import type { KobaCartItem } from '../repositories/kobaCartRepository'
 
 const cartStore = useKobaCartStore()
+const settingsStore = useKobaSettingsStore()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -270,6 +293,13 @@ const productsRouteName = computed(() => {
 })
 const ordersRouteName = computed(() => {
   return authStore.scope === 'shop' ? 'shop-koba-retail-orders-page' : 'app-koba-retail-orders-page'
+})
+const settingsRouteName = computed(() => {
+  return 'app-koba-retail-settings-page'
+})
+
+const isAdminOrSuper = computed(() => {
+  return ['admin', 'staff', 'super_admin'].includes(authStore.role || '')
 })
 
 // District list matching brandwala retail
@@ -287,7 +317,13 @@ const DISTRICT_OPTIONS = [
 ]
 
 const districtOptions = ref(DISTRICT_OPTIONS)
+const districtThanaMap = ref<Record<string, string[]>>({})
+const dynamicDistricts = ref<string[]>([])
+const thanaOptions = ref<string[]>([])
+const loadingThanas = ref(false)
+
 const draftQty = ref<Record<number, number>>({})
+const draftPrice = ref<Record<number, number>>({})
 
 const shipping = ref({
   name: '',
@@ -298,12 +334,79 @@ const shipping = ref({
   free_delivery: false
 })
 
+const activeThanas = computed(() => {
+  const dist = shipping.value.district
+  if (!dist) return []
+  return districtThanaMap.value[dist] || []
+})
+
+interface DistrictData {
+  name: string
+  thanas: string[]
+}
+
+const currentDistrictList = computed(() => {
+  return dynamicDistricts.value.length > 0 ? dynamicDistricts.value : DISTRICT_OPTIONS
+})
+
+function buildDistrictThanaMap(source: DistrictData[] = []) {
+  const out: Record<string, string[]> = {}
+  if (!Array.isArray(source)) return out
+  source.forEach((district) => {
+    const districtName = String(district?.name || "").trim()
+    if (!districtName) return
+    const thanas = Array.isArray(district?.thanas) ? district.thanas : []
+    const normalizedThanas = thanas
+      .map((name) => String(name || "").trim())
+      .filter(Boolean)
+    if (!out[districtName]) out[districtName] = []
+    out[districtName].push(...normalizedThanas)
+  })
+  Object.keys(out).forEach((district) => {
+    out[district] = Array.from(new Set(out[district])).sort((a, b) =>
+      a.localeCompare(b)
+    )
+  })
+  return out
+}
+
+function onDistrictChange() {
+  shipping.value.thana = ''
+  thanaOptions.value = activeThanas.value
+}
+
 onMounted(async () => {
-  await cartStore.fetchCart()
-  // Populate draft quantities
+  await Promise.all([
+    cartStore.fetchCart(),
+    settingsStore.fetchSettings()
+  ])
+  // Populate draft quantities and prices
   cartStore.items.forEach((item) => {
     draftQty.value[item.id] = item.quantity
+    draftPrice.value[item.id] = item.custom_price_gbp || item.unit_price_gbp || 0
   })
+
+  // Load district/thana JSON
+  loadingThanas.value = true
+  try {
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const url = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}data/district_thana.json`
+    const res = await fetch(url, { cache: 'force-cache' })
+    if (res.ok) {
+      const json = await res.json()
+      const districts = Array.isArray(json?.districts) ? (json.districts as DistrictData[]) : []
+      const parsedDistList = districts.map((d) => String(d?.name || '').trim()).filter(Boolean)
+      if (parsedDistList.length > 0) {
+        dynamicDistricts.value = parsedDistList.sort((a, b) => a.localeCompare(b))
+      }
+      districtThanaMap.value = buildDistrictThanaMap(districts)
+    }
+  } catch (err) {
+    console.error('Failed to load district/thana data:', err)
+  } finally {
+    loadingThanas.value = false
+    districtOptions.value = currentDistrictList.value
+  }
 })
 
 function toDirectGoogleImageUrl(url: string | null) {
@@ -326,12 +429,21 @@ function bumpQty(item: KobaCartItem, amount: number) {
   draftQty.value[item.id] = next
 }
 
+function getDraftPrice(item: KobaCartItem): number {
+  const val = draftPrice.value[item.id]
+  return val !== undefined ? val : (item.custom_price_gbp || item.unit_price_gbp || 0)
+}
+
 function isDirty(item: KobaCartItem): boolean {
   return getDraftQty(item) !== item.quantity
 }
 
+function isPriceDirty(item: KobaCartItem): boolean {
+  return getDraftPrice(item) !== (item.custom_price_gbp || item.unit_price_gbp || 0)
+}
+
 const hasUnsavedChanges = computed(() => {
-  return cartStore.items.some((item) => isDirty(item))
+  return cartStore.items.some((item) => isDirty(item) || isPriceDirty(item))
 })
 
 const totalQty = computed(() => {
@@ -339,32 +451,67 @@ const totalQty = computed(() => {
 })
 
 const totalPrice = computed(() => {
-  return cartStore.items.reduce((sum, item) => sum + (item.unit_price_gbp || 0) * getDraftQty(item), 0)
+  return cartStore.items.reduce((sum, item) => sum + getDraftPrice(item) * getDraftQty(item), 0)
 })
+
+const gatewayChargeFlat = computed(() => settingsStore.settings?.gateway_charge_flat ?? 20)
 
 const totalCommission = computed(() => {
-  return cartStore.items.reduce((sum, item) => sum + (item.commission || 0) * getDraftQty(item), 0)
+  return cartStore.items.reduce((sum, item) => {
+    const effectiveComm = Math.max(0, (item.commission || 0) - gatewayChargeFlat.value)
+    return sum + effectiveComm * getDraftQty(item)
+  }, 0)
 })
 
-const deliveryCharge = ref(0)
+const deliveryCharge = computed(() => {
+  if (shipping.value.free_delivery || !shipping.value.district) return 0
+  const rates = settingsStore.settings?.delivery_rates || { "default": 110, "Dhaka": 100 }
+  return rates[shipping.value.district] ?? rates['default'] ?? 110
+})
+
 const finalTotal = computed(() => totalPrice.value + deliveryCharge.value)
 
-const extraProfitTotal = ref(0)
-const extraProfitUser = computed(() => extraProfitTotal.value * 0.9)
-const extraProfitCompany = computed(() => extraProfitTotal.value * 0.1)
+const extraProfitTotal = computed(() => {
+  return cartStore.items.reduce((sum, item) => {
+    const custom = getDraftPrice(item)
+    const base = item.unit_price_gbp || 0
+    if (custom > base) {
+      return sum + (custom - base) * getDraftQty(item)
+    }
+    return sum
+  }, 0)
+})
+
+const extraProfitUserPct = computed(() => settingsStore.settings?.extra_profit_user_pct !== undefined ? settingsStore.settings.extra_profit_user_pct / 100 : 0.9)
+const extraProfitCompanyPct = computed(() => settingsStore.settings?.extra_profit_company_pct !== undefined ? settingsStore.settings.extra_profit_company_pct / 100 : 0.1)
+
+const extraProfitUser = computed(() => extraProfitTotal.value * extraProfitUserPct.value)
+const extraProfitCompany = computed(() => extraProfitTotal.value * extraProfitCompanyPct.value)
 
 const deliveryAdjustment = ref(0)
-const codCharge = computed(() => finalTotal.value * 0.01)
-const packingCharge = computed(() => totalQty.value > 0 ? 37 : 0) // Placeholder logic based on text
-const invoiceCharge = computed(() => totalQty.value > 0 ? 1 : 0) // Placeholder logic based on text
+
+const codPct = computed(() => settingsStore.settings?.cod_charge_pct !== undefined ? settingsStore.settings.cod_charge_pct / 100 : 0.01)
+const codCharge = computed(() => finalTotal.value * codPct.value)
+
+const packingCharge = computed(() => totalQty.value > 0 ? (settingsStore.settings?.packing_charge_flat ?? 37) : 0)
+const invoiceCharge = computed(() => totalQty.value > 0 ? (settingsStore.settings?.invoice_charge_flat ?? 1) : 0)
+
+const productsCommissionDisplay = computed(() => {
+  return totalCommission.value + extraProfitUser.value
+})
 
 const netOrderCommission = computed(() => {
-  return totalCommission.value + extraProfitUser.value + deliveryAdjustment.value - codCharge.value - packingCharge.value - invoiceCharge.value
+  return productsCommissionDisplay.value + deliveryAdjustment.value - codCharge.value - packingCharge.value - invoiceCharge.value
 })
 
 async function onSaveItem(item: KobaCartItem) {
   const targetQty = getDraftQty(item)
-  await cartStore.updateItemQty(item.id, targetQty)
+  if (isDirty(item)) {
+    await cartStore.updateItemQty(item.id, targetQty)
+  }
+  if (isPriceDirty(item)) {
+    await cartStore.updateItemCustomPrice(item.id, getDraftPrice(item))
+  }
 }
 
 async function onRemoveItem(item: KobaCartItem) {
@@ -375,18 +522,32 @@ async function onRemoveItem(item: KobaCartItem) {
 async function onClearCart() {
   await cartStore.clearCart()
   draftQty.value = {}
+  draftPrice.value = {}
 }
 
 function filterDistricts(val: string, update: (cb: () => void) => void) {
   if (val === '') {
     update(() => {
-      districtOptions.value = DISTRICT_OPTIONS
+      districtOptions.value = currentDistrictList.value
     })
     return
   }
   update(() => {
     const needle = val.toLowerCase()
-    districtOptions.value = DISTRICT_OPTIONS.filter(v => v.toLowerCase().indexOf(needle) > -1)
+    districtOptions.value = currentDistrictList.value.filter(v => v.toLowerCase().indexOf(needle) > -1)
+  })
+}
+
+function filterThanas(val: string, update: (cb: () => void) => void) {
+  if (val === '') {
+    update(() => {
+      thanaOptions.value = activeThanas.value
+    })
+    return
+  }
+  update(() => {
+    const needle = val.toLowerCase()
+    thanaOptions.value = activeThanas.value.filter(v => v.toLowerCase().indexOf(needle) > -1)
   })
 }
 

@@ -254,6 +254,48 @@ export const useKobaCartStore = defineStore('kobaCart', {
       }
     },
 
+    async updateItemCustomPrice(
+      itemId: number,
+      customPrice: number | null
+    ) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result =
+          await kobaCartService.updateCartItem(
+            itemId,
+            { custom_price_gbp: customPrice }
+          )
+
+        if (!result.success || !result.data) {
+          this.error =
+            result.error ??
+            'Failed to update custom price.'
+
+          handleApiFailure(result, this.error)
+
+          return result
+        }
+
+        const index = this.items.findIndex(
+          (item) => item.id === itemId
+        )
+
+        if (index >= 0) {
+          this.items.splice(index, 1, result.data)
+        }
+
+        showSuccessNotification(
+          'Custom selling price applied.'
+        )
+
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
     async removeItem(itemId: number) {
       this.saving = true
       this.error = null

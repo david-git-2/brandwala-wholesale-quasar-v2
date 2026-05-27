@@ -28,10 +28,13 @@
           v-if="canShowCartIcon"
           color="primary"
           icon="shopping_cart"
-          label="Cart"
+          :label="isKobaActive ? '' : 'Cart'"
+          :flat="isKobaActive"
+          :round="isKobaActive"
+          :dense="isKobaActive"
+          :unelevated="!isKobaActive"
+          :class="isKobaActive ? '' : 'shop-cart-btn'"
           no-caps
-          unelevated
-          class="shop-cart-btn"
           @click="goToCart"
         >
           <q-badge
@@ -50,18 +53,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 import { canAccessModule } from 'src/modules/navigation/modulePermissions'
+import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const kobaCartStore = useKobaCartStore()
 const router = useRouter()
+const route = useRoute()
 const { links } = useShopWorkspaceLinks()
 
 const tenantName = computed(() => authStore.tenant?.name ?? '')
@@ -82,7 +88,16 @@ const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/shop/login` : '/shop/login',
 )
 
-const cartItemCount = computed(() => cartStore.items.length)
+const isKobaActive = computed(() => {
+  return !!(route.name && String(route.name).includes('koba'))
+})
+
+const cartItemCount = computed(() => {
+  if (isKobaActive.value) {
+    return kobaCartStore.itemCount
+  }
+  return cartStore.items.length
+})
 
 const isCommerceCartActive = computed(() =>
   canAccessModule({
@@ -106,7 +121,12 @@ const isStandardCartActive = computed(() =>
   }),
 )
 
-const canShowCartIcon = computed(() => isCommerceCartActive.value || isStandardCartActive.value)
+const canShowCartIcon = computed(() => {
+  if (isKobaActive.value) {
+    return true
+  }
+  return isCommerceCartActive.value || isStandardCartActive.value
+})
 
 const isCommerceOrderActive = computed(() =>
   canAccessModule({
@@ -130,9 +150,37 @@ const isStandardOrderActive = computed(() =>
   }),
 )
 
-const canShowOrdersIcon = computed(() => isCommerceOrderActive.value || isStandardOrderActive.value)
+const canShowOrdersIcon = computed(() => {
+  if (isKobaActive.value) {
+    return true
+  }
+  return isCommerceOrderActive.value || isStandardOrderActive.value
+})
+
+const kobaCartRouteName = computed(() => {
+  const name = String(route.name ?? '')
+  if (name.includes('retail')) {
+    return name.includes('shop') ? 'shop-koba-retail-cart-page' : 'app-koba-retail-cart-page'
+  }
+  if (name.includes('wholesale') || name.includes('resale')) {
+    return name.includes('shop') ? 'shop-koba-wholesale-cart-page' : 'app-koba-wholesale-cart-page'
+  }
+  return name.includes('shop') ? 'shop-koba-retail-cart-page' : 'app-koba-retail-cart-page'
+})
 
 const goToCart = async () => {
+  if (isKobaActive.value) {
+    const targetRoute = kobaCartRouteName.value
+    if (router.hasRoute(targetRoute)) {
+      await router.push({ name: targetRoute })
+    } else {
+      const fallbackRoute = String(route.name ?? '').includes('shop') ? 'shop-koba-retail-cart-page' : 'app-koba-retail-cart-page'
+      if (router.hasRoute(fallbackRoute)) {
+        await router.push({ name: fallbackRoute })
+      }
+    }
+    return
+  }
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
   if (isCommerceCartActive.value) {
     await router.push(`${tenantPrefix}/shop/commerce-shop/cart`)
@@ -142,6 +190,13 @@ const goToCart = async () => {
 }
 
 const goToOrders = async () => {
+  if (isKobaActive.value) {
+    const targetRoute = String(route.name ?? '').includes('shop') ? 'shop-koba-retail-orders-page' : 'app-koba-retail-orders-page'
+    if (router.hasRoute(targetRoute)) {
+      await router.push({ name: targetRoute })
+      return
+    }
+  }
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
   if (isCommerceOrderActive.value) {
     await router.push(`${tenantPrefix}/shop/commerce-shop/orders`)
@@ -157,7 +212,19 @@ onMounted(() => {
       customer_group_id: authStore.customerGroupId,
     })
   }
+  if (isKobaActive.value) {
+    void kobaCartStore.fetchCart()
+  }
 })
+
+watch(
+  () => isKobaActive.value,
+  (active) => {
+    if (active) {
+      void kobaCartStore.fetchCart()
+    }
+  },
+)
 </script>
 
 <style scoped>

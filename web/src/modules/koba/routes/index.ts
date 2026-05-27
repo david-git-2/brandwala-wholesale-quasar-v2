@@ -60,6 +60,27 @@ const kobaRoutes: RouteRecordRaw[] = [
         name: 'app-koba-retail-orders-page',
         component: () => import('src/modules/koba/retail/pages/KobaOrdersPage.vue'),
       },
+      {
+        path: 'retail/orders/:id',
+        name: 'app-koba-retail-order-detail-page',
+        component: () => import('src/modules/koba/retail/pages/KobaOrderDetailPage.vue'),
+      },
+      {
+        path: 'retail/settings',
+        name: 'app-koba-retail-settings-page',
+        component: () => import('src/modules/koba/retail/pages/KobaRetailSettingsPage.vue'),
+      },
+      {
+        path: 'retail/customers',
+        name: 'app-koba-retail-customers-page',
+        component: () => import('src/modules/koba/retail/pages/KobaRetailCustomersPage.vue'),
+      },
+      {
+        path: 'retail/customers/:phone',
+        name: 'app-koba-retail-customer-profile-page',
+        component: () => import('src/modules/koba/retail/pages/KobaRetailCustomerProfilePage.vue'),
+        props: true,
+      },
     ],
   },
   {
@@ -104,6 +125,21 @@ const kobaRoutes: RouteRecordRaw[] = [
         path: 'retail/orders',
         name: 'shop-koba-retail-orders-page',
         component: () => import('src/modules/koba/retail/pages/KobaOrdersPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
+          requiredScope: 'shop',
+          requireTenantContext: true,
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+          requiredModule: 'koba_retail',
+        }),
+      },
+      {
+        path: 'retail/orders/:id',
+        name: 'shop-koba-retail-order-detail-page',
+        component: () => import('src/modules/koba/retail/pages/KobaOrderDetailPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: (to) =>
             getShopLoginRouteLocation(to, {

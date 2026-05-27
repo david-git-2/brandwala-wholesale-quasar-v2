@@ -1297,6 +1297,7 @@ export type Database = {
           commission: number | null
           commission_percentage: number | null
           created_at: string
+          custom_price_gbp: number | null
           id: number
           image_url: string | null
           koba_product_id: string | null
@@ -1315,6 +1316,7 @@ export type Database = {
           commission?: number | null
           commission_percentage?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           id?: number
           image_url?: string | null
           koba_product_id?: string | null
@@ -1333,6 +1335,7 @@ export type Database = {
           commission?: number | null
           commission_percentage?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           id?: number
           image_url?: string | null
           koba_product_id?: string | null
@@ -1439,6 +1442,7 @@ export type Database = {
           commission: number | null
           commission_percentage: number | null
           created_at: string
+          custom_price_gbp: number | null
           delivered_quantity: number
           id: number
           image_url: string | null
@@ -1457,6 +1461,7 @@ export type Database = {
           commission?: number | null
           commission_percentage?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -1475,6 +1480,7 @@ export type Database = {
           commission?: number | null
           commission_percentage?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -1498,12 +1504,19 @@ export type Database = {
       }
       koba_orders: {
         Row: {
+          cod_charge: number | null
           created_at: string
           customer_group_id: number | null
+          delivery_adjustment: number | null
+          extra_profit_company: number | null
+          extra_profit_user: number | null
           free_delivery: boolean
           id: number
+          invoice_charge: number | null
           item_count: number
+          net_order_commission: number | null
           note: string | null
+          packing_charge: number | null
           shipping_address: string | null
           shipping_district: string | null
           shipping_name: string | null
@@ -1517,12 +1530,19 @@ export type Database = {
           user_name: string | null
         }
         Insert: {
+          cod_charge?: number | null
           created_at?: string
           customer_group_id?: number | null
+          delivery_adjustment?: number | null
+          extra_profit_company?: number | null
+          extra_profit_user?: number | null
           free_delivery?: boolean
           id?: number
+          invoice_charge?: number | null
           item_count?: number
+          net_order_commission?: number | null
           note?: string | null
+          packing_charge?: number | null
           shipping_address?: string | null
           shipping_district?: string | null
           shipping_name?: string | null
@@ -1536,12 +1556,19 @@ export type Database = {
           user_name?: string | null
         }
         Update: {
+          cod_charge?: number | null
           created_at?: string
           customer_group_id?: number | null
+          delivery_adjustment?: number | null
+          extra_profit_company?: number | null
+          extra_profit_user?: number | null
           free_delivery?: boolean
           id?: number
+          invoice_charge?: number | null
           item_count?: number
+          net_order_commission?: number | null
           note?: string | null
+          packing_charge?: number | null
           shipping_address?: string | null
           shipping_district?: string | null
           shipping_name?: string | null
@@ -1669,6 +1696,56 @@ export type Database = {
             foreignKeyName: "koba_products_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      koba_retail_settings: {
+        Row: {
+          cod_charge_pct: number | null
+          created_at: string | null
+          delivery_rates: Json | null
+          extra_profit_company_pct: number | null
+          extra_profit_user_pct: number | null
+          gateway_charge_flat: number | null
+          id: number
+          invoice_charge_flat: number | null
+          packing_charge_flat: number | null
+          tenant_id: number
+          updated_at: string | null
+        }
+        Insert: {
+          cod_charge_pct?: number | null
+          created_at?: string | null
+          delivery_rates?: Json | null
+          extra_profit_company_pct?: number | null
+          extra_profit_user_pct?: number | null
+          gateway_charge_flat?: number | null
+          id?: number
+          invoice_charge_flat?: number | null
+          packing_charge_flat?: number | null
+          tenant_id: number
+          updated_at?: string | null
+        }
+        Update: {
+          cod_charge_pct?: number | null
+          created_at?: string | null
+          delivery_rates?: Json | null
+          extra_profit_company_pct?: number | null
+          extra_profit_user_pct?: number | null
+          gateway_charge_flat?: number | null
+          id?: number
+          invoice_charge_flat?: number | null
+          packing_charge_flat?: number | null
+          tenant_id?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "koba_retail_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -3834,6 +3911,28 @@ export type Database = {
         Args: { p_customer_group_id?: number; p_tenant_id: number }
         Returns: Json
       }
+      get_koba_customer_profile: {
+        Args: { p_phone: string; p_tenant_id: number }
+        Returns: Json
+      }
+      get_koba_customers_list: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          address: string
+          district: string
+          last_order_date: string
+          name: string
+          phone: string
+          thana: string
+          total_orders: number
+          total_spent: number
+        }[]
+      }
       get_shop_bootstrap_context: {
         Args: {
           p_customer_group_member_id?: number
@@ -4279,8 +4378,15 @@ export type Database = {
       }
       place_koba_order: {
         Args: {
+          p_cod_charge?: number
           p_customer_group_id?: number
+          p_delivery_adjustment?: number
+          p_extra_profit_company?: number
+          p_extra_profit_user?: number
           p_free_delivery?: boolean
+          p_invoice_charge?: number
+          p_net_order_commission?: number
+          p_packing_charge?: number
           p_shipping_address?: string
           p_shipping_district?: string
           p_shipping_name?: string

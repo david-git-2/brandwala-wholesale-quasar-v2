@@ -83,54 +83,26 @@
             <q-td key="id" :props="sp">
               <span class="text-weight-bold text-primary">#{{ sp.row.id }}</span>
             </q-td>
-            <q-td key="date" :props="sp">
-              {{ formatDate(sp.row.created_at) }}
-            </q-td>
-            <q-td key="status" :props="sp">
-              <q-chip :color="getStatusColor(sp.row.status)" text-color="white" dense square class="text-uppercase text-weight-bold">
-                {{ sp.row.status }}
-              </q-chip>
-            </q-td>
             <q-td key="recipient" :props="sp">
               <div class="text-weight-medium">{{ sp.row.shipping_name || '—' }}</div>
               <div class="text-caption text-grey-6">{{ sp.row.shipping_phone || '—' }}</div>
-            </q-td>
-            <q-td key="district" :props="sp">
-              {{ sp.row.shipping_district || '—' }}
-            </q-td>
-            <q-td key="items" :props="sp">
-              {{ sp.row.item_count }}
-            </q-td>
-            <q-td key="subtotal" :props="sp" class="text-weight-bold text-grey-9">
-              ৳{{ Number(sp.row.subtotal_gbp || 0).toFixed(2) }}
-            </q-td>
-            <q-td key="commission" :props="sp" class="text-weight-bold text-positive">
-              ৳{{ Number(sp.row.total_commission || 0).toFixed(2) }}
             </q-td>
           </q-tr>
         </template>
       </q-table>
     </q-card>
-
-    <!-- Details Dialog -->
-    <KobaOrderDetailDialog
-      v-model="detailOpen"
-      :order="store.orderDetail?.order || null"
-      :items="store.orderDetail?.items || []"
-      :loading="store.loading"
-    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { date } from 'quasar'
 import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
 import type { KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import KobaOrderDetailDialog from 'src/modules/koba/retail/components/KobaOrderDetailDialog.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 
 const authStore = useAuthStore()
@@ -141,7 +113,6 @@ const productsRouteName = computed(() => {
 })
 
 const filterStatus = ref<KobaOrderStatus | null>(null)
-const detailOpen = ref(false)
 const filterDrawerOpen = ref(false)
 
 const statusOptions = [
@@ -183,9 +154,11 @@ async function onTableRequest(payload: { pagination: { page: number; rowsPerPage
   await store.fetchOrders(payload.pagination.page, filterStatus.value)
 }
 
-async function viewOrderDetails(orderId: number) {
-  detailOpen.value = true
-  await store.fetchOrderDetails(orderId)
+const router = useRouter()
+
+function viewOrderDetails(orderId: number) {
+  const routeName = authStore.scope === 'shop' ? 'shop-koba-retail-order-detail-page' : 'app-koba-retail-order-detail-page'
+  void router.push({ name: routeName, params: { id: String(orderId) } })
 }
 
 function formatDate(isoString: string) {
@@ -206,13 +179,7 @@ function getStatusColor(status: string) {
 
 const tableColumns: QTableColumn[] = [
   { name: 'id', label: 'Order ID', field: 'id', align: 'left', sortable: false },
-  { name: 'date', label: 'Date', field: 'created_at', align: 'left', sortable: false },
-  { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
   { name: 'recipient', label: 'Recipient', field: 'shipping_name', align: 'left', sortable: false },
-  { name: 'district', label: 'District', field: 'shipping_district', align: 'left', sortable: false },
-  { name: 'items', label: 'Items', field: 'item_count', align: 'right', sortable: false },
-  { name: 'subtotal', label: 'Subtotal', field: 'subtotal_gbp', align: 'right', sortable: false },
-  { name: 'commission', label: 'Commission', field: 'total_commission', align: 'right', sortable: false },
 ]
 </script>
 

@@ -46,6 +46,7 @@ export interface KobaOrderItem {
   image_url: string | null
   case_size: number
   unit_price_gbp: number | null
+  custom_price_gbp: number | null
   commission: number | null
   commission_percentage: number | null
   quantity: number
