@@ -50,6 +50,7 @@ export interface KobaOrderItem {
   commission: number | null
   commission_percentage: number | null
   quantity: number
+  confirmed_quantity: number | null
   delivered_quantity: number
   created_at: string
   updated_at: string
@@ -180,9 +181,86 @@ const getOrderItems = async (
   return (data as KobaOrderItem[] | null) ?? []
 }
 
+const updateOrderStatus = async (
+  orderId: number,
+  status: KobaOrderStatus
+): Promise<Pick<KobaOrder, 'id' | 'status' | 'updated_at'>> => {
+  const { data, error } = await supabase
+    .from('koba_orders')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .select('id, status, updated_at')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to update order status.')
+
+  return data as Pick<KobaOrder, 'id' | 'status' | 'updated_at'>
+}
+
+const updateItemConfirmedQty = async (
+  itemId: number,
+  confirmedQuantity: number
+): Promise<Pick<KobaOrderItem, 'id' | 'confirmed_quantity' | 'updated_at'>> => {
+  const { data, error } = await supabase
+    .from('koba_order_items')
+    .update({
+      confirmed_quantity: confirmedQuantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', itemId)
+    .select('id, confirmed_quantity, updated_at')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to update confirmed quantity.')
+
+  return data as Pick<KobaOrderItem, 'id' | 'confirmed_quantity' | 'updated_at'>
+}
+
+const updateItemDeliveredQty = async (
+  itemId: number,
+  deliveredQuantity: number
+): Promise<Pick<KobaOrderItem, 'id' | 'delivered_quantity' | 'updated_at'>> => {
+  const { data, error } = await supabase
+    .from('koba_order_items')
+    .update({
+      delivered_quantity: deliveredQuantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', itemId)
+    .select('id, delivered_quantity, updated_at')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to update delivered quantity.')
+
+  return data as Pick<KobaOrderItem, 'id' | 'delivered_quantity' | 'updated_at'>
+}
+
+const softDeleteOrder = async (
+  orderId: number
+): Promise<Pick<KobaOrder, 'id' | 'status' | 'updated_at'>> => {
+  const { data, error } = await supabase
+    .from('koba_orders')
+    .update({ status: 'cancelled' as KobaOrderStatus, updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .select('id, status, updated_at')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to delete order.')
+
+  return data as Pick<KobaOrder, 'id' | 'status' | 'updated_at'>
+}
+
 export const kobaOrderRepository = {
   placeOrder,
   listOrders,
   getOrderById,
   getOrderItems,
+  updateOrderStatus,
+  updateItemConfirmedQty,
+  updateItemDeliveredQty,
+  softDeleteOrder,
 }

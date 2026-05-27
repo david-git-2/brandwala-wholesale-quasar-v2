@@ -163,6 +163,126 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
       }
     },
 
+    async updateOrderStatus(
+      orderId: number,
+      status: KobaOrderStatus
+    ) {
+      const result = await kobaOrderService.updateOrderStatus(orderId, status)
+
+      if (result.success && result.data && this.orderDetail) {
+        this.orderDetail = {
+          ...this.orderDetail,
+          order: {
+            ...this.orderDetail.order,
+            status: result.data.status,
+            updated_at: result.data.updated_at,
+          },
+        }
+
+        // Also reflect in the orders list if it's there
+        const idx = this.orders.findIndex((o) => o.id === orderId)
+        if (idx !== -1) {
+          this.orders[idx] = {
+            ...this.orders[idx]!,
+            status: result.data.status,
+            updated_at: result.data.updated_at,
+          }
+        }
+      }
+
+      if (!result.success) {
+        handleApiFailure(result, result.error ?? 'Failed to update status.')
+      }
+
+      return result
+    },
+
+    async updateItemConfirmedQty(
+      itemId: number,
+      confirmedQuantity: number
+    ) {
+      const result = await kobaOrderService.updateItemConfirmedQty(itemId, confirmedQuantity)
+
+      if (result.success && result.data && this.orderDetail) {
+        this.orderDetail = {
+          ...this.orderDetail,
+          items: this.orderDetail.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  confirmed_quantity: result.data!.confirmed_quantity,
+                  updated_at: result.data!.updated_at,
+                }
+              : item
+          ),
+        }
+      }
+
+      if (!result.success) {
+        handleApiFailure(result, result.error ?? 'Failed to update confirmed quantity.')
+      }
+
+      return result
+    },
+
+    async updateItemDeliveredQty(
+      itemId: number,
+      deliveredQuantity: number
+    ) {
+      const result = await kobaOrderService.updateItemDeliveredQty(itemId, deliveredQuantity)
+
+      if (result.success && result.data && this.orderDetail) {
+        this.orderDetail = {
+          ...this.orderDetail,
+          items: this.orderDetail.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  delivered_quantity: result.data!.delivered_quantity,
+                  updated_at: result.data!.updated_at,
+                }
+              : item
+          ),
+        }
+      }
+
+      if (!result.success) {
+        handleApiFailure(result, result.error ?? 'Failed to update delivered quantity.')
+      }
+
+      return result
+    },
+
+    async softDeleteOrder(orderId: number) {
+      const result = await kobaOrderService.softDeleteOrder(orderId)
+
+      if (result.success && result.data && this.orderDetail) {
+        this.orderDetail = {
+          ...this.orderDetail,
+          order: {
+            ...this.orderDetail.order,
+            status: result.data.status,
+            updated_at: result.data.updated_at,
+          },
+        }
+
+        const idx = this.orders.findIndex((o) => o.id === orderId)
+        if (idx !== -1) {
+          this.orders[idx] = {
+            ...this.orders[idx]!,
+            status: result.data.status,
+            updated_at: result.data.updated_at,
+          }
+        }
+      }
+
+      if (!result.success) {
+        handleApiFailure(result, result.error ?? 'Failed to delete order.')
+      }
+
+      return result
+    },
+
     clearOrderDetails() {
       this.orderDetail = null
     },

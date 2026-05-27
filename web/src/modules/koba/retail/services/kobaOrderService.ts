@@ -91,8 +91,83 @@ const getOrderWithItems = async (
   }
 }
 
+const updateOrderStatus = async (
+  orderId: number,
+  status: KobaOrderStatus
+): Promise<KobaOrderServiceResult<Pick<KobaOrder, 'id' | 'status' | 'updated_at'>>> => {
+  try {
+    const data = await kobaOrderRepository.updateOrderStatus(orderId, status)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update order status.',
+    }
+  }
+}
+
+const updateItemConfirmedQty = async (
+  itemId: number,
+  confirmedQuantity: number
+): Promise<KobaOrderServiceResult<Pick<KobaOrderItem, 'id' | 'confirmed_quantity' | 'updated_at'>>> => {
+  try {
+    const data = await kobaOrderRepository.updateItemConfirmedQty(itemId, confirmedQuantity)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update confirmed quantity.',
+    }
+  }
+}
+
+const updateItemDeliveredQty = async (
+  itemId: number,
+  deliveredQuantity: number
+): Promise<KobaOrderServiceResult<Pick<KobaOrderItem, 'id' | 'delivered_quantity' | 'updated_at'>>> => {
+  try {
+    const data = await kobaOrderRepository.updateItemDeliveredQty(itemId, deliveredQuantity)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update delivered quantity.',
+    }
+  }
+}
+
+const softDeleteOrder = async (
+  orderId: number
+): Promise<KobaOrderServiceResult<Pick<KobaOrder, 'id' | 'status' | 'updated_at'>>> => {
+  try {
+    const data = await kobaOrderRepository.softDeleteOrder(orderId)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order.',
+    }
+  }
+}
+
 export const kobaOrderService = {
   placeOrder,
   listOrders,
   getOrderWithItems,
+  updateOrderStatus,
+  updateItemConfirmedQty,
+  updateItemDeliveredQty,
+  softDeleteOrder,
 }
