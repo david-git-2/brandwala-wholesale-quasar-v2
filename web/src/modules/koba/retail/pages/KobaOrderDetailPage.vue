@@ -15,49 +15,45 @@
           <!-- Status badge (non-admin) -->
           <q-chip
             v-if="order && !isAdmin"
-            :color="statusColor"
-            text-color="white"
             square
-            class="text-uppercase text-weight-bold q-px-md q-py-sm"
+                        :style="statusChipStyle(pendingStatusChange)"
+            class="costing-file-status-chip q-px-md q-py-sm"
           >
             {{ order.status }}
           </q-chip>
 
           <!-- Status dropdown (admin) -->
-          <q-select
+          <q-chip
             v-if="order && isAdmin"
-            v-model="pendingStatusChange"
-            :options="statusOptions"
-            outlined
             dense
-            emit-value
-            map-options
-            label="Status"
-            style="min-width: 160px"
-            class="soft-input"
-            :loading="savingStatus"
-            :disable="savingStatus || isDeliveredLocked"
-            @update:model-value="onStatusSelectChange"
+            square
+            clickable
+            :style="statusChipStyle(pendingStatusChange)"
+            class="costing-file-status-chip q-px-md q-py-sm"
           >
-            <template #prepend>
-              <q-icon :name="statusIcon(pendingStatusChange)" size="18px" />
-            </template>
-          </q-select>
+            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(pendingStatusChange) }" />
+            {{ pendingStatusChange }}
+            <q-menu :disable="savingStatus || isDeliveredLocked">
+              <q-list dense style="min-width: 150px">
+                <q-item
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  clickable
+                  v-close-popup
+                  @click="onStatusMenuSelect(option.value as KobaOrderStatus)"
+                >
+                  <q-item-section>{{ option.label }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-chip>
 
           <!-- Refresh button (admin) -->
-          <q-btn
-            v-if="isAdmin"
-            flat
-            round
-            icon="refresh"
-            color="primary"
-            :loading="loading"
-            @click="onRefresh"
-          />
+         
 
           <!-- Soft delete button (admin) -->
           <q-btn
-            v-if="isAdmin && canSoftDelete"
+            v-if="isAdmin"
             flat
             round
             icon="delete_outline"
@@ -521,7 +517,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { date, useQuasar } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
@@ -530,6 +526,7 @@ import type { KobaOrderItem, KobaOrderStatus } from 'src/modules/koba/retail/rep
 
 const $q = useQuasar()
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const orderStore = useKobaOrderStore()
 const settingsStore = useKobaSettingsStore()
@@ -555,6 +552,75 @@ const ordersRouteName = computed(() => {
 const gatewayChargeFlat = computed(() => settingsStore.settings?.gateway_charge_flat ?? 20)
 
 // ─── Status helpers ─────────────────────────────────────────────────────────
+
+const statusChipStyle = (currentStatus: string | null) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'confirmed') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'shipped') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'delivered') {
+    return {
+      backgroundColor: '#e0f2f1',
+      color: '#00695c',
+      border: '1px solid #b2dfdb',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+  }
+}
+
+const statusDotColor = (currentStatus: string | null) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') return '#9a6a24'
+  if (value === 'confirmed') return '#3f67b3'
+  if (value === 'processing') return '#3f51b5'
+  if (value === 'shipped') return '#2f8b5d'
+  if (value === 'delivered') return '#009688'
+  if (value === 'cancelled') return '#a64c62'
+  return '#66758c'
+}
+
+function onStatusMenuSelect(nextStatus: KobaOrderStatus) {
+  if (savingStatus.value || isDeliveredLocked.value) {
+    return
+  }
+  onStatusSelectChange(nextStatus)
+}
 
 const statusOptions = [
   { label: 'Pending', value: 'pending' },
@@ -592,8 +658,7 @@ const statusColor = computed(() => {
 
 const isDeliveredLocked = computed(() => order.value?.status === 'delivered')
 const canSoftDelete = computed(() =>
-  isAdmin.value &&
-  order.value?.status === 'delivered'
+  isAdmin.value
 )
 const canEditQuantities = computed(() =>
   isAdmin.value && !isDeliveredLocked.value && order.value?.status !== 'cancelled'
@@ -660,7 +725,8 @@ async function onConfirmDelete() {
   try {
     const result = await orderStore.softDeleteOrder(orderId.value)
     if (result?.success) {
-      $q.notify({ message: 'Order cancelled', color: 'dark', icon: 'cancel', timeout: 1500 })
+      $q.notify({ message: 'Order deleted successfully', color: 'dark', icon: 'delete', timeout: 1500 })
+      void router.push({ name: ordersRouteName.value })
     } else {
       $q.notify({ message: result?.error ?? 'Failed to delete order', color: 'negative', icon: 'error', timeout: 2500 })
     }
@@ -1092,5 +1158,20 @@ async function onSaveDeliveredQty(item: KobaOrderItem, newValue: any) {
 
 .editable-cell:hover .show-on-hover {
   opacity: 1;
+}
+
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>

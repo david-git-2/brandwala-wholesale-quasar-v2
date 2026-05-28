@@ -212,12 +212,12 @@
                 </q-td>
                 <q-td key="status" :props="sp">
                   <q-chip
-                    :color="getStatusColor(sp.row.status)"
-                    text-color="white"
                     dense
                     square
-                    class="text-uppercase text-weight-bold text-caption"
+                    :style="statusChipStyle(sp.row.status)"
+                    class="costing-file-status-chip"
                   >
+                    <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(sp.row.status) }" />
                     {{ sp.row.status }}
                   </q-chip>
                 </q-td>
@@ -363,16 +363,66 @@ function formatDate(val: string | null, formatStr: string) {
   return date.formatDate(new Date(val), formatStr)
 }
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'pending': return 'amber-8'
-    case 'confirmed': return 'blue-7'
-    case 'processing': return 'indigo-7'
-    case 'shipped': return 'deep-purple-7'
-    case 'delivered': return 'positive'
-    case 'cancelled': return 'negative'
-    default: return 'grey'
+const statusChipStyle = (currentStatus: string | null) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
   }
+  if (value === 'confirmed') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'processing') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'shipped') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'delivered') {
+    return {
+      backgroundColor: '#e0f2f1',
+      color: '#00695c',
+      border: '1px solid #b2dfdb',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+  }
+}
+
+const statusDotColor = (currentStatus: string | null) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'pending') return '#9a6a24'
+  if (value === 'confirmed') return '#3f67b3'
+  if (value === 'processing') return '#3f51b5'
+  if (value === 'shipped') return '#2f8b5d'
+  if (value === 'delivered') return '#009688'
+  if (value === 'cancelled') return '#a64c62'
+  return '#66758c'
 }
 
 onMounted(() => {
@@ -405,5 +455,20 @@ onMounted(() => {
   font-weight: 700;
   color: var(--q-grey-9);
   background: #f1f5f9;
+}
+
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>

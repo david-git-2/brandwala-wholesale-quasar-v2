@@ -241,17 +241,27 @@ const updateItemDeliveredQty = async (
 const softDeleteOrder = async (
   orderId: number
 ): Promise<Pick<KobaOrder, 'id' | 'status' | 'updated_at'>> => {
+  // Delete order items first to handle foreign key constraints cleanly
+  await supabase
+    .from('koba_order_items')
+    .delete()
+    .eq('order_id', orderId)
+
   const { data, error } = await supabase
     .from('koba_orders')
-    .update({ status: 'cancelled' as KobaOrderStatus, updated_at: new Date().toISOString() })
+    .delete()
     .eq('id', orderId)
-    .select('id, status, updated_at')
+    .select('id')
     .single()
 
   if (error) throw error
   if (!data) throw new Error('Failed to delete order.')
 
-  return data as Pick<KobaOrder, 'id' | 'status' | 'updated_at'>
+  return {
+    id: data.id,
+    status: 'cancelled',
+    updated_at: new Date().toISOString(),
+  }
 }
 
 export const kobaOrderRepository = {
