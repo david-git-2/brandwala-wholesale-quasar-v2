@@ -170,164 +170,133 @@
         </q-card>
 
         <!-- Items Card -->
-        <q-card flat class="detail-card">
-          <q-card-section class="q-pb-none">
-            <div class="row items-center justify-between">
-              <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center">
-                <q-icon name="shopping_bag" color="primary" size="20px" class="q-mr-xs" />
-                Order Items ({{ filteredItems.length }}<span v-if="isAdmin"> / {{ items.length }}</span> variant{{ items.length === 1 ? '' : 's' }})
+      <q-card flat class="detail-card">
+  <q-card-section class="q-pb-none">
+    <div class="row items-center justify-between">
+      <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center">
+        <q-icon name="shopping_bag" color="primary" size="20px" class="q-mr-xs" />
+        Order Items ({{ filteredItems.length }}<span v-if="isAdmin"> / {{ items.length }}</span> variant{{ items.length === 1 ? '' : 's' }})
+      </div>
+
+      <q-select
+        v-if="isAdmin"
+        v-model="confirmFilter"
+        :options="itemFilterOptions"
+        outlined
+        dense
+        emit-value
+        map-options
+        label="Filter"
+        style="min-width: 150px"
+        class="soft-input"
+      />
+    </div>
+  </q-card-section>
+
+  <q-card-section v-if="qtyError" class="q-pt-sm q-pb-none">
+    <q-banner rounded dense class="bg-negative-soft text-negative text-caption">
+      {{ qtyError }}
+    </q-banner>
+  </q-card-section>
+
+  <q-card-section class="q-pa-none q-mt-sm">
+    <q-table
+      :rows="filteredItems"
+      :columns="tableColumns"
+      row-key="id"
+      flat
+      bordered
+      wrap-cells
+      :pagination="{ rowsPerPage: 0 }"
+      hide-bottom
+      class="item-table"
+    >
+      <template #body="props">
+        <q-tr :props="props">
+          <q-td key="item" :props="props">
+            <div class="row no-wrap items-center q-gutter-sm">
+              <q-avatar square size="48px" class="bg-grey-2 item-avatar-frame">
+                <img v-if="props.row.image_url" :src="toDirectGoogleImageUrl(props.row.image_url)" referrerpolicy="no-referrer" />
+                <q-icon v-else name="image_not_supported" color="grey-5" />
+              </q-avatar>
+              <div>
+                <div class="text-caption text-primary text-uppercase text-weight-bold" v-if="props.row.brand">{{ props.row.brand }}</div>
+                <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">{{ props.row.name }}</div>
+                <div class="text-caption text-grey-6">Case Size: {{ props.row.case_size }}</div>
+                <div class="text-caption text-positive text-weight-medium" v-if="props.row.commission">
+                  Commission: ৳{{ Number(Math.max(0, (props.row.commission || 0) - gatewayChargeFlat)).toFixed(2) }} / unit
+                </div>
               </div>
-
-              <!-- Item filter (admin) -->
-              <q-select
-                v-if="isAdmin"
-                v-model="confirmFilter"
-                :options="itemFilterOptions"
-                outlined
-                dense
-                emit-value
-                map-options
-                label="Filter"
-                style="min-width: 150px"
-                class="soft-input"
-              />
             </div>
-          </q-card-section>
+          </q-td>
 
-          <!-- Qty save error banners -->
-          <q-card-section v-if="qtyError" class="q-pt-sm q-pb-none">
-            <q-banner rounded dense class="bg-negative-soft text-negative text-caption">
-              {{ qtyError }}
-            </q-banner>
-          </q-card-section>
+          <q-td key="price" :props="props" class="text-right">
+            <div class="text-subtitle2 text-primary text-weight-bold">
+              ৳{{ Number((props.row.custom_price_gbp || props.row.unit_price_gbp || 0) * props.row.quantity).toFixed(2) }}
+            </div>
+            <div class="text-caption text-grey-6">৳{{ Number(props.row.custom_price_gbp || props.row.unit_price_gbp || 0).toFixed(2) }} each</div>
+            <div v-if="props.row.custom_price_gbp && props.row.custom_price_gbp > (props.row.unit_price_gbp || 0)" class="text-caption text-grey-5 text-strike">
+              Orig: ৳{{ Number(props.row.unit_price_gbp || 0).toFixed(2) }}
+            </div>
+          </q-td>
 
-          <q-card-section class="q-pa-none q-mt-sm">
-            <q-list separator class="item-list-container">
-              <q-item v-for="(item, index) in filteredItems" :key="item.id" class="q-py-md">
-                <q-item-section avatar>
-                  <q-avatar square size="64px" class="bg-grey-2 item-avatar-frame">
-                    <img v-if="item.image_url" :src="toDirectGoogleImageUrl(item.image_url)" referrerpolicy="no-referrer" />
-                    <q-icon v-else name="image_not_supported" color="grey-5" />
-                  </q-avatar>
-                </q-item-section>
+          <q-td key="qty_ordered" :props="props" class="text-center">
+            <span class="text-weight-bold">{{ props.row.quantity }}</span>
+          </q-td>
 
-                <q-item-section>
-                  <div class="text-caption text-primary text-uppercase text-weight-bold" v-if="item.brand">{{ item.brand }}</div>
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">{{ item.name }}</div>
-                  <div class="text-caption text-grey-6">
-                    SL #{{ index + 1 }} &nbsp;·&nbsp; Case Size: {{ item.case_size }}
-                  </div>
-                  <div class="text-caption text-positive text-weight-medium q-mt-xs" v-if="item.commission">
-                    Commission: ৳{{ Number(Math.max(0, (item.commission || 0) - gatewayChargeFlat)).toFixed(2) }} / unit
-                  </div>
+          <q-td key="qty_confirmed" :props="props" class="text-center" :class="{ 'cursor-pointer editable-cell': isAdmin && showConfirmedInput }">
+            <span class="text-weight-bold text-blue-9">{{ props.row.confirmed_quantity ?? '—' }}</span>
+            <q-icon v-if="isAdmin && showConfirmedInput" name="edit" size="xs" color="blue-4" class="q-ml-xs show-on-hover" />
+            
+            <q-popup-edit
+              v-if="isAdmin && showConfirmedInput"
+              v-model.number="qtyDraft[props.row.id].confirmed"
+              auto-save
+              v-slot="scope"
+              @save="(val) => onSaveConfirmedQty(props.row, val)"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                min="0"
+                dense
+                autofocus
+                counter
+                @keyup.enter="scope.set"
+                label="Confirmed Quantity"
+              />
+            </q-popup-edit>
+          </q-td>
 
-                  <!-- Admin quantity inputs -->
-                  <div v-if="isAdmin && canEditQuantities" class="q-mt-sm row q-gutter-sm items-end">
-                    <!-- Confirmed qty (shown when status is pending) -->
-                    <div v-if="showConfirmedInput" class="admin-qty-block">
-                      <div class="text-caption text-grey-6 q-mb-xs text-uppercase text-weight-bold qty-label-confirmed">Confirmed Qty</div>
-                      <div class="row items-center q-gutter-xs">
-                        <q-input
-                          v-model.number="(qtyDraft[item.id] ?? { confirmed: null, delivered: 0 }).confirmed"
-                          type="number"
-                          min="0"
-                          dense
-                          outlined
-                          style="width: 80px"
-                          class="soft-input"
-                        />
-                        <q-btn
-                          unelevated
-                          dense
-                          no-caps
-                          color="primary"
-                          label="Save"
-                          size="sm"
-                          :loading="savingConfirmedId === item.id"
-                          :disable="!confirmedChanged(item) || savingConfirmedId === item.id"
-                          @click="onSaveConfirmedQty(item)"
-                        />
-                      </div>
-                    </div>
+          <q-td key="qty_delivered" :props="props" class="text-center" :class="{ 'cursor-pointer editable-cell': isAdmin && showDeliveredInput }">
+            <span class="text-weight-bold text-teal-9">{{ props.row.delivered_quantity }}</span>
+            <q-icon v-if="isAdmin && showDeliveredInput" name="edit" size="xs" color="teal-4" class="q-ml-xs show-on-hover" />
 
-                    <!-- Delivered qty (shown when status is not pending) -->
-                    <div v-if="showDeliveredInput" class="admin-qty-block">
-                      <div class="text-caption text-grey-6 q-mb-xs text-uppercase text-weight-bold qty-label-delivered">Delivered Qty</div>
-                      <div class="row items-center q-gutter-xs">
-                        <q-input
-                          v-model.number="(qtyDraft[item.id] ?? { confirmed: null, delivered: 0 }).delivered"
-                          type="number"
-                          min="0"
-                          :max="item.confirmed_quantity ?? item.quantity"
-                          dense
-                          outlined
-                          style="width: 80px"
-                          class="soft-input"
-                        />
-                        <q-btn
-                          unelevated
-                          dense
-                          no-caps
-                          color="teal"
-                          label="Save"
-                          size="sm"
-                          :loading="savingDeliveredId === item.id"
-                          :disable="!deliveredChanged(item) || savingDeliveredId === item.id"
-                          @click="onSaveDeliveredQty(item)"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </q-item-section>
-
-                <q-item-section side class="text-right">
-                  <div class="text-subtitle1 text-primary text-weight-bold">
-                    ৳{{ Number((item.custom_price_gbp || item.unit_price_gbp || 0) * item.quantity).toFixed(2) }}
-                  </div>
-                  <div class="text-caption text-grey-6">৳{{ Number(item.custom_price_gbp || item.unit_price_gbp || 0).toFixed(2) }} each</div>
-                  <div v-if="item.custom_price_gbp && item.custom_price_gbp > (item.unit_price_gbp || 0)" class="text-caption text-grey-5 text-strike">
-                    Orig: ৳{{ Number(item.unit_price_gbp || 0).toFixed(2) }}
-                  </div>
-
-                  <!-- Qty chips (admin view) -->
-                  <div v-if="isAdmin" class="q-mt-xs column q-gutter-xs items-end">
-                    <q-chip
-                      dense square
-                      color="blue-grey-2"
-                      text-color="blue-grey-9"
-                      class="text-caption text-weight-bold"
-                      icon="shopping_cart"
-                    >
-                      Ordered: {{ item.quantity }}
-                    </q-chip>
-                    <q-chip
-                      dense square
-                      color="blue-2"
-                      text-color="blue-9"
-                      class="text-caption text-weight-bold"
-                      icon="check_circle_outline"
-                    >
-                      Confirmed: {{ item.confirmed_quantity ?? '—' }}
-                    </q-chip>
-                    <q-chip
-                      dense square
-                      color="green-2"
-                      text-color="green-9"
-                      class="text-caption text-weight-bold"
-                      icon="local_shipping"
-                    >
-                      Delivered: {{ item.delivered_quantity }}
-                    </q-chip>
-                  </div>
-                  <!-- Non-admin qty display -->
-                  <div v-else class="text-caption text-grey-6 q-mt-xs">
-                    Qty: <span class="text-weight-bold text-grey-8">{{ item.quantity }}</span>
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-card-section>
-        </q-card>
+            <q-popup-edit
+              v-if="isAdmin && showDeliveredInput"
+              v-model.number="qtyDraft[props.row.id].delivered"
+              auto-save
+              v-slot="scope"
+              @save="(val) => onSaveDeliveredQty(props.row, val)"
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                min="0"
+                :max="props.row.confirmed_quantity ?? props.row.quantity"
+                dense
+                autofocus
+                counter
+                @keyup.enter="scope.set"
+                label="Delivered Quantity"
+              />
+            </q-popup-edit>
+          </q-td>
+        </q-tr>
+      </template>
+    </q-table>
+  </q-card-section>
+</q-card>
       </div>
 
       <!-- Right Column: Order Summary & Commission -->
@@ -558,7 +527,6 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
 import type { KobaOrderItem, KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository'
-import KobaOrderItemsTable from 'src/modules/koba/retail/components/KobaOrderItemsTable.vue'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -743,42 +711,9 @@ function deliveredChanged(item: KobaOrderItem): boolean {
   return next !== null && next !== current && next >= 0
 }
 
-async function onSaveConfirmedQty(item: KobaOrderItem) {
-  const draft = qtyDraft[item.id]
-  if (!draft || draft.confirmed === null) return
-  const qty = Math.max(0, Math.round(Number(draft.confirmed)))
-  savingConfirmedId.value = item.id
-  qtyError.value = null
-  try {
-    const result = await orderStore.updateItemConfirmedQty(item.id, qty)
-    if (result?.success) {
-      $q.notify({ message: 'Confirmed qty saved', color: 'positive', icon: 'check', timeout: 1200 })
-    } else {
-      qtyError.value = result?.error ?? 'Failed to save confirmed quantity.'
-    }
-  } finally {
-    savingConfirmedId.value = null
-  }
-}
 
-async function onSaveDeliveredQty(item: KobaOrderItem) {
-  const draft = qtyDraft[item.id]
-  if (!draft || draft.delivered === null) return
-  const maxQty = item.confirmed_quantity ?? item.quantity
-  const qty = Math.max(0, Math.min(maxQty, Math.round(Number(draft.delivered))))
-  savingDeliveredId.value = item.id
-  qtyError.value = null
-  try {
-    const result = await orderStore.updateItemDeliveredQty(item.id, qty)
-    if (result?.success) {
-      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'check', timeout: 1200 })
-    } else {
-      qtyError.value = result?.error ?? 'Failed to save delivered quantity.'
-    }
-  } finally {
-    savingDeliveredId.value = null
-  }
-}
+
+
 
 // ─── Item filter ─────────────────────────────────────────────────────────────
 
@@ -938,6 +873,54 @@ function toDirectGoogleImageUrl(url: string | null) {
   if (!fileId) return url
   return `https://lh3.googleusercontent.com/d/${fileId}`
 }
+
+// ─── Table Configuration ───────────────────────────────────────────────────
+const tableColumns = [
+  { name: 'item', label: 'Item Details', align: 'left' as const, field: 'name' },
+  { name: 'price', label: 'Price Total', align: 'right' as const, field: 'unit_price_gbp' },
+  { name: 'qty_ordered', label: 'Ordered', align: 'center' as const, field: 'quantity' },
+  { name: 'qty_confirmed', label: 'Confirmed', align: 'center' as const, field: 'confirmed_quantity' },
+  { name: 'qty_delivered', label: 'Delivered', align: 'center' as const, field: 'delivered_quantity' },
+]
+
+// ─── Quantity Updates via Popup Edit ─────────────────────────────────────────
+
+async function onSaveConfirmedQty(item: KobaOrderItem, newValue: any) {
+  const qty = Math.max(0, Math.round(Number(newValue)))
+  savingConfirmedId.value = item.id
+  qtyError.value = null
+  try {
+    const result = await orderStore.updateItemConfirmedQty(item.id, qty)
+    if (result?.success) {
+      $q.notify({ message: 'Confirmed qty saved', color: 'positive', icon: 'check', timeout: 1200 })
+    } else {
+      qtyError.value = result?.error ?? 'Failed to save confirmed quantity.'
+      // Revert if API failed
+      if (qtyDraft[item.id]) qtyDraft[item.id].confirmed = item.confirmed_quantity ?? null
+    }
+  } finally {
+    savingConfirmedId.value = null
+  }
+}
+
+async function onSaveDeliveredQty(item: KobaOrderItem, newValue: any) {
+  const maxQty = item.confirmed_quantity ?? item.quantity
+  const qty = Math.max(0, Math.min(maxQty, Math.round(Number(newValue))))
+  savingDeliveredId.value = item.id
+  qtyError.value = null
+  try {
+    const result = await orderStore.updateItemDeliveredQty(item.id, qty)
+    if (result?.success) {
+      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'check', timeout: 1200 })
+    } else {
+      qtyError.value = result?.error ?? 'Failed to save delivered quantity.'
+      // Revert if API failed
+      if (qtyDraft[item.id]) qtyDraft[item.id].delivered = item.delivered_quantity ?? 0
+    }
+  } finally {
+    savingDeliveredId.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -1083,5 +1066,31 @@ function toDirectGoogleImageUrl(url: string | null) {
 /* ── Negative soft banner ── */
 .bg-negative-soft {
   background: rgba(229, 57, 53, 0.08);
+}
+
+.item-table :deep(th) {
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.editable-cell {
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.editable-cell:hover {
+  background: rgba(30, 136, 229, 0.05) !important;
+}
+
+.show-on-hover {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.editable-cell:hover .show-on-hover {
+  opacity: 1;
 }
 </style>

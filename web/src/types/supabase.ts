@@ -1441,8 +1441,8 @@ export type Database = {
           case_size: number
           commission: number | null
           commission_percentage: number | null
+          confirmed_quantity: number | null
           created_at: string
-          custom_price_gbp: number | null
           delivered_quantity: number
           id: number
           image_url: string | null
@@ -1460,8 +1460,8 @@ export type Database = {
           case_size?: number
           commission?: number | null
           commission_percentage?: number | null
+          confirmed_quantity?: number | null
           created_at?: string
-          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -1479,8 +1479,8 @@ export type Database = {
           case_size?: number
           commission?: number | null
           commission_percentage?: number | null
+          confirmed_quantity?: number | null
           created_at?: string
-          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
