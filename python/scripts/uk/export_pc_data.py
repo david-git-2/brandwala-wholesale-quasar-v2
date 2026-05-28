@@ -104,6 +104,9 @@ def build_image_identity(
 
 def prompt_int(label: str, default: int) -> int:
     """Prompt user for an integer. If empty input, returns default."""
+    import sys
+    if not sys.stdin.isatty():
+        return default
     while True:
         raw = input(f"{label} [{default}]: ").strip()
         if raw == "":
@@ -149,6 +152,9 @@ def excel_col_letters_to_index(value: str) -> int:
 
 def prompt_excel_column(label: str, default_index: int) -> int:
     default_letters = excel_col_index_to_letters(default_index)
+    import sys
+    if not sys.stdin.isatty():
+        return default_index
     while True:
         raw = input(f"{label} [{default_letters}]: ").strip()
         if raw == "":
@@ -528,19 +534,15 @@ def main():
 
     log(f"✅ Products loaded: {len(products_by_row)}")
 
-    # Filter hazardous rows first so image upload only processes needed products.
+    # Track hazardous items but do not skip them.
     eligible_rows = set(products_by_row.keys())
-    hazardous_removed_rows = 0
+    hazardous_rows_count = 0
     if hazardous_header_name:
-        eligible_rows = set()
         for row, obj in products_by_row.items():
             if is_hazardous_yes(obj.get(hazardous_header_name, "")):
-                hazardous_removed_rows += 1
-                continue
-            eligible_rows.add(row)
+                hazardous_rows_count += 1
         log(
-            f"🧪 Hazardous filter: removed={hazardous_removed_rows}, "
-            f"kept={len(eligible_rows)}"
+            f"🧪 Hazardous items detected: {hazardous_rows_count}"
         )
 
     # Extract images
@@ -657,6 +659,8 @@ def main():
         out["expire_date"] = format_optional_expire_date(
             obj.get(expire_date_header_name, "") if expire_date_header_name else ""
         )
+        out["source"] = "excel"
+        out["hazardous"] = is_hazardous_yes(obj.get(hazardous_header_name, "")) if hazardous_header_name else None
 
         products.append(out)
 
@@ -676,7 +680,7 @@ def main():
             "storageProvider": "supabase",
             "note": "Image upload moved to sync step (DB product_id based key).",
             "productIdRule": "product_id = barcode + '_' + product_code",
-            "hazardousRowsRemoved": hazardous_removed_rows,
+            "hazardousRowsCount": hazardous_rows_count,
         },
         "products": products,
     }

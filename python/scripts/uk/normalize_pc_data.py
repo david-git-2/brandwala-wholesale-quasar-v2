@@ -178,6 +178,15 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         else:
             normalized["minimum_quantity"] = normalized["case_size"]
             
+    normalized["source"] = to_text(get_first_value(row, ["source", "SOURCE"], "excel"))
+    hazardous_val = get_first_value(row, ["HAZARDOUS", "Hazardous", "hazardous"], None)
+    if isinstance(hazardous_val, bool):
+        normalized["hazardous"] = hazardous_val
+    elif hazardous_val is not None and to_text(hazardous_val).strip() != "":
+        normalized["hazardous"] = normalize_hazardous_value(hazardous_val) in {"YES", "Y", "TRUE", "1"}
+    else:
+        normalized["hazardous"] = None
+
     return normalized
 
 
@@ -201,14 +210,13 @@ def main() -> int:
 
     products = load_products(payload)
     filtered_products: list[dict[str, Any]] = []
-    removed_rows = 0
+    hazardous_rows_count = 0
     updated_rows = 0
     samples: list[tuple[str, int, int]] = []
 
     for row in products:
         if should_skip_row(row):
-            removed_rows += 1
-            continue
+            hazardous_rows_count += 1
 
         next_row = build_normalized_row(row)
         next_minimum = next_row["minimum_quantity"]
@@ -228,7 +236,7 @@ def main() -> int:
         meta["count"] = len(filtered_products)
         meta["normalizedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         meta["normalizedStage"] = "minimum_quantity"
-        meta["removedHazardousRows"] = removed_rows
+        meta["hazardousRowsCount"] = hazardous_rows_count
         meta["minimumQuantityRule"] = "OUTER/CASE -> outer_case; INNER -> max(inner_case, 6); otherwise 1"
         normalized_payload["meta"] = meta
     else:
@@ -238,7 +246,7 @@ def main() -> int:
     print(f"Output: {output_path}")
     print(f"Rows in: {len(products)}")
     print(f"Rows out: {len(filtered_products)}")
-    print(f"Rows removed (hazardous YES): {removed_rows}")
+    print(f"Hazardous rows counted: {hazardous_rows_count}")
     print(f"Rows updated (minimum_quantity set): {updated_rows}")
     if samples:
         print("\nSample updates:")

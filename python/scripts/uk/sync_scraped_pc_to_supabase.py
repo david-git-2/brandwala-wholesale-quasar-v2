@@ -272,7 +272,9 @@ def main():
             "available_units": int(row.get("available_units") or 0),
             "minimum_order_quantity": int(row.get("case_size") or 1),
             "image_url": to_text(row.get("imageUrl") or row.get("image")) or None,
-            "is_available": True
+            "is_available": True,
+            "source": "website",
+            "hazardous": None
         }
 
         ids = existing_by_key.get(key, [])

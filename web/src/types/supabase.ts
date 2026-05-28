@@ -2493,6 +2493,7 @@ export type Database = {
           country_of_origin: string | null
           created_at: string
           expire_date: string | null
+          hazardous: boolean | null
           id: number
           image_url: string | null
           is_available: boolean | null
@@ -2504,6 +2505,7 @@ export type Database = {
           price_gbp: number | null
           product_code: string | null
           product_weight: number | null
+          source: string | null
           tariff_code: string | null
           tenant_id: number | null
           updated_at: string
@@ -2519,6 +2521,7 @@ export type Database = {
           country_of_origin?: string | null
           created_at?: string
           expire_date?: string | null
+          hazardous?: boolean | null
           id?: number
           image_url?: string | null
           is_available?: boolean | null
@@ -2530,6 +2533,7 @@ export type Database = {
           price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
+          source?: string | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string
@@ -2545,6 +2549,7 @@ export type Database = {
           country_of_origin?: string | null
           created_at?: string
           expire_date?: string | null
+          hazardous?: boolean | null
           id?: number
           image_url?: string | null
           is_available?: boolean | null
@@ -2556,6 +2561,7 @@ export type Database = {
           price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
+          source?: string | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string

@@ -29,11 +29,11 @@
           <q-icon name="warning" color="warning" size="xl" class="q-mb-md" />
           <div class="text-h6 text-weight-bold text-warning-dark">Documentation File Not Created Yet</div>
           <p class="text-grey-8 q-my-md text-body2 max-width-p">
-            The documentation file <code>{{ activeDoc.filename }}</code> is not present in the workspace.
+            The documentation file <code>{{ resolvedFilename }}</code> is not present in the workspace.
             To provide documentation for this module, simply create a file at that path.
           </p>
           <div class="bg-grey-2 q-pa-sm rounded-borders text-left font-mono text-caption text-grey-9 inline-block border-grey-3">
-            $ touch "{{ activeDoc.filename }}"
+            $ touch "{{ resolvedFilename }}"
           </div>
         </div>
         <div v-else class="text-center">
@@ -64,20 +64,13 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { marked } from 'marked'
 
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { DOCUMENTATION_REGISTRY } from '../utils/docRegistry'
 import { useDocToc, type TouchHeading } from '../composables/useDocToc'
 
 const route = useRoute()
 const { setHeadings, clearHeadings } = useDocToc()
-
-const loading = ref(false)
-const loadError = ref<string | null>(null)
-const markdownHtml = ref('')
-
-marked.setOptions({
-  gfm: true,
-  breaks: true,
-})
+const authStore = useAuthStore()
 
 const activeDocKey = computed(() => {
   return (route.params.docKey as string) || ''
@@ -86,6 +79,26 @@ const activeDocKey = computed(() => {
 const activeDoc = computed(() => {
   if (!activeDocKey.value) return null
   return DOCUMENTATION_REGISTRY.find(d => d.key === activeDocKey.value) || null
+})
+
+const resolvedFilename = computed(() => {
+  const doc = activeDoc.value
+  if (!doc) return ''
+  let filename = doc.filename
+  if (filename.includes('{tenantId}')) {
+    const tenantId = authStore.tenantId
+    filename = filename.replace('{tenantId}', String(tenantId ?? 0))
+  }
+  return filename
+})
+
+const loading = ref(false)
+const loadError = ref<string | null>(null)
+const markdownHtml = ref('')
+
+marked.setOptions({
+  gfm: true,
+  breaks: true,
 })
 
 const generateTableOfContents = async () => {
@@ -134,7 +147,7 @@ const loadDocContent = async () => {
   clearHeadings()
   
   try {
-    const response = await fetch(`/${doc.filename}`)
+    const response = await fetch(`/${resolvedFilename.value}`)
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('NOT_FOUND')

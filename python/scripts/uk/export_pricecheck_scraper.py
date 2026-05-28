@@ -379,7 +379,9 @@ def main():
                                 "brand": brand,
                                 "category": cat_name,
                                 "tenant_id": 10,
-                                "vendor_id": 3
+                                "vendor_id": 3,
+                                "source": "website",
+                                "hazardous": None
                             }
                             
                             # Deduplicate/update: if product exists, keep it or update if brand/barcode gets better

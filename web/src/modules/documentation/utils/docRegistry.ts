@@ -53,6 +53,13 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     filename: 'document/costing-backend-architecture.md',
     scope: 'platform',
   },
+  {
+    key: 'tenant_documentation',
+    title: 'Tenant Guide',
+    description: 'Custom guidelines, contact details, and workspace instructions specific to this tenant.',
+    filename: 'doc/tenant_{tenantId}.md',
+    scope: 'app',
+  },
 
   // Module Specific Docs - EXACT DATABASE NAMES
   {

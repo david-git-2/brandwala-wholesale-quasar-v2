@@ -341,6 +341,8 @@ def build_sync_payloads(
         "minimum_order_quantity": minimum_order_quantity,
         "is_available": (available_units > 0) if available_units is not None else None,
         "image_url": normalize_nullable_text(image_url),
+        "source": row.get("source") or "excel",
+        "hazardous": row.get("hazardous") if row.get("hazardous") is not None else None,
     }
 
     # Update payload is PATCH-style: only write fields with concrete values,
@@ -413,6 +415,21 @@ class SupabaseRestClient:
         resp = requests.delete(self._url(table), headers=headers, params=params, timeout=120)
         if not resp.ok:
             raise RuntimeError(f"DELETE {table} by filter failed ({resp.status_code}): {resp.text}")
+
+    def upload_file(self, bucket: str, object_path: str, data: bytes, content_type: str) -> None:
+        url = f"{self.base_url}/storage/v1/object/{bucket}/{object_path}"
+        headers = {
+            "apikey": self.headers["apikey"],
+            "Authorization": self.headers["Authorization"],
+            "x-upsert": "true",
+            "Content-Type": content_type,
+        }
+        resp = requests.post(url, headers=headers, data=data, timeout=120)
+        if not resp.ok:
+            raise RuntimeError(f"supabase storage upload failed ({resp.status_code}): {resp.text}")
+
+    def get_public_url(self, bucket: str, object_path: str) -> str:
+        return f"{self.base_url}/storage/v1/object/public/{bucket}/{object_path}"
 
 
 def fetch_all_scoped_products(
@@ -804,6 +821,8 @@ def main() -> int:
         raise ValueError("Market code cannot be empty.")
 
     tenant_id = prompt_tenant_id(to_text(args.tenant_id))
+    if vendor_code == PC_VENDOR_CODE:
+        tenant_id = 10
 
     supabase_url = to_text(os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL"))
     supabase_admin_key = to_text(
@@ -886,27 +905,57 @@ def main() -> int:
         }
         for item in existing_rows_full
     ]
-    existing_by_key: dict[tuple[str, str], list[int]] = {}
-    for item in existing_rows:
+    existing_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for item in existing_rows_full:
         key = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
         if not key[0] or not key[1]:
             continue
-        existing_by_key.setdefault(key, []).append(int(item["id"]))
+        existing_by_key.setdefault(key, []).append(item)
 
     updates: list[tuple[int, dict[str, Any]]] = []
     inserts: list[dict[str, Any]] = []
+    newly_inserted_keys: set[tuple[str, str]] = set()
+    existing_excel_needs_image: set[tuple[int, tuple[str, str]]] = set()
+
     for key, insert_payload in deduped_inserts.items():
-        ids = existing_by_key.get(key, [])
-        if ids:
+        existing_items = existing_by_key.get(key, [])
+        is_hazardous = insert_payload.get("hazardous") is True
+        is_available = True
+
+        if existing_items:
             update_payload = dict(deduped_updates.get(key, {}))
-            update_payload["is_available"] = True
-            if not update_payload:
-                continue
-            for row_id in ids:
-                updates.append((row_id, update_payload))
+            update_payload["source"] = insert_payload.get("source") or "excel"
+            update_payload["hazardous"] = insert_payload.get("hazardous")
+            update_payload["is_available"] = is_available
+            
+            for existing_item in existing_items:
+                row_id = existing_item["id"]
+                db_source = to_text(existing_item.get("source")).lower()
+                db_image_url = existing_item.get("image_url")
+                
+                final_update_payload = dict(update_payload)
+                
+                if db_source in ("website", "web"):
+                    # Check the DB if the data is present and the source is website,
+                    # then don't update the image url but update the rest data.
+                    if "image_url" in final_update_payload:
+                        del final_update_payload["image_url"]
+                    updates.append((row_id, final_update_payload))
+                else:
+                    # If the source is not website (e.g. excel), we update the image.
+                    if "image_url" in final_update_payload:
+                        del final_update_payload["image_url"]
+                    updates.append((row_id, final_update_payload))
+                    existing_excel_needs_image.add((row_id, key))
         else:
-            insert_payload["is_available"] = True
+            # If the product is not present, add that in the DB with the tenant id 10 and vendor id 3 
+            # and upload the image and use that url.
+            insert_payload["tenant_id"] = 10
+            insert_payload["vendor_id"] = 3
+            insert_payload["vendor_code"] = "PC"
+            insert_payload["is_available"] = is_available
             inserts.append(insert_payload)
+            newly_inserted_keys.add(key)
 
     print(f"Input rows: {len(rows)}")
     print(f"Deduped rows: {len(deduped_inserts)}")
@@ -1091,16 +1140,27 @@ def main() -> int:
         if not local_images:
             print(f"No local images found in: {images_dir}", flush=True)
 
-        rows_after_sync = fetch_all_scoped_products(client, resolved_vendor_id, market_code, tenant_id)
-        ids_by_key: dict[tuple[str, str], list[int]] = {}
-        for item in rows_after_sync:
-            k = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
-            if not k[0] or not k[1]:
-                continue
-            ids_by_key.setdefault(k, []).append(int(item["id"]))
+        rows_after_sync: list[dict[str, Any]] = []
+        offset = 0
+        limit = 1000
+        while True:
+            params: dict[str, Any] = {
+                "select": "id,barcode,product_code,tenant_id",
+                "vendor_id": f"eq.{resolved_vendor_id}",
+                "market_code": f"eq.{market_code}",
+                "limit": str(limit),
+                "offset": str(offset),
+            }
+            batch = client.get_rows("products", params)
+            rows_after_sync.extend(batch)
+            if len(batch) < limit:
+                break
+            offset += limit
 
         image_tasks: list[tuple[int, Path]] = []
-        for key in deduped_inserts.keys():
+        
+        # Add tasks for newly inserted products (which were forced to tenant 10)
+        for key in newly_inserted_keys:
             source_row = deduped_inserts[key]
             image_key = build_image_key(
                 source_row,
@@ -1112,7 +1172,7 @@ def main() -> int:
                 missing_image_keys += 1
                 continue
             
-            pids = ids_by_key.get(key)
+            pids = [int(item["id"]) for item in rows_after_sync if (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper()) == key and item.get("tenant_id") == 10]
             if not pids:
                 continue
             if len(pids) > 1:
@@ -1125,6 +1185,21 @@ def main() -> int:
                 continue
             
             product_id = pids[0]
+            image_tasks.append((product_id, local_image_path))
+
+        # Add tasks for existing excel products that need images
+        for product_id, key in existing_excel_needs_image:
+            source_row = deduped_inserts[key]
+            image_key = build_image_key(
+                source_row,
+                to_text(source_row.get("barcode")),
+                to_text(source_row.get("product_code")),
+            ).strip().lower()
+            local_image_path = local_images.get(image_key)
+            if local_image_path is None:
+                missing_image_keys += 1
+                continue
+            
             image_tasks.append((product_id, local_image_path))
 
         image_total = len(image_tasks)
