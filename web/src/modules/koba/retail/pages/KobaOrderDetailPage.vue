@@ -247,7 +247,7 @@
             <q-popup-edit
               v-if="isAdmin && showConfirmedInput && qtyDraft[props.row.id]"
               v-slot="scope"
-              v-model.number="qtyDraft[props.row.id].confirmed"
+              v-model.number="qtyDraft[props.row.id]!.confirmed"
               auto-save
               @save="(val) => onSaveConfirmedQty(props.row, val)"
             >
@@ -271,7 +271,7 @@
             <q-popup-edit
               v-if="isAdmin && showDeliveredInput && qtyDraft[props.row.id]"
               v-slot="scope"
-              v-model.number="qtyDraft[props.row.id].delivered"
+              v-model.number="qtyDraft[props.row.id]!.delivered"
               auto-save
               @save="(val) => onSaveDeliveredQty(props.row, val)"
             >

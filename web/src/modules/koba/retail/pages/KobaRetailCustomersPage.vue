@@ -125,10 +125,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { date } from 'quasar'
+import { date, useQuasar, type QTableColumn } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useQuasar } from 'quasar'
 
 interface CustomerRow {
   phone: string
@@ -155,7 +154,7 @@ const pagination = ref({
   rowsPerPage: 15
 })
 
-const columns = [
+const columns: QTableColumn[] = [
   { name: 'name', label: 'Customer', align: 'left', field: 'name', sortable: true },
   { name: 'location', label: 'Primary Location', align: 'left', field: 'district', sortable: true },
   { name: 'total_orders', label: 'Orders', align: 'center', field: 'total_orders', sortable: true },

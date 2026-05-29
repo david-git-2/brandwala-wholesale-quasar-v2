@@ -258,7 +258,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { date } from 'quasar'
+import { date, type QTableColumn } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
@@ -315,7 +315,7 @@ const detailOpen = ref(false)
 
 const tenantId = computed(() => authStore.tenantId)
 
-const historyColumns = [
+const historyColumns: QTableColumn[] = [
   { name: 'order_id', label: 'Order ID', align: 'left', field: 'order_id' },
   { name: 'created_at', label: 'Date Placed', align: 'left', field: 'created_at' },
   { name: 'status', label: 'Status', align: 'left', field: 'status' },
