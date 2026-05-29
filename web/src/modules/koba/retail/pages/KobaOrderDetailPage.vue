@@ -245,10 +245,10 @@
             <q-icon v-if="isAdmin && showConfirmedInput" name="edit" size="xs" color="blue-4" class="q-ml-xs show-on-hover" />
             
             <q-popup-edit
-              v-if="isAdmin && showConfirmedInput"
+              v-if="isAdmin && showConfirmedInput && qtyDraft[props.row.id]"
+              v-slot="scope"
               v-model.number="qtyDraft[props.row.id].confirmed"
               auto-save
-              v-slot="scope"
               @save="(val) => onSaveConfirmedQty(props.row, val)"
             >
               <q-input
@@ -269,10 +269,10 @@
             <q-icon v-if="isAdmin && showDeliveredInput" name="edit" size="xs" color="teal-4" class="q-ml-xs show-on-hover" />
 
             <q-popup-edit
-              v-if="isAdmin && showDeliveredInput"
+              v-if="isAdmin && showDeliveredInput && qtyDraft[props.row.id]"
+              v-slot="scope"
               v-model.number="qtyDraft[props.row.id].delivered"
               auto-save
-              v-slot="scope"
               @save="(val) => onSaveDeliveredQty(props.row, val)"
             >
               <q-input
@@ -631,35 +631,7 @@ const statusOptions = [
   { label: 'Cancelled', value: 'cancelled' },
 ]
 
-function statusIcon(s: string | null) {
-  switch (s) {
-    case 'pending': return 'hourglass_empty'
-    case 'confirmed': return 'check_circle_outline'
-    case 'processing': return 'autorenew'
-    case 'shipped': return 'local_shipping'
-    case 'delivered': return 'task_alt'
-    case 'cancelled': return 'cancel'
-    default: return 'fiber_manual_record'
-  }
-}
-
-const statusColor = computed(() => {
-  if (!order.value) return 'grey'
-  switch (order.value.status) {
-    case 'pending': return 'amber-8'
-    case 'confirmed': return 'blue-7'
-    case 'processing': return 'indigo-7'
-    case 'shipped': return 'deep-purple-7'
-    case 'delivered': return 'positive'
-    case 'cancelled': return 'negative'
-    default: return 'grey'
-  }
-})
-
 const isDeliveredLocked = computed(() => order.value?.status === 'delivered')
-const canSoftDelete = computed(() =>
-  isAdmin.value
-)
 const canEditQuantities = computed(() =>
   isAdmin.value && !isDeliveredLocked.value && order.value?.status !== 'cancelled'
 )
@@ -761,21 +733,7 @@ function initDraftForItems(itemList: KobaOrderItem[]) {
 
 watch(items, (newItems) => { initDraftForItems(newItems) }, { immediate: true })
 
-function confirmedChanged(item: KobaOrderItem): boolean {
-  const draft = qtyDraft[item.id]
-  if (!draft) return false
-  const current = item.confirmed_quantity ?? null
-  const next = draft.confirmed !== null ? Number(draft.confirmed) : null
-  return next !== null && next !== current && next >= 0
-}
 
-function deliveredChanged(item: KobaOrderItem): boolean {
-  const draft = qtyDraft[item.id]
-  if (!draft) return false
-  const current = item.delivered_quantity ?? 0
-  const next = draft.delivered !== null ? Number(draft.delivered) : null
-  return next !== null && next !== current && next >= 0
-}
 
 
 
@@ -825,7 +783,7 @@ const productsCommissionDisplay = computed(() => {
 const deliveryCharge = computed(() => {
   if (!order.value || order.value.free_delivery || !order.value.shipping_district) return 0
   const rates = settingsStore.settings?.delivery_rates || { default: 110, Dhaka: 100 }
-  return (rates as Record<string, number>)[order.value.shipping_district] ?? (rates as Record<string, number>)['default'] ?? 110
+  return rates[order.value.shipping_district] ?? rates['default'] ?? 110
 })
 
 const finalTotal = computed(() => {
@@ -891,21 +849,7 @@ function copyAllShipping() {
 
 // ─── Refresh ─────────────────────────────────────────────────────────────────
 
-async function onRefresh() {
-  loading.value = true
-  error.value = null
-  try {
-    await Promise.all([
-      orderStore.fetchOrderDetails(orderId.value),
-      settingsStore.fetchSettings(),
-    ])
-    initDraftForItems(items.value)
-  } catch (err: unknown) {
-    error.value = (err as Error)?.message || 'Failed to refresh order.'
-  } finally {
-    loading.value = false
-  }
-}
+
 
 // ─── Mount ────────────────────────────────────────────────────────────────────
 
@@ -951,7 +895,7 @@ const tableColumns = [
 
 // ─── Quantity Updates via Popup Edit ─────────────────────────────────────────
 
-async function onSaveConfirmedQty(item: KobaOrderItem, newValue: any) {
+async function onSaveConfirmedQty(item: KobaOrderItem, newValue: unknown) {
   const qty = Math.max(0, Math.round(Number(newValue)))
   savingConfirmedId.value = item.id
   qtyError.value = null
@@ -962,14 +906,15 @@ async function onSaveConfirmedQty(item: KobaOrderItem, newValue: any) {
     } else {
       qtyError.value = result?.error ?? 'Failed to save confirmed quantity.'
       // Revert if API failed
-      if (qtyDraft[item.id]) qtyDraft[item.id].confirmed = item.confirmed_quantity ?? null
+      const draft = qtyDraft[item.id]
+      if (draft) draft.confirmed = item.confirmed_quantity ?? null
     }
   } finally {
     savingConfirmedId.value = null
   }
 }
 
-async function onSaveDeliveredQty(item: KobaOrderItem, newValue: any) {
+async function onSaveDeliveredQty(item: KobaOrderItem, newValue: unknown) {
   const maxQty = item.confirmed_quantity ?? item.quantity
   const qty = Math.max(0, Math.min(maxQty, Math.round(Number(newValue))))
   savingDeliveredId.value = item.id
@@ -981,7 +926,8 @@ async function onSaveDeliveredQty(item: KobaOrderItem, newValue: any) {
     } else {
       qtyError.value = result?.error ?? 'Failed to save delivered quantity.'
       // Revert if API failed
-      if (qtyDraft[item.id]) qtyDraft[item.id].delivered = item.delivered_quantity ?? 0
+      const draft = qtyDraft[item.id]
+      if (draft) draft.delivered = item.delivered_quantity ?? 0
     }
   } finally {
     savingDeliveredId.value = null

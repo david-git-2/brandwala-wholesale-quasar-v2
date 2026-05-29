@@ -34,7 +34,7 @@
           label="Public Domain"
           outlined
           dense
-          hint="Optional. Example: wholesale.brandwala.com"
+          hint="Optional. Example: wholesale.tradeflowbd.com"
           :rules="[
             (value) =>
               !String(value ?? '').trim() ||

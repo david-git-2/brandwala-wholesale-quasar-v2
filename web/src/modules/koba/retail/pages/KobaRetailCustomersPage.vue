@@ -162,7 +162,7 @@ const columns = [
   { name: 'total_spent', label: 'Total Spent', align: 'left', field: 'total_spent', sortable: true },
   { name: 'last_order_date', label: 'Last Active', align: 'left', field: 'last_order_date', sortable: true },
   { name: 'actions', label: 'Actions', align: 'right', field: 'actions' }
-] as const
+]
 
 const tenantId = computed(() => authStore.tenantId)
 

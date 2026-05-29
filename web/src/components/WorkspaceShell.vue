@@ -11,6 +11,7 @@
           @click="drawerOpen = !drawerOpen"
         />
 
+       
         <div class="workspace-shell__context">
           <slot name="header-left" />
         </div>
@@ -464,6 +465,7 @@ const handleLogout = async () => {
   padding: clamp(0.5rem, 1.2vw, 0.9rem);
 }
 
+
 @media (max-width: 599px) {
   .workspace-shell {
     --workspace-header-offset: 54px;
@@ -476,6 +478,8 @@ const handleLogout = async () => {
   .workspace-shell__actions {
     gap: 0.35rem;
   }
+
+ 
 }
 
 .workspace-shell__nav-sub-item {

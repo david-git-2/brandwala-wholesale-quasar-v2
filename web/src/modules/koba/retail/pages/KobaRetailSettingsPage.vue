@@ -171,7 +171,7 @@ onMounted(async () => {
 function updateRateKey(oldKey: string) {
   const newKey = rateKeys.value[oldKey]
   if (newKey && newKey !== oldKey) {
-    form.delivery_rates[newKey] = form.delivery_rates[oldKey]
+    form.delivery_rates[newKey] = form.delivery_rates[oldKey] ?? 0
     delete form.delivery_rates[oldKey]
     rateKeys.value[newKey] = newKey
     delete rateKeys.value[oldKey]

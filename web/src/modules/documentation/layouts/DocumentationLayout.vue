@@ -15,11 +15,11 @@
         />
 
         <q-avatar size="32px" class="q-mr-sm">
-          <q-icon name="menu_book" color="primary" size="sm" />
+          <img src="/tradeflowbd-logo.png" alt="TradeflowBD Logo" />
         </q-avatar>
 
         <q-toolbar-title class="text-weight-bold text-subtitle1 flex items-center no-wrap ink-color">
-          <span>Brandwala Wholesale Docs</span>
+          <span>TradeflowBD Wholesale Docs</span>
           <q-badge :color="currentScope === 'platform' ? 'purple-7' : 'teal-7'" class="q-ml-sm text-caption uppercase text-weight-bold">
             {{ currentScope === 'platform' ? 'Platform Docs' : 'Workspace Docs' }}
           </q-badge>

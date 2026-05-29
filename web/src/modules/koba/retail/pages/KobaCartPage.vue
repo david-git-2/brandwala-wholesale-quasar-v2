@@ -299,7 +299,7 @@ const settingsRouteName = computed(() => {
 })
 
 const isAdminOrSuper = computed(() => {
-  return ['admin', 'staff', 'super_admin'].includes(authStore.role || '')
+  return ['admin', 'staff', 'super_admin'].includes(authStore.matchedRole || '')
 })
 
 // District list matching brandwala retail

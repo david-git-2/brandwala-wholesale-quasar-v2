@@ -1,7 +1,7 @@
 <template>
   <div class="callback-stage" :class="`theme-${scope}`">
     <div class="callback-stage__card">
-      <q-spinner-ball color="primary" size="42px" />
+      <q-spinner-tail color="primary" size="42px" />
       <div class="callback-stage__title">Finishing sign-in</div>
       <div class="callback-stage__copy">
         Checking your access for the selected route and preparing the workspace.

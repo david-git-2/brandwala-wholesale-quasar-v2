@@ -108,7 +108,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { date } from 'quasar'
 import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
@@ -172,9 +171,6 @@ function viewOrderDetails(orderId: number) {
   void router.push({ name: routeName, params: { id: String(orderId) } })
 }
 
-function formatDate(isoString: string) {
-  return date.formatDate(new Date(isoString), 'YYYY-MM-DD HH:mm')
-}
 
 const statusChipStyle = (currentStatus: string | null) => {
   const value = (currentStatus ?? '').toLowerCase()

@@ -322,7 +322,7 @@ const historyColumns = [
   { name: 'subtotal_gbp', label: 'Order Value', align: 'left', field: 'subtotal_gbp' },
   { name: 'net_order_commission', label: 'Commission Eearned', align: 'left', field: 'net_order_commission' },
   { name: 'actions', label: 'View', align: 'right', field: 'actions' }
-] as const
+]
 
 async function fetchProfile() {
   if (!tenantId.value || !props.phone) return

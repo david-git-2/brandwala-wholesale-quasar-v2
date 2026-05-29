@@ -1,6 +1,6 @@
 <template>
   <div class="page-initial-loader">
-    <q-spinner-cube color="primary" size="46px" />
+    <q-spinner-tail color="primary" size="72px" />
   </div>
 </template>
 
