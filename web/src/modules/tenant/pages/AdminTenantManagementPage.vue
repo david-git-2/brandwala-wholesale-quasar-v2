@@ -1,118 +1,98 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
-      <section class="tenant-management-hero">
+  <q-page class="q-pa-md admin-tenant-management-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-md">
-            <div class="text-overline">Operations</div>
-            <h1 class="text-h5 q-my-none">{{ pageTitle }}</h1>
-            <p v-if="tenant" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">{{ pageTitle }}</div>
+            <div v-if="tenant" class="text-caption text-grey-8">
               {{ tenant.name }} · {{ tenant.slug }}
-            </p>
+            </div>
           </div>
-          <div class="col-12 col-md-auto">
+          <div class="col-auto">
             <q-chip
-              class="tenant-management-hero-chip"
-              :color="tenant?.is_active ? 'positive' : 'grey-6'"
-              text-color="white"
+              dense
+              square
+              class="costing-status-chip"
+              :style="tenant?.is_active ? activeStatusStyle : inactiveStatusStyle"
             >
+              <span class="status-dot" :style="{ backgroundColor: tenant?.is_active ? '#2f8b5d' : '#66758c' }" />
               {{ tenant?.is_active ? 'Active' : 'Inactive' }}
             </q-chip>
           </div>
         </div>
-      </section>
+      </q-card-section>
+    </q-card>
 
-    <q-banner v-if="pageError" class="bw-status-banner text-white" rounded>
+    <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
       {{ pageError }}
     </q-banner>
 
-    <div v-if="pageLoading" class="text-grey-7">Loading tenant details...</div>
+    <PageInitialLoader v-if="pageLoading" />
 
-    <div v-else-if="!tenant" class="text-grey-7">Tenant not found.</div>
+    <template v-else>
+      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">Tenant not found.</div>
 
     <div v-else class="row q-col-gutter-lg">
       <div class="col-12 col-lg-4">
-        <q-card v-if="showCustomerGroupManagement" flat bordered class="q-mb-lg">
+        <q-card v-if="showCustomerGroupManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-start justify-between">
             <div>
-              <div class="text-h6">{{ tenant.name }}</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
               <div class="text-caption text-grey-7">{{ tenant.slug }}</div>
             </div>
 
-            <q-badge :color="tenant.is_active ? 'positive' : 'grey-6'">
+            <q-chip
+              dense
+              square
+              class="costing-status-chip"
+              :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
+            >
+              <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
               {{ tenant.is_active ? 'Active' : 'Inactive' }}
-            </q-badge>
+            </q-chip>
           </q-card-section>
 
           <q-separator />
 
-          <q-card-section class="q-gutter-md">
-            <div><strong>ID:</strong> #{{ tenant.id }}</div>
-            <div><strong>Name:</strong> {{ tenant.name }}</div>
-            <div><strong>Slug:</strong> {{ tenant.slug }}</div>
-            <div class="row items-center justify-between q-gutter-sm">
-              <div class="col min-w-0">
-                <strong>Admin Login:</strong>
-                <a
-                  :href="adminLoginUrl"
-                  class="text-primary"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+          <q-card-section class="q-gutter-sm">
+            <div class="row items-center justify-between q-py-xs border-bottom">
+              <div class="text-grey-8">Tenant ID</div>
+              <div class="text-weight-bold">#{{ tenant.id }}</div>
+            </div>
+
+            <q-card flat class="q-pa-sm inner-card">
+              <div class="text-caption text-grey-7 q-mb-xs">Admin Login</div>
+              <div class="row items-center justify-between q-gutter-sm">
+                <a :href="adminLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
                   {{ adminLoginUrl }}
                 </a>
+                <q-btn flat round dense icon="content_copy" aria-label="Copy admin login URL" @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')" />
               </div>
-              <div class="col-auto">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="content_copy"
-                  aria-label="Copy admin login URL"
-                  @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
-                />
-              </div>
-            </div>
-            <div class="row items-center justify-between q-gutter-sm">
-              <div class="col min-w-0">
-                <strong>Customer Login:</strong>
-                <a
-                  :href="customerLoginUrl"
-                  class="text-primary"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+            </q-card>
+
+            <q-card flat class="q-pa-sm inner-card">
+              <div class="text-caption text-grey-7 q-mb-xs">Customer Login</div>
+              <div class="row items-center justify-between q-gutter-sm">
+                <a :href="customerLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
                   {{ customerLoginUrl }}
                 </a>
+                <q-btn flat round dense icon="content_copy" aria-label="Copy customer login URL" @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')" />
               </div>
-              <div class="col-auto">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="content_copy"
-                  aria-label="Copy customer login URL"
-                  @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
-                />
-              </div>
-            </div>
-            <div>
-              <strong>Status:</strong>
-              {{ tenant.is_active ? 'Active' : 'Inactive' }}
-            </div>
+            </q-card>
           </q-card-section>
         </q-card>
 
-        <q-card v-if="showCustomerGroupManagement" flat bordered class="q-mb-lg">
+        <q-card v-if="showCustomerGroupManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
-              <div class="text-h6">Customer Groups</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Groups</div>
               <div class="text-caption text-grey-7">
                 Organize customer-side access by company or buying team.
               </div>
             </div>
 
-            <q-btn color="primary" icon="groups" label="Add Group" @click="openCreateGroupDialog" />
+            <q-btn color="primary" class="pill-btn slim-btn" no-caps size="sm" icon="groups" label="Add Group" @click="openCreateGroupDialog" />
           </q-card-section>
 
           <q-separator />
@@ -176,10 +156,10 @@
       </div>
 
       <div class="col-12 col-lg-8">
-        <q-card v-if="showStaffManagement" flat bordered class="q-mb-lg">
+        <q-card v-if="showStaffManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
-              <div class="text-h6">Internal Members</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Internal Members</div>
               <div class="text-caption text-grey-7">
                 Manage staff and viewer memberships that belong to this tenant.
               </div>
@@ -189,12 +169,18 @@
               <q-btn
                 outline
                 color="primary"
+                class="pill-btn slim-btn"
+                no-caps
+                size="sm"
                 icon="visibility"
                 label="Add Viewer"
                 @click="onClickAddMember('viewer')"
               />
               <q-btn
                 color="primary"
+                class="pill-btn slim-btn"
+                no-caps
+                size="sm"
                 icon="person_add"
                 label="Add Staff"
                 @click="onClickAddMember('staff')"
@@ -216,13 +202,12 @@
             <q-table
               v-if="staffMembers.length"
               flat
-              bordered
               row-key="id"
               :rows="staffMembers"
               :columns="internalMemberColumns"
               :dense="$q.screen.lt.md"
               hide-bottom
-              class="tenant-detail-card__table"
+              class="tenant-detail-card__table costing-list-table"
             >
               <template #body-cell-email="props">
                 <q-td :props="props">{{ props.row.email }}</q-td>
@@ -272,13 +257,12 @@
             <q-table
               v-if="viewerMembers.length"
               flat
-              bordered
               row-key="id"
               :rows="viewerMembers"
               :columns="internalMemberColumns"
               :dense="$q.screen.lt.md"
               hide-bottom
-              class="tenant-detail-card__table"
+              class="tenant-detail-card__table costing-list-table"
             >
               <template #body-cell-email="props">
                 <q-td :props="props">{{ props.row.email }}</q-td>
@@ -316,10 +300,10 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="q-mb-lg">
+        <q-card flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
-              <div class="text-h6">Customer Group Members</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Group Members</div>
               <div class="text-caption text-grey-7">
                 Add customer admins, negotiators, and staff inside the selected group.
               </div>
@@ -327,6 +311,9 @@
 
             <q-btn
               color="primary"
+              class="pill-btn slim-btn"
+              no-caps
+              size="sm"
               icon="person_add"
               label="Add Customer User"
               :disable="!selectedCustomerGroup"
@@ -381,13 +368,12 @@
             <q-table
               v-else
               flat
-              bordered
               row-key="id"
               :rows="sortedCustomerGroupMembers"
               :columns="customerGroupMemberColumns"
               :dense="$q.screen.lt.md"
               hide-bottom
-              class="tenant-detail-card__table"
+              class="tenant-detail-card__table costing-list-table"
             >
               <template #body-cell-name="props">
                 <q-td :props="props">{{ props.row.name }}</q-td>
@@ -437,17 +423,20 @@
           </template>
         </q-card>
 
-        <q-card v-if="showCustomerGroupManagement && showCostingFilesSection" flat bordered class="q-mb-lg tenant-detail-card">
+        <q-card v-if="showCustomerGroupManagement && showCostingFilesSection" flat class="q-mb-lg tenant-detail-card floating-surface shadow-1">
           <q-card-section class="row items-center justify-between tenant-detail-card__head">
             <div>
-              <div class="text-h6">Costing Files</div>
-              <div class="text-caption text-grey-7">
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Costing Files</div>
+              <div class="text-caption text-grey-8">
                 Admins can create, edit, and delete costing files for this tenant.
               </div>
             </div>
 
             <q-btn
               color="primary"
+              class="pill-btn slim-btn"
+              no-caps
+              size="sm"
               icon="add"
               label="Add Costing File"
               :disable="customerGroups.length === 0"
@@ -472,13 +461,12 @@
           <q-table
             v-else
             flat
-            bordered
             row-key="id"
             :rows="costingFiles"
             :columns="costingFileColumns"
             :dense="$q.screen.lt.md"
             hide-bottom
-            class="tenant-detail-card__table"
+            class="tenant-detail-card__table costing-list-table"
           >
             <template #body-cell-customer_group_id="props">
               <q-td :props="props">
@@ -488,9 +476,15 @@
 
             <template #body-cell-status="props">
               <q-td :props="props">
-                <q-badge color="primary" outline>
+                <q-chip
+                  dense
+                  square
+                  class="costing-status-chip"
+                  :style="String(props.row.status).toLowerCase() === 'live' || String(props.row.status).toLowerCase() === 'approved' ? activeStatusStyle : inactiveStatusStyle"
+                >
+                  <span class="status-dot" :style="{ backgroundColor: String(props.row.status).toLowerCase() === 'live' || String(props.row.status).toLowerCase() === 'approved' ? '#2f8b5d' : '#66758c' }" />
                   {{ props.row.status }}
-                </q-badge>
+                </q-chip>
               </q-td>
             </template>
 
@@ -524,9 +518,9 @@
           </q-table>
         </q-card>
 
-        <q-card v-if="showModuleManagement" flat bordered class="tenant-detail-card">
+        <q-card v-if="showModuleManagement" flat class="tenant-detail-card floating-surface shadow-1">
           <q-card-section class="row items-center justify-between tenant-detail-card__head">
-            <div class="text-h6">Module Features</div>
+            <div class="text-subtitle1 text-weight-bold text-grey-9">Module Features</div>
           </q-card-section>
 
           <q-separator />
@@ -538,11 +532,11 @@
           <q-card-section v-else>
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-6">
-                <div class="text-subtitle1 text-weight-medium q-mb-sm">Available Features</div>
+                <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Available Features</div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item v-for="feature in availableModules" :key="feature.id">
                     <q-item-section>
-                      <q-item-label>{{ feature.name }}</q-item-label>
+                      <q-item-label class="text-weight-medium">{{ feature.name }}</q-item-label>
                       <q-item-label caption>{{ feature.key }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
@@ -550,6 +544,7 @@
                         color="primary"
                         dense
                         flat
+                        no-caps
                         label="Add"
                         @click="addTenantFeature(feature.key)"
                       />
@@ -562,11 +557,11 @@
               </div>
 
               <div class="col-12 col-md-6">
-                <div class="text-subtitle1 text-weight-medium q-mb-sm">Tenant Features</div>
+                <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Tenant Features</div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item v-for="feature in modules" :key="feature.id">
                     <q-item-section>
-                      <q-item-label>{{ feature.module_key }}</q-item-label>
+                      <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
                       <q-item-label caption>
                         {{ feature.is_active ? 'Active' : 'Inactive' }}
                       </q-item-label>
@@ -576,6 +571,7 @@
                         color="negative"
                         dense
                         flat
+                        no-caps
                         label="Remove"
                         @click="removeTenantFeature(feature.id)"
                       />
@@ -590,21 +586,19 @@
           </q-card-section>
         </q-card>
       </div>
-    </div>
-
-    <q-dialog v-model="openAddMemberDialog" persistent>
-      <q-card style="min-width: 420px">
+    </div>    <q-dialog v-model="openAddMemberDialog" persistent>
+      <q-card style="min-width: 420px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">
+          <div class="text-h6 text-weight-bold">
             {{ selectedMemberRole === 'viewer' ? 'Add Viewer' : 'Add Staff' }}
           </div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="memberEmail" label="Email" type="email" outlined dense />
-          <q-input :model-value="selectedMemberRole" label="Role" outlined dense readonly />
+          <q-input v-model="memberEmail" label="Email" type="email" outlined dense class="soft-input" />
+          <q-input :model-value="selectedMemberRole" label="Role" outlined dense class="soft-input" readonly />
           <div class="row items-center justify-between">
-            <div class="text-subtitle2">Status</div>
+            <div class="text-subtitle2 text-grey-8">Status</div>
             <q-toggle
               v-model="memberIsActive"
               :label="memberIsActive ? 'Active' : 'Inactive'"
@@ -614,17 +608,17 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openAddMemberDialog = false" />
-          <q-btn color="primary" label="Save" @click="handleSaveMember" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openAddMemberDialog = false" />
+          <q-btn color="primary" unelevated class="pill-btn" no-caps label="Save" @click="handleSaveMember" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openDeleteMemberDialog" persistent>
-      <q-card style="min-width: 350px">
+      <q-card style="min-width: 350px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">Confirm Delete</div>
+          <div class="text-h6 text-weight-bold">Confirm Delete</div>
         </q-card-section>
 
         <q-card-section>
@@ -632,17 +626,17 @@
           <strong>{{ memberToDelete?.email }}</strong>?
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteMemberDialog = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteMember" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openDeleteMemberDialog = false" />
+          <q-btn color="negative" unelevated class="pill-btn" no-caps label="Delete" @click="confirmDeleteMember" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openDeleteCustomerMemberDialogModel" persistent>
-      <q-card style="min-width: 350px">
+      <q-card style="min-width: 350px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">Delete Customer User</div>
+          <div class="text-h6 text-weight-bold">Delete Customer User</div>
         </q-card-section>
 
         <q-card-section>
@@ -650,17 +644,17 @@
           <strong>{{ customerGroupMemberToDelete?.email }}</strong>?
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteCustomerMemberDialogModel = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroupMember" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openDeleteCustomerMemberDialogModel = false" />
+          <q-btn color="negative" unelevated class="pill-btn" no-caps label="Delete" @click="confirmDeleteCustomerGroupMember" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openCostingFileDialog" persistent>
-      <q-card style="min-width: 460px">
+      <q-card style="min-width: 460px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">
+          <div class="text-h6 text-weight-bold">
             {{ costingFileForm.id ? 'Edit Costing File' : 'Add Costing File' }}
           </div>
         </q-card-section>
@@ -671,12 +665,14 @@
             label="Name"
             outlined
             dense
+            class="soft-input"
           />
           <q-input
             v-model="costingFileForm.market"
             label="Market"
             outlined
             dense
+            class="soft-input"
           />
           <q-select
             v-model="costingFileForm.customerGroupId"
@@ -686,13 +682,17 @@
             label="Customer Group"
             outlined
             dense
+            class="soft-input"
           />
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openCostingFileDialog = false" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openCostingFileDialog = false" />
           <q-btn
             color="primary"
+            unelevated
+            class="pill-btn"
+            no-caps
             label="Save"
             :loading="costingFileMutationLoading"
             :disable="!canSaveCostingFile"
@@ -703,19 +703,22 @@
     </q-dialog>
 
     <q-dialog v-model="openDeleteCostingFileDialogModel" persistent>
-      <q-card style="min-width: 360px">
+      <q-card style="min-width: 360px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">Delete Costing File</div>
+          <div class="text-h6 text-weight-bold">Delete Costing File</div>
         </q-card-section>
 
         <q-card-section>
           Delete costing file <strong>{{ costingFileToDelete?.name }}</strong>?
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteCostingFileDialogModel = false" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openDeleteCostingFileDialogModel = false" />
           <q-btn
             color="negative"
+            unelevated
+            class="pill-btn"
+            no-caps
             label="Delete"
             :loading="costingFileMutationLoading"
             @click="confirmDeleteCostingFile"
@@ -725,9 +728,9 @@
     </q-dialog>
 
     <q-dialog v-model="openCustomerGroupDialog" persistent>
-      <q-card style="min-width: 460px">
+      <q-card style="min-width: 460px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">
+          <div class="text-h6 text-weight-bold">
             {{ customerGroupForm.id ? 'Edit Customer Group' : 'Add Customer Group' }}
           </div>
         </q-card-section>
@@ -738,6 +741,7 @@
             label="Group name"
             outlined
             dense
+            class="soft-input"
             :error="customerGroupNameError !== null"
             :error-message="customerGroupNameError ?? undefined"
           />
@@ -746,6 +750,7 @@
             label="Accent color"
             outlined
             dense
+            class="soft-input"
             placeholder="#B45F34"
             :error="customerGroupAccentError !== null"
             :error-message="customerGroupAccentError ?? undefined"
@@ -797,7 +802,7 @@
             </div>
           </div>
           <div class="row items-center justify-between">
-            <div class="text-subtitle2">Status</div>
+            <div class="text-subtitle2 text-grey-8">Status</div>
             <q-toggle
               v-model="customerGroupForm.is_active"
               :label="customerGroupForm.is_active ? 'Active' : 'Inactive'"
@@ -807,23 +812,24 @@
           </div>
           <div v-if="!customerGroupForm.id" class="customer-group-admin-block q-gutter-md">
             <div>
-              <div class="text-subtitle2 text-weight-medium">First customer admin</div>
+              <div class="text-subtitle2 text-weight-bold">First customer admin</div>
               <div class="text-caption text-grey-7">
                 Add the first customer admin now, or leave this blank and add them later.
               </div>
             </div>
-            <q-input v-model="customerGroupAdminForm.name" label="Admin name" outlined dense />
+            <q-input v-model="customerGroupAdminForm.name" label="Admin name" outlined dense class="soft-input" />
             <q-input
               v-model="customerGroupAdminForm.email"
               label="Admin email"
               type="email"
               outlined
               dense
+              class="soft-input"
               :error="customerGroupAdminEmailError !== null"
               :error-message="customerGroupAdminEmailError ?? undefined"
             />
             <div class="row items-center justify-between">
-              <div class="text-subtitle2">Admin status</div>
+              <div class="text-subtitle2 text-grey-8">Admin status</div>
               <q-toggle
                 v-model="customerGroupAdminForm.is_active"
                 :label="customerGroupAdminForm.is_active ? 'Active' : 'Inactive'"
@@ -834,10 +840,13 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openCustomerGroupDialog = false" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openCustomerGroupDialog = false" />
           <q-btn
             color="primary"
+            unelevated
+            class="pill-btn"
+            no-caps
             label="Save"
             :disable="customerGroupFormInvalid"
             @click="saveCustomerGroup"
@@ -847,26 +856,26 @@
     </q-dialog>
 
     <q-dialog v-model="openDeleteCustomerGroupDialog" persistent>
-      <q-card style="min-width: 360px">
+      <q-card style="min-width: 360px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">Delete Customer Group</div>
+          <div class="text-h6 text-weight-bold">Delete Customer Group</div>
         </q-card-section>
 
         <q-card-section>
           Delete customer group <strong>{{ customerGroupToDelete?.name }}</strong>?
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openDeleteCustomerGroupDialog = false" />
-          <q-btn color="negative" label="Delete" @click="confirmDeleteCustomerGroup" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openDeleteCustomerGroupDialog = false" />
+          <q-btn color="negative" unelevated class="pill-btn" no-caps label="Delete" @click="confirmDeleteCustomerGroup" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openCustomerMemberDialog" persistent>
-      <q-card style="min-width: 460px">
+      <q-card style="min-width: 460px; border-radius: 12px;">
         <q-card-section>
-          <div class="text-h6">
+          <div class="text-h6 text-weight-bold">
             {{
               customerGroupMemberForm.id
                 ? 'Edit Customer Group Member'
@@ -881,6 +890,7 @@
             label="Name"
             outlined
             dense
+            class="soft-input"
             :error="customerGroupMemberNameError !== null"
             :error-message="customerGroupMemberNameError ?? undefined"
           />
@@ -890,6 +900,7 @@
             type="email"
             outlined
             dense
+            class="soft-input"
             :error="customerGroupMemberEmailError !== null"
             :error-message="customerGroupMemberEmailError ?? undefined"
           />
@@ -901,9 +912,10 @@
             label="Role"
             outlined
             dense
+            class="soft-input"
           />
           <div class="row items-center justify-between">
-            <div class="text-subtitle2">Status</div>
+            <div class="text-subtitle2 text-grey-8">Status</div>
             <q-toggle
               v-model="customerGroupMemberForm.is_active"
               :label="customerGroupMemberForm.is_active ? 'Active' : 'Inactive'"
@@ -913,10 +925,13 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="openCustomerMemberDialog = false" />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="openCustomerMemberDialog = false" />
           <q-btn
             color="primary"
+            unelevated
+            class="pill-btn"
+            no-caps
             label="Save"
             :disable="customerGroupMemberFormInvalid"
             @click="saveCustomerGroupMember"
@@ -924,7 +939,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    </section>
+    </template>
   </q-page>
 </template>
 
@@ -935,6 +950,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
@@ -950,6 +966,20 @@ import type {
   CustomerGroupRole,
   Tenant,
 } from '../types'
+
+const activeStatusStyle = {
+  backgroundColor: '#c3e8d2',
+  color: '#1f5d3c',
+  border: '1px solid #9fd4b7',
+  boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+}
+
+const inactiveStatusStyle = {
+  backgroundColor: '#dbe5f3',
+  color: '#3b4b66',
+  border: '1px solid #b9c8dd',
+  boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+}
 
 const props = withDefaults(
   defineProps<{
@@ -1917,17 +1947,63 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tenant-management-hero {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 14px;
-  padding: 1rem;
-  background:
-    linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08)),
-    #ffffff;
+.admin-tenant-management-page {
+  background: transparent;
 }
 
-.tenant-management-hero-chip {
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.inner-card {
+  border-radius: 12px;
+  border: 1px solid rgba(34, 56, 101, 0.06);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.border-bottom {
+  border-bottom: 1px solid rgba(34, 56, 101, 0.05);
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.costing-status-chip {
+  border-radius: 6px !important;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.costing-list-table :deep(th) {
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .customer-group-admin-block {
@@ -1996,14 +2072,6 @@ onMounted(() => {
 .customer-group-swatch--active {
   border-color: rgba(31, 41, 55, 0.55);
   transform: scale(1.05);
-}
-
-.tenant-detail-card :deep(.q-btn) {
-  border-radius: 8px;
-}
-
-:deep(.q-btn) {
-  border-radius: 8px;
 }
 
 .tenant-detail-card__head {

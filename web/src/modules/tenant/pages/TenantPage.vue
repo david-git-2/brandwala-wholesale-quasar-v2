@@ -1,55 +1,83 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-overline">Platform</div>
-          <h1 class="text-h5 q-my-none">Tenants</h1>
+  <q-page class="q-pa-md tenant-list-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">Tenants</div>
+            <div class="text-caption text-grey-8">Platform Management</div>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              color="primary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              icon="add"
+              label="Add Tenant"
+              @click="onClickAddTenant"
+            />
+          </div>
         </div>
-        <div class="col-auto">
-          <q-btn color="primary" unelevated icon="add" label="Add Tenant" @click="onClickAddTenant" />
-        </div>
-      </section>
+      </q-card-section>
+    </q-card>
 
-      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
-        {{ error }}
-      </q-banner>
+    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
+      {{ error }}
+    </q-banner>
 
+    <PageInitialLoader v-if="loading" />
+
+    <template v-else>
       <section v-if="items.length" class="tenant-page__grid">
         <q-card
           v-for="tenant in items"
           :key="tenant.id"
           flat
-          bordered
-          class="tenant-page__card cursor-pointer"
+          class="tenant-page__card floating-surface shadow-1 cursor-pointer"
           @click="goToTenantDetails(tenant.id)"
         >
           <q-card-section>
-            <div class="text-overline">Tenant #{{ tenant.id }}</div>
-            <div class="text-subtitle1">{{ tenant.name }}</div>
-            <div class="text-body2 text-grey-7">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
+            <div class="row justify-between items-center q-mb-xs">
+              <div class="text-overline text-primary text-weight-bold">Tenant #{{ tenant.id }}</div>
+              <q-chip
+                dense
+                square
+                class="costing-status-chip"
+                :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
+              >
+                <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+                {{ tenant.is_active ? 'Active' : 'Inactive' }}
+              </q-chip>
+            </div>
+            <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
+            <div class="text-body2 text-grey-7 q-mt-xs">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
           </q-card-section>
         </q-card>
       </section>
 
-      <q-card v-else-if="!loading" flat bordered>
-        <q-card-section class="text-center">
-          <div class="text-subtitle1">No tenants available</div>
+      <q-card v-else flat class="floating-surface shadow-1">
+        <q-card-section class="text-center q-pa-xl">
+          <div class="text-subtitle1 text-grey-9 text-weight-bold">No tenants available</div>
           <div class="text-body2 text-grey-7 q-mt-sm">Create your first tenant to get started.</div>
-          <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Tenant" @click="onClickAddTenant" />
+          <q-btn
+            class="q-mt-md pill-btn slim-btn"
+            color="primary"
+            no-caps
+            size="sm"
+            icon="add"
+            label="Create Tenant"
+            @click="onClickAddTenant"
+          />
         </q-card-section>
       </q-card>
+    </template>
 
-      <q-card v-else flat bordered>
-        <q-card-section class="text-grey-7">Loading tenants...</q-card-section>
-      </q-card>
-
-      <AddTenantDialog
-        v-model="openAddDialog"
-        :initial-data="selectedTenant"
-        @save="handleSaveTenant"
-      />
-    </section>
+    <AddTenantDialog
+      v-model="openAddDialog"
+      :initial-data="selectedTenant"
+      @save="handleSaveTenant"
+    />
   </q-page>
 </template>
 
@@ -58,6 +86,7 @@ import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
 import type { TenantCreateInput, TenantUpdateInput } from '../types'
@@ -78,6 +107,20 @@ const { items, loading, error } = storeToRefs(tenantStore)
 
 const openAddDialog = ref(false)
 const selectedTenant = ref<TenantForm | null>(null)
+
+const activeStatusStyle = {
+  backgroundColor: '#c3e8d2',
+  color: '#1f5d3c',
+  border: '1px solid #9fd4b7',
+  boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+}
+
+const inactiveStatusStyle = {
+  backgroundColor: '#dbe5f3',
+  color: '#3b4b66',
+  border: '1px solid #b9c8dd',
+  boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+}
 
 const refreshTenants = () => tenantStore.fetchTenants()
 
@@ -120,14 +163,60 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tenant-list-page {
+  background: transparent;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.costing-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
 .tenant-page__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
 .tenant-page__card {
   width: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tenant-page__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(25, 35, 47, 0.12) !important;
 }
 
 @media (max-width: 599px) {

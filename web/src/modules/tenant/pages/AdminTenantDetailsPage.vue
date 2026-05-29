@@ -1,46 +1,57 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
-      <section class="tenant-details-hero">
+  <q-page class="q-pa-md admin-tenant-details-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-md">
-            <div class="text-overline">Operations</div>
-            <h1 class="text-h5 q-my-none">Tenant Details</h1>
-            <p v-if="tenant" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+          <div class="col">
+            <div class="text-h6 text-weight-bold">Tenant Details</div>
+            <div v-if="tenant" class="text-caption text-grey-8">
               {{ tenant.name }} · {{ tenant.slug }}
-            </p>
+            </div>
           </div>
-          <div class="col-12 col-md-auto row q-gutter-sm items-center">
-            <q-chip class="tenant-details-hero-chip" :color="tenant?.is_active ? 'positive' : 'grey-6'" text-color="white">
+          <div class="col-auto">
+            <q-chip
+              dense
+              square
+              class="costing-status-chip"
+              :style="tenant?.is_active ? activeStatusStyle : inactiveStatusStyle"
+            >
+              <span class="status-dot" :style="{ backgroundColor: tenant?.is_active ? '#2f8b5d' : '#66758c' }" />
               {{ tenant?.is_active ? 'Active' : 'Inactive' }}
             </q-chip>
           </div>
         </div>
-      </section>
+      </q-card-section>
+    </q-card>
 
-      <q-banner v-if="pageError" class="bw-status-banner text-white" rounded>
-        {{ pageError }}
-      </q-banner>
+    <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
+      {{ pageError }}
+    </q-banner>
 
-      <q-card v-if="pageLoading" flat bordered>
-        <q-card-section class="text-grey-7">Loading tenant details...</q-card-section>
-      </q-card>
+    <PageInitialLoader v-if="pageLoading" />
 
-      <q-card v-else-if="!tenant" flat bordered>
-        <q-card-section class="text-grey-7">Tenant not found.</q-card-section>
-      </q-card>
+    <template v-else>
+      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">
+        Tenant not found.
+      </div>
 
       <div v-else class="row q-col-gutter-md">
         <div class="col-12 col-lg-7">
-          <q-card flat bordered class="tenant-details-card">
+          <q-card flat class="tenant-details-card floating-surface shadow-1">
             <q-card-section class="row items-start justify-between q-col-gutter-sm">
               <div class="col">
-                <div class="text-overline">Tenant #{{ tenant.id }}</div>
-                <div class="text-h6 text-weight-bold">{{ tenant.name }}</div>
-                <div class="text-body2 text-grey-7">{{ tenant.slug }}</div>
+                <div class="text-overline text-primary text-weight-bold">Tenant #{{ tenant.id }}</div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
+                <div class="text-body2 text-grey-7 q-mt-xs">{{ tenant.slug }}</div>
               </div>
               <div class="col-auto">
-                <q-chip class="tenant-status-chip" :color="tenant.is_active ? 'positive' : 'grey-6'" text-color="white">
+                <q-chip
+                  dense
+                  square
+                  class="costing-status-chip"
+                  :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
+                >
+                  <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
                   {{ tenant.is_active ? 'Active' : 'Inactive' }}
                 </q-chip>
               </div>
@@ -53,7 +64,7 @@
               <div><strong>Name:</strong> {{ tenant.name }}</div>
               <div><strong>Slug:</strong> {{ tenant.slug }}</div>
 
-              <q-card flat bordered class="q-pa-sm">
+              <q-card flat class="q-pa-sm inner-card">
                 <div class="text-caption text-grey-7 q-mb-xs">Admin Login</div>
                 <div class="row items-center justify-between q-gutter-sm">
                   <a :href="adminLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
@@ -63,7 +74,7 @@
                 </div>
               </q-card>
 
-              <q-card flat bordered class="q-pa-sm">
+              <q-card flat class="q-pa-sm inner-card">
                 <div class="text-caption text-grey-7 q-mb-xs">Customer Login</div>
                 <div class="row items-center justify-between q-gutter-sm">
                   <a :href="customerLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
@@ -77,10 +88,10 @@
         </div>
 
         <div class="col-12 col-lg-5">
-          <q-card flat bordered class="tenant-details-card">
+          <q-card flat class="tenant-details-card floating-surface shadow-1">
             <q-card-section>
-              <div class="text-h6 text-weight-bold">Management</div>
-              <div class="text-body2 text-grey-7 q-mt-xs">
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Management</div>
+              <div class="text-caption text-grey-8 q-mt-xs">
                 Open each area on a dedicated page to keep workflows clean.
               </div>
             </q-card-section>
@@ -88,14 +99,14 @@
             <q-separator />
 
             <q-card-section class="column q-gutter-sm">
-              <q-btn color="primary" icon="groups" label="Customer Group Management" no-caps unelevated class="full-width" @click="goToSection('customer-groups')" />
-              <q-btn color="primary" icon="manage_accounts" label="Staff Management" no-caps unelevated class="full-width" @click="goToSection('staff')" />
-              <q-btn color="primary" icon="extension" label="Enable Modules" no-caps unelevated class="full-width" @click="goToSection('modules')" />
+              <q-btn color="primary" icon="groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
+              <q-btn color="primary" icon="manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
+              <q-btn color="primary" icon="extension" label="Enable Modules" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
             </q-card-section>
           </q-card>
         </div>
       </div>
-    </section>
+    </template>
   </q-page>
 </template>
 
@@ -105,6 +116,7 @@ import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import type { Tenant } from '../types'
 
@@ -123,6 +135,20 @@ const tenantId = computed(() => Number(route.params.id))
 const tenant = computed<Tenant | null>(
   () => items.value.find((item) => item.id === tenantId.value) ?? null,
 )
+
+const activeStatusStyle = {
+  backgroundColor: '#c3e8d2',
+  color: '#1f5d3c',
+  border: '1px solid #9fd4b7',
+  boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+}
+
+const inactiveStatusStyle = {
+  backgroundColor: '#dbe5f3',
+  color: '#3b4b66',
+  border: '1px solid #b9c8dd',
+  boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+}
 
 const baseUrl = computed(() =>
   typeof window === 'undefined' ? '' : window.location.origin,
@@ -203,24 +229,53 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tenant-details-hero {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 14px;
-  padding: 1rem;
-  background:
-    linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08)),
-    #ffffff;
+.admin-tenant-details-page {
+  background: transparent;
 }
 
-.tenant-details-hero-chip {
-  font-weight: 600;
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
 }
 
 .tenant-details-card {
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
-.tenant-status-chip {
+.inner-card {
+  border-radius: 12px;
+  border: 1px solid rgba(34, 56, 101, 0.06);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.costing-status-chip {
+  border-radius: 6px !important;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>
