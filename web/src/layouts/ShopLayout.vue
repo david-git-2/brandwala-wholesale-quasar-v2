@@ -15,21 +15,12 @@
 
     <template #header-extra>
       <div class="row items-center q-gutter-sm">
-        <q-btn
-          v-if="canShowOrdersIcon"
-          flat
-          color="primary"
-          icon="receipt_long"
-          label="Orders"
-          no-caps
-          @click="goToOrders"
-        />
+      
         <q-btn
           v-if="canShowCartIcon"
           color="primary"
-          icon="shopping_cart"
-          :label="isKobaActive ? '' : 'Cart'"
-          :flat="isKobaActive"
+          flat
+          icon="o_shopping_cart"
           :round="isKobaActive"
           :dense="isKobaActive"
           :unelevated="!isKobaActive"
@@ -128,34 +119,8 @@ const canShowCartIcon = computed(() => {
   return isCommerceCartActive.value || isStandardCartActive.value
 })
 
-const isCommerceOrderActive = computed(() =>
-  canAccessModule({
-    scope: authStore.scope,
-    tenantId: authStore.tenantId,
-    customerGroupId: authStore.customerGroupId,
-    role: authStore.matchedRole,
-    moduleKey: 'commerce_order',
-    activeModuleKeys: authStore.activeModuleKeys,
-  }),
-)
 
-const isStandardOrderActive = computed(() =>
-  canAccessModule({
-    scope: authStore.scope,
-    tenantId: authStore.tenantId,
-    customerGroupId: authStore.customerGroupId,
-    role: authStore.matchedRole,
-    moduleKey: 'order_management',
-    activeModuleKeys: authStore.activeModuleKeys,
-  }),
-)
 
-const canShowOrdersIcon = computed(() => {
-  if (isKobaActive.value) {
-    return true
-  }
-  return isCommerceOrderActive.value || isStandardOrderActive.value
-})
 
 const kobaCartRouteName = computed(() => {
   const name = String(route.name ?? '')
@@ -186,22 +151,6 @@ const goToCart = async () => {
     await router.push(`${tenantPrefix}/shop/commerce-shop/cart`)
   } else {
     await router.push(`${tenantPrefix}/shop/cart`)
-  }
-}
-
-const goToOrders = async () => {
-  if (isKobaActive.value) {
-    const targetRoute = String(route.name ?? '').includes('shop') ? 'shop-koba-retail-orders-page' : 'app-koba-retail-orders-page'
-    if (router.hasRoute(targetRoute)) {
-      await router.push({ name: targetRoute })
-      return
-    }
-  }
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  if (isCommerceOrderActive.value) {
-    await router.push(`${tenantPrefix}/shop/commerce-shop/orders`)
-  } else {
-    await router.push(`${tenantPrefix}/shop/orders`)
   }
 }
 

@@ -1,6 +1,46 @@
 <template>
   <q-page class="q-pa-md customer-order-details-page">
-    <div class="customer-order-details-wrap">
+    <!-- SKELETON LOADER -->
+    <div v-if="orderStore.loading" class="customer-order-details-wrap">
+      <div class="row items-center justify-between q-mb-sm">
+        <q-skeleton type="text" width="280px" height="32px" />
+        <q-skeleton type="QChip" width="100px" />
+      </div>
+
+      <q-card flat bordered class="q-mt-sm q-mb-md bg-white">
+        <q-card-section class="row q-col-gutter-md">
+          <div class="col" v-for="n in 3" :key="`summary-col-${n}`">
+            <q-skeleton type="text" width="60px" />
+            <q-skeleton type="text" width="90px" class="q-mt-xs" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <div v-if="$q.screen.lt.sm" class="q-gutter-sm">
+        <q-card v-for="n in 3" :key="`card-sk-${n}`" flat bordered>
+          <q-card-section>
+            <q-skeleton type="text" width="40%" />
+            <q-skeleton type="text" width="70%" class="q-mt-xs" />
+          </q-card-section>
+        </q-card>
+      </div>
+      <q-card v-else flat bordered>
+        <q-markup-table flat>
+          <thead>
+            <tr>
+              <th v-for="n in 5" :key="`th-${n}`"><q-skeleton type="text" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="n in 4" :key="`tr-${n}`">
+              <td v-for="c in 5" :key="`td-${c}`"><q-skeleton type="text" /></td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </q-card>
+    </div>
+
+    <div v-else class="customer-order-details-wrap">
       <div class="text-h5">#{{orderStore.selected?.id}} {{orderStore.selected?.name}} Order Details</div>
       <div class="row justify-end"><q-chip class="bg-primary" text-color="white"  :label="formatStatus(orderStore.selected?.status)" /></div>
       <q-card flat bordered class="q-mt-sm q-mb-md bg-white">

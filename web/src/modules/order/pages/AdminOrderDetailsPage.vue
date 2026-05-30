@@ -79,7 +79,45 @@
       </q-card-section>
     </q-card>
 
-    <PageInitialLoader v-if="orderStore.loading" />
+    <!-- DETAIL PAGE SKELETON LOADER -->
+    <div v-if="orderStore.loading">
+      <!-- Rates input card skeleton -->
+      <q-card flat class="q-mb-sm floating-surface shadow-1">
+        <q-card-section class="q-pa-xs">
+          <div class="row q-col-gutter-md q-pa-sm">
+            <div class="col-12 col-sm-4" v-for="n in 3" :key="`rate-sk-${n}`">
+              <q-skeleton type="QInput" style="height: 40px" />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Recalculated summary grid skeleton -->
+      <q-card flat bordered class="q-mt-sm q-mb-md bg-white">
+        <q-card-section class="row q-pa-none admin-summary-grid">
+          <div class="col-4 admin-summary-cell" v-for="n in 6" :key="`sum-cell-${n}`" style="padding: 16px; border: 1px solid #f0f0f0">
+            <q-skeleton type="text" width="60px" />
+            <q-skeleton type="text" width="100px" class="q-mt-xs" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Table skeleton items list -->
+      <q-card flat class="floating-surface shadow-1">
+        <q-markup-table flat>
+          <thead>
+            <tr>
+              <th v-for="n in 6" :key="`tbl-th-${n}`"><q-skeleton type="text" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="n in 5" :key="`tbl-tr-${n}`">
+              <td v-for="c in 6" :key="`tbl-td-${c}`"><q-skeleton type="text" /></td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </q-card>
+    </div>
 
     <template v-else>
    <q-card flat class="q-mb-sm floating-surface shadow-1">
@@ -311,7 +349,6 @@ import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { shipmentService } from 'src/modules/shipment/services/shipmentService'
 import type { ShipmentItem as LinkedShipmentItem } from 'src/modules/shipment/types'
 

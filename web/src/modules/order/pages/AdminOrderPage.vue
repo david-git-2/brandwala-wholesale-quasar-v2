@@ -26,7 +26,53 @@
       </q-card-section>
     </q-card>
 
-    <PageInitialLoader v-if="orderStore.loading" />
+    <!-- SKELETON LOADERS -->
+    <q-card v-if="orderStore.loading && viewMode === 'table'" flat class="floating-surface shadow-1">
+      <q-markup-table flat class="order-list-table">
+        <thead>
+          <tr>
+            <th class="text-left order-accent-col"></th>
+            <th class="text-left" style="width: 80px"><q-skeleton type="text" /></th>
+            <th class="text-left"><q-skeleton type="text" /></th>
+            <th class="text-left"><q-skeleton type="text" /></th>
+            <th class="text-left" style="width: 150px"><q-skeleton type="text" /></th>
+            <th class="text-right" style="width: 50px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="n in 8" :key="`table-skeleton-${n}`">
+            <td class="order-accent-col">
+              <q-skeleton type="rect" class="order-accent-pill" style="background-color: #e0e0e0" />
+            </td>
+            <td><q-skeleton type="text" width="40px" /></td>
+            <td><q-skeleton type="text" width="160px" /></td>
+            <td><q-skeleton type="text" width="100px" /></td>
+            <td><q-skeleton type="QChip" width="90px" /></td>
+            <td class="text-right">
+              <q-skeleton type="circle" size="20px" class="inline-block" style="float: right" />
+            </td>
+          </tr>
+        </tbody>
+      </q-markup-table>
+    </q-card>
+
+    <div v-else-if="orderStore.loading && viewMode === 'card'" class="order-grid">
+      <q-card
+        v-for="n in 6"
+        :key="`card-skeleton-${n}`"
+        class="order-card floating-surface shadow-1"
+        flat
+        style="border-left: 6px solid #e0e0e0"
+      >
+        <q-card-section>
+          <div class="row items-center justify-end q-gutter-sm q-mb-sm">
+            <q-skeleton type="QChip" width="80px" />
+          </div>
+          <q-skeleton type="text" width="60%" />
+          <q-skeleton type="text" width="40%" class="q-mt-sm" />
+        </q-card-section>
+      </q-card>
+    </div>
 
     <div v-else>
       <div class="row items-center justify-between q-mb-sm">
@@ -80,9 +126,11 @@
         />
       </div>
 
-      <q-banner v-if="!filteredOrders.length" class="bg-grey-2 text-grey-8">
-        No orders found.
-      </q-banner>
+      <div v-if="!filteredOrders.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
+        <q-icon name="receipt_long" size="64px" class="q-mb-sm text-grey-4" />
+        <div class="text-subtitle1 text-weight-medium text-grey-7">No Orders Found</div>
+        <div class="text-caption text-grey-5">We couldn't find any orders matching your criteria.</div>
+      </div>
 
       <q-card v-else-if="viewMode === 'table'" flat class="floating-surface shadow-1">
         <q-table
@@ -235,7 +283,6 @@ import { formatStatus } from 'src/composables/useFormatStatus'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useOrderStore } from '../stores/orderStore'
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 
 const authStore = useAuthStore()
@@ -482,6 +529,14 @@ const goToOrder = async (id: number) => {
 
 .order-card {
   border-radius: 10px;
+}
+
+.empty-state-block {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  text-align: center;
 }
 
 .soft-input :deep(.q-field__control) {

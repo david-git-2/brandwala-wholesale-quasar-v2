@@ -14,7 +14,14 @@
     </div>
 
     <div v-if="orderStore.loading" class="order-grid">
-      <q-card v-for="n in skeletonCount" :key="`order-skeleton-${n}`" class="order-card" flat bordered>
+      <q-card
+        v-for="n in skeletonCount"
+        :key="`order-skeleton-${n}`"
+        class="order-card"
+        flat
+        bordered
+        style="border-left: 6px solid #e0e0e0"
+      >
         <q-card-section>
           <div class="row items-center justify-end q-gutter-sm q-mb-sm">
             <q-skeleton type="QChip" width="84px" />
@@ -25,9 +32,11 @@
       </q-card>
     </div>
 
-    <q-banner v-else-if="!orderStore.items.length" class="bg-grey-2 text-grey-8">
-      No orders found.
-    </q-banner>
+    <div v-else-if="!orderStore.items.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
+      <q-icon name="receipt_long" size="64px" class="q-mb-sm text-grey-4" />
+      <div class="text-subtitle1 text-weight-medium text-grey-7">No Orders Found</div>
+      <div class="text-caption text-grey-5">We couldn't find any orders for you.</div>
+    </div>
 
     <div v-else class="order-grid">
       <q-card
@@ -150,6 +159,14 @@ onMounted(async () => {
 
 .order-card {
   border-radius: 10px;
+}
+
+.empty-state-block {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #e7e2d8;
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  text-align: center;
 }
 
 @media (max-width: 700px) {
