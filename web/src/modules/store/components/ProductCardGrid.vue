@@ -72,7 +72,7 @@
             v-if="!getCartItemId(item.id)"
             round
             color="primary"
-            icon="shopping_cart"
+            icon="o_shopping_cart"
             @click="handleAddToCart(item)"
           />
 
@@ -80,7 +80,7 @@
             v-else
             round
             color="negative"
-            icon="delete"
+            icon="o_delete"
             @click="handleRemoveFromCart(item)"
           />
         </div>

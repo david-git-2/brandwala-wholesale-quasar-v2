@@ -1,6 +1,59 @@
 <template>
   <div>
-    <PageInitialLoader v-if="initialLoading" />
+    <!-- STORE PRODUCTS SKELETON LOADER -->
+    <div v-if="initialLoading" class="q-pa-md store-products-page">
+      <!-- Header skeleton -->
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <q-skeleton type="text" width="180px" height="28px" />
+              <q-skeleton type="text" width="280px" class="q-mt-xs" />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Toolbar skeleton -->
+      <div class="row items-center justify-between q-mb-md">
+        <div class="row items-center q-gutter-sm">
+          <q-skeleton type="circle" size="32px" />
+          <q-skeleton type="circle" size="32px" />
+        </div>
+      </div>
+
+      <!-- Store switcher skeleton -->
+      <div class="row q-gutter-sm q-mb-md">
+        <q-skeleton type="rect" width="120px" height="36px" style="border-radius: 8px" />
+      </div>
+
+      <!-- Product cards grid skeleton -->
+      <div class="product-grid-sk">
+        <q-card
+          v-for="n in 8"
+          :key="`prod-sk-${n}`"
+          class="product-card-sk"
+          flat
+          bordered
+        >
+          <div class="image-wrapper-sk">
+            <q-skeleton type="rect" height="180px" />
+          </div>
+          <q-card-section>
+            <q-skeleton type="text" width="80%" />
+            <q-skeleton type="text" width="50%" class="q-mt-xs" />
+            <q-skeleton type="text" width="30%" class="q-mt-md" />
+          </q-card-section>
+          <q-card-section class="q-pt-none">
+            <div class="row items-center justify-between q-mt-sm">
+              <q-skeleton type="rect" width="100px" height="32px" style="border-radius: 999px" />
+              <q-skeleton type="circle" size="32px" />
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+
     <q-page v-else class="q-pa-md store-products-page">
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
@@ -132,7 +185,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
@@ -589,4 +641,26 @@ onBeforeUnmount(() => {
 }
 .toolbar-left { min-width: 0; }
 .toolbar-search { width: min(320px, 75vw); }
+
+.product-grid-sk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.product-card-sk {
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.image-wrapper-sk {
+  padding: 12px;
+  background: #ffffff;
+}
 </style>

@@ -9,7 +9,7 @@
       </div>
       <q-btn
         color="negative"
-        icon="delete_sweep"
+        icon="o_delete_sweep"
         label="Clear Cart"
         no-caps
         unelevated
@@ -30,9 +30,11 @@
       />
     </div>
 
-    <q-banner v-if="!cartStore.items.length" class="empty-banner">
-      Cart is empty. Add items from store to place an order.
-    </q-banner>
+    <div v-if="!cartStore.items.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-cart-block">
+      <q-icon name="o_remove_shopping_cart" size="64px" class="q-mb-sm text-grey-4" />
+      <div class="text-subtitle1 text-weight-medium text-grey-7">Cart is Empty</div>
+      <div class="text-caption text-grey-5">Add items from the store to place an order.</div>
+    </div>
 
     <q-list v-else class="cart-list" separator>
       <q-item v-for="item in cartStore.items" :key="item.id" class="cart-row">
@@ -116,7 +118,7 @@
       <q-btn
         color="primary"
         unelevated
-        icon="shopping_bag"
+        icon="o_shopping_bag"
         label="Place Order"
         no-caps
         :disable="!cartStore.items.length"
@@ -449,6 +451,14 @@ watch(
   color: #5b4c33;
   border: 1px solid #e8dbbf;
   border-radius: 12px;
+}
+
+.empty-cart-block {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  text-align: center;
 }
 
 .cart-list {
