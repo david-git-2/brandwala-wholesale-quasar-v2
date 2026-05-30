@@ -1,153 +1,198 @@
 <template>
-  <q-page class="bw-page theme-shop">
+  <q-page class="q-pa-md costing-details-page theme-shop">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section>
-        <h1 class="text-h5 q-my-none">Costing file details</h1>
-      </section>
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Costing file details</div>
+              <div class="text-caption text-grey-8">
+                {{ selectedFile ? `${selectedFile.name} | ${selectedFile.market || 'Not set'}` : 'Loading details...' }}
+              </div>
+            </div>
+            <div class="col-auto row items-center q-gutter-sm">
+              <q-chip
+                v-if="selectedFile"
+                dense
+                square
+                :style="statusChipStyle(selectedFile.status)"
+                class="costing-status-chip q-px-md q-py-sm"
+              >
+                <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedFile.status) }" />
+                {{ formatStatusLabel(selectedFile.status) }}
+              </q-chip>
+              <q-btn
+                v-if="selectedFile && (selectedFile.status === 'offered' || selectedFile.status === 'po_placed')"
+                outline
+                color="primary"
+                icon="visibility"
+                label="Preview"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                @click="openPreview"
+              />
+              <q-btn
+                v-if="selectedFile && selectedFile.status === 'draft' && canCustomerMaintainDraftItems"
+                color="primary"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                label="Add item"
+                @click="addItemDialogOpen = true"
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
       <div v-if="selectedFile">
-        <div class="costing-page__summary">
-          <p class="costing-page__summary-text q-my-none text-body2 text-grey-7">
-            {{ selectedFile.name }} | {{ selectedFile.market || 'Not set' }}
-          </p>
-          <q-chip
-            dense
-            square
-            color="primary"
-            text-color="white"
-            class="costing-page__status-chip"
-          >
-            {{ selectedFile.status }}
-          </q-chip>
-        </div>
-
-        <div v-if="selectedFile.status === 'draft'" class="costing-page__input-section">
-          <q-banner v-if="!canCustomerMaintainDraftItems" rounded class="bg-blue-1 text-blue-10">
-            Item details are maintained by staff/admin for this file.
-          </q-banner>
-          <div v-else class="costing-page__request-actions">
-            <q-btn
-              color="primary"
-              unelevated
-              label="Add item"
-              @click="addItemDialogOpen = true"
-            />
-          </div>
-        </div>
+        <q-banner v-if="selectedFile.status === 'draft' && !canCustomerMaintainDraftItems" rounded class="bg-blue-1 text-blue-10 q-mb-md">
+          Item details are maintained by staff/admin for this file.
+        </q-banner>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__table-section">
-          <q-table
-            v-if="productRows.length"
-            flat
-            bordered
-            row-key="id"
-            :rows="productRows"
-            :columns="visibleColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            hide-bottom
-            class="costing-page__table costing-page__table--draft"
-          >
-            <template #body-cell-sl="props">
-              <q-td
-                :props="props"
-                class="costing-page__sl-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.sl }}
-              </q-td>
-            </template>
-
-            <template #body-cell-image="props">
-              <q-td
-                :props="props"
-                class="costing-page__image-table-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <q-img
-                  v-if="props.row.imageUrl"
-                  :src="props.row.imageUrl"
-                  fit="contain"
-                  class="costing-page__image"
-                />
-                <div v-else class="costing-page__image costing-page__image--placeholder">
-                  No image
-                </div>
-              </q-td>
-            </template>
-
-            <template #body-cell-quantity="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
-                {{ props.row.quantity }}
-              </q-td>
-            </template>
-
-            <template #body-cell-name="props">
-              <q-td
-                :props="props"
-                class="costing-page__name-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <span class="costing-page__name-text" :title="props.row.name">
-                  {{ props.row.name }}
-                </span>
-              </q-td>
-            </template>
-
-            <template #body-cell-websiteUrl="props">
-              <q-td
-                :props="props"
-                class="costing-page__url-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <a
-                  class="costing-page__url-text"
-                  :href="toExternalUrl(props.row.websiteUrl)"
-                  :title="props.row.websiteUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{ props.row.websiteUrl }}
-                </a>
-              </q-td>
-            </template>
-
-            <template #body-cell-actions="props">
-              <q-td
-                :props="props"
-                class="costing-page__actions-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <q-btn
-                  v-if="canCustomerMaintainDraftItems"
-                  flat
-                  dense
-                  round
-                  color="negative"
-                  icon="delete"
-                  aria-label="Delete item"
-                  :loading="deletingItemId === props.row.id"
-                  :disable="deletingItemId === props.row.id"
-                  @click="handleDeleteDraftItem(props.row.id)"
-                />
-              </q-td>
-            </template>
-
-            <template #bottom-row>
-              <q-tr class="costing-page__totals-row">
+          <q-card flat class="floating-surface shadow-1">
+            <q-table
+              v-if="productRows.length"
+              flat
+              row-key="id"
+              :rows="productRows"
+              :columns="visibleColumns"
+              :pagination="{ rowsPerPage: 0 }"
+              hide-bottom
+              class="costing-page__table costing-page__table--draft"
+            >
+              <template #body-cell-sl="props">
                 <q-td
-                  v-for="column in visibleColumns"
-                  :key="column.name"
-                  class="costing-page__totals-cell"
-                  :class="getTotalsCellClass(column.name)"
+                  :props="props"
+                  class="costing-page__sl-cell"
+                  :class="getOfferedCellClass(props.row)"
                 >
-                  {{ getTotalsValue(column.name) }}
+                  {{ props.row.sl }}
                 </q-td>
-              </q-tr>
-            </template>
+              </template>
 
-          </q-table>
-          <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
+              <template #body-cell-image="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__image-table-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <div class="costing-page__image-cell">
+                    <q-img
+                      v-if="props.row.imageUrl"
+                      :src="props.row.imageUrl"
+                      fit="contain"
+                      class="costing-page__image"
+                    />
+                    <div v-else class="costing-page__image costing-page__image--placeholder">
+                      No image
+                    </div>
+                  </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.quantity }}
+                </q-td>
+              </template>
+
+              <template #body-cell-name="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__name-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-websiteUrl="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__url-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <q-btn
+                    v-if="props.row.websiteUrl"
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="open_in_new"
+                    label="Open link"
+                    class="pill-btn slim-btn costing-page__open-link-btn"
+                    :href="props.row.websiteUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation1="props">
+                <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation2="props">
+                <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-actions="props">
+                <q-td
+                  :props="props"
+                  class="text-right"
+                  :class="getOfferedCellClass(props.row)"
+                  auto-width
+                >
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    color="primary"
+                    icon="o_edit"
+                    aria-label="Edit item"
+                    @click="handleEditDraftItem(props.row.id)"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    color="negative"
+                    icon="o_delete"
+                    aria-label="Delete item"
+                    :loading="deletingItemId === props.row.id"
+                    @click="handleDeleteDraftItem(props.row.id)"
+                  />
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="costing-page__totals-row">
+                  <q-td
+                    v-for="column in visibleColumns"
+                    :key="column.name"
+                    class="costing-page__totals-cell"
+                    :class="getTotalsCellClass(column.name)"
+                  >
+                    {{ getTotalsValue(column.name) }}
+                  </q-td>
+                </q-tr>
+              </template>
+            </q-table>
+            <q-card-section v-else class="text-center text-grey-7">
+              No items yet.
+            </q-card-section>
+          </q-card>
         </div>
 
         <div v-if="selectedFile.status === 'draft'" class="costing-page__submit-actions">
@@ -167,26 +212,210 @@
           class="costing-page__customer-submitted-section"
         >
           <div class="costing-page__table-section">
+            <q-card flat class="floating-surface shadow-1">
+              <q-table
+                v-if="productRows.length"
+                flat
+                dense
+                row-key="id"
+                :rows="productRows"
+                :columns="visibleColumns"
+                :pagination="{ rowsPerPage: 0 }"
+                hide-bottom
+                class="costing-page__table"
+              >
+                <template #body-cell-sl="props">
+                  <q-td :props="props" class="costing-page__sl-cell">
+                    {{ props.row.sl }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-image="props">
+                  <q-td :props="props" class="costing-page__image-table-cell">
+                    <div class="costing-page__image-cell">
+                      <q-img
+                        v-if="props.row.imageUrl"
+                        :src="props.row.imageUrl"
+                        fit="contain"
+                        class="costing-page__image"
+                      />
+                      <div v-else class="costing-page__image costing-page__image--placeholder">
+                        No image
+                      </div>
+                    </div>
+                  </q-td>
+                </template>
+
+                <template #body-cell-quantity="props">
+                  <q-td :props="props" class="costing-page__numeric-cell">
+                    {{ props.row.quantity }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-name="props">
+                  <q-td :props="props" class="costing-page__name-cell">
+                    <span class="costing-page__name-text" :title="props.row.name">
+                      {{ props.row.name }}
+                    </span>
+                  </q-td>
+                </template>
+
+                <template #body-cell-websiteUrl="props">
+                  <q-td :props="props" class="costing-page__url-cell">
+                    <q-btn
+                      v-if="props.row.websiteUrl"
+                      flat
+                      dense
+                      no-caps
+                      size="sm"
+                      color="primary"
+                      icon="open_in_new"
+                      label="Open link"
+                      class="pill-btn slim-btn costing-page__open-link-btn"
+                      :href="toExternalUrl(props.row.websiteUrl)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  </q-td>
+                </template>
+
+                <template #body-cell-extraInformation1="props">
+                  <q-td :props="props">
+                    <div v-html="props.value" class="costing-table__rich-text-cell" />
+                  </q-td>
+                </template>
+
+                <template #body-cell-extraInformation2="props">
+                  <q-td :props="props">
+                    <div v-html="props.value" class="costing-table__rich-text-cell" />
+                  </q-td>
+                </template>
+
+                <template #body-cell-offerPriceBdt="props">
+                  <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-emerald">
+                    {{ props.row.offerPriceBdt }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-buyerSellingPriceBdt="props">
+                  <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-amber">
+                    {{ props.row.buyerSellingPriceBdt }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-customerProfitAmountBdt="props">
+                  <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-amber">
+                    {{ props.row.customerProfitAmountBdt }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-customerProfitRateDisplay="props">
+                  <q-td :props="props" class="costing-page__numeric-cell">
+                    {{ props.row.customerProfitRateDisplay }}
+                  </q-td>
+                </template>
+
+                <template #body-cell-status="props">
+                  <q-td :props="props" class="costing-page__status-cell">
+                    <span
+                      class="costing-page__status-pill"
+                      :class="{
+                        'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                      }"
+                    >
+                      {{ props.row.status }}
+                    </span>
+                  </q-td>
+                </template>
+
+
+                <template #bottom-row>
+                  <q-tr class="costing-page__totals-row">
+                    <q-td
+                      v-for="column in visibleColumns"
+                      :key="column.name"
+                      class="costing-page__totals-cell"
+                      :class="getTotalsCellClass(column.name)"
+                    >
+                      {{ getTotalsValue(column.name) }}
+                    </q-td>
+                  </q-tr>
+                </template>
+              </q-table>
+              <q-card-section v-else class="text-center text-grey-7">
+                No items yet.
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
+        <div
+          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'po_placed'"
+          class="costing-page__table-section"
+        >
+          <q-card v-if="selectedFile.status === 'offered'" flat class="q-mb-md floating-surface shadow-1">
+            <q-card-section class="q-py-sm">
+              <div class="row items-center q-col-gutter-sm">
+                <div style="max-width: 140px;" class="col-auto">
+                  <q-input
+                    v-model.number="sharedProfitRate"
+                    type="number"
+                    dense
+                    outlined
+                    min="0"
+                    step="0.01"
+                    label="Buyer profit %"
+                    class="soft-input"
+                  />
+                </div>
+                <div v-if="isSharedProfitRateDirty" class="col-auto">
+                  <q-btn
+                    color="primary"
+                    no-caps
+                    dense
+                    unelevated
+                    label="Save"
+                    class="q-px-md pill-btn"
+                    style="min-height: 40px;"
+                    :loading="savingProfitAll"
+                    @click="handleSaveSharedProfitRate"
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <q-card flat class="floating-surface shadow-1 q-mb-md">
             <q-table
               v-if="productRows.length"
               flat
-              bordered
               dense
               row-key="id"
               :rows="productRows"
               :columns="visibleColumns"
+              :row-class="getOfferedRowClass"
               :pagination="{ rowsPerPage: 0 }"
+              :table-style="{ maxHeight: '72vh' }"
               hide-bottom
               class="costing-page__table"
             >
               <template #body-cell-sl="props">
-                <q-td :props="props" class="costing-page__sl-cell">
+                <q-td
+                  :props="props"
+                  class="costing-page__sl-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
                   {{ props.row.sl }}
                 </q-td>
               </template>
 
-              <template #body-cell-image="props">
-                <q-td :props="props" class="costing-page__image-table-cell">
+            <template #body-cell-image="props">
+              <q-td
+                :props="props"
+                class="costing-page__image-table-cell"
+                :class="getOfferedCellClass(props.row)"
+              >
+                <div class="costing-page__image-cell">
                   <q-img
                     v-if="props.row.imageUrl"
                     :src="props.row.imageUrl"
@@ -196,125 +425,6 @@
                   <div v-else class="costing-page__image costing-page__image--placeholder">
                     No image
                   </div>
-                </q-td>
-              </template>
-
-              <template #body-cell-quantity="props">
-                <q-td :props="props" class="costing-page__numeric-cell">
-                  {{ props.row.quantity }}
-                </q-td>
-              </template>
-
-              <template #body-cell-name="props">
-                <q-td :props="props" class="costing-page__name-cell">
-                  <span class="costing-page__name-text" :title="props.row.name">
-                    {{ props.row.name }}
-                  </span>
-                </q-td>
-              </template>
-
-              <template #body-cell-websiteUrl="props">
-                <q-td :props="props" class="costing-page__url-cell">
-                  <a
-                    class="costing-page__url-text"
-                    :href="toExternalUrl(props.row.websiteUrl)"
-                    :title="props.row.websiteUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                  {{ props.row.websiteUrl }}
-                </a>
-              </q-td>
-            </template>
-
-            <template #bottom-row>
-              <q-tr class="costing-page__totals-row">
-                <q-td
-                  v-for="column in visibleColumns"
-                  :key="column.name"
-                  class="costing-page__totals-cell"
-                  :class="getTotalsCellClass(column.name)"
-                >
-                  {{ getTotalsValue(column.name) }}
-                </q-td>
-              </q-tr>
-            </template>
-            </q-table>
-            <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
-          </div>
-        </div>
-
-        <div
-          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'po_placed'"
-          class="costing-page__table-section"
-        >
-          <div class="costing-page__offered-controls">
-            <q-input
-              v-if="selectedFile.status === 'offered'"
-              v-model.number="sharedProfitRate"
-              type="number"
-              dense
-              outlined
-              min="0"
-              step="0.01"
-              label="Buyer profit %"
-              class="costing-page__shared-profit-input"
-            />
-            <q-btn
-              v-if="selectedFile.status === 'offered'"
-              unelevated
-              color="primary"
-              label="Save buyer profit"
-              :loading="savingProfitAll"
-              :disable="savingProfitAll"
-              @click="handleSaveSharedProfitRate"
-            />
-            <q-btn
-              outline
-              color="primary"
-              label="Preview"
-              @click="openPreview"
-            />
-          </div>
-
-          <q-table
-            v-if="productRows.length"
-            flat
-            bordered
-            dense
-            row-key="id"
-            :rows="productRows"
-            :columns="visibleColumns"
-            :row-class="getOfferedRowClass"
-            :pagination="{ rowsPerPage: 0 }"
-            :table-style="{ maxHeight: '72vh' }"
-            hide-bottom
-            class="costing-page__table costing-page__table--offered"
-          >
-            <template #body-cell-sl="props">
-              <q-td
-                :props="props"
-                class="costing-page__sl-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.sl }}
-              </q-td>
-            </template>
-
-            <template #body-cell-image="props">
-              <q-td
-                :props="props"
-                class="costing-page__image-table-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <q-img
-                  v-if="props.row.imageUrl"
-                  :src="props.row.imageUrl"
-                  fit="contain"
-                  class="costing-page__image"
-                />
-                <div v-else class="costing-page__image costing-page__image--placeholder">
-                  No image
                 </div>
               </q-td>
             </template>
@@ -337,17 +447,35 @@
                 class="costing-page__url-cell"
                 :class="getOfferedCellClass(props.row)"
               >
-                <a
-                  class="costing-page__url-text"
+                <q-btn
+                  v-if="props.row.websiteUrl"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="open_in_new"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
                   :href="toExternalUrl(props.row.websiteUrl)"
-                  :title="props.row.websiteUrl"
                   target="_blank"
                   rel="noopener noreferrer"
-                >
-                  {{ props.row.websiteUrl }}
-                </a>
+                />
               </q-td>
             </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
 
             <template #body-cell-quantity="props">
               <q-td
@@ -461,23 +589,26 @@
                 </q-td>
               </q-tr>
             </template>
-          </q-table>
-          <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
+            </q-table>
+            <q-card-section v-else class="text-center text-grey-7">
+              No items yet.
+            </q-card-section>
+          </q-card>
         </div>
 
         <div v-else class="costing-page__table-section">
-          <q-table
-            v-if="productRows.length"
-            flat
-            bordered
-            dense
-            row-key="id"
-            :rows="productRows"
-            :columns="visibleColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            hide-bottom
-            class="costing-page__table"
-          >
+          <q-card flat class="floating-surface shadow-1">
+            <q-table
+              v-if="productRows.length"
+              flat
+              dense
+              row-key="id"
+              :rows="productRows"
+              :columns="visibleColumns"
+              :pagination="{ rowsPerPage: 0 }"
+              hide-bottom
+              class="costing-page__table"
+            >
             <template #body-cell-sl="props">
               <q-td :props="props" class="costing-page__sl-cell">
                 {{ props.row.sl }}
@@ -486,14 +617,16 @@
 
             <template #body-cell-image="props">
               <q-td :props="props" class="costing-page__image-table-cell">
-                <q-img
-                  v-if="props.row.imageUrl"
-                  :src="props.row.imageUrl"
-                  fit="contain"
-                  class="costing-page__image"
-                />
-                <div v-else class="costing-page__image costing-page__image--placeholder">
-                  No image
+                <div class="costing-page__image-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="contain"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
                 </div>
               </q-td>
             </template>
@@ -514,17 +647,35 @@
 
             <template #body-cell-websiteUrl="props">
               <q-td :props="props" class="costing-page__url-cell">
-                <a
-                  class="costing-page__url-text"
+                <q-btn
+                  v-if="props.row.websiteUrl"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="open_in_new"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
                   :href="toExternalUrl(props.row.websiteUrl)"
-                  :title="props.row.websiteUrl"
                   target="_blank"
                   rel="noopener noreferrer"
-                >
-                  {{ props.row.websiteUrl }}
-                </a>
+                />
               </q-td>
             </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
 
             <template #bottom-row>
               <q-tr class="costing-page__totals-row">
@@ -538,8 +689,11 @@
                 </q-td>
               </q-tr>
             </template>
-          </q-table>
-          <p v-else class="q-my-none text-body2 text-grey-7">No items yet.</p>
+            </q-table>
+            <q-card-section v-else class="text-center text-grey-7">
+              No items yet.
+            </q-card-section>
+          </q-card>
         </div>
       </div>
 
@@ -572,106 +726,145 @@
         v-model="addItemDialogOpen"
         persistent
       >
-        <q-card class="costing-page__dialog">
-          <q-card-section>
-            <div class="text-h6">Add item</div>
-            <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-              Add a new item for this costing file.
-            </p>
+        <q-card class="costing-page__dialog costing-page__dialog--wide">
+          <q-card-section class="costing-item-add-dialog__header row items-center justify-between q-pb-md">
+            <div class="row items-center q-gutter-md">
+              <q-avatar :icon="editingItemId ? 'o_edit' : 'add_shopping_cart'" color="primary" text-color="white" />
+              <div>
+                <div class="text-h6 text-weight-bold">{{ editingItemId ? 'Edit Item' : 'Add Item' }}</div>
+                <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+                  {{ editingItemId ? 'Update product details for this costing item.' : 'Add a new item for this costing file.' }}
+                </p>
+              </div>
+            </div>
+
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              aria-label="Close"
+              @click="addItemDialogOpen = false"
+            />
           </q-card-section>
 
           <q-form @submit.prevent="handleSubmitRequest">
-            <q-card-section class="costing-page__request-grid">
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">
-                  Web link <span class="costing-page__required-star">*</span>
+            <q-card-section class="q-gutter-md">
+              <!-- Basic Details -->
+              <div class="text-subtitle2 text-weight-bold text-primary q-mb-xs">Basic Details</div>
+              
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-8">
+                  <q-input
+                    v-model="requestForm.websiteUrl"
+                    label="Web link"
+                    outlined
+                    dense
+                    :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
+                  >
+                    <template #prepend><q-icon name="link" /></template>
+                  </q-input>
                 </div>
-                <q-input
-                  v-model="requestForm.websiteUrl"
-                  outlined
-                  dense
-                  :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
-                />
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="requestForm.quantity"
+                    label="Quantity"
+                    type="number"
+                    outlined
+                    dense
+                    min="1"
+                    :rules="[
+                      (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+                    ]"
+                  >
+                    <template #prepend><q-icon name="inventory_2" /></template>
+                  </q-input>
+                </div>
               </div>
 
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-4">
+                  <q-select
+                    v-model="requestForm.itemType"
+                    :options="itemTypeOptions"
+                    label="Type"
+                    outlined
+                    dense
+                    clearable
+                    emit-value
+                    map-options
+                    hint="Pick the closest product type."
+                    :rules="[(value) => !!String(value ?? '').trim() || 'Type is required.']"
+                  >
+                    <template #prepend><q-icon name="category" /></template>
+                  </q-select>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model="requestForm.size"
+                    label="Size"
+                    outlined
+                    dense
+                  >
+                    <template #prepend><q-icon name="straighten" /></template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model="requestForm.color"
+                    label="Color"
+                    outlined
+                    dense
+                  >
+                    <template #prepend><q-icon name="palette" /></template>
+                  </q-input>
+                </div>
+              </div>
 
+              <!-- Description & Notes -->
+              <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Description & Notes</div>
 
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">Quantity</div>
-                <q-input
-                  v-model.number="requestForm.quantity"
-                  type="number"
-                  outlined
-                  dense
-                  min="1"
-                  :rules="[
-                    (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+              <div class="q-mb-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">Extra Information 1</div>
+                <q-editor
+                  v-model="requestForm.extraInformation1"
+                  min-height="5rem"
+                  flat
+                  bordered
+                  :toolbar="[
+                    ['bold', 'italic', 'underline'],
+                    ['unordered', 'ordered']
                   ]"
                 />
               </div>
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">Size</div>
-                <q-input
-                  v-model="requestForm.size"
-                  outlined
-                  dense
-                />
-              </div>
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">Color</div>
-                <q-input
-                  v-model="requestForm.color"
-                  outlined
-                  dense
-                />
-              </div>
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">
-                  Type <span class="costing-page__required-star">*</span>
-                </div>
-                <q-select
-                  v-model="requestForm.itemType"
-                  :options="itemTypeOptions"
-                  outlined
-                  dense
-                  clearable
-                  emit-value
-                  map-options
-                  hint="Pick the closest product type."
-                  :rules="[(value) => !!String(value ?? '').trim() || 'Type is required.']"
-                />
-              </div>
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">Extra information 1</div>
-                <q-input
-                  v-model="requestForm.extraInformation1"
-                  type="textarea"
-                  autogrow
-                  outlined
-                  dense
-                />
-              </div>
-              <div class="costing-page__field-block">
-                <div class="costing-page__field-label">Extra information 2</div>
-                <q-input
+
+              <div class="q-mb-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">Extra Information 2</div>
+                <q-editor
                   v-model="requestForm.extraInformation2"
-                  type="textarea"
-                  autogrow
-                  outlined
-                  dense
+                  min-height="5rem"
+                  flat
+                  bordered
+                  :toolbar="[
+                    ['bold', 'italic', 'underline'],
+                    ['unordered', 'ordered']
+                  ]"
                 />
               </div>
             </q-card-section>
 
-            <q-card-actions align="right">
-              <q-btn flat label="Cancel" @click="addItemDialogOpen = false" />
+            <q-card-actions align="right" class="q-pa-md">
+              <q-btn flat no-caps label="Cancel" @click="addItemDialogOpen = false" />
               <q-btn
                 color="primary"
                 unelevated
-                label="Add item"
+                :label="editingItemId ? 'Save changes' : 'Add item'"
                 type="submit"
+                no-caps
+                class="pill-btn"
                 :loading="submittingRequest"
               />
+
             </q-card-actions>
           </q-form>
         </q-card>
@@ -710,10 +903,82 @@ const initialLoading = ref(true)
 const submittingRequest = ref(false)
 const submittingOrder = ref(false)
 const deletingItemId = ref<number | null>(null)
+const editingItemId = ref<number | null>(null)
 const savingDecisionItemId = ref<number | null>(null)
+
 const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
+
+const formatStatusLabel = (status: string) =>
+  status
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+
+const statusChipStyle = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    }
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  }
+}
+const statusDotColor = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return '#64748b'
+  if (value === 'customer_submitted') return '#3f51b5'
+  if (value === 'in_review') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'po_placed') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#64748b'
+}
 const savingProfitAll = ref(false)
 const sharedProfitRate = ref<number | null>(null)
+const originalSharedProfitRate = ref<number | null>(null)
+const isSharedProfitRateDirty = computed(() => {
+  return sharedProfitRate.value !== originalSharedProfitRate.value
+})
 
 const fileForm = reactive({
   name: '',
@@ -738,14 +1003,12 @@ const formatWhole = (value: number | null | undefined) =>
 const formatPercent = (value: number | null | undefined) =>
   value == null ? '' : `${Number(value).toFixed(2)}%`
 
-const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
-
 const canCustomerMaintainDraftItems = computed(() => {
   if (!selectedFile.value || selectedFile.value.status !== 'draft') {
     return false
   }
 
-  return normalizeEmail(selectedFile.value.created_by_email) === normalizeEmail(authStore.user?.email)
+  return selectedFile.value.customer_group_id === authStore.customerGroupId
 })
 
 const productRows = computed(() =>
@@ -908,29 +1171,16 @@ const visibleColumns = computed(() => {
     )
   }
 
-  if (selectedFile.value.status === 'customer_submitted') {
+  if (
+    selectedFile.value.status === 'customer_submitted' ||
+    selectedFile.value.status === 'in_review'
+  ) {
     return allColumns.filter((column) =>
       [
         'sl',
         'itemType',
         'websiteUrl',
         'quantity',
-        'size',
-        'color',
-        'extraInformation1',
-        'extraInformation2',
-      ].includes(column.name),
-    )
-  }
-
-  if (selectedFile.value.status === 'in_review') {
-    return allColumns.filter((column) =>
-      [
-        'sl',
-        'image',
-        'websiteUrl',
-        'quantity',
-        'itemType',
         'size',
         'color',
         'extraInformation1',
@@ -1061,6 +1311,11 @@ const resetRequestForm = () => {
   requestForm.extraInformation2 = ''
 }
 
+const cleanEditorHtml = (html: string) => {
+  const clean = html.replace(/<[^>]*>/g, '').trim()
+  return clean.length > 0 ? html.trim() : null
+}
+
 const handleSubmitRequest = async () => {
   if (!selectedFile.value || !canCustomerMaintainDraftItems.value) {
     return
@@ -1075,28 +1330,65 @@ const handleSubmitRequest = async () => {
 
   submittingRequest.value = true
   try {
-    const result = await costingFileStore.createCostingFileItem({
-      costingFileId: selectedFile.value.id,
-      websiteUrl,
-      quantity: Math.max(1, Math.trunc(quantity)),
-      itemType: requestForm.itemType?.trim() || null,
-      size: requestForm.size.trim() || null,
-      color: requestForm.color.trim() || null,
-      extraInformation1: requestForm.extraInformation1.trim() || null,
-      extraInformation2: requestForm.extraInformation2.trim() || null,
-      status: 'pending',
-    })
+    let result
+    if (editingItemId.value) {
+      result = await costingFileStore.updateCostingFileItem({
+        id: editingItemId.value,
+        websiteUrl,
+        quantity: Math.max(1, Math.trunc(quantity)),
+        itemType: requestForm.itemType?.trim() || null,
+        size: requestForm.size.trim() || null,
+        color: requestForm.color.trim() || null,
+        extraInformation1: cleanEditorHtml(requestForm.extraInformation1),
+        extraInformation2: cleanEditorHtml(requestForm.extraInformation2),
+      })
+    } else {
+      result = await costingFileStore.createCostingFileItem({
+        costingFileId: selectedFile.value.id,
+        websiteUrl,
+        quantity: Math.max(1, Math.trunc(quantity)),
+        itemType: requestForm.itemType?.trim() || null,
+        size: requestForm.size.trim() || null,
+        color: requestForm.color.trim() || null,
+        extraInformation1: cleanEditorHtml(requestForm.extraInformation1),
+        extraInformation2: cleanEditorHtml(requestForm.extraInformation2),
+        status: 'pending',
+      })
+    }
 
     if (!result.success) {
       return
     }
 
-    resetRequestForm()
     addItemDialogOpen.value = false
   } finally {
     submittingRequest.value = false
   }
 }
+
+const handleEditDraftItem = (row: { id: number }) => {
+  const item = itemForms.value.find((i) => i.id === row.id)
+
+  if (!item) return
+
+  editingItemId.value = item.id
+  requestForm.websiteUrl = item.website_url ?? ''
+  requestForm.quantity = item.quantity ?? 1
+  requestForm.itemType = item.item_type ?? null
+  requestForm.size = item.size ?? ''
+  requestForm.color = item.color ?? ''
+  requestForm.extraInformation1 = item.extra_information_1 ?? ''
+  requestForm.extraInformation2 = item.extra_information_2 ?? ''
+
+  addItemDialogOpen.value = true
+}
+
+watch(addItemDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    resetRequestForm()
+    editingItemId.value = null
+  }
+})
 
 const handleDeleteDraftItem = async (itemId: number) => {
   if (!selectedFile.value || selectedFile.value.status !== 'draft' || !canCustomerMaintainDraftItems.value) {
@@ -1148,8 +1440,10 @@ const handleSaveSharedProfitRate = async () => {
       customerProfitRate: normalized,
     })
 
-    if (!result.success) {
-      return
+    if (result.success) {
+      originalSharedProfitRate.value = normalized
+      sharedProfitRate.value = normalized
+      await loadFile()
     }
   } finally {
     savingProfitAll.value = false
@@ -1205,6 +1499,8 @@ watch(
     try {
       addItemDialogOpen.value = false
       submitDialog.value = false
+      sharedProfitRate.value = null
+      originalSharedProfitRate.value = null
       await loadFile()
     } finally {
       initialLoading.value = false
@@ -1216,7 +1512,12 @@ watch(
 watch(
   itemForms,
   (items) => {
-    sharedProfitRate.value = items[0]?.customer_profit_rate ?? null
+    const val = items[0]?.customer_profit_rate ?? null
+    const wasDirty = sharedProfitRate.value !== originalSharedProfitRate.value
+    originalSharedProfitRate.value = val
+    if (!wasDirty) {
+      sharedProfitRate.value = val
+    }
   },
   { immediate: true, deep: true },
 )
@@ -1397,6 +1698,21 @@ watch(
   white-space: nowrap;
 }
 
+.costing-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
 .costing-page__name-cell {
   width: 280px;
   min-width: 280px;
@@ -1414,43 +1730,43 @@ watch(
   line-height: 1.3;
 }
 
-.costing-page__table--offered :deep(.costing-page__tone-emerald) {
-  background: #f3e5f5;
-  color: #6b2f7a;
+.costing-page__table :deep(.costing-page__tone-emerald) {
+  background: #f3e5f5 !important;
+  color: #6b2f7a !important;
 }
 
-.costing-page__table--offered :deep(.costing-page__tone-orange) {
-  background: #fff8e1;
-  color: #7a5313;
+.costing-page__table :deep(.costing-page__tone-orange) {
+  background: #fff8e1 !important;
+  color: #7a5313 !important;
 }
 
-.costing-page__table--offered :deep(.costing-page__tone-amber) {
-  background: #fff8e1;
-  color: #7a5313;
+.costing-page__table :deep(.costing-page__tone-amber) {
+  background: #fff8e1 !important;
+  color: #7a5313 !important;
 }
 
-.costing-page__table--offered :deep(.costing-page__tone-indigo) {
-  background: #e6f4ea;
-  color: #1f6a43;
+.costing-page__table :deep(.costing-page__tone-indigo) {
+  background: #e6f4ea !important;
+  color: #1f6a43 !important;
 }
 
-.costing-page__table--offered :deep(th.costing-page__tone-emerald) {
+.costing-page__table :deep(th.costing-page__tone-emerald) {
   font-weight: 700;
 }
 
-.costing-page__table--offered :deep(th.costing-page__tone-amber) {
+.costing-page__table :deep(th.costing-page__tone-amber) {
   font-weight: 700;
 }
 
-.costing-page__table--offered :deep(th.costing-page__tone-indigo) {
+.costing-page__table :deep(th.costing-page__tone-indigo) {
   font-weight: 700;
 }
 
-.costing-page__table--offered :deep(th.costing-page__tone-orange) {
+.costing-page__table :deep(th.costing-page__tone-orange) {
   font-weight: 700;
 }
 
-.costing-page__table--offered :deep(.costing-page__rejected-cell) {
+.costing-page__table :deep(.costing-page__rejected-cell) {
   background: #fff7f8;
   border-top: 1px solid #efb2bc;
   border-bottom: 1px solid #efb2bc;
@@ -1480,9 +1796,15 @@ watch(
 
 .costing-page__image-table-cell {
   width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__image-cell {
+  width: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
 }
 
 .costing-page__image {
@@ -1610,6 +1932,18 @@ watch(
   min-width: min(420px, 92vw);
 }
 
+.costing-page__dialog--wide {
+  width: min(800px, 95vw);
+  max-width: 95vw;
+}
+
+.costing-item-add-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .costing-page__table {
   min-width: 0;
   max-width: 100%;
@@ -1692,10 +2026,10 @@ watch(
   min-height: 40px;
 }
 
-.costing-page__table--offered :deep(td.costing-page__tone-orange),
-.costing-page__table--offered :deep(th.costing-page__tone-orange) {
-  background: #fff8e1;
-  color: #7a5313;
+.costing-page__table :deep(td.costing-page__tone-orange),
+.costing-page__table :deep(th.costing-page__tone-orange) {
+  background: #fff8e1 !important;
+  color: #7a5313 !important;
 }
 
 .costing-page__totals-row {
@@ -1750,6 +2084,11 @@ watch(
   }
 
   .costing-page__image-table-cell {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  .costing-page__image-cell {
     width: 72px;
   }
 

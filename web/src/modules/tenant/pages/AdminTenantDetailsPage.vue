@@ -99,9 +99,9 @@
             <q-separator />
 
             <q-card-section class="column q-gutter-sm">
-              <q-btn color="primary" icon="groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
-              <q-btn color="primary" icon="manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
-              <q-btn color="primary" icon="extension" label="Enable Modules" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
+              <q-btn color="primary" icon="o_groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
+              <q-btn color="primary" icon="o_manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
+              <q-btn color="primary" icon="o_extension" :label="modulesButtonLabel" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
             </q-card-section>
           </q-card>
         </div>
@@ -119,16 +119,26 @@ import { storeToRefs } from 'pinia'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import type { Tenant } from '../types'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 
 const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const tenantStore = useTenantStore()
 const { items } = storeToRefs(tenantStore)
 
 const pageLoading = ref(false)
 const pageError = ref('')
+
+const canManageModules = computed(() => {
+  return authStore.matchedRole === 'superadmin' && authStore.scope === 'platform'
+})
+
+const modulesButtonLabel = computed(() => {
+  return canManageModules.value ? 'Enable Modules' : 'Module Features'
+})
 
 const tenantId = computed(() => Number(route.params.id))
 

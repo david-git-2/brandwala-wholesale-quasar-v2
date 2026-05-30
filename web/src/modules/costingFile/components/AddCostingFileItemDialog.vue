@@ -5,12 +5,15 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="costing-item-add-dialog">
-      <q-card-section class="costing-item-add-dialog__header">
-        <div>
-          <div class="text-h6">Add item</div>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Add a new costing item with complete product details.
-          </p>
+      <q-card-section class="costing-item-add-dialog__header row items-center justify-between q-pb-md">
+        <div class="row items-center q-gutter-md">
+          <q-avatar icon="add_shopping_cart" color="primary" text-color="white" />
+          <div>
+            <div class="text-h6 text-weight-bold">Add Item</div>
+            <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+              Add a new costing item with complete product details.
+            </p>
+          </div>
         </div>
         <q-btn
           flat
@@ -75,130 +78,167 @@
         </div>
 
         <div class="costing-item-add-dialog__form-pane">
-        <q-input
-          v-model="form.name"
-          label="Name"
-          outlined
-          type="textarea"
-          dense
-          :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
-        >
-          <template #prepend><q-icon name="badge" /></template>
-        </q-input>
-        <q-select
-          v-model="form.itemType"
-          :options="itemTypeOptions"
-          label="Type"
-          outlined
-          dense
-          clearable
-          hint="Pick the closest product type."
-        >
-          <template #prepend><q-icon name="category" /></template>
-        </q-select>
-        <q-input
-          v-model="form.size"
-          label="Size"
-          outlined
-          dense
-          hint="Example: XL, 250ml, 42"
-        >
-          <template #prepend><q-icon name="straighten" /></template>
-        </q-input>
-        <q-input
-          v-model="form.color"
-          label="Color"
-          outlined
-          dense
-        >
-          <template #prepend><q-icon name="palette" /></template>
-        </q-input>
-        <q-input
-          v-model="form.extraInformation1"
-          label="Extra information 1"
-          outlined
-          dense
-          type="textarea"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
-        <q-input
-          v-model="form.extraInformation2"
-          label="Extra information 2"
-          outlined
-          dense
-          type="textarea"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
-        <q-input
-          v-model.number="form.priceInWebGbp"
-          label="Web price (GBP)"
-          type="number"
-          outlined
-          dense
-          min="0"
-          :rules="[
-            (value) =>
-              (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
-              'Web price is required.',
-          ]"
-        >
-          <template #prepend><q-icon name="currency_pound" /></template>
-        </q-input>
-        <q-input
-          v-model.number="form.productWeight"
-          label="Product weight (g/ml)"
-          type="number"
-          outlined
-          dense
-          min="0"
-          :rules="[
-            (value) =>
-              (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
-              'Product weight is required.',
-          ]"
-        >
-          <template #prepend><q-icon name="fitness_center" /></template>
-        </q-input>
-        <q-input
-          v-model.number="form.packageWeight"
-          label="Package weight (g/ml)"
-          type="number"
-          outlined
-          dense
-          min="0"
-          :rules="[
-            (value) =>
-              (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
-              'Package weight is required.',
-          ]"
-        >
-          <template #prepend><q-icon name="scale" /></template>
-        </q-input>
-        <q-input
-          v-model.number="form.deliveryPriceGbp"
-          label="Delivery charge (GBP)"
-          type="number"
-          outlined
-          dense
-          min="0"
-          :rules="[
-            (value) =>
-              (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
-              'Delivery charge is required.',
-          ]"
-        >
-          <template #prepend><q-icon name="local_shipping" /></template>
-        </q-input>
+          <!-- Basic Details -->
+          <div class="text-subtitle2 text-weight-bold text-primary q-mb-xs">Basic Details</div>
+          <q-input
+            v-model="form.name"
+            label="Name"
+            outlined
+            dense
+            :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
+          >
+            <template #prepend><q-icon name="badge" /></template>
+          </q-input>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-4">
+              <q-select
+                v-model="form.itemType"
+                :options="itemTypeOptions"
+                label="Type"
+                outlined
+                dense
+                clearable
+              >
+                <template #prepend><q-icon name="category" /></template>
+              </q-select>
+            </div>
+            <div class="col-12 col-sm-4">
+              <q-input
+                v-model="form.size"
+                label="Size"
+                outlined
+                dense
+                placeholder="XL, 250ml"
+              >
+                <template #prepend><q-icon name="straighten" /></template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-4">
+              <q-input
+                v-model="form.color"
+                label="Color"
+                outlined
+                dense
+              >
+                <template #prepend><q-icon name="palette" /></template>
+              </q-input>
+            </div>
+          </div>
+
+          <!-- Specifications & Logistics -->
+          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Specifications & Logistics</div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model.number="form.priceInWebGbp"
+                label="Web price (GBP)"
+                type="number"
+                outlined
+                dense
+                min="0"
+                :rules="[
+                  (value) =>
+                    (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
+                    'Web price is required.',
+                ]"
+              >
+                <template #prepend><q-icon name="currency_pound" /></template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model.number="form.deliveryPriceGbp"
+                label="Delivery charge (GBP)"
+                type="number"
+                outlined
+                dense
+                min="0"
+                :rules="[
+                  (value) =>
+                    (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
+                    'Delivery charge is required.',
+                ]"
+              >
+                <template #prepend><q-icon name="local_shipping" /></template>
+              </q-input>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model.number="form.productWeight"
+                label="Product weight (g/ml)"
+                type="number"
+                outlined
+                dense
+                min="0"
+                :rules="[
+                  (value) =>
+                    (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
+                    'Product weight is required.',
+                ]"
+              >
+                <template #prepend><q-icon name="fitness_center" /></template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model.number="form.packageWeight"
+                label="Package weight (g/ml)"
+                type="number"
+                outlined
+                dense
+                min="0"
+                :rules="[
+                  (value) =>
+                    (value !== null && value !== '' && !Number.isNaN(Number(value))) ||
+                    'Package weight is required.',
+                ]"
+              >
+                <template #prepend><q-icon name="scale" /></template>
+              </q-input>
+            </div>
+          </div>
+
+          <!-- Description & Notes -->
+          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Description & Notes</div>
+          
+          <div class="q-mb-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Extra Information 1</div>
+            <q-editor
+              v-model="form.extraInformation1"
+              min-height="5rem"
+              flat
+              bordered
+              :toolbar="[
+                ['bold', 'italic', 'underline'],
+                ['unordered', 'ordered']
+              ]"
+            />
+          </div>
+
+          <div class="q-mb-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Extra Information 2</div>
+            <q-editor
+              v-model="form.extraInformation2"
+              min-height="5rem"
+              flat
+              bordered
+              :toolbar="[
+                ['bold', 'italic', 'underline'],
+                ['unordered', 'ordered']
+              ]"
+            />
+          </div>
         </div>
       </q-card-section>
 
-      <q-card-actions align="right">
+      <q-card-actions align="right" class="q-pa-md">
         <q-btn
           flat
+          no-caps
           label="Cancel"
           :disable="loading"
           @click="emit('update:modelValue', false)"
@@ -207,6 +247,8 @@
           color="primary"
           unelevated
           label="Add item"
+          no-caps
+          class="pill-btn"
           :loading="loading"
           :disable="isFormInvalid"
           @click="handleSave"
@@ -300,6 +342,11 @@ const resetForm = () => {
   form.deliveryPriceGbp = null
 }
 
+const cleanEditorHtml = (html: string) => {
+  const clean = html.replace(/<[^>]*>/g, '').trim()
+  return clean.length > 0 ? html.trim() : null
+}
+
 const handleSave = () => {
   emit('save', {
     websiteUrl: form.websiteUrl.trim(),
@@ -308,8 +355,8 @@ const handleSave = () => {
     itemType: form.itemType?.trim() || null,
     size: form.size.trim() || null,
     color: form.color.trim() || null,
-    extraInformation1: form.extraInformation1.trim() || null,
-    extraInformation2: form.extraInformation2.trim() || null,
+    extraInformation1: cleanEditorHtml(form.extraInformation1),
+    extraInformation2: cleanEditorHtml(form.extraInformation2),
     imageUrl: form.imageUrl.trim(),
     productWeight: Number(form.productWeight),
     packageWeight: Number(form.packageWeight),

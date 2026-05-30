@@ -116,8 +116,9 @@
             :columns="tableColumns"
             row-key="id"
             :loading="loadingFiles"
-            hide-pagination
+            v-model:pagination="pagination"
             class="costing-list-table"
+            @request="onRequest"
           >
             <template #body="slotProps">
               <q-tr
@@ -212,7 +213,7 @@
           </q-card>
         </section>
 
-        <div v-if="totalPages > 1" class="costing-page__pagination">
+        <div v-if="viewMode === 'card' && totalPages > 1" class="costing-page__pagination">
           <q-pagination
             v-model="page"
             :max="totalPages"
@@ -381,6 +382,22 @@ const viewMode = ref<'table' | 'card'>('table')
 const showSearchInput = ref(false)
 const searchText = ref('')
 const filterDrawerOpen = ref(false)
+
+const pagination = ref({
+  sortBy: 'id',
+  descending: true,
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+})
+
+watch(totalItems, (newVal) => {
+  pagination.value.rowsNumber = newVal || 0
+}, { immediate: true })
+
+watch(page, (newVal) => {
+  pagination.value.page = newVal
+})
 const tableColumns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
   { name: 'name', label: 'Name', field: 'name', align: 'left' },
@@ -455,31 +472,71 @@ const buildCreateFileName = (customerGroupId: number | null) => {
 }
 const statusChipStyle = (currentStatus: string | null | undefined) => {
   const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return { backgroundColor: '#e2e8f0', color: '#334155' }
-  if (value === 'customer_submitted') return { backgroundColor: '#dbeafe', color: '#1e40af' }
-  if (value === 'in_review') return { backgroundColor: '#fef3c7', color: '#92400e' }
-  if (value === 'offered') return { backgroundColor: '#dcfce7', color: '#166534' }
-  if (value === 'po_placed') return { backgroundColor: '#ede9fe', color: '#5b21b6' }
-  if (value === 'cancelled') return { backgroundColor: '#fee2e2', color: '#991b1b' }
-  return { backgroundColor: '#e2e8f0', color: '#334155' }
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    }
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  }
 }
 const statusDotColor = (currentStatus: string | null | undefined) => {
   const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
   if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#2563eb'
-  if (value === 'in_review') return '#d97706'
-  if (value === 'offered') return '#16a34a'
-  if (value === 'po_placed') return '#7c3aed'
-  if (value === 'cancelled') return '#dc2626'
+  if (value === 'customer_submitted') return '#3f51b5'
+  if (value === 'in_review') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'po_placed') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
   return '#64748b'
 }
 const statusSurfaceStyle = (currentStatus: string | null | undefined) => {
   const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
   if (value === 'draft') return { backgroundColor: '#f8fafc' }
-  if (value === 'customer_submitted') return { backgroundColor: '#eff6ff' }
+  if (value === 'customer_submitted') return { backgroundColor: '#f2f4ff' }
   if (value === 'in_review') return { backgroundColor: '#fffbeb' }
-  if (value === 'offered') return { backgroundColor: '#f0fdf4' }
-  if (value === 'po_placed') return { backgroundColor: '#f5f3ff' }
+  if (value === 'offered') return { backgroundColor: '#f0f4ff' }
+  if (value === 'po_placed') return { backgroundColor: '#edfbf2' }
   if (value === 'cancelled') return { backgroundColor: '#fef2f2' }
   return { backgroundColor: '#f8fafc' }
 }
@@ -546,8 +603,15 @@ const loadFiles = async () => {
   await costingFileStore.fetchCostingFilesByTenant(tenantId, {
     customerGroupId: selectedCustomerGroupId.value,
     page: page.value,
-    pageSize,
+    pageSize: pagination.value.rowsPerPage,
   })
+}
+
+const onRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
+  page.value = props.pagination.page
+  pagination.value.page = props.pagination.page
+  pagination.value.rowsPerPage = props.pagination.rowsPerPage
+  await loadFiles()
 }
 
 const loadPageData = async () => {
@@ -749,6 +813,10 @@ watch(
 
 .costing-list-table :deep(th) {
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+}
+
+.costing-list-table :deep(tbody tr td) {
+  background: inherit !important;
 }
 
 .costing-status-chip {

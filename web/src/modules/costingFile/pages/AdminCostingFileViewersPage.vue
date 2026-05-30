@@ -1,31 +1,36 @@
 <template>
-  <q-page class="bw-page theme-app">
+  <q-page class="q-pa-md costing-details-page theme-app">
     <section class="bw-page__stack viewer-page">
-      <section class="viewer-page__header">
-        <div>
-          <div class="text-overline">Costing File</div>
-          <h1 class="text-h5 q-my-none">Manage viewers</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            {{ subtitle }}
-          </p>
-        </div>
-
-        <q-btn
-          outline
-          color="primary"
-          icon="arrow_back"
-          label="Back to file"
-          :disable="!selectedFile"
-          @click="goBackToFile"
-        />
-      </section>
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Manage viewers</div>
+              <div class="text-caption text-grey-8">{{ subtitle }}</div>
+            </div>
+            <div class="col-auto">
+              <q-btn
+                outline
+                color="primary"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                icon="arrow_back"
+                label="Back to file"
+                :disable="!selectedFile"
+                @click="goBackToFile"
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
       <q-card v-if="pageLoading" flat bordered>
         <q-card-section class="text-grey-7">Loading viewer access...</q-card-section>
       </q-card>
 
       <template v-else-if="selectedFile">
-        <q-card flat bordered class="viewer-page__summary-card">
+        <q-card flat class="q-mb-md floating-surface shadow-1 viewer-page__summary-card">
           <q-card-section class="viewer-page__summary-grid">
             <div>
               <div class="text-caption text-grey-7">File</div>
@@ -46,7 +51,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered>
+        <q-card flat class="floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
               <div class="text-h6">Tenant viewers</div>
@@ -65,7 +70,6 @@
           <q-table
             v-else
             flat
-            bordered
             row-key="membership_id"
             :rows="viewerRows"
             :columns="viewerColumns"

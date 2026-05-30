@@ -1,8 +1,8 @@
 <template>
-  <q-page class="bw-page theme-app">
+  <q-page class="q-pa-md costing-details-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section class="costing-page__header floating-surface hero-surface shadow-1">
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 costing-page__header">
         <div class="costing-page__heading">
           <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
           <p class="text-caption text-grey-8 q-mt-xs q-mb-none">{{ subtitle }}</p>
@@ -105,7 +105,7 @@
           />
         </div>
 
-      </section>
+      </q-card>
       <section v-if="selectedFile?.status === 'draft'" class="costing-page__draft-state">
         <div class="text-subtitle1">Items not added yet</div>
         <p class="text-body2 text-grey-7 q-mb-none">
@@ -121,18 +121,18 @@
           </p>
         </div>
 
-        <q-table
-          flat
-          bordered
-          row-key="id"
-          :rows="productRows"
-          :columns="productColumns"
-          :visible-columns="visibleProductColumnNames"
-          :pagination="{ rowsPerPage: 0 }"
-          :loading="loadingItems"
-          hide-bottom
-          class="costing-page__table costing-page__table--product"
-        >
+        <q-card flat class="floating-surface shadow-1 costing-page__table-card">
+          <q-table
+            flat
+            row-key="id"
+            :rows="productRows"
+            :columns="productColumns"
+            :visible-columns="visibleProductColumnNames"
+            :pagination="{ rowsPerPage: 0 }"
+            :loading="loadingItems"
+            hide-bottom
+            class="costing-page__table costing-page__table--product"
+          >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
               {{ props.row.sl }}
@@ -173,6 +173,19 @@
               />
             </q-td>
           </template>
+
+          <template #body-cell-extraInformation1="props">
+            <q-td :props="props">
+              <div v-html="props.value" class="costing-table__rich-text-cell" />
+            </q-td>
+          </template>
+
+          <template #body-cell-extraInformation2="props">
+            <q-td :props="props">
+              <div v-html="props.value" class="costing-table__rich-text-cell" />
+            </q-td>
+          </template>
+
 
           <template #body-cell-name="props">
             <q-td :props="props" class="costing-page__name-cell">
@@ -374,7 +387,8 @@
             </q-tr>
           </template>
         </q-table>
-      </section>
+      </q-card>
+    </section>
 
       <section
         v-else-if="
@@ -445,9 +459,9 @@
           </q-card-section>
         </q-card>
 
+        <q-card flat class="floating-surface shadow-1 costing-page__table-card">
           <q-table
             flat
-            bordered
             row-key="id"
             :rows="reviewRows"
             :columns="visibleReviewColumns"
@@ -456,7 +470,7 @@
             :loading="loadingItems"
             hide-bottom
             class="costing-page__table costing-page__table--review"
-        >
+          >
           <template #body-cell-sl="props">
             <q-td :props="props" class="costing-page__sl-cell">
               {{ props.row.sl }}
@@ -497,6 +511,19 @@
               />
             </q-td>
           </template>
+
+          <template #body-cell-extraInformation1="props">
+            <q-td :props="props">
+              <div v-html="props.value" class="costing-table__rich-text-cell" />
+            </q-td>
+          </template>
+
+          <template #body-cell-extraInformation2="props">
+            <q-td :props="props">
+              <div v-html="props.value" class="costing-table__rich-text-cell" />
+            </q-td>
+          </template>
+
 
           <template #body-cell-name="props">
             <q-td :props="props" class="costing-page__name-cell">
@@ -842,7 +869,8 @@
             </q-tr>
           </template>
         </q-table>
-      </section>
+      </q-card>
+    </section>
 
       <q-dialog v-model="deleteReviewItemDialogOpen" persistent>
         <q-card style="min-width: 360px">
@@ -977,24 +1005,64 @@ const openPreview = () => {
 }
 
 const statusChipStyle = (currentStatus: string) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'draft'
-  if (value === 'draft') return { backgroundColor: '#e2e8f0', color: '#334155' }
-  if (value === 'customer_submitted') return { backgroundColor: '#dbeafe', color: '#1e40af' }
-  if (value === 'in_review') return { backgroundColor: '#fef3c7', color: '#92400e' }
-  if (value === 'offered') return { backgroundColor: '#dcfce7', color: '#166534' }
-  if (value === 'po_placed') return { backgroundColor: '#ede9fe', color: '#5b21b6' }
-  if (value === 'cancelled') return { backgroundColor: '#fee2e2', color: '#991b1b' }
-  return { backgroundColor: '#e2e8f0', color: '#334155' }
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    }
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  }
 }
 
 const statusDotColor = (currentStatus: string) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'draft'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
   if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#2563eb'
-  if (value === 'in_review') return '#d97706'
-  if (value === 'offered') return '#16a34a'
-  if (value === 'po_placed') return '#7c3aed'
-  if (value === 'cancelled') return '#dc2626'
+  if (value === 'customer_submitted') return '#3f51b5'
+  if (value === 'in_review') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'po_placed') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
   return '#64748b'
 }
 
@@ -1290,6 +1358,10 @@ const visibleReviewColumns = computed(() => {
   return reviewColumns.filter((column) => {
     if (column.name === 'actions') {
       return selectedFile.value?.status === 'in_review'
+    }
+    const isShared = productColumns.some((col) => col.name === column.name)
+    if (!isShared) {
+      return true
     }
     return selectedNames.has(column.name)
   })
@@ -1814,9 +1886,18 @@ onMounted(async () => {
 }
 
 .costing-page__pricing-section {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.6rem;
   padding-top: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.costing-page__table-card {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .costing-page__pricing-grid {

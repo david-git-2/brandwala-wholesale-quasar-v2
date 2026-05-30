@@ -1,210 +1,224 @@
 <template>
-  <q-page class="bw-page theme-app">
+  <q-page class="q-pa-md costing-details-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section class="costing-page__header floating-surface hero-surface shadow-1">
-        <div class="costing-page__heading">
-          <div class="text-overline">Costing File</div>
-          <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
-          <p class="text-caption text-grey-8 q-mt-xs q-mb-none">{{ subtitle }}</p>
-        </div>
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Costing file details</div>
+              <div class="text-caption text-grey-8">{{ subtitle }}</div>
+            </div>
+            <div class="col-auto row items-center q-gutter-sm">
+              <q-btn
+                outline
+                color="primary"
+                icon="view_column"
+                label="Columns"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+              >
+                <q-menu>
+                  <q-list style="min-width: 240px">
+                    <q-item>
+                      <q-item-section>
+                        <div class="text-subtitle2">Show Columns</div>
+                      </q-item-section>
+                    </q-item>
+                    <q-item>
+                      <q-item-section>
+                        <q-checkbox
+                          v-model="allSelectableColumnsSelected"
+                          label="Select / Deselect All"
+                        />
+                      </q-item-section>
+                    </q-item>
+                    <q-item>
+                      <q-item-section>
+                        <q-option-group
+                          v-model="visibleColumns"
+                          type="checkbox"
+                          :options="columnSelectorOptions"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+              <q-chip
+                v-if="selectedFile"
+                dense
+                square
+                :style="statusChipStyle(selectedFile.status)"
+                class="costing-status-chip"
+              >
+                <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedFile.status) }" />
+                {{ selectedFile.status }}
+              </q-chip>
+              <q-btn
+                outline
+                color="primary"
+                label="Add item"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                :disable="!canEditFile"
+                @click="addItemDialogOpen = true"
+              />
+              <q-btn
+                color="primary"
+                unelevated
+                label="Send to review"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                :disable="!canSendToReview"
+                :loading="savingStatus"
+                @click="handleSendToReview"
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
-        <div class="costing-page__toolbar">
-          <q-btn
-            outline
-            color="primary"
-            icon="view_column"
-            label="Columns"
-            no-caps
-            size="sm"
-            class="pill-btn slim-btn"
-          >
-            <q-menu>
-              <q-list style="min-width: 240px">
-                <q-item>
-                  <q-item-section>
-                    <div class="text-subtitle2">Show Columns</div>
-                  </q-item-section>
-                </q-item>
-                <q-item>
-                  <q-item-section>
-                    <q-checkbox
-                      v-model="allSelectableColumnsSelected"
-                      label="Select / Deselect All"
-                    />
-                  </q-item-section>
-                </q-item>
-                <q-item>
-                  <q-item-section>
-                    <q-option-group
-                      v-model="visibleColumns"
-                      type="checkbox"
-                      :options="columnSelectorOptions"
-                    />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-btn>
-          <q-chip
-            v-if="selectedFile"
-            dense
-            square
-            :color="statusChipColor(selectedFile.status)"
-            text-color="white"
-          >
-            {{ selectedFile.status }}
-          </q-chip>
-          <q-btn
-            outline
-            color="primary"
-            label="Add item"
-            no-caps
-            size="sm"
-            class="pill-btn slim-btn"
-            :disable="!canEditFile"
-            @click="addItemDialogOpen = true"
-          />
-          <q-btn
-            color="primary"
-            unelevated
-            label="Send to review"
-            no-caps
-            size="sm"
-            class="pill-btn slim-btn"
-            :disable="!canSendToReview"
-            :loading="savingStatus"
-            @click="handleSendToReview"
-          />
-        </div>
-      </section>
-
-      <q-card v-if="loadingPage || !selectedFile" flat bordered>
+      <q-card v-if="loadingPage || !selectedFile" flat class="floating-surface shadow-1">
         <q-card-section class="text-grey-7">
           Loading costing file details...
         </q-card-section>
       </q-card>
 
       <template v-else>
-
-
-        <section class="costing-page__body">
-          <q-table
-            v-if="productRows.length"
-            flat
-            bordered
-            row-key="id"
-            :rows="productRows"
-            :columns="visibleProductColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            hide-bottom
-            class="costing-page__table"
-          >
-            <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
-                {{ props.row.sl }}
-              </q-td>
-            </template>
-
-            <template #body-cell-image="props">
-              <q-td :props="props">
-                <div class="costing-page__image-cell">
-                  <q-img
-                    v-if="props.row.imageUrl"
-                    :src="toExternalUrl(props.row.imageUrl)"
-                    fit="contain"
-                    class="costing-page__image"
-                  />
-                  <div v-else class="costing-page__image costing-page__image--placeholder">
-                    No image
-                  </div>
-                </div>
-              </q-td>
-            </template>
-
-            <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__link-cell">
-                <a
-                  class="costing-page__link"
-                  :href="toExternalUrl(props.row.websiteUrl)"
-                  :title="props.row.websiteUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{ props.row.websiteUrl }}
-                </a>
-              </q-td>
-            </template>
-
-            <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
-                <span class="costing-page__name-text" :title="props.row.name">
-                  {{ props.row.name }}
-                </span>
-              </q-td>
-            </template>
-
-            <template #body-cell-priceInWebGbp="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
-                {{ props.row.priceInWebGbp }}
-              </q-td>
-            </template>
-
-            <template #body-cell-productWeight="props">
-              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-                {{ props.row.productWeight }}
-              </q-td>
-            </template>
-
-            <template #body-cell-packageWeight="props">
-              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-                {{ props.row.packageWeight }}
-              </q-td>
-            </template>
-
-            <template #body-cell-quantity="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
-                {{ props.row.quantity }}
-              </q-td>
-            </template>
-
-            <template #body-cell-actions="props">
-              <q-td :props="props" auto-width>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  color="primary"
-                  icon="edit"
-                  :disable="!canEditFile"
-                  @click="openEditDialog(props.row.id)"
-                />
-              </q-td>
-            </template>
-
-            <template #bottom-row>
-              <q-tr class="costing-page__totals-row">
-                <q-td
-                  v-for="column in visibleProductColumns"
-                  :key="column.name"
-                  class="costing-page__totals-cell"
-                  :class="getProductTotalsCellClass(column.name)"
-                >
-                  {{ getProductTotalsValue(column.name) }}
+        <div v-if="productRows.length" class="costing-page__body">
+          <q-card flat class="floating-surface shadow-1">
+            <q-table
+              flat
+              row-key="id"
+              :rows="productRows"
+              :columns="visibleProductColumns"
+              :pagination="{ rowsPerPage: 0 }"
+              hide-bottom
+              class="costing-page__table"
+            >
+              <template #body-cell-sl="props">
+                <q-td :props="props" class="costing-page__sl-cell">
+                  {{ props.row.sl }}
                 </q-td>
-              </q-tr>
-            </template>
-          </q-table>
+              </template>
 
-          <q-card v-else flat bordered>
-            <q-card-section class="text-center">
-              <div class="text-subtitle1">No items yet</div>
-              <div class="text-body2 text-grey-7 q-mt-sm">
-                Add the first item for this costing file.
-              </div>
-            </q-card-section>
+              <template #body-cell-image="props">
+                <q-td :props="props">
+                  <div class="costing-page__image-cell">
+                    <q-img
+                      v-if="props.row.imageUrl"
+                      :src="toExternalUrl(props.row.imageUrl)"
+                      fit="contain"
+                      class="costing-page__image"
+                    />
+                    <div v-else class="costing-page__image costing-page__image--placeholder">
+                      No image
+                    </div>
+                  </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-websiteUrl="props">
+                <q-td :props="props" class="costing-page__link-cell">
+                  <a
+                    class="costing-page__link"
+                    :href="toExternalUrl(props.row.websiteUrl)"
+                    :title="props.row.websiteUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ props.row.websiteUrl }}
+                  </a>
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation1="props">
+                <q-td :props="props">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation2="props">
+                <q-td :props="props">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+
+              <template #body-cell-name="props">
+                <q-td :props="props" class="costing-page__name-cell">
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-priceInWebGbp="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.priceInWebGbp }}
+                </q-td>
+              </template>
+
+              <template #body-cell-productWeight="props">
+                <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                  {{ props.row.productWeight }}
+                </q-td>
+              </template>
+
+              <template #body-cell-packageWeight="props">
+                <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                  {{ props.row.packageWeight }}
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.quantity }}
+                </q-td>
+              </template>
+
+              <template #body-cell-actions="props">
+                <q-td :props="props" auto-width>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    color="primary"
+                    icon="edit"
+                    :disable="!canEditFile"
+                    @click="openEditDialog(props.row.id)"
+                  />
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="costing-page__totals-row">
+                  <q-td
+                    v-for="column in visibleProductColumns"
+                    :key="column.name"
+                    class="costing-page__totals-cell"
+                    :class="getProductTotalsCellClass(column.name)"
+                  >
+                    {{ getProductTotalsValue(column.name) }}
+                  </q-td>
+                </q-tr>
+              </template>
+            </q-table>
           </q-card>
-        </section>
+        </div>
+
+        <q-card v-else flat class="floating-surface shadow-1">
+          <q-card-section class="text-center">
+            <div class="text-subtitle1">No items yet</div>
+            <div class="text-body2 text-grey-7 q-mt-sm">
+              Add the first item for this costing file.
+            </div>
+          </q-card-section>
+        </q-card>
       </template>
 
       <AddCostingFileItemDialog
@@ -376,12 +390,65 @@ const getProductTotalsValue = (columnName: string) => {
 const getProductTotalsCellClass = (columnName: string) =>
   columnName === 'priceInWebGbp' ? 'costing-page__tone-indigo' : ''
 
-const statusChipColor = (status: CostingFileStatus) => {
-  if (status === 'draft') return 'grey-7'
-  if (status === 'customer_submitted') return 'indigo'
-  if (status === 'in_review') return 'amber-8'
-  if (status === 'offered') return 'positive'
-  return 'primary'
+const statusChipStyle = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    }
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  }
+}
+const statusDotColor = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return '#64748b'
+  if (value === 'customer_submitted') return '#3f51b5'
+  if (value === 'in_review') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'po_placed') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#64748b'
 }
 
 const toExternalUrl = (value: string) =>

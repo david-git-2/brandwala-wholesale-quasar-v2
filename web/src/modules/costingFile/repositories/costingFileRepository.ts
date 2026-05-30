@@ -16,13 +16,16 @@ const listCostingFilesForTenant = async (tenantId: number): Promise<CostingFileL
   const { data, error } = await supabase.rpc('list_costing_files_for_actor', {
     p_tenant_id: tenantId,
     p_customer_group_id: null,
+    p_page: 1,
+    p_page_size: 100000,
   })
 
   if (error) {
     throw error
   }
 
-  return (data as CostingFileListEntry[] | null) ?? []
+  const responseObj = data as unknown as { data: CostingFileListEntry[] } | null
+  return responseObj?.data ?? []
 }
 
 const listCostingFilesForTenantPage = async (
@@ -33,37 +36,26 @@ const listCostingFilesForTenantPage = async (
 ): Promise<CostingFileListPageResult> => {
   const safePage = Math.max(1, Math.floor(page || 1))
   const safePageSize = Math.max(1, Math.floor(pageSize || 20))
-  const offset = (safePage - 1) * safePageSize
 
   const listResult = await supabase.rpc('list_costing_files_for_actor', {
     p_tenant_id: tenantId,
     p_customer_group_id: customerGroupId,
-    p_limit: safePageSize,
-    p_offset: offset,
+    p_page: safePage,
+    p_page_size: safePageSize,
   })
 
   if (listResult.error) {
     throw listResult.error
   }
 
-  const rows =
-    ((listResult.data as Array<CostingFileListEntry & { total_count?: number | null }> | null) ??
-      [])
+  const responseObj = listResult.data as unknown as {
+    data: CostingFileListEntry[]
+    meta: { total_count: number }
+  } | null
 
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      market: row.market,
-      status: row.status,
-      customer_group_id: row.customer_group_id,
-      tenant_id: row.tenant_id,
-      created_by_email: row.created_by_email,
-      created_by_label: row.created_by_label ?? null,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    })),
-    total: Number(rows[0]?.total_count ?? 0),
+    items: responseObj?.data ?? [],
+    total: responseObj?.meta?.total_count ?? 0,
   }
 }
 
@@ -74,13 +66,16 @@ const listCostingFilesForCustomerGroup = async (
   const { data, error } = await supabase.rpc('list_costing_files_for_actor', {
     p_tenant_id: tenantId ?? null,
     p_customer_group_id: customerGroupId,
+    p_page: 1,
+    p_page_size: 100000,
   })
 
   if (error) {
     throw error
   }
 
-  return ((data as CostingFileListEntry[] | null) ?? []).map((item) => ({
+  const responseObj = data as unknown as { data: CostingFileListEntry[] } | null
+  return (responseObj?.data ?? []).map((item) => ({
     ...item,
     created_by_email: '',
   }))
@@ -94,25 +89,25 @@ const listCostingFilesForCustomerGroupPage = async (
 ): Promise<CostingFileListPageResult> => {
   const safePage = Math.max(1, Math.floor(page || 1))
   const safePageSize = Math.max(1, Math.floor(pageSize || 20))
-  const offset = (safePage - 1) * safePageSize
 
   const listResult = await supabase.rpc('list_costing_files_for_actor', {
     p_tenant_id: tenantId ?? null,
     p_customer_group_id: customerGroupId,
-    p_limit: safePageSize,
-    p_offset: offset,
+    p_page: safePage,
+    p_page_size: safePageSize,
   })
 
   if (listResult.error) {
     throw listResult.error
   }
 
-  const rows =
-    ((listResult.data as Array<CostingFileListEntry & { total_count?: number | null }> | null) ??
-      [])
+  const responseObj = listResult.data as unknown as {
+    data: CostingFileListEntry[]
+    meta: { total_count: number }
+  } | null
 
   return {
-    items: rows.map((row) => ({
+    items: (responseObj?.data ?? []).map((row) => ({
       id: row.id,
       name: row.name,
       market: row.market,
@@ -124,7 +119,7 @@ const listCostingFilesForCustomerGroupPage = async (
       created_at: row.created_at,
       updated_at: row.updated_at,
     })),
-    total: Number(rows[0]?.total_count ?? 0),
+    total: responseObj?.meta?.total_count ?? 0,
   }
 }
 

@@ -300,7 +300,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat class="q-mb-lg floating-surface shadow-1">
+        <q-card v-if="showCustomerGroupManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
               <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Group Members</div>
@@ -531,7 +531,7 @@
 
           <q-card-section v-else>
             <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
+              <div v-if="canManageModules" class="col-12 col-md-6">
                 <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Available Features</div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item v-for="feature in availableModules" :key="feature.id">
@@ -556,7 +556,7 @@
                 </q-list>
               </div>
 
-              <div class="col-12 col-md-6">
+              <div :class="canManageModules ? 'col-12 col-md-6' : 'col-12'">
                 <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Tenant Features</div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item v-for="feature in modules" :key="feature.id">
@@ -566,7 +566,7 @@
                         {{ feature.is_active ? 'Active' : 'Inactive' }}
                       </q-item-label>
                     </q-item-section>
-                    <q-item-section side>
+                    <q-item-section side v-if="canManageModules">
                       <q-btn
                         color="negative"
                         dense
@@ -960,6 +960,7 @@ import { formatAppDateTime } from 'src/utils/dateTime'
 import { useCustomerGroupStore } from '../stores/customerGroupStore'
 import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useTenantStore } from '../stores/tenantStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import type {
   CustomerGroup,
   CustomerGroupMember,
@@ -992,6 +993,7 @@ const props = withDefaults(
 
 const route = useRoute()
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const tenantStore = useTenantStore()
 const tenantModuleStore = useTenantModuleStore()
@@ -999,6 +1001,10 @@ const moduleStore = useModuleStore()
 const membershipStore = useMembershipStore()
 const customerGroupStore = useCustomerGroupStore()
 const costingFileStore = useCostingFileStore()
+
+const canManageModules = computed(() => {
+  return authStore.matchedRole === 'superadmin' && authStore.scope === 'platform'
+})
 
 const { items } = storeToRefs(tenantStore)
 const { items: catalogModules } = storeToRefs(moduleStore)

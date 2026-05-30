@@ -1,14 +1,17 @@
 <template>
-  <q-page class="bw-page theme-app">
+  <q-page class="q-pa-md costing-list-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
     <section v-else class="bw-page__stack costing-page">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-overline">Viewer Access</div>
-          <h1 class="text-h5 q-my-none">PO placed costing files</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ subtitle }}</p>
-        </div>
-      </section>
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+        <q-card-section class="q-py-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col">
+              <div class="text-h6 text-weight-bold">PO placed costing files</div>
+              <div class="text-caption text-grey-8">{{ subtitle }}</div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
       <q-card v-if="loadingFiles" flat bordered>
         <q-card-section class="text-grey-7">Loading assigned costing files...</q-card-section>
@@ -33,10 +36,10 @@
               <q-chip
                 dense
                 square
-                :color="statusChipColor(file.status)"
-                text-color="white"
-                class="costing-page__status-chip"
+                :style="statusChipStyle(file.status)"
+                class="costing-status-chip"
               >
+                <span class="status-dot" :style="{ backgroundColor: statusDotColor(file.status) }" />
                 {{ formatStatusLabel(file.status) }}
               </q-chip>
             </div>
@@ -80,13 +83,65 @@ const page = ref(1)
 const pageSize = 20
 
 const cardAccentColor = computed(() => 'var(--bw-theme-primary)')
-const statusChipColor = (status: string) => {
-  if (status === 'draft') return 'grey-7'
-  if (status === 'customer_submitted') return 'indigo'
-  if (status === 'in_review') return 'amber-8'
-  if (status === 'offered') return 'positive'
-  if (status === 'po_placed') return 'primary'
-  return 'secondary'
+const statusChipStyle = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    }
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    }
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  }
+}
+const statusDotColor = (currentStatus: string | null | undefined) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  if (value === 'draft') return '#64748b'
+  if (value === 'customer_submitted') return '#3f51b5'
+  if (value === 'in_review') return '#9a6a24'
+  if (value === 'offered') return '#3f67b3'
+  if (value === 'po_placed') return '#2f8b5d'
+  if (value === 'cancelled') return '#a64c62'
+  return '#64748b'
 }
 const formatStatusLabel = (status: string) =>
   status

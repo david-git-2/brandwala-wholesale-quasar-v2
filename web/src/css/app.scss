@@ -105,3 +105,45 @@ body {
 .q-btn {
   border-radius: 8px !important;
 }
+
+.q-editor {
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: rgba(0, 0, 0, 0.45) !important;
+  }
+
+  &:focus-within {
+    border-color: var(--q-primary) !important;
+    box-shadow: 0 0 0 1px var(--q-primary) !important;
+  }
+}
+
+.costing-table__rich-text-cell {
+  max-height: 120px;
+  overflow-y: auto;
+  text-align: left;
+  line-height: 1.4;
+  font-size: 0.85rem;
+  white-space: normal;
+
+  p {
+    margin: 0 0 4px 0;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul, ol {
+    margin: 0;
+    padding-left: 16px;
+  }
+}
+
+.costing-list-page,
+.costing-details-page {
+  background: transparent;
+}
+
