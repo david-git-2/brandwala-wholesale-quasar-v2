@@ -23,6 +23,43 @@
                 {{ formatStatusLabel(selectedFile.status) }}
               </q-chip>
               <q-btn
+                v-if="selectedFile && columnSelectorOptions.length > 0"
+                outline
+                color="primary"
+                icon="view_column"
+                label="Columns"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+              >
+                <q-menu>
+                  <q-list style="min-width: 240px">
+                    <q-item>
+                      <q-item-section>
+                        <div class="text-subtitle2">Show Columns</div>
+                      </q-item-section>
+                    </q-item>
+                    <q-item>
+                      <q-item-section>
+                        <q-checkbox
+                          v-model="allSelectableColumnsSelected"
+                          label="Select / Deselect All"
+                        />
+                      </q-item-section>
+                    </q-item>
+                    <q-item>
+                      <q-item-section>
+                        <q-option-group
+                          v-model="selectedColumnNames"
+                          type="checkbox"
+                          :options="columnSelectorOptions"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+              <q-btn
                 v-if="selectedFile && (selectedFile.status === 'offered' || selectedFile.status === 'accepted' || selectedFile.status === 'po_placed')"
                 outline
                 color="primary"
@@ -1195,7 +1232,7 @@ const allColumns = [
   { name: 'actions', label: '', field: 'actions', align: 'center' as const },
 ]
 
-const visibleColumns = computed(() => {
+const statusColumns = computed(() => {
   if (!selectedFile.value) {
     return []
   }
@@ -1295,6 +1332,36 @@ const visibleColumns = computed(() => {
       'status',
       'offerPriceBdt',
     ].includes(column.name),
+  )
+})
+
+const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name', 'status'] as const
+
+const selectableColumns = computed(() =>
+  statusColumns.value.filter((column) => !alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]))
+)
+
+const selectedColumnNames = ref<string[]>(allColumns.map(c => c.name))
+
+const columnSelectorOptions = computed(() =>
+  selectableColumns.value.map((column) => ({ label: column.label, value: column.name }))
+)
+
+const allSelectableColumnsSelected = computed({
+  get: () => selectableColumns.value.every((col) => selectedColumnNames.value.includes(col.name)),
+  set: (checked: boolean) => {
+    const selectableNames = selectableColumns.value.map(c => c.name)
+    if (checked) {
+      selectedColumnNames.value = Array.from(new Set([...selectedColumnNames.value, ...selectableNames]))
+    } else {
+      selectedColumnNames.value = selectedColumnNames.value.filter(name => !selectableNames.includes(name))
+    }
+  }
+})
+
+const visibleColumns = computed(() => {
+  return statusColumns.value.filter((column) =>
+    alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]) || selectedColumnNames.value.includes(column.name)
   )
 })
 

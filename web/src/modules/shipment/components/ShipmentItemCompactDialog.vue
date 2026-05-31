@@ -162,7 +162,7 @@ const onCancel = () => {
 
 const onCreateShipment = () => {
   localOpen.value = false
-  router.push({ name: 'app-shipment-page' })
+  void router.push({ name: 'app-shipment-page' })
 }
 
 const onSave = () => {

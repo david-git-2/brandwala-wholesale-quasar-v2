@@ -973,6 +973,7 @@ import {
   buildAdminReviewRows,
   summarizeAdminProductRows,
   summarizeAdminReviewRows,
+  type AdminProductRow,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
@@ -983,6 +984,7 @@ import type {
   CostingFileStatus,
 } from 'src/modules/costingFile/types'
 import { showSuccessNotification } from 'src/utils/appFeedback'
+import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations'
 
 const route = useRoute()
 const router = useRouter()
@@ -1878,16 +1880,37 @@ watch(
   { immediate: true, deep: true }
 )
 
-const openShipmentDialog = (row: any) => {
+const openShipmentDialog = (row: AdminProductRow) => {
   const item = costingFileItems.value.find((i) => i.id === row.id)
   if (!item) return
   selectedShipItem.value = item
   selectedQuantity.value = item.quantity ?? null
-  selectedPriceGbp.value = row.purchasePriceGbpValue ?? null
+
+  const calculated = calculateCostingItem(
+    {
+      cargoRate1Kg: pricingForm.cargoRate1Kg,
+      cargoRate2Kg: pricingForm.cargoRate2Kg,
+      cargoRateOverride: item.cargo_rate,
+      cargoRateIsManual: item.cargo_rate != null,
+      conversionRate: pricingForm.conversionRate,
+      adminProfitRate: pricingForm.adminProfitRate,
+      offerPriceOverrideBdt: item.offer_price_override_bdt,
+    },
+    {
+      productWeight: item.product_weight,
+      packageWeight: item.package_weight,
+      priceInWebGbp: item.price_in_web_gbp,
+      deliveryPriceGbp: item.delivery_price_gbp,
+      customerProfitRate: item.customer_profit_rate,
+      itemType: item.item_type,
+    },
+  )
+
+  selectedPriceGbp.value = calculated.itemPriceGbp ?? null
   showAddShipmentDialog.value = true
 }
 
-const onShip = (row: any) => {
+const onShip = (row: AdminProductRow) => {
   const item = costingFileItems.value.find((i) => i.id === row.id)
   if (!item) return
 
