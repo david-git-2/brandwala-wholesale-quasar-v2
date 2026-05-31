@@ -35,6 +35,12 @@ fi
 
 npm --prefix web run build
 
+# Clean up large scraper data, backups, and temporary files not used by the frontend
+echo "Cleaning up local development data, backups, and DS_Store from build output..."
+rm -rf web/dist/spa/uk
+rm -f web/dist/spa/*.bak*
+find web/dist/spa -name ".DS_Store" -type f -delete
+
 echo "Using wrangler@${WRANGLER_VERSION}"
 wrangler_cmd --version
 
@@ -45,7 +51,7 @@ fi
 attempt=1
 while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do
   echo "Deploy attempt ${attempt}/${RETRY_ATTEMPTS}..."
-  if wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true; then
+  if wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true --skip-caching; then
     echo "Deploy succeeded."
     exit 0
   fi
