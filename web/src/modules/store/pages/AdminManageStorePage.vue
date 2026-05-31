@@ -20,7 +20,7 @@
             flat
             round
             dense
-            icon="edit"
+            icon="o_edit"
             color="primary"
             @click="openEdit(props.row)"
           />
@@ -28,7 +28,7 @@
             flat
             round
             dense
-            icon="delete"
+            icon="o_delete"
             color="negative"
             @click="openDelete(props.row)"
           />

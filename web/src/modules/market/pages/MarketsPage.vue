@@ -74,7 +74,7 @@
                   flat
                   round
                   dense
-                  icon="edit"
+                  icon="o_edit"
                   :disable="props.row.is_system"
                   @click="onClickEditMarket(props.row)"
                 />
@@ -83,7 +83,7 @@
                   round
                   dense
                   color="negative"
-                  icon="delete"
+                  icon="o_delete"
                   :disable="props.row.is_system"
                   @click="onClickDeleteMarket(props.row)"
                 />

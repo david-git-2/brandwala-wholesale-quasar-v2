@@ -111,7 +111,7 @@
                     flat
                     round
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     size="sm"
                     :loading="cartStore.saving"
                     @click="onRemoveItem(item)"
@@ -125,7 +125,7 @@
                 </div>
                 <div class="text-caption text-grey-6 row items-center justify-end q-gutter-x-xs">
                   <span>৳{{ Number(getDraftPrice(item)).toFixed(2) }} each</span>
-                  <q-btn flat round dense icon="edit" size="xs" color="primary" class="q-ml-xs">
+                  <q-btn flat round dense icon="o_edit" size="xs" color="primary" class="q-ml-xs">
                     <q-popup-edit v-model="draftPrice[item.id]" :validate="val => val >= (item.unit_price_gbp || 0)" title="Set Selling Price" buttons v-slot="scope">
                       <q-input type="number" v-model.number="scope.value" dense autofocus :rules="[val => val >= (item.unit_price_gbp || 0) || 'Cannot be lower than base price']" @keyup.enter="scope.set" />
                     </q-popup-edit>

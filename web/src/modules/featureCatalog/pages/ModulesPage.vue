@@ -40,11 +40,11 @@
                 <div class="text-body2 text-grey-7">{{ buildModuleMeta(module) }}</div>
                 <div class="text-body2 q-mt-sm">{{ module.description || 'No description provided yet.' }}</div>
                 <div class="row justify-end q-gutter-sm q-mt-md">
-                  <q-btn flat round icon="edit" @click.stop="onClickEditModule(module)" />
+                  <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(module)" />
                   <q-btn
                     flat
                     round
-                    icon="delete"
+                    icon="o_delete"
                     color="negative"
                     :disable="isSeededModule(module.key)"
                     @click.stop="onClickDeleteModule(module)"

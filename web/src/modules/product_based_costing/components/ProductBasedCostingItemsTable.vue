@@ -15,7 +15,7 @@
         <q-btn
           color="negative"
           no-caps
-          icon="delete"
+          icon="o_delete"
           label="Delete Selected"
           @click="showBulkDeleteConfirm = true"
         />
@@ -414,7 +414,7 @@
           <q-td key="action" :props="slotProps" class="col-action">
             <div class="row items-center justify-center q-gutter-xs">
               <q-btn
-                icon="edit"
+                icon="o_edit"
                 flat
                 round
                 dense
@@ -423,7 +423,7 @@
                 class="col"
               />
               <q-btn
-                icon="delete"
+                icon="o_delete"
                 flat
                 round
                 dense

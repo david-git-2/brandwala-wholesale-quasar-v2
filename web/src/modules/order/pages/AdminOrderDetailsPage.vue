@@ -214,7 +214,7 @@
         class="q-mr-auto"
         color="negative"
         no-caps
-        icon="delete"
+        icon="o_delete"
         :label="`Delete Selected (${selectedItemIds.length})`"
         :loading="orderStore.saving"
         @click="confirmDeleteSelectedOpen = true"

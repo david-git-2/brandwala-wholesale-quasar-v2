@@ -51,7 +51,7 @@
             flat
             round
             dense
-            icon="delete"
+            icon="o_delete"
             color="negative"
             @click="openDelete(props.row.id)"
           />

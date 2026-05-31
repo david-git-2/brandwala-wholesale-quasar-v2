@@ -188,7 +188,7 @@
                     dense
                     round
                     color="primary"
-                    icon="edit"
+                    icon="o_edit"
                     :disable="!canEditFile"
                     @click="openEditDialog(props.row.id)"
                   />

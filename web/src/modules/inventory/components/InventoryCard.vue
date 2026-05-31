@@ -67,7 +67,7 @@
                   color="negative"
                   outline
                   size="sm"
-                  icon="delete"
+                  icon="o_delete"
                   label="Delete"
                   @click="emit('delete-item', item)"
                 /></div>

@@ -87,7 +87,7 @@
                     round
                     dense
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     aria-label="Delete costing file"
                     :loading="deletingFileId === slotProps.row.id"
                     @click.stop="handleDelete(slotProps.row.id)"
@@ -130,7 +130,7 @@
                 dense
                 round
                 color="negative"
-                icon="delete"
+                icon="o_delete"
                 aria-label="Delete costing file"
                 :loading="deletingFileId === file.id"
                 @click.stop="handleDelete(file.id)"

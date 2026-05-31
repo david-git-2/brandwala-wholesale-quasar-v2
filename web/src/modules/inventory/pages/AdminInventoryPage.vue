@@ -111,7 +111,7 @@
           v-if="selectedItemIds.length"
           color="negative"
           no-caps
-          icon="delete"
+          icon="o_delete"
           :label="`Delete Selected (${selectedItemIds.length})`"
           @click="onDeleteSelected"
         />

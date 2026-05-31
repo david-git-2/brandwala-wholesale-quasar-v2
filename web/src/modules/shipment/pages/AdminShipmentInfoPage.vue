@@ -46,7 +46,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ shipmentStore.selectedShipment?.name || '-' }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('name')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('name')" />
                 </template>
               </div>
             </div>
@@ -65,7 +65,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.product_conversion_rate) }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('product_conversion_rate')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('product_conversion_rate')" />
                 </template>
               </div>
             </div>
@@ -84,7 +84,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_conversion_rate) }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('cargo_conversion_rate')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('cargo_conversion_rate')" />
                 </template>
               </div>
             </div>
@@ -112,7 +112,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.cargo_rate) }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('cargo_rate')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('cargo_rate')" />
                 </template>
               </div>
             </div>
@@ -131,7 +131,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.weight) }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('weight')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('weight')" />
                 </template>
               </div>
             </div>
@@ -150,7 +150,7 @@
                 </template>
                 <template v-else>
                   <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.received_weight) }}</div>
-                  <q-btn flat round dense icon="edit" @click="startEdit('received_weight')" />
+                  <q-btn flat round dense icon="o_edit" @click="startEdit('received_weight')" />
                 </template>
               </div>
             </div>

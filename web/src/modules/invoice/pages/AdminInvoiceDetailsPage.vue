@@ -200,7 +200,7 @@
                   <q-btn
                     flat
                     round
-                    icon="delete"
+                    icon="o_delete"
                     color="negative"
                     @click="openDeleteInvoiceItem(row.id)"
                   >

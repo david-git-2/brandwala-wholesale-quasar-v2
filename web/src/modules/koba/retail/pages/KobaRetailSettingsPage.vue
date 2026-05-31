@@ -99,7 +99,7 @@
                   <q-input v-model.number="form.delivery_rates[key]" type="number" label="Charge" outlined dense prefix="৳" />
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn flat round color="negative" icon="delete" size="sm" :disable="key === 'default'" @click="removeRate(key)" />
+                  <q-btn flat round color="negative" icon="o_delete" size="sm" :disable="key === 'default'" @click="removeRate(key)" />
                 </q-item-section>
               </q-item>
             </q-list>

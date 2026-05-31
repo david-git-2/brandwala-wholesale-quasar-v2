@@ -225,7 +225,7 @@
                     round
                     dense
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     :loading="shipmentStore.saving"
                     @click="onDeleteBatchRow(row.id)"
                   />

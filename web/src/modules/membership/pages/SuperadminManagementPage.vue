@@ -77,7 +77,7 @@
                 flat
                 round
                 dense
-                icon="edit"
+                icon="o_edit"
                 @click="onClickEditSuperadmin(props.row)"
               />
               <q-btn
@@ -85,7 +85,7 @@
                 round
                 dense
                 color="negative"
-                icon="delete"
+                icon="o_delete"
                 :disable="isCurrentUser(props.row.email)"
                 @click="onClickDeleteSuperadmin(props.row)"
               />

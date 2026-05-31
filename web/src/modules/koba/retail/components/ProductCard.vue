@@ -88,7 +88,7 @@
           <q-btn
             flat dense round
             color="negative"
-            icon="delete"
+            icon="o_delete"
             size="sm"
             :loading="removeBusy"
             @click.stop="onRemove"

@@ -365,7 +365,7 @@
                 flat
                 dense
                 color="primary"
-                icon="edit"
+                icon="o_edit"
                 round
                 aria-label="Edit item"
                 :disable="savingItemId === props.row.id"
@@ -804,7 +804,7 @@
                 flat
                 dense
                 color="primary"
-                icon="edit"
+                icon="o_edit"
                 round
                 aria-label="Edit item"
                 :disable="savingItemId === props.row.id"
@@ -846,7 +846,7 @@
                 flat
                 dense
                 color="negative"
-                icon="delete"
+                icon="o_delete"
                 round
                 aria-label="Delete item"
                 :loading="deletingReviewItemId === props.row.id"

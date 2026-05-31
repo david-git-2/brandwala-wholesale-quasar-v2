@@ -507,7 +507,7 @@
                   dense
                   color="primary"
                   round
-                  icon="edit"
+                  icon="o_edit"
                   @click="openEditManualItemDialog(item)"
                 >
                   <q-tooltip>Edit</q-tooltip>
@@ -517,7 +517,7 @@
                   dense
                   color="negative"
                   round
-                  icon="delete"
+                  icon="o_delete"
                   @click="openDeleteDialog(item)"
                 >
                   <q-tooltip>Delete</q-tooltip>
@@ -1036,7 +1036,7 @@
                     round
                     dense
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     @click="removeBatchEditorRow(index)"
                   />
                 </td>

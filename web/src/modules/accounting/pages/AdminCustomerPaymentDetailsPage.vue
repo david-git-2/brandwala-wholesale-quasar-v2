@@ -221,7 +221,7 @@
                   <q-btn
                     flat
                     round
-                    icon="edit"
+                    icon="o_edit"
                     color="primary"
                     @click.stop="openEditAllocationDialog(allocation)"
                   />

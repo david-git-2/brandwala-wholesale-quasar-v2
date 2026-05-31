@@ -100,7 +100,7 @@
               dense
               flat
               color="negative"
-              icon="delete"
+              icon="o_delete"
               label="Remove"
               no-caps
               :loading="cartStore.saving"

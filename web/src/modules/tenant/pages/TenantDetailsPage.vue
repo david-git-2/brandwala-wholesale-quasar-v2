@@ -90,7 +90,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="edit"
+                icon="o_edit"
                 label="Edit"
                 @click="onClickEditTenant"
               />
@@ -100,7 +100,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="delete"
+                icon="o_delete"
                 label="Delete"
                 @click="openDeleteDialog = true"
               />
@@ -174,7 +174,7 @@
                     color="negative"
                     flat
                     round
-                    icon="delete"
+                    icon="o_delete"
                     @click="onClickDeleteAdmin(props.row)"
                   />
                 </q-td>

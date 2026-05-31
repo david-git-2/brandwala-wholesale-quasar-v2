@@ -3,15 +3,19 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col row items-center">
-            <q-btn flat round dense icon="arrow_back" @click="$router.back()" class="q-mr-sm" />
-            <div>
-              <div class="text-h6 text-weight-bold">{{ isEdit ? 'Edit Vendor Details' : 'Loading...' }}</div>
-              <div class="text-caption text-grey-8" v-if="vendorData">{{ form.name }} ({{ form.code }})</div>
+          <div class="col-12 col-sm row items-center no-wrap">
+            <q-btn flat round dense icon="arrow_back" @click="$router.back()" class="q-mr-sm flex-shrink-0" />
+            <div style="min-width: 0;">
+              <div class="text-h6 text-weight-bold text-ellipsis overflow-hidden" style="white-space: nowrap;">
+                {{ isEdit ? 'Edit Vendor Details' : 'Loading...' }}
+              </div>
+              <div class="text-caption text-grey-8 text-ellipsis overflow-hidden" v-if="vendorData" style="white-space: nowrap;">
+                {{ form.name }} ({{ form.code }})
+              </div>
             </div>
           </div>
-          <div class="col-auto">
-            <q-btn color="negative" no-caps size="sm" class="pill-btn slim-btn q-mr-sm" label="Delete Vendor" @click="openDeleteDialog = true" v-if="vendorData" />
+          <div class="col-12 col-sm-auto row items-center justify-end q-gutter-x-sm q-mt-xs q-mt-sm-none">
+            <q-btn color="negative" no-caps size="sm" class="pill-btn slim-btn" label="Delete Vendor" @click="openDeleteDialog = true" v-if="vendorData" />
             <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Save Changes" :disable="Boolean(validationMessage) || checkingCode || codeAvailable === false" @click="onSave" />
           </div>
         </div>
@@ -27,20 +31,20 @@
     </div>
 
     <div v-else-if="vendorData" class="row q-col-gutter-md">
-      <!-- Left Column: Details -->
-      <div class="col-12 col-md-6">
-        <q-card flat class="floating-surface shadow-1 full-height">
+      <!-- Top Section: Details -->
+      <div class="col-12">
+        <q-card flat class="floating-surface shadow-1">
           <q-card-section>
             <div class="text-subtitle1 text-weight-bold q-mb-md">Vendor Information</div>
             
             <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-input v-model="form.name" label="Name" outlined dense>
                   <template #prepend><q-icon name="storefront" /></template>
                 </q-input>
               </div>
 
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-input
                   v-model="form.code"
                   label="Code"
@@ -62,7 +66,7 @@
                 </div>
               </div>
 
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-select
                   v-model="form.market_code"
                   outlined
@@ -76,19 +80,19 @@
                 </q-select>
               </div>
 
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-input v-model="form.email" label="Email" outlined dense>
                   <template #prepend><q-icon name="mail" /></template>
                 </q-input>
               </div>
 
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-input v-model="form.phone" label="Phone" outlined dense>
                   <template #prepend><q-icon name="call" /></template>
                 </q-input>
               </div>
 
-              <div class="col-12 col-sm-6">
+              <div class="col-12 col-sm-6 col-md-4">
                 <q-input v-model="form.website" label="Website" outlined dense>
                   <template #prepend><q-icon name="language" /></template>
                 </q-input>
@@ -104,69 +108,67 @@
         </q-card>
       </div>
 
-      <!-- Right Column: Brands and Categories -->
+      <!-- Bottom Section: Brands and Categories -->
+      <!-- Brands -->
       <div class="col-12 col-md-6">
-        <div class="column q-gutter-y-md full-height">
-          
-          <!-- Brands -->
-          <q-card flat class="floating-surface shadow-1">
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-md">Associated Brands</div>
-              
-              <div class="row q-col-gutter-sm q-mb-md items-center">
-                <div class="col">
-                  <q-input v-model="newBrandName" label="New Brand Name" outlined dense @keyup.enter="addBrand" />
-                </div>
-                <div class="col-auto">
-                  <q-btn color="primary" label="Add" :disable="!newBrandName.trim() || isAddingBrand" @click="addBrand" :loading="isAddingBrand" />
-                </div>
+        <q-card flat class="floating-surface shadow-1 full-height">
+          <q-card-section>
+            <div class="text-subtitle1 text-weight-bold q-mb-md">Associated Brands</div>
+            
+            <div class="row q-col-gutter-sm q-mb-md items-center">
+              <div class="col">
+                <q-input v-model="newBrandName" label="New Brand Name" outlined dense @keyup.enter="addBrand" />
               </div>
-
-              <div v-if="loadingBrands" class="text-grey-7">Loading brands...</div>
-              <div v-else-if="brands.length === 0" class="text-grey-7">No brands associated yet.</div>
-              <q-list v-else bordered separator class="rounded-borders">
-                <q-item v-for="brand in brands" :key="brand.id">
-                  <q-item-section>
-                    <q-item-label>{{ brand.name }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-btn flat round dense color="negative" icon="delete" @click="deleteBrand(brand.id)" />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-          </q-card>
-
-          <!-- Categories -->
-          <q-card flat class="floating-surface shadow-1">
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-md">Associated Categories</div>
-              
-              <div class="row q-col-gutter-sm q-mb-md items-center">
-                <div class="col">
-                  <q-input v-model="newCategoryName" label="New Category Name" outlined dense @keyup.enter="addCategory" />
-                </div>
-                <div class="col-auto">
-                  <q-btn color="primary" label="Add" :disable="!newCategoryName.trim() || isAddingCategory" @click="addCategory" :loading="isAddingCategory" />
-                </div>
+              <div class="col-auto">
+                <q-btn color="primary" label="Add" :disable="!newBrandName.trim() || isAddingBrand" @click="addBrand" :loading="isAddingBrand" />
               </div>
+            </div>
 
-              <div v-if="loadingCategories" class="text-grey-7">Loading categories...</div>
-              <div v-else-if="categories.length === 0" class="text-grey-7">No categories associated yet.</div>
-              <q-list v-else bordered separator class="rounded-borders">
-                <q-item v-for="cat in categories" :key="cat.id">
-                  <q-item-section>
-                    <q-item-label>{{ cat.name }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-btn flat round dense color="negative" icon="delete" @click="deleteCategory(cat.id)" />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-          </q-card>
+            <div v-if="loadingBrands" class="text-grey-7">Loading brands...</div>
+            <div v-else-if="brands.length === 0" class="text-grey-7">No brands associated yet.</div>
+            <q-list v-else bordered separator class="rounded-borders" style="max-height: 250px; overflow-y: auto;">
+              <q-item v-for="brand in brands" :key="brand.id">
+                <q-item-section>
+                  <q-item-label>{{ brand.name }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense color="negative" icon="o_delete" @click="deleteBrand(brand.id)" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </q-card>
+      </div>
 
-        </div>
+      <!-- Categories -->
+      <div class="col-12 col-md-6">
+        <q-card flat class="floating-surface shadow-1 full-height">
+          <q-card-section>
+            <div class="text-subtitle1 text-weight-bold q-mb-md">Associated Categories</div>
+            
+            <div class="row q-col-gutter-sm q-mb-md items-center">
+              <div class="col">
+                <q-input v-model="newCategoryName" label="New Category Name" outlined dense @keyup.enter="addCategory" />
+              </div>
+              <div class="col-auto">
+                <q-btn color="primary" label="Add" :disable="!newCategoryName.trim() || isAddingCategory" @click="addCategory" :loading="isAddingCategory" />
+              </div>
+            </div>
+
+            <div v-if="loadingCategories" class="text-grey-7">Loading categories...</div>
+            <div v-else-if="categories.length === 0" class="text-grey-7">No categories associated yet.</div>
+            <q-list v-else bordered separator class="rounded-borders" style="max-height: 250px; overflow-y: auto;">
+              <q-item v-for="cat in categories" :key="cat.id">
+                <q-item-section>
+                  <q-item-label>{{ cat.name }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense color="negative" icon="o_delete" @click="deleteCategory(cat.id)" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
@@ -458,3 +460,4 @@ onMounted(() => {
 
 <style scoped>
 </style>
+

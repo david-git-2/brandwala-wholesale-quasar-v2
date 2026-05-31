@@ -13,7 +13,7 @@
                 color="primary"
                 no-caps
                 label="Edit Product"
-                icon="edit"
+                icon="o_edit"
                 class="pill-btn slim-btn"
                 @click="startEdit"
               />

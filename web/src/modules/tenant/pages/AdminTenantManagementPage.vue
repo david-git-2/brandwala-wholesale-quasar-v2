@@ -139,13 +139,13 @@
 
               <q-item-section side>
                 <div class="row items-center q-gutter-xs">
-                  <q-btn flat round dense icon="edit" @click.stop="openEditGroupDialog(group)" />
+                  <q-btn flat round dense icon="o_edit" @click.stop="openEditGroupDialog(group)" />
                   <q-btn
                     flat
                     round
                     dense
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     @click.stop="openDeleteGroupDialog(group)"
                   />
                 </div>
@@ -235,7 +235,7 @@
                     color="negative"
                     flat
                     round
-                    icon="delete"
+                    icon="o_delete"
                     @click="onClickDeleteMember(props.row)"
                   />
                 </q-td>
@@ -290,7 +290,7 @@
                     color="negative"
                     flat
                     round
-                    icon="delete"
+                    icon="o_delete"
                     @click="onClickDeleteMember(props.row)"
                   />
                 </q-td>
@@ -405,7 +405,7 @@
                       flat
                       round
                       dense
-                      icon="edit"
+                      icon="o_edit"
                       @click="openEditCustomerMemberDialog(props.row)"
                     />
                     <q-btn
@@ -413,7 +413,7 @@
                       round
                       dense
                       color="negative"
-                      icon="delete"
+                      icon="o_delete"
                       @click="openDeleteCustomerMemberDialog(props.row)"
                     />
                   </div>
@@ -501,7 +501,7 @@
                     flat
                     round
                     dense
-                    icon="edit"
+                    icon="o_edit"
                     @click="openEditCostingFileDialog(props.row)"
                   />
                   <q-btn
@@ -509,7 +509,7 @@
                     round
                     dense
                     color="negative"
-                    icon="delete"
+                    icon="o_delete"
                     @click="openDeleteCostingFileDialog(props.row)"
                   />
                 </div>
