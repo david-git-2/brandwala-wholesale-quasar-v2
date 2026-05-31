@@ -61,6 +61,7 @@ export type AdminReviewRow = {
   deliveryPriceGbpValue: number | null
   deliveryPriceGbp: string
   status: string | null
+  assigned_shipment_id?: number | null
   auxiliaryPriceGbpValue: number
   auxiliaryPriceGbp: string
   purchasePriceGbpValue: number
@@ -197,6 +198,7 @@ export const buildAdminReviewRows = (
       deliveryPriceGbpValue: item.delivery_price_gbp,
       deliveryPriceGbp: formatGbp(item.delivery_price_gbp),
       status: item.status,
+      assigned_shipment_id: item.assigned_shipment_id,
       auxiliaryPriceGbpValue: calculated.auxiliaryPriceGbp,
       auxiliaryPriceGbp: formatGbp(calculated.auxiliaryPriceGbp),
       purchasePriceGbpValue: calculated.itemPriceGbp,

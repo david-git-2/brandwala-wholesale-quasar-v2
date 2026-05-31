@@ -18,7 +18,20 @@
           map-options
           :rules="[requiredRule]"
           :disable="loading"
-        />
+        >
+          <template #after>
+            <q-btn
+              round
+              dense
+              flat
+              icon="add"
+              color="primary"
+              @click="onCreateShipment"
+            >
+              <q-tooltip>Create new shipment</q-tooltip>
+            </q-btn>
+          </template>
+        </q-select>
 
         <q-input
           v-model.number="form.quantity"
@@ -51,6 +64,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useShipmentStore } from '../stores/shipmentStore'
 type Shipment = {
   id: number
@@ -58,6 +72,8 @@ type Shipment = {
   status?: string | null
   tenant_shipment_id?: number | null
 }
+
+const router = useRouter()
 
 const props = defineProps<{
   modelValue: boolean
@@ -142,6 +158,11 @@ const requiredRule = (value: unknown) =>
 
 const onCancel = () => {
   localOpen.value = false
+}
+
+const onCreateShipment = () => {
+  localOpen.value = false
+  router.push({ name: 'app-shipment-page' })
 }
 
 const onSave = () => {

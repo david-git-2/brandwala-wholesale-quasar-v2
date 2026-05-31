@@ -116,6 +116,7 @@ const listCostingFilesForCustomerGroupPage = async (
       tenant_id: row.tenant_id,
       created_by_email: '',
       created_by_label: row.created_by_label ?? null,
+      default_shipment_id: row.default_shipment_id ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     })),
@@ -139,7 +140,7 @@ const getCostingFileById = async (id: number): Promise<CostingFileDetails | null
 const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDetails | null> => {
   const { data, error } = await supabase
     .from('costing_files')
-    .select('id, name, market, status, customer_group_id, tenant_id, created_by_email, created_at, updated_at')
+    .select('id, name, market, status, customer_group_id, tenant_id, default_shipment_id, created_by_email, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
 
@@ -159,6 +160,7 @@ const getCostingFileByIdForCustomer = async (id: number): Promise<CostingFileDet
     | 'status'
     | 'customer_group_id'
     | 'tenant_id'
+    | 'default_shipment_id'
     | 'created_by_email'
     | 'created_at'
     | 'updated_at'
@@ -197,6 +199,25 @@ const createCostingFile = async (payload: CostingFileCreateInput): Promise<Costi
 }
 
 const updateCostingFile = async (payload: CostingFileUpdateInput): Promise<CostingFileDetails> => {
+  if (payload.default_shipment_id !== undefined) {
+    const { data, error } = await supabase
+      .from('costing_files')
+      .update({ default_shipment_id: payload.default_shipment_id })
+      .eq('id', payload.id)
+      .select('*')
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!data) {
+      throw new Error('Costing file not found or update not allowed.')
+    }
+
+    return data as CostingFileDetails
+  }
+
   const { data, error } = await supabase.rpc('update_costing_file', {
     p_id: payload.id,
     p_name: payload.name ?? null,

@@ -528,9 +528,24 @@
 
           <template #body-cell-name="props">
             <q-td :props="props" class="costing-page__name-cell">
-              <span class="costing-page__name-text" :title="props.row.name">
-                {{ props.row.name }}
-              </span>
+              <div class="row items-center no-wrap justify-between">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
+                <q-btn
+                  v-if="selectedFile?.status === 'accepted' || selectedFile?.status === 'po_placed'"
+                  icon="local_shipping"
+                  :color="shippedItemIds.includes(props.row.id) ? 'negative' : 'primary'"
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  class="q-ml-sm"
+                  @click="onShip(props.row)"
+                >
+                  <q-tooltip>{{ shippedItemIds.includes(props.row.id) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+                </q-btn>
+              </div>
             </q-td>
           </template>
 
@@ -909,6 +924,34 @@
         :loading="creatingItem"
         @save="handleCreateItem"
       />
+
+      <ShipmentItemCompactDialog
+        v-model="showAddShipmentDialog"
+        :quantity="selectedQuantity"
+        :price-gbp="selectedPriceGbp"
+        :loading="shipmentStore.saving"
+        :default-shipment-id="(selectedFile?.default_shipment_id as number | null | undefined) ?? null"
+        @shipment-change="onDefaultShipmentChange"
+        @save="onSaveShipment"
+      />
+
+      <q-dialog v-model="confirmRemoveShipmentOpen">
+        <q-card style="min-width: 360px">
+          <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
+          <q-card-section>
+            This will remove the selected item from its shipment.
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn
+              color="negative"
+              label="Remove"
+              :loading="shipmentStore.saving"
+              @click="onConfirmRemoveShipment"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </section>
   </q-page>
 </template>
@@ -920,6 +963,11 @@ import { useRoute, useRouter } from 'vue-router'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
 import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
+import { useQuasar } from 'quasar'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
+import { shipmentService } from 'src/modules/shipment/services/shipmentService'
+import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue'
 import {
   buildAdminProductRows,
   buildAdminReviewRows,
@@ -938,7 +986,10 @@ import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
+const shipmentStore = useShipmentStore()
 const costingFileStore = useCostingFileStore()
 const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
 const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
@@ -961,6 +1012,14 @@ const addItemDialogOpen = ref(false)
 const initialLoading = ref(true)
 const creatingItem = ref(false)
 const editingItemId = ref<number | null>(null)
+
+const showAddShipmentDialog = ref(false)
+const selectedQuantity = ref<number | null>(null)
+const selectedPriceGbp = ref<number | null>(null)
+const selectedShipItem = ref<CostingFileItem | null>(null)
+const shippedItemIds = ref<number[]>([])
+const confirmRemoveShipmentOpen = ref(false)
+const pendingRemoveShipItem = ref<CostingFileItem | null>(null)
 const offerDrafts = reactive<Record<number, number | null>>({})
 const quantityDrafts = reactive<Record<number, number | null>>({})
 const itemFieldDrafts = reactive<Record<string, number | null>>({})
@@ -1805,9 +1864,175 @@ watch(addItemDialogOpen, (isOpen) => {
   }
 })
 
+const refreshShippedItemIndicators = () => {
+  shippedItemIds.value = costingFileItems.value
+    .filter((item) => item.assigned_shipment_id != null)
+    .map((item) => item.id)
+}
+
+watch(
+  costingFileItems,
+  () => {
+    refreshShippedItemIndicators()
+  },
+  { immediate: true, deep: true }
+)
+
+const openShipmentDialog = (row: any) => {
+  const item = costingFileItems.value.find((i) => i.id === row.id)
+  if (!item) return
+  selectedShipItem.value = item
+  selectedQuantity.value = item.quantity ?? null
+  selectedPriceGbp.value = row.purchasePriceGbpValue ?? null
+  showAddShipmentDialog.value = true
+}
+
+const onShip = (row: any) => {
+  const item = costingFileItems.value.find((i) => i.id === row.id)
+  if (!item) return
+
+  if (shippedItemIds.value.includes(item.id)) {
+    pendingRemoveShipItem.value = item
+    confirmRemoveShipmentOpen.value = true
+    return
+  }
+
+  openShipmentDialog(row)
+}
+
+const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase()
+
+const findShipmentItemForCostingItem = async (item: CostingFileItem) => {
+  if (item.assigned_shipment_id == null) {
+    return null
+  }
+
+  const result = await shipmentService.listShipmentItems(item.assigned_shipment_id)
+  if (!result.success) {
+    return null
+  }
+
+  const shipmentItems = (result.data ?? []).filter((entry) => entry.method === 'costing')
+  const itemName = normalizeText(item.name)
+  const matched = shipmentItems.find((entry) => {
+    return (
+      normalizeText(entry.name) === itemName ||
+      normalizeText(entry.image_url) === normalizeText(item.image_url)
+    )
+  }) ?? null
+
+  return matched
+}
+
+const onConfirmRemoveShipment = async () => {
+  const item = pendingRemoveShipItem.value
+  if (!item) {
+    confirmRemoveShipmentOpen.value = false
+    return
+  }
+
+  const shipmentItem = await findShipmentItemForCostingItem(item)
+  if (!shipmentItem) {
+    $q.notify({
+      type: 'warning',
+      message: 'No linked shipment item found.',
+    })
+    await costingFileStore.updateCostingFileItem({
+      id: item.id,
+      assigned_shipment_id: null,
+    })
+    confirmRemoveShipmentOpen.value = false
+    pendingRemoveShipItem.value = null
+    refreshShippedItemIndicators()
+    return
+  }
+
+  const deleteResult = await shipmentStore.deleteShipmentItem({ id: shipmentItem.id })
+  if (!deleteResult.success) {
+    return
+  }
+
+  await costingFileStore.updateCostingFileItem({
+    id: item.id,
+    assigned_shipment_id: null,
+  })
+
+  confirmRemoveShipmentOpen.value = false
+  pendingRemoveShipItem.value = null
+  refreshShippedItemIndicators()
+}
+
+const onSaveShipment = async (data: {
+  shipment_id: number
+  quantity: number
+  price_gbp: number | null
+}) => {
+  const rowItem = selectedShipItem.value
+  if (!rowItem) {
+    return
+  }
+
+  const quantity = Math.max(0, Number(data.quantity) || 0)
+  if (quantity <= 0) {
+    return
+  }
+
+  const addResult = await shipmentStore.addShipmentItemManual({
+    shipment_id: data.shipment_id,
+    order_id: null,
+    method: 'costing',
+    name: rowItem.name ?? null,
+    quantity,
+    barcode: null,
+    product_code: null,
+    product_id: null,
+    image_url: rowItem.image_url ?? null,
+    product_weight: rowItem.product_weight ?? null,
+    package_weight: rowItem.package_weight ?? null,
+    price_gbp: data.price_gbp,
+    received_quantity: 0,
+    damaged_quantity: 0,
+    stolen_quantity: 0,
+  })
+
+  if (!addResult.success) {
+    return
+  }
+
+  await costingFileStore.updateCostingFileItem({
+    id: rowItem.id,
+    assigned_shipment_id: data.shipment_id,
+  })
+
+  showAddShipmentDialog.value = false
+  selectedShipItem.value = null
+  selectedQuantity.value = null
+  selectedPriceGbp.value = null
+}
+
+const onDefaultShipmentChange = async (shipmentId: number | null) => {
+  if (!selectedFile.value) {
+    return
+  }
+
+  const currentDefault = selectedFile.value.default_shipment_id ?? null
+  if (currentDefault === shipmentId) {
+    return
+  }
+
+  await costingFileStore.updateCostingFile({
+    id: selectedFile.value.id,
+    default_shipment_id: shipmentId,
+  })
+}
+
 onMounted(async () => {
   try {
     await loadFile()
+    const tenantId = tenantStore.selectedTenant?.id
+    if (tenantId) {
+      await shipmentStore.fetchShipments(tenantId)
+    }
   } finally {
     initialLoading.value = false
   }

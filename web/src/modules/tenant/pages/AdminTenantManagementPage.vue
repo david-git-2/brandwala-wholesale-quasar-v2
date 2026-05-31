@@ -86,7 +86,7 @@
         <q-card v-if="showCustomerGroupManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Groups</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Name</div>
               <div class="text-caption text-grey-7">
                 Organize customer-side access by company or buying team.
               </div>

@@ -280,6 +280,7 @@ export type Database = {
       }
       costing_file_items: {
         Row: {
+          assigned_shipment_id: number | null
           auxiliary_price_gbp: number | null
           cargo_rate: number | null
           cargo_rate_is_manual: boolean
@@ -310,6 +311,7 @@ export type Database = {
           website_url: string
         }
         Insert: {
+          assigned_shipment_id?: number | null
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
           cargo_rate_is_manual?: boolean
@@ -340,6 +342,7 @@ export type Database = {
           website_url: string
         }
         Update: {
+          assigned_shipment_id?: number | null
           auxiliary_price_gbp?: number | null
           cargo_rate?: number | null
           cargo_rate_is_manual?: boolean
@@ -370,6 +373,13 @@ export type Database = {
           website_url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "costing_file_items_assigned_shipment_id_fkey"
+            columns: ["assigned_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "costing_file_items_costing_file_id_fkey"
             columns: ["costing_file_id"]
@@ -430,6 +440,7 @@ export type Database = {
           created_at: string
           created_by_email: string
           customer_group_id: number
+          default_shipment_id: number | null
           id: number
           market: string | null
           name: string
@@ -445,6 +456,7 @@ export type Database = {
           created_at?: string
           created_by_email?: string
           customer_group_id: number
+          default_shipment_id?: number | null
           id?: number
           market?: string | null
           name: string
@@ -460,6 +472,7 @@ export type Database = {
           created_at?: string
           created_by_email?: string
           customer_group_id?: number
+          default_shipment_id?: number | null
           id?: number
           market?: string | null
           name?: string
@@ -473,6 +486,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "costing_files_default_shipment_id_fkey"
+            columns: ["default_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
           {

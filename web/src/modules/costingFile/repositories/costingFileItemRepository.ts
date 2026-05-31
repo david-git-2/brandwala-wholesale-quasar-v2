@@ -33,7 +33,7 @@ const listCostingFileItemsForCustomer = async (
   const { data, error } = await supabase
     .from('costing_file_items')
     .select(
-      'id, costing_file_id, name, item_type, size, color, extra_information_1, extra_information_2, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, created_at, updated_at',
+      'id, costing_file_id, name, item_type, size, color, extra_information_1, extra_information_2, image_url, website_url, quantity, offer_price_bdt, customer_profit_rate, status, assigned_shipment_id, created_at, updated_at',
     )
     .eq('costing_file_id', costingFileId)
     .order('id', { ascending: true })
@@ -59,6 +59,7 @@ const listCostingFileItemsForCustomer = async (
       | 'offer_price_bdt'
       | 'customer_profit_rate'
       | 'status'
+      | 'assigned_shipment_id'
       | 'created_at'
       | 'updated_at'
     >
@@ -88,6 +89,7 @@ const listCostingFileItemsForCustomer = async (
     offer_price_bdt: item.offer_price_bdt,
     customer_profit_rate: item.customer_profit_rate,
     status: item.status,
+    assigned_shipment_id: item.assigned_shipment_id,
     created_by_email: '',
     created_at: item.created_at,
     updated_at: item.updated_at,
@@ -123,6 +125,7 @@ const createCostingFileItem = async (
     offer_price_bdt: payload.offerPriceBdt ?? null,
     customer_profit_rate: payload.customerProfitRate ?? null,
     status: payload.status ?? 'pending',
+    assigned_shipment_id: payload.assigned_shipment_id ?? null,
     })
     .select('*')
     .single()
@@ -332,6 +335,9 @@ const updateCostingFileItem = async (
   if (payload.offerPriceBdt !== undefined) updateData.offer_price_bdt = payload.offerPriceBdt
   if (payload.customerProfitRate !== undefined) updateData.customer_profit_rate = payload.customerProfitRate
   if (payload.status !== undefined) updateData.status = payload.status
+  if (payload.assigned_shipment_id !== undefined) {
+    updateData.assigned_shipment_id = payload.assigned_shipment_id
+  }
   const { data, error } = await supabase
     .from('costing_file_items')
     .update(updateData)

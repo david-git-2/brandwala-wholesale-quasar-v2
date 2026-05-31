@@ -15,6 +15,7 @@ export type CostingFile = {
   market: string | null
   customer_group_id: number
   tenant_id: number
+  default_shipment_id: number | null
   created_by_email: string
   created_at: string
   updated_at: string
@@ -46,6 +47,7 @@ export type CostingFileItem = {
   offer_price_bdt: number | null
   customer_profit_rate: number | null
   status: CostingFileItemStatus
+  assigned_shipment_id: number | null
   created_by_email: string
   created_at: string
   updated_at: string
@@ -53,7 +55,7 @@ export type CostingFileItem = {
 
 export type CostingFileListEntry = Pick<
   CostingFile,
-  'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_by_email' | 'created_at' | 'updated_at'
+  'id' | 'name' | 'market' | 'status' | 'customer_group_id' | 'tenant_id' | 'created_by_email' | 'created_at' | 'updated_at' | 'default_shipment_id'
 > & {
   created_by_label?: string | null
 }
@@ -111,6 +113,7 @@ export type CostingFileUpdateInput = {
   name?: string
   market?: string | null
   customerGroupId?: number
+  default_shipment_id?: number | null
 }
 
 export type CostingFileDeleteInput = {
@@ -149,6 +152,7 @@ export type CostingFileItemCreateInput = {
   offerPriceBdt?: number | null
   customerProfitRate?: number | null
   status?: CostingFileItemStatus
+  assigned_shipment_id?: number | null
 }
 
 export type CostingFileItemUpdateInput = {
@@ -177,6 +181,7 @@ export type CostingFileItemUpdateInput = {
   offerPriceBdt?: number | null
   customerProfitRate?: number | null
   status?: CostingFileItemStatus
+  assigned_shipment_id?: number | null
 }
 
 export type CostingFileItemDeleteInput = {

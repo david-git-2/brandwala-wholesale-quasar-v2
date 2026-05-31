@@ -83,6 +83,7 @@ const normalizeRequestItemToCostingFileItem = (
   offer_price_bdt: null,
   customer_profit_rate: null,
   status: item.status,
+  assigned_shipment_id: null,
   created_by_email: item.created_by_email,
   created_at: item.created_at,
   updated_at: item.updated_at,
