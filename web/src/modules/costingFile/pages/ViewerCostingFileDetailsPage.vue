@@ -23,7 +23,7 @@
                 {{ formatStatusLabel(selectedFile.status) }}
               </q-chip>
               <q-btn
-                v-if="selectedFile && selectedFile.status === 'po_placed'"
+                v-if="selectedFile && (selectedFile.status === 'accepted' || selectedFile.status === 'po_placed')"
                 outline
                 color="primary"
                 icon="view_column"
@@ -68,8 +68,8 @@
         <q-card-section class="text-grey-7">Loading costing file details...</q-card-section>
       </q-card>
 
-      <q-banner v-if="selectedFile && selectedFile.status !== 'po_placed'" rounded class="bg-blue-1 text-blue-10">
-        Item details become visible after the costing file is PO placed.
+      <q-banner v-if="selectedFile && selectedFile.status !== 'accepted' && selectedFile.status !== 'po_placed'" rounded class="bg-blue-1 text-blue-10">
+        Item details become visible after the costing file is accepted or PO placed.
       </q-banner>
 
       <section v-else-if="selectedFile" class="viewer-page__table-section">
@@ -218,6 +218,13 @@ const statusChipStyle = (currentStatus: string | null | undefined) => {
       border: '1px solid #a9c4f3',
     }
   }
+  if (value === 'accepted') {
+    return {
+      backgroundColor: '#d1fae5',
+      color: '#065f46',
+      border: '1px solid #a7f3d0',
+    }
+  }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
@@ -244,6 +251,7 @@ const statusDotColor = (currentStatus: string | null | undefined) => {
   if (value === 'customer_submitted') return '#3f51b5'
   if (value === 'in_review') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
+  if (value === 'accepted') return '#059669'
   if (value === 'po_placed') return '#2f8b5d'
   if (value === 'cancelled') return '#a64c62'
   return '#64748b'
@@ -452,7 +460,7 @@ const loadFile = async () => {
     return
   }
 
-  if (result.data.status === 'po_placed') {
+  if (result.data.status === 'accepted' || result.data.status === 'po_placed') {
     await costingFileStore.fetchCostingFileItems(fileId)
   } else {
     costingFileStore.costingFileItems = []

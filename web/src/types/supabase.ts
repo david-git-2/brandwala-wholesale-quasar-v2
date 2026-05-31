@@ -4100,6 +4100,10 @@ export type Database = {
         Args: { p_costing_file_id: number }
         Returns: boolean
       }
+      is_customer_group_admin_or_negotiator: {
+        Args: { p_customer_group_id: number }
+        Returns: boolean
+      }
       is_customer_group_member: {
         Args: { p_customer_group_id: number }
         Returns: boolean
@@ -4181,23 +4185,11 @@ export type Database = {
         | {
             Args: {
               p_customer_group_id?: number
-              p_limit?: number
-              p_offset?: number
+              p_page?: number
+              p_page_size?: number
               p_tenant_id?: number
             }
-            Returns: {
-              created_at: string
-              created_by_email: string
-              created_by_label: string
-              customer_group_id: number
-              id: number
-              market: string
-              name: string
-              status: Database["public"]["Enums"]["costing_file_status"]
-              tenant_id: number
-              total_count: number
-              updated_at: string
-            }[]
+            Returns: Json
           }
       list_inventory_items_with_stock: {
         Args: {
@@ -4742,6 +4734,7 @@ export type Database = {
         | "in_review"
         | "priced"
         | "offered"
+        | "accepted"
         | "po_placed"
         | "cancelled"
         | "completed"
@@ -4901,6 +4894,7 @@ export const Constants = {
         "in_review",
         "priced",
         "offered",
+        "accepted",
         "po_placed",
         "cancelled",
         "completed",

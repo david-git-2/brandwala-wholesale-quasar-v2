@@ -23,7 +23,7 @@
                 {{ formatStatusLabel(selectedFile.status) }}
               </q-chip>
               <q-btn
-                v-if="selectedFile && (selectedFile.status === 'offered' || selectedFile.status === 'po_placed')"
+                v-if="selectedFile && (selectedFile.status === 'offered' || selectedFile.status === 'accepted' || selectedFile.status === 'po_placed')"
                 outline
                 color="primary"
                 icon="visibility"
@@ -32,6 +32,16 @@
                 size="sm"
                 class="pill-btn slim-btn"
                 @click="openPreview"
+              />
+              <q-btn
+                v-if="selectedFile && selectedFile.status === 'offered'"
+                color="positive"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                label="Accept offer"
+                :loading="acceptingOffer"
+                @click="acceptOfferDialogOpen = true"
               />
               <q-btn
                 v-if="selectedFile && selectedFile.status === 'draft' && canCustomerMaintainDraftItems"
@@ -350,7 +360,7 @@
         </div>
 
         <div
-          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'po_placed'"
+          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'accepted' || selectedFile.status === 'po_placed'"
           class="costing-page__table-section"
         >
           <q-card v-if="selectedFile.status === 'offered'" flat class="q-mb-md floating-surface shadow-1">
@@ -722,6 +732,31 @@
         </q-card>
       </q-dialog>
 
+      <q-dialog v-model="acceptOfferDialogOpen" persistent>
+        <q-card class="costing-page__dialog">
+          <q-card-section>
+            <div class="text-h6">Accept offer</div>
+          </q-card-section>
+
+          <q-card-section>
+            <div class="text-body2">
+              Are you sure you want to accept this offer? This will update the costing file status to <strong>Accepted</strong>.
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" @click="acceptOfferDialogOpen = false" />
+            <q-btn
+              color="primary"
+              unelevated
+              label="Confirm"
+              :loading="acceptingOffer"
+              @click="handleAcceptOffer"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
       <q-dialog
         v-model="addItemDialogOpen"
         persistent
@@ -899,9 +934,11 @@ const {
 
 const submitDialog = ref(false)
 const addItemDialogOpen = ref(false)
+const acceptOfferDialogOpen = ref(false)
 const initialLoading = ref(true)
 const submittingRequest = ref(false)
 const submittingOrder = ref(false)
+const acceptingOffer = ref(false)
 const deletingItemId = ref<number | null>(null)
 const editingItemId = ref<number | null>(null)
 const savingDecisionItemId = ref<number | null>(null)
@@ -943,6 +980,13 @@ const statusChipStyle = (currentStatus: string | null | undefined) => {
       border: '1px solid #a9c4f3',
     }
   }
+  if (value === 'accepted') {
+    return {
+      backgroundColor: '#d1fae5',
+      color: '#065f46',
+      border: '1px solid #a7f3d0',
+    }
+  }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
@@ -969,6 +1013,7 @@ const statusDotColor = (currentStatus: string | null | undefined) => {
   if (value === 'customer_submitted') return '#3f51b5'
   if (value === 'in_review') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
+  if (value === 'accepted') return '#059669'
   if (value === 'po_placed') return '#2f8b5d'
   if (value === 'cancelled') return '#a64c62'
   return '#64748b'
@@ -1189,6 +1234,28 @@ const visibleColumns = computed(() => {
     )
   }
 
+  if (selectedFile.value.status === 'accepted' || selectedFile.value.status === 'po_placed') {
+    return allColumns.filter((column) =>
+      [
+        'sl',
+        'image',
+        'name',
+        'websiteUrl',
+        'quantity',
+        'itemType',
+        'size',
+        'color',
+        'extraInformation1',
+        'extraInformation2',
+        'offerPriceBdt',
+        'buyerSellingPriceBdt',
+        'customerProfitAmountBdt',
+        'customerProfitRateDisplay',
+        'status',
+      ].includes(column.name),
+    )
+  }
+
   if (selectedFile.value.status === 'offered') {
     return allColumns.filter((column) =>
       [
@@ -1212,27 +1279,7 @@ const visibleColumns = computed(() => {
     )
   }
 
-  if (selectedFile.value.status === 'po_placed') {
-    return allColumns.filter((column) =>
-      [
-        'sl',
-        'image',
-        'name',
-        'websiteUrl',
-        'quantity',
-        'itemType',
-        'size',
-        'color',
-        'extraInformation1',
-        'extraInformation2',
-        'offerPriceBdt',
-        'buyerSellingPriceBdt',
-        'customerProfitAmountBdt',
-        'customerProfitRateDisplay',
-        'status',
-      ].includes(column.name),
-    )
-  }
+
 
   return allColumns.filter((column) =>
     [
@@ -1473,10 +1520,35 @@ const handleSubmitOrder = async () => {
   }
 }
 
+const handleAcceptOffer = async () => {
+  if (!selectedFile.value) {
+    return
+  }
+
+  acceptingOffer.value = true
+  try {
+    const result = await costingFileStore.updateCostingFileStatus({
+      id: selectedFile.value.id,
+      status: 'accepted',
+    })
+
+    if (!result.success) {
+      return
+    }
+
+    acceptOfferDialogOpen.value = false
+    showSuccessNotification('Offer accepted.')
+  } finally {
+    acceptingOffer.value = false
+  }
+}
+
 const openPreview = () => {
   if (
     !selectedFile.value ||
-    (selectedFile.value.status !== 'offered' && selectedFile.value.status !== 'po_placed')
+    (selectedFile.value.status !== 'offered' &&
+      selectedFile.value.status !== 'accepted' &&
+      selectedFile.value.status !== 'po_placed')
   ) {
     return
   }

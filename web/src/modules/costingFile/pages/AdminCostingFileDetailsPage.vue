@@ -394,6 +394,7 @@
         v-else-if="
           selectedFile?.status === 'in_review' ||
           selectedFile?.status === 'offered' ||
+          selectedFile?.status === 'accepted' ||
           selectedFile?.status === 'po_placed'
         "
         class="costing-page__pricing-section"
@@ -814,6 +815,7 @@
               <template
                 v-if="
                   selectedFile?.status === 'offered' ||
+                  selectedFile?.status === 'accepted' ||
                   selectedFile?.status === 'po_placed'
                 "
               >
@@ -984,7 +986,7 @@ const fileStatuses = computed<CostingFileStatus[]>(() => {
     return [currentStatus]
   }
 
-  return ['draft', 'customer_submitted', 'in_review', 'offered', 'po_placed', 'cancelled']
+  return ['draft', 'customer_submitted', 'in_review', 'offered', 'accepted', 'po_placed', 'cancelled']
 })
 
 const subtitle = computed(() =>
@@ -992,7 +994,12 @@ const subtitle = computed(() =>
 )
 
 const openPreview = () => {
-  if (!selectedFile.value || selectedFile.value.status !== 'offered') {
+  if (
+    !selectedFile.value ||
+    (selectedFile.value.status !== 'offered' &&
+      selectedFile.value.status !== 'accepted' &&
+      selectedFile.value.status !== 'po_placed')
+  ) {
     return
   }
 
@@ -1034,6 +1041,13 @@ const statusChipStyle = (currentStatus: string) => {
       border: '1px solid #a9c4f3',
     }
   }
+  if (value === 'accepted') {
+    return {
+      backgroundColor: '#d1fae5',
+      color: '#065f46',
+      border: '1px solid #a7f3d0',
+    }
+  }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
@@ -1061,6 +1075,7 @@ const statusDotColor = (currentStatus: string) => {
   if (value === 'customer_submitted') return '#3f51b5'
   if (value === 'in_review') return '#9a6a24'
   if (value === 'offered') return '#3f67b3'
+  if (value === 'accepted') return '#059669'
   if (value === 'po_placed') return '#2f8b5d'
   if (value === 'cancelled') return '#a64c62'
   return '#64748b'

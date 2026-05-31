@@ -188,7 +188,9 @@ const loadFile = async () => {
   if (
     !result.success ||
     !result.data ||
-    (result.data.status !== 'offered' && result.data.status !== 'po_placed')
+    (result.data.status !== 'offered' &&
+      result.data.status !== 'accepted' &&
+      result.data.status !== 'po_placed')
   ) {
     await router.replace({
       name: 'customer-costing-file-details-page',
