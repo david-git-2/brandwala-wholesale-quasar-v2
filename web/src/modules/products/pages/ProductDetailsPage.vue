@@ -190,7 +190,7 @@
                 <div class="col-12 col-sm-6">
                   <q-input
                     v-model.number="form.available_units"
-                    label="Available Units"
+                    label="Original Stock"
                     type="number"
                     outlined
                     dense
@@ -198,6 +198,20 @@
                   >
                     <template #prepend>
                       <q-icon name="inventory_2" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.stock_override"
+                    label="Display Stock Override"
+                    type="number"
+                    outlined
+                    dense
+                    class="soft-input"
+                  >
+                    <template #prepend>
+                      <q-icon name="visibility" />
                     </template>
                   </q-input>
                 </div>
@@ -398,6 +412,7 @@ const form = reactive({
   category: '',
   price_gbp: null as number | null,
   available_units: null as number | null,
+  stock_override: null as number | null,
   minimum_order_quantity: null as number | null,
   country_of_origin: '',
   tariff_code: '',
@@ -421,7 +436,8 @@ const detailRows = computed(() => {
     { label: 'Brand', value: item.brand ?? '-' },
     { label: 'Category', value: item.category ?? '-' },
     { label: 'Price GBP', value: item.price_gbp == null ? '-' : `£${Number(item.price_gbp).toFixed(2)}` },
-    { label: 'Available Units', value: item.available_units ?? '-' },
+    { label: 'Original Stock', value: item.available_units ?? '-' },
+    { label: 'Display Stock Override', value: item.stock_override ?? '-' },
     { label: 'Minimum Order Quantity', value: item.minimum_order_quantity ?? '-' },
     { label: 'Country Of Origin', value: item.country_of_origin ?? '-' },
     { label: 'Tariff Code', value: item.tariff_code ?? '-' },
@@ -514,6 +530,7 @@ const startEdit = () => {
   form.category = product.value.category ?? ''
   form.price_gbp = product.value.price_gbp
   form.available_units = product.value.available_units
+  form.stock_override = product.value.stock_override ?? null
   form.minimum_order_quantity = product.value.minimum_order_quantity
   form.country_of_origin = product.value.country_of_origin ?? ''
   form.tariff_code = product.value.tariff_code ?? ''
@@ -559,6 +576,7 @@ const onSave = async () => {
       category: form.category.trim() || null,
       price_gbp: cleanNumber(form.price_gbp),
       available_units: cleanNumber(form.available_units),
+      stock_override: cleanNumber(form.stock_override),
       minimum_order_quantity: cleanNumber(form.minimum_order_quantity),
       country_of_origin: form.country_of_origin.trim() || null,
       tariff_code: form.tariff_code.trim() || null,

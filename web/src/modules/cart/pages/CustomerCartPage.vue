@@ -57,6 +57,9 @@
           <q-item-label v-if="storeStore.selectedStore?.see_price" class="text-caption text-grey-7 q-mt-xs">
             Unit Price: {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item)) }}
           </q-item-label>
+          <q-item-label v-if="storeStore.selectedStore?.see_price && item.minimum_sell_price_bdt != null" class="text-caption text-green-7 q-mt-xs">
+            Selling Price: {{ priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}
+          </q-item-label>
         </q-item-section>
 
         <q-item-section side class="cart-actions">

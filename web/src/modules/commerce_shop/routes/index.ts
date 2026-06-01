@@ -49,6 +49,11 @@ const commerceShopRoutes: RouteRecordRaw[] = [
         component: () => import('src/modules/store/pages/AdminManageAccessPage.vue'),
       },
       {
+        path: 'manage-access/group/:groupId',
+        name: 'app-commerce-shop-group-access-page',
+        component: () => import('src/modules/store/pages/AdminGroupAccessPage.vue'),
+      },
+      {
         path: 'store-products',
         name: 'app-commerce-shop-products-page',
         component: () => import('src/modules/commerce_shop/pages/AdminCommerceShopProductsPage.vue'),

@@ -120,7 +120,7 @@
       :price-field="props.moduleVariant === 'commerce_v2' ? 'price_bdt' : 'price_gbp'"
       :price-symbol="props.moduleVariant === 'commerce_v2' ? '৳' : '£'"
       :show-cart="props.mode === 'customer'"
-      :show-info="props.mode === 'admin'"
+      :show-info="true"
       :store-id="selectedStoreId"
       :cart-item-by-product-id="cartItemByProductId"
       :cart-quantity-by-product-id="cartQuantityByProductId"
@@ -350,6 +350,8 @@ const fields =
         'image_url',
         'is_available',
         'name',
+        'available_units',
+        'stock_override',
         ...(props.moduleVariant === 'commerce_v2'
           ? ['price_bdt', 'minimum_sell_price_bdt']
           : ['price_gbp']),

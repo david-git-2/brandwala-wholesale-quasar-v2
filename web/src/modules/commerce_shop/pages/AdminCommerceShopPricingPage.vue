@@ -93,6 +93,31 @@
               </div>
             </q-td>
 
+            <!-- Original Stock -->
+            <q-td key="original_stock" :props="props">
+              <div class="text-subtitle2 text-weight-medium text-grey-8">
+                {{ getOriginalStock(props.row) }}
+              </div>
+            </q-td>
+
+            <!-- Display Stock Override -->
+            <q-td key="stock_override" :props="props">
+              <div style="min-width: 120px; max-width: 150px;" v-if="tempPrices[props.row.product_id]">
+                <q-input
+                  v-model.number="tempPrices[props.row.product_id]!.stock_override"
+                  type="number"
+                  outlined
+                  dense
+                  placeholder="No override"
+                  class="soft-input compact-input"
+                  hide-bottom-space
+                  :rules="[
+                    val => val === null || val === '' || val >= 0 || 'Must be >= 0',
+                  ]"
+                />
+              </div>
+            </q-td>
+
             <!-- Regular Price -->
             <q-td key="price_bdt" :props="props">
               <div style="min-width: 150px; max-width: 200px;" v-if="tempPrices[props.row.product_id]">
@@ -251,17 +276,22 @@ const authStore = useAuthStore()
 const storeStore = useStoreStore()
 const shipmentStore = useShipmentStore()
 
-// State
-const initialLoading = ref(true)
-const loading = ref(false)
-const rows = ref<Array<{
+interface PricingTableRow {
   product_id: number
   name: string
   image_url: string | null
   barcode: string | null
   product_code: string | null
+  price_bdt: number | null
+  minimum_sell_price_bdt: number | null
+  stock_override: number | null
   items: InventoryItemWithStock[]
-}>>([])
+}
+
+// State
+const initialLoading = ref(true)
+const loading = ref(false)
+const rows = ref<PricingTableRow[]>([])
 
 const selectedStoreId = ref<number | null>(null)
 const selectedShipmentId = ref<number | null>(null)
@@ -271,11 +301,11 @@ const storeOptions = ref<Array<{ label: string; value: number }>>([])
 const shipmentOptions = ref<Array<{ label: string; value: number | null }>>([])
 
 // Pricing maps
-const storePricingMap = ref<Record<number, { price_bdt: number | null; minimum_sell_price_bdt: number | null; id?: number }>>({})
+const storePricingMap = ref<Record<number, { price_bdt: number | null; minimum_sell_price_bdt: number | null; stock_override?: number | null; id?: number }>>({})
 const savingByProductId = ref<Record<number, boolean>>({})
 
 // Form temporary inputs
-const tempPrices = ref<Record<number, { price_bdt: number | null; minimum_sell_price_bdt: number | null }>>({})
+const tempPrices = ref<Record<number, { price_bdt: number | null; minimum_sell_price_bdt: number | null; stock_override?: number | null }>>({})
 
 // Pagination state
 const page = ref(1)
@@ -286,6 +316,8 @@ const totalPages = ref(1)
 const columns = [
   { name: 'image', label: 'Image', field: 'image_url', align: 'left' as const },
   { name: 'name', label: 'Product Details', field: 'name', align: 'left' as const },
+  { name: 'original_stock', label: 'Original Stock', field: (row: PricingTableRow) => getOriginalStock(row), align: 'left' as const },
+  { name: 'stock_override', label: 'Display Stock Override', field: 'stock_override', align: 'left' as const },
   { name: 'price_bdt', label: 'Regular Price (BDT)', field: 'price_bdt', align: 'left' as const },
   { name: 'minimum_sell_price_bdt', label: 'Min Sell Price (BDT)', field: 'minimum_sell_price_bdt', align: 'left' as const },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' as const }
@@ -300,6 +332,10 @@ const expandedColumns = [
 ]
 
 // Methods
+const getOriginalStock = (row: PricingTableRow) => {
+  return row.items?.reduce((sum: number, item: InventoryItemWithStock) => sum + (item.quantities?.available ?? 0), 0) ?? 0
+}
+
 const isPriceModified = (productId: number) => {
   const temp = tempPrices.value[productId]
   const saved = storePricingMap.value[productId]
@@ -307,11 +343,13 @@ const isPriceModified = (productId: number) => {
 
   const tempPrice = temp.price_bdt ?? null
   const tempMinSell = temp.minimum_sell_price_bdt ?? null
+  const tempStockOverride = temp.stock_override ?? null
 
   const savedPrice = saved?.price_bdt ?? null
   const savedMinSell = saved?.minimum_sell_price_bdt ?? null
+  const savedStockOverride = saved?.stock_override ?? null
 
-  return tempPrice !== savedPrice || tempMinSell !== savedMinSell
+  return tempPrice !== savedPrice || tempMinSell !== savedMinSell || tempStockOverride !== savedStockOverride
 }
 
 
@@ -366,6 +404,7 @@ const loadData = async () => {
         product_code: string | null
         price_bdt: number | null
         minimum_sell_price_bdt: number | null
+        stock_override: number | null
         items: InventoryItemWithStock[]
       }>
       meta: {
@@ -388,13 +427,15 @@ const loadData = async () => {
 
       storePricingMap.value[id] = {
         price_bdt: row.price_bdt,
-        minimum_sell_price_bdt: row.minimum_sell_price_bdt
+        minimum_sell_price_bdt: row.minimum_sell_price_bdt,
+        stock_override: row.stock_override
       }
       
       if (!tempPrices.value[id]) {
         tempPrices.value[id] = {
           price_bdt: row.price_bdt,
-          minimum_sell_price_bdt: row.minimum_sell_price_bdt
+          minimum_sell_price_bdt: row.minimum_sell_price_bdt,
+          stock_override: row.stock_override
         }
       }
     })
@@ -420,6 +461,7 @@ const savePrices = async (productId: number) => {
 
   const priceBdt = !prices.price_bdt && prices.price_bdt !== 0 ? null : Number(prices.price_bdt)
   const minSellBdt = !prices.minimum_sell_price_bdt && prices.minimum_sell_price_bdt !== 0 ? null : Number(prices.minimum_sell_price_bdt)
+  const stockOverride = !prices.stock_override && prices.stock_override !== 0 ? null : Number(prices.stock_override)
 
   if (priceBdt === null || isNaN(priceBdt) || priceBdt < 0) {
     showWarningDialog('Please enter a valid regular price (greater than or equal to 0).')
@@ -433,11 +475,25 @@ const savePrices = async (productId: number) => {
     showWarningDialog('Minimum sell price must be greater than or equal to the regular price.')
     return
   }
+  if (stockOverride !== null && (isNaN(stockOverride) || stockOverride < 0)) {
+    showWarningDialog('Please enter a valid display stock override (greater than or equal to 0).')
+    return
+  }
 
   savingByProductId.value = { ...savingByProductId.value, [productId]: true }
 
   try {
-    const { data, error } = await supabase
+    // 1. Update stock_override in products table (since stock_override is a product column)
+    const { error: productError } = await supabase
+      .from('products')
+      .update({ stock_override: stockOverride })
+      .eq('id', productId)
+      .eq('tenant_id', authStore.tenantId)
+
+    if (productError) throw productError
+
+    // 2. Upsert prices in store_product_prices
+    const { data, error: priceError } = await supabase
       .from('store_product_prices')
       .upsert(
         {
@@ -453,21 +509,22 @@ const savePrices = async (productId: number) => {
       .select('*')
       .single()
 
-    if (error) throw error
+    if (priceError) throw priceError
 
-    showSuccessNotification('Pricing updated successfully.')
+    showSuccessNotification('Pricing and stock override updated successfully.')
 
     // Update store pricing map
     storePricingMap.value[productId] = {
       price_bdt: priceBdt,
       minimum_sell_price_bdt: minSellBdt,
+      stock_override: stockOverride,
       id: data?.id,
     }
   } catch (error) {
-    console.error('[pricing] Error saving prices:', error)
+    console.error('[pricing] Error saving prices and stock override:', error)
     handleApiFailure(
       { success: false, error: error instanceof Error ? error.message : String(error) },
-      'Failed to save product prices.',
+      'Failed to save product pricing.',
     )
   } finally {
     savingByProductId.value = { ...savingByProductId.value, [productId]: false }

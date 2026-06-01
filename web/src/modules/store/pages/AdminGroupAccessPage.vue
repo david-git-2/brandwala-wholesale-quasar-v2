@@ -184,7 +184,9 @@ const fetchAccessRows = async () => {
 
 const goBack = async () => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/stores/manage-access`)
+  const isCommerceShop = route.path.includes('/commerce-shop')
+  const baseModulePath = isCommerceShop ? 'commerce-shop' : 'stores'
+  await router.push(`${tenantPrefix}/app/${baseModulePath}/manage-access`)
 }
 
 const openCreate = () => {

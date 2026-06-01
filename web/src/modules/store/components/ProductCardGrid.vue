@@ -33,9 +33,10 @@
         </div>
 
         <div class="product-meta q-mt-sm">
-          <div>Origin: {{ item.country_of_origin || '-' }}</div>
+          <div v-if="item.country_of_origin">Origin: {{ item.country_of_origin || '-' }}</div>
           <div v-if="props.showInfo">Available Units: {{ item.available_units ?? 0 }}</div>
           <div v-if="props.showPrice" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
+          <div v-if="props.showPrice && item.minimum_sell_price_bdt != null" class="product-selling-price">Selling Price: {{ props.priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}</div>
         </div>
       </q-card-section>
 
@@ -193,6 +194,14 @@
           >
             <div class="detail-label">Price</div>
             <div class="detail-value">{{ props.priceSymbol }}{{ formatPrice(getItemPrice(selectedItem)) }}</div>
+          </div>
+
+          <div
+            v-if="props.showPrice && selectedItem.minimum_sell_price_bdt != null"
+            class="detail-item"
+          >
+            <div class="detail-label">Selling Price</div>
+            <div class="detail-value">{{ props.priceSymbol }}{{ formatPrice(selectedItem.minimum_sell_price_bdt) }}</div>
           </div>
 
           <div class="detail-item">
@@ -440,6 +449,13 @@ const showCart = props.showCart
   font-size: 18px;
   font-weight: 700;
   color: #111;
+}
+
+.product-selling-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-top: 2px;
 }
 
 .cart-row {

@@ -2526,6 +2526,7 @@ export type Database = {
           product_code: string | null
           product_weight: number | null
           source: string | null
+          stock_override: number | null
           tariff_code: string | null
           tenant_id: number | null
           updated_at: string
@@ -2554,6 +2555,7 @@ export type Database = {
           product_code?: string | null
           product_weight?: number | null
           source?: string | null
+          stock_override?: number | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string
@@ -2582,6 +2584,7 @@ export type Database = {
           product_code?: string | null
           product_weight?: number | null
           source?: string | null
+          stock_override?: number | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string
@@ -3648,6 +3651,7 @@ export type Database = {
               created_at: string
               created_by_email: string
               customer_group_id: number
+              default_shipment_id: number
               id: number
               market: string
               name: string
@@ -3925,6 +3929,7 @@ export type Database = {
           created_at: string
           created_by_email: string
           customer_group_id: number
+          default_shipment_id: number
           id: number
           market: string
           name: string
@@ -4148,6 +4153,7 @@ export type Database = {
       list_costing_file_items: {
         Args: { p_costing_file_id: number }
         Returns: {
+          assigned_shipment_id: number
           auxiliary_price_gbp: number
           cargo_rate: number
           costing_file_id: number
@@ -4160,10 +4166,8 @@ export type Database = {
           id: number
           image_url: string
           item_price_gbp: number
-          item_type: string
           name: string
           offer_price_bdt: number
-          offer_price_override_bdt: number
           package_weight: number
           price_in_web_gbp: number
           product_weight: number
@@ -4480,6 +4484,7 @@ export type Database = {
           created_at: string
           created_by_email: string
           customer_group_id: number
+          default_shipment_id: number
           id: number
           market: string
           name: string
@@ -4521,26 +4526,38 @@ export type Database = {
           }
         | {
             Args: {
-              p_delivery_price_gbp?: number
+              p_delivery_price_gbp: number
               p_id: number
-              p_image_url?: string
-              p_item_type?: string
-              p_name?: string
-              p_package_weight?: number
-              p_price_in_web_gbp?: number
-              p_product_weight?: number
+              p_image_url: string
+              p_item_type: string
+              p_name: string
+              p_package_weight: number
+              p_price_in_web_gbp: number
+              p_product_weight: number
             }
             Returns: {
+              assigned_shipment_id: number
+              auxiliary_price_gbp: number
+              cargo_rate: number
               costing_file_id: number
+              costing_price_bdt: number
+              costing_price_gbp: number
+              created_at: string
+              created_by_email: string
+              customer_profit_rate: number
               delivery_price_gbp: number
               id: number
               image_url: string
-              item_type: string
+              item_price_gbp: number
               name: string
+              offer_price_bdt: number
               package_weight: number
               price_in_web_gbp: number
               product_weight: number
+              quantity: number
+              status: Database["public"]["Enums"]["costing_file_item_status"]
               updated_at: string
+              website_url: string
             }[]
           }
       update_costing_file_item_offer: {

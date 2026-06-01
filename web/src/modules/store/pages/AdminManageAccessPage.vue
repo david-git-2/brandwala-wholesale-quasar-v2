@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { QTableColumn } from 'quasar'
 
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
@@ -71,9 +71,13 @@ const getContrastYIQ = (hexcolor: string) => {
   return yiq >= 128 ? 'black' : 'white'
 }
 
+const route = useRoute()
+
 const navigateToGroupAccess = async (groupId: number) => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/stores/manage-access/group/${groupId}`)
+  const isCommerceShop = route.path.includes('/commerce-shop')
+  const baseModulePath = isCommerceShop ? 'commerce-shop' : 'stores'
+  await router.push(`${tenantPrefix}/app/${baseModulePath}/manage-access/group/${groupId}`)
 }
 
 const onRowClick = (_evt: unknown, row: CustomerGroup) => {
