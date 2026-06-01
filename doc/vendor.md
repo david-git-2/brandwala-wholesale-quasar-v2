@@ -1,3 +1,12 @@
-# Vendor
+# Vendor Module
 
-This is the placeholder documentation for the Vendor module. Detailed content will be added here.
+The `vendor` module stores supplier identities used in procurement and shipment-linked operations.
+
+## Key Features
+
+- Maintain vendor directory records.
+- Standardize vendor references used across purchasing and inventory pipelines.
+
+## Tenant 11 Notes
+
+- Active for supporting procurement-side metadata that eventually feeds shipment/inventory workflows.

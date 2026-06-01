@@ -126,7 +126,7 @@
         />
       </div>
 
-      <div v-if="!filteredOrders.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
+      <div v-if="!orderStore.items.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
         <q-icon name="receipt_long" size="64px" class="q-mb-sm text-grey-4" />
         <div class="text-subtitle1 text-weight-medium text-grey-7">No Orders Found</div>
         <div class="text-caption text-grey-5">We couldn't find any orders matching your criteria.</div>
@@ -135,11 +135,13 @@
       <q-card v-else-if="viewMode === 'table'" flat class="floating-surface shadow-1">
         <q-table
           flat
-          :rows="pagedTableOrders"
+          :rows="orderStore.items"
           :columns="tableColumns"
           row-key="id"
-          :pagination="tablePagination"
+          v-model:pagination="tablePagination"
+          :loading="orderStore.loading"
           class="order-list-table"
+          @request="onTableRequest"
         >
           <template #body="slotProps">
             <q-tr
@@ -189,7 +191,7 @@
 
       <div v-else class="order-grid">
         <q-card
-          v-for="order in pagedCardOrders"
+          v-for="order in orderStore.items"
           :key="order.id"
           class="order-card floating-surface shadow-1"
           flat
@@ -232,8 +234,15 @@
         </q-card>
       </div>
 
-      <div v-if="totalPages > 1" class="row justify-center q-mt-md">
-        <q-pagination v-model="page" :max="totalPages" :max-pages="8" boundary-numbers direction-links @update:model-value="onPageChange" />
+      <div v-if="orderStore.total_pages > 1" class="row justify-center q-mt-md">
+        <q-pagination
+          :model-value="page"
+          :max="orderStore.total_pages"
+          :max-pages="8"
+          boundary-numbers
+          direction-links
+          @update:model-value="onPageChange"
+        />
       </div>
     </div>
 
@@ -301,6 +310,7 @@ const pendingDeleteOrderId = ref<number | null>(null)
 const tablePagination = ref({
   page: 1,
   rowsPerPage: 20,
+  rowsNumber: 0,
 })
 
 const tableColumns: QTableColumn[] = [
@@ -328,26 +338,6 @@ const statusFilterOptions = [
 
 const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0))
 
-const filteredOrders = computed(() => {
-  const search = searchText.value.trim().toLowerCase()
-  return orderStore.items.filter((order) => {
-    const matchSearch =
-      search.length === 0 ||
-      String(order.id).includes(search) ||
-      String(order.name ?? '').toLowerCase().includes(search) ||
-      String(order.customer_group_name ?? '').toLowerCase().includes(search)
-    const matchStatus = statusFilter.value === '__all__' || order.status === statusFilter.value
-    return matchSearch && matchStatus
-  })
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredOrders.value.length / tablePagination.value.rowsPerPage)))
-const pagedTableOrders = computed(() => {
-  const start = (page.value - 1) * tablePagination.value.rowsPerPage
-  return filteredOrders.value.slice(start, start + tablePagination.value.rowsPerPage)
-})
-const pagedCardOrders = computed(() => pagedTableOrders.value)
-
 const selectedStoreId = computed<number | null>({
   get: () => storeStore.selectedStore?.id ?? null,
   set: (value) => {
@@ -364,13 +354,27 @@ const storeOptions = computed(() =>
 
 const loadOrders = async (nextPage = 1) => {
   const tenantId = authStore.tenantId
-  await orderStore.fetchOrders({
+  const statusParam = statusFilter.value !== '__all__' ? (statusFilter.value as any) : undefined
+  const searchParam = searchText.value.trim() || undefined
+
+  const payload: any = {
     tenant_id: tenantId ?? null,
     store_id: storeStore.selectedStore?.id ?? null,
-    page: 1,
-    page_size: 20,
-  })
+    page: nextPage,
+    page_size: tablePagination.value.rowsPerPage,
+  }
+  if (statusParam !== undefined) payload.status = statusParam
+  if (searchParam !== undefined) payload.search = searchParam
+
+  await orderStore.fetchOrders(payload)
   page.value = nextPage
+  tablePagination.value.page = nextPage
+  tablePagination.value.rowsNumber = orderStore.total
+}
+
+const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
+  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage
+  await loadOrders(props.pagination.page)
 }
 
 onMounted(async () => {
@@ -404,23 +408,22 @@ const onConfirmDelete = async () => {
   confirmDeleteOpen.value = false
 }
 
-const onPageChange = (nextPage: number) => {
-  page.value = nextPage
+const onPageChange = async (nextPage: number) => {
+  await loadOrders(nextPage)
 }
 
 const onStoreChange = async () => {
-  page.value = 1
   await loadOrders(1)
 }
 
-const onApplyFilters = () => {
-  page.value = 1
+const onApplyFilters = async () => {
+  await loadOrders(1)
 }
 
-const onCloseSearch = () => {
+const onCloseSearch = async () => {
   searchText.value = ''
   showSearchInput.value = false
-  onApplyFilters()
+  await onApplyFilters()
 }
 
 const openFilterDrawer = () => {
@@ -428,17 +431,17 @@ const openFilterDrawer = () => {
   filterDrawerOpen.value = true
 }
 
-const onDrawerStatusChange = () => {
+const onDrawerStatusChange = async () => {
   statusFilter.value = draftStatusFilter.value
-  page.value = 1
+  await loadOrders(1)
 }
 
-const onResetFilters = () => {
+const onResetFilters = async () => {
   searchText.value = ''
   statusFilter.value = '__all__'
   draftStatusFilter.value = '__all__'
-  page.value = 1
   filterDrawerOpen.value = false
+  await loadOrders(1)
 }
 
 const statusSurfaceStyle = (status: string | null | undefined, accentColor: string | null | undefined) => {

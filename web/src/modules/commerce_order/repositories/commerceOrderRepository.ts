@@ -1,20 +1,64 @@
 import { supabase } from 'src/boot/supabase'
 import type { CommerceOrder, CommerceOrderItem, CommerceOrderStatus, CommerceOrderSettings } from '../types'
 
-const listCommerceOrders = async (tenantId: number, customerGroupId?: number | null): Promise<CommerceOrder[]> => {
+const listCommerceOrders = async (
+  tenantId: number,
+  payload: {
+    page: number
+    page_size: number
+    customer_group_id?: number | null
+  }
+): Promise<{
+  data: (CommerceOrder & { customer_group_name?: string | null })[]
+  meta: {
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }
+}> => {
+  const page = Math.max(1, payload.page || 1)
+  const pageSize = Math.max(1, payload.page_size || 20)
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   let query = supabase
     .from('commerce_orders')
-    .select('*')
+    .select('*, customer_groups(name)', { count: 'exact' })
     .eq('tenant_id', tenantId)
 
-  if (customerGroupId != null) {
-    query = query.eq('customer_group_id', customerGroupId)
+  if (payload.customer_group_id != null) {
+    query = query.eq('customer_group_id', payload.customer_group_id)
   }
 
-  const { data, error } = await query.order('id', { ascending: false })
+  const { data, count, error } = await query
+    .order('id', { ascending: false })
+    .range(from, to)
 
   if (error) throw error
-  return data || []
+
+  const total = count || 0
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  const formattedData = (data || []).map((row) => {
+    const rowWithGroup = row as CommerceOrder & {
+      customer_groups?: { name?: string | null } | null
+    }
+    return {
+      ...rowWithGroup,
+      customer_group_name: rowWithGroup.customer_groups?.name || null,
+    }
+  })
+
+  return {
+    data: formattedData,
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+    },
+  }
 }
 
 const getCommerceOrderDetails = async (
@@ -31,7 +75,7 @@ const getCommerceOrderDetails = async (
 
   const { data: items, error: itemsError } = await supabase
     .from('commerce_order_items')
-    .select('*')
+    .select('*, inventory_items(id, name, cost, product_code, barcode)')
     .eq('order_id', orderId)
 
   if (itemsError) throw itemsError
@@ -69,6 +113,7 @@ const placeCommerceOrder = async (payload: {
   wrapping_charge: number
   cod: number
   delivery_charge: number
+  is_delivery_charge_inclusive: boolean
   items: Array<{
     product_id: number
     image_url: string | null
@@ -90,6 +135,7 @@ const placeCommerceOrder = async (payload: {
     p_wrapping_charge: payload.wrapping_charge,
     p_cod: payload.cod,
     p_delivery_charge: payload.delivery_charge,
+    p_is_delivery_charge_inclusive: payload.is_delivery_charge_inclusive,
     p_items: payload.items,
   } as never)
 
@@ -132,6 +178,7 @@ const updateCommerceOrderCharges = async (
     wrapping_charge: number
     cod: number
     shipment_payment: number
+    is_delivery_charge_inclusive?: boolean
   },
 ): Promise<CommerceOrder> => {
   const { data, error } = await supabase
@@ -146,6 +193,15 @@ const updateCommerceOrderCharges = async (
   return data
 }
 
+const deleteCommerceOrder = async (orderId: number): Promise<void> => {
+  const { error } = await supabase
+    .from('commerce_orders')
+    .delete()
+    .eq('id', orderId)
+
+  if (error) throw error
+}
+
 export const commerceOrderRepository = {
   listCommerceOrders,
   getCommerceOrderDetails,
@@ -154,4 +210,5 @@ export const commerceOrderRepository = {
   getCommerceOrderSettings,
   upsertCommerceOrderSettings,
   updateCommerceOrderCharges,
+  deleteCommerceOrder,
 }

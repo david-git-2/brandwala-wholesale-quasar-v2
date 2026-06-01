@@ -185,14 +185,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'commerce-shop/invoices',
         requiredAction: 'view',
       },
-      {
-        scope: 'app',
-        title: 'Commerce Billing Profiles',
-        caption: 'Manage billing profiles for commerce invoices',
-        icon: 'badge',
-        routeSegment: 'commerce-shop/invoices/billing-profiles',
-        requiredAction: 'view',
-      },
     ],
   },
   {

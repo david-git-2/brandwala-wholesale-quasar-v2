@@ -122,6 +122,16 @@ const listOrders = async (payload: OrderListInput = {}): Promise<OrderListPage> 
     query = query.eq('status', payload.status)
   }
 
+  if (payload.search) {
+    const searchVal = payload.search.trim()
+    const searchNum = Number(searchVal)
+    if (!Number.isNaN(searchNum) && Number.isInteger(searchNum)) {
+      query = query.or(`name.ilike.%${searchVal}%,id.eq.${searchNum}`)
+    } else {
+      query = query.ilike('name', `%${searchVal}%`)
+    }
+  }
+
   query = query.range(from, to)
 
   const { data, error, count } = await query

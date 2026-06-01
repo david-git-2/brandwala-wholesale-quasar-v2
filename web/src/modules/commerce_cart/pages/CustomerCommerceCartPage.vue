@@ -242,39 +242,43 @@
               </template>
             </q-input>
 
-            <q-input
-              v-model.number="recipientInfo.wrappingCharge"
-              label="Wrapping Charge (BDT)"
-              outlined
-              dense
-              type="number"
-            >
-              <template #prepend>
-                <q-icon name="redeem" color="grey-6" />
-              </template>
-              <template #append>
-                <span class="text-grey-7 text-caption">৳</span>
-              </template>
-            </q-input>
+            <q-separator class="q-my-md" />
 
-            <q-input
-              v-model.number="recipientInfo.cod"
-              label="COD Charge (BDT)"
-              outlined
-              dense
-              type="number"
-            >
-              <template #prepend>
-                <q-icon name="percent" color="grey-6" />
-              </template>
-              <template #append>
-                <span class="text-grey-7 text-caption">৳</span>
-              </template>
-            </q-input>
+            <div class="row q-gutter-x-md q-mt-sm">
+              <q-checkbox v-model="includeDeliveryCharge" label="Include Delivery Charge" dense class="text-grey-8" />
+              <q-checkbox v-model="includeInvoicePrintCharge" label="Include Invoice Printing Expense" dense class="text-grey-8" />
+            </div>
 
-            <div class="row justify-between text-subtitle1 text-weight-bold text-primary q-mt-sm">
-              <div>Grand Total:</div>
-              <div>৳{{ Number(cartSummary.recipientSubtotal + recipientInfo.deliveryCharge + recipientInfo.wrappingCharge + recipientInfo.cod).toFixed(2) }}</div>
+            <div class="q-gutter-y-xs q-mt-md">
+              <div class="row justify-between text-subtitle2 text-grey-7">
+                <div>Product Total:</div>
+                <div class="text-weight-medium">৳{{ formatPrice(cartSummary.recipientSubtotal) }}</div>
+              </div>
+              <div class="row justify-between text-subtitle2 text-grey-7">
+                <div>Delivery Charge:</div>
+                <div class="text-weight-medium">৳{{ formatPrice(effectiveDeliveryChargeForTotal) }}</div>
+              </div>
+              <div v-if="recipientInfo.wrappingCharge > 0" class="row justify-between text-subtitle2 text-grey-7">
+                <div>Wrapping Charge:</div>
+                <div class="text-weight-medium">৳{{ formatPrice(recipientInfo.wrappingCharge) }}</div>
+              </div>
+              <div v-if="recipientInfo.cod > 0" class="row justify-between text-subtitle2 text-grey-7">
+                <div>COD Charge:</div>
+                <div class="text-weight-medium">৳{{ formatPrice(recipientInfo.cod) }}</div>
+              </div>
+              <div v-if="computedInvoicePrintCharge > 0" class="row justify-between text-subtitle2 text-grey-7">
+                <div>Invoice Print Charge:</div>
+                <div class="text-weight-medium">৳{{ formatPrice(computedInvoicePrintCharge) }}</div>
+              </div>
+              <q-separator class="q-my-sm" />
+              <div class="row justify-between text-subtitle1 text-weight-bold text-primary">
+                <div>Grand Total:</div>
+                <div>৳{{ formatPrice(grandTotal) }}</div>
+              </div>
+              <div class="row justify-between text-subtitle2 text-weight-bold text-green-7 q-mt-xs">
+                <div>Estimated Profit:</div>
+                <div>৳{{ formatPrice(estimatedProfit) }}</div>
+              </div>
             </div>
           </q-form>
         </q-card-section>
@@ -304,6 +308,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useCommerceCartStore } from '../stores/commerceCartStore'
 import { commerceOrderService } from 'src/modules/commerce_order/services/commerceOrderService'
+import type { CommerceOrderSettings } from 'src/modules/commerce_order/types'
 
 const authStore = useAuthStore()
 const storeStore = useStoreStore()
@@ -334,7 +339,7 @@ const recipientInfo = ref({
   cod: 0,
 })
 
-const orderSettings = ref<any>(null)
+const orderSettings = ref<CommerceOrderSettings | null>(null)
 const loadOrderSettings = async () => {
   if (!authStore.tenantId) return
   const res = await commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
@@ -351,6 +356,39 @@ const storeOptions = computed(() =>
 )
 
 const priceSymbol = '৳'
+
+const includeDeliveryCharge = ref(true)
+const includeInvoicePrintCharge = ref(false)
+
+const computedInvoicePrintCharge = computed(() => {
+  return includeInvoicePrintCharge.value ? (Number(orderSettings.value?.default_invoice_print_charge) || 0) : 0
+})
+
+const effectiveDeliveryChargeForTotal = computed(() => {
+  return includeDeliveryCharge.value ? 0 : Number(recipientInfo.value.deliveryCharge || 0)
+})
+
+const grandTotal = computed(() => {
+  return (
+    Number(cartSummary.value.recipientSubtotal || 0)
+    + effectiveDeliveryChargeForTotal.value
+    + Number(recipientInfo.value.wrappingCharge || 0)
+    + Number(recipientInfo.value.cod || 0)
+    + Number(computedInvoicePrintCharge.value || 0)
+  )
+})
+
+const estimatedProfit = computed(() => {
+  const deliveryCostImpact = includeDeliveryCharge.value ? Number(recipientInfo.value.deliveryCharge || 0) : 0
+  return (
+    Number(cartSummary.value.recipientSubtotal || 0)
+    - Number(cartSummary.value.costSubtotal || 0)
+    - deliveryCostImpact
+    - Number(recipientInfo.value.wrappingCharge || 0)
+    - Number(recipientInfo.value.cod || 0)
+    - Number(computedInvoicePrintCharge.value || 0)
+  )
+})
 
 const cartSummary = computed(() => {
   let totalItems = 0
@@ -463,14 +501,16 @@ const onConfirmClear = async () => {
 const openPlaceOrderDialog = () => {
   const totalRecipient = cartSummary.value.recipientSubtotal
   const defaultCodPercent = orderSettings.value?.default_cod_percent || 0
-  const defaultDelivery = orderSettings.value?.default_delivery_charge || 0
   const defaultWrapping = orderSettings.value?.default_wrapping_charge || 0
+
+  includeDeliveryCharge.value = true
+  includeInvoicePrintCharge.value = false
 
   recipientInfo.value = {
     name: '',
     phone: '',
     address: '',
-    deliveryCharge: Number(defaultDelivery),
+    deliveryCharge: 0,
     wrappingCharge: Number(defaultWrapping),
     cod: Number(((defaultCodPercent / 100) * totalRecipient).toFixed(2)),
   }
@@ -501,8 +541,7 @@ const onSubmitOrder = async () => {
       phone_invite_id: null,
     }))
 
-    const totalRecipient = cartSummary.value.recipientSubtotal
-    const shipmentPayment = totalRecipient + recipientInfo.value.deliveryCharge + recipientInfo.value.wrappingCharge + recipientInfo.value.cod
+    const shipmentPayment = Number(grandTotal.value || 0)
 
     const result = await commerceOrderService.placeCommerceOrder({
       tenant_id: tenantId,
@@ -511,10 +550,11 @@ const onSubmitOrder = async () => {
       recipient_phone: recipientInfo.value.phone,
       shipping_address: recipientInfo.value.address,
       shipment_payment: shipmentPayment,
-      invoice_print_charge: 0,
+      invoice_print_charge: computedInvoicePrintCharge.value,
       wrapping_charge: recipientInfo.value.wrappingCharge,
       cod: recipientInfo.value.cod,
       delivery_charge: recipientInfo.value.deliveryCharge,
+      is_delivery_charge_inclusive: includeDeliveryCharge.value,
       items: itemsPayload,
     })
 

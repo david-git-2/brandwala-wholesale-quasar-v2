@@ -1,21 +1,7 @@
 <template>
   <q-page class="q-pa-md commerce-order-details-page">
     <!-- Loading State -->
-    <div v-if="loading" class="customer-order-details-wrap">
-      <div class="row items-center justify-between q-mb-sm">
-        <q-skeleton type="text" width="280px" height="32px" />
-        <q-skeleton type="QChip" width="100px" />
-      </div>
-
-      <q-card flat bordered class="q-mt-sm q-mb-md bg-white">
-        <q-card-section class="row q-col-gutter-md">
-          <div class="col" v-for="n in 3" :key="`summary-col-${n}`">
-            <q-skeleton type="text" width="60px" />
-            <q-skeleton type="text" width="90px" class="q-mt-xs" />
-          </div>
-        </q-card-section>
-      </q-card>
-    </div>
+    <PageInitialLoader v-if="loading" />
 
     <!-- Error State -->
     <div v-else-if="error" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block floating-surface shadow-1">
@@ -39,11 +25,10 @@
           <q-chip
             square
             dense
-            :color="getStatusColor(order.status)"
-            text-color="white"
+            :style="statusChipStyle(order.status)"
             class="text-weight-bold status-chip"
           >
-            <span class="status-chip-dot" :style="{ backgroundColor: getStatusDotColor(order.status) }"></span>
+            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(order.status) }"></span>
             {{ order.status.toUpperCase() }}
           </q-chip>
         </div>
@@ -82,15 +67,37 @@
             <div class="row q-col-gutter-md">
               <div class="col-6">
                 <div class="text-subtitle2 text-grey-7">Delivery Charge</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.delivery_charge || 0).toFixed(2) }}</div>
+                <div class="text-body1 text-weight-medium text-grey-9">
+                  ৳{{ Number(order.delivery_charge || 0).toFixed(2) }}
+                  <span class="text-caption text-weight-bold" :class="order.is_delivery_charge_inclusive ? 'text-green-7' : 'text-grey-7'">
+                    ({{ order.is_delivery_charge_inclusive ? 'Inclusive' : 'Exclusive' }})
+                  </span>
+                </div>
               </div>
               <div class="col-6">
                 <div class="text-subtitle2 text-grey-7">COD</div>
                 <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.cod || 0).toFixed(2) }}</div>
               </div>
+              <div class="col-6">
+                <div class="text-subtitle2 text-grey-7">Wrapping Charge</div>
+                <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.wrapping_charge || 0).toFixed(2) }}</div>
+              </div>
+              <div class="col-6">
+                <div class="text-subtitle2 text-grey-7">Invoice Print Charge</div>
+                <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.invoice_print_charge || 0).toFixed(2) }}</div>
+              </div>
               <div class="col-12">
-                <div class="text-subtitle2 text-grey-7">Grand Total</div>
-                <div class="text-h5 text-weight-bold text-primary">৳{{ Number(order.shipment_payment || 0).toFixed(2) }}</div>
+                <q-separator class="q-my-sm" />
+                <div class="row justify-between items-center">
+                  <div class="text-subtitle2 text-grey-7">Grand Total</div>
+                  <div class="text-h5 text-weight-bold text-primary">৳{{ Number(order.shipment_payment || 0).toFixed(2) }}</div>
+                </div>
+              </div>
+              <div class="col-12 q-pt-xs">
+                <div class="row justify-between items-center">
+                  <div class="text-subtitle2 text-weight-bold text-green-7">Estimated Profit</div>
+                  <div class="text-subtitle1 text-weight-bold text-green-7">৳{{ formatPrice(estimatedProfit) }}</div>
+                </div>
               </div>
             </div>
           </q-card>
@@ -127,10 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { commerceOrderService } from '../services/commerceOrderService'
 import type { CommerceOrder, CommerceOrderItem, CommerceOrderStatus } from '../types'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -165,36 +173,95 @@ const loadOrderDetails = async () => {
 }
 
 const backToOrders = () => {
-  const tenantSlug = route.params.tenantSlug
+  const tenantSlugParam = route.params.tenantSlug
+  const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
   const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
   void router.push(`${tenantPrefix}/shop/commerce-shop/orders`)
 }
 
-const getStatusColor = (status: CommerceOrderStatus) => {
+const statusChipStyle = (status: CommerceOrderStatus) => {
   switch (status) {
-    case 'placed': return 'blue-2'
-    case 'reviewing': return 'orange-2'
-    case 'shipping': return 'purple-2'
-    case 'delivered': return 'green-2'
-    case 'cancelled': return 'red-2'
-    default: return 'grey-2'
+    case 'placed':
+      return {
+        backgroundColor: '#c8d8f8',
+        color: '#27487a',
+        border: '1px solid #a9c4f3',
+        boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
+      }
+    case 'reviewing':
+      return {
+        backgroundColor: '#efd399',
+        color: '#6a4a14',
+        border: '1px solid #d8b672',
+        boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
+      }
+    case 'shipping':
+      return {
+        backgroundColor: '#ecd9fc',
+        color: '#5b1f9c',
+        border: '1px solid #d9b8fa',
+        boxShadow: '0 1px 2px rgba(91, 31, 156, 0.18)',
+      }
+    case 'delivered':
+      return {
+        backgroundColor: '#c3e8d2',
+        color: '#1f5d3c',
+        border: '1px solid #9fd4b7',
+        boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+      }
+    case 'cancelled':
+      return {
+        backgroundColor: '#f2c7d0',
+        color: '#6f2b3a',
+        border: '1px solid #e3a6b3',
+        boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
+      }
+    default:
+      return {
+        backgroundColor: '#dbe5f3',
+        color: '#3b4b66',
+        border: '1px solid #b9c8dd',
+        boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+      }
   }
 }
 
-const getStatusDotColor = (status: CommerceOrderStatus) => {
+const statusDotColor = (status: CommerceOrderStatus) => {
   switch (status) {
-    case 'placed': return '#1976d2'
-    case 'reviewing': return '#f57c00'
+    case 'placed': return '#3f67b3'
+    case 'reviewing': return '#9a6a24'
     case 'shipping': return '#7b1fa2'
-    case 'delivered': return '#388e3c'
-    case 'cancelled': return '#d32f2f'
-    default: return '#616161'
+    case 'delivered': return '#2f8b5d'
+    case 'cancelled': return '#a64c62'
+    default: return '#66758c'
   }
 }
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString()
+}
+
+const estimatedProfit = computed(() => {
+  if (!order.value || !items.value) return 0
+  let costSubtotal = 0
+  items.value.forEach(item => {
+    costSubtotal += (item.cost_bdt || 0) * (item.quantity || 0)
+  })
+  
+  const revenue = Number(order.value.shipment_payment || 0)
+  const delivery = Number(order.value.delivery_charge || 0)
+  const cod = Number(order.value.cod || 0)
+  const wrapping = Number(order.value.wrapping_charge || 0)
+  const print = Number(order.value.invoice_print_charge || 0)
+  const isDeliveryInclusive = Boolean(order.value.is_delivery_charge_inclusive)
+
+  const deliveryCostImpact = isDeliveryInclusive ? delivery : 0
+  return revenue - costSubtotal - deliveryCostImpact - cod - wrapping - print
+})
+
+const formatPrice = (price: number) => {
+  return Number(price || 0).toFixed(2)
 }
 
 onMounted(() => {

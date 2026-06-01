@@ -65,6 +65,7 @@ export type OrderListInput = {
   store_id?: number | null
   invoice_id?: number | null
   status?: OrderStatus | null
+  search?: string
   page?: number
   page_size?: number
   limit?: number

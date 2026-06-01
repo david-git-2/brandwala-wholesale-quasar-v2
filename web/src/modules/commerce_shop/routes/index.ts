@@ -106,42 +106,7 @@ const commerceShopRoutes: RouteRecordRaw[] = [
           requiredModule: 'commerce_order',
         }),
       },
-      {
-        path: 'invoices',
-        name: 'app-commerce-invoice-page',
-        component: () => import('src/modules/invoice/pages/AdminInvoicePage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin', 'staff'],
-          requireTenantContext: true,
-          requiredModule: 'commerce_invoice',
-        }),
-      },
-      {
-        path: 'invoices/:invoiceId',
-        name: 'app-commerce-invoice-details-page',
-        component: () => import('src/modules/invoice/pages/AdminInvoiceDetailsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin', 'staff'],
-          requireTenantContext: true,
-          requiredModule: 'commerce_invoice',
-        }),
-      },
-      {
-        path: 'invoices/billing-profiles',
-        name: 'app-commerce-billing-profiles-page',
-        component: () => import('src/modules/invoice/pages/AdminBillingProfilesPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin', 'staff'],
-          requireTenantContext: true,
-          requiredModule: 'commerce_invoice',
-        }),
-      },
+
     ],
   },
   {

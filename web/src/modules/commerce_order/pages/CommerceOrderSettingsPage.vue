@@ -74,6 +74,25 @@
           </q-input>
         </div>
 
+        <!-- Default Invoice Print Charge -->
+        <div>
+          <div class="text-subtitle2 text-grey-8 q-mb-xs">Default Invoice Print Charge (BDT)</div>
+          <q-input
+            v-model.number="form.default_invoice_print_charge"
+            type="number"
+            step="0.01"
+            outlined
+            dense
+            class="soft-input"
+            placeholder="e.g. 5.00"
+            :rules="[val => val >= 0 || 'Must be >= 0']"
+          >
+            <template #prepend>
+              <q-icon name="print" color="primary" />
+            </template>
+          </q-input>
+        </div>
+
         <!-- Action Button -->
         <div class="row justify-end q-mt-lg">
           <q-btn
@@ -107,6 +126,7 @@ const form = reactive({
   default_cod_percent: 0,
   default_delivery_charge: 0,
   default_wrapping_charge: 0,
+  default_invoice_print_charge: 0,
 })
 
 const loadSettings = async () => {
@@ -118,6 +138,7 @@ const loadSettings = async () => {
       form.default_cod_percent = Number(res.data.default_cod_percent) || 0
       form.default_delivery_charge = Number(res.data.default_delivery_charge) || 0
       form.default_wrapping_charge = Number(res.data.default_wrapping_charge) || 0
+      form.default_invoice_print_charge = Number(res.data.default_invoice_print_charge) || 0
     }
   } finally {
     loading.value = false
@@ -132,6 +153,7 @@ const saveSettings = async () => {
       default_cod_percent: form.default_cod_percent,
       default_delivery_charge: form.default_delivery_charge,
       default_wrapping_charge: form.default_wrapping_charge,
+      default_invoice_print_charge: form.default_invoice_print_charge,
     })
     if (res.success) {
       showSuccessNotification('Commerce order settings saved successfully.')

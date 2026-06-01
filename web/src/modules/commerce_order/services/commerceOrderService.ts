@@ -16,9 +16,20 @@ const wrap = async <T>(
 }
 
 export const commerceOrderService = {
-  listCommerceOrders: (tenantId: number, customerGroupId?: number | null) =>
-    wrap<CommerceOrder[]>(
-      () => commerceOrderRepository.listCommerceOrders(tenantId, customerGroupId),
+  listCommerceOrders: (
+    tenantId: number,
+    payload: { page: number; page_size: number; customer_group_id?: number | null }
+  ) =>
+    wrap<{
+      data: (CommerceOrder & { customer_group_name?: string | null })[]
+      meta: {
+        total: number
+        page: number
+        page_size: number
+        total_pages: number
+      }
+    }>(
+      () => commerceOrderRepository.listCommerceOrders(tenantId, payload),
       'Failed to load commerce orders.',
     ),
   getCommerceOrderDetails: (orderId: number) =>
@@ -51,15 +62,15 @@ export const commerceOrderService = {
     ),
   updateCommerceOrderCharges: (
     orderId: number,
-    payload: {
-      delivery_charge: number
-      wrapping_charge: number
-      cod: number
-      shipment_payment: number
-    },
+    payload: Parameters<typeof commerceOrderRepository.updateCommerceOrderCharges>[1],
   ) =>
     wrap<CommerceOrder>(
       () => commerceOrderRepository.updateCommerceOrderCharges(orderId, payload),
       'Failed to update commerce order charges.',
+    ),
+  deleteCommerceOrder: (orderId: number) =>
+    wrap<void>(
+      () => commerceOrderRepository.deleteCommerceOrder(orderId),
+      'Failed to delete commerce order.',
     ),
 }

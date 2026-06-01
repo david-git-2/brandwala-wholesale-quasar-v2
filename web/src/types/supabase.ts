@@ -227,6 +227,7 @@ export type Database = {
           created_at: string
           customer_group_id: number
           id: number
+          inventory_item_id: number | null
           is_customer_group_paid: boolean
           order_item_id: number
           recipient_sell_price_bdt: number
@@ -240,6 +241,7 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           id?: number
+          inventory_item_id?: number | null
           is_customer_group_paid?: boolean
           order_item_id: number
           recipient_sell_price_bdt?: number
@@ -253,6 +255,7 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           id?: number
+          inventory_item_id?: number | null
           is_customer_group_paid?: boolean
           order_item_id?: number
           recipient_sell_price_bdt?: number
@@ -274,6 +277,13 @@ export type Database = {
             columns: ["order_item_id"]
             isOneToOne: false
             referencedRelation: "commerce_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_accounting_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
           {
@@ -405,6 +415,7 @@ export type Database = {
         Row: {
           amount_due: number
           amount_paid: number
+          cod: number
           created_at: string
           delivered_by: string | null
           delivery_charge: number
@@ -414,10 +425,12 @@ export type Database = {
           tenant_id: number
           total_amount: number
           updated_at: string
+          wrapping_charge: number
         }
         Insert: {
           amount_due?: number
           amount_paid?: number
+          cod?: number
           created_at?: string
           delivered_by?: string | null
           delivery_charge?: number
@@ -427,10 +440,12 @@ export type Database = {
           tenant_id: number
           total_amount?: number
           updated_at?: string
+          wrapping_charge?: number
         }
         Update: {
           amount_due?: number
           amount_paid?: number
+          cod?: number
           created_at?: string
           delivered_by?: string | null
           delivery_charge?: number
@@ -440,6 +455,7 @@ export type Database = {
           tenant_id?: number
           total_amount?: number
           updated_at?: string
+          wrapping_charge?: number
         }
         Relationships: [
           {
@@ -464,6 +480,7 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          inventory_item_id: number | null
           invoice_id: number | null
           order_id: number
           phone_invite_id: string | null
@@ -471,6 +488,7 @@ export type Database = {
           quantity: number
           recipient_price_bdt: number
           sell_price_bdt: number
+          shipment_item_id: number | null
           updated_at: string
         }
         Insert: {
@@ -478,6 +496,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          inventory_item_id?: number | null
           invoice_id?: number | null
           order_id: number
           phone_invite_id?: string | null
@@ -485,6 +504,7 @@ export type Database = {
           quantity?: number
           recipient_price_bdt?: number
           sell_price_bdt?: number
+          shipment_item_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -492,6 +512,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          inventory_item_id?: number | null
           invoice_id?: number | null
           order_id?: number
           phone_invite_id?: string | null
@@ -499,9 +520,17 @@ export type Database = {
           quantity?: number
           recipient_price_bdt?: number
           sell_price_bdt?: number
+          shipment_item_id?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "commerce_order_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commerce_order_items_order_id_fkey"
             columns: ["order_id"]
@@ -516,6 +545,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commerce_order_items_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_items"
+            referencedColumns: ["id"]
+          },
         ]
       }
       commerce_order_settings: {
@@ -523,6 +559,7 @@ export type Database = {
           created_at: string
           default_cod_percent: number
           default_delivery_charge: number
+          default_invoice_print_charge: number
           default_wrapping_charge: number
           tenant_id: number
           updated_at: string
@@ -531,6 +568,7 @@ export type Database = {
           created_at?: string
           default_cod_percent?: number
           default_delivery_charge?: number
+          default_invoice_print_charge?: number
           default_wrapping_charge?: number
           tenant_id: number
           updated_at?: string
@@ -539,6 +577,7 @@ export type Database = {
           created_at?: string
           default_cod_percent?: number
           default_delivery_charge?: number
+          default_invoice_print_charge?: number
           default_wrapping_charge?: number
           tenant_id?: number
           updated_at?: string
@@ -562,6 +601,7 @@ export type Database = {
           id: number
           invoice_ids: number[]
           invoice_print_charge: number
+          is_delivery_charge_inclusive: boolean
           order_placement_date: string
           recipient_name: string
           recipient_phone: string
@@ -581,6 +621,7 @@ export type Database = {
           id?: number
           invoice_ids?: number[]
           invoice_print_charge?: number
+          is_delivery_charge_inclusive?: boolean
           order_placement_date?: string
           recipient_name: string
           recipient_phone: string
@@ -600,6 +641,7 @@ export type Database = {
           id?: number
           invoice_ids?: number[]
           invoice_print_charge?: number
+          is_delivery_charge_inclusive?: boolean
           order_placement_date?: string
           recipient_name?: string
           recipient_phone?: string
@@ -4000,11 +4042,13 @@ export type Database = {
       create_commerce_invoice: {
         Args: {
           p_amount_paid: number
+          p_cod: number
           p_delivered_by: string
           p_delivery_charge: number
           p_order_id: number
           p_tenant_id: number
           p_total_amount: number
+          p_wrapping_charge: number
         }
         Returns: number
       }
@@ -4774,6 +4818,7 @@ export type Database = {
           p_customer_group_id: number
           p_delivery_charge: number
           p_invoice_print_charge: number
+          p_is_delivery_charge_inclusive: boolean
           p_items: Json
           p_recipient_name: string
           p_recipient_phone: string

@@ -82,6 +82,7 @@ const records = ref<CommerceAccounting[]>([])
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Entry ID', field: 'id', align: 'left', sortable: true },
   { name: 'order_item_id', label: 'Order Item ID', field: 'order_item_id', align: 'left', sortable: true },
+  { name: 'inventory_item_id', label: 'Inventory Item ID', field: 'inventory_item_id', align: 'left', sortable: true },
   { name: 'cost_bdt', label: 'Cost (BDT)', field: 'cost_bdt', align: 'left' },
   { name: 'sell_price_bdt', label: 'Sell Price (BDT)', field: 'sell_price_bdt', align: 'left' },
   { name: 'recipient_sell_price_bdt', label: 'Recipient Sell (BDT)', field: 'recipient_sell_price_bdt', align: 'left' },

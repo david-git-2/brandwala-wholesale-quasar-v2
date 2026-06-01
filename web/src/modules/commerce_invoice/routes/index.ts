@@ -18,6 +18,18 @@ const commerceInvoiceRoutes: RouteRecordRaw[] = [
           requiredModule: 'commerce_invoice',
         }),
       },
+      {
+        path: ':invoiceId',
+        name: 'app-commerce-invoice-details',
+        component: () => import('../pages/CommerceInvoiceDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'commerce_invoice',
+        }),
+      },
     ],
   },
 ]

@@ -2,18 +2,25 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5 text-weight-bold text-primary">Commerce Invoices</div>
+      <q-btn
+        color="primary"
+        icon="add"
+        label="Create Invoice"
+        no-caps
+        unelevated
+        class="pill-btn slim-btn"
+        @click="openCreateDialog"
+      />
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="row justify-center q-my-xl">
-      <q-spinner-dots size="40px" color="primary" />
-    </div>
+    <PageInitialLoader v-if="loading" />
 
     <!-- Empty State -->
     <div v-else-if="!invoices.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
       <q-icon name="description" size="64px" class="q-mb-sm text-grey-4" />
       <div class="text-subtitle1 text-weight-medium">No Commerce Invoices Found</div>
-      <div class="text-caption text-grey-5">Commerce invoices will appear here once generated from reviewed orders.</div>
+      <div class="text-caption text-grey-5">Commerce invoices will appear here once generated from reviewed orders or created manually.</div>
     </div>
 
     <!-- Invoices Table -->
@@ -24,8 +31,21 @@
         :rows="invoices"
         :columns="columns"
         row-key="id"
-        class="floating-surface shadow-1 rounded-borders"
+        class="floating-surface shadow-1 rounded-borders invoices-table"
+        @row-click="onRowClick"
       >
+        <template #body-cell-id="props">
+          <q-td :props="props">
+            #{{ props.value }}
+          </q-td>
+        </template>
+
+        <template #body-cell-order_id="props">
+          <q-td :props="props">
+            #{{ props.value }}
+          </q-td>
+        </template>
+
         <template #body-cell-is_customer_group_paid="props">
           <q-td :props="props">
             <q-chip
@@ -47,7 +67,7 @@
         </template>
 
         <template #body-cell-actions="props">
-          <q-td :props="props" class="q-gutter-xs text-center">
+          <q-td :props="props" class="q-gutter-xs text-center" @click.stop>
             <q-btn
               flat
               round
@@ -98,18 +118,105 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Create Invoice Dialog -->
+    <q-dialog v-model="createDialog">
+      <q-card style="width: 500px; max-width: 90vw;" class="rounded-borders">
+        <q-card-section class="bg-primary text-white row items-center justify-between">
+          <div class="text-h6">Create Commerce Invoice</div>
+          <q-btn flat round icon="close" v-close-popup color="white" />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <q-form @submit="submitCreateInvoice" class="q-gutter-y-md">
+            <q-select
+              v-model="createForm.customer_group_id"
+              :options="customerGroupOptions"
+              label="Customer Group *"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="soft-input"
+              :rules="[val => !!val || 'Customer Group is required']"
+            />
+            <q-input
+              v-model="createForm.recipient_name"
+              label="Recipient Name *"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => !!val || 'Recipient Name is required']"
+            />
+            <q-input
+              v-model="createForm.recipient_phone"
+              label="Recipient Phone *"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => !!val || 'Recipient Phone is required']"
+            />
+            <q-input
+              v-model="createForm.shipping_address"
+              label="Shipping Address *"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => !!val || 'Shipping Address is required']"
+            />
+            <q-input
+              v-model.number="createForm.delivery_charge"
+              type="number"
+              label="Delivery Charge"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            />
+            <q-input
+              v-model.number="createForm.wrapping_charge"
+              type="number"
+              label="Wrapping Charge"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            />
+            <q-input
+              v-model.number="createForm.cod"
+              type="number"
+              label="COD Charge"
+              outlined
+              dense
+              class="soft-input"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            />
+
+            <div class="row justify-end q-mt-lg">
+              <q-btn label="Cancel" flat color="grey-7" v-close-popup class="q-mr-sm" />
+              <q-btn label="Create" type="submit" color="primary" unelevated :loading="creatingInvoice" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import type { QTableColumn } from 'quasar'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceInvoiceService } from '../services/commerceInvoiceService'
+import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
+import { commerceOrderService } from 'src/modules/commerce_order/services/commerceOrderService'
 import type { CommerceInvoice } from '../types'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 // State
 const loading = ref(true)
@@ -118,6 +225,27 @@ const paymentDialog = ref(false)
 const selectedInvoice = ref<CommerceInvoice | null>(null)
 const paymentAmount = ref(0)
 const submittingPayment = ref(false)
+
+// Create Invoice Dialog
+const createDialog = ref(false)
+const creatingInvoice = ref(false)
+const customerGroups = ref<any[]>([])
+const createForm = reactive({
+  customer_group_id: null as number | null,
+  recipient_name: '',
+  recipient_phone: '',
+  shipping_address: '',
+  delivery_charge: 0,
+  wrapping_charge: 0,
+  cod: 0,
+})
+
+const customerGroupOptions = computed(() => {
+  return customerGroups.value.map(cg => ({
+    label: cg.name,
+    value: cg.id
+  }))
+})
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Invoice ID', field: 'id', align: 'left', sortable: true },
@@ -146,6 +274,11 @@ const loadInvoices = async () => {
   }
 }
 
+const onRowClick = (_evt: Event, row: CommerceInvoice) => {
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+  void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${row.id}`)
+}
+
 const openPaymentDialog = (invoice: CommerceInvoice) => {
   selectedInvoice.value = invoice
   paymentAmount.value = Number(invoice.amount_due) || 0
@@ -169,6 +302,66 @@ const submitPayment = async () => {
   }
 }
 
+const openCreateDialog = async () => {
+  if (!authStore.tenantId) return
+  createForm.customer_group_id = null
+  createForm.recipient_name = ''
+  createForm.recipient_phone = ''
+  createForm.shipping_address = ''
+  createForm.delivery_charge = 0
+  createForm.wrapping_charge = 0
+  createForm.cod = 0
+
+  loading.value = true
+  try {
+    const [cgRes, settingsRes] = await Promise.all([
+      customerGroupService.listCustomerGroupsByTenant(authStore.tenantId),
+      commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
+    ])
+
+    if (cgRes.success && cgRes.data) {
+      customerGroups.value = cgRes.data
+    }
+    if (settingsRes.success && settingsRes.data) {
+      createForm.delivery_charge = Number(settingsRes.data.default_delivery_charge) || 0
+      createForm.wrapping_charge = Number(settingsRes.data.default_wrapping_charge) || 0
+    }
+    createDialog.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+const submitCreateInvoice = async () => {
+  if (!authStore.tenantId || !createForm.customer_group_id) return
+  creatingInvoice.value = true
+  try {
+    const res = await commerceInvoiceService.createManualInvoice({
+      tenant_id: authStore.tenantId,
+      customer_group_id: createForm.customer_group_id,
+      recipient_name: createForm.recipient_name,
+      recipient_phone: createForm.recipient_phone,
+      shipping_address: createForm.shipping_address,
+      delivery_charge: createForm.delivery_charge,
+      wrapping_charge: createForm.wrapping_charge,
+      cod: createForm.cod,
+    })
+
+    if (res.success && res.data) {
+      showSuccessNotification('Manual commerce invoice created successfully.')
+      createDialog.value = false
+      
+      // Redirect to invoice details
+      const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+      void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${res.data.id}`)
+    } else {
+      showWarningDialog(res.error || 'Failed to create manual invoice.')
+    }
+  } finally {
+    creatingInvoice.value = false
+  }
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString()
@@ -185,5 +378,43 @@ onMounted(() => {
   border: 1px solid #e7e2d8;
   border-radius: 14px;
   backdrop-filter: blur(6px);
+  text-align: center;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.invoices-table :deep(th) {
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.invoices-table :deep(tr) {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.invoices-table :deep(tr:hover) {
+  background-color: rgba(34, 56, 101, 0.03);
+}
+
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 36px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
 }
 </style>

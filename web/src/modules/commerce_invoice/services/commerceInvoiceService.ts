@@ -26,4 +26,63 @@ export const commerceInvoiceService = {
       () => commerceInvoiceRepository.updateInvoicePayment(invoiceId, amountPaid),
       'Failed to update commerce invoice payment.',
     ),
+  getCommerceInvoiceDetails: (invoiceId: number) =>
+    wrap<{ invoice: CommerceInvoice; order: Record<string, unknown> | null; items: Record<string, unknown>[] }>(
+      () => commerceInvoiceRepository.getCommerceInvoiceDetails(invoiceId),
+      'Failed to load commerce invoice details.',
+    ),
+  createManualInvoice: (payload: {
+    tenant_id: number
+    customer_group_id: number
+    recipient_name: string
+    recipient_phone: string
+    shipping_address: string
+    delivery_charge: number
+    wrapping_charge: number
+    cod: number
+  }) =>
+    wrap<CommerceInvoice>(
+      () => commerceInvoiceRepository.createManualInvoice(payload),
+      'Failed to create manual invoice.',
+    ),
+  addCommerceInvoiceItem: (
+    invoiceId: number,
+    orderId: number,
+    item: {
+      product_id: number
+      quantity: number
+      cost_bdt: number
+      sell_price_bdt: number
+      recipient_price_bdt: number
+      image_url?: string | null
+      inventory_item_id?: number | null
+    },
+  ) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.addCommerceInvoiceItem(invoiceId, orderId, item),
+      'Failed to add item to commerce invoice.',
+    ),
+  updateOrderItemInventoryAssignment: (invoiceId: number, orderItemId: number, inventoryItemId: number) =>
+    wrap<Record<string, unknown>>(
+      () => commerceInvoiceRepository.updateOrderItemInventoryAssignment(invoiceId, orderItemId, inventoryItemId),
+      'Failed to assign inventory item.',
+    ),
+  removeCommerceInvoiceItem: (orderItemId: number, invoiceId: number) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.removeCommerceInvoiceItem(orderItemId, invoiceId),
+      'Failed to remove item from commerce invoice.',
+    ),
+  updateCommerceInvoiceCharges: (
+    invoiceId: number,
+    charges: {
+      delivery_charge: number
+      wrapping_charge: number
+      cod: number
+      delivered_by?: string
+    },
+  ) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.updateCommerceInvoiceCharges(invoiceId, charges),
+      'Failed to update invoice charges.',
+    ),
 }
