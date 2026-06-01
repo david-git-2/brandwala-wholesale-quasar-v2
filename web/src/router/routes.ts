@@ -18,6 +18,10 @@ import invoiceRoutes from 'src/modules/invoice/routes';
 import accountingRoutes from 'src/modules/accounting/routes';
 import investorRoutes from 'src/modules/investor/routes';
 import commerceShopRoutes from 'src/modules/commerce_shop/routes';
+import commerceOrderRoutes from 'src/modules/commerce_order/routes';
+import commerceInvoiceRoutes from 'src/modules/commerce_invoice/routes';
+import commerceAccountingRoutes from 'src/modules/commerce_accounting/routes';
+import commerceCartRoutes from 'src/modules/commerce_cart/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 
@@ -90,6 +94,10 @@ const routes: RouteRecordRaw[] = [
   ...accountingRoutes,
   ...investorRoutes,
   ...commerceShopRoutes,
+  ...commerceOrderRoutes,
+  ...commerceInvoiceRoutes,
+  ...commerceAccountingRoutes,
+  ...commerceCartRoutes,
   ...invoiceRoutes,
   ...storeRoutes,
   ...vendorRoutes,

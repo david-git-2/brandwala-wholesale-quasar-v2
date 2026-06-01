@@ -50,12 +50,14 @@ import { useRoute, useRouter } from 'vue-router'
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
+import { useCommerceCartStore } from 'src/modules/commerce_cart/stores/commerceCartStore'
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 import { canAccessModule } from 'src/modules/navigation/modulePermissions'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const commerceCartStore = useCommerceCartStore()
 const kobaCartStore = useKobaCartStore()
 const router = useRouter()
 const route = useRoute()
@@ -86,6 +88,9 @@ const isKobaActive = computed(() => {
 const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount
+  }
+  if (isCommerceCartActive.value) {
+    return commerceCartStore.items.length
   }
   return cartStore.items.length
 })
@@ -156,10 +161,17 @@ const goToCart = async () => {
 
 onMounted(() => {
   if (authStore.tenantId) {
-    void cartStore.fetchItemsForContext({
-      tenant_id: authStore.tenantId,
-      customer_group_id: authStore.customerGroupId,
-    })
+    if (isCommerceCartActive.value) {
+      void commerceCartStore.fetchItemsForContext({
+        tenant_id: authStore.tenantId,
+        customer_group_id: authStore.customerGroupId,
+      })
+    } else {
+      void cartStore.fetchItemsForContext({
+        tenant_id: authStore.tenantId,
+        customer_group_id: authStore.customerGroupId,
+      })
+    }
   }
   if (isKobaActive.value) {
     void kobaCartStore.fetchCart()

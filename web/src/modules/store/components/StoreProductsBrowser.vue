@@ -188,6 +188,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCartStore } from 'src/modules/cart/stores/cartStore'
+import { useCommerceCartStore } from 'src/modules/commerce_cart/stores/commerceCartStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useStoreStore } from '../stores/storeStore'
@@ -209,6 +210,11 @@ const storeStore = useStoreStore()
 const productStore = useProductStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const commerceCartStore = useCommerceCartStore()
+
+const activeCartStore = computed(() => {
+  return props.moduleVariant === 'commerce_v2' ? commerceCartStore : cartStore
+})
 
 type FilterOption = {
   label: string
@@ -294,6 +300,14 @@ const productCardItems = computed<ProductCardItem[]>(() =>
       (item): item is Record<string, unknown> & { id: number; name: string } =>
         typeof item['id'] === 'number' && typeof item['name'] === 'string',
     )
+    .filter((item) => {
+      if (props.mode !== 'customer') return true
+      const price =
+        props.moduleVariant === 'commerce_v2'
+          ? (item['price_bdt'] ?? item['price_gbp'])
+          : item['price_gbp']
+      return price !== null && price !== undefined && Number(price) > 0
+    })
     .map((item) => ({
       ...item,
       id: item.id,
@@ -316,7 +330,7 @@ const customerCanSeePrice = computed(() => {
 const cartItemByProductId = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
 
-  cartStore.items.forEach((item) => {
+  activeCartStore.value.items.forEach((item) => {
     if (item.product_id != null) {
       map[item.product_id] = item.id
     }
@@ -327,7 +341,7 @@ const cartItemByProductId = computed<Record<number, number>>(() => {
 const cartQuantityByProductId = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
 
-  cartStore.items.forEach((item) => {
+  activeCartStore.value.items.forEach((item) => {
     if (item.product_id != null) {
       map[item.product_id] = item.quantity
     }
@@ -423,7 +437,7 @@ const onStoreSelectionChange = async (storeId: number | string | null) => {
   if (props.mode === 'customer') {
     const tenantId = authStore.tenantId
     if (tenantId) {
-      await cartStore.fetchItemsForContext({
+      await activeCartStore.value.fetchItemsForContext({
         tenant_id: tenantId,
         store_id: numericStoreId,
         customer_group_id: authStore.customerGroupId ?? null,
@@ -538,7 +552,7 @@ const onAddToCart = async (payload: {
 
   const selectedStore = storeStore.items.find((store) => store.id === (payload.store_id ?? -1))
 
-  await cartStore.addItemToCart({
+  await activeCartStore.value.addItemToCart({
     tenant_id: tenantId,
     store_id: payload.store_id,
     customer_group_id: authStore.customerGroupId ?? null,
@@ -559,7 +573,7 @@ const onRemoveFromCart = async (payload: { cart_item_id: number }) => {
     return
   }
 
-  await cartStore.deleteCartItem({
+  await activeCartStore.value.deleteCartItem({
     id: payload.cart_item_id,
   })
 }
@@ -573,7 +587,7 @@ const onUpdateCartQty = async (payload: {
     return
   }
 
-  await cartStore.updateCartItem({
+  await activeCartStore.value.updateCartItem({
     id: payload.cart_item_id,
     quantity: payload.quantity,
     minimum_quantity: payload.minimum_quantity,
@@ -610,7 +624,7 @@ onMounted(async () => {
     if (props.mode === 'customer') {
       const tenantId = authStore.tenantId
       if (tenantId) {
-        await cartStore.fetchItemsForContext({
+        await activeCartStore.value.fetchItemsForContext({
           tenant_id: tenantId,
           store_id: firstStore.id,
           customer_group_id: authStore.customerGroupId ?? null,

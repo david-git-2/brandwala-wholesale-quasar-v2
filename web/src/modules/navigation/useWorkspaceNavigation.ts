@@ -185,15 +185,32 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       }))
 
     if (scope === 'shop') {
-      const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
+      const hasCommerceCart = scopedModuleRouteDefinitions.some(
+        (routeDefinition) => routeDefinition.moduleKey === 'commerce_cart',
+      )
+
+      const filteredRouteDefinitions = hasCommerceCart
+        ? scopedModuleRouteDefinitions.filter(
+            (routeDefinition) => routeDefinition.moduleKey !== 'cart',
+          )
+        : scopedModuleRouteDefinitions
+
+      const hasKobaRetailModuleAccess = filteredRouteDefinitions.some(
         (routeDefinition) => routeDefinition.moduleKey === 'koba_retail',
       )
 
+      const shopModuleLinks = filteredRouteDefinitions.map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: routeDefinition.icon,
+        to: routeDefinition.to,
+      }))
+
       if (!hasKobaRetailModuleAccess) {
-        return [...baseLinks, ...moduleLinks]
+        return [...baseLinks, ...shopModuleLinks]
       }
 
-      const moduleLinksWithoutGrouped = scopedModuleRouteDefinitions
+      const moduleLinksWithoutGrouped = filteredRouteDefinitions
         .filter((routeDefinition) => routeDefinition.moduleKey !== 'koba_retail')
         .map((routeDefinition) => ({
           title: routeDefinition.title,
@@ -202,7 +219,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           to: routeDefinition.to,
         }))
 
-      const kobaRetailChildren = scopedModuleRouteDefinitions
+      const kobaRetailChildren = filteredRouteDefinitions
         .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
         .map((routeDefinition) => ({
           title: routeDefinition.title,
@@ -260,6 +277,10 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_invoice',
     )
+    const hasCommerceAccountingModuleAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_accounting',
+    )
     const hasCommerceCartModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
         routeDefinition.moduleKey === 'commerce_cart',
@@ -278,6 +299,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       !hasCommerceShopModuleAccess &&
       !hasCommerceOrderModuleAccess &&
       !hasCommerceInvoiceModuleAccess &&
+      !hasCommerceAccountingModuleAccess &&
       !hasCommerceCartModuleAccess &&
       !hasKobaRetailModuleAccess
     ) {
@@ -293,7 +315,9 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'investor' &&
           routeDefinition.moduleKey !== 'products' &&
           routeDefinition.moduleKey !== 'commerce_shop' &&
+          routeDefinition.moduleKey !== 'commerce_order' &&
           routeDefinition.moduleKey !== 'commerce_invoice' &&
+          routeDefinition.moduleKey !== 'commerce_accounting' &&
           routeDefinition.moduleKey !== 'koba_retail',
       )
       .map((routeDefinition) => ({
@@ -367,6 +391,22 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             : routeDefinition.title === 'Commerce Billing Profiles'
               ? 'Billing Profiles'
               : routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceOrderChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_order')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: 'chevron_right',
+        to: routeDefinition.to,
+      }))
+    const commerceAccountingChildren = scopedModuleRouteDefinitions
+      .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_accounting')
+      .map((routeDefinition) => ({
+        title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
@@ -471,6 +511,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             },
           ]
         : []),
+      ...(hasCommerceOrderModuleAccess
+        ? [
+            {
+              title: 'Commerce Orders',
+              caption: 'Commerce order module',
+              icon: 'receipt_long',
+              children: commerceOrderChildren,
+            },
+          ]
+        : []),
       ...(hasCommerceInvoiceModuleAccess
         ? [
             {
@@ -478,6 +528,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
               caption: 'Commerce invoice module',
               icon: 'description',
               children: commerceInvoiceChildren,
+            },
+          ]
+        : []),
+      ...(hasCommerceAccountingModuleAccess
+        ? [
+            {
+              title: 'Commerce Accounting',
+              caption: 'Commerce accounting module',
+              icon: 'account_balance',
+              children: commerceAccountingChildren,
             },
           ]
         : []),

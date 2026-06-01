@@ -191,7 +191,7 @@ const getOrderById = async (payload: OrderGetByIdInput): Promise<OrderWithItems>
     query = query.eq('tenant_id', payload.tenant_id)
   }
 
-  const { data, error } = await query.single()
+  const { data, error } = await query.maybeSingle()
 
   if (error) {
     throw error
@@ -214,7 +214,7 @@ const updateOrder = async (payload: OrderUpdateInput): Promise<Order> => {
     query = query.eq('tenant_id', payload.tenant_id)
   }
 
-  const { data, error } = await query.select('*').single()
+  const { data, error } = await query.select('*').maybeSingle()
 
   if (error) {
     throw error
@@ -233,7 +233,7 @@ const updateOrderItem = async (payload: OrderItemUpdateInput): Promise<OrderItem
     .update(payload.patch)
     .eq('id', payload.id)
     .select('*')
-    .single()
+    .maybeSingle()
 
   if (error) {
     throw error
@@ -326,7 +326,7 @@ const bulkUpdateOrderItems = async (
       .update(patch)
       .eq('id', id as number)
       .select('*')
-      .single()
+      .maybeSingle()
 
     if (rowError) {
       throw rowError

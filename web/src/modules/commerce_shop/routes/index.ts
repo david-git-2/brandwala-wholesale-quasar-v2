@@ -73,7 +73,7 @@ const commerceShopRoutes: RouteRecordRaw[] = [
       {
         path: 'orders',
         name: 'app-commerce-order-page',
-        component: () => import('src/modules/order/pages/AdminOrderPage.vue'),
+        component: () => import('src/modules/commerce_order/pages/CommerceOrdersPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
@@ -85,7 +85,19 @@ const commerceShopRoutes: RouteRecordRaw[] = [
       {
         path: 'orders/:id',
         name: 'app-commerce-order-details-page',
-        component: () => import('src/modules/order/pages/AdminOrderDetailsPage.vue'),
+        component: () => import('src/modules/commerce_order/pages/AdminCommerceOrderDetailsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin', 'staff'],
+          requireTenantContext: true,
+          requiredModule: 'commerce_order',
+        }),
+      },
+      {
+        path: 'settings',
+        name: 'app-commerce-order-settings-page',
+        component: () => import('src/modules/commerce_order/pages/CommerceOrderSettingsPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
@@ -154,7 +166,7 @@ const commerceShopRoutes: RouteRecordRaw[] = [
       {
         path: 'orders',
         name: 'shop-commerce-order-page',
-        component: () => import('src/modules/order/pages/CustomerOrderPage.vue'),
+        component: () => import('src/modules/commerce_order/pages/CustomerCommerceOrdersPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: (to) =>
             getShopLoginRouteLocation(to, {
@@ -169,7 +181,7 @@ const commerceShopRoutes: RouteRecordRaw[] = [
       {
         path: 'orders/:id',
         name: 'shop-commerce-order-details-page',
-        component: () => import('src/modules/order/pages/CustomerOrderDetailsPage.vue'),
+        component: () => import('src/modules/commerce_order/pages/CustomerCommerceOrderDetailsPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: (to) =>
             getShopLoginRouteLocation(to, {
@@ -179,21 +191,6 @@ const commerceShopRoutes: RouteRecordRaw[] = [
           requireTenantContext: true,
           allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
           requiredModule: 'commerce_order',
-        }),
-      },
-      {
-        path: 'cart',
-        name: 'shop-commerce-cart-page',
-        component: () => import('src/modules/cart/pages/CustomerCartPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'commerce_cart',
         }),
       },
     ],

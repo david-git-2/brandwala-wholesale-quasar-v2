@@ -221,7 +221,7 @@
 
 <script setup lang="ts">
 import SmartImage from 'src/components/SmartImage.vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 type ProductItem = {
   id: number
@@ -368,7 +368,7 @@ const formatPrice = (value?: number | null) => {
   return Number(value).toFixed(2)
 }
 
-const showCart = props.showCart
+const showCart = computed(() => props.showCart)
 </script>
 
 <style scoped>

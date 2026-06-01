@@ -221,6 +221,129 @@ export type Database = {
           },
         ]
       }
+      commerce_accounting: {
+        Row: {
+          cost_bdt: number
+          created_at: string
+          customer_group_id: number
+          id: number
+          is_customer_group_paid: boolean
+          order_item_id: number
+          recipient_sell_price_bdt: number
+          sell_price_bdt: number
+          shipment_item_id: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          cost_bdt?: number
+          created_at?: string
+          customer_group_id: number
+          id?: number
+          is_customer_group_paid?: boolean
+          order_item_id: number
+          recipient_sell_price_bdt?: number
+          sell_price_bdt?: number
+          shipment_item_id?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          cost_bdt?: number
+          created_at?: string
+          customer_group_id?: number
+          id?: number
+          is_customer_group_paid?: boolean
+          order_item_id?: number
+          recipient_sell_price_bdt?: number
+          sell_price_bdt?: number
+          shipment_item_id?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_accounting_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_accounting_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_accounting_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_accounting_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_cart: {
+        Row: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          product_id: number
+          quantity: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id: number
+          id?: number
+          product_id: number
+          quantity?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: number
+          id?: number
+          product_id?: number
+          quantity?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_cart_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cart_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cart_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_inventory_product_summaries: {
         Row: {
           available_quantity: number
@@ -271,6 +394,233 @@ export type Database = {
           },
           {
             foreignKeyName: "commerce_inventory_product_summaries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_invoices: {
+        Row: {
+          amount_due: number
+          amount_paid: number
+          created_at: string
+          delivered_by: string | null
+          delivery_charge: number
+          id: number
+          is_customer_group_paid: boolean
+          order_id: number
+          tenant_id: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string
+          delivered_by?: string | null
+          delivery_charge?: number
+          id?: number
+          is_customer_group_paid?: boolean
+          order_id: number
+          tenant_id: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string
+          delivered_by?: string | null
+          delivery_charge?: number
+          id?: number
+          is_customer_group_paid?: boolean
+          order_id?: number
+          tenant_id?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_order_items: {
+        Row: {
+          cost_bdt: number
+          created_at: string
+          id: number
+          image_url: string | null
+          invoice_id: number | null
+          order_id: number
+          phone_invite_id: string | null
+          product_id: number
+          quantity: number
+          recipient_price_bdt: number
+          sell_price_bdt: number
+          updated_at: string
+        }
+        Insert: {
+          cost_bdt?: number
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          invoice_id?: number | null
+          order_id: number
+          phone_invite_id?: string | null
+          product_id: number
+          quantity?: number
+          recipient_price_bdt?: number
+          sell_price_bdt?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_bdt?: number
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          invoice_id?: number | null
+          order_id?: number
+          phone_invite_id?: string | null
+          product_id?: number
+          quantity?: number
+          recipient_price_bdt?: number
+          sell_price_bdt?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_order_settings: {
+        Row: {
+          created_at: string
+          default_cod_percent: number
+          default_delivery_charge: number
+          default_wrapping_charge: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_cod_percent?: number
+          default_delivery_charge?: number
+          default_wrapping_charge?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_cod_percent?: number
+          default_delivery_charge?: number
+          default_wrapping_charge?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_order_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_orders: {
+        Row: {
+          cod: number
+          created_at: string
+          customer_group_id: number | null
+          delivery_charge: number
+          id: number
+          invoice_ids: number[]
+          invoice_print_charge: number
+          order_placement_date: string
+          recipient_name: string
+          recipient_phone: string
+          shipment_date: string | null
+          shipment_payment: number
+          shipping_address: string
+          status: Database["public"]["Enums"]["commerce_order_status"]
+          tenant_id: number
+          updated_at: string
+          wrapping_charge: number
+        }
+        Insert: {
+          cod?: number
+          created_at?: string
+          customer_group_id?: number | null
+          delivery_charge?: number
+          id?: number
+          invoice_ids?: number[]
+          invoice_print_charge?: number
+          order_placement_date?: string
+          recipient_name: string
+          recipient_phone: string
+          shipment_date?: string | null
+          shipment_payment?: number
+          shipping_address: string
+          status?: Database["public"]["Enums"]["commerce_order_status"]
+          tenant_id: number
+          updated_at?: string
+          wrapping_charge?: number
+        }
+        Update: {
+          cod?: number
+          created_at?: string
+          customer_group_id?: number | null
+          delivery_charge?: number
+          id?: number
+          invoice_ids?: number[]
+          invoice_print_charge?: number
+          order_placement_date?: string
+          recipient_name?: string
+          recipient_phone?: string
+          shipment_date?: string | null
+          shipment_payment?: number
+          shipping_address?: string
+          status?: Database["public"]["Enums"]["commerce_order_status"]
+          tenant_id?: number
+          updated_at?: string
+          wrapping_charge?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_orders_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_orders_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3236,6 +3586,15 @@ export type Database = {
         }
         Returns: Json
       }
+      add_item_to_commerce_cart: {
+        Args: {
+          p_customer_group_id: number
+          p_product_id: number
+          p_quantity?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       add_payment_allocation: {
         Args: {
           p_amount: number
@@ -3637,6 +3996,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_commerce_invoice: {
+        Args: {
+          p_amount_paid: number
+          p_delivered_by: string
+          p_delivery_charge: number
+          p_order_id: number
+          p_tenant_id: number
+          p_total_amount: number
+        }
+        Returns: number
       }
       create_costing_file:
         | {
@@ -4398,6 +4768,22 @@ export type Database = {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: number
       }
+      place_commerce_order: {
+        Args: {
+          p_cod: number
+          p_customer_group_id: number
+          p_delivery_charge: number
+          p_invoice_print_charge: number
+          p_items: Json
+          p_recipient_name: string
+          p_recipient_phone: string
+          p_shipment_payment: number
+          p_shipping_address: string
+          p_tenant_id: number
+          p_wrapping_charge: number
+        }
+        Returns: number
+      }
       place_koba_order: {
         Args: {
           p_cod_charge?: number
@@ -4764,6 +5150,12 @@ export type Database = {
     }
     Enums: {
       app_role: "superadmin" | "admin" | "staff" | "viewer"
+      commerce_order_status:
+        | "placed"
+        | "reviewing"
+        | "shipping"
+        | "delivered"
+        | "cancelled"
       costing_file_item_status: "pending" | "accepted" | "rejected"
       costing_file_status:
         | "draft"
@@ -4924,6 +5316,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer"],
+      commerce_order_status: [
+        "placed",
+        "reviewing",
+        "shipping",
+        "delivered",
+        "cancelled",
+      ],
       costing_file_item_status: ["pending", "accepted", "rejected"],
       costing_file_status: [
         "draft",

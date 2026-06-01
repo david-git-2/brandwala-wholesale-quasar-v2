@@ -7,6 +7,7 @@ export type ModuleKey =
   | 'commerce_shop'
   | 'commerce_order'
   | 'commerce_invoice'
+  | 'commerce_accounting'
   | 'commerce_cart'
   | 'investor'
   | 'vendor'
@@ -154,6 +155,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         requiredAction: 'view',
       },
       {
+        scope: 'app',
+        title: 'Order Settings',
+        caption: 'Manage default charges',
+        icon: 'settings',
+        routeSegment: 'commerce-shop/settings',
+        requiredAction: 'view',
+      },
+      {
         scope: 'shop',
         title: 'Commerce Orders',
         caption: 'Track your commerce orders',
@@ -182,6 +191,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage billing profiles for commerce invoices',
         icon: 'badge',
         routeSegment: 'commerce-shop/invoices/billing-profiles',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'commerce_accounting',
+    name: 'Commerce Accounting',
+    description: 'Dedicated accounting module for commerce shop workflows.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Commerce Accounting',
+        caption: 'Review commerce accounting entries',
+        icon: 'account_balance',
+        routeSegment: 'commerce-shop/accounting',
         requiredAction: 'view',
       },
     ],
