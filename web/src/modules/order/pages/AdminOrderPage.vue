@@ -292,6 +292,7 @@ import { formatStatus } from 'src/composables/useFormatStatus'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useOrderStore } from '../stores/orderStore'
+import type { OrderListInput, OrderStatus } from '../types'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 
 const authStore = useAuthStore()
@@ -354,10 +355,11 @@ const storeOptions = computed(() =>
 
 const loadOrders = async (nextPage = 1) => {
   const tenantId = authStore.tenantId
-  const statusParam = statusFilter.value !== '__all__' ? (statusFilter.value as any) : undefined
+  const statusParam: OrderStatus | undefined =
+    statusFilter.value !== '__all__' ? (statusFilter.value as OrderStatus) : undefined
   const searchParam = searchText.value.trim() || undefined
 
-  const payload: any = {
+  const payload: OrderListInput = {
     tenant_id: tenantId ?? null,
     store_id: storeStore.selectedStore?.id ?? null,
     page: nextPage,

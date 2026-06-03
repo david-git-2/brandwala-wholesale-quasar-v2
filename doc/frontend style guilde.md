@@ -50,10 +50,16 @@ Top area should have:
 - `text-h6 text-weight-bold`
 - subtitle: `text-caption text-grey-8`
 
+### Header copy rule
+- Keep page headers minimal.
+- Use the title only unless the page absolutely needs a short supporting label.
+- Avoid descriptive subtitle text and decorative status chips in the header for settings-style pages.
+- Apply the same minimal header rule to order details pages unless a supporting label is essential.
+
 ### Back navigation rule
-- Do not add page-level back buttons when the app layout already provides header back navigation.
-- Use the shared layout header back button as the default navigation pattern.
-- Only add local back buttons for standalone pages that do not use the shared layout header.
+- Do not add page-level back buttons in the page header.
+- Use the shared app header back navigation as the default pattern.
+- Only add local back buttons in exceptional standalone flows where the app header is unavailable.
 
 ## 4) Action Button Style Pattern
 
@@ -74,6 +80,14 @@ Use for "Create", "Save", "Add Item", etc.
   padding-right: 10px;
 }
 ```
+
+### Icon-first action buttons
+- Prefer icon-only outline buttons for compact admin actions and header actions.
+- Use Material Symbols outline variants like `o_delete`, `o_search`, `o_edit`, `o_save`, and `o_close`.
+- Prefer `flat`, `round`, and `dense` for compact icon buttons.
+- Avoid button labels unless the action is not obvious from the icon alone.
+- Add a `q-tooltip` for any icon-only action button.
+- Invoice shortcut buttons may keep a short `Invoice` label if that improves scanability in order headers.
 
 ## 5) Search + Filter Toolbar Pattern (List Pages)
 
@@ -218,6 +232,13 @@ Keep conversion/cargo/profit controls inside a separate floating card below head
 ## 11) Spacing + Layout Rules
 
 - Outer cards: `q-mb-md` / `q-mb-sm`
+
+## 12) Text Color Rule
+
+- Use black text by default for page copy, labels, and summaries.
+- Prefer `text-black` or `color: #000` over gray text utilities unless a deliberate muted exception is needed.
+- Keep icons and accents colored, but body text should stay black for readability and consistency across modules.
+- Important amounts, totals, and emphasis text may use semantic colors such as primary, green, or red when they help scanning.
 - Toolbar under header: `q-mb-sm`
 - Control clusters: `row items-center q-gutter-sm`
 - Use `no-caps` for operational buttons to keep visual consistency.

@@ -40,6 +40,20 @@
           </q-td>
         </template>
 
+        <template #body-cell-order_payment_status="props">
+          <q-td :props="props">
+            <q-chip
+              square
+              dense
+              :color="props.value ? 'green' : 'red'"
+              text-color="white"
+              class="text-weight-bold"
+            >
+              {{ props.value ? 'PAID' : 'UNPAID' }}
+            </q-chip>
+          </q-td>
+        </template>
+
         <template #body-cell-created_at="props">
           <q-td :props="props">
             {{ formatDate(props.value) }}
@@ -87,6 +101,7 @@ const columns: QTableColumn[] = [
   { name: 'sell_price_bdt', label: 'Sell Price (BDT)', field: 'sell_price_bdt', align: 'left' },
   { name: 'recipient_sell_price_bdt', label: 'Recipient Sell (BDT)', field: 'recipient_sell_price_bdt', align: 'left' },
   { name: 'customer_group_id', label: 'Customer Group ID', field: 'customer_group_id', align: 'left' },
+  { name: 'order_payment_status', label: 'Order Payment', field: 'order_payment_status', align: 'left', sortable: true },
   { name: 'is_customer_group_paid', label: 'Settlement Status', field: 'is_customer_group_paid', align: 'left', sortable: true },
   { name: 'created_at', label: 'Created Date', field: 'created_at', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },

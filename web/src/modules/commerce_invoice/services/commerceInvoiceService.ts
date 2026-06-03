@@ -1,5 +1,9 @@
 import { commerceInvoiceRepository } from '../repositories/commerceInvoiceRepository'
-import type { CommerceInvoice, CommerceInvoiceServiceResult } from '../types'
+import type {
+  CommerceInvoice,
+  CommerceInvoiceDetails,
+  CommerceInvoiceServiceResult,
+} from '../types'
 
 const wrap = async <T>(
   fn: () => Promise<T>,
@@ -27,7 +31,7 @@ export const commerceInvoiceService = {
       'Failed to update commerce invoice payment.',
     ),
   getCommerceInvoiceDetails: (invoiceId: number) =>
-    wrap<{ invoice: CommerceInvoice; order: Record<string, unknown> | null; items: Record<string, unknown>[] }>(
+    wrap<CommerceInvoiceDetails>(
       () => commerceInvoiceRepository.getCommerceInvoiceDetails(invoiceId),
       'Failed to load commerce invoice details.',
     ),
@@ -67,6 +71,11 @@ export const commerceInvoiceService = {
       () => commerceInvoiceRepository.updateOrderItemInventoryAssignment(invoiceId, orderItemId, inventoryItemId),
       'Failed to assign inventory item.',
     ),
+  unassignOrderItemInventory: (invoiceId: number, orderItemId: number) =>
+    wrap<Record<string, unknown>>(
+      () => commerceInvoiceRepository.unassignOrderItemInventory(invoiceId, orderItemId),
+      'Failed to unassign inventory item.',
+    ),
   removeCommerceInvoiceItem: (orderItemId: number, invoiceId: number) =>
     wrap<void>(
       () => commerceInvoiceRepository.removeCommerceInvoiceItem(orderItemId, invoiceId),
@@ -79,10 +88,21 @@ export const commerceInvoiceService = {
       wrapping_charge: number
       cod: number
       delivered_by?: string
+      amount_paid?: number
     },
   ) =>
     wrap<void>(
       () => commerceInvoiceRepository.updateCommerceInvoiceCharges(invoiceId, charges),
       'Failed to update invoice charges.',
+    ),
+  deleteCommerceInvoice: (invoiceId: number) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.deleteCommerceInvoice(invoiceId),
+      'Failed to delete commerce invoice.',
+    ),
+  updateCommerceInvoiceStatus: (invoiceId: number, status: 'draft' | 'ready' | 'handed_to_customer') =>
+    wrap<CommerceInvoice>(
+      () => commerceInvoiceRepository.updateCommerceInvoiceStatus(invoiceId, status),
+      'Failed to update commerce invoice status.',
     ),
 }

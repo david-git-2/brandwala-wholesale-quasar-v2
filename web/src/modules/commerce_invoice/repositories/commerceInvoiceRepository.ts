@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase'
-import type { CommerceInvoice } from '../types'
+import type { CommerceInvoice, CommerceInvoiceDetails } from '../types'
 
 type CommerceOrderRow = {
   id: number
@@ -9,6 +9,7 @@ type CommerceOrderRow = {
   wrapping_charge: number
   cod: number
   is_delivery_charge_inclusive: boolean
+  invoice_ids: number[] | null
 }
 
 type CommerceOrderItemRow = {
@@ -58,7 +59,7 @@ const getUsableQuantity = (stock: InventoryStockRow) =>
 const getCommerceOrderContext = async (orderId: number): Promise<CommerceOrderRow> => {
   const { data, error } = await supabase
     .from('commerce_orders')
-    .select('id, tenant_id, customer_group_id, delivery_charge, wrapping_charge, cod, is_delivery_charge_inclusive')
+    .select('id, tenant_id, customer_group_id, delivery_charge, wrapping_charge, cod, is_delivery_charge_inclusive, invoice_ids')
     .eq('id', orderId)
     .single()
 
@@ -172,7 +173,7 @@ const syncInvoiceTotals = async (invoiceId: number) => {
   const isDeliveryInclusive = Boolean(orderRow?.is_delivery_charge_inclusive)
   const deliveryChargeForTotal = isDeliveryInclusive ? 0 : deliveryCharge
 
-  const totalAmount = round2(subtotal + deliveryChargeForTotal + wrappingCharge + cod)
+  const totalAmount = round2(subtotal + deliveryChargeForTotal)
   const amountDue = Math.max(0, round2(totalAmount - Number(invoice.amount_paid || 0)))
   const isPaid = Number(invoice.amount_paid || 0) >= totalAmount
 
@@ -295,15 +296,52 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
   const { data: items, error: itemsError } = await supabase
     .from('commerce_order_items')
-    .select('*, products(*), inventory_items(id, name, cost, product_code, barcode, source_type, source_id)')
+    .select('*, products(*)')
     .eq('invoice_id', invoiceId)
 
   if (itemsError) throw itemsError
 
+  const itemRows = (items || []) as Array<CommerceInvoiceDetails['items'][number]>
+  const inventoryItemIds = Array.from(
+    new Set(
+      itemRows
+        .map((item) => Number(item.inventory_item_id || 0))
+        .filter((id) => id > 0),
+    ),
+  )
+
+  const inventoryItemsById = new Map<
+    number,
+    { name?: string | null; cost?: number | null; product_code?: string | null; barcode?: string | null; source_type?: string | null; source_id?: number | null }
+  >()
+
+  if (inventoryItemIds.length > 0) {
+    const { data: inventoryItems, error: inventoryItemsError } = await supabase
+      .from('inventory_items')
+      .select('id, name, cost, product_code, barcode, source_type, source_id')
+      .in('id', inventoryItemIds)
+
+    if (inventoryItemsError) throw inventoryItemsError
+
+    for (const inventoryItem of inventoryItems || []) {
+      inventoryItemsById.set(inventoryItem.id, {
+        name: inventoryItem.name,
+        cost: inventoryItem.cost,
+        product_code: inventoryItem.product_code,
+        barcode: inventoryItem.barcode,
+        source_type: inventoryItem.source_type,
+        source_id: inventoryItem.source_id,
+      })
+    }
+  }
+
   return {
     invoice,
     order: invoice.commerce_orders,
-    items: items || [],
+    items: itemRows.map((item) => ({
+      ...item,
+      inventory_items: item.inventory_item_id ? inventoryItemsById.get(item.inventory_item_id) ?? null : null,
+    })),
   }
 }
 
@@ -329,7 +367,7 @@ const createManualInvoice = async (payload: {
         delivery_charge: payload.delivery_charge,
         wrapping_charge: payload.wrapping_charge,
         cod: payload.cod,
-        shipment_payment: payload.delivery_charge + payload.wrapping_charge + payload.cod,
+        shipment_payment: payload.delivery_charge,
         is_delivery_charge_inclusive: false,
         status: 'reviewing',
       },
@@ -563,6 +601,73 @@ const updateOrderItemInventoryAssignment = async (
   return updatedOrderItem
 }
 
+const unassignOrderItemInventory = async (
+  invoiceId: number,
+  orderItemId: number,
+) => {
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('commerce_invoices')
+    .select('id, order_id, tenant_id, is_customer_group_paid')
+    .eq('id', invoiceId)
+    .single()
+
+  if (invoiceError || !invoice) {
+    throw invoiceError || new Error('Invoice not found.')
+  }
+
+  const order = await getCommerceOrderContext(Number(invoice.order_id))
+
+  const { data: rawOrderItem, error: orderItemError } = await supabase
+    .from('commerce_order_items')
+    .select('*')
+    .eq('id', orderItemId)
+    .eq('order_id', invoice.order_id)
+    .single()
+
+  if (orderItemError || !rawOrderItem) {
+    throw orderItemError || new Error('Order item not found.')
+  }
+
+  const orderItem = rawOrderItem as CommerceOrderItemRow
+  const quantity = Math.max(0, Number(orderItem.quantity || 0))
+  const previousInventoryItemId = orderItem.inventory_item_id
+
+  if (previousInventoryItemId && quantity > 0) {
+    await adjustInventoryStock({
+      tenantId: order.tenant_id,
+      inventoryItemId: previousInventoryItemId,
+      delta: quantity,
+      note: `Unassigned from commerce invoice #${invoiceId} order item #${orderItemId}`,
+    })
+  }
+
+  const { data: updatedOrderItem, error: updateError } = await supabase
+    .from('commerce_order_items')
+    .update({
+      inventory_item_id: null,
+      shipment_item_id: null,
+      cost_bdt: orderItem.cost_bdt,
+    })
+    .eq('id', orderItemId)
+    .select('*')
+    .single()
+
+  if (updateError || !updatedOrderItem) {
+    throw updateError || new Error('Failed to unassign order item inventory.')
+  }
+
+  await maintainAccountingEntry(
+    updatedOrderItem as CommerceOrderItemRow,
+    Number(order.customer_group_id || 0),
+    Number(order.tenant_id),
+    Boolean(invoice.is_customer_group_paid),
+  )
+
+  await syncInvoiceTotals(invoiceId)
+
+  return updatedOrderItem
+}
+
 const removeCommerceInvoiceItem = async (orderItemId: number, invoiceId: number) => {
   const { data: row, error: rowError } = await supabase
     .from('commerce_order_items')
@@ -610,11 +715,84 @@ const updateCommerceInvoiceCharges = async (
     wrapping_charge: number
     cod: number
     delivered_by?: string
+    amount_paid?: number
   },
 ) => {
   await supabase.from('commerce_invoices').update(charges).eq('id', invoiceId)
 
   await syncInvoiceTotals(invoiceId)
+}
+
+const deleteCommerceInvoice = async (invoiceId: number) => {
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('commerce_invoices')
+    .select('id, order_id, tenant_id')
+    .eq('id', invoiceId)
+    .single()
+
+  if (invoiceError || !invoice) {
+    throw invoiceError || new Error('Invoice not found.')
+  }
+
+  const order = await getCommerceOrderContext(Number(invoice.order_id))
+
+  const { data: orderItems, error: orderItemsError } = await supabase
+    .from('commerce_order_items')
+    .select('id, quantity, inventory_item_id')
+    .eq('invoice_id', invoiceId)
+
+  if (orderItemsError) throw orderItemsError
+
+  for (const orderItem of orderItems || []) {
+    if (orderItem.inventory_item_id) {
+      await adjustInventoryStock({
+        tenantId: invoice.tenant_id,
+        inventoryItemId: Number(orderItem.inventory_item_id),
+        delta: Number(orderItem.quantity || 0),
+        note: `Restocked after deleting commerce invoice #${invoiceId}`,
+      })
+    }
+  }
+
+  const orderItemIds = (orderItems || []).map((item) => item.id)
+  if (orderItemIds.length > 0) {
+    await supabase.from('commerce_accounting').delete().in('order_item_id', orderItemIds)
+  }
+
+  await supabase
+    .from('commerce_order_items')
+    .update({
+      invoice_id: null,
+    })
+    .eq('invoice_id', invoiceId)
+
+  await supabase.from('commerce_invoices').delete().eq('id', invoiceId)
+
+  const nextInvoiceIds = (order.invoice_ids || []).filter(
+    (linkedInvoiceId) => Number(linkedInvoiceId) !== Number(invoiceId),
+  )
+
+  await supabase
+    .from('commerce_orders')
+    .update({
+      invoice_ids: nextInvoiceIds,
+    })
+    .eq('id', order.id)
+}
+
+const updateCommerceInvoiceStatus = async (
+  invoiceId: number,
+  status: 'draft' | 'ready' | 'handed_to_customer',
+): Promise<CommerceInvoice> => {
+  const { data, error } = await supabase
+    .from('commerce_invoices')
+    .update({ status })
+    .eq('id', invoiceId)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data
 }
 
 export const commerceInvoiceRepository = {
@@ -624,6 +802,9 @@ export const commerceInvoiceRepository = {
   createManualInvoice,
   addCommerceInvoiceItem,
   updateOrderItemInventoryAssignment,
+  unassignOrderItemInventory,
   removeCommerceInvoiceItem,
   updateCommerceInvoiceCharges,
+  deleteCommerceInvoice,
+  updateCommerceInvoiceStatus,
 }

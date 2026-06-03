@@ -245,11 +245,12 @@ const formatDate = (dateStr: string) => {
 const estimatedProfit = computed(() => {
   if (!order.value || !items.value) return 0
   let costSubtotal = 0
+  let recipientSubtotal = 0
   items.value.forEach(item => {
     costSubtotal += (item.cost_bdt || 0) * (item.quantity || 0)
+    recipientSubtotal += (item.recipient_price_bdt || 0) * (item.quantity || 0)
   })
   
-  const revenue = Number(order.value.shipment_payment || 0)
   const delivery = Number(order.value.delivery_charge || 0)
   const cod = Number(order.value.cod || 0)
   const wrapping = Number(order.value.wrapping_charge || 0)
@@ -257,7 +258,7 @@ const estimatedProfit = computed(() => {
   const isDeliveryInclusive = Boolean(order.value.is_delivery_charge_inclusive)
 
   const deliveryCostImpact = isDeliveryInclusive ? delivery : 0
-  return revenue - costSubtotal - deliveryCostImpact - cod - wrapping - print
+  return recipientSubtotal - costSubtotal - deliveryCostImpact - cod - wrapping - print
 })
 
 const formatPrice = (price: number) => {

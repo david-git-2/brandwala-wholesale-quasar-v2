@@ -273,17 +273,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "commerce_accounting_order_item_id_fkey"
-            columns: ["order_item_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_order_items"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "commerce_accounting_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_accounting_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_order_items"
             referencedColumns: ["id"]
           },
           {
@@ -422,6 +422,7 @@ export type Database = {
           id: number
           is_customer_group_paid: boolean
           order_id: number
+          status: string
           tenant_id: number
           total_amount: number
           updated_at: string
@@ -437,6 +438,7 @@ export type Database = {
           id?: number
           is_customer_group_paid?: boolean
           order_id: number
+          status?: string
           tenant_id: number
           total_amount?: number
           updated_at?: string
@@ -452,6 +454,7 @@ export type Database = {
           id?: number
           is_customer_group_paid?: boolean
           order_id?: number
+          status?: string
           tenant_id?: number
           total_amount?: number
           updated_at?: string

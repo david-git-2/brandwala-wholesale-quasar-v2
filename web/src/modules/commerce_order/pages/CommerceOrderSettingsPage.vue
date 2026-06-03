@@ -3,98 +3,91 @@
     <!-- Hero / Header Card -->
     <q-card flat class="hero-surface floating-surface shadow-1 q-mb-md q-pa-md">
       <div class="row items-center justify-between">
-        <div>
-          <div class="text-h6 text-weight-bold text-primary">Commerce Order Settings</div>
-          <div class="text-caption text-grey-8">Configure defaults for checkout pricing parameters like COD percentage, delivery charge, and wrapping charge.</div>
-        </div>
+        <div class="text-h6 text-weight-bold text-black">Commerce Order Settings</div>
       </div>
     </q-card>
 
-    <!-- Settings Card -->
-    <q-card flat class="floating-surface shadow-1 q-pa-lg max-width-card">
+    <q-card flat class="floating-surface shadow-1 q-pa-lg">
       <div v-if="loading" class="row justify-center q-py-xl">
         <q-spinner-dots size="40px" color="primary" />
       </div>
 
       <q-form v-else @submit="saveSettings" class="q-gutter-y-md">
-        <!-- Default COD Percent -->
-        <div>
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Default COD Percentage (%)</div>
-          <q-input
-            v-model.number="form.default_cod_percent"
-            type="number"
-            step="0.01"
-            outlined
-            dense
-            class="soft-input"
-            placeholder="e.g. 1.00 for 1%"
-            :rules="[val => val >= 0 || 'Must be >= 0', val => val <= 100 || 'Must be <= 100']"
-          >
-            <template #prepend>
-              <q-icon name="percent" color="primary" />
-            </template>
-          </q-input>
+        <div class="row q-col-gutter-md">
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="form.default_cod_percent"
+              type="number"
+              step="0.01"
+              outlined
+              dense
+              class="soft-input"
+              label="Default COD Percentage"
+              placeholder="e.g. 1.00 for 1%"
+              :rules="[val => val >= 0 || 'Must be >= 0', val => val <= 100 || 'Must be <= 100']"
+            >
+              <template #prepend>
+                <q-icon name="percent" color="primary" />
+              </template>
+            </q-input>
+          </div>
+
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="form.default_delivery_charge"
+              type="number"
+              step="0.01"
+              outlined
+              dense
+              class="soft-input"
+              label="Default Delivery Charge"
+              placeholder="e.g. 60.00"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            >
+              <template #prepend>
+                <q-icon name="local_shipping" color="primary" />
+              </template>
+            </q-input>
+          </div>
+
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="form.default_wrapping_charge"
+              type="number"
+              step="0.01"
+              outlined
+              dense
+              class="soft-input"
+              label="Default Wrapping Charge"
+              placeholder="e.g. 15.00"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            >
+              <template #prepend>
+                <q-icon name="redeem" color="primary" />
+              </template>
+            </q-input>
+          </div>
+
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="form.default_invoice_print_charge"
+              type="number"
+              step="0.01"
+              outlined
+              dense
+              class="soft-input"
+              label="Default Invoice Print Charge"
+              placeholder="e.g. 5.00"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+            >
+              <template #prepend>
+                <q-icon name="print" color="primary" />
+              </template>
+            </q-input>
+          </div>
         </div>
 
-        <!-- Default Delivery Charge -->
-        <div>
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Default Delivery Charge (BDT)</div>
-          <q-input
-            v-model.number="form.default_delivery_charge"
-            type="number"
-            step="0.01"
-            outlined
-            dense
-            class="soft-input"
-            placeholder="e.g. 60.00"
-            :rules="[val => val >= 0 || 'Must be >= 0']"
-          >
-            <template #prepend>
-              <q-icon name="local_shipping" color="primary" />
-            </template>
-          </q-input>
-        </div>
-
-        <!-- Default Wrapping Charge -->
-        <div>
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Default Wrapping Charge (BDT)</div>
-          <q-input
-            v-model.number="form.default_wrapping_charge"
-            type="number"
-            step="0.01"
-            outlined
-            dense
-            class="soft-input"
-            placeholder="e.g. 15.00"
-            :rules="[val => val >= 0 || 'Must be >= 0']"
-          >
-            <template #prepend>
-              <q-icon name="redeem" color="primary" />
-            </template>
-          </q-input>
-        </div>
-
-        <!-- Default Invoice Print Charge -->
-        <div>
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Default Invoice Print Charge (BDT)</div>
-          <q-input
-            v-model.number="form.default_invoice_print_charge"
-            type="number"
-            step="0.01"
-            outlined
-            dense
-            class="soft-input"
-            placeholder="e.g. 5.00"
-            :rules="[val => val >= 0 || 'Must be >= 0']"
-          >
-            <template #prepend>
-              <q-icon name="print" color="primary" />
-            </template>
-          </q-input>
-        </div>
-
-        <!-- Action Button -->
-        <div class="row justify-end q-mt-lg">
+        <div class="row justify-end q-mt-md">
           <q-btn
             type="submit"
             color="primary"
@@ -173,6 +166,7 @@ onMounted(() => {
 <style scoped>
 .commerce-order-settings-page {
   background: transparent;
+  color: #000;
 }
 
 .floating-surface {
@@ -184,10 +178,6 @@ onMounted(() => {
 
 .hero-surface {
   border-radius: 16px;
-}
-
-.max-width-card {
-  max-width: 500px;
 }
 
 .soft-input :deep(.q-field__control) {
@@ -204,4 +194,5 @@ onMounted(() => {
   padding-left: 16px;
   padding-right: 16px;
 }
+
 </style>

@@ -372,9 +372,6 @@ const grandTotal = computed(() => {
   return (
     Number(cartSummary.value.recipientSubtotal || 0)
     + effectiveDeliveryChargeForTotal.value
-    + Number(recipientInfo.value.wrappingCharge || 0)
-    + Number(recipientInfo.value.cod || 0)
-    + Number(computedInvoicePrintCharge.value || 0)
   )
 })
 

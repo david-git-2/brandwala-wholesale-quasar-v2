@@ -5,6 +5,15 @@ export type CommerceOrderItem = Database['public']['Tables']['commerce_order_ite
 export type CommerceOrderStatus = Database['public']['Enums']['commerce_order_status']
 export type CommerceOrderSettings = Database['public']['Tables']['commerce_order_settings']['Row']
 
+export type CommerceOrderDetailsItem = CommerceOrderItem & {
+  inventory_items?: {
+    name?: string | null
+    cost?: number | null
+    product_code?: string | null
+    barcode?: string | null
+  } | null
+}
+
 export interface CommerceOrderListQuery {
   tenant_id?: number | null
   page?: number

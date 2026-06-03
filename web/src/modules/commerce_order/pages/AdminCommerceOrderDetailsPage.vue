@@ -4,25 +4,23 @@
     <PageInitialLoader v-if="loading" />
 
     <!-- Error State -->
-    <div v-else-if="error" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block floating-surface shadow-1">
+    <div v-else-if="error" class="column items-center justify-center q-pa-xl text-black empty-state-block floating-surface shadow-1">
       <q-icon name="error_outline" size="64px" class="q-mb-sm text-red" />
-      <div class="text-subtitle1 text-weight-medium text-grey-7">{{ error }}</div>
-      <q-btn label="Back to Orders" color="primary" class="pill-btn slim-btn q-mt-md" unelevated @click="backToOrders" />
+      <div class="text-subtitle1 text-weight-medium text-black">{{ error }}</div>
     </div>
 
     <!-- Details View -->
     <div v-else-if="order" class="customer-order-details-wrap">
       <!-- Header Hero Card -->
       <q-card flat class="hero-surface floating-surface shadow-1 q-mb-md q-pa-md">
-        <div class="row items-center justify-between">
-          <div class="row items-center">
-            <q-btn flat round icon="arrow_back" color="primary" class="q-mr-sm" @click="backToOrders" />
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="row items-center no-wrap col-12 col-md-auto">
             <div>
-              <div class="text-h6 text-weight-bold text-primary">Commerce Order #{{ order.id }}</div>
-              <div class="text-caption text-grey-8">Placed on {{ formatDate(order.order_placement_date) }}</div>
+              <div class="text-h6 text-weight-bold text-black">Order #{{ order.id }}</div>
+              <div class="text-caption text-black">Placed on {{ formatDate(order.order_placement_date) }}</div>
             </div>
           </div>
-          <div class="row items-center q-gutter-sm">
+          <div class="row items-center q-gutter-xs col-12 col-md-auto justify-start justify-md-end">
             <!-- Linked Invoices -->
             <template v-if="order.invoice_ids && order.invoice_ids.length">
               <q-btn
@@ -30,35 +28,41 @@
                 :key="invId"
                 color="primary"
                 outline
-                icon="receipt"
-                :label="`Invoice #${invId}`"
+                icon="o_receipt"
+                label="Invoice"
                 no-caps
-                unelevated
                 class="pill-btn slim-btn"
                 @click="goToInvoice(invId)"
-              />
+              >
+                <q-tooltip>Invoice #{{ invId }}</q-tooltip>
+              </q-btn>
             </template>
             <q-btn
+              v-if="canGenerateInvoice"
               color="secondary"
-              icon="description"
-              label="Generate Invoice"
-              no-caps
-              unelevated
+              icon="o_description"
+              flat
+              round
+              dense
               class="pill-btn slim-btn"
               :disable="order.status === 'cancelled'"
               :loading="creatingInvoice"
               @click="onGenerateInvoice"
-            />
+            >
+              <q-tooltip>Generate Invoice</q-tooltip>
+            </q-btn>
             <q-btn
               color="negative"
-              icon="delete"
-              outline
-              label="Delete Order"
+              icon="o_delete"
+              flat
+              round
+              dense
               no-caps
-              unelevated
               class="pill-btn slim-btn"
               @click="onDeleteOrder"
-            />
+            >
+              <q-tooltip>Delete Order</q-tooltip>
+            </q-btn>
             <q-chip
               square
               dense
@@ -87,35 +91,35 @@
       </q-card>
 
       <!-- Main Layout Grid -->
-      <div class="row q-col-gutter-md q-mb-md">
+      <div class="column q-gutter-sm q-mb-md">
         <!-- Recipient Information Card -->
-        <div class="col-12 col-md-6">
+        <div class="col-12">
           <q-card flat class="floating-surface shadow-1 q-pa-md full-height">
-            <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
+            <div class="text-subtitle1 text-weight-bold text-black q-mb-sm">
               <q-icon name="assignment" class="q-mr-xs" /> Recipient Details
             </div>
-            <div class="row q-col-gutter-md">
+            <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 text-grey-7">Recipient Name</div>
-                <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_name }}</div>
+                <div class="text-subtitle2 text-black">Recipient Name</div>
+                <div class="text-body1 text-weight-medium text-black">{{ order.recipient_name }}</div>
               </div>
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 text-grey-7">Recipient Phone</div>
-                <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_phone }}</div>
+                <div class="text-subtitle2 text-black">Recipient Phone</div>
+                <div class="text-body1 text-weight-medium text-black">{{ order.recipient_phone }}</div>
               </div>
               <div class="col-12">
-                <div class="text-subtitle2 text-grey-7">Shipping Address</div>
-                <div class="text-body1 text-grey-9">{{ order.shipping_address }}</div>
+                <div class="text-subtitle2 text-black">Shipping Address</div>
+                <div class="text-body1 text-black">{{ order.shipping_address }}</div>
               </div>
             </div>
           </q-card>
         </div>
 
         <!-- Order Status Control Card -->
-        <div class="col-12 col-md-6">
+        <div class="col-12">
           <q-card flat class="floating-surface shadow-1 q-pa-md full-height">
-            <div class="row items-center justify-between q-mb-md">
-              <div class="text-subtitle1 text-weight-bold text-primary">
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle1 text-weight-bold text-black">
                 <q-icon name="local_atm" class="q-mr-xs" /> Pricing Details
               </div>
               <q-btn
@@ -123,51 +127,60 @@
                 flat
                 dense
                 no-caps
-                size="sm"
-                icon="edit"
-                label="Edit Charges"
+                icon="o_edit"
                 color="primary"
+                round
                 class="pill-btn"
                 @click="startEditCharges"
-              />
+              >
+              <q-tooltip>Edit Charges</q-tooltip>
+            </q-btn>
             </div>
 
             <q-form v-if="editChargesMode" @submit="saveCharges" class="q-gutter-y-sm">
-              <q-input
-                v-model.number="chargesForm.delivery_charge"
-                type="number"
-                step="0.01"
-                label="Delivery Charge"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="chargesForm.delivery_charge"
+                    type="number"
+                    step="0.01"
+                    label="Delivery Charge"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                  />
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="chargesForm.wrapping_charge"
+                    type="number"
+                    step="0.01"
+                    label="Wrapping Charge"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                  />
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="chargesForm.cod"
+                    type="number"
+                    step="0.01"
+                    label="COD"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                  />
+                </div>
+              </div>
               <q-checkbox
                 v-model="chargesForm.is_delivery_charge_inclusive"
                 label="Delivery Charge Inclusive"
                 dense
-                class="text-grey-8 q-mb-sm"
-              />
-              <q-input
-                v-model.number="chargesForm.wrapping_charge"
-                type="number"
-                step="0.01"
-                label="Wrapping Charge"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-              <q-input
-                v-model.number="chargesForm.cod"
-                type="number"
-                step="0.01"
-                label="COD"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
+                class="text-black q-mb-sm"
               />
               <q-input
                 v-model.number="chargesForm.shipment_payment"
@@ -180,31 +193,35 @@
                 :rules="[val => val >= 0 || 'Must be >= 0']"
               />
               <div class="row justify-end q-gutter-x-sm q-mt-md">
-                <q-btn label="Cancel" flat color="grey-7" size="sm" class="pill-btn" @click="editChargesMode = false" />
-                <q-btn label="Save" type="submit" color="primary" size="sm" class="pill-btn slim-btn" unelevated :loading="savingCharges" />
+                <q-btn icon="o_close" flat color="grey-7" size="sm" round dense class="pill-btn" @click="editChargesMode = false">
+                  <q-tooltip>Cancel</q-tooltip>
+                </q-btn>
+                <q-btn icon="o_save" type="submit" color="primary" size="sm" flat round dense class="pill-btn slim-btn" :loading="savingCharges">
+                  <q-tooltip>Save Charges</q-tooltip>
+                </q-btn>
               </div>
             </q-form>
             
-            <div v-else class="row q-col-gutter-md q-mb-md">
+            <div v-else class="row q-col-gutter-sm q-mb-sm">
               <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">Delivery Charge</div>
-                <div class="text-body1 text-weight-medium text-grey-9">
+                <div class="text-subtitle2 text-black">Delivery Charge</div>
+                <div class="text-body1 text-weight-medium text-black">
                   ৳{{ Number(order.delivery_charge || 0).toFixed(2) }}
-                  <span class="text-caption text-weight-bold" :class="order.is_delivery_charge_inclusive ? 'text-green-7' : 'text-grey-7'">
+                  <span class="text-caption text-weight-bold text-primary">
                     ({{ order.is_delivery_charge_inclusive ? 'Inclusive' : 'Exclusive' }})
                   </span>
                 </div>
               </div>
               <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">Wrapping Charge</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.wrapping_charge || 0).toFixed(2) }}</div>
+                <div class="text-subtitle2 text-black">Wrapping Charge</div>
+                <div class="text-body1 text-weight-medium text-black">৳{{ Number(order.wrapping_charge || 0).toFixed(2) }}</div>
               </div>
               <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">COD</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ Number(order.cod || 0).toFixed(2) }}</div>
+                <div class="text-subtitle2 text-black">COD</div>
+                <div class="text-body1 text-weight-medium text-black">৳{{ Number(order.cod || 0).toFixed(2) }}</div>
               </div>
               <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">Grand Total</div>
+                <div class="text-subtitle2 text-black">Grand Total</div>
                 <div class="text-h6 text-weight-bold text-primary">৳{{ Number(order.shipment_payment || 0).toFixed(2) }}</div>
               </div>
             </div>
@@ -215,7 +232,7 @@
       </div>
 
       <!-- Order Items List -->
-      <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">
+      <div class="text-subtitle1 text-weight-bold text-black q-mb-sm">
         <q-icon name="shopping_bag" class="q-mr-xs" /> Items ({{ items.length }})
       </div>
       <q-card flat class="floating-surface shadow-1">
@@ -228,9 +245,9 @@
             </q-item-section>
 
             <q-item-section>
-              <q-item-label class="text-weight-bold text-body1 text-grey-9">Product ID: {{ item.product_id }}</q-item-label>
-              <q-item-label caption class="text-body2 text-grey-7">Quantity: {{ item.quantity }}</q-item-label>
-              <q-item-label caption class="text-body2 text-grey-7">
+              <q-item-label class="text-weight-bold text-body1 text-black">Product ID: {{ item.product_id }}</q-item-label>
+              <q-item-label caption class="text-body2 text-black">Quantity: {{ item.quantity }}</q-item-label>
+              <q-item-label caption class="text-body2 text-black">
                 Inventory:
                 <template v-if="getItemInventoryId(item)">
                   #{{ getItemInventoryId(item) }} - {{ getItemInventoryName(item) || 'Assigned' }}
@@ -242,8 +259,8 @@
             </q-item-section>
 
             <q-item-section side class="text-right">
-              <div class="text-body1 text-weight-bold text-primary">Recipient Price: ৳{{ Number(item.recipient_price_bdt).toFixed(2) }}</div>
-              <div class="text-caption text-grey-7">Cost BDT: ৳{{ Number(item.cost_bdt).toFixed(2) }} | Sell Price: ৳{{ Number(item.sell_price_bdt).toFixed(2) }}</div>
+              <div class="text-body1 text-weight-bold text-black">Recipient Price: ৳{{ Number(item.recipient_price_bdt).toFixed(2) }}</div>
+              <div class="text-caption text-black">Cost BDT: ৳{{ Number(item.cost_bdt).toFixed(2) }} | Sell Price: ৳{{ Number(item.sell_price_bdt).toFixed(2) }}</div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -255,13 +272,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, reactive } from 'vue'
+import { computed, onMounted, ref, reactive } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceOrderService } from '../services/commerceOrderService'
 import { supabase } from 'src/boot/supabase'
-import type { CommerceOrder, CommerceOrderItem, CommerceOrderStatus } from '../types'
+import type { CommerceOrder, CommerceOrderDetailsItem, CommerceOrderStatus } from '../types'
 import { showSuccessNotification, showWarningDialog, handleApiFailure } from 'src/utils/appFeedback'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
@@ -274,7 +291,7 @@ const $q = useQuasar()
 const loading = ref(true)
 const error = ref<string | null>(null)
 const order = ref<CommerceOrder | null>(null)
-const items = ref<CommerceOrderItem[]>([])
+const items = ref<CommerceOrderDetailsItem[]>([])
 const creatingInvoice = ref(false)
 
 const editChargesMode = ref(false)
@@ -288,6 +305,8 @@ const chargesForm = reactive({
 })
 
 const statusOptions: CommerceOrderStatus[] = ['placed', 'reviewing', 'shipping', 'delivered', 'cancelled']
+const uninvoicedItems = computed(() => items.value.filter((item) => item.invoice_id == null))
+const canGenerateInvoice = computed(() => uninvoicedItems.value.length > 0)
 
 const loadOrderDetails = async () => {
   const orderId = Number(route.params.id)
@@ -310,13 +329,6 @@ const loadOrderDetails = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const backToOrders = () => {
-  const tenantSlugParam = route.params.tenantSlug
-  const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
-  const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
-  void router.push(`${tenantPrefix}/app/commerce-shop/orders`)
 }
 
 const goToInvoice = (invoiceId: number) => {
@@ -397,7 +409,10 @@ const onDeleteOrder = () => {
         const res = await commerceOrderService.deleteCommerceOrder(order.value!.id)
         if (res.success) {
           showSuccessNotification('Order deleted successfully.')
-          backToOrders()
+          const tenantSlugParam = route.params.tenantSlug
+          const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
+          const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
+          void router.push(`${tenantPrefix}/app/commerce-shop/orders`)
         } else {
           showWarningDialog(res.error || 'Failed to delete order.')
         }
@@ -408,59 +423,81 @@ const onDeleteOrder = () => {
   })
 }
 
-const onGenerateInvoice = async () => {
+const onGenerateInvoice = () => {
   if (!order.value || !authStore.tenantId) return
-  creatingInvoice.value = true
-  try {
-    let defaultDelivery = 0
-    let defaultWrapping = 0
-    let defaultCodPercent = 0
+  const orderId = order.value.id
+  const existingInvoices = order.value.invoice_ids || []
+  const invoiceList = existingInvoices.length > 0 ? `Existing invoice(s): ${existingInvoices.map((id) => `#${id}`).join(', ')}.` : 'No invoice is currently linked to this order.'
 
-    if (authStore.tenantId) {
-      const settingsRes = await commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
-      if (settingsRes.success && settingsRes.data) {
-        defaultDelivery = Number(settingsRes.data.default_delivery_charge) || 0
-        defaultWrapping = Number(settingsRes.data.default_wrapping_charge) || 0
-        defaultCodPercent = Number(settingsRes.data.default_cod_percent) || 0
+  $q.dialog({
+    title: 'Generate Invoice?',
+    message: `This will create a new invoice for Order #${orderId}. ${invoiceList}`,
+    persistent: true,
+    ok: {
+      label: 'Create Invoice',
+      color: 'secondary',
+      flat: true,
+    },
+    cancel: {
+      label: 'Cancel',
+      color: 'grey-7',
+      flat: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      creatingInvoice.value = true
+      try {
+        let defaultDelivery = 0
+        let defaultWrapping = 0
+        let defaultCodPercent = 0
+
+        if (authStore.tenantId) {
+          const settingsRes = await commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
+          if (settingsRes.success && settingsRes.data) {
+            defaultDelivery = Number(settingsRes.data.default_delivery_charge) || 0
+            defaultWrapping = Number(settingsRes.data.default_wrapping_charge) || 0
+            defaultCodPercent = Number(settingsRes.data.default_cod_percent) || 0
+          }
+        }
+
+        const subtotal = uninvoicedItems.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
+
+        const isInclusive = !!order.value?.is_delivery_charge_inclusive
+        const deliveryCharge = Number(order.value?.delivery_charge) || defaultDelivery
+        const wrappingCharge = Number(order.value?.wrapping_charge) || defaultWrapping
+        const codCharge = Number(order.value?.cod) || Number(((defaultCodPercent / 100) * subtotal).toFixed(2))
+
+        // Calculate invoice total amount: exclude delivery charge if inclusive
+        const totalAmount = subtotal + (isInclusive ? 0 : deliveryCharge)
+
+        const { data, error: err } = await supabase.rpc('create_commerce_invoice', {
+          p_tenant_id: authStore.tenantId,
+          p_order_id: orderId,
+          p_delivery_charge: isInclusive ? 0 : deliveryCharge,
+          p_wrapping_charge: wrappingCharge,
+          p_cod: codCharge,
+          p_total_amount: totalAmount,
+          p_amount_paid: 0,
+          p_delivered_by: '',
+        })
+
+        if (err) throw err
+
+        showSuccessNotification(`Commerce Invoice #${data} generated successfully.`)
+
+        // Redirect to the commerce invoice details page
+        const tenantSlugParam = route.params.tenantSlug
+        const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
+        const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
+        void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${data}`)
+      } catch (err) {
+        console.error(err)
+        handleApiFailure({ success: false, error: err instanceof Error ? err.message : String(err) }, 'Failed to generate invoice.')
+      } finally {
+        creatingInvoice.value = false
       }
-    }
-
-    const subtotal = items.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
-
-    const isInclusive = !!order.value.is_delivery_charge_inclusive
-    const deliveryCharge = Number(order.value.delivery_charge) || defaultDelivery
-    const wrappingCharge = Number(order.value.wrapping_charge) || defaultWrapping
-    const codCharge = Number(order.value.cod) || Number(((defaultCodPercent / 100) * subtotal).toFixed(2))
-    
-    // Calculate invoice total amount: exclude delivery charge if inclusive
-    const totalAmount = subtotal + (isInclusive ? 0 : deliveryCharge) + wrappingCharge + codCharge
-
-    const { data, error: err } = await supabase.rpc('create_commerce_invoice', {
-      p_tenant_id: authStore.tenantId,
-      p_order_id: order.value.id,
-      p_delivery_charge: isInclusive ? 0 : deliveryCharge,
-      p_wrapping_charge: wrappingCharge,
-      p_cod: codCharge,
-      p_total_amount: totalAmount,
-      p_amount_paid: 0,
-      p_delivered_by: '',
-    })
-
-    if (err) throw err
-
-    showSuccessNotification(`Commerce Invoice #${data} generated successfully.`)
-    
-    // Redirect to the commerce invoice details page
-    const tenantSlugParam = route.params.tenantSlug
-    const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
-    const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
-    void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${data}`)
-  } catch (err) {
-    console.error(err)
-    handleApiFailure({ success: false, error: err instanceof Error ? err.message : String(err) }, 'Failed to generate invoice.')
-  } finally {
-    creatingInvoice.value = false
-  }
+    })()
+  })
 }
 
 const statusChipStyle = (status: CommerceOrderStatus) => {
@@ -526,11 +563,9 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString()
 }
 
-const getItemInventoryId = (item: CommerceOrderItem) =>
-  (item as CommerceOrderItem & { inventory_item_id?: number | null }).inventory_item_id ?? null
+const getItemInventoryId = (item: CommerceOrderDetailsItem) => item.inventory_item_id ?? null
 
-const getItemInventoryName = (item: CommerceOrderItem) =>
-  (item as CommerceOrderItem & { inventory_items?: { name?: string | null } | null }).inventory_items?.name ?? null
+const getItemInventoryName = (item: CommerceOrderDetailsItem) => item.inventory_items?.name ?? null
 
 onMounted(() => {
   void loadOrderDetails()
@@ -562,7 +597,7 @@ onMounted(() => {
   border-radius: 6px !important;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: #2c3e50 !important;
+  color: #000 !important;
 }
 
 .status-chip-dot {

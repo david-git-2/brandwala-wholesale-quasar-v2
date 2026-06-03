@@ -1,5 +1,11 @@
 import { supabase } from 'src/boot/supabase'
-import type { CommerceOrder, CommerceOrderItem, CommerceOrderStatus, CommerceOrderSettings } from '../types'
+import type {
+  CommerceOrder,
+  CommerceOrderDetailsItem,
+  CommerceOrderItem,
+  CommerceOrderStatus,
+  CommerceOrderSettings,
+} from '../types'
 
 const listCommerceOrders = async (
   tenantId: number,
@@ -63,7 +69,7 @@ const listCommerceOrders = async (
 
 const getCommerceOrderDetails = async (
   orderId: number,
-): Promise<{ order: CommerceOrder; items: CommerceOrderItem[] }> => {
+): Promise<{ order: CommerceOrder; items: CommerceOrderDetailsItem[] }> => {
   const { data: order, error: orderError } = await supabase
     .from('commerce_orders')
     .select('*')
@@ -75,14 +81,48 @@ const getCommerceOrderDetails = async (
 
   const { data: items, error: itemsError } = await supabase
     .from('commerce_order_items')
-    .select('*, inventory_items(id, name, cost, product_code, barcode)')
+    .select('*')
     .eq('order_id', orderId)
 
   if (itemsError) throw itemsError
 
+  const itemRows = (items || []) as CommerceOrderItem[]
+  const inventoryItemIds = Array.from(
+    new Set(itemRows.map((item) => Number((item as CommerceOrderItem & { inventory_item_id?: number | null }).inventory_item_id || 0)).filter((id) => id > 0)),
+  )
+
+  const inventoryItemsById = new Map<number, { name?: string | null; cost?: number | null; product_code?: string | null; barcode?: string | null }>()
+
+  if (inventoryItemIds.length > 0) {
+    const { data: inventoryItems, error: inventoryItemsError } = await supabase
+      .from('inventory_items')
+      .select('id, name, cost, product_code, barcode')
+      .in('id', inventoryItemIds)
+
+    if (inventoryItemsError) throw inventoryItemsError
+
+    for (const inventoryItem of inventoryItems || []) {
+      inventoryItemsById.set(inventoryItem.id, {
+        name: inventoryItem.name,
+        cost: inventoryItem.cost,
+        product_code: inventoryItem.product_code,
+        barcode: inventoryItem.barcode,
+      })
+    }
+  }
+
   return {
     order,
-    items: items || [],
+    items: itemRows.map((item) => {
+      const inventoryItemId = Number(
+        (item as CommerceOrderItem & { inventory_item_id?: number | null }).inventory_item_id || 0,
+      )
+
+      return {
+        ...item,
+        inventory_items: inventoryItemId > 0 ? inventoryItemsById.get(inventoryItemId) ?? null : null,
+      }
+    }),
   }
 }
 

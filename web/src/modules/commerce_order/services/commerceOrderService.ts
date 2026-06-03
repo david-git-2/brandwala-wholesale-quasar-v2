@@ -1,5 +1,11 @@
 import { commerceOrderRepository } from '../repositories/commerceOrderRepository'
-import type { CommerceOrder, CommerceOrderItem, CommerceOrderStatus, CommerceOrderSettings, CommerceOrderServiceResult } from '../types'
+import type {
+  CommerceOrder,
+  CommerceOrderDetailsItem,
+  CommerceOrderStatus,
+  CommerceOrderSettings,
+  CommerceOrderServiceResult,
+} from '../types'
 
 const wrap = async <T>(
   fn: () => Promise<T>,
@@ -33,7 +39,7 @@ export const commerceOrderService = {
       'Failed to load commerce orders.',
     ),
   getCommerceOrderDetails: (orderId: number) =>
-    wrap<{ order: CommerceOrder; items: CommerceOrderItem[] }>(
+    wrap<{ order: CommerceOrder; items: CommerceOrderDetailsItem[] }>(
       () => commerceOrderRepository.getCommerceOrderDetails(orderId),
       'Failed to load commerce order details.',
     ),

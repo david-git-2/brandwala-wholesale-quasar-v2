@@ -4,10 +4,9 @@
     <PageInitialLoader v-if="loading" />
 
     <!-- Error State -->
-    <div v-else-if="error" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block floating-surface shadow-1">
+    <div v-else-if="error" class="column items-center justify-center q-pa-xl text-black empty-state-block floating-surface shadow-1">
       <q-icon name="error_outline" size="64px" class="q-mb-sm text-red" />
-      <div class="text-subtitle1 text-weight-medium text-grey-7">{{ error }}</div>
-      <q-btn label="Back to Invoices" color="primary" class="pill-btn slim-btn q-mt-md" unelevated @click="goBack" />
+      <div class="text-subtitle1 text-weight-medium text-black">{{ error }}</div>
     </div>
 
     <!-- Details View -->
@@ -16,22 +15,42 @@
       <q-card flat class="hero-surface floating-surface shadow-1 q-mb-md q-pa-md">
         <div class="row items-center justify-between">
           <div class="row items-center">
-            <q-btn flat round icon="arrow_back" color="primary" class="q-mr-sm" @click="goBack" />
             <div>
-              <div class="text-h6 text-weight-bold text-primary">Commerce Invoice #{{ invoice.id }}</div>
-              <div class="text-caption text-grey-8">Order Ref: #{{ invoice.order_id }} | Created on {{ formatDate(invoice.created_at) }}</div>
+              <div class="text-h6 text-weight-bold text-black">Invoice #{{ invoice.id }}</div>
+              <div class="text-caption text-black">Order Ref: #{{ invoice.order_id }} | Created on {{ formatDate(invoice.created_at) }}</div>
             </div>
           </div>
           <div class="row items-center q-gutter-sm">
-            <q-btn
-              color="primary"
-              icon="search"
-              label="Add From Inventory"
-              no-caps
-              unelevated
-              class="pill-btn slim-btn"
-              @click="openSearchDialogForAdd"
-            />
+            <q-btn color="negative" icon="o_delete" flat round dense class="pill-btn slim-btn" @click="onDeleteInvoice">
+              <q-tooltip>Delete Invoice</q-tooltip>
+            </q-btn>
+            <q-btn color="primary" icon="o_search" flat round dense class="pill-btn slim-btn" @click="openSearchDialogForAdd">
+              <q-tooltip>Add From Inventory</q-tooltip>
+            </q-btn>
+            <!-- Invoice Status Chip -->
+            <q-chip
+              square
+              dense
+              clickable
+              :style="statusChipStyle(invoice.status)"
+              class="status-chip text-weight-bold"
+            >
+              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(invoice.status) }"></span>
+              {{ formatStatusLabel(invoice.status).toUpperCase() }}
+              <q-menu auto-close>
+                <q-list dense style="min-width: 150px">
+                  <q-item
+                     v-for="opt in statusOptions"
+                     :key="opt"
+                     clickable
+                     v-close-popup
+                     @click="onStatusMenuSelect(invoice.id, opt)"
+                  >
+                    <q-item-section>{{ formatStatusLabel(opt).toUpperCase() }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-chip>
             <q-chip
               square
               dense
@@ -46,9 +65,9 @@
       </q-card>
 
       <!-- Main Breakdown Grid -->
-      <div class="row q-col-gutter-md q-mb-md">
+      <div class="column q-gutter-md q-mb-md">
         <!-- Recipient Information Card -->
-        <div class="col-12 col-md-6">
+        <div class="col-12">
           <q-card flat class="floating-surface shadow-1 q-pa-md full-height">
             <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
               <q-icon name="assignment" class="q-mr-xs" /> Recipient Details
@@ -72,103 +91,113 @@
         </div>
 
         <!-- Charges & Payment details -->
-        <div class="col-12 col-md-6">
+        <div class="col-12">
           <q-card flat class="floating-surface shadow-1 q-pa-md full-height">
             <div class="row items-center justify-between q-mb-md">
               <div class="text-subtitle1 text-weight-bold text-primary">
                 <q-icon name="local_atm" class="q-mr-xs" /> Invoice Summary
               </div>
-              <q-btn
-                v-if="!editChargesMode"
-                flat
-                dense
-                no-caps
-                size="sm"
-                icon="edit"
-                label="Edit Charges"
-                color="primary"
-                class="pill-btn"
-                @click="startEditCharges"
-              />
             </div>
-
-            <q-form v-if="editChargesMode" @submit="saveCharges" class="q-gutter-y-sm">
-              <q-input
-                v-model.number="chargesForm.delivery_charge"
-                type="number"
-                step="0.01"
-                label="Delivery Charge"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-              <q-input
-                v-model.number="chargesForm.wrapping_charge"
-                type="number"
-                step="0.01"
-                label="Wrapping Charge"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-              <q-input
-                v-model.number="chargesForm.cod"
-                type="number"
-                step="0.01"
-                label="COD"
-                outlined
-                dense
-                class="soft-input"
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-              <q-input
-                v-model="chargesForm.delivered_by"
-                label="Delivered By"
-                outlined
-                dense
-                class="soft-input"
-              />
-              <div class="row justify-end q-gutter-x-sm q-mt-md">
-                <q-btn label="Cancel" flat color="grey-7" size="sm" class="pill-btn" @click="editChargesMode = false" />
-                <q-btn label="Save" type="submit" color="primary" size="sm" class="pill-btn slim-btn" unelevated :loading="savingCharges" />
-              </div>
-            </q-form>
-
-            <div v-else class="row q-col-gutter-md q-mb-md">
-              <div class="col-6 col-sm-3">
+            <div class="row q-col-gutter-md q-mb-sm">
+              <div class="col-12 col-md-3">
                 <div class="text-subtitle2 text-grey-7">Subtotal</div>
                 <div class="text-body1 text-weight-medium text-grey-9">৳{{ formatAmount(subtotalAmount) }}</div>
               </div>
-              <div class="col-6 col-sm-3">
-                <div class="text-subtitle2 text-grey-7">Delivery</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ formatAmount(Number(invoice.delivery_charge || 0)) }}</div>
-              </div>
-              <div class="col-6 col-sm-3">
-                <div class="text-subtitle2 text-grey-7">Wrapping</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ formatAmount(Number(invoice.wrapping_charge || 0)) }}</div>
-              </div>
-              <div class="col-6 col-sm-3">
-                <div class="text-subtitle2 text-grey-7">COD</div>
-                <div class="text-body1 text-weight-medium text-grey-9">৳{{ formatAmount(Number(invoice.cod || 0)) }}</div>
-              </div>
-              <div class="col-6">
+              <div class="col-12 col-md-3">
                 <div class="text-subtitle2 text-grey-7">Grand Total</div>
                 <div class="text-h6 text-weight-bold text-primary">৳{{ formatAmount(Number(invoice.total_amount || 0)) }}</div>
               </div>
-              <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">Amount Paid</div>
-                <div class="text-body1 text-weight-medium text-green-7">৳{{ formatAmount(Number(invoice.amount_paid || 0)) }}</div>
-              </div>
-              <div class="col-6">
+              <div class="col-12 col-md-3">
                 <div class="text-subtitle2 text-grey-7">Amount Due</div>
                 <div class="text-h6 text-weight-bold text-red-7">৳{{ formatAmount(Number(invoice.amount_due || 0)) }}</div>
               </div>
-              <div class="col-6">
-                <div class="text-subtitle2 text-grey-7">Delivered By</div>
-                <div class="text-body1 text-weight-medium text-grey-8">{{ invoice.delivered_by || '-' }}</div>
+              <div class="col-12 col-md-3">
+                <div class="text-subtitle2 text-grey-7">Paid Status</div>
+                <q-chip
+                  :color="invoice.is_customer_group_paid ? 'green' : 'red'"
+                  text-color="white"
+                  class="text-weight-bold q-mt-xs"
+                >
+                  {{ invoice.is_customer_group_paid ? 'PAID' : 'UNPAID' }}
+                </q-chip>
               </div>
+            </div>
+
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-3">
+                <q-input
+                  v-model.number="chargesForm.delivery_charge"
+                  type="number"
+                  step="0.01"
+                  label="Delivery Charge"
+                  outlined
+                  dense
+                  class="soft-input"
+                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+              <div class="col-12 col-md-3">
+                <q-input
+                  v-model="chargesForm.delivered_by"
+                  label="Delivered By"
+                  outlined
+                  dense
+                  class="soft-input"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="chargesForm.wrapping_charge"
+                  type="number"
+                  step="0.01"
+                  label="Wrapping"
+                  outlined
+                  dense
+                  class="soft-input"
+                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="chargesForm.cod"
+                  type="number"
+                  step="0.01"
+                  label="COD"
+                  outlined
+                  dense
+                  class="soft-input"
+                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="chargesForm.amount_paid"
+                  type="number"
+                  step="0.01"
+                  label="Amount Paid"
+                  outlined
+                  dense
+                  class="soft-input"
+                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+            </div>
+
+            <div class="row justify-end q-mt-md">
+              <q-btn
+                v-if="chargesDirty"
+                label="Save Changes"
+                color="primary"
+                unelevated
+                class="pill-btn slim-btn"
+                :loading="savingCharges"
+                @click="saveCharges"
+              />
             </div>
           </q-card>
         </div>
@@ -208,6 +237,15 @@
                 <div class="text-weight-bold text-grey-9">{{ row.products?.name || 'Product ID: ' + row.product_id }}</div>
                 <div class="text-caption text-grey-7">Code: {{ row.products?.product_code || '-' }}</div>
                 <div class="text-caption text-grey-7">
+                  Shipment:
+                  <template v-if="row.source_type === 'shipment' && row.source_id">
+                    #{{ row.source_id }}
+                  </template>
+                  <template v-else>
+                    -
+                  </template>
+                </div>
+                <div class="text-caption text-grey-7">
                   Inventory:
                   <template v-if="row.inventory_item_id">
                     #{{ row.inventory_item_id }} - {{ row.inventory_items?.name || 'Assigned' }}
@@ -226,11 +264,11 @@
                 <q-btn
                   flat
                   round
-                  icon="inventory_2"
-                  color="primary"
-                  @click="openSearchDialogForAssign(row)"
+                  :icon="row.inventory_item_id ? 'o_link_off' : 'o_inventory_2'"
+                  :color="row.inventory_item_id ? 'negative' : 'primary'"
+                  @click="row.inventory_item_id ? unassignInventoryItem(row) : openSearchDialogForAssign(row)"
                 >
-                  <q-tooltip>{{ row.inventory_item_id ? 'Change Inventory' : 'Assign Inventory' }}</q-tooltip>
+                  <q-tooltip>{{ row.inventory_item_id ? 'Unassign Inventory' : 'Assign Inventory' }}</q-tooltip>
                 </q-btn>
                 <q-btn
                   flat
@@ -285,15 +323,9 @@
               />
             </div>
             <div class="col-auto">
-              <q-btn
-                color="primary"
-                label="Search"
-                no-caps
-                unelevated
-                class="pill-btn slim-btn"
-                :loading="searchingInventory"
-                @click="searchInventoryItems"
-              />
+              <q-btn color="primary" icon="o_search" flat round dense class="pill-btn slim-btn" :loading="searchingInventory" @click="searchInventoryItems">
+                <q-tooltip>Search</q-tooltip>
+              </q-btn>
             </div>
           </div>
 
@@ -386,6 +418,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceInvoiceService } from '../services/commerceInvoiceService'
 import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
@@ -397,6 +430,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const inventoryStore = useInventoryStore()
+const $q = useQuasar()
 
 type CommerceInvoiceRow = {
   id: number
@@ -410,12 +444,14 @@ type CommerceInvoiceRow = {
   is_customer_group_paid: boolean
   delivered_by: string | null
   created_at: string
+  status: 'draft' | 'ready' | 'handed_to_customer'
 }
 
 type CommerceOrderRow = {
   recipient_name: string
   recipient_phone: string
   shipping_address: string
+  invoice_ids?: number[] | null
 }
 
 type CommerceInvoiceItemRow = {
@@ -427,6 +463,8 @@ type CommerceInvoiceItemRow = {
   recipient_price_bdt: number
   image_url: string | null
   inventory_item_id: number | null
+  source_type?: 'manual' | 'shipment' | null
+  source_id?: number | null
   products?: {
     name?: string | null
     product_code?: string | null
@@ -443,13 +481,14 @@ const invoice = ref<CommerceInvoiceRow | null>(null)
 const order = ref<CommerceOrderRow | null>(null)
 const items = ref<CommerceInvoiceItemRow[]>([])
 
-const editChargesMode = ref(false)
 const savingCharges = ref(false)
+const chargesDirty = ref(false)
 const chargesForm = reactive({
   delivery_charge: 0,
   wrapping_charge: 0,
   cod: 0,
   delivered_by: '',
+  amount_paid: 0,
 })
 
 // Search states
@@ -487,9 +526,10 @@ const loadInvoiceDetails = async () => {
   try {
     const res = await commerceInvoiceService.getCommerceInvoiceDetails(invoiceId.value)
     if (res.success && res.data) {
-      invoice.value = res.data.invoice
+      invoice.value = res.data.invoice as CommerceInvoiceRow
       order.value = res.data.order
       items.value = res.data.items
+      startEditCharges()
     } else {
       error.value = res.error || 'Failed to load commerce invoice details.'
     }
@@ -498,11 +538,63 @@ const loadInvoiceDetails = async () => {
   }
 }
 
-const goBack = () => {
-  const tenantSlugParam = route.params.tenantSlug
-  const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
-  const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
-  void router.push(`${tenantPrefix}/app/commerce-shop/invoices`)
+const statusOptions: ('draft' | 'ready' | 'handed_to_customer')[] = ['draft', 'ready', 'handed_to_customer']
+
+const formatStatusLabel = (status?: string | null) => {
+  if (!status) return 'draft'
+  if (status === 'handed_to_customer') return 'handed to customer'
+  return status
+}
+
+const statusChipStyle = (status?: 'draft' | 'ready' | 'handed_to_customer' | null) => {
+  const currentStatus = status || 'draft'
+  switch (currentStatus) {
+    case 'ready':
+      return {
+        backgroundColor: '#c8d8f8',
+        color: '#27487a',
+        border: '1px solid #a9c4f3',
+        boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
+      }
+    case 'handed_to_customer':
+      return {
+        backgroundColor: '#c3e8d2',
+        color: '#1f5d3c',
+        border: '1px solid #9fd4b7',
+        boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+      }
+    default:
+      return {
+        backgroundColor: '#dbe5f3',
+        color: '#3b4b66',
+        border: '1px solid #b9c8dd',
+        boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+      }
+  }
+}
+
+const statusDotColor = (status?: 'draft' | 'ready' | 'handed_to_customer' | null) => {
+  const currentStatus = status || 'draft'
+  switch (currentStatus) {
+    case 'ready': return '#3f67b3'
+    case 'handed_to_customer': return '#2f8b5d'
+    default: return '#66758c'
+  }
+}
+
+const onStatusMenuSelect = async (invoiceId: number, nextStatus: 'draft' | 'ready' | 'handed_to_customer') => {
+  loading.value = true
+  try {
+    const res = await commerceInvoiceService.updateCommerceInvoiceStatus(invoiceId, nextStatus)
+    if (res.success) {
+      showSuccessNotification('Invoice status updated successfully.')
+      await loadInvoiceDetails()
+    } else {
+      showWarningDialog(res.error || 'Failed to update invoice status.')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 const startEditCharges = () => {
@@ -511,7 +603,8 @@ const startEditCharges = () => {
   chargesForm.wrapping_charge = Number(invoice.value.wrapping_charge) || 0
   chargesForm.cod = Number(invoice.value.cod) || 0
   chargesForm.delivered_by = invoice.value.delivered_by || ''
-  editChargesMode.value = true
+  chargesForm.amount_paid = Number(invoice.value.amount_paid) || 0
+  chargesDirty.value = false
 }
 
 const saveCharges = async () => {
@@ -523,10 +616,10 @@ const saveCharges = async () => {
       wrapping_charge: chargesForm.wrapping_charge,
       cod: chargesForm.cod,
       delivered_by: chargesForm.delivered_by,
+      amount_paid: chargesForm.amount_paid,
     })
     if (res.success) {
       showSuccessNotification('Charges updated successfully.')
-      editChargesMode.value = false
       await loadInvoiceDetails()
     } else {
       showWarningDialog(res.error || 'Failed to update charges.')
@@ -534,6 +627,55 @@ const saveCharges = async () => {
   } finally {
     savingCharges.value = false
   }
+}
+
+const onDeleteInvoice = () => {
+  if (!invoice.value) return
+
+  const linkedInvoicesText = order.value?.invoice_ids?.length
+    ? `This order currently has linked invoice(s): ${order.value.invoice_ids.map((id) => `#${id}`).join(', ')}.`
+    : 'This order does not have any linked invoices listed yet.'
+
+  $q.dialog({
+    title: 'Delete Invoice?',
+    message: `This will permanently delete Invoice #${invoice.value.id}, remove its related accounting records, unassign and restock any linked inventory items, and remove the invoice ID from the order. ${linkedInvoicesText}`,
+    persistent: true,
+    ok: {
+      label: 'Delete',
+      color: 'negative',
+      flat: true,
+    },
+    cancel: {
+      label: 'Cancel',
+      color: 'grey-7',
+      flat: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      loading.value = true
+      try {
+        const res = await commerceInvoiceService.deleteCommerceInvoice(invoice.value!.id)
+        if (res.success) {
+          showSuccessNotification(`Invoice #${invoice.value!.id} deleted successfully.`)
+          await router.push({
+            path: (() => {
+              const tenantSlugParam = route.params.tenantSlug
+              const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
+              return tenantSlug ? `/${tenantSlug}/app/commerce-shop/invoices` : '/app/commerce-shop/invoices'
+            })(),
+          })
+        } else {
+          showWarningDialog(res.error || 'Failed to delete invoice.')
+        }
+      } finally {
+        loading.value = false
+      }
+    })()
+  })
+}
+
+const markChargesDirty = () => {
+  chargesDirty.value = true
 }
 
 const removeItem = async (orderItemId: number) => {
@@ -545,6 +687,25 @@ const removeItem = async (orderItemId: number) => {
       await loadInvoiceDetails()
     } else {
       showWarningDialog(res.error || 'Failed to remove item.')
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const unassignInventoryItem = async (row: CommerceInvoiceItemRow) => {
+  if (!invoice.value) return
+  const confirm = window.confirm('Unassign this inventory item and restock it?')
+  if (!confirm) return
+
+  loading.value = true
+  try {
+    const res = await commerceInvoiceService.unassignOrderItemInventory(invoiceId.value, row.id)
+    if (res.success) {
+      showSuccessNotification('Inventory item unassigned and restocked.')
+      await loadInvoiceDetails()
+    } else {
+      showWarningDialog(res.error || 'Failed to unassign inventory item.')
     }
   } finally {
     loading.value = false
@@ -607,7 +768,7 @@ const searchInventoryItems = async () => {
       filters,
       page: 1,
       page_size: 50,
-      sortBy: 'id',
+      sortBy: 'source_id',
       sortOrder: 'asc',
     })
 
@@ -799,5 +960,20 @@ onMounted(() => {
 
 .product-search-item:hover {
   background-color: rgba(34, 56, 101, 0.02);
+}
+
+.status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #2c3e50 !important;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>

@@ -60,6 +60,20 @@
           </q-td>
         </template>
 
+        <template #body-cell-status="props">
+          <q-td :props="props">
+            <q-chip
+              square
+              dense
+              :style="statusChipStyle(props.value)"
+              class="status-chip text-weight-bold"
+            >
+              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(props.value) }"></span>
+              {{ formatStatusLabel(props.value).toUpperCase() }}
+            </q-chip>
+          </q-td>
+        </template>
+
         <template #body-cell-created_at="props">
           <q-td :props="props">
             {{ formatDate(props.value) }}
@@ -212,6 +226,7 @@ import { commerceInvoiceService } from '../services/commerceInvoiceService'
 import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
 import { commerceOrderService } from 'src/modules/commerce_order/services/commerceOrderService'
 import type { CommerceInvoice } from '../types'
+import type { CustomerGroup } from 'src/modules/tenant/types'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
@@ -229,7 +244,7 @@ const submittingPayment = ref(false)
 // Create Invoice Dialog
 const createDialog = ref(false)
 const creatingInvoice = ref(false)
-const customerGroups = ref<any[]>([])
+const customerGroups = ref<CustomerGroup[]>([])
 const createForm = reactive({
   customer_group_id: null as number | null,
   recipient_name: '',
@@ -253,7 +268,8 @@ const columns: QTableColumn[] = [
   { name: 'total_amount', label: 'Total (BDT)', field: 'total_amount', align: 'left' },
   { name: 'amount_paid', label: 'Paid (BDT)', field: 'amount_paid', align: 'left' },
   { name: 'amount_due', label: 'Due (BDT)', field: 'amount_due', align: 'left' },
-  { name: 'is_customer_group_paid', label: 'Status', field: 'is_customer_group_paid', align: 'left', sortable: true },
+  { name: 'is_customer_group_paid', label: 'Payment Status', field: 'is_customer_group_paid', align: 'left', sortable: true },
+  { name: 'status', label: 'Invoice Status', field: 'status', align: 'left', sortable: true },
   { name: 'delivered_by', label: 'Delivered By', field: 'delivered_by', align: 'left' },
   { name: 'created_at', label: 'Created Date', field: 'created_at', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
@@ -367,6 +383,45 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString()
 }
 
+const formatStatusLabel = (status: string) => {
+  if (status === 'handed_to_customer') return 'handed to customer'
+  return status || 'draft'
+}
+
+const statusChipStyle = (status: 'draft' | 'ready' | 'handed_to_customer') => {
+  switch (status) {
+    case 'ready':
+      return {
+        backgroundColor: '#c8d8f8',
+        color: '#27487a',
+        border: '1px solid #a9c4f3',
+        boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
+      }
+    case 'handed_to_customer':
+      return {
+        backgroundColor: '#c3e8d2',
+        color: '#1f5d3c',
+        border: '1px solid #9fd4b7',
+        boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+      }
+    default:
+      return {
+        backgroundColor: '#dbe5f3',
+        color: '#3b4b66',
+        border: '1px solid #b9c8dd',
+        boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
+      }
+  }
+}
+
+const statusDotColor = (status: 'draft' | 'ready' | 'handed_to_customer') => {
+  switch (status) {
+    case 'ready': return '#3f67b3'
+    case 'handed_to_customer': return '#2f8b5d'
+    default: return '#66758c'
+  }
+}
+
 onMounted(() => {
   void loadInvoices()
 })
@@ -416,5 +471,20 @@ onMounted(() => {
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #2c3e50 !important;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>
