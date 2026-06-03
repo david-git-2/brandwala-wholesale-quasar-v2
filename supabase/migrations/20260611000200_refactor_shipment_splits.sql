@@ -1,4 +1,4 @@
--- Migration: Add inspected and receiving_splits columns to shipment_items, and remove received_quantity, damaged_quantity, stolen_quantity
+-- Migration: Ensure inspected and receiving_splits columns exist, drop deprecated columns and update add_shipment_item_manual RPC
 begin;
 
 -- 1. Drop constraints if exist
@@ -15,7 +15,7 @@ alter table public.shipment_items drop column if exists stolen_quantity;
 alter table public.shipment_items add column if not exists inspected boolean not null default false;
 alter table public.shipment_items add column if not exists receiving_splits jsonb null;
 
--- 4. Redefine add_shipment_item_manual function to remove old quantity arguments
+-- 4. Redefine add_shipment_item_manual function to accept p_receiving_splits argument
 create or replace function public.add_shipment_item_manual(
   p_shipment_id bigint,
   p_name text default null,

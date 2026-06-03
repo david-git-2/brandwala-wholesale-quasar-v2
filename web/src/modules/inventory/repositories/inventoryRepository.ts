@@ -407,6 +407,120 @@ const listInventoryItems = async (
   }
 }
 
+const listGlobalInventoryItems = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryListPage<InventoryItemWithStock>> => {
+  const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
+  const page = sanitizePage(payload.page, 1)
+  const safeSortBy = isAllowedField(payload.sortBy, INVENTORY_ITEM_FILTERABLE_FIELDS)
+    ? payload.sortBy
+    : 'id'
+  const safeSortOrder = payload.sortOrder === 'asc' ? 'asc' : 'desc'
+
+  const { data, error } = await supabase.rpc('list_global_inventory_items_with_stock', {
+    p_page: page,
+    p_page_size: pageSize,
+    p_sort_by: safeSortBy,
+    p_sort_order: safeSortOrder,
+    p_filters: payload.filters ?? {},
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const envelope = toObjectRecord(data)
+  const rows = Array.isArray(envelope?.data)
+    ? (envelope.data as Array<Record<string, unknown>>)
+    : []
+
+  const mappedRows: InventoryItemWithStock[] = rows.map((row) => {
+    const stockRecord = toObjectRecord(row.stock)
+    const shipmentRecord = toObjectRecord(row.shipment)
+    const availableQuantity = toNumberOrZero(stockRecord?.available_quantity)
+    const reservedQuantity = toNumberOrZero(stockRecord?.reserved_quantity)
+    const damagedQuantity = toNumberOrZero(stockRecord?.damaged_quantity)
+    const stolenQuantity = toNumberOrZero(stockRecord?.stolen_quantity)
+    const expiredQuantity = toNumberOrZero(stockRecord?.expired_quantity)
+    const openBoxQuantity = toNumberOrZero(stockRecord?.open_box_quantity)
+    const usableQuantity = calculateUsableQuantity({
+      available: availableQuantity,
+      reserved: reservedQuantity,
+      damaged: damagedQuantity,
+      stolen: stolenQuantity,
+      expired: expiredQuantity,
+      openBox: openBoxQuantity,
+    })
+
+    return {
+      id: toNumberOrZero(row.id),
+      tenant_id: toNumberOrZero(row.tenant_id),
+      tenant_name: toNullableText(row.tenant_name),
+      tenant_slug: toNullableText(row.tenant_slug),
+      source_type: row.source_type as InventoryItem['source_type'],
+      source_id: row.source_id == null ? null : toNumberOrZero(row.source_id),
+      product_id: row.product_id == null ? null : toNumberOrZero(row.product_id),
+      name: toNullableText(row.name) ?? '',
+      image_url: toNullableText(row.image_url),
+      cost: row.cost == null ? null : toNumberOrZero(row.cost),
+      barcode: toNullableText(row.barcode),
+      product_code: toNullableText(row.product_code),
+      manufacturing_date: toNullableText(row.manufacturing_date),
+      expire_date: toNullableText(row.expire_date),
+      status: row.status as InventoryItem['status'],
+      created_at: toNullableText(row.created_at) ?? '',
+      updated_at: toNullableText(row.updated_at) ?? '',
+      stock: stockRecord
+        ? {
+            id: toNumberOrZero(stockRecord.id),
+            inventory_item_id: toNumberOrZero(stockRecord.inventory_item_id),
+            available_quantity: availableQuantity,
+            reserved_quantity: reservedQuantity,
+            damaged_quantity: damagedQuantity,
+            stolen_quantity: stolenQuantity,
+            expired_quantity: expiredQuantity,
+            open_box_quantity: openBoxQuantity,
+            created_at: toNullableText(stockRecord.created_at) ?? '',
+            updated_at: toNullableText(stockRecord.updated_at) ?? '',
+          }
+        : null,
+      shipment: shipmentRecord
+        ? {
+            shipment_item: toObjectRecord(shipmentRecord.shipment_item),
+            shipment: toObjectRecord(shipmentRecord.shipment),
+          }
+        : null,
+      quantities: {
+        available: availableQuantity,
+        usable: usableQuantity,
+        reserved: reservedQuantity,
+        damaged: damagedQuantity,
+        stolen: stolenQuantity,
+        expired: expiredQuantity,
+        open_box: openBoxQuantity,
+      },
+    }
+  })
+
+  const meta = toObjectRecord(envelope?.meta)
+  const total = toNumberOrZero(meta?.total)
+  const metaPage = toNumberOrZero(meta?.page) || page
+  const metaPageSize = toNumberOrZero(meta?.page_size) || pageSize
+  const metaTotalPages =
+    toNumberOrZero(meta?.total_pages) || Math.max(1, Math.ceil(total / Math.max(1, metaPageSize)))
+
+  return {
+    data: mappedRows,
+    meta: {
+      total,
+      page: metaPage,
+      page_size: metaPageSize,
+      total_pages: metaTotalPages,
+    },
+  }
+}
+
+
 const getInventoryItemById = async (id: number): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
@@ -956,6 +1070,7 @@ const deleteInventoryNote = async (
 
 export const inventoryRepository = {
   listInventoryItems,
+  listGlobalInventoryItems,
   getInventoryItemById,
   createInventoryItem,
   createInventoryItemsBulk,

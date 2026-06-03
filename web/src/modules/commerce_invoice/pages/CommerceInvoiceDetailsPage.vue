@@ -351,7 +351,10 @@
                     <img :src="item.image_url || 'https://placehold.co/56x56?text=No+Image'" alt="" />
                   </q-avatar>
                   <div>
-                    <div class="text-body1 text-weight-bold text-grey-9">{{ item.name }}</div>
+                    <div class="text-body1 text-weight-bold text-grey-9">
+                      {{ item.name }}
+                      <span v-if="item.tenant_name" class="text-caption text-grey-7">({{ item.tenant_name }})</span>
+                    </div>
                     <div class="text-caption text-grey-7">Code: {{ item.product_code || '-' }} | ID: {{ item.id }}</div>
                     <div class="text-caption text-grey-7">
                       Usable: {{ Number(item.quantities?.usable || 0) }} | Cost: ৳{{ formatAmount(Number(item.cost || 0)) }}
@@ -763,8 +766,7 @@ const searchInventoryItems = async () => {
       }
     }
 
-    const res = await inventoryStore.fetchInventoryItems({
-      tenant_id: authStore.tenantId,
+    const res = await inventoryStore.fetchGlobalInventoryItems({
       filters,
       page: 1,
       page_size: 50,

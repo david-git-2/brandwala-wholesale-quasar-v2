@@ -232,6 +232,8 @@ import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
 import { formatAmountBdt } from 'src/utils/currency'
 
+import { getReceivedQty, getDamagedQty, getStolenQty } from 'src/modules/shipment/utils/splits'
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -258,19 +260,19 @@ const shipmentRows = computed(() => {
       productConversionRate: shipment?.product_conversion_rate,
       cargoConversionRate: shipment?.cargo_conversion_rate,
     })
+    const recQty = getReceivedQty(item)
+    const damQty = getDamagedQty(item)
+    const stQty = getStolenQty(item)
     return {
       ...item,
       costPerUnitBdt,
       quantityTotalBdt: costPerUnitBdt * Number(item.quantity ?? 0),
-      receivedTotalBdt: costPerUnitBdt * Number(item.received_quantity ?? 0),
-      lossTotalBdt:
-        costPerUnitBdt * (Number(item.stolen_quantity ?? 0) + Number(item.damaged_quantity ?? 0)),
-      usableQuantity: Math.max(
-        0,
-        Number(item.received_quantity ?? 0) -
-          Number(item.stolen_quantity ?? 0) -
-          Number(item.damaged_quantity ?? 0),
-      ),
+      receivedTotalBdt: costPerUnitBdt * recQty,
+      lossTotalBdt: costPerUnitBdt * (stQty + damQty),
+      usableQuantity: Math.max(0, recQty - stQty - damQty),
+      received_quantity: recQty,
+      damaged_quantity: damQty,
+      stolen_quantity: stQty,
     }
   })
 })

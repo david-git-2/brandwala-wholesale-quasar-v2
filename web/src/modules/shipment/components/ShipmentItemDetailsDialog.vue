@@ -34,9 +34,9 @@
             <tr><td class="text-weight-medium">Barcode</td><td>{{ item.barcode ?? '-' }}</td></tr>
             <tr><td class="text-weight-medium">Product Code</td><td>{{ item.product_code ?? '-' }}</td></tr>
             <tr><td class="text-weight-medium">Quantity</td><td>{{ item.quantity }}</td></tr>
-            <tr><td class="text-weight-medium">Received Quantity</td><td>{{ item.received_quantity }}</td></tr>
-            <tr><td class="text-weight-medium">Damaged Quantity</td><td>{{ item.damaged_quantity }}</td></tr>
-            <tr><td class="text-weight-medium">Stolen Quantity</td><td>{{ item.stolen_quantity }}</td></tr>
+            <tr><td class="text-weight-medium">Received Quantity</td><td>{{ getReceivedQty(item) }}</td></tr>
+            <tr><td class="text-weight-medium">Damaged Quantity</td><td>{{ getDamagedQty(item) }}</td></tr>
+            <tr><td class="text-weight-medium">Stolen Quantity</td><td>{{ getStolenQty(item) }}</td></tr>
             <tr><td class="text-weight-medium">Price (GBP)</td><td>{{ displayNumber(item.price_gbp) }}</td></tr>
             <tr><td class="text-weight-medium">Product Weight</td><td>{{ displayNumber(item.product_weight) }}</td></tr>
             <tr><td class="text-weight-medium">Package Weight</td><td>{{ displayNumber(item.package_weight) }}</td></tr>
@@ -57,6 +57,7 @@
 <script setup lang="ts">
 import SmartImage from 'src/components/SmartImage.vue'
 import type { ShipmentItem } from '../types'
+import { getReceivedQty, getDamagedQty, getStolenQty } from '../utils/splits'
 
 defineProps<{
   modelValue: boolean

@@ -274,7 +274,10 @@
                     />
                   </q-avatar>
                   <div>
-                    <div class="text-body1 text-weight-medium">{{ item.name }}</div>
+                    <div class="text-body1 text-weight-medium">
+                      {{ item.name }}
+                      <span v-if="item.tenant_name" class="text-caption text-grey-7">({{ item.tenant_name }})</span>
+                    </div>
                     <div class="text-caption text-grey-7">
                       Shipment ID: {{ item.shipment?.shipment?.id ?? '-' }}
                     </div>
@@ -616,12 +619,9 @@ const goBack = async () => {
 }
 
 const onSearchStock = async () => {
-  if (!authStore.tenantId) return
-
   const trimmed = searchTerm.value.trim()
   if (!trimmed) {
-    await inventoryStore.fetchInventoryItems({
-      tenant_id: authStore.tenantId,
+    await inventoryStore.fetchGlobalInventoryItems({
       page: 1,
       page_size: 20,
       sortBy: 'id',
@@ -636,8 +636,7 @@ const onSearchStock = async () => {
     return
   }
 
-  await inventoryStore.fetchInventoryItems({
-    tenant_id: authStore.tenantId,
+  await inventoryStore.fetchGlobalInventoryItems({
     filters: {
       [searchBy.value]: isProductIdSearch ? productIdValue : trimmed,
     },
@@ -749,7 +748,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     const totalCostAmount = Number((costAmount * quantity).toFixed(2))
     const totalSellAmount = Number((sellPriceAmount * quantity).toFixed(2))
     await accountingService.createInventoryAccountingEntry({
-      tenant_id: authStore.tenantId,
+      tenant_id: item.tenant_id,
       invoice_id: invoice.value.id,
       invoice_item_id: createdInvoiceItem.id,
       inventory_item_id: item.id,
@@ -766,7 +765,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
       status: 'due',
       entry_date: toDateOnly(new Date()),
-      note: `Created from invoice #${invoice.value.invoice_no}`,
+      note: `Created from invoice #${invoice.value.invoice_no} (Sold via Tenant: ${authStore.selectedTenant?.name || authStore.tenantId})`,
       created_by: authStore.user?.id ?? null,
     })
 
@@ -941,9 +940,7 @@ const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)
 const findAccountingEntryByInvoiceItemId = async (
   invoiceItemId: number,
 ): Promise<InventoryAccountingEntry | null> => {
-  if (!authStore.tenantId) return null
   const result = await accountingService.listInventoryAccountingEntries({
-    tenant_id: authStore.tenantId,
     filters: { invoice_item_id: invoiceItemId },
     operators: { invoice_item_id: 'eq' },
     page: 1,

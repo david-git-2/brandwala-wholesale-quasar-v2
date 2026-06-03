@@ -608,33 +608,6 @@ export const useShipmentStore = defineStore('shipment', {
             }
           }
 
-          // Compute received, damaged, stolen totals for database update
-          let receivedQty = 0
-          let damagedQty = 0
-          let stolenQty = 0
-
-          for (const split of receipt.splits) {
-            if (split.type === 'standard' || split.type === 'box_damage' || split.type === 'boxless') {
-              receivedQty += split.qty
-            } else if (split.type === 'expired') {
-              damagedQty += split.qty
-            } else if (split.type === 'stolen') {
-              stolenQty += split.qty
-            }
-          }
-
-          // Update the shipment item in the DB with these received, damaged, stolen totals
-          const updateItemResult = await this.updateShipmentItem({
-            id: item.id,
-            patch: {
-              received_quantity: receivedQty,
-              damaged_quantity: damagedQty,
-              stolen_quantity: stolenQty,
-            },
-          })
-          if (!updateItemResult.success) {
-            throw new Error(updateItemResult.error ?? 'Failed to update shipment item received totals.')
-          }
         }
 
         // Update shipment status as completed adding to inventory

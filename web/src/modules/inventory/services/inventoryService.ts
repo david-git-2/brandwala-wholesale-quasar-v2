@@ -46,6 +46,21 @@ const listInventoryItems = async (
   }
 }
 
+const listGlobalInventoryItems = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryServiceResult<InventoryListPage<InventoryItemWithStock>>> => {
+  try {
+    const data = await inventoryRepository.listGlobalInventoryItems(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load global inventory items.',
+    }
+  }
+}
+
+
 const getInventoryItemById = async (id: number): Promise<InventoryServiceResult<InventoryItem>> => {
   try {
     const data = await inventoryRepository.getInventoryItemById(id)
@@ -382,6 +397,7 @@ const deleteInventoryNote = async (
 
 export const inventoryService = {
   listInventoryItems,
+  listGlobalInventoryItems,
   getInventoryItemById,
   createInventoryItem,
   createInventoryItemsBulk,

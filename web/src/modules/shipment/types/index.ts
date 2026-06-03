@@ -34,6 +34,15 @@ export type Shipment = {
   updated_at: string
 }
 
+export type ShipmentItemReceivingSplitKey = 'standard' | 'box_damage' | 'expired' | 'boxless' | 'stolen'
+
+export type ShipmentItemReceivingSplitValue = {
+  qty: number
+  note: string | null
+}
+
+export type ShipmentItemReceivingSplits = Record<ShipmentItemReceivingSplitKey, ShipmentItemReceivingSplitValue>
+
 export type ShipmentItem = {
   id: number
   shipment_id: number
@@ -48,11 +57,9 @@ export type ShipmentItem = {
   product_weight: number | null
   package_weight: number | null
   price_gbp: number | null
-  received_quantity: number
-  damaged_quantity: number
-  stolen_quantity: number
   marker_tag: 'price_reviewed' | 'issue' | 'done' | null
   inspected: boolean
+  receiving_splits: ShipmentItemReceivingSplits | null
   created_at: string
   updated_at: string
 }
@@ -125,9 +132,7 @@ export type AddShipmentItemManualInput = {
   product_weight?: number | null
   package_weight?: number | null
   price_gbp?: number | null
-  received_quantity?: number | null
-  damaged_quantity?: number | null
-  stolen_quantity?: number | null
+  receiving_splits?: ShipmentItemReceivingSplits | null
 }
 
 export type BulkAddShipmentItemsFromProductInput = {
@@ -153,13 +158,11 @@ export type UpdateShipmentItemInput = {
       | 'order_id'
       | 'method'
       | 'price_gbp'
-      | 'received_quantity'
-      | 'damaged_quantity'
-      | 'stolen_quantity'
       | 'marker_tag'
       | 'product_weight'
       | 'package_weight'
       | 'inspected'
+      | 'receiving_splits'
     >
   >
 }

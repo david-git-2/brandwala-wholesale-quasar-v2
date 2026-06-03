@@ -114,6 +114,8 @@ export type InventoryItemWithStock = InventoryItem & {
     shipment: Record<string, unknown> | null
   } | null
   quantities: InventoryQuantities
+  tenant_name?: string | null
+  tenant_slug?: string | null
 }
 
 export type InventoryMovement = {

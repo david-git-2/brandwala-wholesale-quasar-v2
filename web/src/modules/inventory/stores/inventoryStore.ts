@@ -14,7 +14,6 @@ import type {
   UpdateInventoryItemInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
-  InventoryNote,
   CreateInventoryNoteInput,
   UpdateInventoryNoteInput,
   DeleteInventoryNoteInput,
@@ -66,6 +65,31 @@ export const useInventoryStore = defineStore('inventory', {
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load inventory items.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.items = result.data?.data ?? []
+        this.total = result.data?.meta.total ?? 0
+        this.page = result.data?.meta.page ?? (payload.page ?? 1)
+        this.page_size = result.data?.meta.page_size ?? (payload.page_size ?? payload.pageSize ?? 20)
+        this.total_pages = result.data?.meta.total_pages ?? 1
+
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchGlobalInventoryItems(payload: InventoryListQuery = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.listGlobalInventoryItems(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load global inventory items.'
           handleApiFailure(result, this.error)
           return result
         }

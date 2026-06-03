@@ -1393,7 +1393,7 @@ import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useShipmentStore } from '../stores/shipmentStore'
-import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus, type ShipmentReceiveItemInput, type ShipmentReceiveItemSplit } from '../types'
+import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus, type ShipmentReceiveItemInput, type ShipmentReceiveItemSplit, type ShipmentItemReceivingSplits } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -1438,18 +1438,28 @@ const confirmedItemIds = ref<Set<number>>(new Set())
 
 const toggleItemConfirmed = async (item: ShipmentItem) => {
   const currentStatus = confirmedItemIds.value.has(item.id)
+  let splitsPayload: ShipmentItemReceivingSplits | null = null
   
   if (currentStatus) {
     confirmedItemIds.value.delete(item.id)
+    splitsPayload = null
   } else {
-    getOrInitItemReceipt(item)
+    const r = getOrInitItemReceipt(item)
     confirmedItemIds.value.add(item.id)
+    splitsPayload = {
+      standard: { qty: r.standard, note: null },
+      box_damage: { qty: r.box_damage, note: r.box_damage_note || null },
+      expired: { qty: r.expired, note: r.expired_note || null },
+      boxless: { qty: r.boxless, note: r.boxless_note || null },
+      stolen: { qty: r.stolen, note: r.stolen_note || null },
+    }
   }
   
   const result = await shipmentStore.updateShipmentItem({
     id: item.id,
     patch: {
-      inspected: !currentStatus
+      inspected: !currentStatus,
+      receiving_splits: splitsPayload
     }
   })
   
@@ -1464,12 +1474,20 @@ const toggleItemConfirmed = async (item: ShipmentItem) => {
 
 const confirmAllItemsPerfect = async () => {
   const updates = shipmentStore.shipmentItems.map((item) => {
-    getOrInitItemReceipt(item)
+    const r = getOrInitItemReceipt(item)
     confirmedItemIds.value.add(item.id)
+    const splitsPayload: ShipmentItemReceivingSplits = {
+      standard: { qty: r.standard, note: null },
+      box_damage: { qty: r.box_damage, note: r.box_damage_note || null },
+      expired: { qty: r.expired, note: r.expired_note || null },
+      boxless: { qty: r.boxless, note: r.boxless_note || null },
+      stolen: { qty: r.stolen, note: r.stolen_note || null },
+    }
     return shipmentStore.updateShipmentItem({
       id: item.id,
       patch: {
-        inspected: true
+        inspected: true,
+        receiving_splits: splitsPayload
       }
     })
   })
@@ -1567,18 +1585,17 @@ const getOrInitItemReceipt = (item: ShipmentItem): {
   stolen_note: string
 } => {
   if (!receiptsMap.value[item.id]) {
-    const hasExistingData = item.received_quantity > 0 || item.damaged_quantity > 0 || item.stolen_quantity > 0
-    if (hasExistingData) {
+    if (item.receiving_splits) {
       receiptsMap.value[item.id] = {
-        standard: item.received_quantity,
-        box_damage: 0,
-        box_damage_note: '',
-        expired: item.damaged_quantity,
-        expired_note: '',
-        boxless: 0,
-        boxless_note: '',
-        stolen: item.stolen_quantity,
-        stolen_note: '',
+        standard: item.receiving_splits.standard?.qty ?? 0,
+        box_damage: item.receiving_splits.box_damage?.qty ?? 0,
+        box_damage_note: item.receiving_splits.box_damage?.note ?? '',
+        expired: item.receiving_splits.expired?.qty ?? 0,
+        expired_note: item.receiving_splits.expired?.note ?? '',
+        boxless: item.receiving_splits.boxless?.qty ?? 0,
+        boxless_note: item.receiving_splits.boxless?.note ?? '',
+        stolen: item.receiving_splits.stolen?.qty ?? 0,
+        stolen_note: item.receiving_splits.stolen?.note ?? '',
       }
     } else {
       receiptsMap.value[item.id] = {
@@ -1609,25 +1626,16 @@ const hasItemSplits = (item: ShipmentItem) => {
 }
 
 const getReceivedQty = (item: ShipmentItem) => {
-  if (shipmentStore.selectedShipment?.inventory_added) {
-    return item.received_quantity ?? 0
-  }
   const r = getOrInitItemReceipt(item)
   return r.standard + r.box_damage + r.boxless
 }
 
 const getDamagedQty = (item: ShipmentItem) => {
-  if (shipmentStore.selectedShipment?.inventory_added) {
-    return item.damaged_quantity ?? 0
-  }
   const r = getOrInitItemReceipt(item)
   return r.expired
 }
 
 const getStolenQty = (item: ShipmentItem) => {
-  if (shipmentStore.selectedShipment?.inventory_added) {
-    return item.stolen_quantity ?? 0
-  }
   const r = getOrInitItemReceipt(item)
   return r.stolen
 }
@@ -1650,7 +1658,7 @@ const openInspectDialog = (item: ShipmentItem) => {
 const saveInspectSplits = async () => {
   if (!inspectItem.value) return
   const itemId = inspectItem.value.id
-  receiptsMap.value[itemId] = {
+  const flatPayload = {
     standard: Number(inspectForm.standard) || 0,
     box_damage: Number(inspectForm.box_damage) || 0,
     box_damage_note: inspectForm.box_damage_note.trim(),
@@ -1661,14 +1669,24 @@ const saveInspectSplits = async () => {
     stolen: Number(inspectForm.stolen) || 0,
     stolen_note: inspectForm.stolen_note.trim(),
   }
+  receiptsMap.value[itemId] = flatPayload
   confirmedItemIds.value.add(itemId)
   showInspectDialog.value = false
   inspectItem.value = null
 
+  const splitsPayload: ShipmentItemReceivingSplits = {
+    standard: { qty: flatPayload.standard, note: null },
+    box_damage: { qty: flatPayload.box_damage, note: flatPayload.box_damage_note || null },
+    expired: { qty: flatPayload.expired, note: flatPayload.expired_note || null },
+    boxless: { qty: flatPayload.boxless, note: flatPayload.boxless_note || null },
+    stolen: { qty: flatPayload.stolen, note: flatPayload.stolen_note || null },
+  }
+
   await shipmentStore.updateShipmentItem({
     id: itemId,
     patch: {
-      inspected: true
+      inspected: true,
+      receiving_splits: splitsPayload
     }
   })
 }
@@ -2402,9 +2420,6 @@ const onSaveManualItemEdit = async () => {
 type EditableNumericField =
   | 'price_gbp'
   | 'quantity'
-  | 'received_quantity'
-  | 'damaged_quantity'
-  | 'stolen_quantity'
   | 'product_weight'
   | 'package_weight'
 
@@ -2413,9 +2428,6 @@ const formatDecimal = (value: number | null | undefined) =>
 
 const formatFixed2 = (value: number | null | undefined) =>
   value == null ? '-' : Number(value).toFixed(2)
-
-const toPopupQuantityValue = (value: number | null | undefined): number | null =>
-  value == null || Number(value) === 0 ? null : Number(value)
 
 const roundTo = (value: number, decimals = 0) => {
   const factor = 10 ** decimals
@@ -2442,19 +2454,9 @@ const totals = computed(() => {
       const productWeight = Number(item.product_weight ?? 0)
       const packageWeight = Number(item.package_weight ?? 0)
 
-      const receivedQty = getReceivedQty(item)
-      const damagedQty = getDamagedQty(item)
-      const stolenQty = getStolenQty(item)
-
       acc.price_gbp += Number(item.price_gbp ?? 0) * itemQuantity
       acc.cost_bdt += itemCostBdt * itemQuantity
       acc.quantity += itemQuantity
-      acc.received_quantity += receivedQty
-      acc.damaged_quantity += damagedQty
-      acc.stolen_quantity += stolenQty
-      acc.received_cost_bdt += itemCostBdt * receivedQty
-      acc.damaged_cost_bdt += itemCostBdt * damagedQty
-      acc.stolen_cost_bdt += itemCostBdt * stolenQty
       acc.product_weight += productWeight
       acc.package_weight += packageWeight
       acc.total_weight_gm += (productWeight + packageWeight) * itemQuantity
@@ -2464,12 +2466,6 @@ const totals = computed(() => {
       price_gbp: 0,
       cost_bdt: 0,
       quantity: 0,
-      received_quantity: 0,
-      damaged_quantity: 0,
-      stolen_quantity: 0,
-      received_cost_bdt: 0,
-      damaged_cost_bdt: 0,
-      stolen_cost_bdt: 0,
       product_weight: 0,
       package_weight: 0,
       total_weight_gm: 0,
@@ -2494,10 +2490,7 @@ const onNumericPopupSave = async (
   }
 
   const normalized =
-    field === 'quantity' ||
-    field === 'received_quantity' ||
-    field === 'damaged_quantity' ||
-    field === 'stolen_quantity'
+    field === 'quantity'
       ? Math.floor(parsed)
       : roundTo(parsed, options?.decimals ?? 0)
 

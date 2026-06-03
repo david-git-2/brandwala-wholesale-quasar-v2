@@ -844,9 +844,6 @@ const onSaveShipment = async (data: {
     product_weight: rowItem.product_weight ?? null,
     package_weight: rowItem.package_weight ?? null,
     price_gbp: data.price_gbp,
-    received_quantity: 0,
-    damaged_quantity: 0,
-    stolen_quantity: 0,
   });
 
   if (!addResult.success) {

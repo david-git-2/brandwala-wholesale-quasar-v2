@@ -81,11 +81,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { QForm } from 'quasar'
 
 import { useInventoryStore } from '../stores/inventoryStore'
-import type { InventoryNote, InventoryNoteCategory } from '../types'
+import type { InventoryNoteCategory } from '../types'
 
 const props = defineProps<{
   productId?: number | null | undefined
@@ -227,7 +227,7 @@ const onAddNote = async () => {
 watch(
   () => [props.productId, props.inventoryItemId, props.movementId, props.tenantId],
   () => {
-    loadNotes()
+    void loadNotes()
   },
   { immediate: true }
 )

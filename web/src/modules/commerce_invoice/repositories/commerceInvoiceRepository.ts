@@ -28,6 +28,7 @@ type CommerceOrderItemRow = {
 
 type InventoryItemRow = {
   id: number
+  tenant_id: number
   cost: number | null
   source_type: 'manual' | 'shipment'
   source_id: number | null
@@ -71,16 +72,14 @@ const getCommerceOrderContext = async (orderId: number): Promise<CommerceOrderRo
 }
 
 const adjustInventoryStock = async (payload: {
-  tenantId: number
   inventoryItemId: number
   delta: number
   note: string
 }) => {
   const { data: inventoryItem, error: itemError } = await supabase
     .from('inventory_items')
-    .select('id, cost, source_type, source_id')
+    .select('id, tenant_id, cost, source_type, source_id')
     .eq('id', payload.inventoryItemId)
-    .eq('tenant_id', payload.tenantId)
     .single()
 
   if (itemError || !inventoryItem) {
@@ -427,10 +426,10 @@ const addCommerceInvoiceItem = async (
   let resolvedCost = Number(item.cost_bdt || 0)
   const resolvedInventoryItemId: number | null = item.inventory_item_id ?? null
   let resolvedShipmentItemId: number | null = null
+  let resolvedTenantId = Number(order.tenant_id)
 
   if (resolvedInventoryItemId) {
     const { inventoryItem } = await adjustInventoryStock({
-      tenantId: order.tenant_id,
       inventoryItemId: resolvedInventoryItemId,
       delta: -quantity,
       note: `Assigned to commerce invoice #${invoiceId}`,
@@ -438,6 +437,7 @@ const addCommerceInvoiceItem = async (
     resolvedCost = Number(inventoryItem.cost || 0)
     resolvedShipmentItemId =
       inventoryItem.source_type === 'shipment' ? Number(inventoryItem.source_id || 0) || null : null
+    resolvedTenantId = inventoryItem.tenant_id
   }
 
   let existingQuery = supabase
@@ -510,7 +510,7 @@ const addCommerceInvoiceItem = async (
   await maintainAccountingEntry(
     orderItem,
     Number(order.customer_group_id || 0),
-    Number(order.tenant_id),
+    resolvedTenantId,
     Boolean(invoice?.is_customer_group_paid),
   )
 
@@ -549,9 +549,10 @@ const updateOrderItemInventoryAssignment = async (
   const quantity = Math.max(0, Number(orderItem.quantity || 0))
   const previousInventoryItemId = orderItem.inventory_item_id
 
+  let resolvedTenantId = Number(order.tenant_id)
+
   if (previousInventoryItemId && previousInventoryItemId !== inventoryItemId && quantity > 0) {
     await adjustInventoryStock({
-      tenantId: order.tenant_id,
       inventoryItemId: previousInventoryItemId,
       delta: quantity,
       note: `Reassigned from commerce invoice #${invoiceId} order item #${orderItemId}`,
@@ -563,7 +564,6 @@ const updateOrderItemInventoryAssignment = async (
 
   if (!previousInventoryItemId || previousInventoryItemId !== inventoryItemId || nextCostBdt <= 0) {
     const { inventoryItem } = await adjustInventoryStock({
-      tenantId: order.tenant_id,
       inventoryItemId,
       delta: previousInventoryItemId === inventoryItemId ? 0 : -quantity,
       note: `Assigned to commerce invoice #${invoiceId} order item #${orderItemId}`,
@@ -572,6 +572,17 @@ const updateOrderItemInventoryAssignment = async (
     nextCostBdt = Number(inventoryItem.cost || 0)
     nextShipmentItemId =
       inventoryItem.source_type === 'shipment' ? Number(inventoryItem.source_id || 0) || null : null
+    resolvedTenantId = inventoryItem.tenant_id
+  } else {
+    // If inventory item hasn't changed, retrieve its tenant_id from inventory_items
+    const { data: inventoryItem } = await supabase
+      .from('inventory_items')
+      .select('tenant_id')
+      .eq('id', inventoryItemId)
+      .single()
+    if (inventoryItem) {
+      resolvedTenantId = inventoryItem.tenant_id
+    }
   }
 
   const { data: updatedOrderItem, error: updateError } = await supabase
@@ -592,7 +603,7 @@ const updateOrderItemInventoryAssignment = async (
   await maintainAccountingEntry(
     updatedOrderItem as CommerceOrderItemRow,
     Number(order.customer_group_id || 0),
-    Number(order.tenant_id),
+    resolvedTenantId,
     Boolean(invoice.is_customer_group_paid),
   )
 
@@ -634,7 +645,6 @@ const unassignOrderItemInventory = async (
 
   if (previousInventoryItemId && quantity > 0) {
     await adjustInventoryStock({
-      tenantId: order.tenant_id,
       inventoryItemId: previousInventoryItemId,
       delta: quantity,
       note: `Unassigned from commerce invoice #${invoiceId} order item #${orderItemId}`,
@@ -679,16 +689,9 @@ const removeCommerceInvoiceItem = async (orderItemId: number, invoiceId: number)
     throw rowError || new Error('Order item not found.')
   }
 
-  const { data: invoice } = await supabase
-    .from('commerce_invoices')
-    .select('tenant_id')
-    .eq('id', invoiceId)
-    .single()
-
   const quantity = Math.max(0, Number(row.quantity || 0))
-  if (row.inventory_item_id && invoice?.tenant_id && quantity > 0) {
+  if (row.inventory_item_id && quantity > 0) {
     await adjustInventoryStock({
-      tenantId: Number(invoice.tenant_id),
       inventoryItemId: Number(row.inventory_item_id),
       delta: quantity,
       note: `Unassigned from commerce invoice #${invoiceId}`,
@@ -746,7 +749,6 @@ const deleteCommerceInvoice = async (invoiceId: number) => {
   for (const orderItem of orderItems || []) {
     if (orderItem.inventory_item_id) {
       await adjustInventoryStock({
-        tenantId: invoice.tenant_id,
         inventoryItemId: Number(orderItem.inventory_item_id),
         delta: Number(orderItem.quantity || 0),
         note: `Restocked after deleting commerce invoice #${invoiceId}`,

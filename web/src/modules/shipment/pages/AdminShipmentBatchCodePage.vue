@@ -269,6 +269,7 @@ import { useQuasar } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from '../stores/shipmentStore'
+import { getReceivedQty, getDamagedQty, getStolenQty } from '../utils/splits'
 
 const route = useRoute()
 const router = useRouter()
@@ -439,9 +440,9 @@ const quantitySummary = computed(() =>
   shipmentStore.shipmentItems.reduce(
     (acc, item) => {
       acc.totalQuantity += Number(item.quantity ?? 0)
-      acc.totalReceivedQuantity += Number(item.received_quantity ?? 0)
-      acc.totalDamagedQuantity += Number(item.damaged_quantity ?? 0)
-      acc.totalStolenQuantity += Number(item.stolen_quantity ?? 0)
+      acc.totalReceivedQuantity += getReceivedQty(item)
+      acc.totalDamagedQuantity += getDamagedQty(item)
+      acc.totalStolenQuantity += getStolenQty(item)
       return acc
     },
     {

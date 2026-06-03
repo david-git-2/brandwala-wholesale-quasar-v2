@@ -161,9 +161,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       product_weight: item.product_weight,
       package_weight: item.package_weight,
       price_gbp: item.price_gbp,
-      received_quantity: item.received_quantity,
-      damaged_quantity: item.damaged_quantity,
-      stolen_quantity: item.stolen_quantity,
+      receiving_splits: item.receiving_splits ?? null,
       marker_tag: item.marker_tag ?? null,
     }))
 
@@ -260,9 +258,7 @@ const addShipmentItemManual = async (
     p_product_weight: payload.product_weight ?? null,
     p_package_weight: payload.package_weight ?? null,
     p_price_gbp: payload.price_gbp ?? null,
-    p_received_quantity: payload.received_quantity ?? null,
-    p_damaged_quantity: payload.damaged_quantity ?? null,
-    p_stolen_quantity: payload.stolen_quantity ?? null,
+    p_receiving_splits: payload.receiving_splits ?? null,
   })
 
   if (error) {
