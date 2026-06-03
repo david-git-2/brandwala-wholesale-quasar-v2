@@ -1,7 +1,7 @@
 <template>
   <div class="row q-col-gutter-md q-row-gutter-md">
     <div v-for="item in items" :key="item.id" class="col-12 col-sm-6 col-md-4 col-lg-3">
-      <q-card flat bordered class="compact-card">
+      <q-card flat bordered class="compact-card cursor-pointer" @click="emit('view-details', item)">
         <q-card-section class="compact-card__body">
           <SmartImage class="compact-card__image" :src="item.image_url" />
           <div class="text-subtitle2 text-center ellipsis full-width">{{ item.name }}</div>
@@ -22,6 +22,10 @@ import type { InventoryItemWithStock } from '../types'
 
 defineProps<{
   items: InventoryItemWithStock[]
+}>()
+
+const emit = defineEmits<{
+  (e: 'view-details', item: InventoryItemWithStock): void
 }>()
 
 const getShipmentId = (item: InventoryItemWithStock): number | null => {

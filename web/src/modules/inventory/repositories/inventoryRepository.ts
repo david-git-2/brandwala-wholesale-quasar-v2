@@ -27,6 +27,10 @@ import type {
   UpdateInvoiceAccountingPaymentInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
+  InventoryNote,
+  CreateInventoryNoteInput,
+  UpdateInventoryNoteInput,
+  DeleteInventoryNoteInput,
 } from '../types'
 
 const normalizeText = (value: string | null | undefined) => {
@@ -255,6 +259,17 @@ const INVOICE_ACCOUNTING_PAYMENT_FILTERABLE_FIELDS = [
   'created_by',
   'created_at',
   'updated_at',
+] as const
+
+const INVENTORY_NOTE_FILTERABLE_FIELDS = [
+  'id',
+  'tenant_id',
+  'product_id',
+  'inventory_item_id',
+  'movement_id',
+  'category',
+  'created_by',
+  'created_at',
 ] as const
 
 const SHIPMENT_INVENTORY_ACCOUNTING_FILTERABLE_FIELDS = [
@@ -875,6 +890,70 @@ const refreshShipmentInventoryAccountingSummaries = async (
   return toNumberOrZero(data)
 }
 
+const listInventoryNotes = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryListPage<InventoryNote>> =>
+  listWithQuery(
+    'inventory_notes',
+    payload,
+    INVENTORY_NOTE_FILTERABLE_FIELDS,
+    'id',
+  )
+
+const createInventoryNote = async (
+  payload: CreateInventoryNoteInput,
+): Promise<InventoryNote> => {
+  const { data, error } = await supabase
+    .from('inventory_notes')
+    .insert([payload])
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Inventory note was not created.')
+  }
+
+  return data as InventoryNote
+}
+
+const updateInventoryNote = async (
+  payload: UpdateInventoryNoteInput,
+): Promise<InventoryNote> => {
+  const { data, error } = await supabase
+    .from('inventory_notes')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('Inventory note was not updated.')
+  }
+
+  return data as InventoryNote
+}
+
+const deleteInventoryNote = async (
+  payload: DeleteInventoryNoteInput,
+): Promise<void> => {
+  const { error } = await supabase
+    .from('inventory_notes')
+    .delete()
+    .eq('id', payload.id)
+
+  if (error) {
+    throw error
+  }
+}
+
 export const inventoryRepository = {
   listInventoryItems,
   getInventoryItemById,
@@ -903,4 +982,8 @@ export const inventoryRepository = {
   deleteInvoiceAccountingPayment,
   listShipmentInventoryAccountingSummaries,
   refreshShipmentInventoryAccountingSummaries,
+  listInventoryNotes,
+  createInventoryNote,
+  updateInventoryNote,
+  deleteInventoryNote,
 }

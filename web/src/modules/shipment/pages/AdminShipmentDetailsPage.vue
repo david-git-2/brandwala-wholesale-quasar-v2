@@ -37,15 +37,7 @@
             </q-list>
           </q-menu>
         </q-chip>
-        <q-btn
-          v-if="canAddToInventory"
-          color="positive"
-          no-caps
-          label="Add To Inventory"
-          :disable="isAddToInventoryRateInvalid"
-          :loading="shipmentStore.saving"
-          @click="showAddToInventoryConfirmDialog = true"
-        />
+
         <q-btn
           v-if="isDraftStatus"
           color="secondary"
@@ -162,29 +154,90 @@
           <div class="text-caption text-grey-8">Total Weight</div>
           <div class="text-body1 text-weight-bold">{{ formatDecimal(totals.total_weight_gm / 1000) }} kg</div>
         </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Total Received Qty</div>
-          <div class="text-body1 text-weight-bold text-positive">{{ totals.received_quantity }}</div>
-        </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Received Cost BDT</div>
-          <div class="text-body1 text-weight-bold text-positive">{{ formatFixed2(totals.received_cost_bdt) }}</div>
-        </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Total Damaged Qty</div>
-          <div class="text-body1 text-weight-bold text-warning">{{ totals.damaged_quantity }}</div>
-        </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Damaged Cost BDT</div>
-          <div class="text-body1 text-weight-bold text-warning">{{ formatFixed2(totals.damaged_cost_bdt) }}</div>
-        </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Total Stolen Qty</div>
-          <div class="text-body1 text-weight-bold text-negative">{{ totals.stolen_quantity }}</div>
-        </div>
-        <div class="shipment-summary-card">
-          <div class="text-caption text-grey-8">Stolen Cost BDT</div>
-          <div class="text-body1 text-weight-bold text-negative">{{ formatFixed2(totals.stolen_cost_bdt) }}</div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Ingestion Progress Bar (Visible in Warehouse Received status) -->
+    <q-card
+      v-if="canAddToInventory && !initialLoading"
+      flat
+      bordered
+      class="q-mb-md Ingestion-flow-card"
+      style="border-color: rgba(0,0,0,0.06); border-radius: 8px; background: #fafafa;"
+    >
+      <q-card-section class="q-py-md q-px-md">
+        <div class="row items-center justify-between no-wrap q-gutter-x-lg">
+          <!-- Flow steps -->
+          <div class="row items-center q-gutter-x-lg col">
+            <!-- Label -->
+            <div class="row items-center q-gutter-xs text-grey-8 font-medium">
+              <q-icon name="sync_alt" size="18px" class="text-primary text-weight-bold" />
+              <span class="text-subtitle2 text-weight-bold text-grey-9">Ingestion Flow</span>
+            </div>
+
+            <!-- Pipeline Separator -->
+            <div style="width: 1px; height: 32px; background: #e0e0e0;"></div>
+
+            <!-- Step 1: Rate and Weight -->
+            <div 
+              class="cursor-pointer row items-center q-gutter-xs text-weight-medium transition-colors hover-opacity"
+              :class="isAddToInventoryRateInvalid ? 'text-amber-9 text-weight-bold' : 'text-positive'"
+              @click="openShipmentInfoDialog"
+            >
+              <q-icon :name="isAddToInventoryRateInvalid ? 'warning' : 'check_circle'" size="18px" />
+              <div class="column">
+                <span class="text-weight-bold" style="font-size: 13px;">1. Rates & Weight</span>
+                <span class="text-caption text-grey-6" style="margin-top: -2px;">Configure rates & weight</span>
+              </div>
+              <q-tooltip anchor="top middle" self="bottom middle">Click to configure rates and cargo weight</q-tooltip>
+            </div>
+
+            <q-icon name="chevron_right" color="grey-4" size="18px" />
+
+            <!-- Step 2: Confirm Quantities (with Confirm All Perfect button below it) -->
+            <div 
+              class="row items-center q-gutter-xs text-weight-medium"
+              :class="confirmedItemIds.size < shipmentStore.shipmentItems.length ? 'text-amber-9 text-weight-bold' : 'text-positive'"
+            >
+              <q-icon :name="confirmedItemIds.size < shipmentStore.shipmentItems.length ? 'pending' : 'check_circle'" size="18px" />
+              <div class="column">
+                <span class="text-weight-bold" style="font-size: 13px;">2. Confirm Quantities ({{ confirmedItemIds.size }}/{{ shipmentStore.shipmentItems.length }})</span>
+                <!-- Button below the text -->
+                <div class="q-mt-xs">
+                  <q-btn 
+                    v-if="confirmedItemIds.size < shipmentStore.shipmentItems.length"
+                    size="xs" 
+                    color="primary" 
+                    unelevated
+                    no-caps 
+                    label="Confirm All Perfect" 
+                    class="q-px-sm text-weight-bold text-caption rounded-borders"
+                    style="height: 20px; font-size: 10px; line-height: 1;"
+                    @click="confirmAllItemsPerfect" 
+                  />
+                  <span v-else class="text-caption text-positive text-weight-bold">All Items Inspected</span>
+                </div>
+              </div>
+            </div>
+
+            <q-icon name="chevron_right" color="grey-4" size="18px" />
+
+            <!-- Process Ingestion Button as the final stage of flow -->
+            <div>
+              <q-btn
+                color="positive"
+                no-caps
+                dense
+                unelevated
+                label="Process Ingestion"
+                :disable="!canIngestWorkflowCommit"
+                :loading="shipmentStore.saving"
+                @click="showAddToInventoryConfirmDialog = true"
+                class="q-px-md text-weight-bold text-body2"
+                style="min-height: 36px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
+              />
+            </div>
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -213,32 +266,26 @@
               <th v-if="isColumnVisible('batch_manufacture')" class="text-left shipment-batch-col">Batch / MFG Date</th>
               <th v-if="isColumnVisible('method')" class="text-left shipment-method-col">Method</th>
               <th class="text-left shipment-tag-col">Tag</th>
-              <th v-if="isColumnVisible('price_gbp')" class="text-right shipment-price-col">Price GBP</th>
-              <th v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">Cost BDT</th>
+              <th
+                v-if="isColumnVisible('price_gbp')"
+                class="text-right shipment-price-col"
+              >
+                Price GBP
+              </th>
+              <th
+                v-if="isColumnVisible('cost_bdt')"
+                class="text-right shipment-cost-col"
+              >
+                Cost BDT
+              </th>
               <th
                 v-if="isColumnVisible('quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--quantity"
               >
                 Quantity
               </th>
-              <th
-                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--received"
-              >
-                Received Qty
-              </th>
-              <th
-                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--damaged"
-              >
-                Damaged Qty
-              </th>
-              <th
-                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--stolen"
-              >
-                Stolen Qty
-              </th>
+
+
               <th v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">Product Wt</th>
               <th v-if="isColumnVisible('package_weight')" class="text-right shipment-package-weight-col">Package Wt</th>
               <th v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">Actions</th>
@@ -262,7 +309,24 @@
                 class="shipment-item-name-cell shipment-name-col"
                 @click="openItemDetailsDialog(item)"
               >
-                {{ item.name ?? '-' }}
+                <div>{{ item.name ?? '-' }}</div>
+                <div class="q-mt-xs row q-gutter-xs" v-if="hasItemSplits(item)">
+                  <q-badge color="positive" dense v-if="getOrInitItemReceipt(item).standard > 0">
+                    Usable (Standard): {{ getOrInitItemReceipt(item).standard }}
+                  </q-badge>
+                  <q-badge color="orange" dense v-if="getOrInitItemReceipt(item).box_damage > 0">
+                    Box Damage: {{ getOrInitItemReceipt(item).box_damage }}
+                  </q-badge>
+                  <q-badge color="blue" dense v-if="getOrInitItemReceipt(item).boxless > 0">
+                    Boxless: {{ getOrInitItemReceipt(item).boxless }}
+                  </q-badge>
+                  <q-badge color="red" dense v-if="getOrInitItemReceipt(item).expired > 0">
+                    Expired / Damaged: {{ getOrInitItemReceipt(item).expired }}
+                  </q-badge>
+                  <q-badge color="grey-7" dense v-if="getOrInitItemReceipt(item).stolen > 0">
+                    Transit Loss: {{ getOrInitItemReceipt(item).stolen }}
+                  </q-badge>
+                </div>
               </td>
               <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">{{ item.product_id ?? '-' }}</td>
               <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">{{ item.barcode ?? '-' }}</td>
@@ -379,81 +443,8 @@
                   />
                 </q-popup-edit>
               </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--received"
-              >
-                <span class="cursor-pointer">{{ item.received_quantity }}</span>
-                <q-popup-edit
-                  :model-value="toPopupQuantityValue(item.received_quantity)"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericPopupSave(item, 'received_quantity', value)"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
-                    @keyup.enter="scope.set"
-                    type="number"
-                    dense
-                    outlined
-                    autofocus
-                  />
-                </q-popup-edit>
-              </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--damaged"
-              >
-                <span class="cursor-pointer">{{ item.damaged_quantity }}</span>
-                <q-popup-edit
-                  :model-value="toPopupQuantityValue(item.damaged_quantity)"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericPopupSave(item, 'damaged_quantity', value)"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
-                    @keyup.enter="scope.set"
-                    type="number"
-                    dense
-                    outlined
-                    autofocus
-                  />
-                </q-popup-edit>
-              </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--stolen"
-              >
-                <span class="cursor-pointer">{{ item.stolen_quantity }}</span>
-                <q-popup-edit
-                  :model-value="toPopupQuantityValue(item.stolen_quantity)"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericPopupSave(item, 'stolen_quantity', value)"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
-                    @keyup.enter="scope.set"
-                    type="number"
-                    dense
-                    outlined
-                    autofocus
-                  />
-                </q-popup-edit>
-              </td>
+
+
               <td v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">
                 <span class="cursor-pointer">{{ formatDecimal(item.product_weight) }}</span>
                 <q-popup-edit
@@ -501,27 +492,45 @@
                 </q-popup-edit>
               </td>
               <td v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">
-                <q-btn
-                  v-if="item.method === 'manual'"
-                  flat
-                  dense
-                  color="primary"
-                  round
-                  icon="o_edit"
-                  @click="openEditManualItemDialog(item)"
-                >
-                  <q-tooltip>Edit</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  color="negative"
-                  round
-                  icon="o_delete"
-                  @click="openDeleteDialog(item)"
-                >
-                  <q-tooltip>Delete</q-tooltip>
-                </q-btn>
+                <div class="row items-center justify-end no-wrap q-gutter-xs">
+                  <q-checkbox
+                    v-if="canAddToInventory"
+                    :model-value="confirmedItemIds.has(item.id)"
+                    @update:model-value="toggleItemConfirmed(item)"
+                    dense
+                    color="positive"
+                    class="q-mr-xs"
+                  >
+                    <q-tooltip>{{ confirmedItemIds.has(item.id) ? 'Mark as Unconfirmed' : 'Confirm as Perfect' }}</q-tooltip>
+                  </q-checkbox>
+                  <q-btn
+                    v-if="canAddToInventory"
+                    flat
+                    dense
+                    color="teal"
+                    round
+                    icon="fact_check"
+                    @click="openInspectDialog(item)"
+                  >
+                    <q-tooltip>Receive & Inspect (Split Batch)</q-tooltip>
+                  </q-btn>
+                  <q-btn flat round dense icon="more_vert">
+                    <q-menu auto-close>
+                      <q-list style="min-width: 100px">
+                        <q-item
+                          v-if="item.method === 'manual'"
+                          clickable
+                          @click="openEditManualItemDialog(item)"
+                        >
+                          <q-item-section>Edit</q-item-section>
+                        </q-item>
+                        <q-item clickable class="text-negative" @click="openDeleteDialog(item)">
+                          <q-item-section>Delete</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </div>
               </td>
             </tr>
             <tr v-if="shipmentStore.shipmentItems.length" class="shipment-total-row">
@@ -546,24 +555,8 @@
               >
                 {{ totals.quantity }}
               </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('received_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--received text-weight-bold"
-              >
-                {{ totals.received_quantity }}
-              </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('damaged_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--damaged text-weight-bold"
-              >
-                {{ totals.damaged_quantity }}
-              </td>
-              <td
-                v-if="!isDraftStatus && isColumnVisible('stolen_quantity')"
-                class="text-right shipment-qty-col shipment-qty-col--stolen text-weight-bold"
-              >
-                {{ totals.stolen_quantity }}
-              </td>
+
+
               <td v-if="isColumnVisible('product_weight')" class="text-right text-weight-bold">
                 {{ formatDecimal(totals.product_weight) }}
               </td>
@@ -959,18 +952,257 @@
     </q-dialog>
 
     <q-dialog v-model="showAddToInventoryConfirmDialog" persistent>
-      <q-card style="min-width: 420px; max-width: 500px; width: 92vw">
-        <q-card-section class="text-h6">Confirm Add To Inventory</q-card-section>
-        <q-card-section>
-          make sure the weight and received quantity is accurate as this will determint the purches cost in the inventory and based on that accounting entries will be done
+      <q-card style="min-width: 460px; max-width: 540px; width: 92vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">Confirm Process Ingestion</div>
+          <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
-        <q-card-actions align="right">
+        
+        <q-separator />
+
+        <q-card-section class="q-py-md">
+          <div class="text-subtitle2 q-mb-md text-grey-8">Receiving Summary:</div>
+          <q-list bordered separator class="rounded-borders">
+            <q-item>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">Usable (Standard)</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="positive" class="text-subtitle2 q-px-md">{{ receiptSummary.standard }} units</q-badge>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="receiptSummary.box_damage > 0">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">Box Damage</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="orange" class="text-subtitle2 q-px-md">{{ receiptSummary.box_damage }} units</q-badge>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="receiptSummary.boxless > 0">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">Boxless</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="blue" class="text-subtitle2 q-px-md">{{ receiptSummary.boxless }} units</q-badge>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="receiptSummary.expired > 0">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">Expired</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="red" class="text-subtitle2 q-px-md">{{ receiptSummary.expired }} units</q-badge>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="receiptSummary.stolen > 0">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">Missing / Stolen</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="grey-7" class="text-subtitle2 q-px-md">{{ receiptSummary.stolen }} units</q-badge>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          
+          <div class="q-mt-md text-caption text-grey-7 bg-grey-2 q-pa-sm rounded-borders">
+            ⚠️ <strong>Warning:</strong> Once committed, the batch splits and polymorphic notes will be generated. The purchase cost and accounting records will be permanently locked.
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" @click="showAddToInventoryConfirmDialog = false" />
           <q-btn
             color="positive"
-            label="Confirm"
+            no-caps
+            label="Commit Ingestion"
             :loading="shipmentStore.saving"
             @click="onConfirmAddToInventory"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showInspectDialog" persistent>
+      <q-card style="min-width: 580px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">Receive & Inspect</div>
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        
+        <q-separator />
+
+        <q-card-section v-if="inspectItem" class="q-pa-md">
+          <!-- Item info block -->
+          <div class="row items-center no-wrap q-mb-md q-pa-sm bg-grey-2 rounded-borders">
+            <q-avatar rounded size="64px" class="q-mr-md bg-white">
+              <SmartImage :src="inspectItem.image_url" />
+            </q-avatar>
+            <div class="col">
+              <div class="text-subtitle1 text-weight-bold leading-normal">{{ inspectItem.name }}</div>
+              <div class="text-caption text-grey-7 row q-col-gutter-x-sm">
+                <div>Code: {{ inspectItem.product_code ?? '-' }}</div>
+                <div>•</div>
+                <div>Expected Qty: <strong class="text-primary">{{ inspectItem.quantity }}</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Splits form using Quasar list -->
+          <q-list class="q-gutter-y-sm">
+            <!-- Usable -->
+            <q-item class="q-px-none items-center">
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Usable (Standard)</q-item-label>
+                <q-item-label caption>Perfect condition</q-item-label>
+              </q-item-section>
+              <q-item-section side style="width: 280px">
+                <q-input
+                  v-model.number="inspectForm.standard"
+                  type="number"
+                  outlined
+                  dense
+                  min="0"
+                  suffix="units"
+                />
+              </q-item-section>
+            </q-item>
+
+            <!-- Box Damage -->
+            <q-item class="q-px-none items-start">
+              <q-item-section class="q-pt-xs">
+                <q-item-label class="text-weight-bold text-orange-9">Box Damage</q-item-label>
+                <q-item-label caption>Dented/torn packaging</q-item-label>
+              </q-item-section>
+              <q-item-section side style="width: 280px" class="q-gutter-y-xs">
+                <q-input
+                  v-model.number="inspectForm.box_damage"
+                  type="number"
+                  outlined
+                  dense
+                  min="0"
+                  suffix="units"
+                />
+                <q-input
+                  v-if="inspectForm.box_damage > 0"
+                  v-model="inspectForm.box_damage_note"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                  placeholder="Packaging defect note..."
+                />
+              </q-item-section>
+            </q-item>
+
+            <!-- Boxless -->
+            <q-item class="q-px-none items-start">
+              <q-item-section class="q-pt-xs">
+                <q-item-label class="text-weight-bold text-blue-9">Boxless</q-item-label>
+                <q-item-label caption>No box/loose items</q-item-label>
+              </q-item-section>
+              <q-item-section side style="width: 280px" class="q-gutter-y-xs">
+                <q-input
+                  v-model.number="inspectForm.boxless"
+                  type="number"
+                  outlined
+                  dense
+                  min="0"
+                  suffix="units"
+                />
+                <q-input
+                  v-if="inspectForm.boxless > 0"
+                  v-model="inspectForm.boxless_note"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                  placeholder="Boxless description..."
+                />
+              </q-item-section>
+            </q-item>
+
+            <!-- Expired -->
+            <q-item class="q-px-none items-start">
+              <q-item-section class="q-pt-xs">
+                <q-item-label class="text-weight-bold text-red-9">Expired / Damaged</q-item-label>
+                <q-item-label caption>Out of date / damaged item</q-item-label>
+              </q-item-section>
+              <q-item-section side style="width: 280px" class="q-gutter-y-xs">
+                <q-input
+                  v-model.number="inspectForm.expired"
+                  type="number"
+                  outlined
+                  dense
+                  min="0"
+                  suffix="units"
+                />
+                <q-input
+                  v-if="inspectForm.expired > 0"
+                  v-model="inspectForm.expired_note"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                  placeholder="Damage/expiry notes..."
+                />
+              </q-item-section>
+            </q-item>
+
+            <!-- Missing / Stolen -->
+            <q-item class="q-px-none items-start">
+              <q-item-section class="q-pt-xs">
+                <q-item-label class="text-weight-bold text-grey-9">Transit Loss</q-item-label>
+                <q-item-label caption>Stolen / Missing cargo</q-item-label>
+              </q-item-section>
+              <q-item-section side style="width: 280px" class="q-gutter-y-xs">
+                <q-input
+                  v-model.number="inspectForm.stolen"
+                  type="number"
+                  outlined
+                  dense
+                  min="0"
+                  suffix="units"
+                />
+                <q-input
+                  v-if="inspectForm.stolen > 0"
+                  v-model="inspectForm.stolen_note"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                  placeholder="Transit shortage notes..."
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <!-- Summary bar -->
+          <div class="q-mt-lg q-pa-md rounded-borders row items-center justify-between" :class="inspectFormRemaining === 0 ? 'bg-green-1' : 'bg-red-1'">
+            <div class="row items-center q-gutter-xs">
+              <q-icon :name="inspectFormRemaining === 0 ? 'check_circle' : 'warning'" :color="inspectFormRemaining === 0 ? 'positive' : 'negative'" size="20px" />
+              <div class="text-weight-bold text-body2">
+                {{ inspectFormRemaining === 0 ? 'Splits are fully assigned' : `Remaining to distribute: ${inspectFormRemaining} units` }}
+              </div>
+            </div>
+            <div class="text-caption text-grey-8">
+              Sum: {{ inspectFormTotal }} / {{ inspectItem.quantity }}
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            color="primary"
+            no-caps
+            label="Apply Inspection"
+            :disabled="!isInspectFormValid"
+            @click="saveInspectSplits"
           />
         </q-card-actions>
       </q-card>
@@ -1072,6 +1304,73 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="showShipmentInfoDialog" persistent>
+      <q-card style="min-width: 480px; max-width: 90vw">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-h6">Edit Ingestion Settings</div>
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        
+        <q-separator />
+
+        <q-card-section class="q-gutter-md q-py-md">
+          <q-input
+            v-model.number="shipmentInfoForm.product_conversion_rate"
+            type="number"
+            step="0.0001"
+            label="Product Conversion Rate *"
+            outlined
+            dense
+            :rules="[val => val > 0 || 'Must be greater than 0']"
+          />
+          <q-input
+            v-model.number="shipmentInfoForm.cargo_conversion_rate"
+            type="number"
+            step="0.0001"
+            label="Cargo Conversion Rate *"
+            outlined
+            dense
+            :rules="[val => val > 0 || 'Must be greater than 0']"
+          />
+          <q-input
+            v-model.number="shipmentInfoForm.cargo_rate"
+            type="number"
+            step="0.01"
+            label="Cargo Rate *"
+            outlined
+            dense
+            :rules="[val => val > 0 || 'Must be greater than 0']"
+          />
+          <q-input
+            v-model.number="shipmentInfoForm.weight"
+            type="number"
+            step="0.001"
+            label="Expected Weight (kg)"
+            outlined
+            dense
+          />
+          <q-input
+            v-model.number="shipmentInfoForm.received_weight"
+            type="number"
+            step="0.001"
+            label="Received Weight (kg)"
+            outlined
+            dense
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="primary"
+            label="Save Details"
+            :loading="shipmentStore.saving"
+            @click="saveShipmentInfoDialog"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <ShipmentItemDetailsDialog
       v-model="showItemDetailsDialog"
       :item="selectedDetailsItem"
@@ -1094,7 +1393,7 @@ import { useMarketStore } from 'src/modules/market/stores/marketStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useShipmentStore } from '../stores/shipmentStore'
-import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus } from '../types'
+import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus, type ShipmentReceiveItemInput, type ShipmentReceiveItemSplit } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -1120,6 +1419,297 @@ const batchEditorItem = ref<ShipmentItem | null>(null)
 const batchEditorRows = ref<Array<{ id: number | null; batch_id: string; manufacturing_date: string }>>([])
 const selectedStatus = ref<ShipmentStatus>('Draft')
 const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
+
+const showInspectDialog = ref(false)
+const inspectItem = ref<ShipmentItem | null>(null)
+const receiptsMap = ref<Record<number, {
+  standard: number
+  box_damage: number
+  box_damage_note: string
+  expired: number
+  expired_note: string
+  boxless: number
+  boxless_note: string
+  stolen: number
+  stolen_note: string
+}>>({})
+
+const confirmedItemIds = ref<Set<number>>(new Set())
+
+const toggleItemConfirmed = async (item: ShipmentItem) => {
+  const currentStatus = confirmedItemIds.value.has(item.id)
+  
+  if (currentStatus) {
+    confirmedItemIds.value.delete(item.id)
+  } else {
+    getOrInitItemReceipt(item)
+    confirmedItemIds.value.add(item.id)
+  }
+  
+  const result = await shipmentStore.updateShipmentItem({
+    id: item.id,
+    patch: {
+      inspected: !currentStatus
+    }
+  })
+  
+  if (!result.success) {
+    if (currentStatus) {
+      confirmedItemIds.value.add(item.id)
+    } else {
+      confirmedItemIds.value.delete(item.id)
+    }
+  }
+}
+
+const confirmAllItemsPerfect = async () => {
+  const updates = shipmentStore.shipmentItems.map((item) => {
+    getOrInitItemReceipt(item)
+    confirmedItemIds.value.add(item.id)
+    return shipmentStore.updateShipmentItem({
+      id: item.id,
+      patch: {
+        inspected: true
+      }
+    })
+  })
+  
+  const results = await Promise.all(updates)
+  const failed = results.filter((r) => !r.success).length
+  if (failed > 0) {
+    $q.notify({
+      type: 'warning',
+      message: `Failed to confirm ${failed} item(s).`,
+    })
+  } else {
+    $q.notify({
+      type: 'positive',
+      message: 'All items marked as perfect and confirmed.',
+    })
+  }
+}
+
+const showShipmentInfoDialog = ref(false)
+const shipmentInfoForm = reactive({
+  product_conversion_rate: 0,
+  cargo_conversion_rate: 0,
+  cargo_rate: 0,
+  weight: null as number | null,
+  received_weight: null as number | null,
+})
+
+const openShipmentInfoDialog = () => {
+  const current = shipmentStore.selectedShipment
+  if (!current) return
+  shipmentInfoForm.product_conversion_rate = current.product_conversion_rate ?? 0
+  shipmentInfoForm.cargo_conversion_rate = current.cargo_conversion_rate ?? 0
+  shipmentInfoForm.cargo_rate = current.cargo_rate ?? 0
+  shipmentInfoForm.weight = current.weight
+  shipmentInfoForm.received_weight = current.received_weight
+  showShipmentInfoDialog.value = true
+}
+
+const saveShipmentInfoDialog = async () => {
+  if (!shipmentStore.selectedShipment) return
+  const result = await shipmentStore.updateShipment({
+    id: shipmentStore.selectedShipment.id,
+    patch: {
+      product_conversion_rate: Number(shipmentInfoForm.product_conversion_rate) || null,
+      cargo_conversion_rate: Number(shipmentInfoForm.cargo_conversion_rate) || null,
+      cargo_rate: Number(shipmentInfoForm.cargo_rate) || null,
+      weight: shipmentInfoForm.weight != null ? Number(shipmentInfoForm.weight) : null,
+      received_weight: shipmentInfoForm.received_weight != null ? Number(shipmentInfoForm.received_weight) : null,
+    }
+  })
+  if (result.success) {
+    showShipmentInfoDialog.value = false
+  }
+}
+
+const canIngestWorkflowCommit = computed(() => {
+  return !isAddToInventoryRateInvalid.value && confirmedItemIds.value.size === shipmentStore.shipmentItems.length
+})
+
+watch(
+  () => shipmentStore.shipmentItems,
+  (items) => {
+    if (!items || items.length === 0) return
+    items.forEach((item) => {
+      if (item.inspected) {
+        confirmedItemIds.value.add(item.id)
+      }
+    })
+  },
+  { immediate: true, deep: true }
+)
+
+const inspectForm = reactive({
+  standard: 0,
+  box_damage: 0,
+  box_damage_note: '',
+  expired: 0,
+  expired_note: '',
+  boxless: 0,
+  boxless_note: '',
+  stolen: 0,
+  stolen_note: '',
+})
+
+const getOrInitItemReceipt = (item: ShipmentItem): {
+  standard: number
+  box_damage: number
+  box_damage_note: string
+  expired: number
+  expired_note: string
+  boxless: number
+  boxless_note: string
+  stolen: number
+  stolen_note: string
+} => {
+  if (!receiptsMap.value[item.id]) {
+    const hasExistingData = item.received_quantity > 0 || item.damaged_quantity > 0 || item.stolen_quantity > 0
+    if (hasExistingData) {
+      receiptsMap.value[item.id] = {
+        standard: item.received_quantity,
+        box_damage: 0,
+        box_damage_note: '',
+        expired: item.damaged_quantity,
+        expired_note: '',
+        boxless: 0,
+        boxless_note: '',
+        stolen: item.stolen_quantity,
+        stolen_note: '',
+      }
+    } else {
+      receiptsMap.value[item.id] = {
+        standard: item.quantity,
+        box_damage: 0,
+        box_damage_note: '',
+        expired: 0,
+        expired_note: '',
+        boxless: 0,
+        boxless_note: '',
+        stolen: 0,
+        stolen_note: '',
+      }
+    }
+  }
+  return receiptsMap.value[item.id]!
+}
+
+const hasItemSplits = (item: ShipmentItem) => {
+  const receipt = receiptsMap.value[item.id]
+  if (!receipt) return false
+  return (
+    receipt.box_damage > 0 ||
+    receipt.expired > 0 ||
+    receipt.boxless > 0 ||
+    receipt.stolen > 0
+  )
+}
+
+const getReceivedQty = (item: ShipmentItem) => {
+  if (shipmentStore.selectedShipment?.inventory_added) {
+    return item.received_quantity ?? 0
+  }
+  const r = getOrInitItemReceipt(item)
+  return r.standard + r.box_damage + r.boxless
+}
+
+const getDamagedQty = (item: ShipmentItem) => {
+  if (shipmentStore.selectedShipment?.inventory_added) {
+    return item.damaged_quantity ?? 0
+  }
+  const r = getOrInitItemReceipt(item)
+  return r.expired
+}
+
+const getStolenQty = (item: ShipmentItem) => {
+  if (shipmentStore.selectedShipment?.inventory_added) {
+    return item.stolen_quantity ?? 0
+  }
+  const r = getOrInitItemReceipt(item)
+  return r.stolen
+}
+
+const openInspectDialog = (item: ShipmentItem) => {
+  inspectItem.value = item
+  const current = getOrInitItemReceipt(item)
+  inspectForm.standard = current.standard
+  inspectForm.box_damage = current.box_damage
+  inspectForm.box_damage_note = current.box_damage_note
+  inspectForm.expired = current.expired
+  inspectForm.expired_note = current.expired_note
+  inspectForm.boxless = current.boxless
+  inspectForm.boxless_note = current.boxless_note
+  inspectForm.stolen = current.stolen
+  inspectForm.stolen_note = current.stolen_note
+  showInspectDialog.value = true
+}
+
+const saveInspectSplits = async () => {
+  if (!inspectItem.value) return
+  const itemId = inspectItem.value.id
+  receiptsMap.value[itemId] = {
+    standard: Number(inspectForm.standard) || 0,
+    box_damage: Number(inspectForm.box_damage) || 0,
+    box_damage_note: inspectForm.box_damage_note.trim(),
+    expired: Number(inspectForm.expired) || 0,
+    expired_note: inspectForm.expired_note.trim(),
+    boxless: Number(inspectForm.boxless) || 0,
+    boxless_note: inspectForm.boxless_note.trim(),
+    stolen: Number(inspectForm.stolen) || 0,
+    stolen_note: inspectForm.stolen_note.trim(),
+  }
+  confirmedItemIds.value.add(itemId)
+  showInspectDialog.value = false
+  inspectItem.value = null
+
+  await shipmentStore.updateShipmentItem({
+    id: itemId,
+    patch: {
+      inspected: true
+    }
+  })
+}
+
+const inspectFormTotal = computed(() => {
+  return (
+    Number(inspectForm.standard || 0) +
+    Number(inspectForm.box_damage || 0) +
+    Number(inspectForm.expired || 0) +
+    Number(inspectForm.boxless || 0) +
+    Number(inspectForm.stolen || 0)
+  )
+})
+
+const inspectFormRemaining = computed(() => {
+  if (!inspectItem.value) return 0
+  return inspectItem.value.quantity - inspectFormTotal.value
+})
+
+const isInspectFormValid = computed(() => {
+  return inspectFormRemaining.value === 0
+})
+
+const receiptSummary = computed(() => {
+  let standard = 0
+  let box_damage = 0
+  let expired = 0
+  let boxless = 0
+  let stolen = 0
+
+  shipmentStore.shipmentItems.forEach((item) => {
+    const r = getOrInitItemReceipt(item)
+    standard += r.standard
+    box_damage += r.box_damage
+    expired += r.expired
+    boxless += r.boxless
+    stolen += r.stolen
+  })
+
+  return { standard, box_damage, expired, boxless, stolen }
+})
 const productSearch = ref('')
 const productSearchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name')
 const productSearchVendorCode = ref<string | null>(null)
@@ -1144,26 +1734,15 @@ const baseColumnSelectorOptions = [
   { label: 'Price GBP', value: 'price_gbp' },
   { label: 'Cost BDT', value: 'cost_bdt' },
   { label: 'Quantity', value: 'quantity' },
+
   { label: 'Product Wt', value: 'product_weight' },
   { label: 'Package Wt', value: 'package_weight' },
   { label: 'Actions', value: 'actions' },
 ] as const
 
-const statusColumnSelectorOptions = [
-  { label: 'Received Qty', value: 'received_quantity' },
-  { label: 'Damaged Qty', value: 'damaged_quantity' },
-  { label: 'Stolen Qty', value: 'stolen_quantity' },
-] as const
+type ShipmentColumnKey = (typeof baseColumnSelectorOptions)[number]['value']
 
-type ShipmentColumnKey =
-  | (typeof baseColumnSelectorOptions)[number]['value']
-  | (typeof statusColumnSelectorOptions)[number]['value']
-
-const columnSelectorOptions = computed(() =>
-  isDraftStatus.value
-    ? baseColumnSelectorOptions
-    : [...baseColumnSelectorOptions, ...statusColumnSelectorOptions],
-)
+const columnSelectorOptions = computed(() => baseColumnSelectorOptions)
 
 const columnSelectorOptionsUi = computed(() =>
   columnSelectorOptions.value.map((option) => ({ ...option })),
@@ -1183,7 +1762,7 @@ const allSelectableColumnsSelected = computed({
 })
 
 const visibleColumns = ref<ShipmentColumnKey[]>(
-  [...baseColumnSelectorOptions, ...statusColumnSelectorOptions].map((option) => option.value),
+  baseColumnSelectorOptions.map((option) => option.value),
 )
 const addProductFormRef = ref<QForm | null>(null)
 const editManualItemFormRef = ref<QForm | null>(null)
@@ -1286,9 +1865,6 @@ const shipmentTableColspan = computed(() => {
     (isColumnVisible('price_gbp') ? 1 : 0) +
     (isColumnVisible('cost_bdt') ? 1 : 0) +
     (isColumnVisible('quantity') ? 1 : 0) +
-    (!isDraftStatus.value && isColumnVisible('received_quantity') ? 1 : 0) +
-    (!isDraftStatus.value && isColumnVisible('damaged_quantity') ? 1 : 0) +
-    (!isDraftStatus.value && isColumnVisible('stolen_quantity') ? 1 : 0) +
     (isColumnVisible('product_weight') ? 1 : 0) +
     (isColumnVisible('package_weight') ? 1 : 0) +
     (isColumnVisible('actions') ? 1 : 0)
@@ -1581,7 +2157,33 @@ const statusDotColor = (status: ShipmentStatus | null | undefined) => {
 }
 
 const onConfirmAddToInventory = async () => {
-  const result = await shipmentStore.addShipmentToInventory()
+  const receipts: ShipmentReceiveItemInput[] = shipmentStore.shipmentItems.map((item) => {
+    const r = getOrInitItemReceipt(item)
+    const splits: ShipmentReceiveItemSplit[] = []
+
+    if (r.standard > 0) {
+      splits.push({ type: 'standard', qty: r.standard, note: null })
+    }
+    if (r.box_damage > 0) {
+      splits.push({ type: 'box_damage', qty: r.box_damage, note: r.box_damage_note || null })
+    }
+    if (r.expired > 0) {
+      splits.push({ type: 'expired', qty: r.expired, note: r.expired_note || null })
+    }
+    if (r.boxless > 0) {
+      splits.push({ type: 'boxless', qty: r.boxless, note: r.boxless_note || null })
+    }
+    if (r.stolen > 0) {
+      splits.push({ type: 'stolen', qty: r.stolen, note: r.stolen_note || null })
+    }
+
+    return {
+      shipmentItemId: item.id,
+      splits,
+    }
+  })
+
+  const result = await shipmentStore.addShipmentToInventory(receipts)
   if (result.success) {
     showAddToInventoryConfirmDialog.value = false
   }
@@ -1837,11 +2439,12 @@ const totals = computed(() => {
     (acc, item) => {
       const itemCostBdt = Number(calculateItemCostBdt(item) ?? 0)
       const itemQuantity = Number(item.quantity ?? 0)
-      const receivedQty = Number(item.received_quantity ?? 0)
-      const damagedQty = Number(item.damaged_quantity ?? 0)
-      const stolenQty = Number(item.stolen_quantity ?? 0)
       const productWeight = Number(item.product_weight ?? 0)
       const packageWeight = Number(item.package_weight ?? 0)
+
+      const receivedQty = getReceivedQty(item)
+      const damagedQty = getDamagedQty(item)
+      const stolenQty = getStolenQty(item)
 
       acc.price_gbp += Number(item.price_gbp ?? 0) * itemQuantity
       acc.cost_bdt += itemCostBdt * itemQuantity
@@ -2016,9 +2619,9 @@ const downloadShipmentExcel = async () => {
     'Price GBP',
     'Cost BDT',
     'Quantity',
-    'Received Qty',
-    'Damaged Qty',
-    'Stolen Qty',
+    'Usable (Standard)',
+    'Expired / Damaged',
+    'Transit Loss',
     'Product Weight',
     'Package Weight',
   ]
@@ -2058,9 +2661,9 @@ const downloadShipmentExcel = async () => {
       Number(item.price_gbp ?? 0),
       Number(calculateItemCostBdt(item) ?? 0),
       Number(item.quantity ?? 0),
-      Number(item.received_quantity ?? 0),
-      Number(item.damaged_quantity ?? 0),
-      Number(item.stolen_quantity ?? 0),
+      Number(getReceivedQty(item)),
+      Number(getDamagedQty(item)),
+      Number(getStolenQty(item)),
       Number(item.product_weight ?? 0),
       Number(item.package_weight ?? 0),
     ])
@@ -2086,9 +2689,14 @@ const downloadShipmentExcel = async () => {
     { width: 14 },
   ]
 
-  const numberColumns = [10, 11, 12, 13, 14, 15, 16, 17]
+  const numberColumns = [10, 11, 16, 17]
   numberColumns.forEach((columnIndex) => {
     sheet.getColumn(columnIndex).numFmt = '#,##0.00'
+  })
+
+  const integerColumns = [12, 13, 14, 15]
+  integerColumns.forEach((columnIndex) => {
+    sheet.getColumn(columnIndex).numFmt = '#,##0'
   })
 
   const shipmentCode = safeNamePart(shipmentStore.selectedShipment?.name ?? '') || 'shipment'
@@ -2228,7 +2836,7 @@ watch(showAddItemDialog, (open) => {
 
 .shipment-summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -2403,9 +3011,14 @@ watch(showAddItemDialog, (open) => {
 }
 
 .shipment-actions-col {
-  width: 90px;
-  min-width: 90px;
-  max-width: 90px;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.shipment-details-table :deep(td.shipment-actions-col) {
+  padding-left: 4px;
+  padding-right: 8px;
 }
 
 .shipment-details-table :deep(td:first-child),
@@ -2461,18 +3074,30 @@ watch(showAddItemDialog, (open) => {
 }
 
 .shipment-qty-col--quantity {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
   background: #eaf7ef;
 }
 
 .shipment-qty-col--received {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
   background: #eef4ff;
 }
 
 .shipment-qty-col--damaged {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
   background: #fff1f0;
 }
 
 .shipment-qty-col--stolen {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
   background: #fff8e9;
 }
 
@@ -2528,4 +3153,16 @@ watch(showAddItemDialog, (open) => {
   font-size: 0.75rem;
 }
 
+.border-subtle {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.leading-normal {
+  line-height: 1.4;
+}
+.transition-colors {
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+.hover-opacity:hover {
+  opacity: 0.8;
+}
 </style>

@@ -63,7 +63,14 @@
                 />
               </div>
             </div>
-<div class="row justify-end q-mt-md"> <q-btn
+<div class="row justify-end q-mt-md q-gutter-sm"> <q-btn
+                  color="primary"
+                  outline
+                  size="sm"
+                  icon="visibility"
+                  label="Details & Notes"
+                  @click="emit('view-details', item)"
+                /> <q-btn
                   color="negative"
                   outline
                   size="sm"
@@ -215,6 +222,7 @@ const emit = defineEmits<{
   (e: 'save-date', payload: { item: InventoryItemWithStock; field: 'manufacturing_date' | 'expire_date'; value: string | null }): void
   (e: 'delete-item', item: InventoryItemWithStock): void
   (e: 'toggle-select', payload: { itemId: number; checked: boolean }): void
+  (e: 'view-details', item: InventoryItemWithStock): void
 }>()
 
 const toNonNegativeInt = (value: unknown) => {

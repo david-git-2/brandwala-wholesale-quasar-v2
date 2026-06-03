@@ -26,6 +26,10 @@ import type {
   UpdateInvoiceAccountingPaymentInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
+  InventoryNote,
+  CreateInventoryNoteInput,
+  UpdateInventoryNoteInput,
+  DeleteInventoryNoteInput,
 } from '../types'
 
 const listInventoryItems = async (
@@ -320,6 +324,62 @@ const refreshShipmentInventoryAccountingSummaries = async (
   }
 }
 
+const listInventoryNotes = async (
+  payload: InventoryListQuery = {},
+): Promise<InventoryServiceResult<InventoryListPage<InventoryNote>>> => {
+  try {
+    const data = await inventoryRepository.listInventoryNotes(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load inventory notes.',
+    }
+  }
+}
+
+const createInventoryNote = async (
+  payload: CreateInventoryNoteInput,
+): Promise<InventoryServiceResult<InventoryNote>> => {
+  try {
+    const data = await inventoryRepository.createInventoryNote(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create inventory note.',
+    }
+  }
+}
+
+const updateInventoryNote = async (
+  payload: UpdateInventoryNoteInput,
+): Promise<InventoryServiceResult<InventoryNote>> => {
+  try {
+    const data = await inventoryRepository.updateInventoryNote(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update inventory note.',
+    }
+  }
+}
+
+const deleteInventoryNote = async (
+  payload: DeleteInventoryNoteInput,
+): Promise<InventoryServiceResult<void>> => {
+  try {
+    await inventoryRepository.deleteInventoryNote(payload)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete inventory note.',
+    }
+  }
+}
+
 export const inventoryService = {
   listInventoryItems,
   getInventoryItemById,
@@ -342,6 +402,10 @@ export const inventoryService = {
   createInventoryAccountingEntry,
   listShipmentInventoryAccountingSummaries,
   refreshShipmentInventoryAccountingSummaries,
+  listInventoryNotes,
+  createInventoryNote,
+  updateInventoryNote,
+  deleteInventoryNote,
   updateInventoryAccountingEntry: async (payload: UpdateInventoryAccountingEntryInput) => {
     try {
       const data = await inventoryRepository.updateInventoryAccountingEntry(payload)

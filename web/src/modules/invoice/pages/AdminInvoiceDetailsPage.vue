@@ -366,7 +366,7 @@
             <div>Remaining Return Amount: {{ formatAmount(getRemainingReturnAmount(selectedReturnInvoiceItem)) }}</div>
           </div>
           <div class="text-caption text-grey-7">
-            Returned qty cannot exceed sold qty. Open box return and normal return are tracked separately.
+            Returned qty cannot exceed sold qty. Normal, open box, and damaged returns are tracked separately.
           </div>
           <q-input
             v-model.number="returnNormalQtyInput"
@@ -383,6 +383,22 @@
             dense
             min="0"
             label="Open Box Return Qty"
+          />
+          <q-input
+            v-model.number="returnDamagedQtyInput"
+            type="number"
+            outlined
+            dense
+            min="0"
+            label="Damaged Return Qty"
+          />
+          <q-input
+            v-model="returnNoteInput"
+            type="text"
+            outlined
+            dense
+            label="Return Note / Reason"
+            placeholder="Enter reason for return..."
           />
           <q-input
             v-model.number="returnAmountInput"
@@ -456,7 +472,9 @@ const returnDialogOpen = ref(false)
 const selectedReturnInvoiceItemId = ref<number | null>(null)
 const returnNormalQtyInput = ref<number>(0)
 const returnOpenBoxQtyInput = ref<number>(0)
+const returnDamagedQtyInput = ref<number>(0)
 const returnAmountInput = ref<number>(0)
+const returnNoteInput = ref<string>('')
 const fallbackImageUrl = 'https://placehold.co/56x56?text=No+Image'
 
 const selectedStatus = ref<InvoiceStatus | null>(null)
@@ -489,13 +507,13 @@ const sortedSearchItems = computed(() =>
     return shipmentIdA - shipmentIdB
   }),
 )
-const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number }) =>
-  Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0)
-const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
+  Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0) + Number(row.return_damaged_quantity ?? 0)
+const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
   Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
 const getNetSellAmount = (row: { quantity: number; sell_price_amount: number; return_amount?: number }) =>
   Math.max(0, Number(row.quantity ?? 0) * Number(row.sell_price_amount ?? 0) - Number(row.return_amount ?? 0))
-const getNetCostAmount = (row: { quantity: number; cost_amount: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+const getNetCostAmount = (row: { quantity: number; cost_amount: number; return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
   Math.max(0, getNetQuantity(row) * Number(row.cost_amount ?? 0))
 const totalSellAmount = computed(() =>
   invoiceStore.invoiceItems.reduce(
@@ -522,7 +540,7 @@ const totalProfitAmount = computed(() => totalSellAmount.value - totalCostAmount
 const selectedReturnInvoiceItem = computed(() =>
   invoiceStore.invoiceItems.find((item) => item.id === selectedReturnInvoiceItemId.value) ?? null,
 )
-const getRemainingReturnQty = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number }) =>
+const getRemainingReturnQty = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
   Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
 const getRemainingReturnAmount = (row: { quantity: number; sell_price_amount: number; return_amount?: number }) =>
   Math.max(0, Number(row.quantity ?? 0) * Number(row.sell_price_amount ?? 0) - Number(row.return_amount ?? 0))
@@ -684,6 +702,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       quantity,
       return_normal_quantity: 0,
       return_open_box_quantity: 0,
+      return_damaged_quantity: 0,
       return_amount: 0,
       cost_amount: costAmount,
       sell_price_amount: sellPriceAmount,
@@ -811,7 +830,9 @@ const openReturnDialog = (invoiceItemId: number) => {
   selectedReturnInvoiceItemId.value = invoiceItemId
   returnNormalQtyInput.value = 0
   returnOpenBoxQtyInput.value = 0
+  returnDamagedQtyInput.value = 0
   returnAmountInput.value = 0
+  returnNoteInput.value = ''
   returnDialogOpen.value = true
 }
 
@@ -820,6 +841,7 @@ const setMaxRemainingQtyForReturn = () => {
   if (!item) return
   returnNormalQtyInput.value = getRemainingReturnQty(item)
   returnOpenBoxQtyInput.value = 0
+  returnDamagedQtyInput.value = 0
 }
 
 const setMaxRemainingAmountForReturn = () => {
@@ -831,7 +853,10 @@ const setMaxRemainingAmountForReturn = () => {
 const getDefaultReturnAmount = () => {
   const item = selectedReturnInvoiceItem.value
   if (!item) return 0
-  const totalQty = Number(returnNormalQtyInput.value ?? 0) + Number(returnOpenBoxQtyInput.value ?? 0)
+  const totalQty =
+    Number(returnNormalQtyInput.value ?? 0) +
+    Number(returnOpenBoxQtyInput.value ?? 0) +
+    Number(returnDamagedQtyInput.value ?? 0)
   const amount = totalQty * Number(item.sell_price_amount ?? 0)
   return Number(Math.max(0, amount).toFixed(2))
 }
@@ -850,8 +875,9 @@ const onConfirmReturn = async () => {
 
   const returnNormal = Math.max(0, Number(returnNormalQtyInput.value ?? 0))
   const returnOpenBox = Math.max(0, Number(returnOpenBoxQtyInput.value ?? 0))
+  const returnDamaged = Math.max(0, Number(returnDamagedQtyInput.value ?? 0))
   const returnAmount = Math.max(0, Number(returnAmountInput.value ?? 0))
-  const returnQty = returnNormal + returnOpenBox
+  const returnQty = returnNormal + returnOpenBox + returnDamaged
 
   if (returnQty <= 0 && returnAmount <= 0) {
     showWarningDialog('Enter return quantity or return amount.')
@@ -881,7 +907,9 @@ const onConfirmReturn = async () => {
     invoice_item_id: invoiceItem.id,
     return_normal_quantity: Number(returnNormal.toFixed(3)),
     return_open_box_quantity: Number(returnOpenBox.toFixed(3)),
+    return_damaged_quantity: Number(returnDamaged.toFixed(3)),
     return_amount: Number(returnAmount.toFixed(2)),
+    note: returnNoteInput.value?.trim() || null,
     actor: authStore.user?.id ?? null,
   })
   if (!applyReturnResult.success) return
@@ -890,7 +918,9 @@ const onConfirmReturn = async () => {
   selectedReturnInvoiceItemId.value = null
   returnNormalQtyInput.value = 0
   returnOpenBoxQtyInput.value = 0
+  returnDamagedQtyInput.value = 0
   returnAmountInput.value = 0
+  returnNoteInput.value = ''
   await invoiceStore.fetchInvoiceItems({
     tenant_id: authStore.tenantId,
     filters: { invoice_id: invoice.value.id },
@@ -1222,7 +1252,7 @@ watch(searchDialogOpen, (open) => {
 })
 
 watch(
-  [returnNormalQtyInput, returnOpenBoxQtyInput, selectedReturnInvoiceItem],
+  [returnNormalQtyInput, returnOpenBoxQtyInput, returnDamagedQtyInput, selectedReturnInvoiceItem],
   () => {
     returnAmountInput.value = getDefaultReturnAmount()
   },

@@ -185,10 +185,12 @@ export type InventoryStoreState = {
   items: InventoryItemWithStock[]
   stocks: InventoryStock[]
   movements: InventoryMovement[]
+  notes: InventoryNote[]
   shipmentInventoryAccountingSummaries: ShipmentInventoryAccountingSummary[]
   selectedItem: InventoryItem | null
   selectedStock: InventoryStock | null
   selectedMovement: InventoryMovement | null
+  selectedNote: InventoryNote | null
   total: number
   page: number
   page_size: number
@@ -275,3 +277,31 @@ export type UpdateInvoiceAccountingPaymentInput = {
   >
 }
 export type DeleteInvoiceAccountingPaymentInput = { id: number }
+
+export type InventoryNoteCategory =
+  | 'general'
+  | 'packaging_defect'
+  | 'product_defect'
+  | 'return_reason'
+  | 'warehouse_instruction'
+  | 'transit_loss'
+
+export type InventoryNote = {
+  id: number
+  tenant_id: number
+  product_id: number | null
+  inventory_item_id: number | null
+  movement_id: number | null
+  category: InventoryNoteCategory
+  content: string
+  created_by: string | null
+  created_at: string
+}
+
+export type CreateInventoryNoteInput = Omit<InventoryNote, 'id' | 'created_at'>
+export type UpdateInventoryNoteInput = {
+  id: number
+  patch: Partial<Omit<InventoryNote, 'id' | 'tenant_id' | 'created_at'>>
+}
+export type DeleteInventoryNoteInput = { id: number }
+

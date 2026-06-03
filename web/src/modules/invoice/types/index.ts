@@ -93,6 +93,7 @@ export type InvoiceItem = {
   quantity: number
   return_normal_quantity: number
   return_open_box_quantity: number
+  return_damaged_quantity: number
   return_amount: number
   cost_amount: number
   sell_price_amount: number
@@ -115,7 +116,9 @@ export type ApplyInvoiceItemReturnInput = {
   invoice_item_id: number
   return_normal_quantity: number
   return_open_box_quantity: number
+  return_damaged_quantity: number
   return_amount: number
+  note?: string | null
   actor?: string | null
 }
 

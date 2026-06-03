@@ -1219,6 +1219,71 @@ export type Database = {
           },
         ]
       }
+      inventory_notes: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: number
+          inventory_item_id: number | null
+          movement_id: number | null
+          product_id: number | null
+          tenant_id: number
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_item_id?: number | null
+          movement_id?: number | null
+          product_id?: number | null
+          tenant_id: number
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          inventory_item_id?: number | null
+          movement_id?: number | null
+          product_id?: number | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_notes_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_notes_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_notes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_stocks: {
         Row: {
           available_quantity: number
@@ -1488,6 +1553,7 @@ export type Database = {
           product_id: number | null
           quantity: number
           return_amount: number
+          return_damaged_quantity: number
           return_normal_quantity: number
           return_open_box_quantity: number
           sell_price_amount: number
@@ -1512,6 +1578,7 @@ export type Database = {
           product_id?: number | null
           quantity: number
           return_amount?: number
+          return_damaged_quantity?: number
           return_normal_quantity?: number
           return_open_box_quantity?: number
           sell_price_amount?: number
@@ -1536,6 +1603,7 @@ export type Database = {
           product_id?: number | null
           quantity?: number
           return_amount?: number
+          return_damaged_quantity?: number
           return_normal_quantity?: number
           return_open_box_quantity?: number
           sell_price_amount?: number
@@ -3141,6 +3209,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          inspected: boolean
           marker_tag: string | null
           method: string
           name: string | null
@@ -3162,6 +3231,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          inspected?: boolean
           marker_tag?: string | null
           method?: string
           name?: string | null
@@ -3183,6 +3253,7 @@ export type Database = {
           damaged_quantity?: number
           id?: number
           image_url?: string | null
+          inspected?: boolean
           marker_tag?: string | null
           method?: string
           name?: string | null
@@ -3674,6 +3745,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          inspected: boolean
           marker_tag: string | null
           method: string
           name: string | null
@@ -3718,6 +3790,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          inspected: boolean
           marker_tag: string | null
           method: string
           name: string | null
@@ -3748,7 +3821,9 @@ export type Database = {
         Args: {
           p_actor?: string
           p_invoice_item_id: number
+          p_note?: string
           p_return_amount: number
+          p_return_damaged_quantity: number
           p_return_normal_quantity: number
           p_return_open_box_quantity: number
           p_tenant_id: number
@@ -3763,6 +3838,7 @@ export type Database = {
           damaged_quantity: number
           id: number
           image_url: string | null
+          inspected: boolean
           marker_tag: string | null
           method: string
           name: string | null

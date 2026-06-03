@@ -52,6 +52,7 @@ export type ShipmentItem = {
   damaged_quantity: number
   stolen_quantity: number
   marker_tag: 'price_reviewed' | 'issue' | 'done' | null
+  inspected: boolean
   created_at: string
   updated_at: string
 }
@@ -158,6 +159,7 @@ export type UpdateShipmentItemInput = {
       | 'marker_tag'
       | 'product_weight'
       | 'package_weight'
+      | 'inspected'
     >
   >
 }
@@ -206,4 +208,15 @@ export type ShipmentStoreState = {
   loading: boolean
   saving: boolean
   error: string | null
+}
+
+export type ShipmentReceiveItemSplit = {
+  type: 'standard' | 'box_damage' | 'expired' | 'boxless' | 'stolen'
+  qty: number
+  note: string | null
+}
+
+export type ShipmentReceiveItemInput = {
+  shipmentItemId: number
+  splits: ShipmentReceiveItemSplit[]
 }

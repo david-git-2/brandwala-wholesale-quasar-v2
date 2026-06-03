@@ -14,6 +14,10 @@ import type {
   UpdateInventoryItemInput,
   UpdateInventoryMovementInput,
   UpdateInventoryStockInput,
+  InventoryNote,
+  CreateInventoryNoteInput,
+  UpdateInventoryNoteInput,
+  DeleteInventoryNoteInput,
 } from '../types'
 
 export const useInventoryStore = defineStore('inventory', {
@@ -21,12 +25,14 @@ export const useInventoryStore = defineStore('inventory', {
     items: [],
     stocks: [],
     movements: [],
+    notes: [],
     shipmentInventoryAccountingSummaries: [],
     accountingEntries: [],
     accountingPayments: [],
     selectedItem: null,
     selectedStock: null,
     selectedMovement: null,
+    selectedNote: null,
     selectedAccountingEntry: null,
     selectedAccountingPayment: null,
     total: 0,
@@ -489,6 +495,106 @@ export const useInventoryStore = defineStore('inventory', {
           return result
         }
 
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchInventoryNotes(payload: InventoryListQuery = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.listInventoryNotes(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load inventory notes.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.notes = result.data?.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createInventoryNote(payload: CreateInventoryNoteInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.createInventoryNote(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create inventory note.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.notes.unshift(result.data)
+        }
+
+        showSuccessNotification('Inventory note created successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateInventoryNote(payload: UpdateInventoryNoteInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.updateInventoryNote(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update inventory note.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          const index = this.notes.findIndex((row) => row.id === result.data?.id)
+          if (index >= 0) {
+            this.notes.splice(index, 1, result.data)
+          }
+
+          if (this.selectedNote?.id === result.data.id) {
+            this.selectedNote = result.data
+          }
+        }
+
+        showSuccessNotification('Inventory note updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteInventoryNote(payload: DeleteInventoryNoteInput) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await inventoryService.deleteInventoryNote(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete inventory note.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        this.notes = this.notes.filter((row) => row.id !== payload.id)
+        if (this.selectedNote?.id === payload.id) {
+          this.selectedNote = null
+        }
+
+        showSuccessNotification('Inventory note deleted successfully.')
         return result
       } finally {
         this.saving = false

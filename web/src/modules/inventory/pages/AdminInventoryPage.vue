@@ -131,6 +131,10 @@
       :shipment-options="warehouseReceivedShipmentOptions"
       @save="onSaveItem"
     />
+    <InventoryDetailsDialog
+      v-model="detailsDialogOpen"
+      :item="selectedDetailItem"
+    />
     <InventoryCard
       v-if="inventoryView === 'detailed'"
       :items="inventoryStore.items"
@@ -139,6 +143,7 @@
       @save-date="onSaveDate"
       @delete-item="onDeleteItem"
       @toggle-select="onToggleSelect"
+      @view-details="openDetailsDialog"
     />
     <q-table
       v-else-if="inventoryView === 'table'"
@@ -176,6 +181,11 @@
           {{ props.row.shipment?.shipment?.name ?? '-' }}
         </q-td>
       </template>
+      <template #body-cell-actions="props">
+        <q-td :props="props">
+          <q-btn flat round dense icon="visibility" color="primary" @click="openDetailsDialog(props.row)" />
+        </q-td>
+      </template>
       <template #header-cell-select="props">
         <q-th :props="props">
           <q-checkbox
@@ -188,7 +198,7 @@
         <div class="full-width text-center text-grey-7 q-py-md">No inventory items found.</div>
       </template>
     </q-table>
-    <InventoryCompactCard v-else :items="inventoryStore.items" />
+    <InventoryCompactCard v-else :items="inventoryStore.items" @view-details="openDetailsDialog" />
 
     <FilterSidebar v-model="filterDrawerOpen" title="Filters">
       <q-select
@@ -233,6 +243,7 @@ import FilterSidebar from 'src/components/FilterSidebar.vue'
 import InventoryCard from '../components/InventoryCard.vue'
 import InventoryCompactCard from '../components/InventoryCompactCard.vue'
 import InventoryItemDialog from '../components/InventoryItemDialog.vue'
+import InventoryDetailsDialog from '../components/InventoryDetailsDialog.vue'
 import { useInventoryStore } from '../stores/inventoryStore'
 import type { CreateInventoryItemInput, InventoryItemWithStock } from '../types'
 
@@ -243,6 +254,8 @@ const productStore = useProductStore()
 const $q = useQuasar()
 
 const isAddDialogOpen = ref(false)
+const detailsDialogOpen = ref(false)
+const selectedDetailItem = ref<InventoryItemWithStock | null>(null)
 const searchField = ref<'name' | 'barcode' | 'product_code'>('name')
 const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
@@ -295,6 +308,7 @@ const inventoryTableColumns = [
   { name: 'stolen', label: 'Stolen', field: (row: InventoryItemWithStock) => row.quantities.stolen, align: 'right' as const },
   { name: 'expired', label: 'Expired', field: (row: InventoryItemWithStock) => row.quantities.expired, align: 'right' as const },
   { name: 'open_box', label: 'Open Box', field: (row: InventoryItemWithStock) => row.quantities.open_box, align: 'right' as const },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' as const },
 ]
 const alwaysVisibleInventoryTableColumns = ['select', 'image', 'name'] as const
 const selectableInventoryTableColumns = inventoryTableColumns
@@ -361,6 +375,11 @@ const activeFilterCount = computed(() => {
   if (shipmentIdFilter.value != null) count += 1
   return count
 })
+
+const openDetailsDialog = (item: InventoryItemWithStock) => {
+  selectedDetailItem.value = item
+  detailsDialogOpen.value = true
+}
 
 const fetchInventoryItems = async () => {
   const tenantId = authStore.tenantId

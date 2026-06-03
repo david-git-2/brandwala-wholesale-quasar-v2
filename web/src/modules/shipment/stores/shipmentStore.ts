@@ -22,6 +22,7 @@ import type {
   UpdateShipmentItemInput,
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
+  ShipmentReceiveItemInput,
 } from '../types'
 
 export const useShipmentStore = defineStore('shipment', {
@@ -512,7 +513,7 @@ export const useShipmentStore = defineStore('shipment', {
       }
     },
 
-    async addShipmentToInventory() {
+    async addShipmentToInventory(receipts: ShipmentReceiveItemInput[]) {
       this.saving = true
       this.error = null
 
@@ -524,64 +525,124 @@ export const useShipmentStore = defineStore('shipment', {
           return result
         }
 
-        const validItems = this.shipmentItems.filter((item) => (item.received_quantity ?? 0) > 0)
-        if (!validItems.length) {
-          const result = { success: false as const, error: 'No received quantity found to add.' }
-          this.error = result.error
-          handleApiFailure(result, result.error)
-          return result
-        }
+        // Loop over each item receipt and process splits
+        for (const receipt of receipts) {
+          const item = this.shipmentItems.find((x) => x.id === receipt.shipmentItemId)
+          if (!item) continue
 
-        const itemPayload = validItems.map((item) => ({
-          tenant_id: shipment.tenant_id,
-          source_type: 'shipment' as const,
-          source_id: item.id,
-          product_id: item.product_id ?? null,
-          name: item.name ?? 'Shipment Item',
-          image_url: item.image_url ?? null,
-          cost: calculateCostBdt({
+          const itemCost = calculateCostBdt({
             productWeight: item.product_weight,
             packageWeight: item.package_weight,
             cargoRate: shipment.cargo_rate,
             priceGbp: item.price_gbp,
             productConversionRate: shipment.product_conversion_rate,
             cargoConversionRate: shipment.cargo_conversion_rate,
-          }),
-          barcode: item.barcode ?? null,
-          product_code: item.product_code ?? null,
-          manufacturing_date: null,
-          expire_date: null,
-          status: 'active' as const,
-        }))
+          })
 
-        const createItemsResult = await inventoryService.createInventoryItemsBulk(itemPayload)
-        if (!createItemsResult.success || !createItemsResult.data?.length) {
-          this.error = createItemsResult.error ?? 'Failed to create inventory entries.'
-          handleApiFailure(createItemsResult, this.error)
-          return createItemsResult
+          for (const split of receipt.splits) {
+            if (split.qty <= 0) continue
+
+            // Determine suffix name based on condition type
+            let conditionSuffix = ''
+            if (split.type === 'box_damage') conditionSuffix = ' (Box Damage)'
+            else if (split.type === 'expired') conditionSuffix = ' (Expired)'
+            else if (split.type === 'boxless') conditionSuffix = ' (Boxless)'
+            else if (split.type === 'stolen') conditionSuffix = ' (Stolen/Missing)'
+
+            // 1. Create the inventory item (batch)
+            const itemResult = await inventoryService.createInventoryItem({
+              tenant_id: shipment.tenant_id,
+              source_type: 'shipment',
+              source_id: item.id,
+              product_id: item.product_id ?? null,
+              name: `${item.name ?? 'Shipment Item'}${conditionSuffix}`,
+              image_url: item.image_url ?? null,
+              cost: split.type === 'expired' || split.type === 'stolen' ? 0 : itemCost,
+              barcode: item.barcode ?? null,
+              product_code: item.product_code ?? null,
+              manufacturing_date: null,
+              expire_date: null,
+              status: 'active',
+            })
+
+            if (!itemResult.success || !itemResult.data) {
+              throw new Error(itemResult.error ?? 'Failed to create inventory item sub-batch.')
+            }
+
+            const createdItem = itemResult.data
+
+            // 2. Create the stock pool record
+            const stockResult = await inventoryService.createInventoryStock({
+              inventory_item_id: createdItem.id,
+              available_quantity: split.type === 'standard' ? split.qty : 0,
+              reserved_quantity: 0,
+              damaged_quantity: 0,
+              stolen_quantity: split.type === 'stolen' ? split.qty : 0,
+              expired_quantity: split.type === 'expired' ? split.qty : 0,
+              open_box_quantity: (split.type === 'box_damage' || split.type === 'boxless') ? split.qty : 0,
+            })
+
+            if (!stockResult.success) {
+              throw new Error(stockResult.error ?? 'Failed to create inventory stock sub-batch.')
+            }
+
+            // 3. Create the note record if provided
+            if (split.note && split.note.trim()) {
+              let noteCategory: 'packaging_defect' | 'product_defect' | 'transit_loss' = 'packaging_defect'
+              if (split.type === 'expired') noteCategory = 'product_defect'
+              else if (split.type === 'stolen') noteCategory = 'transit_loss'
+
+              const noteResult = await inventoryService.createInventoryNote({
+                tenant_id: shipment.tenant_id,
+                product_id: item.product_id ?? null,
+                inventory_item_id: createdItem.id,
+                movement_id: null,
+                category: noteCategory,
+                content: split.note.trim(),
+                created_by: null,
+              })
+
+              if (!noteResult.success) {
+                throw new Error(noteResult.error ?? 'Failed to create inventory note for split.')
+              }
+            }
+          }
+
+          // Compute received, damaged, stolen totals for database update
+          let receivedQty = 0
+          let damagedQty = 0
+          let stolenQty = 0
+
+          for (const split of receipt.splits) {
+            if (split.type === 'standard' || split.type === 'box_damage' || split.type === 'boxless') {
+              receivedQty += split.qty
+            } else if (split.type === 'expired') {
+              damagedQty += split.qty
+            } else if (split.type === 'stolen') {
+              stolenQty += split.qty
+            }
+          }
+
+          // Update the shipment item in the DB with these received, damaged, stolen totals
+          const updateItemResult = await this.updateShipmentItem({
+            id: item.id,
+            patch: {
+              received_quantity: receivedQty,
+              damaged_quantity: damagedQty,
+              stolen_quantity: stolenQty,
+            },
+          })
+          if (!updateItemResult.success) {
+            throw new Error(updateItemResult.error ?? 'Failed to update shipment item received totals.')
+          }
         }
 
-        const stocksPayload = createItemsResult.data.map((row, index) => ({
-          inventory_item_id: row.id,
-          available_quantity: Number(validItems[index]?.received_quantity ?? 0),
-          reserved_quantity: 0,
-          damaged_quantity: 0,
-          stolen_quantity: 0,
-          expired_quantity: 0,
-          open_box_quantity: 0,
-        }))
-
-        const createStocksResult = await inventoryService.createInventoryStocksBulk(stocksPayload)
-        if (!createStocksResult.success) {
-          this.error = createStocksResult.error ?? 'Failed to create inventory stocks.'
-          handleApiFailure(createStocksResult, this.error)
-          return createStocksResult
-        }
-
+        // Update shipment status as completed adding to inventory
         const updateShipmentResult = await this.updateShipment({
           id: shipment.id,
           patch: { inventory_added: true, status: 'Added to Inventory' },
         })
+
         if (!updateShipmentResult.success) {
           return updateShipmentResult
         }
@@ -591,8 +652,13 @@ export const useShipmentStore = defineStore('shipment', {
           shipment_id: shipment.id,
         })
 
-        showSuccessNotification('Shipment items added to inventory successfully.')
+        showSuccessNotification('Shipment split items added to inventory successfully.')
         return { success: true as const }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to add shipment to inventory.'
+        this.error = msg
+        handleApiFailure({ success: false, error: msg }, msg)
+        return { success: false as const, error: msg }
       } finally {
         this.saving = false
       }

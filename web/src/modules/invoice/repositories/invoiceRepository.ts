@@ -216,7 +216,9 @@ const applyInvoiceItemReturn = async (
     p_invoice_item_id: payload.invoice_item_id,
     p_return_normal_quantity: payload.return_normal_quantity,
     p_return_open_box_quantity: payload.return_open_box_quantity,
+    p_return_damaged_quantity: payload.return_damaged_quantity,
     p_return_amount: payload.return_amount,
+    p_note: payload.note ?? null,
     p_actor: payload.actor ?? null,
   })
   if (error) throw error
