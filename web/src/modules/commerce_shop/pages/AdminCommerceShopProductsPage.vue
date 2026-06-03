@@ -1,7 +1,7 @@
 <template>
-  <StoreProductsBrowser mode="admin" module-variant="commerce_v2" />
+  <CommerceStoreProductsBrowser mode="admin" module-variant="commerce_v2" />
 </template>
 
 <script setup lang="ts">
-import StoreProductsBrowser from 'src/modules/store/components/StoreProductsBrowser.vue'
+import CommerceStoreProductsBrowser from '../components/CommerceStoreProductsBrowser.vue'
 </script>
