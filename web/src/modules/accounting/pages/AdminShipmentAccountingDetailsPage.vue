@@ -187,7 +187,12 @@
           </tr>
           <tr v-for="(row, index) in shipmentAccountingEntries" :key="row.id">
             <td>{{ index + 1 }}</td>
-            <td>{{ row.invoice_id ? `#${row.invoice_id}` : '-' }}</td>
+            <td>
+              {{ row.invoice_id ? `#${row.invoice_id}` : '-' }}
+              <span v-if="row.type" class="text-caption text-grey-6 text-lowercase q-ml-xs">
+                ({{ row.type }})
+              </span>
+            </td>
             <td>{{ row.entry_date ?? '-' }}</td>
             <td class="text-right">{{ row.quantity }}</td>
             <td class="text-right">{{ formatFixed2(row.total_cost_amount) }}</td>
@@ -223,6 +228,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { supabase } from 'src/boot/supabase'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
@@ -242,7 +248,7 @@ const invoiceStore = useInvoiceStore()
 const shipmentAccountingEntries = ref<InventoryAccountingEntry[]>([])
 const accountingLoading = ref(false)
 const accountingError = ref<string | null>(null)
-const shipmentInvoicePaidById = ref<Record<number, number>>({})
+const shipmentInvoicePaidById = ref<Record<string, number>>({})
 
 const shipmentId = computed(() => {
   const parsed = Number(route.params.id)
@@ -368,36 +374,58 @@ const fetchShipmentInvoicePaidAmounts = async () => {
     return
   }
 
-  const invoiceIds = Array.from(
+  const normalInvoiceIds = Array.from(
     new Set(
       shipmentAccountingEntries.value
+        .filter((row) => row.type === 'normal')
         .map((row) => Number(row.invoice_id))
         .filter((id) => Number.isFinite(id) && id > 0),
     ),
   )
 
-  if (!invoiceIds.length) {
-    shipmentInvoicePaidById.value = {}
-    return
-  }
-
-  const invoicesResult = await invoiceStore.fetchInvoices({
-    tenant_id: tenantId,
-    filters: { id: invoiceIds },
-    operators: { id: 'in' },
-    page: 1,
-    page_size: Math.max(invoiceIds.length, 100),
-    sortBy: 'id',
-    sortOrder: 'asc',
-  })
-  if (!invoicesResult.success) {
-    shipmentInvoicePaidById.value = {}
-    return
-  }
-
-  shipmentInvoicePaidById.value = Object.fromEntries(
-    (invoiceStore.invoices ?? []).map((invoice) => [invoice.id, Number(invoice.paid_amount ?? 0)]),
+  const commerceInvoiceIds = Array.from(
+    new Set(
+      shipmentAccountingEntries.value
+        .filter((row) => row.type === 'commerce')
+        .map((row) => Number(row.invoice_id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
   )
+
+  const paidAmounts: Record<string, number> = {}
+
+  // Fetch normal invoice paid amounts
+  if (normalInvoiceIds.length > 0) {
+    const invoicesResult = await invoiceStore.fetchInvoices({
+      tenant_id: tenantId,
+      filters: { id: normalInvoiceIds },
+      operators: { id: 'in' },
+      page: 1,
+      page_size: Math.max(normalInvoiceIds.length, 100),
+      sortBy: 'id',
+      sortOrder: 'asc',
+    })
+    if (invoicesResult.success) {
+      ;(invoiceStore.invoices ?? []).forEach((invoice) => {
+        paidAmounts[`normal_${invoice.id}`] = Number(invoice.paid_amount ?? 0)
+      })
+    }
+  }
+
+  // Fetch commerce invoice paid amounts
+  if (commerceInvoiceIds.length > 0) {
+    const { data: commerceInvoices, error: commerceErr } = await supabase
+      .from('commerce_invoices')
+      .select('id, amount_paid')
+      .in('id', commerceInvoiceIds)
+    if (!commerceErr && commerceInvoices) {
+      commerceInvoices.forEach((invoice) => {
+        paidAmounts[`commerce_${invoice.id}`] = Number(invoice.amount_paid ?? 0)
+      })
+    }
+  }
+
+  shipmentInvoicePaidById.value = paidAmounts
 }
 
 const onBack = async () => {

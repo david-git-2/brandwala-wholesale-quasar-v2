@@ -41,8 +41,8 @@ export type InventoryAccountingEntry = {
   shipment_item_id: number | null
   product_id: number | null
   quantity: number
-  return_quantity: number
-  return_amount: number
+  return_quantity?: number
+  return_amount?: number
   cost_amount: number
   sell_price_amount: number
   total_cost_amount: number
@@ -51,9 +51,10 @@ export type InventoryAccountingEntry = {
   status: InventoryAccountingStatus
   entry_date: string
   note: string | null
-  created_by: string | null
+  created_by?: string | null
   created_at: string
-  updated_at: string
+  updated_at?: string
+  type?: 'normal' | 'commerce'
 }
 
 export type InvoiceAccountingPayment = {

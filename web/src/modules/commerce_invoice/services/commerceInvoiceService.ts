@@ -89,6 +89,7 @@ export const commerceInvoiceService = {
       cod: number
       delivered_by?: string
       amount_paid?: number
+      discount_amount?: number
     },
   ) =>
     wrap<void>(

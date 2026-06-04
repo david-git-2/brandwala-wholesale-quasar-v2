@@ -170,7 +170,8 @@ const syncInvoiceTotals = async (invoiceId: number) => {
   const isDeliveryInclusive = Boolean(orderRow?.is_delivery_charge_inclusive)
   const deliveryChargeForTotal = isDeliveryInclusive ? 0 : deliveryCharge
 
-  const totalAmount = round2(subtotal + deliveryChargeForTotal)
+  const discountAmount = Number(invoice.discount_amount) || 0
+  const totalAmount = Math.max(0, round2(subtotal + deliveryChargeForTotal - discountAmount))
   const amountDue = Math.max(0, round2(totalAmount - Number(invoice.amount_paid || 0)))
   const isPaid = Number(invoice.amount_paid || 0) >= totalAmount
 
@@ -717,6 +718,7 @@ const updateCommerceInvoiceCharges = async (
     cod: number
     delivered_by?: string
     amount_paid?: number
+    discount_amount?: number
   },
 ) => {
   await supabase.from('commerce_invoices').update(charges).eq('id', invoiceId)

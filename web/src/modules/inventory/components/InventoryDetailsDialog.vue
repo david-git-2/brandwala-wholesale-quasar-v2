@@ -365,7 +365,7 @@ const formattedQuantities = computed<Record<string, { val: number; bg: string }>
   const stock = draftStock.value || props.item.stock
   const quantities = stock ? {
     available: stock.available_quantity,
-    openBox: stock.open_box_quantity,
+    open_box: stock.open_box_quantity,
     reserved: stock.reserved_quantity,
     damaged: stock.damaged_quantity,
     stolen: stock.stolen_quantity,
@@ -374,7 +374,7 @@ const formattedQuantities = computed<Record<string, { val: number; bg: string }>
 
   return {
     available: { val: quantities.available, bg: 'bg-green-1' },
-    'open box': { val: quantities.openBox ?? 0, bg: 'bg-blue-1' },
+    'open box': { val: quantities.open_box ?? 0, bg: 'bg-blue-1' },
     reserved: { val: quantities.reserved, bg: 'bg-indigo-1' },
     damaged: { val: quantities.damaged, bg: 'bg-red-1' },
     stolen: { val: quantities.stolen, bg: 'bg-orange-1' },
@@ -392,7 +392,7 @@ const movementForm = ref({
   quantity: 1,
   condition: 'box_damage' as 'standard' | 'box_damage' | 'expired' | 'boxless' | 'stolen',
   nameSuffix: ' (Box Damage)',
-  targetItem: null as { id: number; name: string; stock: InventoryStock | null } | null,
+  targetItem: null as { id: number; name: string; cost: number | null; stock: InventoryStock | null } | null,
   note: '',
 })
 
@@ -531,6 +531,7 @@ const onSubmitMovement = async () => {
         source_type: 'manual',
         source_id: null,
         product_id: props.item.product_id,
+        image_url: props.item.image_url,
         cost: movementForm.value.targetItem.cost,
         stock: movementForm.value.targetItem.stock,
         barcode: null,

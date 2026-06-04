@@ -67,6 +67,7 @@ const INVENTORY_ACCOUNTING_ENTRY_FIELDS = [
   'created_by',
   'created_at',
   'updated_at',
+  'type',
 ] as const
 
 const INVOICE_ACCOUNTING_PAYMENT_FIELDS = [
@@ -91,7 +92,7 @@ const listInventoryAccountingEntries = async (
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase.from('inventory_accounting_entries').select('*', { count: 'exact' })
+  let query = supabase.from('v_shipment_accounting_ledger').select('*', { count: 'exact' })
   if (typeof payload.tenant_id === 'number') {
     query = query.eq('tenant_id', payload.tenant_id)
   }

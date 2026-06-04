@@ -220,6 +220,7 @@ const applyInvoiceItemReturn = async (
     p_return_amount: payload.return_amount,
     p_note: payload.note ?? null,
     p_actor: payload.actor ?? null,
+    p_return_to_new_batch: payload.return_to_new_batch ?? false,
   })
   if (error) throw error
   if (!data || typeof data !== 'object') {

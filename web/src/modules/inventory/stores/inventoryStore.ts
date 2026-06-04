@@ -18,6 +18,8 @@ import type {
   CreateInventoryNoteInput,
   UpdateInventoryNoteInput,
   DeleteInventoryNoteInput,
+  InventoryStock,
+  InventoryItemWithStock,
 } from '../types'
 
 export const useInventoryStore = defineStore('inventory', {

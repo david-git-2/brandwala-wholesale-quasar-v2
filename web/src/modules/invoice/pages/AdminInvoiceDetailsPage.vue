@@ -94,7 +94,7 @@
           </div>
         </div>
         <div class="row q-col-gutter-md">
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-4">
             <q-card flat bordered>
               <q-card-section>
                 <div class="text-caption text-grey-7">Total Returned Amount</div>
@@ -102,7 +102,33 @@
               </q-card-section>
             </q-card>
           </div>
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-4">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey-7">Discount</div>
+                <div class="text-h6 text-weight-bold text-orange cursor-pointer">
+                  {{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}
+                  <q-popup-edit
+                    :model-value="Number(invoice?.discount_amount ?? 0)"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="onUpdateDiscount"
+                  >
+                    <q-input
+                      :model-value="Number(invoice?.discount_amount ?? 0)"
+                      type="number"
+                      dense
+                      autofocus
+                      min="0"
+                      label="Invoice Discount"
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-4">
             <q-card flat bordered>
               <q-card-section>
                 <div class="text-caption text-grey-7">Outstanding Amount</div>
@@ -403,6 +429,12 @@
             label="Return Note / Reason"
             placeholder="Enter reason for return..."
           />
+          <q-checkbox
+            v-model="returnToNewBatchInput"
+            label="Return to a new separate batch (group)"
+            color="warning"
+            class="q-my-xs"
+          />
           <q-input
             v-model.number="returnAmountInput"
             type="number"
@@ -478,6 +510,7 @@ const returnOpenBoxQtyInput = ref<number>(0)
 const returnDamagedQtyInput = ref<number>(0)
 const returnAmountInput = ref<number>(0)
 const returnNoteInput = ref<string>('')
+const returnToNewBatchInput = ref<boolean>(false)
 const fallbackImageUrl = 'https://placehold.co/56x56?text=No+Image'
 
 const selectedStatus = ref<InvoiceStatus | null>(null)
@@ -661,10 +694,11 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     return
   }
 
-  const previousAvailable = Number(item.quantities.available ?? 0)
-  const previousUsable = Number(item.quantities.usable ?? 0)
-  const previousOpenBox = Number(item.quantities.open_box ?? 0)
-  if (previousUsable <= 0) {
+  const previousAvailable = Number(stock.available_quantity ?? 0)
+  const previousOpenBox = Number(stock.open_box_quantity ?? 0)
+  const previousUsable = Math.max(0, previousAvailable - Number(stock.reserved_quantity ?? 0))
+  const totalUsablePool = previousUsable + previousOpenBox
+  if (totalUsablePool <= 0) {
     showWarningDialog('No usable stock left for this item.')
     return
   }
@@ -673,7 +707,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     showWarningDialog('Please enter a valid quantity.')
     return
   }
-  if (quantity > previousUsable) {
+  if (quantity > totalUsablePool) {
     showWarningDialog('Quantity is greater than usable stock.')
     return
   }
@@ -719,10 +753,20 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       return
     }
 
-    const nextAvailable = previousAvailable - quantity
-    const nextOpenBox = isOpenBoxFirstEnabled(inventoryItemId)
-      ? Math.max(0, previousOpenBox - quantity)
-      : previousOpenBox
+    let nextAvailable = previousAvailable
+    let nextOpenBox = previousOpenBox
+
+    if (isOpenBoxFirstEnabled(inventoryItemId)) {
+      if (quantity <= previousOpenBox) {
+        nextOpenBox = previousOpenBox - quantity
+      } else {
+        nextOpenBox = 0
+        nextAvailable = previousAvailable - (quantity - previousOpenBox)
+      }
+    } else {
+      nextAvailable = previousAvailable - quantity
+    }
+
     const updateStockResult = await inventoryStore.updateInventoryStock({
       id: stock.id,
       patch: {
@@ -832,6 +876,7 @@ const openReturnDialog = (invoiceItemId: number) => {
   returnDamagedQtyInput.value = 0
   returnAmountInput.value = 0
   returnNoteInput.value = ''
+  returnToNewBatchInput.value = false
   returnDialogOpen.value = true
 }
 
@@ -910,6 +955,7 @@ const onConfirmReturn = async () => {
     return_amount: Number(returnAmount.toFixed(2)),
     note: returnNoteInput.value?.trim() || null,
     actor: authStore.user?.id ?? null,
+    return_to_new_batch: returnToNewBatchInput.value,
   })
   if (!applyReturnResult.success) return
 
@@ -934,6 +980,39 @@ const onConfirmReturn = async () => {
 
 const formatAmount = (value: number) => formatAmountBdt(value)
 const formatQuantity = (value: number) => Number(value ?? 0).toFixed(3)
+
+const onUpdateDiscount = async (value: string | number | null) => {
+  if (!invoice.value) return
+  const discountVal = Math.max(0, Number(value ?? 0))
+  const nextSubtotal = Number(totalSellAmount.value.toFixed(2))
+  const nextTotal = Number(Math.max(0, nextSubtotal - discountVal).toFixed(2))
+  await invoiceStore.updateInvoice({
+    id: invoice.value.id,
+    patch: {
+      discount_amount: discountVal,
+      total_amount: nextTotal,
+    },
+  })
+  if (authStore.tenantId) {
+    await invoiceStore.fetchInvoices({
+      tenant_id: authStore.tenantId,
+      filters: { id: invoice.value.id },
+      operators: { id: 'eq' },
+      page: 1,
+      page_size: 1,
+    })
+    // Reload items to get latest line discounts
+    await invoiceStore.fetchInvoiceItems({
+      tenant_id: authStore.tenantId,
+      filters: { invoice_id: invoice.value.id },
+      operators: { invoice_id: 'eq' },
+      page: 1,
+      page_size: 100,
+      sortBy: 'created_at',
+      sortOrder: 'desc',
+    })
+  }
+}
 
 const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)
 
@@ -1061,16 +1140,8 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
     return
   }
   const currentAvailable = Number(stock.available_quantity ?? 0)
-  const currentUsable =
-    Number(stock.available_quantity ?? 0) -
-    Number(stock.reserved_quantity ?? 0) -
-    Number(stock.damaged_quantity ?? 0) -
-    Number(stock.stolen_quantity ?? 0) -
-    Number(stock.expired_quantity ?? 0) -
-    Number(stock.open_box_quantity ?? 0)
-  const safeCurrentUsable = Math.max(0, currentUsable)
-  const requestedDelta = Math.max(0, quantityDelta)
-  if (requestedDelta > safeCurrentUsable) {
+  const currentUsable = Math.max(0, currentAvailable - Number(stock.reserved_quantity ?? 0))
+  if (quantityDelta > currentUsable) {
     showWarningDialog('Not enough usable stock for this quantity.')
     return
   }

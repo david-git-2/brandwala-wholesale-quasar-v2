@@ -120,6 +120,7 @@ export type ApplyInvoiceItemReturnInput = {
   return_amount: number
   note?: string | null
   actor?: string | null
+  return_to_new_batch?: boolean
 }
 
 export type ApplyInvoiceItemReturnResult = {

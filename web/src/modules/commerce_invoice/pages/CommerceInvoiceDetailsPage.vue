@@ -99,9 +99,13 @@
               </div>
             </div>
             <div class="row q-col-gutter-md q-mb-sm">
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <div class="text-subtitle2 text-grey-7">Subtotal</div>
                 <div class="text-body1 text-weight-medium text-grey-9">৳{{ formatAmount(subtotalAmount) }}</div>
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="text-subtitle2 text-grey-7">Discount</div>
+                <div class="text-body1 text-weight-medium text-negative">৳{{ formatAmount(Number(invoice.discount_amount || 0)) }}</div>
               </div>
               <div class="col-12 col-md-3">
                 <div class="text-subtitle2 text-grey-7">Grand Total</div>
@@ -111,7 +115,7 @@
                 <div class="text-subtitle2 text-grey-7">Amount Due</div>
                 <div class="text-h6 text-weight-bold text-red-7">৳{{ formatAmount(Number(invoice.amount_due || 0)) }}</div>
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <div class="text-subtitle2 text-grey-7">Paid Status</div>
                 <q-chip
                   :color="invoice.is_customer_group_paid ? 'green' : 'red'"
@@ -124,7 +128,7 @@
             </div>
 
             <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <q-input
                   v-model.number="chargesForm.delivery_charge"
                   type="number"
@@ -137,7 +141,7 @@
                   @update:model-value="markChargesDirty"
                 />
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <q-input
                   v-model="chargesForm.delivered_by"
                   label="Delivered By"
@@ -166,6 +170,19 @@
                   type="number"
                   step="0.01"
                   label="COD"
+                  outlined
+                  dense
+                  class="soft-input"
+                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  @update:model-value="markChargesDirty"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="chargesForm.discount_amount"
+                  type="number"
+                  step="0.01"
+                  label="Discount"
                   outlined
                   dense
                   class="soft-input"
@@ -448,6 +465,7 @@ type CommerceInvoiceRow = {
   delivered_by: string | null
   created_at: string
   status: 'draft' | 'ready' | 'handed_to_customer'
+  discount_amount?: number
 }
 
 type CommerceOrderRow = {
@@ -492,6 +510,7 @@ const chargesForm = reactive({
   cod: 0,
   delivered_by: '',
   amount_paid: 0,
+  discount_amount: 0,
 })
 
 // Search states
@@ -607,6 +626,7 @@ const startEditCharges = () => {
   chargesForm.cod = Number(invoice.value.cod) || 0
   chargesForm.delivered_by = invoice.value.delivered_by || ''
   chargesForm.amount_paid = Number(invoice.value.amount_paid) || 0
+  chargesForm.discount_amount = Number(invoice.value.discount_amount) || 0
   chargesDirty.value = false
 }
 
@@ -620,6 +640,7 @@ const saveCharges = async () => {
       cod: chargesForm.cod,
       delivered_by: chargesForm.delivered_by,
       amount_paid: chargesForm.amount_paid,
+      discount_amount: chargesForm.discount_amount,
     })
     if (res.success) {
       showSuccessNotification('Charges updated successfully.')
