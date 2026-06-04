@@ -112,21 +112,14 @@ const toNumberOrZero = (value: unknown): number => {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
-const calculateUsableQuantity = ({
-  available,
-  reserved,
-  damaged,
-  stolen,
-  expired,
-  openBox,
-}: {
+const calculateUsableQuantity = (params: {
   available: number
   reserved: number
   damaged: number
   stolen: number
   expired: number
   openBox: number
-}) => Math.max(0, available - reserved - damaged - stolen - expired - openBox)
+}) => Math.max(0, params.available - params.reserved - params.damaged - params.stolen)
 
 const toObjectRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -1034,6 +1027,22 @@ const createInventoryNote = async (
   return data as InventoryNote
 }
 
+const createInventoryNotesBulk = async (
+  payload: CreateInventoryNoteInput[],
+): Promise<InventoryNote[]> => {
+  if (!payload.length) return []
+
+  const rows = payload.map((note) => ({
+    ...note,
+    content: note.content.trim(),
+  }))
+
+  const { data, error } = await supabase.from('inventory_notes').insert(rows).select('*')
+  if (error) throw error
+  return (data as InventoryNote[] | null) ?? []
+}
+
+
 const updateInventoryNote = async (
   payload: UpdateInventoryNoteInput,
 ): Promise<InventoryNote> => {
@@ -1099,6 +1108,7 @@ export const inventoryRepository = {
   refreshShipmentInventoryAccountingSummaries,
   listInventoryNotes,
   createInventoryNote,
+  createInventoryNotesBulk,
   updateInventoryNote,
   deleteInventoryNote,
 }

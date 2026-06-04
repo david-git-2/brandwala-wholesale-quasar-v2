@@ -3,6 +3,11 @@ import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { shipmentService } from '../services/shipmentService'
 import { inventoryService } from 'src/modules/inventory/services/inventoryService'
+import type {
+  CreateInventoryItemInput,
+  CreateInventoryStockInput,
+  CreateInventoryNoteInput,
+} from 'src/modules/inventory/types'
 import { calculateCostBdt } from '../utils/costing'
 import type {
   AddShipmentItemFromProductInput,
@@ -23,6 +28,8 @@ import type {
   UpdateShipmentInput,
   UpdateShipmentFieldInput,
   ShipmentReceiveItemInput,
+  ShipmentItem,
+  ShipmentReceiveItemSplit,
 } from '../types'
 
 export const useShipmentStore = defineStore('shipment', {
@@ -525,7 +532,17 @@ export const useShipmentStore = defineStore('shipment', {
           return result
         }
 
-        // Loop over each item receipt and process splits
+        const itemsToCreate: Array<{
+          receipt: ShipmentReceiveItemInput
+          item: ShipmentItem
+          split: ShipmentReceiveItemSplit
+          expectedName: string
+          itemCost: number
+        }> = []
+
+        const itemsPayload: CreateInventoryItemInput[] = []
+
+        // Gather all items/splits to create in a single collection
         for (const receipt of receipts) {
           const item = this.shipmentItems.find((x) => x.id === receipt.shipmentItemId)
           if (!item) continue
@@ -549,13 +566,22 @@ export const useShipmentStore = defineStore('shipment', {
             else if (split.type === 'boxless') conditionSuffix = ' (Boxless)'
             else if (split.type === 'stolen') conditionSuffix = ' (Stolen/Missing)'
 
-            // 1. Create the inventory item (batch)
-            const itemResult = await inventoryService.createInventoryItem({
+            const expectedName = `${item.name ?? 'Shipment Item'}${conditionSuffix}`
+
+            itemsToCreate.push({
+              receipt,
+              item,
+              split,
+              expectedName,
+              itemCost,
+            })
+
+            itemsPayload.push({
               tenant_id: shipment.tenant_id,
               source_type: 'shipment',
               source_id: item.id,
               product_id: item.product_id ?? null,
-              name: `${item.name ?? 'Shipment Item'}${conditionSuffix}`,
+              name: expectedName,
               image_url: item.image_url ?? null,
               cost: split.type === 'expired' || split.type === 'stolen' ? 0 : itemCost,
               barcode: item.barcode ?? null,
@@ -564,50 +590,71 @@ export const useShipmentStore = defineStore('shipment', {
               expire_date: null,
               status: 'active',
             })
+          }
+        }
 
-            if (!itemResult.success || !itemResult.data) {
-              throw new Error(itemResult.error ?? 'Failed to create inventory item sub-batch.')
+        if (itemsPayload.length > 0) {
+          // 1. Bulk create inventory items
+          const itemsResult = await inventoryService.createInventoryItemsBulk(itemsPayload)
+          if (!itemsResult.success || !itemsResult.data) {
+            throw new Error(itemsResult.error ?? 'Failed to create inventory items.')
+          }
+
+          const createdItems = itemsResult.data
+          const stocksPayload: CreateInventoryStockInput[] = []
+          const notesPayload: CreateInventoryNoteInput[] = []
+
+          // 2. Map created items back to their corresponding splits to build stocks/notes payloads
+          for (const pending of itemsToCreate) {
+            const createdItem = createdItems.find(
+              (ci) => ci.source_id === pending.item.id && ci.name === pending.expectedName
+            )
+            if (!createdItem) {
+              throw new Error(`Failed to find created inventory item for "${pending.expectedName}"`)
             }
 
-            const createdItem = itemResult.data
-
-            // 2. Create the stock pool record
-            const stockResult = await inventoryService.createInventoryStock({
+            stocksPayload.push({
               inventory_item_id: createdItem.id,
-              available_quantity: split.type === 'standard' ? split.qty : 0,
+              available_quantity: pending.split.qty,
               reserved_quantity: 0,
               damaged_quantity: 0,
-              stolen_quantity: split.type === 'stolen' ? split.qty : 0,
-              expired_quantity: split.type === 'expired' ? split.qty : 0,
-              open_box_quantity: (split.type === 'box_damage' || split.type === 'boxless') ? split.qty : 0,
+              stolen_quantity: pending.split.type === 'stolen' ? pending.split.qty : 0,
+              expired_quantity: pending.split.type === 'expired' ? pending.split.qty : 0,
+              open_box_quantity: (pending.split.type === 'box_damage' || pending.split.type === 'boxless') ? pending.split.qty : 0,
             })
 
-            if (!stockResult.success) {
-              throw new Error(stockResult.error ?? 'Failed to create inventory stock sub-batch.')
-            }
-
-            // 3. Create the note record if provided
-            if (split.note && split.note.trim()) {
+            if (pending.split.note && pending.split.note.trim()) {
               let noteCategory: 'packaging_defect' | 'product_defect' | 'transit_loss' = 'packaging_defect'
-              if (split.type === 'expired') noteCategory = 'product_defect'
-              else if (split.type === 'stolen') noteCategory = 'transit_loss'
+              if (pending.split.type === 'expired') noteCategory = 'product_defect'
+              else if (pending.split.type === 'stolen') noteCategory = 'transit_loss'
 
-              const noteResult = await inventoryService.createInventoryNote({
+              notesPayload.push({
                 tenant_id: shipment.tenant_id,
-                product_id: item.product_id ?? null,
+                product_id: pending.item.product_id ?? null,
                 inventory_item_id: createdItem.id,
                 movement_id: null,
                 category: noteCategory,
-                content: split.note.trim(),
+                content: pending.split.note.trim(),
                 created_by: null,
               })
-
-              if (!noteResult.success) {
-                throw new Error(noteResult.error ?? 'Failed to create inventory note for split.')
-              }
             }
           }
 
+          // 3. Bulk create inventory stocks
+          if (stocksPayload.length > 0) {
+            const stocksResult = await inventoryService.createInventoryStocksBulk(stocksPayload)
+            if (!stocksResult.success) {
+              throw new Error(stocksResult.error ?? 'Failed to create inventory stocks.')
+            }
+          }
+
+          // 4. Bulk create inventory notes
+          if (notesPayload.length > 0) {
+            const notesResult = await inventoryService.createInventoryNotesBulk(notesPayload)
+            if (!notesResult.success) {
+              throw new Error(notesResult.error ?? 'Failed to create inventory notes.')
+            }
+          }
         }
 
         // Update shipment status as completed adding to inventory

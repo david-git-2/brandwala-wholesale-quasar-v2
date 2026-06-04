@@ -55,8 +55,8 @@
               Not Available
             </q-chip>
           </div>
-          <div v-if="props.showPrice" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
-          <div v-if="props.showPrice && item.minimum_sell_price_bdt != null" class="product-selling-price">Selling Price: {{ props.priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}</div>
+          <div v-if="props.showPrice && item.available_units && item.available_units > 0" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
+          <div v-if="props.showPrice && item.available_units && item.available_units > 0 && item.minimum_sell_price_bdt != null" class="product-selling-price">Selling Price: {{ props.priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}</div>
         </div>
       </q-card-section>
 

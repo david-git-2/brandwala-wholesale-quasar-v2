@@ -168,12 +168,12 @@ const loadNotes = async () => {
     const filters: Record<string, unknown> = {}
     const operators: Record<string, 'eq'> = {}
 
-    if (props.productId) {
-      filters.product_id = props.productId
-      operators.product_id = 'eq'
-    } else if (props.inventoryItemId) {
+    if (props.inventoryItemId) {
       filters.inventory_item_id = props.inventoryItemId
       operators.inventory_item_id = 'eq'
+    } else if (props.productId) {
+      filters.product_id = props.productId
+      operators.product_id = 'eq'
     } else if (props.movementId) {
       filters.movement_id = props.movementId
       operators.movement_id = 'eq'

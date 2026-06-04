@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { inventoryService } from '../services/inventoryService'
 import type {
   CreateInventoryItemInput,
@@ -620,6 +621,339 @@ export const useInventoryStore = defineStore('inventory', {
 
         showSuccessNotification('Inventory note deleted successfully.')
         return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async adjustInventoryStockPool(payload: {
+      inventoryItemId: number
+      stockId: number
+      fromPool: 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired' | 'open_box'
+      toPool: 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired' | 'open_box'
+      quantity: number
+      note: string
+      currentStock: InventoryStock
+    }) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const poolToField = {
+          available: 'available_quantity',
+          reserved: 'reserved_quantity',
+          damaged: 'damaged_quantity',
+          stolen: 'stolen_quantity',
+          expired: 'expired_quantity',
+          open_box: 'open_box_quantity',
+        } as const
+
+        const fromField = poolToField[payload.fromPool]
+        const toField = poolToField[payload.toPool]
+
+        const currentFromVal = payload.currentStock[fromField] || 0
+        const currentToVal = payload.currentStock[toField] || 0
+
+        if (currentFromVal < payload.quantity) {
+          const errorMsg = `Insufficient stock in ${payload.fromPool} pool.`
+          this.error = errorMsg
+          return { success: false, error: errorMsg }
+        }
+
+        const patch = {
+          [fromField]: currentFromVal - payload.quantity,
+          [toField]: currentToVal + payload.quantity,
+        }
+
+        const updateResult = await inventoryService.updateInventoryStock({
+          id: payload.stockId,
+          patch,
+        })
+
+        if (!updateResult.success) {
+          this.error = updateResult.error ?? 'Failed to update stock quantities.'
+          handleApiFailure(updateResult, this.error)
+          return updateResult
+        }
+
+        // Insert audit movement log
+        await inventoryService.createInventoryMovement({
+          inventory_item_id: payload.inventoryItemId,
+          type: 'adjustment',
+          quantity: payload.quantity,
+          previous_quantity: currentFromVal,
+          new_quantity: currentFromVal - payload.quantity,
+          note: `Manual pool transfer from ${payload.fromPool} to ${payload.toPool}. Note: ${payload.note}`,
+          created_by: null,
+        })
+
+        // Insert note if provided
+        const authStore = useAuthStore()
+        if (authStore.tenantId && payload.note.trim()) {
+          let category: 'product_defect' | 'packaging_defect' | 'general' = 'general'
+          if (payload.toPool === 'damaged') category = 'product_defect'
+          if (payload.toPool === 'open_box') category = 'packaging_defect'
+
+          await inventoryService.createInventoryNote({
+            tenant_id: authStore.tenantId,
+            product_id: null,
+            inventory_item_id: payload.inventoryItemId,
+            movement_id: null,
+            category,
+            content: payload.note.trim(),
+            created_by: null,
+          })
+        }
+
+        showSuccessNotification('Stock pool adjusted successfully.')
+        return { success: true }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Stock pool adjustment failed.'
+        this.error = errorMsg
+        return { success: false, error: errorMsg }
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async splitInventoryBatch(payload: {
+      sourceItem: InventoryItemWithStock
+      quantity: number
+      condition: 'standard' | 'box_damage' | 'expired' | 'boxless' | 'stolen'
+      nameSuffix: string
+      note: string
+    }) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const sourceItem = payload.sourceItem
+        const currentAvailable = sourceItem.stock?.available_quantity || 0
+
+        if (currentAvailable < payload.quantity) {
+          const errorMsg = `Insufficient available stock in batch #${sourceItem.id} to split.`
+          this.error = errorMsg
+          return { success: false, error: errorMsg }
+        }
+
+        // 1. Create the new inventory item batch
+        const cleanName = sourceItem.name.replace(/ \((Box Damage|Expired|Boxless|Stolen\/Missing|Split)\)$/, '')
+        const splitItemResult = await inventoryService.createInventoryItem({
+          tenant_id: sourceItem.tenant_id,
+          source_type: sourceItem.source_type,
+          source_id: sourceItem.source_id,
+          product_id: sourceItem.product_id,
+          name: `${cleanName}${payload.nameSuffix}`,
+          image_url: sourceItem.image_url,
+          cost: payload.condition === 'expired' || payload.condition === 'stolen' ? 0 : (sourceItem.cost ?? 0),
+          barcode: sourceItem.barcode,
+          product_code: sourceItem.product_code,
+          manufacturing_date: sourceItem.manufacturing_date,
+          expire_date: sourceItem.expire_date,
+          status: 'active',
+        })
+
+        if (!splitItemResult.success || !splitItemResult.data) {
+          this.error = splitItemResult.error ?? 'Failed to create new split batch item.'
+          handleApiFailure(splitItemResult, this.error)
+          return splitItemResult
+        }
+
+        const targetItemId = splitItemResult.data.id
+
+        // 2. Create the target stock record
+        const targetStockResult = await inventoryService.createInventoryStock({
+          inventory_item_id: targetItemId,
+          available_quantity: payload.quantity,
+          reserved_quantity: 0,
+          damaged_quantity: 0,
+          stolen_quantity: payload.condition === 'stolen' ? payload.quantity : 0,
+          expired_quantity: payload.condition === 'expired' ? payload.quantity : 0,
+          open_box_quantity: (payload.condition === 'box_damage' || payload.condition === 'boxless') ? payload.quantity : 0,
+        })
+
+        if (!targetStockResult.success) {
+          this.error = targetStockResult.error ?? 'Failed to create stock record for split batch.'
+          handleApiFailure(targetStockResult, this.error)
+          return targetStockResult
+        }
+
+        // 3. Decrement quantity from the source stock record
+        const updateSourceStockResult = await inventoryService.updateInventoryStock({
+          id: sourceItem.stock!.id,
+          patch: {
+            available_quantity: currentAvailable - payload.quantity,
+          },
+        })
+
+        if (!updateSourceStockResult.success) {
+          this.error = updateSourceStockResult.error ?? 'Failed to update source stock quantity.'
+          handleApiFailure(updateSourceStockResult, this.error)
+          return updateSourceStockResult
+        }
+
+        // 4. Create movements
+        await inventoryService.createInventoryMovement({
+          inventory_item_id: sourceItem.id,
+          type: 'adjustment',
+          quantity: payload.quantity,
+          previous_quantity: currentAvailable,
+          new_quantity: currentAvailable - payload.quantity,
+          note: `Split to new batch: ${splitItemResult.data.name}. Note: ${payload.note}`,
+          created_by: null,
+        })
+
+        await inventoryService.createInventoryMovement({
+          inventory_item_id: targetItemId,
+          type: 'received',
+          quantity: payload.quantity,
+          previous_quantity: 0,
+          new_quantity: payload.quantity,
+          note: `Split from batch #${sourceItem.id}. Note: ${payload.note}`,
+          created_by: null,
+        })
+
+        // 5. Create note for new batch
+        if (payload.note.trim()) {
+          let category: 'product_defect' | 'packaging_defect' | 'transit_loss' | 'general' = 'general'
+          if (payload.condition === 'expired') category = 'product_defect'
+          else if (payload.condition === 'stolen') category = 'transit_loss'
+          else if (payload.condition === 'box_damage' || payload.condition === 'boxless') category = 'packaging_defect'
+
+          await inventoryService.createInventoryNote({
+            tenant_id: sourceItem.tenant_id,
+            product_id: sourceItem.product_id,
+            inventory_item_id: targetItemId,
+            category,
+            content: payload.note.trim(),
+            created_by: null,
+            movement_id: null,
+          })
+        }
+
+        showSuccessNotification('Batch split successfully.')
+        return { success: true }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Batch split failed.'
+        this.error = errorMsg
+        return { success: false, error: errorMsg }
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async transferInventoryStock(payload: {
+      sourceItem: InventoryItemWithStock
+      targetItem: InventoryItemWithStock
+      quantity: number
+      note: string
+    }) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const sourceItem = payload.sourceItem
+        const targetItem = payload.targetItem
+        const currentSourceAvailable = sourceItem.stock?.available_quantity || 0
+        const currentTargetAvailable = targetItem.stock?.available_quantity || 0
+
+        if (currentSourceAvailable < payload.quantity) {
+          const errorMsg = `Insufficient available stock in source batch #${sourceItem.id} to transfer.`
+          this.error = errorMsg
+          return { success: false, error: errorMsg }
+        }
+
+        // 1. Decrement source stock
+        const updateSourceResult = await inventoryService.updateInventoryStock({
+          id: sourceItem.stock!.id,
+          patch: {
+            available_quantity: currentSourceAvailable - payload.quantity,
+          },
+        })
+
+        if (!updateSourceResult.success) {
+          this.error = updateSourceResult.error ?? 'Failed to update source stock.'
+          handleApiFailure(updateSourceResult, this.error)
+          return updateSourceResult
+        }
+
+        // 2. Increment target stock
+        const updateTargetResult = await inventoryService.updateInventoryStock({
+          id: targetItem.stock!.id,
+          patch: {
+            available_quantity: currentTargetAvailable + payload.quantity,
+          },
+        })
+
+        if (!updateTargetResult.success) {
+          this.error = updateTargetResult.error ?? 'Failed to update target stock.'
+          handleApiFailure(updateTargetResult, this.error)
+          return updateTargetResult
+        }
+
+        // 3. Create movements
+        await inventoryService.createInventoryMovement({
+          inventory_item_id: sourceItem.id,
+          type: 'adjustment',
+          quantity: payload.quantity,
+          previous_quantity: currentSourceAvailable,
+          new_quantity: currentSourceAvailable - payload.quantity,
+          note: `Transferred ${payload.quantity} units to batch #${targetItem.id}. Note: ${payload.note}`,
+          created_by: null,
+        })
+
+        await inventoryService.createInventoryMovement({
+          inventory_item_id: targetItem.id,
+          type: 'adjustment',
+          quantity: payload.quantity,
+          previous_quantity: currentTargetAvailable,
+          new_quantity: currentTargetAvailable + payload.quantity,
+          note: `Transferred ${payload.quantity} units from batch #${sourceItem.id}. Note: ${payload.note}`,
+          created_by: null,
+        })
+
+        // 4. Create note for target batch
+        if (payload.note.trim()) {
+          await inventoryService.createInventoryNote({
+            tenant_id: sourceItem.tenant_id,
+            product_id: sourceItem.product_id,
+            inventory_item_id: targetItem.id,
+            category: 'general',
+            content: `Transferred ${payload.quantity} units from batch #${sourceItem.id}. Note: ${payload.note}`,
+            created_by: null,
+            movement_id: null,
+          })
+        }
+
+        // 5. Auto delete source batch if all quantities are zero
+        const remainingAvailable = currentSourceAvailable - payload.quantity
+        const remainingReserved = sourceItem.stock?.reserved_quantity || 0
+        const remainingDamaged = sourceItem.stock?.damaged_quantity || 0
+        const remainingStolen = sourceItem.stock?.stolen_quantity || 0
+        const remainingExpired = sourceItem.stock?.expired_quantity || 0
+        const remainingOpenBox = sourceItem.stock?.open_box_quantity || 0
+
+        const totalRemaining =
+          remainingAvailable +
+          remainingReserved +
+          remainingDamaged +
+          remainingStolen +
+          remainingExpired +
+          remainingOpenBox
+
+        if (totalRemaining === 0) {
+          const deleteResult = await inventoryService.deleteInventoryItem({ id: sourceItem.id })
+          if (deleteResult.success) {
+            this.items = this.items.filter((row) => row.id !== sourceItem.id)
+          }
+        }
+
+        showSuccessNotification('Stock transferred successfully.')
+        return { success: true }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Stock transfer failed.'
+        this.error = errorMsg
+        return { success: false, error: errorMsg }
       } finally {
         this.saving = false
       }

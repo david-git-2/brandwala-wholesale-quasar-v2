@@ -3206,7 +3206,6 @@ export type Database = {
         Row: {
           barcode: string | null
           created_at: string
-          damaged_quantity: number
           id: number
           image_url: string | null
           inspected: boolean
@@ -3220,15 +3219,13 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           quantity: number
-          received_quantity: number
+          receiving_splits: Json | null
           shipment_id: number
-          stolen_quantity: number
           updated_at: string
         }
         Insert: {
           barcode?: string | null
           created_at?: string
-          damaged_quantity?: number
           id?: number
           image_url?: string | null
           inspected?: boolean
@@ -3242,15 +3239,13 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number
-          received_quantity?: number
+          receiving_splits?: Json | null
           shipment_id: number
-          stolen_quantity?: number
           updated_at?: string
         }
         Update: {
           barcode?: string | null
           created_at?: string
-          damaged_quantity?: number
           id?: number
           image_url?: string | null
           inspected?: boolean
@@ -3264,9 +3259,8 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number
-          received_quantity?: number
+          receiving_splits?: Json | null
           shipment_id?: number
-          stolen_quantity?: number
           updated_at?: string
         }
         Relationships: [
@@ -3742,7 +3736,6 @@ export type Database = {
         Returns: {
           barcode: string | null
           created_at: string
-          damaged_quantity: number
           id: number
           image_url: string | null
           inspected: boolean
@@ -3756,9 +3749,8 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           quantity: number
-          received_quantity: number
+          receiving_splits: Json | null
           shipment_id: number
-          stolen_quantity: number
           updated_at: string
         }
         SetofOptions: {
@@ -3768,51 +3760,91 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      add_shipment_item_manual: {
-        Args: {
-          p_barcode?: string
-          p_damaged_quantity?: number
-          p_image_url?: string
-          p_name?: string
-          p_package_weight?: number
-          p_price_gbp?: number
-          p_product_code?: string
-          p_product_id?: number
-          p_product_weight?: number
-          p_quantity?: number
-          p_received_quantity?: number
-          p_shipment_id: number
-          p_stolen_quantity?: number
-        }
-        Returns: {
-          barcode: string | null
-          created_at: string
-          damaged_quantity: number
-          id: number
-          image_url: string | null
-          inspected: boolean
-          marker_tag: string | null
-          method: string
-          name: string | null
-          order_id: number | null
-          package_weight: number | null
-          price_gbp: number | null
-          product_code: string | null
-          product_id: number | null
-          product_weight: number | null
-          quantity: number
-          received_quantity: number
-          shipment_id: number
-          stolen_quantity: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "shipment_items"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      add_shipment_item_manual:
+        | {
+            Args: {
+              p_barcode?: string
+              p_damaged_quantity?: number
+              p_image_url?: string
+              p_name?: string
+              p_package_weight?: number
+              p_price_gbp?: number
+              p_product_code?: string
+              p_product_id?: number
+              p_product_weight?: number
+              p_quantity?: number
+              p_received_quantity?: number
+              p_shipment_id: number
+              p_stolen_quantity?: number
+            }
+            Returns: {
+              barcode: string | null
+              created_at: string
+              id: number
+              image_url: string | null
+              inspected: boolean
+              marker_tag: string | null
+              method: string
+              name: string | null
+              order_id: number | null
+              package_weight: number | null
+              price_gbp: number | null
+              product_code: string | null
+              product_id: number | null
+              product_weight: number | null
+              quantity: number
+              receiving_splits: Json | null
+              shipment_id: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "shipment_items"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_barcode?: string
+              p_image_url?: string
+              p_name?: string
+              p_package_weight?: number
+              p_price_gbp?: number
+              p_product_code?: string
+              p_product_id?: number
+              p_product_weight?: number
+              p_quantity?: number
+              p_receiving_splits?: Json
+              p_shipment_id: number
+            }
+            Returns: {
+              barcode: string | null
+              created_at: string
+              id: number
+              image_url: string | null
+              inspected: boolean
+              marker_tag: string | null
+              method: string
+              name: string | null
+              order_id: number | null
+              package_weight: number | null
+              price_gbp: number | null
+              product_code: string | null
+              product_id: number | null
+              product_weight: number | null
+              quantity: number
+              receiving_splits: Json | null
+              shipment_id: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "shipment_items"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       adjust_inventory_reserved_for_product: {
         Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
         Returns: undefined
@@ -3835,7 +3867,6 @@ export type Database = {
         Returns: {
           barcode: string | null
           created_at: string
-          damaged_quantity: number
           id: number
           image_url: string | null
           inspected: boolean
@@ -3849,9 +3880,8 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           quantity: number
-          received_quantity: number
+          receiving_splits: Json | null
           shipment_id: number
-          stolen_quantity: number
           updated_at: string
         }[]
         SetofOptions: {
@@ -4708,6 +4738,16 @@ export type Database = {
             }
             Returns: Json
           }
+      list_global_inventory_items_with_stock: {
+        Args: {
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_by?: string
+          p_sort_order?: string
+        }
+        Returns: Json
+      }
       list_inventory_items_with_stock: {
         Args: {
           p_filters?: Json

@@ -134,19 +134,10 @@
     <InventoryDetailsDialog
       v-model="detailsDialogOpen"
       :item="selectedDetailItem"
-    />
-    <InventoryCard
-      v-if="inventoryView === 'detailed'"
-      :items="inventoryStore.items"
-      :selected-ids="selectedItemIds"
-      @save-quantity="onSaveQuantity"
-      @save-date="onSaveDate"
-      @delete-item="onDeleteItem"
-      @toggle-select="onToggleSelect"
-      @view-details="openDetailsDialog"
+      @refresh="fetchInventoryItems"
     />
     <q-table
-      v-else-if="inventoryView === 'table'"
+      v-if="inventoryView === 'table'"
       flat
       bordered
       row-key="id"
@@ -240,7 +231,6 @@ import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { handleApiFailure } from 'src/utils/appFeedback'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
-import InventoryCard from '../components/InventoryCard.vue'
 import InventoryCompactCard from '../components/InventoryCompactCard.vue'
 import InventoryItemDialog from '../components/InventoryItemDialog.vue'
 import InventoryDetailsDialog from '../components/InventoryDetailsDialog.vue'
@@ -261,11 +251,10 @@ const searchText = ref('')
 const shipmentIdFilter = ref<number | null>(null)
 const page = ref(1)
 const selectedItemIds = ref<number[]>([])
-const inventoryView = ref<'detailed' | 'compact' | 'table'>('compact')
+const inventoryView = ref<'compact' | 'table'>('compact')
 const showSearchInput = ref(false)
 const filterDrawerOpen = ref(false)
 const inventoryViewOptions = [
-  { icon: 'dashboard', value: 'detailed' as const },
   { icon: 'table_rows', value: 'table' as const },
   { icon: 'grid_view', value: 'compact' as const },
 ]
@@ -522,78 +511,9 @@ const onSaveItem = async (
   }
 }
 
-const onSaveQuantity = async (payload: {
-  item: InventoryItemWithStock
-  field: 'available' | 'reserved' | 'damaged' | 'stolen' | 'expired' | 'open_box'
-  value: number
-}) => {
-  const { item, field, value } = payload
+// Removed onSaveQuantity
 
-  const baseQuantities = {
-    available_quantity: item.quantities.available,
-    reserved_quantity: item.quantities.reserved,
-    damaged_quantity: item.quantities.damaged,
-    stolen_quantity: item.quantities.stolen,
-    expired_quantity: item.quantities.expired,
-    open_box_quantity: item.quantities.open_box,
-  }
 
-  if (field === 'available') baseQuantities.available_quantity = value
-  if (field === 'reserved') baseQuantities.reserved_quantity = value
-  if (field === 'damaged') baseQuantities.damaged_quantity = value
-  if (field === 'stolen') baseQuantities.stolen_quantity = value
-  if (field === 'expired') baseQuantities.expired_quantity = value
-  if (field === 'open_box') baseQuantities.open_box_quantity = value
-
-  if (!item.stock) {
-    const createResult = await inventoryStore.createInventoryStock({
-      inventory_item_id: item.id,
-      ...baseQuantities,
-    })
-
-    if (!createResult.success) {
-      handleApiFailure(createResult, createResult.error ?? 'Failed to create inventory stock.')
-      return
-    }
-  } else {
-    const updateResult = await inventoryStore.updateInventoryStock({
-      id: item.stock.id,
-      patch: baseQuantities,
-    })
-
-    if (!updateResult.success) {
-      handleApiFailure(updateResult, updateResult.error ?? 'Failed to update inventory stock.')
-      return
-    }
-  }
-
-  await fetchInventoryItems()
-}
-
-const onDeleteItem = (item: InventoryItemWithStock) => {
-  $q.dialog({
-    title: 'Delete Inventory Item',
-    message: `Are you sure you want to delete "${item.name}"? This will also delete its stock record.`,
-    cancel: true,
-    persistent: true,
-    ok: {
-      label: 'Delete',
-      color: 'negative',
-      unelevated: true,
-    },
-  }).onOk(() => {
-    void (async () => {
-      const result = await inventoryStore.deleteInventoryItem({ id: item.id })
-
-      if (!result.success) {
-        handleApiFailure(result, result.error ?? 'Failed to delete inventory item.')
-        return
-      }
-
-      await fetchInventoryItems()
-    })()
-  })
-}
 
 const onToggleSelect = (payload: { itemId: number; checked: boolean }) => {
   if (payload.checked) {
@@ -646,25 +566,7 @@ const onToggleSelectAllCheckbox = (checked: boolean | null) => {
   )
 }
 
-const onSaveDate = async (payload: {
-  item: InventoryItemWithStock
-  field: 'manufacturing_date' | 'expire_date'
-  value: string | null
-}) => {
-  const result = await inventoryStore.updateInventoryItem({
-    id: payload.item.id,
-    patch: {
-      [payload.field]: payload.value,
-    },
-  })
-
-  if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to update date.')
-    return
-  }
-
-  await fetchInventoryItems()
-}
+// Removed onSaveDate
 
 onMounted(() => {
   const tenantId = authStore.tenantId

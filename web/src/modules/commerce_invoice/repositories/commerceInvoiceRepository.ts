@@ -52,9 +52,7 @@ const getUsableQuantity = (stock: InventoryStockRow) =>
     Number(stock.available_quantity || 0)
       - Number(stock.reserved_quantity || 0)
       - Number(stock.damaged_quantity || 0)
-      - Number(stock.stolen_quantity || 0)
-      - Number(stock.expired_quantity || 0)
-      - Number(stock.open_box_quantity || 0),
+      - Number(stock.stolen_quantity || 0),
   )
 
 const getCommerceOrderContext = async (orderId: number): Promise<CommerceOrderRow> => {

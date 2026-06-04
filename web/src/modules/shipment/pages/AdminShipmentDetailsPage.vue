@@ -89,7 +89,7 @@
               v-if="shipmentStore.shipmentItems.length"
               clickable
               v-close-popup
-              :disable="shipmentStore.saving"
+              :disable="shipmentStore.saving || isInventoryAdded"
               @click="onResetTags"
             >
               <q-item-section avatar>
@@ -307,7 +307,8 @@
               <td
                 v-if="isColumnVisible('name')"
                 class="shipment-item-name-cell shipment-name-col"
-                @click="openItemDetailsDialog(item)"
+                :class="{ 'cursor-pointer': !isInventoryAdded }"
+                @click="!isInventoryAdded && openItemDetailsDialog(item)"
               >
                 <div>{{ item.name ?? '-' }}</div>
                 <div class="q-mt-xs row q-gutter-xs" v-if="hasItemSplits(item)">
@@ -332,7 +333,11 @@
               <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">{{ item.barcode ?? '-' }}</td>
               <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">{{ item.product_code ?? '-' }}</td>
               <td v-if="isColumnVisible('batch_manufacture')" class="shipment-batch-col">
-                <div class="shipment-batch-cell" @click="openBatchEditorDialog(item)">
+                <div
+                  class="shipment-batch-cell"
+                  :class="{ 'cursor-pointer': !isInventoryAdded }"
+                  @click="!isInventoryAdded && openBatchEditorDialog(item)"
+                >
                 <template v-if="getBatchManufactureLines(item).length">
                   <div
                     v-for="(line, lineIndex) in getBatchManufactureLines(item)"
@@ -354,6 +359,7 @@
                   no-caps
                   no-icon-animation
                   class="shipment-tag-dropdown"
+                  :disable="isInventoryAdded"
                 >
                   <template #label>
                     <q-chip
@@ -393,8 +399,9 @@
                 </q-btn-dropdown>
               </td>
               <td v-if="isColumnVisible('price_gbp')" class="text-right shipment-price-col">
-                <span class="cursor-pointer">{{ formatDecimal(item.price_gbp) }}</span>
+                <span :class="{ 'cursor-pointer': !isInventoryAdded }">{{ formatDecimal(item.price_gbp) }}</span>
                 <q-popup-edit
+                  v-if="!isInventoryAdded"
                   :model-value="item.price_gbp"
                   buttons
                   persistent
@@ -422,8 +429,9 @@
                 v-if="isColumnVisible('quantity')"
                 class="text-right shipment-qty-col shipment-qty-col--quantity"
               >
-                <span class="cursor-pointer">{{ item.quantity }}</span>
+                <span :class="{ 'cursor-pointer': canEditQuantity && !isInventoryAdded }">{{ item.quantity }}</span>
                 <q-popup-edit
+                  v-if="canEditQuantity && !isInventoryAdded"
                   :model-value="item.quantity"
                   buttons
                   persistent
@@ -446,8 +454,9 @@
 
 
               <td v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">
-                <span class="cursor-pointer">{{ formatDecimal(item.product_weight) }}</span>
+                <span :class="{ 'cursor-pointer': !isInventoryAdded }">{{ formatDecimal(item.product_weight) }}</span>
                 <q-popup-edit
+                  v-if="!isInventoryAdded"
                   :model-value="item.product_weight"
                   buttons
                   persistent
@@ -469,8 +478,9 @@
                 </q-popup-edit>
               </td>
               <td v-if="isColumnVisible('package_weight')" class="text-right shipment-package-weight-col">
-                <span class="cursor-pointer">{{ formatDecimal(item.package_weight) }}</span>
+                <span :class="{ 'cursor-pointer': !isInventoryAdded }">{{ formatDecimal(item.package_weight) }}</span>
                 <q-popup-edit
+                  v-if="!isInventoryAdded"
                   :model-value="item.package_weight"
                   buttons
                   persistent
@@ -514,7 +524,7 @@
                   >
                     <q-tooltip>Receive & Inspect (Split Batch)</q-tooltip>
                   </q-btn>
-                  <q-btn flat round dense icon="more_vert">
+                  <q-btn v-if="!isInventoryAdded" flat round dense icon="more_vert">
                     <q-menu auto-close>
                       <q-list style="min-width: 100px">
                         <q-item
@@ -905,6 +915,7 @@
               dense
               hide-bottom-space
               :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
+              :disabled="!canEditQuantity"
             />
             <q-input v-model.number="editManualItemForm.price_gbp" label="Price GBP" type="number" outlined dense hide-bottom-space />
             <q-input v-model.number="editManualItemForm.product_weight" label="Product Weight" type="number" outlined dense hide-bottom-space />
@@ -1418,7 +1429,13 @@ const selectedDetailsItem = ref<ShipmentItem | null>(null)
 const batchEditorItem = ref<ShipmentItem | null>(null)
 const batchEditorRows = ref<Array<{ id: number | null; batch_id: string; manufacturing_date: string }>>([])
 const selectedStatus = ref<ShipmentStatus>('Draft')
-const isDraftStatus = computed(() => selectedStatus.value === 'Draft')
+const isInventoryAdded = computed(
+  () =>
+    shipmentStore.selectedShipment?.inventory_added === true ||
+    selectedStatus.value === 'Added to Inventory',
+)
+const isDraftStatus = computed(() => selectedStatus.value === 'Draft' && !isInventoryAdded.value)
+const canEditQuantity = computed(() => selectedStatus.value === 'Draft' && !isInventoryAdded.value)
 
 const showInspectDialog = ref(false)
 const inspectItem = ref<ShipmentItem | null>(null)
@@ -1615,9 +1632,10 @@ const getOrInitItemReceipt = (item: ShipmentItem): {
 }
 
 const hasItemSplits = (item: ShipmentItem) => {
-  const receipt = receiptsMap.value[item.id]
-  if (!receipt) return false
+  if (!item.inspected) return false
+  const receipt = getOrInitItemReceipt(item)
   return (
+    receipt.standard > 0 ||
     receipt.box_damage > 0 ||
     receipt.expired > 0 ||
     receipt.boxless > 0 ||
@@ -2382,20 +2400,25 @@ const onSaveManualItemEdit = async () => {
 
   const quantity = Math.max(1, Math.floor(Number(editManualItemForm.quantity ?? 1)))
 
+  const patch: Partial<ShipmentItem> = {
+    name: editManualItemForm.name.trim(),
+    barcode: editManualItemForm.barcode.trim() || null,
+    product_code: editManualItemForm.product_code.trim() || null,
+    image_url: editManualItemForm.image_url.trim() || null,
+    price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
+    product_weight:
+      editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
+    package_weight:
+      editManualItemForm.package_weight == null ? null : Number(editManualItemForm.package_weight),
+  }
+
+  if (canEditQuantity.value) {
+    patch.quantity = quantity
+  }
+
   const result = await shipmentStore.updateShipmentItem({
     id: item.id,
-    patch: {
-      name: editManualItemForm.name.trim(),
-      barcode: editManualItemForm.barcode.trim() || null,
-      product_code: editManualItemForm.product_code.trim() || null,
-      image_url: editManualItemForm.image_url.trim() || null,
-      quantity,
-      price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
-      product_weight:
-        editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
-      package_weight:
-        editManualItemForm.package_weight == null ? null : Number(editManualItemForm.package_weight),
-    },
+    patch,
   })
 
   if (!result.success) {

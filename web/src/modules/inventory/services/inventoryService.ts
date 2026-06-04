@@ -367,6 +367,20 @@ const createInventoryNote = async (
   }
 }
 
+const createInventoryNotesBulk = async (
+  payload: CreateInventoryNoteInput[],
+): Promise<InventoryServiceResult<InventoryNote[]>> => {
+  try {
+    const data = await inventoryRepository.createInventoryNotesBulk(payload)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create inventory notes.',
+    }
+  }
+}
+
 const updateInventoryNote = async (
   payload: UpdateInventoryNoteInput,
 ): Promise<InventoryServiceResult<InventoryNote>> => {
@@ -420,6 +434,7 @@ export const inventoryService = {
   refreshShipmentInventoryAccountingSummaries,
   listInventoryNotes,
   createInventoryNote,
+  createInventoryNotesBulk,
   updateInventoryNote,
   deleteInventoryNote,
   updateInventoryAccountingEntry: async (payload: UpdateInventoryAccountingEntryInput) => {
