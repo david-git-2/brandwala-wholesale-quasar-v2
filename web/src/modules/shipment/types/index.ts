@@ -30,6 +30,7 @@ export type Shipment = {
   received_weight: number | null
   vendor_code: string | null
   market_code: string | null
+  is_gbp: boolean
   created_at: string
   updated_at: string
 }
@@ -57,6 +58,7 @@ export type ShipmentItem = {
   product_weight: number | null
   package_weight: number | null
   price_gbp: number | null
+  cost_bdt: number | null
   marker_tag: 'price_reviewed' | 'issue' | 'done' | null
   inspected: boolean
   receiving_splits: ShipmentItemReceivingSplits | null
@@ -79,6 +81,7 @@ export type BatchCodePc = {
 export type CreateShipmentInput = {
   name: string
   tenant_id: number
+  is_gbp?: boolean
 }
 
 export type ShipmentUpdateField =
@@ -92,6 +95,7 @@ export type ShipmentUpdateField =
   | 'vendor_code'
   | 'market_code'
   | 'inventory_added'
+  | 'is_gbp'
 
 export type UpdateShipmentFieldInput = {
   id: number
@@ -133,6 +137,7 @@ export type AddShipmentItemManualInput = {
   package_weight?: number | null
   price_gbp?: number | null
   receiving_splits?: ShipmentItemReceivingSplits | null
+  cost_bdt?: number | null
 }
 
 export type BulkAddShipmentItemsFromProductInput = {
@@ -163,6 +168,7 @@ export type UpdateShipmentItemInput = {
       | 'package_weight'
       | 'inspected'
       | 'receiving_splits'
+      | 'cost_bdt'
     >
   >
 }

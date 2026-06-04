@@ -246,7 +246,7 @@ const router = useRouter()
 const $q = useQuasar()
 
 const showDialog = ref(false)
-const selectedShipment = ref<{ id?: number; name?: string } | null>(null)
+const selectedShipment = ref<{ id?: number; name?: string; is_gbp?: boolean } | null>(null)
 const showDeleteDialog = ref(false)
 const pendingDeleteShipment = ref<Shipment | null>(null)
 
@@ -467,7 +467,7 @@ const openCreate = () => {
   showDialog.value = true
 }
 
-const onSubmit = async (data: { name: string }) => {
+const onSubmit = async (data: { name: string; is_gbp: boolean }) => {
   if (selectedShipment.value?.id) {
     await shipmentStore.updateShipment({
       id: selectedShipment.value.id,
@@ -476,6 +476,7 @@ const onSubmit = async (data: { name: string }) => {
   } else {
     await shipmentStore.createShipment({
       name: data.name,
+      is_gbp: data.is_gbp,
       tenant_id: tenantStore.selectedTenant?.id ?? 1,
     })
   }
@@ -485,6 +486,7 @@ const onShipmentEdit = (shipment: Shipment) => {
   selectedShipment.value = {
     id: shipment.id,
     name: shipment.name,
+    is_gbp: shipment.is_gbp,
   }
   showDialog.value = true
 }

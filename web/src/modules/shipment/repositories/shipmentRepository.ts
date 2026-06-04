@@ -61,6 +61,7 @@ const createShipment = async (payload: CreateShipmentInput): Promise<Shipment> =
   const { data, error } = await db.rpc('create_shipment', {
     p_name: payload.name,
     p_tenant_id: payload.tenant_id,
+    p_is_gbp: payload.is_gbp !== undefined ? payload.is_gbp : true,
   })
 
   if (error) {
@@ -126,6 +127,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
   const copiedShipment = await createShipment({
     name: `${sourceShipment.name} (Copy)`,
     tenant_id: sourceShipment.tenant_id,
+    is_gbp: sourceShipment.is_gbp,
   })
 
   const { data: updatedShipment, error: updateShipmentError } = await db
@@ -137,6 +139,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       cargo_rate: sourceShipment.cargo_rate,
       weight: sourceShipment.weight,
       received_weight: sourceShipment.received_weight,
+      is_gbp: sourceShipment.is_gbp,
       inventory_added: false,
     })
     .eq('id', copiedShipment.id)
@@ -161,6 +164,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       product_weight: item.product_weight,
       package_weight: item.package_weight,
       price_gbp: item.price_gbp,
+      cost_bdt: item.cost_bdt,
       receiving_splits: item.receiving_splits ?? null,
       marker_tag: item.marker_tag ?? null,
     }))
@@ -259,6 +263,7 @@ const addShipmentItemManual = async (
     p_package_weight: payload.package_weight ?? null,
     p_price_gbp: payload.price_gbp ?? null,
     p_receiving_splits: payload.receiving_splits ?? null,
+    p_cost_bdt: payload.cost_bdt ?? null,
   })
 
   if (error) {

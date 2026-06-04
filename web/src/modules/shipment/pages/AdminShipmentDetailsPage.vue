@@ -142,7 +142,7 @@
           <div class="text-caption text-grey-8">Total Quantity</div>
           <div class="text-body1 text-weight-bold">{{ totals.quantity }}</div>
         </div>
-        <div class="shipment-summary-card">
+        <div class="shipment-summary-card" v-if="shipmentStore.selectedShipment?.is_gbp">
           <div class="text-caption text-grey-8">Total Price GBP</div>
           <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.price_gbp) }}</div>
         </div>
@@ -150,7 +150,7 @@
           <div class="text-caption text-grey-8">Total Cost BDT</div>
           <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.cost_bdt) }}</div>
         </div>
-        <div class="shipment-summary-card">
+        <div class="shipment-summary-card" v-if="shipmentStore.selectedShipment?.is_gbp">
           <div class="text-caption text-grey-8">Total Weight</div>
           <div class="text-body1 text-weight-bold">{{ formatDecimal(totals.total_weight_gm / 1000) }} kg</div>
         </div>
@@ -180,6 +180,7 @@
 
             <!-- Step 1: Rate and Weight -->
             <div 
+              v-if="shipmentStore.selectedShipment?.is_gbp"
               class="cursor-pointer row items-center q-gutter-xs text-weight-medium transition-colors hover-opacity"
               :class="isAddToInventoryRateInvalid ? 'text-amber-9 text-weight-bold' : 'text-positive'"
               @click="openShipmentInfoDialog"
@@ -192,7 +193,7 @@
               <q-tooltip anchor="top middle" self="bottom middle">Click to configure rates and cargo weight</q-tooltip>
             </div>
 
-            <q-icon name="chevron_right" color="grey-4" size="18px" />
+            <q-icon v-if="shipmentStore.selectedShipment?.is_gbp" name="chevron_right" color="grey-4" size="18px" />
 
             <!-- Step 2: Confirm Quantities (with Confirm All Perfect button below it) -->
             <div 
@@ -423,7 +424,30 @@
                 </q-popup-edit>
               </td>
               <td v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">
-                {{ formatFixed2(calculateItemCostBdt(item)) }}
+                <span :class="{ 'cursor-pointer': !isInventoryAdded && !shipmentStore.selectedShipment?.is_gbp }">
+                  {{ formatFixed2(calculateItemCostBdt(item)) }}
+                </span>
+                <q-popup-edit
+                  v-if="!isInventoryAdded && !shipmentStore.selectedShipment?.is_gbp"
+                  :model-value="item.cost_bdt"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="(value) => onNumericPopupSave(item, 'cost_bdt', value, { decimals: 2 })"
+                >
+                  <q-input
+                    :model-value="scope.value ?? ''"
+                    @update:model-value="(value) => (scope.value = value === '' ? null : Number(value))"
+                    @keyup.enter="scope.set"
+                    type="number"
+                    step="0.01"
+                    dense
+                    outlined
+                    autofocus
+                  />
+                </q-popup-edit>
               </td>
               <td
                 v-if="isColumnVisible('quantity')"
@@ -761,6 +785,7 @@
             </div>
           </div>
           <q-input
+            v-if="shipmentStore.selectedShipment?.is_gbp"
             v-model.number="addProductForm.price_gbp"
             label="Price GBP *"
             type="number"
@@ -770,6 +795,7 @@
             :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Price GBP is required']"
           />
           <q-input
+            v-if="shipmentStore.selectedShipment?.is_gbp"
             v-model.number="addProductForm.product_weight"
             label="Product Weight *"
             type="number"
@@ -779,6 +805,7 @@
             :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Product Weight is required']"
           />
           <q-input
+            v-if="shipmentStore.selectedShipment?.is_gbp"
             v-model.number="addProductForm.package_weight"
             label="Package Weight *"
             type="number"
@@ -786,6 +813,16 @@
             dense
             hide-bottom-space
             :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Package Weight is required']"
+          />
+          <q-input
+            v-if="!shipmentStore.selectedShipment?.is_gbp"
+            v-model.number="addProductForm.cost_bdt"
+            label="Cost BDT *"
+            type="number"
+            outlined
+            dense
+            hide-bottom-space
+            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Cost BDT is required']"
           />
           <q-select
             v-model="addProductForm.vendor_code"
@@ -917,9 +954,42 @@
               :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
               :disabled="!canEditQuantity"
             />
-            <q-input v-model.number="editManualItemForm.price_gbp" label="Price GBP" type="number" outlined dense hide-bottom-space />
-            <q-input v-model.number="editManualItemForm.product_weight" label="Product Weight" type="number" outlined dense hide-bottom-space />
-            <q-input v-model.number="editManualItemForm.package_weight" label="Package Weight" type="number" outlined dense hide-bottom-space />
+            <q-input
+              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-model.number="editManualItemForm.price_gbp"
+              label="Price GBP"
+              type="number"
+              outlined
+              dense
+              hide-bottom-space
+            />
+            <q-input
+              v-else
+              v-model.number="editManualItemForm.cost_bdt"
+              label="Cost BDT"
+              type="number"
+              outlined
+              dense
+              hide-bottom-space
+            />
+            <q-input
+              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-model.number="editManualItemForm.product_weight"
+              label="Product Weight"
+              type="number"
+              outlined
+              dense
+              hide-bottom-space
+            />
+            <q-input
+              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-model.number="editManualItemForm.package_weight"
+              label="Package Weight"
+              type="number"
+              outlined
+              dense
+              hide-bottom-space
+            />
             <q-select
               v-model="editManualItemForm.vendor_code"
               :options="vendorOptions"
@@ -1778,7 +1848,19 @@ const baseColumnSelectorOptions = [
 
 type ShipmentColumnKey = (typeof baseColumnSelectorOptions)[number]['value']
 
-const columnSelectorOptions = computed(() => baseColumnSelectorOptions)
+const columnSelectorOptions = computed(() => {
+  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
+  return baseColumnSelectorOptions.filter((option) => {
+    if (!isGbp) {
+      return (
+        option.value !== 'price_gbp' &&
+        option.value !== 'product_weight' &&
+        option.value !== 'package_weight'
+      )
+    }
+    return true
+  })
+})
 
 const columnSelectorOptionsUi = computed(() =>
   columnSelectorOptions.value.map((option) => ({ ...option })),
@@ -1809,6 +1891,7 @@ const addProductForm = reactive({
   product_code: '',
   image_url: '',
   price_gbp: null as number | null,
+  cost_bdt: null as number | null,
   product_weight: null as number | null,
   package_weight: null as number | null,
   vendor_code: null as string | null,
@@ -1823,6 +1906,7 @@ const editManualItemForm = reactive({
   image_url: '',
   quantity: 1,
   price_gbp: null as number | null,
+  cost_bdt: null as number | null,
   product_weight: null as number | null,
   package_weight: null as number | null,
   vendor_code: null as string | null,
@@ -1877,6 +1961,9 @@ const isAddToInventoryRateInvalid = computed(() => {
   const shipment = shipmentStore.selectedShipment
   if (!shipment) {
     return true
+  }
+  if (!shipment.is_gbp) {
+    return false
   }
 
   const cargoRate = Number(shipment.cargo_rate ?? 0)
@@ -2087,6 +2174,7 @@ const resetAddProductForm = () => {
   addProductForm.product_code = ''
   addProductForm.image_url = ''
   addProductForm.price_gbp = null
+  addProductForm.cost_bdt = null
   addProductForm.product_weight = null
   addProductForm.package_weight = null
   addProductForm.vendor_code = shipmentStore.selectedShipment?.vendor_code ?? null
@@ -2127,6 +2215,7 @@ const openEditManualItemDialog = (item: ShipmentItem) => {
   editManualItemForm.image_url = item.image_url ?? ''
   editManualItemForm.quantity = Number(item.quantity ?? 1)
   editManualItemForm.price_gbp = item.price_gbp ?? null
+  editManualItemForm.cost_bdt = item.cost_bdt ?? null
   editManualItemForm.product_weight = item.product_weight ?? null
   editManualItemForm.package_weight = item.package_weight ?? null
   editManualItemForm.vendor_code = matchedProduct?.vendor_code ?? shipmentStore.selectedShipment?.vendor_code ?? null
@@ -2273,9 +2362,10 @@ const onCreateProductAndAddToShipment = async () => {
 
   const name = addProductForm.name.trim()
   const quantity = Number(addProductForm.quantity ?? 0)
-  const priceGbp = Number(addProductForm.price_gbp)
-  const productWeight = Number(addProductForm.product_weight)
-  const packageWeight = Number(addProductForm.package_weight)
+  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
+  const priceGbp = isGbp ? Number(addProductForm.price_gbp) : 0
+  const productWeight = isGbp ? Number(addProductForm.product_weight) : 0
+  const packageWeight = isGbp ? Number(addProductForm.package_weight) : 0
 
   const createProductResult = await productStore.createProduct({
     tenant_id: authStore.tenantId ?? null,
@@ -2311,8 +2401,17 @@ const onCreateProductAndAddToShipment = async () => {
     method: 'manual',
   })
 
-  if (!addResult.success) {
+  if (!addResult.success || !addResult.data?.id) {
     return
+  }
+
+  if (!isGbp && addProductForm.cost_bdt != null) {
+    await shipmentStore.updateShipmentItem({
+      id: addResult.data.id,
+      patch: {
+        cost_bdt: Number(addProductForm.cost_bdt),
+      },
+    })
   }
 
   showAddProductDialog.value = false
@@ -2406,6 +2505,7 @@ const onSaveManualItemEdit = async () => {
     product_code: editManualItemForm.product_code.trim() || null,
     image_url: editManualItemForm.image_url.trim() || null,
     price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
+    cost_bdt: editManualItemForm.cost_bdt == null ? null : Number(editManualItemForm.cost_bdt),
     product_weight:
       editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
     package_weight:
@@ -2442,6 +2542,7 @@ const onSaveManualItemEdit = async () => {
 
 type EditableNumericField =
   | 'price_gbp'
+  | 'cost_bdt'
   | 'quantity'
   | 'product_weight'
   | 'package_weight'
@@ -2459,6 +2560,9 @@ const roundTo = (value: number, decimals = 0) => {
 
 const calculateItemCostBdt = (item: ShipmentItem) => {
   const shipment = shipmentStore.selectedShipment
+  if (shipment && !shipment.is_gbp) {
+    return item.cost_bdt ?? 0
+  }
   return calculateCostBdt({
     productWeight: item.product_weight,
     packageWeight: item.package_weight,
@@ -2622,6 +2726,7 @@ const downloadShipmentExcel = async () => {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Shipment Items')
 
+  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
   const headers = [
     'SL',
     'Name',
@@ -2632,14 +2737,13 @@ const downloadShipmentExcel = async () => {
     'Manufacturing Date',
     'Method',
     'Tag',
-    'Price GBP',
+    ...(isGbp ? ['Price GBP'] : []),
     'Cost BDT',
     'Quantity',
     'Usable (Standard)',
     'Expired / Damaged',
     'Transit Loss',
-    'Product Weight',
-    'Package Weight',
+    ...(isGbp ? ['Product Weight', 'Package Weight'] : []),
   ]
 
   sheet.addRow(headers)
@@ -2674,14 +2778,13 @@ const downloadShipmentExcel = async () => {
       uniqueManufacturingDates.join(', '),
       item.method ?? '',
       getTagLabel(item.marker_tag ?? null),
-      Number(item.price_gbp ?? 0),
+      ...(isGbp ? [Number(item.price_gbp ?? 0)] : []),
       Number(calculateItemCostBdt(item) ?? 0),
       Number(item.quantity ?? 0),
       Number(getReceivedQty(item)),
       Number(getDamagedQty(item)),
       Number(getStolenQty(item)),
-      Number(item.product_weight ?? 0),
-      Number(item.package_weight ?? 0),
+      ...(isGbp ? [Number(item.product_weight ?? 0), Number(item.package_weight ?? 0)] : []),
     ])
   })
 
@@ -2695,22 +2798,21 @@ const downloadShipmentExcel = async () => {
     { width: 28 },
     { width: 12 },
     { width: 16 },
-    { width: 12 },
-    { width: 12 },
-    { width: 10 },
-    { width: 12 },
-    { width: 12 },
-    { width: 12 },
-    { width: 14 },
-    { width: 14 },
+    ...(isGbp ? [{ width: 12 }] : []), // Price GBP
+    { width: 12 }, // Cost BDT
+    { width: 10 }, // Quantity
+    { width: 12 }, // Usable
+    { width: 12 }, // Expired
+    { width: 12 }, // Stolen
+    ...(isGbp ? [{ width: 14 }, { width: 14 }] : []), // Product/Package weight
   ]
 
-  const numberColumns = [10, 11, 16, 17]
+  const numberColumns = isGbp ? [10, 11, 16, 17] : [10]
   numberColumns.forEach((columnIndex) => {
     sheet.getColumn(columnIndex).numFmt = '#,##0.00'
   })
 
-  const integerColumns = [12, 13, 14, 15]
+  const integerColumns = isGbp ? [12, 13, 14, 15] : [11, 12, 13, 14]
   integerColumns.forEach((columnIndex) => {
     sheet.getColumn(columnIndex).numFmt = '#,##0'
   })

@@ -8,7 +8,7 @@
         <q-btn icon="close" flat round dense @click="emit('update:modelValue', false)" />
       </q-card-section>
 
-      <q-card-section>
+      <q-card-section class="q-gutter-y-md">
         <q-input
           v-model="form.name"
           label="Name"
@@ -17,6 +17,24 @@
           autofocus
           @keyup.enter="onSubmit"
         />
+
+        <div class="row items-center justify-between q-py-xs">
+          <div class="text-subtitle2 text-grey-8">Pricing Mode:</div>
+          <q-btn-toggle
+            v-model="form.is_gbp"
+            dense
+            unelevated
+            no-caps
+            :disable="!!initialData"
+            toggle-color="primary"
+            color="white"
+            text-color="primary"
+            :options="[
+              { label: 'GBP Pricing', value: true },
+              { label: 'Direct BDT Cost', value: false },
+            ]"
+          />
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -38,16 +56,18 @@ const props = defineProps<{
   modelValue: boolean
   initialData?: {
     name?: string
+    is_gbp?: boolean
   } | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'submit', value: { name: string }): void
+  (e: 'submit', value: { name: string; is_gbp: boolean }): void
 }>()
 
 const form = reactive({
   name: '',
+  is_gbp: true,
 })
 
 watch(
@@ -55,13 +75,14 @@ watch(
   (value) => {
     if (value) {
       form.name = props.initialData?.name ?? ''
+      form.is_gbp = props.initialData?.is_gbp ?? true
     }
   },
   { immediate: true }
 )
 
 const onSubmit = () => {
-  emit('submit', { name: form.name })
+  emit('submit', { name: form.name, is_gbp: form.is_gbp })
   emit('update:modelValue', false)
 }
 </script>

@@ -258,14 +258,16 @@ const shipmentId = computed(() => {
 const shipmentRows = computed(() => {
   const shipment = shipmentStore.selectedShipment
   return (shipmentStore.shipmentItems ?? []).map((item) => {
-    const costPerUnitBdt = calculateCostBdt({
-      productWeight: item.product_weight,
-      packageWeight: item.package_weight,
-      cargoRate: shipment?.cargo_rate,
-      priceGbp: item.price_gbp,
-      productConversionRate: shipment?.product_conversion_rate,
-      cargoConversionRate: shipment?.cargo_conversion_rate,
-    })
+    const costPerUnitBdt = shipment && !shipment.is_gbp
+      ? Number(item.cost_bdt ?? 0)
+      : calculateCostBdt({
+          productWeight: item.product_weight,
+          packageWeight: item.package_weight,
+          cargoRate: shipment?.cargo_rate,
+          priceGbp: item.price_gbp,
+          productConversionRate: shipment?.product_conversion_rate,
+          cargoConversionRate: shipment?.cargo_conversion_rate,
+        })
     const recQty = getReceivedQty(item)
     const damQty = getDamagedQty(item)
     const stQty = getStolenQty(item)
