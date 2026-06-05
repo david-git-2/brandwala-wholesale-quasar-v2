@@ -3,7 +3,7 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-subtitle1 font-bold row items-center gap-sm">
         <q-icon name="description" color="primary" size="sm" />
-        <span>Inventory Notes & History</span>
+        <span>Stock Notes & History</span>
       </div>
       <q-btn
         flat

@@ -13,8 +13,16 @@ export const useTasksStore = defineStore('tasks', {
     searchLoading: false,
     totalItems: 0,
     currentPage: 1,
-    pageSize: 20,
+    pageSize: 25,
     totalPages: 1,
+    statusCounts: {
+      todo: 0,
+      in_progress: 0,
+      review: 0,
+      done: 0,
+      blocked: 0,
+      archived: 0,
+    } as Record<string, number>,
   }),
 
   getters: {
@@ -81,6 +89,7 @@ export const useTasksStore = defineStore('tasks', {
         assignee?: string | null;
         myTasksEmail?: string | null;
         includeParents?: boolean;
+        tagId?: number | null;
       },
       page: number = 1,
       pageSize: number = 20
@@ -94,6 +103,14 @@ export const useTasksStore = defineStore('tasks', {
         this.currentPage = page;
         this.pageSize = pageSize;
         this.totalPages = Math.max(1, Math.ceil(result.total / pageSize));
+        this.statusCounts = result.statusCounts || {
+          todo: 0,
+          in_progress: 0,
+          review: 0,
+          done: 0,
+          blocked: 0,
+          archived: 0,
+        };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to fetch items';
       } finally {
@@ -106,7 +123,11 @@ export const useTasksStore = defineStore('tasks', {
       this.loading = true;
       try {
         const newItem = await tasksRepository.createItem(item);
+        newItem.tags = [];
+        newItem.assignees = [];
         this.items.push(newItem);
+        this.totalItems++;
+        this.totalPages = Math.max(1, Math.ceil(this.totalItems / this.pageSize));
         await tasksRepository.createActivityLog({
           item_id: newItem.id,
           action: 'created',
@@ -173,8 +194,39 @@ export const useTasksStore = defineStore('tasks', {
 
         const idsToRemove = [id, ...getDescendantIds(id)];
         this.items = this.items.filter(i => !idsToRemove.includes(i.id));
+        this.totalItems = Math.max(0, this.totalItems - idsToRemove.length);
+        this.totalPages = Math.max(1, Math.ceil(this.totalItems / this.pageSize));
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete item';
+        throw err;
+      }
+    },
+
+    async deleteItemsBulk(ids: number[]) {
+      try {
+        await tasksRepository.deleteItemsBulk(ids);
+
+        const getDescendantIds = (parentId: number): number[] => {
+          const children = this.items.filter(i => i.parent_id === parentId);
+          let descendantIds = children.map(c => c.id);
+          children.forEach(c => {
+            descendantIds = descendantIds.concat(getDescendantIds(c.id));
+          });
+          return descendantIds;
+        };
+
+        const allIdsToRemove = new Set<number>();
+        ids.forEach(id => {
+          allIdsToRemove.add(id);
+          getDescendantIds(id).forEach(dId => allIdsToRemove.add(dId));
+        });
+
+        const removedCount = this.items.filter(i => allIdsToRemove.has(i.id)).length;
+        this.items = this.items.filter(i => !allIdsToRemove.has(i.id));
+        this.totalItems = Math.max(0, this.totalItems - removedCount);
+        this.totalPages = Math.max(1, Math.ceil(this.totalItems / this.pageSize));
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete items';
         throw err;
       }
     },
@@ -191,10 +243,42 @@ export const useTasksStore = defineStore('tasks', {
       }
     },
 
+    async updateTag(id: number, updates: Partial<Tag>) {
+      try {
+        const updatedTag = await tasksRepository.updateTag(id, updates);
+        const index = this.tags.findIndex(t => t.id === id);
+        if (index !== -1) {
+          this.tags[index] = { ...this.tags[index], ...updatedTag };
+        }
+
+        // Propagate tag update to items cache
+        this.items.forEach(item => {
+          if (item.tags) {
+            const tIndex = item.tags.findIndex(t => t.id === id);
+            if (tIndex !== -1) {
+              item.tags[tIndex] = { ...item.tags[tIndex], ...updatedTag };
+            }
+          }
+        });
+
+        return updatedTag;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update tag';
+        throw err;
+      }
+    },
+
     async deleteTag(tagId: number) {
       try {
         await tasksRepository.deleteTag(tagId);
         this.tags = this.tags.filter(t => t.id !== tagId);
+
+        // Remove tag from items cache
+        this.items.forEach(item => {
+          if (item.tags) {
+            item.tags = item.tags.filter(t => t.id !== tagId);
+          }
+        });
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete tag';
         throw err;
@@ -210,6 +294,18 @@ export const useTasksStore = defineStore('tasks', {
           action: 'tag_added',
           new_value: String(tagId),
         });
+
+        // Update local cache
+        const item = this.items.find(i => i.id === itemId);
+        if (item) {
+          const tag = this.tags.find(t => t.id === tagId);
+          if (tag) {
+            item.tags = item.tags || [];
+            if (!item.tags.some(t => t.id === tagId)) {
+              item.tags.push(tag);
+            }
+          }
+        }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to link tag';
         throw err;
@@ -224,6 +320,12 @@ export const useTasksStore = defineStore('tasks', {
           action: 'tag_removed',
           new_value: String(tagId),
         });
+
+        // Update local cache
+        const item = this.items.find(i => i.id === itemId);
+        if (item && item.tags) {
+          item.tags = item.tags.filter(t => t.id !== tagId);
+        }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to unlink tag';
         throw err;
@@ -239,6 +341,16 @@ export const useTasksStore = defineStore('tasks', {
           action: 'assigned',
           new_value: email,
         });
+
+        // Update local cache
+        const item = this.items.find(i => i.id === itemId);
+        if (item) {
+          item.assignees = item.assignees || [];
+          if (!item.assignees.some(a => a.user_email === email)) {
+            item.assignees.push(ass);
+          }
+        }
+
         return ass;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to add assignee';
@@ -249,6 +361,12 @@ export const useTasksStore = defineStore('tasks', {
     async removeAssignee(itemId: number, email: string) {
       try {
         await tasksRepository.removeAssignee(itemId, email);
+
+        // Update local cache
+        const item = this.items.find(i => i.id === itemId);
+        if (item && item.assignees) {
+          item.assignees = item.assignees.filter(a => a.user_email !== email);
+        }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to remove assignee';
         throw err;

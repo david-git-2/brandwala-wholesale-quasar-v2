@@ -2,7 +2,7 @@
   <q-dialog v-model="localModelValue" persistent>
     <q-card style="min-width: 560px; max-width: 95vw;">
       <q-card-section>
-        <div class="text-h6">Add Inventory Item</div>
+        <div class="text-h6">Add Stock Item</div>
       </q-card-section>
 
       <q-card-section>

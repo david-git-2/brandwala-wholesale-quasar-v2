@@ -126,3 +126,23 @@ An internal module for tracking third-party capital invested into specific shipm
 
 **Key RPCs:**
 *   `refresh_investor_balance()`: Recalculates an investor's balance and profit margins based on their transactions and shipment outcomes.
+
+---
+
+## 9. Task Management
+**Purpose:**
+Provides a collaborative workspace for teams to track projects, modules, submodules, tasks, notes, discussions, bugs, and features with hierarchical grouping and comments.
+
+**Core Structure:**
+*   `items`: Hierarchical work items (projects, tasks, bugs, etc.) supporting priority, status, and accessibility control.
+*   `item_assignees`: Tracks team members assigned to items.
+*   `tags` & `item_tags`: Custom categorized labels per tenant.
+*   `comments`: Threaded messaging logs for collaboration.
+*   `item_permissions`: Scoped permissions (`owner`, `manager`, `editor`, `viewer`, `commenter`) for restricted items.
+*   `activity_logs`: Auditable logs of item updates.
+
+**Key RPCs:**
+*   `get_effective_item_role(p_item_id, p_user_email)`: Resolves a user's permission level recursively checking parent hierarchies.
+*   `list_items_paginated()`: Paginated item fetcher with filters for assignees, priorities, status, and type.
+*   `get_item_details()`: Retrieves detailed item data including tags, comments, assignees, and history.
+*   `global_search_tasks(p_query)`: Executes cross-tenant global search over titles, content, tags, and comments.

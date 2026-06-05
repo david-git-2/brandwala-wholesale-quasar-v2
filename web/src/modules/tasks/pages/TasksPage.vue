@@ -20,6 +20,16 @@
               @click="tagManagerOpen = true"
             />
             <q-btn
+              color="negative"
+              outline
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              icon="delete_sweep"
+              label="Bulk Delete"
+              @click="bulkDeleteOpen = true"
+            />
+            <q-btn
               color="primary"
               no-caps
               size="sm"
@@ -33,75 +43,94 @@
       </q-card-section>
     </q-card>
 
-    <!-- Filters and Search Controls Card -->
-    <q-card flat class="q-mb-md floating-surface shadow-1">
-      <q-card-section class="q-py-sm row q-col-gutter-sm items-center">
-        <!-- Search Input -->
-        <div class="col-12 col-sm-3">
-          <q-input
-            v-model="filters.search"
-            placeholder="Filter by title/desc..."
-            outlined
-            dense
-            clearable
+    <!-- Status Summary Row -->
+    <div class="row q-col-gutter-xs q-mb-sm">
+      <div v-for="status in statusSummaryItems" :key="status.key" class="col-6 col-sm col-md">
+        <q-card
+          flat
+          bordered
+          class="status-summary-card text-center q-py-xs cursor-pointer relative-position"
+          :class="{ 'active-status-card shadow-1': filters.status === status.key }"
+          @click="toggleStatusFilter(status.key)"
+        >
+          <div class="text-caption text-grey-7 text-uppercase font-bold text-weight-medium" style="font-size: 0.65rem; line-height: 1;">
+            {{ status.label }}
+          </div>
+          <div class="text-subtitle1 text-weight-bold text-weight-bold" :class="`text-${status.color}`" style="line-height: 1.1; margin-top: 2px;">
+            {{ status.count }}
+          </div>
+          <div class="status-indicator-bar" :class="`bg-${status.color}`"></div>
+        </q-card>
+      </div>
+    </div>
+
+    <!-- Search + Filter Toolbar -->
+    <div class="row items-center justify-end q-mb-sm">
+      <div class="row items-center q-gutter-sm toolbar-left">
+        <q-btn
+          v-if="!showSearchInput"
+          flat
+          round
+          dense
+          icon="search"
+          aria-label="Show search"
+          @click="showSearchInput = true"
+        >
+          <q-tooltip>Search Tasks</q-tooltip>
+        </q-btn>
+
+        <q-input
+          v-else
+          v-model="filters.search"
+          outlined
+          dense
+          class="soft-input toolbar-search"
+          placeholder="Search..."
+          clearable
+          autofocus
+        >
+          <template #prepend>
+            <q-icon name="search" size="18px" />
+          </template>
+          <template #append>
+            <q-btn
+              flat
+              round
+              dense
+              icon="close"
+              aria-label="Hide search"
+              @click="
+                () => {
+                  filters.search = ''
+                  showSearchInput = false
+                }
+              "
+            >
+              <q-tooltip>Hide Search</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+
+        <q-btn
+          flat
+          round
+          dense
+          icon="filter_alt"
+          aria-label="Filters"
+          @click="filterDrawerOpen = true"
+        >
+          <q-badge
+            v-if="activeFilterCount > 0"
+            color="primary"
+            rounded
+            floating
           >
-            <template #prepend>
-              <q-icon name="search" size="18px" />
-            </template>
-          </q-input>
-        </div>
-        <!-- Type Filter -->
-        <div class="col-6 col-sm-2" v-if="['tree', 'list', 'my-tasks'].includes(activeTab)">
-          <q-select
-            v-model="filters.type"
-            :options="typeFilterOptions"
-            label="Type"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-          />
-        </div>
-        <!-- Status Filter -->
-        <div class="col-6 col-sm-2">
-          <q-select
-            v-model="filters.status"
-            :options="statusFilterOptions"
-            label="Status"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-          />
-        </div>
-        <!-- Priority Filter -->
-        <div class="col-6 col-sm-2">
-          <q-select
-            v-model="filters.priority"
-            :options="priorityFilterOptions"
-            label="Priority"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-          />
-        </div>
-        <!-- Assignee Filter -->
-        <div class="col-6 col-sm-3" v-if="activeTab !== 'my-tasks'">
-          <q-select
-            v-model="filters.assignee"
-            :options="assigneeFilterOptions"
-            label="Assignee"
-            outlined
-            dense
-            clearable
-          />
-        </div>
-      </q-card-section>
-    </q-card>
+            {{ activeFilterCount }}
+          </q-badge>
+          <q-tooltip>Open Filters</q-tooltip>
+        </q-btn>
+      </div>
+    </div>
 
     <!-- Loading State -->
     <PageInitialLoader v-if="loading" />
@@ -136,40 +165,70 @@
                 <div class="row items-center q-gutter-sm">
                   <q-icon :name="getTicketIcon(project.type)" :color="getTicketColor(project.type)" size="24px" />
                   <div>
-                    <span
-                      class="text-subtitle1 text-weight-bold"
-                      :class="`text-${getTicketColor(project.type)}-9`"
-                    >
-                      {{ project.title }}
-                    </span>
-                    <q-icon
-                      v-if="project.accessibility && project.accessibility !== 'public'"
-                      :name="project.accessibility === 'private' ? 'lock' : 'lock_person'"
-                      :color="project.accessibility === 'private' ? 'negative' : 'primary'"
-                      size="14px"
-                      class="q-ml-xs"
-                    >
-                      <q-tooltip>{{ project.accessibility.toUpperCase() }} Note</q-tooltip>
-                    </q-icon>
-                    <q-chip
-                      square
-                      dense
-                      :style="typeChipStyle(project.type)"
-                      class="status-chip text-weight-bold q-ml-sm"
-                    >
-                      <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(project.type) }"></span>
-                      {{ project.type.toUpperCase() }}
-                    </q-chip>
-                    <q-chip
-                      v-if="['task', 'bug', 'feature'].includes(project.type)"
-                      square
-                      dense
-                      :style="statusChipStyle(project.status)"
-                      class="status-chip text-weight-bold q-ml-xs"
-                    >
-                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(project.status) }"></span>
-                      {{ project.status.toUpperCase() }}
-                    </q-chip>
+                    <div class="row items-center no-wrap">
+                      <span
+                        class="text-subtitle1 text-weight-bold"
+                        :class="`text-${getTicketColor(project.type)}-9`"
+                      >
+                        {{ project.title }}
+                      </span>
+                      <q-icon
+                        v-if="project.accessibility && project.accessibility !== 'public'"
+                        :name="project.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :color="project.accessibility === 'private' ? 'negative' : 'primary'"
+                        size="14px"
+                        class="q-ml-xs"
+                      >
+                        <q-tooltip>{{ project.accessibility.toUpperCase() }} Note</q-tooltip>
+                      </q-icon>
+                      <q-chip
+                        square
+                        dense
+                        :style="typeChipStyle(project.type)"
+                        class="status-chip text-weight-bold q-ml-sm"
+                      >
+                        <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(project.type) }"></span>
+                        {{ project.type.toUpperCase() }}
+                      </q-chip>
+                      <q-chip
+                        v-if="['task', 'bug', 'feature'].includes(project.type)"
+                        square
+                        dense
+                        clickable
+                        :style="statusChipStyle(project.status)"
+                        class="status-chip text-weight-bold q-ml-xs"
+                        @click.stop
+                      >
+                        <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(project.status) }"></span>
+                        {{ project.status.toUpperCase() }}
+                        <q-menu auto-close>
+                          <q-list dense style="min-width: 120px">
+                            <q-item
+                              v-for="opt in statusMenuOptions"
+                              :key="opt.value"
+                              clickable
+                              v-close-popup
+                              @click="updateItemStatus(project.id, opt.value)"
+                            >
+                              <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-menu>
+                      </q-chip>
+                    </div>
+                    <div v-if="project.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                      <q-chip
+                        v-for="t in project.tags"
+                        :key="t.id"
+                        dense
+                        square
+                        text-color="white"
+                        :style="{ backgroundColor: t.color || '#6366f1' }"
+                        class="text-weight-bold text-uppercase square-chip"
+                      >
+                        {{ t.name }}
+                      </q-chip>
+                    </div>
                   </div>
                 </div>
                 <q-btn
@@ -193,17 +252,33 @@
                     <div class="row justify-between items-center q-mb-sm cursor-pointer" @click="onClickItem(mod.id)">
                       <div class="row items-center q-gutter-sm">
                         <q-icon name="view_module" color="blue" size="20px" />
-                        <span class="text-subtitle2 text-weight-bold text-blue-9">{{ mod.title }}</span>
-                        <q-icon
-                          v-if="mod.accessibility && mod.accessibility !== 'public'"
-                          :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
-                          :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
-                          size="12px"
-                          class="q-ml-xs"
-                        >
-                          <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
-                        </q-icon>
-                        <q-chip dense square color="blue-1" text-color="blue-8" class="text-overline">Module</q-chip>
+                        <div>
+                          <div class="row items-center q-gutter-x-sm">
+                            <span class="text-subtitle2 text-weight-bold text-blue-9">{{ mod.title }}</span>
+                            <q-icon
+                              v-if="mod.accessibility && mod.accessibility !== 'public'"
+                              :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                              :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
+                              size="12px"
+                            >
+                              <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
+                            </q-icon>
+                            <q-chip dense square color="blue-1" text-color="blue-8" class="text-overline">Module</q-chip>
+                          </div>
+                          <div v-if="mod.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                            <q-chip
+                              v-for="t in mod.tags"
+                              :key="t.id"
+                              dense
+                              square
+                              text-color="white"
+                              :style="{ backgroundColor: t.color || '#6366f1' }"
+                              class="text-weight-bold text-uppercase square-chip"
+                            >
+                              {{ t.name }}
+                            </q-chip>
+                          </div>
+                        </div>
                       </div>
                       <q-btn flat round dense icon="add" size="sm" color="blue" @click.stop="onClickQuickAdd(mod.id, 'submodule')">
                         <q-tooltip>Add Submodule</q-tooltip>
@@ -218,17 +293,33 @@
                           <div class="row justify-between items-center q-mb-xs cursor-pointer" @click="onClickItem(sub.id)">
                             <div class="row items-center q-gutter-sm">
                               <q-icon name="layers" color="cyan" size="18px" />
-                              <span class="text-body2 text-weight-bold text-cyan-9">{{ sub.title }}</span>
-                              <q-icon
-                                v-if="sub.accessibility && sub.accessibility !== 'public'"
-                                :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
-                                :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
-                                size="12px"
-                                class="q-ml-xs"
-                              >
-                                <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
-                              </q-icon>
-                              <q-chip dense square color="cyan-1" text-color="cyan-8" class="text-overline">Submodule</q-chip>
+                              <div>
+                                <div class="row items-center q-gutter-x-sm">
+                                  <span class="text-body2 text-weight-bold text-cyan-9">{{ sub.title }}</span>
+                                  <q-icon
+                                    v-if="sub.accessibility && sub.accessibility !== 'public'"
+                                    :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                    :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
+                                    size="12px"
+                                  >
+                                    <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
+                                  </q-icon>
+                                  <q-chip dense square color="cyan-1" text-color="cyan-8" class="text-overline">Submodule</q-chip>
+                                </div>
+                                <div v-if="sub.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                                  <q-chip
+                                    v-for="t in sub.tags"
+                                    :key="t.id"
+                                    dense
+                                    square
+                                    text-color="white"
+                                    :style="{ backgroundColor: t.color || '#6366f1' }"
+                                    class="text-weight-bold text-uppercase square-chip"
+                                  >
+                                    {{ t.name }}
+                                  </q-chip>
+                                </div>
+                              </div>
                             </div>
                             <q-btn flat round dense icon="add" size="xs" color="cyan" @click.stop="onClickQuickAdd(sub.id, 'task')">
                               <q-tooltip>Add Task/Bug/Feature</q-tooltip>
@@ -245,35 +336,84 @@
                             >
                               <div class="row items-center q-gutter-sm">
                                 <q-icon :name="getTicketIcon(ticket.type)" :color="getTicketColor(ticket.type)" size="16px" />
-                                <span class="text-body2 text-grey-9 text-weight-medium">{{ ticket.title }}</span>
-                                <q-icon
-                                  v-if="ticket.accessibility && ticket.accessibility !== 'public'"
-                                  :name="ticket.accessibility === 'private' ? 'lock' : 'lock_person'"
-                                  :color="ticket.accessibility === 'private' ? 'negative' : 'primary'"
-                                  size="12px"
-                                  class="q-ml-xs"
-                                >
-                                  <q-tooltip>{{ ticket.accessibility.toUpperCase() }} Note</q-tooltip>
-                                </q-icon>
-                                <q-chip
-                                  square
-                                  dense
-                                  :style="statusChipStyle(ticket.status)"
-                                  class="status-chip text-weight-bold"
-                                >
-                                  <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(ticket.status) }"></span>
-                                  {{ ticket.status.toUpperCase() }}
-                                </q-chip>
-                                <q-chip
-                                  v-if="ticket.priority"
-                                  square
-                                  dense
-                                  :style="priorityChipStyle(ticket.priority)"
-                                  class="status-chip text-weight-bold"
-                                >
-                                  <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(ticket.priority) }"></span>
-                                  {{ ticket.priority.toUpperCase() }}
-                                </q-chip>
+                                <div>
+                                  <div class="row items-center q-gutter-x-sm">
+                                    <span class="text-body2 text-grey-9 text-weight-medium">
+                                      <span v-if="ticket.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ ticket.id }}</span>
+                                      {{ ticket.title }}
+                                    </span>
+                                    <q-icon
+                                      v-if="ticket.accessibility && ticket.accessibility !== 'public'"
+                                      :name="ticket.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                      :color="ticket.accessibility === 'private' ? 'negative' : 'primary'"
+                                      size="12px"
+                                    >
+                                      <q-tooltip>{{ ticket.accessibility.toUpperCase() }} Note</q-tooltip>
+                                    </q-icon>
+                                    <q-chip
+                                      square
+                                      dense
+                                      clickable
+                                      :style="statusChipStyle(ticket.status)"
+                                      class="status-chip text-weight-bold"
+                                      @click.stop
+                                    >
+                                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(ticket.status) }"></span>
+                                      {{ ticket.status.toUpperCase() }}
+                                      <q-menu auto-close>
+                                        <q-list dense style="min-width: 120px">
+                                          <q-item
+                                            v-for="opt in statusMenuOptions"
+                                            :key="opt.value"
+                                            clickable
+                                            v-close-popup
+                                            @click="updateItemStatus(ticket.id, opt.value)"
+                                          >
+                                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                          </q-item>
+                                        </q-list>
+                                      </q-menu>
+                                    </q-chip>
+                                    <q-chip
+                                      v-if="ticket.priority"
+                                      square
+                                      dense
+                                      clickable
+                                      :style="priorityChipStyle(ticket.priority)"
+                                      class="status-chip text-weight-bold"
+                                      @click.stop
+                                    >
+                                      <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(ticket.priority) }"></span>
+                                      {{ ticket.priority.toUpperCase() }}
+                                      <q-menu auto-close>
+                                        <q-list dense style="min-width: 120px">
+                                          <q-item
+                                            v-for="opt in priorityMenuOptions"
+                                            :key="opt.value"
+                                            clickable
+                                            v-close-popup
+                                            @click="updateItemPriority(ticket.id, opt.value)"
+                                          >
+                                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                          </q-item>
+                                        </q-list>
+                                      </q-menu>
+                                    </q-chip>
+                                  </div>
+                                  <div v-if="ticket.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                                    <q-chip
+                                      v-for="t in ticket.tags"
+                                      :key="t.id"
+                                      dense
+                                      square
+                                      text-color="white"
+                                      :style="{ backgroundColor: t.color || '#6366f1' }"
+                                      class="text-weight-bold text-uppercase square-chip"
+                                    >
+                                      {{ t.name }}
+                                    </q-chip>
+                                  </div>
+                                </div>
                               </div>
                               <q-btn
                                 flat
@@ -298,35 +438,84 @@
                         >
                           <div class="row items-center q-gutter-sm">
                             <q-icon :name="getTicketIcon(sub.type)" :color="getTicketColor(sub.type)" size="16px" />
-                            <span class="text-body2 text-grey-9 text-weight-medium">{{ sub.title }}</span>
-                            <q-icon
-                              v-if="sub.accessibility && sub.accessibility !== 'public'"
-                              :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
-                              :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
-                              size="12px"
-                              class="q-ml-xs"
-                            >
-                              <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
-                            </q-icon>
-                            <q-chip
-                              square
-                              dense
-                              :style="statusChipStyle(sub.status)"
-                              class="status-chip text-weight-bold"
-                            >
-                              <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(sub.status) }"></span>
-                              {{ sub.status.toUpperCase() }}
-                            </q-chip>
-                            <q-chip
-                              v-if="sub.priority"
-                              square
-                              dense
-                              :style="priorityChipStyle(sub.priority)"
-                              class="status-chip text-weight-bold"
-                            >
-                              <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(sub.priority) }"></span>
-                              {{ sub.priority.toUpperCase() }}
-                            </q-chip>
+                            <div>
+                              <div class="row items-center q-gutter-x-sm">
+                                <span class="text-body2 text-grey-9 text-weight-medium">
+                                  <span v-if="sub.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ sub.id }}</span>
+                                  {{ sub.title }}
+                                </span>
+                                <q-icon
+                                  v-if="sub.accessibility && sub.accessibility !== 'public'"
+                                  :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                  :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
+                                  size="12px"
+                                >
+                                  <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
+                                </q-icon>
+                                <q-chip
+                                  square
+                                  dense
+                                  clickable
+                                  :style="statusChipStyle(sub.status)"
+                                  class="status-chip text-weight-bold"
+                                  @click.stop
+                                >
+                                  <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(sub.status) }"></span>
+                                  {{ sub.status.toUpperCase() }}
+                                  <q-menu auto-close>
+                                    <q-list dense style="min-width: 120px">
+                                      <q-item
+                                        v-for="opt in statusMenuOptions"
+                                        :key="opt.value"
+                                        clickable
+                                        v-close-popup
+                                        @click="updateItemStatus(sub.id, opt.value)"
+                                      >
+                                        <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                      </q-item>
+                                    </q-list>
+                                  </q-menu>
+                                </q-chip>
+                                <q-chip
+                                  v-if="sub.priority"
+                                  square
+                                  dense
+                                  clickable
+                                  :style="priorityChipStyle(sub.priority)"
+                                  class="status-chip text-weight-bold"
+                                  @click.stop
+                                >
+                                  <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(sub.priority) }"></span>
+                                  {{ sub.priority.toUpperCase() }}
+                                  <q-menu auto-close>
+                                    <q-list dense style="min-width: 120px">
+                                      <q-item
+                                        v-for="opt in priorityMenuOptions"
+                                        :key="opt.value"
+                                        clickable
+                                        v-close-popup
+                                        @click="updateItemPriority(sub.id, opt.value)"
+                                      >
+                                        <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                      </q-item>
+                                    </q-list>
+                                  </q-menu>
+                                </q-chip>
+                              </div>
+                              <div v-if="sub.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                                <q-chip
+                                  v-for="t in sub.tags"
+                                  :key="t.id"
+                                  dense
+                                  square
+                                  text-color="white"
+                                  :style="{ backgroundColor: t.color || '#6366f1' }"
+                                  class="text-weight-bold text-uppercase square-chip"
+                                >
+                                  {{ t.name }}
+                                </q-chip>
+                              </div>
+                            </div>
                           </div>
                           <q-btn
                             flat
@@ -352,35 +541,81 @@
                   >
                     <div class="row items-center q-gutter-sm">
                       <q-icon :name="getTicketIcon(mod.type)" :color="getTicketColor(mod.type)" size="16px" />
-                      <span class="text-body2 text-grey-9 text-weight-medium">{{ mod.title }}</span>
-                      <q-icon
-                        v-if="mod.accessibility && mod.accessibility !== 'public'"
-                        :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
-                        :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
-                        size="12px"
-                        class="q-ml-xs"
-                      >
-                        <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
-                      </q-icon>
-                      <q-chip
-                        square
-                        dense
-                        :style="statusChipStyle(mod.status)"
-                        class="status-chip text-weight-bold"
-                      >
-                        <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(mod.status) }"></span>
-                        {{ mod.status.toUpperCase() }}
-                      </q-chip>
-                      <q-chip
-                        v-if="mod.priority"
-                        square
-                        dense
-                        :style="priorityChipStyle(mod.priority)"
-                        class="status-chip text-weight-bold"
-                      >
-                        <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(mod.priority) }"></span>
-                        {{ mod.priority.toUpperCase() }}
-                      </q-chip>
+                      <div>
+                        <div class="row items-center q-gutter-x-sm">
+                          <span class="text-body2 text-grey-9 text-weight-medium">{{ mod.title }}</span>
+                          <q-icon
+                            v-if="mod.accessibility && mod.accessibility !== 'public'"
+                            :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                            :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
+                            size="12px"
+                          >
+                            <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
+                          </q-icon>
+                          <q-chip
+                            square
+                            dense
+                            clickable
+                            :style="statusChipStyle(mod.status)"
+                            class="status-chip text-weight-bold"
+                            @click.stop
+                          >
+                            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(mod.status) }"></span>
+                            {{ mod.status.toUpperCase() }}
+                            <q-menu auto-close>
+                              <q-list dense style="min-width: 120px">
+                                <q-item
+                                  v-for="opt in statusMenuOptions"
+                                  :key="opt.value"
+                                  clickable
+                                  v-close-popup
+                                  @click="updateItemStatus(mod.id, opt.value)"
+                                >
+                                  <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                </q-item>
+                              </q-list>
+                            </q-menu>
+                          </q-chip>
+                          <q-chip
+                            v-if="mod.priority"
+                            square
+                            dense
+                            clickable
+                            :style="priorityChipStyle(mod.priority)"
+                            class="status-chip text-weight-bold"
+                            @click.stop
+                          >
+                            <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(mod.priority) }"></span>
+                            {{ mod.priority.toUpperCase() }}
+                            <q-menu auto-close>
+                              <q-list dense style="min-width: 120px">
+                                <q-item
+                                  v-for="opt in priorityMenuOptions"
+                                  :key="opt.value"
+                                  clickable
+                                  v-close-popup
+                                  @click="updateItemPriority(mod.id, opt.value)"
+                                >
+                                  <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                </q-item>
+                              </q-list>
+                            </q-menu>
+                          </q-chip>
+                        </div>
+                        <div v-if="mod.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                          <q-chip
+                            v-for="t in mod.tags"
+                            :key="t.id"
+                            dense
+                            square
+                            text-color="white"
+                            :style="{ backgroundColor: t.color || '#6366f1' }"
+                            class="text-weight-bold text-uppercase square-chip"
+                          >
+                            {{ t.name }}
+                          </q-chip>
+                        </div>
+                      </div>
                     </div>
                     <q-btn
                       flat
@@ -406,35 +641,84 @@
                 >
                   <div class="row items-center q-gutter-sm">
                     <q-icon :name="getTicketIcon(child.type)" :color="getTicketColor(child.type)" size="16px" />
-                    <span class="text-body2 text-grey-9 text-weight-medium">{{ child.title }}</span>
-                    <q-icon
-                      v-if="child.accessibility && child.accessibility !== 'public'"
-                      :name="child.accessibility === 'private' ? 'lock' : 'lock_person'"
-                      :color="child.accessibility === 'private' ? 'negative' : 'primary'"
-                      size="12px"
-                      class="q-ml-xs"
-                    >
-                      <q-tooltip>{{ child.accessibility.toUpperCase() }} Note</q-tooltip>
-                    </q-icon>
-                    <q-chip
-                      square
-                      dense
-                      :style="statusChipStyle(child.status)"
-                      class="status-chip text-weight-bold"
-                    >
-                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(child.status) }"></span>
-                      {{ child.status.toUpperCase() }}
-                    </q-chip>
-                    <q-chip
-                      v-if="child.priority"
-                      square
-                      dense
-                      :style="priorityChipStyle(child.priority)"
-                      class="status-chip text-weight-bold"
-                    >
-                      <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(child.priority) }"></span>
-                      {{ child.priority.toUpperCase() }}
-                    </q-chip>
+                    <div>
+                      <div class="row items-center q-gutter-x-sm">
+                        <span class="text-body2 text-grey-9 text-weight-medium">
+                          <span v-if="child.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ child.id }}</span>
+                          {{ child.title }}
+                        </span>
+                        <q-icon
+                          v-if="child.accessibility && child.accessibility !== 'public'"
+                          :name="child.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :color="child.accessibility === 'private' ? 'negative' : 'primary'"
+                          size="12px"
+                        >
+                          <q-tooltip>{{ child.accessibility.toUpperCase() }} Note</q-tooltip>
+                        </q-icon>
+                        <q-chip
+                          square
+                          dense
+                          clickable
+                          :style="statusChipStyle(child.status)"
+                          class="status-chip text-weight-bold"
+                          @click.stop
+                        >
+                          <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(child.status) }"></span>
+                          {{ child.status.toUpperCase() }}
+                          <q-menu auto-close>
+                            <q-list dense style="min-width: 120px">
+                              <q-item
+                                v-for="opt in statusMenuOptions"
+                                :key="opt.value"
+                                clickable
+                                v-close-popup
+                                @click="updateItemStatus(child.id, opt.value)"
+                              >
+                                <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                              </q-item>
+                            </q-list>
+                          </q-menu>
+                        </q-chip>
+                        <q-chip
+                          v-if="child.priority"
+                          square
+                          dense
+                          clickable
+                          :style="priorityChipStyle(child.priority)"
+                          class="status-chip text-weight-bold"
+                          @click.stop
+                        >
+                          <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(child.priority) }"></span>
+                          {{ child.priority.toUpperCase() }}
+                          <q-menu auto-close>
+                            <q-list dense style="min-width: 120px">
+                              <q-item
+                                v-for="opt in priorityMenuOptions"
+                                :key="opt.value"
+                                clickable
+                                v-close-popup
+                                @click="updateItemPriority(child.id, opt.value)"
+                              >
+                                <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                              </q-item>
+                            </q-list>
+                          </q-menu>
+                        </q-chip>
+                      </div>
+                      <div v-if="child.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                        <q-chip
+                          v-for="t in child.tags"
+                          :key="t.id"
+                          dense
+                          square
+                          text-color="white"
+                          :style="{ backgroundColor: t.color || '#6366f1' }"
+                          class="text-weight-bold text-uppercase square-chip"
+                        >
+                          {{ t.name }}
+                        </q-chip>
+                      </div>
+                    </div>
                   </div>
                   <q-btn
                     flat
@@ -470,21 +754,44 @@
                 flat
                 dense
                 class="tasks-list-table"
+                :pagination="{ rowsPerPage: 25 }"
+                hide-pagination
                 @row-click="(evt, row) => onClickItem(row.id)"
               >
+                <template #body-cell-id="cellProps">
+                  <q-td :props="cellProps">
+                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold">#{{ cellProps.value }}</span>
+                    <span v-else class="text-grey-7">#{{ cellProps.value }}</span>
+                  </q-td>
+                </template>
                 <template #body-cell-title="cellProps">
                   <q-td :props="cellProps">
-                    <div class="row items-center no-wrap">
-                      <span class="text-weight-medium">{{ cellProps.value }}</span>
-                      <q-icon
-                        v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
-                        :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
-                        :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
-                        size="14px"
-                        class="q-ml-xs"
-                      >
-                        <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
-                      </q-icon>
+                    <div>
+                      <div class="row items-center no-wrap">
+                        <span class="text-weight-medium">{{ cellProps.value }}</span>
+                        <q-icon
+                          v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                          :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                          size="14px"
+                          class="q-ml-xs"
+                        >
+                          <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                        </q-icon>
+                      </div>
+                      <div v-if="cellProps.row.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                        <q-chip
+                          v-for="t in cellProps.row.tags"
+                          :key="t.id"
+                          dense
+                          square
+                          text-color="white"
+                          :style="{ backgroundColor: t.color || '#6366f1' }"
+                          class="text-weight-bold text-uppercase square-chip"
+                        >
+                          {{ t.name }}
+                        </q-chip>
+                      </div>
                     </div>
                   </q-td>
                 </template>
@@ -507,11 +814,26 @@
                     <q-chip
                       square
                       dense
+                      clickable
                       :style="statusChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
+                      @click.stop
                     >
                       <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(cellProps.value) }"></span>
                       {{ cellProps.value.toUpperCase() }}
+                      <q-menu auto-close>
+                        <q-list dense style="min-width: 120px">
+                          <q-item
+                            v-for="opt in statusMenuOptions"
+                            :key="opt.value"
+                            clickable
+                            v-close-popup
+                            @click="updateItemStatus(cellProps.row.id, opt.value)"
+                          >
+                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
                     </q-chip>
                   </q-td>
                 </template>
@@ -521,11 +843,26 @@
                     <q-chip
                       square
                       dense
+                      clickable
                       :style="priorityChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
+                      @click.stop
                     >
                       <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(cellProps.value) }"></span>
                       {{ cellProps.value.toUpperCase() }}
+                      <q-menu auto-close>
+                        <q-list dense style="min-width: 120px">
+                          <q-item
+                            v-for="opt in priorityMenuOptions"
+                            :key="opt.value"
+                            clickable
+                            v-close-popup
+                            @click="updateItemPriority(cellProps.row.id, opt.value)"
+                          >
+                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
                     </q-chip>
                   </q-td>
                 </template>
@@ -622,21 +959,44 @@
                 row-key="id"
                 flat
                 dense
+                :pagination="{ rowsPerPage: 25 }"
+                hide-pagination
                 @row-click="(evt, row) => onClickItem(row.id)"
               >
+                <template #body-cell-id="cellProps">
+                  <q-td :props="cellProps">
+                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold">#{{ cellProps.value }}</span>
+                    <span v-else class="text-grey-7">#{{ cellProps.value }}</span>
+                  </q-td>
+                </template>
                 <template #body-cell-title="cellProps">
                   <q-td :props="cellProps">
-                    <div class="row items-center no-wrap">
-                      <span class="text-weight-medium">{{ cellProps.value }}</span>
-                      <q-icon
-                        v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
-                        :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
-                        :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
-                        size="14px"
-                        class="q-ml-xs"
-                      >
-                        <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
-                      </q-icon>
+                    <div>
+                      <div class="row items-center no-wrap">
+                        <span class="text-weight-medium">{{ cellProps.value }}</span>
+                        <q-icon
+                          v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                          :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                          size="14px"
+                          class="q-ml-xs"
+                        >
+                          <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                        </q-icon>
+                      </div>
+                      <div v-if="cellProps.row.tags?.length" class="row q-gutter-x-xs q-mt-xs">
+                        <q-chip
+                          v-for="t in cellProps.row.tags"
+                          :key="t.id"
+                          dense
+                          square
+                          text-color="white"
+                          :style="{ backgroundColor: t.color || '#6366f1' }"
+                          class="text-weight-bold text-uppercase square-chip"
+                        >
+                          {{ t.name }}
+                        </q-chip>
+                      </div>
                     </div>
                   </q-td>
                 </template>
@@ -659,11 +1019,26 @@
                     <q-chip
                       square
                       dense
+                      clickable
                       :style="statusChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
+                      @click.stop
                     >
                       <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(cellProps.value) }"></span>
                       {{ cellProps.value.toUpperCase() }}
+                      <q-menu auto-close>
+                        <q-list dense style="min-width: 120px">
+                          <q-item
+                            v-for="opt in statusMenuOptions"
+                            :key="opt.value"
+                            clickable
+                            v-close-popup
+                            @click="updateItemStatus(cellProps.row.id, opt.value)"
+                          >
+                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
                     </q-chip>
                   </q-td>
                 </template>
@@ -673,11 +1048,26 @@
                     <q-chip
                       square
                       dense
+                      clickable
                       :style="priorityChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
+                      @click.stop
                     >
                       <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(cellProps.value) }"></span>
                       {{ cellProps.value.toUpperCase() }}
+                      <q-menu auto-close>
+                        <q-list dense style="min-width: 120px">
+                          <q-item
+                            v-for="opt in priorityMenuOptions"
+                            :key="opt.value"
+                            clickable
+                            v-close-popup
+                            @click="updateItemPriority(cellProps.row.id, opt.value)"
+                          >
+                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
                     </q-chip>
                   </q-td>
                 </template>
@@ -707,12 +1097,94 @@
       </div>
     </template>
 
+    <!-- Filter Sidebar Drawer -->
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <div class="q-gutter-y-md">
+        <!-- Type Filter -->
+        <div v-if="['tree', 'list', 'my-tasks'].includes(activeTab)">
+          <q-select
+            v-model="filters.type"
+            :options="typeFilterOptions"
+            label="Type"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            class="soft-input"
+          />
+        </div>
+
+        <!-- Status Filter -->
+        <div>
+          <q-select
+            v-model="filters.status"
+            :options="statusFilterOptions"
+            label="Status"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            class="soft-input"
+          />
+        </div>
+
+        <!-- Priority Filter -->
+        <div>
+          <q-select
+            v-model="filters.priority"
+            :options="priorityFilterOptions"
+            label="Priority"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            class="soft-input"
+          />
+        </div>
+
+        <!-- Assignee Filter -->
+        <div v-if="activeTab !== 'my-tasks'">
+          <q-select
+            v-model="filters.assignee"
+            :options="assigneeFilterOptions"
+            label="Assignee"
+            outlined
+            dense
+            clearable
+            class="soft-input"
+          />
+        </div>
+
+        <!-- Tag Filter -->
+        <div>
+          <q-select
+            v-model="filters.tagId"
+            :options="tagFilterOptions"
+            label="Tag"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            class="soft-input"
+          />
+        </div>
+
+        <!-- Reset Button -->
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps label="Reset" @click="resetFilters" />
+        </div>
+      </div>
+    </FilterSidebar>
+
     <!-- Dialog Popups -->
     <TaskFormDialog
       v-model="formOpen"
       :default-parent-id="quickAddParentId"
       :default-type="quickAddType"
-      @saved="refreshData"
     />
 
     <TagManagerDialog
@@ -722,7 +1194,11 @@
     <TaskDetailsDialog
       v-model="detailsOpen"
       v-model:item-id="selectedItemId"
-      @updated="refreshData"
+    />
+
+    <BulkDeleteDialog
+      v-model="bulkDeleteOpen"
+      @deleted="refreshData"
     />
   </q-page>
 </template>
@@ -731,12 +1207,46 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTasksStore } from '../stores/tasksStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { ItemType } from '../types';
+import type { ItemType, ItemStatus, ItemPriority } from '../types';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import TaskFormDialog from '../components/TaskFormDialog.vue';
 import TagManagerDialog from '../components/TagManagerDialog.vue';
 import TaskDetailsDialog from '../components/TaskDetailsDialog.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import BulkDeleteDialog from '../components/BulkDeleteDialog.vue';
+
+const statusMenuOptions: { label: string; value: ItemStatus }[] = [
+  { label: 'Todo', value: 'todo' },
+  { label: 'In Progress', value: 'in_progress' },
+  { label: 'Review', value: 'review' },
+  { label: 'Done', value: 'done' },
+  { label: 'Blocked', value: 'blocked' },
+  { label: 'Archived', value: 'archived' },
+];
+
+const priorityMenuOptions: { label: string; value: ItemPriority }[] = [
+  { label: 'Low', value: 'low' },
+  { label: 'Medium', value: 'medium' },
+  { label: 'High', value: 'high' },
+  { label: 'Urgent', value: 'urgent' },
+];
+
+const updateItemStatus = async (itemId: number, nextStatus: ItemStatus) => {
+  try {
+    await tasksStore.updateItem(itemId, { status: nextStatus });
+  } catch (err) {
+    console.error('Failed to update task status from list:', err);
+  }
+};
+
+const updateItemPriority = async (itemId: number, nextPriority: ItemPriority) => {
+  try {
+    await tasksStore.updateItem(itemId, { priority: nextPriority });
+  } catch (err) {
+    console.error('Failed to update task priority from list:', err);
+  }
+};
 
 const tasksStore = useTasksStore();
 const authStore = useAuthStore();
@@ -745,8 +1255,12 @@ const authStore = useAuthStore();
 const activeTab = ref('tree');
 const loading = computed(() => tasksStore.loading);
 const page = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(25);
 const totalPages = computed(() => tasksStore.totalPages);
+
+// Filter drawer states
+const filterDrawerOpen = ref(false);
+const showSearchInput = ref(false);
 
 // Filter states
 const filters = ref({
@@ -755,6 +1269,27 @@ const filters = ref({
   status: null as string | null,
   priority: null as string | null,
   assignee: null as string | null,
+  tagId: null as number | null,
+});
+
+const resetFilters = () => {
+  filters.value.search = '';
+  filters.value.type = null;
+  filters.value.status = null;
+  filters.value.priority = null;
+  filters.value.assignee = null;
+  filters.value.tagId = null;
+  filterDrawerOpen.value = false;
+};
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (filters.value.type) count++;
+  if (filters.value.status) count++;
+  if (filters.value.priority) count++;
+  if (filters.value.assignee) count++;
+  if (filters.value.tagId) count++;
+  return count;
 });
 
 // Options Lists for Filters
@@ -786,6 +1321,7 @@ const priorityFilterOptions = [
 ];
 
 const assigneeFilterOptions = computed(() => tasksStore.members.map((m) => m.email));
+const tagFilterOptions = computed(() => tasksStore.tags.map((t) => ({ label: t.name, value: t.id })));
 
 // Columns for List View Table
 const listColumns = [
@@ -801,6 +1337,7 @@ const listColumns = [
 const formOpen = ref(false);
 const tagManagerOpen = ref(false);
 const detailsOpen = ref(false);
+const bulkDeleteOpen = ref(false);
 const selectedItemId = ref<number | null>(null);
 
 // Quick Add states
@@ -833,6 +1370,7 @@ const refreshData = () => {
     status: filters.value.status,
     priority: filters.value.priority,
     assignee: filters.value.assignee,
+    tagId: filters.value.tagId,
     myTasksEmail: null as string | null,
     includeParents: activeTab.value === 'tree',
   };
@@ -1029,6 +1567,32 @@ const typeDotColor = (type: string) => {
 
 const formatDateShort = (d: string) => new Date(d).toLocaleDateString();
 
+const statusSummaryItems = computed(() => {
+  const counts = tasksStore.statusCounts || {
+    todo: 0,
+    in_progress: 0,
+    review: 0,
+    done: 0,
+    blocked: 0,
+    archived: 0,
+  };
+  return [
+    { key: 'todo', label: 'Todo', count: counts.todo, color: 'blue' },
+    { key: 'in_progress', label: 'In Progress', count: counts.in_progress, color: 'amber-9' },
+    { key: 'review', label: 'In Review', count: counts.review, color: 'purple' },
+    { key: 'blocked', label: 'Blocked', count: counts.blocked, color: 'negative' },
+    { key: 'done', label: 'Done', count: counts.done, color: 'positive' },
+  ];
+});
+
+const toggleStatusFilter = (statusKey: string) => {
+  if (filters.value.status === statusKey) {
+    filters.value.status = null;
+  } else {
+    filters.value.status = statusKey;
+  }
+};
+
 // Refetch metadata and list on tenant switch
 watch(
   () => authStore.tenantId,
@@ -1048,6 +1612,45 @@ onMounted(async () => {
 <style scoped>
 .tasks-dashboard-page {
   background: transparent;
+}
+
+.status-summary-card {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.status-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.active-status-card {
+  background: white;
+  border-color: var(--q-primary) !important;
+}
+
+.status-indicator-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.toolbar-left {
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: min(320px, 75vw);
 }
 
 .floating-surface {

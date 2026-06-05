@@ -153,7 +153,21 @@
             dense
             emit-value
             map-options
-          />
+          >
+            <template v-slot:selected-item="scope">
+              <q-chip
+                removable
+                dense
+                square
+                @remove="scope.removeAtIndex(scope.index)"
+                :tabindex="scope.tabindex"
+                :style="{ backgroundColor: getTagColor(scope.opt.value), color: '#ffffff' }"
+                class="text-weight-bold text-uppercase"
+              >
+                {{ scope.opt.label }}
+              </q-chip>
+            </template>
+          </q-select>
 
           <!-- Accessibility selection (Only shown when type is 'note') -->
           <q-select
@@ -260,6 +274,11 @@ const priorityOptions = [
 
 const memberEmails = computed(() => tasksStore.members.map(m => m.email));
 const tagOptions = computed(() => tasksStore.tags.map(t => ({ label: t.name, value: t.id })));
+
+const getTagColor = (tagId: number) => {
+  const tag = tasksStore.tags.find(t => t.id === tagId);
+  return tag?.color || '#6366f1';
+};
 
 const hasStatusAndPriority = computed(() => {
   return ['task', 'bug', 'feature'].includes(form.value.type);

@@ -2,7 +2,7 @@
   <q-dialog v-model="localModelValue" max-width="800px" style="min-width: 600px;">
     <q-card style="width: 750px; max-width: 95vw; border-radius: 16px;">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6 text-weight-bold">Inventory Batch Details</div>
+        <div class="text-h6 text-weight-bold">Stock Batch Details</div>
         <q-space />
         <q-btn
           v-if="item"
@@ -614,7 +614,7 @@ const onDeleteBatch = () => {
 
   $q.dialog({
     title: 'Confirm Deletion',
-    message: `Are you sure you want to delete this inventory batch: "${props.item.name}"? This action cannot be undone.`,
+    message: `Are you sure you want to delete this stock batch: "${props.item.name}"? This action cannot be undone.`,
     cancel: true,
     persistent: true,
   }).onOk(() => {

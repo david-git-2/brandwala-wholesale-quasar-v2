@@ -248,7 +248,7 @@
               <q-item-label class="text-weight-bold text-body1 text-black">Product ID: {{ item.product_id }}</q-item-label>
               <q-item-label caption class="text-body2 text-black">Quantity: {{ item.quantity }}</q-item-label>
               <q-item-label caption class="text-body2 text-black">
-                Inventory:
+                Stock:
                 <template v-if="getItemInventoryId(item)">
                   #{{ getItemInventoryId(item) }} - {{ getItemInventoryName(item) || 'Assigned' }}
                 </template>

@@ -82,12 +82,12 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'inventory',
-    name: 'Inventory',
+    name: 'Stock',
     description: 'Monitor stock, availability, and inventory movement.',
     routes: [
       {
         scope: 'app',
-        title: 'Inventory',
+        title: 'Stock',
         caption: 'Review stock levels and inventory operations',
         icon: 'inventory_2',
         routeSegment: 'inventory',
@@ -372,7 +372,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'app',
-        title: 'Inventory Shipment Summary',
+        title: 'Stock Shipment Summary',
         caption: 'View shipment-wise usable, damaged, stolen, and expired accounting totals',
         icon: 'inventory_2',
         routeSegment: 'accounting/inventory-shipment',

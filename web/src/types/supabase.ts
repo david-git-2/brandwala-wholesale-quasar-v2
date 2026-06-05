@@ -5131,6 +5131,7 @@ export type Database = {
           p_priority?: string
           p_search?: string
           p_status?: string
+          p_tag_id?: number
           p_tenant_id?: number
           p_type?: string
         }

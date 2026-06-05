@@ -25,7 +25,7 @@
               <q-tooltip>Delete Invoice</q-tooltip>
             </q-btn>
             <q-btn color="primary" icon="o_search" flat round dense class="pill-btn slim-btn" @click="openSearchDialogForAdd">
-              <q-tooltip>Add From Inventory</q-tooltip>
+              <q-tooltip>Add From Stock</q-tooltip>
             </q-btn>
             <!-- Invoice Status Chip -->
             <q-chip
@@ -226,7 +226,7 @@
       </div>
       <q-card flat class="floating-surface shadow-1">
         <div v-if="!items.length" class="text-grey-7 q-pa-md text-center">
-          No items on this invoice. Click "Add From Inventory" to add.
+          No items on this invoice. Click "Add From Stock" to add.
         </div>
         <q-markup-table v-else flat wrap-cells class="invoice-items-table">
           <thead>
@@ -263,7 +263,7 @@
                   </template>
                 </div>
                 <div class="text-caption text-grey-7">
-                  Inventory:
+                Stock:
                   <template v-if="row.inventory_item_id">
                     #{{ row.inventory_item_id }} - {{ row.inventory_items?.name || 'Assigned' }}
                   </template>
@@ -285,7 +285,7 @@
                   :color="row.inventory_item_id ? 'negative' : 'primary'"
                   @click="row.inventory_item_id ? unassignInventoryItem(row) : openSearchDialogForAssign(row)"
                 >
-                  <q-tooltip>{{ row.inventory_item_id ? 'Unassign Inventory' : 'Assign Inventory' }}</q-tooltip>
+                  <q-tooltip>{{ row.inventory_item_id ? 'Unassign Stock' : 'Assign Stock' }}</q-tooltip>
                 </q-btn>
                 <q-btn
                   flat
@@ -307,7 +307,7 @@
     <q-dialog v-model="searchDialogOpen">
       <q-card style="width: 800px; max-width: 92vw; max-height: 85vh" class="rounded-borders">
         <q-card-section class="row items-center justify-between bg-primary text-white">
-          <div class="text-h6">{{ searchMode === 'assign' ? 'Assign Inventory Item' : 'Add Item From Inventory' }}</div>
+          <div class="text-h6">{{ searchMode === 'assign' ? 'Assign Stock Item' : 'Add Item From Stock' }}</div>
           <q-btn flat round dense icon="close" v-close-popup color="white" />
         </q-card-section>
         <q-separator />
@@ -331,7 +331,7 @@
             <div class="col">
               <q-input
                 v-model="searchTerm"
-                label="Search inventory..."
+                label="Search stock..."
                 outlined
                 dense
                 autofocus
@@ -351,7 +351,7 @@
           </div>
 
           <div v-else-if="!searchResults.length" class="text-center text-grey-6 q-py-xl">
-            No inventory items found.
+            No stock items found.
           </div>
 
           <div v-else class="scroll q-gutter-y-sm" style="max-height: 50vh;">
@@ -719,17 +719,17 @@ const removeItem = async (orderItemId: number) => {
 
 const unassignInventoryItem = async (row: CommerceInvoiceItemRow) => {
   if (!invoice.value) return
-  const confirm = window.confirm('Unassign this inventory item and restock it?')
+  const confirm = window.confirm('Unassign this stock item and restock it?')
   if (!confirm) return
 
   loading.value = true
   try {
     const res = await commerceInvoiceService.unassignOrderItemInventory(invoiceId.value, row.id)
     if (res.success) {
-      showSuccessNotification('Inventory item unassigned and restocked.')
+      showSuccessNotification('Stock item unassigned and restocked.')
       await loadInvoiceDetails()
     } else {
-      showWarningDialog(res.error || 'Failed to unassign inventory item.')
+      showWarningDialog(res.error || 'Failed to unassign stock item.')
     }
   } finally {
     loading.value = false
@@ -816,7 +816,7 @@ const searchInventoryItems = async () => {
 const addInventoryItemToInvoice = async (inventoryItem: InventoryItemWithStock) => {
   if (!invoice.value) return
   if (!inventoryItem.product_id) {
-    showWarningDialog('Selected inventory item is not linked to a product.')
+    showWarningDialog('Selected stock item is not linked to a product.')
     return
   }
 
@@ -830,7 +830,7 @@ const addInventoryItemToInvoice = async (inventoryItem: InventoryItemWithStock) 
     return
   }
   if (form.qty > Number(inventoryItem.quantities?.usable || 0)) {
-    showWarningDialog('Quantity is greater than usable stock for this inventory item.')
+    showWarningDialog('Quantity is greater than usable stock for this item.')
     return
   }
 
@@ -847,11 +847,11 @@ const addInventoryItemToInvoice = async (inventoryItem: InventoryItemWithStock) 
     })
 
     if (res.success) {
-      showSuccessNotification(`Added "${inventoryItem.name}" from inventory to invoice.`)
+      showSuccessNotification(`Added "${inventoryItem.name}" from stock to invoice.`)
       await loadInvoiceDetails()
       searchDialogOpen.value = false
     } else {
-      showWarningDialog(res.error || 'Failed to add inventory item.')
+      showWarningDialog(res.error || 'Failed to add stock item.')
     }
   } finally {
     addItemLoading.value[inventoryItem.id] = false
@@ -880,12 +880,12 @@ const assignInventoryItemToOrderItem = async (inventoryItem: InventoryItemWithSt
     )
 
     if (res.success) {
-      showSuccessNotification('Inventory item assigned and cost updated.')
+      showSuccessNotification('Stock item assigned and cost updated.')
       await loadInvoiceDetails()
       searchDialogOpen.value = false
       selectedOrderItem.value = null
     } else {
-      showWarningDialog(res.error || 'Failed to assign inventory item.')
+      showWarningDialog(res.error || 'Failed to assign stock item.')
     }
   } finally {
     addItemLoading.value[inventoryItem.id] = false

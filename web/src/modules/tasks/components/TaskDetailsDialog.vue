@@ -24,15 +24,18 @@
               <q-icon name="arrow_back" size="14px" />
               <span>Parent: [{{ parentItem.type.toUpperCase() }}] {{ parentItem.title }}</span>
             </div>
-            <q-input
-              v-model="item.title"
-              borderless
-              dense
-              input-class="text-h6 text-weight-bold text-grey-9 q-pa-none"
-              class="q-pa-none full-width"
-              @blur="onSaveTitle"
-              @keydown.enter="onSaveTitle"
-            />
+            <div class="row items-center no-wrap full-width">
+              <span v-if="item.type === 'task'" class="text-h6 text-weight-bold text-primary q-mr-xs">#{{ item.id }}</span>
+              <q-input
+                v-model="item.title"
+                borderless
+                dense
+                input-class="text-h6 text-weight-bold text-grey-9 q-pa-none"
+                class="q-pa-none full-width col"
+                @blur="onSaveTitle"
+                @keydown.enter="onSaveTitle"
+              />
+            </div>
             <div class="row items-center q-gutter-x-sm text-caption text-grey-7 q-mt-xs">
               <span>Type:</span>
               <q-btn-dropdown
@@ -450,10 +453,12 @@
                     v-for="tag in itemTags"
                     :key="tag.id"
                     dense
+                    square
                     removable
                     @remove="onRemoveTag(tag.id)"
                     text-color="white"
                     :style="{ backgroundColor: tag.color || '#6366f1' }"
+                    class="square-chip"
                   >
                     {{ tag.name }}
                   </q-chip>

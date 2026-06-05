@@ -4,8 +4,8 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
-            <div class="text-h6 text-weight-bold">Inventory</div>
-            <div class="text-caption text-grey-8">Manage stock, quantities, and item-level inventory records</div>
+            <div class="text-h6 text-weight-bold">Stock</div>
+            <div class="text-caption text-grey-8">Manage stock, quantities, and item-level stock records</div>
           </div>
           <div class="col-auto row items-center q-gutter-sm" />
         </div>
@@ -186,7 +186,7 @@
         </q-th>
       </template>
       <template #no-data>
-        <div class="full-width text-center text-grey-7 q-py-md">No inventory items found.</div>
+        <div class="full-width text-center text-grey-7 q-py-md">No stock items found.</div>
       </template>
     </q-table>
     <InventoryCompactCard v-else :items="inventoryStore.items" @view-details="openDetailsDialog" />
@@ -529,7 +529,7 @@ const onDeleteSelected = () => {
   if (!selectedItemIds.value.length) return
   const idsToDelete = [...selectedItemIds.value]
   $q.dialog({
-    title: 'Delete Selected Inventory Items',
+    title: 'Delete Selected Stock Items',
     message: `Are you sure you want to delete ${idsToDelete.length} selected item(s)? This will also delete related stock records.`,
     cancel: true,
     persistent: true,

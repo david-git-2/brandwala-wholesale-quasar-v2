@@ -21,6 +21,7 @@ export const tasksRepository = {
       assignee?: string | null;
       myTasksEmail?: string | null;
       includeParents?: boolean;
+      tagId?: number | null;
     },
     page: number = 1,
     pageSize: number = 20
@@ -36,6 +37,7 @@ export const tasksRepository = {
       p_assignee: filters?.assignee || null,
       p_my_tasks_email: filters?.myTasksEmail || null,
       p_include_parents: filters?.includeParents || false,
+      p_tag_id: filters?.tagId || null,
     });
 
     if (error) throw error;
@@ -47,12 +49,21 @@ export const tasksRepository = {
         page: number;
         page_size: number;
         total_pages: number;
+        status_counts?: Record<string, number>;
       };
     };
 
     return {
       data: result.data || [],
       total: result.meta?.total_count || 0,
+      statusCounts: result.meta?.status_counts || {
+        todo: 0,
+        in_progress: 0,
+        review: 0,
+        done: 0,
+        blocked: 0,
+        archived: 0,
+      },
     };
   },
 
@@ -111,6 +122,11 @@ export const tasksRepository = {
     if (error) throw error;
   },
 
+  async deleteItemsBulk(ids: number[]): Promise<void> {
+    const { error } = await supabase.from('items').delete().in('id', ids);
+    if (error) throw error;
+  },
+
   // --- Assignees ---
   async fetchItemAssignees(itemId: number): Promise<ItemAssignee[]> {
     const { data, error } = await supabase
@@ -155,6 +171,12 @@ export const tasksRepository = {
 
   async createTag(tag: Partial<Tag>): Promise<Tag> {
     const { data, error } = await supabase.from('tags').insert(tag).select().single();
+    if (error) throw error;
+    return data as Tag;
+  },
+
+  async updateTag(id: number, tag: Partial<Tag>): Promise<Tag> {
+    const { data, error } = await supabase.from('tags').update(tag).eq('id', id).select().single();
     if (error) throw error;
     return data as Tag;
   },

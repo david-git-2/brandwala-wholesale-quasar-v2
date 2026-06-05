@@ -31,10 +31,22 @@
           round
           dense
           color="primary"
-          icon="search"
+          icon="assignment"
           @click="searchDialogOpen = true"
         >
           <q-tooltip>Search Tasks Cross-Tenants</q-tooltip>
+        </q-btn>
+
+        <q-btn
+          v-if="hasInventoryModule"
+          flat
+          round
+          dense
+          color="primary"
+          icon="inventory_2"
+          @click="stockSearchDialogOpen = true"
+        >
+          <q-tooltip>Search Stock Cross-Tenants</q-tooltip>
         </q-btn>
 
         <q-chip
@@ -78,6 +90,7 @@
       </div>
 
       <TaskSearchDialog v-model="searchDialogOpen" />
+      <StockSearchDialog v-model="stockSearchDialogOpen" />
     </template>
 
     <router-view />
@@ -94,6 +107,7 @@ import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigat
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue'
+import StockSearchDialog from 'src/modules/inventory/components/StockSearchDialog.vue'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
@@ -102,7 +116,9 @@ const router = useRouter()
 const { links } = useAppWorkspaceLinks()
 
 const searchDialogOpen = ref(false)
+const stockSearchDialogOpen = ref(false)
 const hasTasksModule = computed(() => authStore.activeModuleKeys.includes('tasks'))
+const hasInventoryModule = computed(() => authStore.activeModuleKeys.includes('inventory'))
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 )
