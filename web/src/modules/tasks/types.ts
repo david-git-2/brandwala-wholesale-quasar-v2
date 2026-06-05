@@ -18,6 +18,8 @@ export type ItemStatus =
 
 export type ItemPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export type ItemAccessibility = 'public' | 'private' | 'restricted';
+
 export type PermissionRole = 'owner' | 'manager' | 'editor' | 'viewer' | 'commenter';
 
 export interface Item {
@@ -29,6 +31,8 @@ export interface Item {
   content: string | null;
   status: ItemStatus;
   priority: ItemPriority;
+  accessibility: ItemAccessibility;
+  is_markdown: boolean;
   created_by_email: string;
   due_date: string | null;
   start_date: string | null;
@@ -108,6 +112,8 @@ export interface GlobalSearchResult {
   content: string | null;
   status: ItemStatus;
   priority: ItemPriority;
+  accessibility: ItemAccessibility;
+  is_markdown: boolean;
   created_by_email: string;
   due_date: string | null;
   start_date: string | null;

@@ -142,6 +142,15 @@
                     >
                       {{ project.title }}
                     </span>
+                    <q-icon
+                      v-if="project.accessibility && project.accessibility !== 'public'"
+                      :name="project.accessibility === 'private' ? 'lock' : 'lock_person'"
+                      :color="project.accessibility === 'private' ? 'negative' : 'primary'"
+                      size="14px"
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip>{{ project.accessibility.toUpperCase() }} Note</q-tooltip>
+                    </q-icon>
                     <q-chip
                       square
                       dense
@@ -185,6 +194,15 @@
                       <div class="row items-center q-gutter-sm">
                         <q-icon name="view_module" color="blue" size="20px" />
                         <span class="text-subtitle2 text-weight-bold text-blue-9">{{ mod.title }}</span>
+                        <q-icon
+                          v-if="mod.accessibility && mod.accessibility !== 'public'"
+                          :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
+                          size="12px"
+                          class="q-ml-xs"
+                        >
+                          <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
+                        </q-icon>
                         <q-chip dense square color="blue-1" text-color="blue-8" class="text-overline">Module</q-chip>
                       </div>
                       <q-btn flat round dense icon="add" size="sm" color="blue" @click.stop="onClickQuickAdd(mod.id, 'submodule')">
@@ -201,6 +219,15 @@
                             <div class="row items-center q-gutter-sm">
                               <q-icon name="layers" color="cyan" size="18px" />
                               <span class="text-body2 text-weight-bold text-cyan-9">{{ sub.title }}</span>
+                              <q-icon
+                                v-if="sub.accessibility && sub.accessibility !== 'public'"
+                                :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
+                                size="12px"
+                                class="q-ml-xs"
+                              >
+                                <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
+                              </q-icon>
                               <q-chip dense square color="cyan-1" text-color="cyan-8" class="text-overline">Submodule</q-chip>
                             </div>
                             <q-btn flat round dense icon="add" size="xs" color="cyan" @click.stop="onClickQuickAdd(sub.id, 'task')">
@@ -219,6 +246,15 @@
                               <div class="row items-center q-gutter-sm">
                                 <q-icon :name="getTicketIcon(ticket.type)" :color="getTicketColor(ticket.type)" size="16px" />
                                 <span class="text-body2 text-grey-9 text-weight-medium">{{ ticket.title }}</span>
+                                <q-icon
+                                  v-if="ticket.accessibility && ticket.accessibility !== 'public'"
+                                  :name="ticket.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                  :color="ticket.accessibility === 'private' ? 'negative' : 'primary'"
+                                  size="12px"
+                                  class="q-ml-xs"
+                                >
+                                  <q-tooltip>{{ ticket.accessibility.toUpperCase() }} Note</q-tooltip>
+                                </q-icon>
                                 <q-chip
                                   square
                                   dense
@@ -263,6 +299,15 @@
                           <div class="row items-center q-gutter-sm">
                             <q-icon :name="getTicketIcon(sub.type)" :color="getTicketColor(sub.type)" size="16px" />
                             <span class="text-body2 text-grey-9 text-weight-medium">{{ sub.title }}</span>
+                            <q-icon
+                              v-if="sub.accessibility && sub.accessibility !== 'public'"
+                              :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                              :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
+                              size="12px"
+                              class="q-ml-xs"
+                            >
+                              <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
+                            </q-icon>
                             <q-chip
                               square
                               dense
@@ -308,6 +353,15 @@
                     <div class="row items-center q-gutter-sm">
                       <q-icon :name="getTicketIcon(mod.type)" :color="getTicketColor(mod.type)" size="16px" />
                       <span class="text-body2 text-grey-9 text-weight-medium">{{ mod.title }}</span>
+                      <q-icon
+                        v-if="mod.accessibility && mod.accessibility !== 'public'"
+                        :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
+                        size="12px"
+                        class="q-ml-xs"
+                      >
+                        <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
+                      </q-icon>
                       <q-chip
                         square
                         dense
@@ -353,6 +407,15 @@
                   <div class="row items-center q-gutter-sm">
                     <q-icon :name="getTicketIcon(child.type)" :color="getTicketColor(child.type)" size="16px" />
                     <span class="text-body2 text-grey-9 text-weight-medium">{{ child.title }}</span>
+                    <q-icon
+                      v-if="child.accessibility && child.accessibility !== 'public'"
+                      :name="child.accessibility === 'private' ? 'lock' : 'lock_person'"
+                      :color="child.accessibility === 'private' ? 'negative' : 'primary'"
+                      size="12px"
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip>{{ child.accessibility.toUpperCase() }} Note</q-tooltip>
+                    </q-icon>
                     <q-chip
                       square
                       dense
@@ -409,6 +472,22 @@
                 class="tasks-list-table"
                 @row-click="(evt, row) => onClickItem(row.id)"
               >
+                <template #body-cell-title="cellProps">
+                  <q-td :props="cellProps">
+                    <div class="row items-center no-wrap">
+                      <span class="text-weight-medium">{{ cellProps.value }}</span>
+                      <q-icon
+                        v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                        :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                        size="14px"
+                        class="q-ml-xs"
+                      >
+                        <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                      </q-icon>
+                    </div>
+                  </q-td>
+                </template>
                 <template #body-cell-type="cellProps">
                   <q-td :props="cellProps">
                     <q-chip
@@ -477,7 +556,17 @@
                       <span class="status-chip-dot" style="background-color: #d97706"></span>
                       NOTE
                     </q-chip>
-                    <span class="text-caption text-grey-5">{{ formatDateShort(n.created_at) }}</span>
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-icon
+                        v-if="n.accessibility && n.accessibility !== 'public'"
+                        :name="n.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :color="n.accessibility === 'private' ? 'negative' : 'primary'"
+                        size="14px"
+                      >
+                        <q-tooltip>{{ n.accessibility.toUpperCase() }} Note</q-tooltip>
+                      </q-icon>
+                      <span class="text-caption text-grey-5">{{ formatDateShort(n.created_at) }}</span>
+                    </div>
                   </div>
                   <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">{{ n.title }}</div>
                   <div class="text-body2 text-grey-7 ellipsis-3-lines" v-html="n.content || 'No details provided.'"></div>
@@ -535,6 +624,22 @@
                 dense
                 @row-click="(evt, row) => onClickItem(row.id)"
               >
+                <template #body-cell-title="cellProps">
+                  <q-td :props="cellProps">
+                    <div class="row items-center no-wrap">
+                      <span class="text-weight-medium">{{ cellProps.value }}</span>
+                      <q-icon
+                        v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                        :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                        size="14px"
+                        class="q-ml-xs"
+                      >
+                        <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                      </q-icon>
+                    </div>
+                  </q-td>
+                </template>
                 <template #body-cell-type="cellProps">
                   <q-td :props="cellProps">
                     <q-chip

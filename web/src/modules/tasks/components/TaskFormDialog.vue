@@ -33,20 +33,32 @@
             :rules="[val => !!val || 'Title is required']"
           />
 
-          <!-- Description (Rich Text Editor) -->
+          <!-- Description (Markdown / Text Editor) -->
           <div>
-            <div class="text-caption text-grey-8 q-mb-xs">Description / Details</div>
-            <q-editor
+            <div class="row items-center justify-between q-mb-xs">
+              <span class="text-caption text-grey-8">Description / Details</span>
+              <q-checkbox v-model="form.is_markdown" label="Use Markdown" dense />
+            </div>
+            <q-input
+              v-if="form.is_markdown"
               v-model="form.content"
+              type="textarea"
+              outlined
               dense
-              flat
-              bordered
-              content-class="bg-grey-1"
-              min-height="12rem"
+              rows="6"
+              class="bg-grey-1"
+              placeholder="Write description in Markdown..."
+              :input-style="{ fontFamily: 'monospace' }"
+            />
+            <q-editor
+              v-else
+              v-model="form.content"
+              min-height="10rem"
+              max-height="25rem"
               :toolbar="[
-                ['bold', 'italic', 'strike', 'underline'],
-                ['quote', 'code', 'link', 'hr'],
+                ['bold', 'italic', 'underline', 'strike'],
                 ['unordered', 'ordered', 'outdent', 'indent'],
+                ['quote', 'link', 'hr'],
                 ['undo', 'redo'],
                 ['fullscreen']
               ]"
@@ -142,6 +154,22 @@
             emit-value
             map-options
           />
+
+          <!-- Accessibility selection (Only shown when type is 'note') -->
+          <q-select
+            v-if="form.type === 'note'"
+            v-model="form.accessibility"
+            :options="[
+              { label: 'Public - Visible to all workspace members', value: 'public' },
+              { label: 'Private - Only visible to you', value: 'private' },
+              { label: 'Restricted - Only visible to creator, assignees, and collaborators', value: 'restricted' }
+            ]"
+            label="Accessibility"
+            outlined
+            dense
+            emit-value
+            map-options
+          />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md border-top">
@@ -194,6 +222,8 @@ const form = ref({
   parent_id: null as number | null,
   status: 'todo' as ItemStatus,
   priority: 'medium' as ItemPriority,
+  accessibility: 'public' as 'public' | 'private' | 'restricted',
+  is_markdown: false,
   start_date: '',
   due_date: '',
   assigneeEmails: [] as string[],
@@ -242,19 +272,43 @@ const parentLabel = computed(() => {
 });
 
 // Dynamic Parent Filtering based on hierarchy
+const getDescendantIds = (rootId: number): Set<number> => {
+  const seen = new Set<number>();
+  const stack = [rootId];
+
+  while (stack.length) {
+    const currentId = stack.pop();
+    if (currentId == null || seen.has(currentId)) continue;
+    seen.add(currentId);
+
+    tasksStore.items
+      .filter((i) => i.parent_id === currentId)
+      .forEach((child) => stack.push(child.id));
+  }
+
+  seen.delete(rootId);
+  return seen;
+};
+
 const parentOptions = computed(() => {
+  const currentItemId = props.item?.id ?? null;
+  const forbiddenIds = currentItemId ? getDescendantIds(currentItemId) : new Set<number>();
+  if (currentItemId) forbiddenIds.add(currentItemId);
+
+  const baseItems = tasksStore.items.filter((i) => !forbiddenIds.has(i.id));
+
   if (form.value.type === 'module') {
-    return tasksStore.items
+    return baseItems
       .filter((i) => i.type === 'project')
       .map((i) => ({ label: i.title, value: i.id }));
   }
   if (form.value.type === 'submodule') {
-    return tasksStore.items
+    return baseItems
       .filter((i) => i.type === 'module')
       .map((i) => ({ label: i.title, value: i.id }));
   }
   // Tasks, bugs, features, discussions, notes can belong to submodules primarily, or modules, or projects, or notes (for child notes)
-  return tasksStore.items
+  return baseItems
     .filter((i) => ['submodule', 'module', 'project', 'note'].includes(i.type))
     .map((i) => ({ label: `[${i.type.toUpperCase()}] ${i.title}`, value: i.id }));
 });
@@ -297,6 +351,8 @@ watch(
           parent_id: i.parent_id,
           status: i.status,
           priority: i.priority,
+          accessibility: i.accessibility || 'public',
+          is_markdown: i.is_markdown || false,
           start_date: i.start_date ? i.start_date.split('T')[0]! : '',
           due_date: i.due_date ? i.due_date.split('T')[0]! : '',
           assigneeEmails: assignees.map((a) => a.user_email),
@@ -311,6 +367,8 @@ watch(
           parent_id: props.defaultParentId || null,
           status: 'todo',
           priority: 'medium',
+          accessibility: 'public',
+          is_markdown: false,
           start_date: '',
           due_date: '',
           assigneeEmails: [],
@@ -330,6 +388,8 @@ const onSave = async () => {
     parent_id: form.value.parent_id,
     status: form.value.status,
     priority: form.value.priority,
+    accessibility: form.value.type === 'note' ? form.value.accessibility : 'public',
+    is_markdown: form.value.is_markdown,
     start_date: form.value.start_date ? new Date(form.value.start_date).toISOString() : null,
     due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
   };

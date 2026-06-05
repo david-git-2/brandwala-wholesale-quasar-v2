@@ -1930,12 +1930,14 @@ export type Database = {
       }
       items: {
         Row: {
+          accessibility: string
           archived_at: string | null
           content: string | null
           created_at: string
           created_by_email: string
           due_date: string | null
           id: number
+          is_markdown: boolean
           parent_id: number | null
           priority: string
           start_date: string | null
@@ -1946,12 +1948,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accessibility?: string
           archived_at?: string | null
           content?: string | null
           created_at?: string
           created_by_email?: string
           due_date?: string | null
           id?: number
+          is_markdown?: boolean
           parent_id?: number | null
           priority?: string
           start_date?: string | null
@@ -1962,12 +1966,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accessibility?: string
           archived_at?: string | null
           content?: string | null
           created_at?: string
           created_by_email?: string
           due_date?: string | null
           id?: number
+          is_markdown?: boolean
           parent_id?: number | null
           priority?: string
           start_date?: string | null
