@@ -25,7 +25,7 @@ export const tasksRepository = {
     },
     page: number = 1,
     pageSize: number = 20
-  ): Promise<{ data: Item[]; total: number }> {
+  ): Promise<{ data: Item[]; total: number; statusCounts?: Record<string, number> }> {
     const { data, error } = await supabase.rpc('list_items_paginated', {
       p_tenant_id: tenantId,
       p_page: page,

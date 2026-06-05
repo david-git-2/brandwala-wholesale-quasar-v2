@@ -4,11 +4,11 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col">
+          <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold text-grey-9">Task Management</div>
             <div class="text-caption text-grey-6">Organize projects, submodules, tickets, notes, and team updates</div>
           </div>
-          <div class="col-auto row q-gutter-xs">
+          <div class="col-12 col-sm-auto row q-gutter-xs justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
               color="secondary"
               outline
@@ -44,8 +44,8 @@
     </q-card>
 
     <!-- Status Summary Row -->
-    <div class="row q-col-gutter-xs q-mb-sm">
-      <div v-for="status in statusSummaryItems" :key="status.key" class="col-6 col-sm col-md">
+    <div class="row no-wrap q-col-gutter-xs q-mb-sm scroll-x">
+      <div v-for="status in statusSummaryItems" :key="status.key" class="col-grow col-sm col-md status-card-wrapper">
         <q-card
           flat
           bordered
@@ -159,13 +159,13 @@
         <!-- TREE VIEW -->
         <q-tab-panel name="tree" class="q-pa-none">
           <div class="tree-container q-gutter-y-sm" v-if="filteredTree.length">
-            <div v-for="project in filteredTree" :key="project.id" class="tree-project-box floating-surface shadow-1 q-pa-md">
+            <div v-for="project in filteredTree" :key="project.id" class="tree-project-box floating-surface shadow-1 tree-project-padding">
               <!-- Project Header -->
               <div class="row justify-between items-center q-mb-md cursor-pointer" @click="onClickItem(project.id)">
                 <div class="row items-center q-gutter-sm">
                   <q-icon :name="getTicketIcon(project.type)" :color="getTicketColor(project.type)" size="24px" />
                   <div>
-                    <div class="row items-center no-wrap">
+                    <div class="row items-center q-gutter-x-xs">
                       <span
                         class="text-subtitle1 text-weight-bold"
                         :class="`text-${getTicketColor(project.type)}-9`"
@@ -245,7 +245,7 @@
               </div>
 
               <!-- Modules (only for projects) -->
-              <div v-if="project.type === 'project' && project.children?.length" class="modules-list q-pl-md border-left q-gutter-y-sm">
+              <div v-if="project.type === 'project' && project.children?.length" class="modules-list tree-indent-level border-left q-gutter-y-sm">
                 <template v-for="mod in project.children" :key="mod.id">
                   <!-- Render as Module if type is module -->
                   <div v-if="mod.type === 'module'" class="tree-module-box q-pa-sm rounded-borders">
@@ -286,7 +286,7 @@
                     </div>
 
                     <!-- Submodules -->
-                    <div v-if="mod.children?.length" class="submodules-list q-pl-md border-left q-gutter-y-sm">
+                    <div v-if="mod.children?.length" class="submodules-list tree-indent-level border-left q-gutter-y-sm">
                       <template v-for="sub in mod.children" :key="sub.id">
                         <!-- Render as Submodule if type is submodule -->
                         <div v-if="sub.type === 'submodule'" class="tree-submodule-box q-pa-sm rounded-borders">
@@ -327,7 +327,7 @@
                           </div>
 
                           <!-- Tickets / Child items -->
-                          <div v-if="sub.children?.length" class="tickets-list q-pl-md border-left q-mt-sm q-gutter-y-xs">
+                          <div v-if="sub.children?.length" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
                             <div
                               v-for="ticket in sub.children"
                               :key="ticket.id"
@@ -632,7 +632,7 @@
                 </template>
               </div>
 
-              <div v-else-if="project.type !== 'project' && project.children?.length" class="tickets-list q-pl-md border-left q-mt-sm q-gutter-y-xs">
+              <div v-else-if="project.type !== 'project' && project.children?.length" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
                 <div
                   v-for="child in project.children"
                   :key="child.id"
@@ -1325,12 +1325,12 @@ const tagFilterOptions = computed(() => tasksStore.tags.map((t) => ({ label: t.n
 
 // Columns for List View Table
 const listColumns = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'title', label: 'Title', field: 'title', align: 'left', sortable: true },
-  { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: true },
-  { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: true },
-  { name: 'priority', label: 'Priority', field: 'priority', align: 'left', sortable: true },
-  { name: 'due_date', label: 'Due Date', field: 'due_date', align: 'left', sortable: true },
+  { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true },
+  { name: 'title', label: 'Title', field: 'title', align: 'left' as const, sortable: true },
+  { name: 'type', label: 'Type', field: 'type', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'status', label: 'Status', field: 'status', align: 'left' as const, sortable: true },
+  { name: 'priority', label: 'Priority', field: 'priority', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'due_date', label: 'Due Date', field: 'due_date', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
 ];
 
 // Dialog triggers
@@ -1759,5 +1759,32 @@ onMounted(async () => {
   height: 6px;
   border-radius: 999px;
   margin-right: 4px;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  flex-wrap: nowrap !important;
+}
+
+.status-card-wrapper {
+  min-width: 95px;
+  flex: 1 0 auto;
+}
+
+.tree-indent-level {
+  padding-left: 16px;
+}
+
+.tree-project-padding {
+  padding: 16px;
+}
+
+@media (max-width: 600px) {
+  .tree-indent-level {
+    padding-left: 8px;
+  }
+  .tree-project-padding {
+    padding: 10px;
+  }
 }
 </style>

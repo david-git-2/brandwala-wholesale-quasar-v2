@@ -55,13 +55,7 @@
               v-model="form.content"
               min-height="10rem"
               max-height="25rem"
-              :toolbar="[
-                ['bold', 'italic', 'underline', 'strike'],
-                ['unordered', 'ordered', 'outdent', 'indent'],
-                ['quote', 'link', 'hr'],
-                ['undo', 'redo'],
-                ['fullscreen']
-              ]"
+              :toolbar="editorToolbar"
             />
           </div>
 
@@ -204,9 +198,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import { useTasksStore } from '../stores/tasksStore';
 import type { Item, ItemType, ItemStatus, ItemPriority } from '../types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+
+const $q = useQuasar();
 
 const props = defineProps<{
   modelValue: boolean;
@@ -222,6 +219,23 @@ const emit = defineEmits<{
 
 const tasksStore = useTasksStore();
 const authStore = useAuthStore();
+
+const editorToolbar = computed(() => {
+  if ($q.screen.xs) {
+    return [
+      ['bold', 'italic', 'underline'],
+      ['unordered', 'ordered'],
+      ['undo', 'redo']
+    ];
+  }
+  return [
+    ['bold', 'italic', 'underline', 'strike'],
+    ['unordered', 'ordered', 'outdent', 'indent'],
+    ['quote', 'link', 'hr'],
+    ['undo', 'redo'],
+    ['fullscreen']
+  ];
+});
 
 const isEdit = computed(() => !!props.item);
 const isOpen = computed({
@@ -459,8 +473,10 @@ const onSave = async () => {
 .form-card {
   width: 95vw;
   max-width: 580px;
-  background: #ffffff;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 16px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .scroll-section {
@@ -479,5 +495,15 @@ const onSave = async () => {
 .pill-btn {
   border-radius: 999px;
   font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .scroll-section {
+    max-height: 75vh;
+    padding: 12px 8px !important;
+  }
+  .form-card {
+    border-radius: 12px;
+  }
 }
 </style>

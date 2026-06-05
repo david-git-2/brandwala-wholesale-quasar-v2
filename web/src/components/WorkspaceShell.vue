@@ -472,14 +472,13 @@ const handleLogout = async () => {
   }
 
   .workspace-shell__toolbar {
-    padding: 0.5rem 0.6rem;
+    padding: 0.4rem 0.5rem;
+    gap: 0.3rem;
   }
 
   .workspace-shell__actions {
-    gap: 0.35rem;
+    gap: 0.25rem;
   }
-
- 
 }
 
 .workspace-shell__nav-sub-item {

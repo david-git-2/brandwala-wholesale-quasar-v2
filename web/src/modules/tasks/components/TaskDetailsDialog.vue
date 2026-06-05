@@ -507,7 +507,7 @@
   <!-- Create Child Item Dialog -->
   <TaskFormDialog
     v-model="createChildOpen"
-    :default-parent-id="item?.id"
+    :default-parent-id="item?.id ?? null"
     :default-type="suggestedChildType"
     @saved="onChildSaved"
   />
@@ -518,7 +518,7 @@ import { computed, ref, watch } from 'vue';
 import { useTasksStore } from '../stores/tasksStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { tasksRepository } from '../repositories/tasksRepository';
-import type { Item, Tag, Comment, ItemAssignee, ItemPermission, ActivityLog, ItemStatus, ItemPriority, ItemType } from '../types';
+import type { Item, Tag, Comment, ItemAssignee, ItemPermission, ActivityLog, ItemStatus, ItemPriority, ItemType, ItemAccessibility } from '../types';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import TaskFormDialog from './TaskFormDialog.vue';
 import { marked } from 'marked';
@@ -614,7 +614,7 @@ const typeOptions = [
   { label: 'Feature Request', value: 'feature' },
 ];
 
-const statusOptions = [
+const statusOptions: { label: string; value: ItemStatus }[] = [
   { label: 'Todo', value: 'todo' },
   { label: 'In Progress', value: 'in_progress' },
   { label: 'Review', value: 'review' },
@@ -623,7 +623,7 @@ const statusOptions = [
   { label: 'Archived', value: 'archived' },
 ];
 
-const priorityOptions = [
+const priorityOptions: { label: string; value: ItemPriority }[] = [
   { label: 'Low', value: 'low' },
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
@@ -1074,7 +1074,7 @@ const onClearDueDate = async () => {
 };
 
 // Accessibility options and helpers (only for Notes)
-const accessibilityOptions = [
+const accessibilityOptions: { label: string; value: ItemAccessibility; icon: string; caption: string }[] = [
   { label: 'Public', value: 'public', icon: 'lock_open', caption: 'Visible to all workspace members' },
   { label: 'Private', value: 'private', icon: 'lock', caption: 'Only visible to you (creator)' },
   { label: 'Restricted', value: 'restricted', icon: 'lock_person', caption: 'Only visible to creator, assignees, and collaborators' },

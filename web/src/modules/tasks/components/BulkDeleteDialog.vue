@@ -240,9 +240,9 @@ const deleting = ref(false);
 const columns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true },
   { name: 'title', label: 'Title', field: 'title', align: 'left' as const, sortable: true },
-  { name: 'type', label: 'Type', field: 'type', align: 'left' as const, sortable: true },
+  { name: 'type', label: 'Type', field: 'type', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const, sortable: true },
-  { name: 'priority', label: 'Priority', field: 'priority', align: 'left' as const, sortable: true },
+  { name: 'priority', label: 'Priority', field: 'priority', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
 ];
 
 const typeFilterOptions = [

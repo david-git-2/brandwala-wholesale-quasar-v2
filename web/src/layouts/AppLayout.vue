@@ -261,4 +261,13 @@ onMounted(() => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
 }
+
+@media (max-width: 600px) {
+  .app-context__title {
+    max-width: 100px;
+  }
+  .app-layout__tenant-chip {
+    max-width: 90px !important;
+  }
+}
 </style>
