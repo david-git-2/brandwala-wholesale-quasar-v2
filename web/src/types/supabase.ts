@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          item_id: number
+          new_value: string | null
+          old_value: string | null
+          user_email: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: number
+          item_id: number
+          new_value?: string | null
+          old_value?: string | null
+          user_email?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: number
+          item_id?: number
+          new_value?: string | null
+          old_value?: string | null
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_code_pc: {
         Row: {
           batch_id: string | null
@@ -221,6 +259,54 @@ export type Database = {
           },
         ]
       }
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          deleted_at: string | null
+          id: number
+          item_id: number
+          parent_comment_id: number | null
+          updated_at: string
+          user_email: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          item_id: number
+          parent_comment_id?: number | null
+          updated_at?: string
+          user_email?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          item_id?: number
+          parent_comment_id?: number | null
+          updated_at?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_accounting: {
         Row: {
           cost_bdt: number
@@ -419,6 +505,7 @@ export type Database = {
           created_at: string
           delivered_by: string | null
           delivery_charge: number
+          discount_amount: number
           id: number
           is_customer_group_paid: boolean
           order_id: number
@@ -435,6 +522,7 @@ export type Database = {
           created_at?: string
           delivered_by?: string | null
           delivery_charge?: number
+          discount_amount?: number
           id?: number
           is_customer_group_paid?: boolean
           order_id: number
@@ -451,6 +539,7 @@ export type Database = {
           created_at?: string
           delivered_by?: string | null
           delivery_charge?: number
+          discount_amount?: number
           id?: number
           is_customer_group_paid?: boolean
           order_id?: number
@@ -1732,6 +1821,172 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_assignees: {
+        Row: {
+          assigned_by_email: string
+          created_at: string
+          id: number
+          item_id: number
+          user_email: string
+        }
+        Insert: {
+          assigned_by_email?: string
+          created_at?: string
+          id?: number
+          item_id: number
+          user_email: string
+        }
+        Update: {
+          assigned_by_email?: string
+          created_at?: string
+          id?: number
+          item_id?: number
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_assignees_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_permissions: {
+        Row: {
+          created_at: string
+          id: number
+          item_id: number
+          role: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          item_id: number
+          role: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          item_id?: number
+          role?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_permissions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_tags: {
+        Row: {
+          created_at: string
+          id: number
+          item_id: number
+          tag_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          item_id: number
+          tag_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          item_id?: number
+          tag_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_tags_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          archived_at: string | null
+          content: string | null
+          created_at: string
+          created_by_email: string
+          due_date: string | null
+          id: number
+          parent_id: number | null
+          priority: string
+          start_date: string | null
+          status: string
+          tenant_id: number | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          content?: string | null
+          created_at?: string
+          created_by_email?: string
+          due_date?: string | null
+          id?: number
+          parent_id?: number | null
+          priority?: string
+          start_date?: string | null
+          status?: string
+          tenant_id?: number | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          content?: string | null
+          created_at?: string
+          created_by_email?: string
+          due_date?: string | null
+          id?: number
+          parent_id?: number | null
+          priority?: string
+          start_date?: string | null
+          status?: string
+          tenant_id?: number | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3205,6 +3460,7 @@ export type Database = {
       shipment_items: {
         Row: {
           barcode: string | null
+          cost_bdt: number | null
           created_at: string
           id: number
           image_url: string | null
@@ -3225,6 +3481,7 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          cost_bdt?: number | null
           created_at?: string
           id?: number
           image_url?: string | null
@@ -3245,6 +3502,7 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          cost_bdt?: number | null
           created_at?: string
           id?: number
           image_url?: string | null
@@ -3294,6 +3552,7 @@ export type Database = {
           created_at: string
           id: number
           inventory_added: boolean
+          is_gbp: boolean
           market_code: string | null
           name: string
           product_conversion_rate: number | null
@@ -3312,6 +3571,7 @@ export type Database = {
           created_at?: string
           id?: number
           inventory_added?: boolean
+          is_gbp?: boolean
           market_code?: string | null
           name: string
           product_conversion_rate?: number | null
@@ -3330,6 +3590,7 @@ export type Database = {
           created_at?: string
           id?: number
           inventory_added?: boolean
+          is_gbp?: boolean
           market_code?: string | null
           name?: string
           product_conversion_rate?: number | null
@@ -3514,6 +3775,47 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          created_by_email: string
+          id: number
+          name: string
+          slug: string
+          tenant_id: number | null
+          type: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by_email?: string
+          id?: number
+          name: string
+          slug: string
+          tenant_id?: number | null
+          type?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by_email?: string
+          id?: number
+          name?: string
+          slug?: string
+          tenant_id?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_modules: {
         Row: {
           created_at: string
@@ -3677,7 +3979,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_shipment_accounting_ledger: {
+        Row: {
+          cost_amount: number | null
+          created_at: string | null
+          entry_date: string | null
+          gross_profit_amount: number | null
+          id: number | null
+          inventory_item_id: number | null
+          invoice_id: number | null
+          invoice_item_id: number | null
+          note: string | null
+          product_id: number | null
+          quantity: number | null
+          sell_price_amount: number | null
+          shipment_id: number | null
+          shipment_item_id: number | null
+          status: string | null
+          tenant_id: number | null
+          total_cost_amount: number | null
+          total_sell_amount: number | null
+          type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_item_to_cart: {
@@ -3735,6 +4060,7 @@ export type Database = {
         }
         Returns: {
           barcode: string | null
+          cost_bdt: number | null
           created_at: string
           id: number
           image_url: string | null
@@ -3779,6 +4105,7 @@ export type Database = {
             }
             Returns: {
               barcode: string | null
+              cost_bdt: number | null
               created_at: string
               id: number
               image_url: string | null
@@ -3807,6 +4134,7 @@ export type Database = {
         | {
             Args: {
               p_barcode?: string
+              p_cost_bdt?: number
               p_image_url?: string
               p_name?: string
               p_package_weight?: number
@@ -3820,6 +4148,7 @@ export type Database = {
             }
             Returns: {
               barcode: string | null
+              cost_bdt: number | null
               created_at: string
               id: number
               image_url: string | null
@@ -3858,6 +4187,7 @@ export type Database = {
           p_return_damaged_quantity: number
           p_return_normal_quantity: number
           p_return_open_box_quantity: number
+          p_return_to_new_batch?: boolean
           p_tenant_id: number
         }
         Returns: Json
@@ -3866,6 +4196,7 @@ export type Database = {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
           barcode: string | null
+          cost_bdt: number | null
           created_at: string
           id: number
           image_url: string | null
@@ -4240,13 +4571,14 @@ export type Database = {
             }[]
           }
       create_shipment: {
-        Args: { p_name: string; p_tenant_id: number }
+        Args: { p_is_gbp?: boolean; p_name: string; p_tenant_id: number }
         Returns: {
           cargo_conversion_rate: number | null
           cargo_rate: number | null
           created_at: string
           id: number
           inventory_added: boolean
+          is_gbp: boolean
           market_code: string | null
           name: string
           product_conversion_rate: number | null
@@ -4461,6 +4793,11 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_effective_item_role: {
+        Args: { p_item_id: number; p_user_email: string }
+        Returns: string
+      }
+      get_item_details: { Args: { p_item_id: number }; Returns: Json }
       get_koba_cart: {
         Args: { p_customer_group_id?: number; p_tenant_id: number }
         Returns: Json
@@ -4626,6 +4963,25 @@ export type Database = {
           updated_at: string
         }[]
       }
+      global_search_tasks: {
+        Args: { p_query: string }
+        Returns: {
+          content: string
+          created_at: string
+          created_by_email: string
+          due_date: string
+          id: number
+          parent_id: number
+          priority: string
+          start_date: string
+          status: string
+          tenant_id: number
+          tenant_name: string
+          title: string
+          type: string
+          updated_at: string
+        }[]
+      }
       grant_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -4756,6 +5112,21 @@ export type Database = {
           p_sort_by?: string
           p_sort_order?: string
           p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_items_paginated: {
+        Args: {
+          p_assignee?: string
+          p_include_parents?: boolean
+          p_my_tasks_email?: string
+          p_page?: number
+          p_page_size?: number
+          p_priority?: string
+          p_search?: string
+          p_status?: string
+          p_tenant_id?: number
+          p_type?: string
         }
         Returns: Json
       }
@@ -5204,6 +5575,7 @@ export type Database = {
           created_at: string
           id: number
           inventory_added: boolean
+          is_gbp: boolean
           market_code: string | null
           name: string
           product_conversion_rate: number | null

@@ -24,44 +24,60 @@
     </template>
 
     <template #header-extra>
-      <q-chip
-        v-if="tenantOptions.length"
-        clickable
-        outline
-        color="primary"
-        text-color="primary"
-        class="app-layout__tenant-chip"
-      >
-        <q-spinner
-          v-if="selectingTenantId !== null"
-          size="14px"
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          v-if="hasTasksModule"
+          flat
+          round
+          dense
           color="primary"
-          class="q-mr-xs"
-        />
-        <span class="ellipsis">{{ selectedTenantLabel }}</span>
-        <q-icon name="expand_more" size="16px" class="q-ml-xs" />
-
-        <q-menu
-          v-model="tenantMenuOpen"
-          anchor="bottom right"
-          self="top right"
+          icon="search"
+          @click="searchDialogOpen = true"
         >
-          <q-list style="min-width: 260px">
-            <q-item
-              v-for="option in tenantOptions"
-              :key="option.value"
-              clickable
-              :active="option.value === selectedTenantId"
-              active-class="bg-primary text-white"
-              @click="onSelectTenant(option.value)"
-            >
-              <q-item-section>
-                <q-item-label>{{ option.label }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </q-chip>
+          <q-tooltip>Search Tasks Cross-Tenants</q-tooltip>
+        </q-btn>
+
+        <q-chip
+          v-if="tenantOptions.length"
+          clickable
+          outline
+          color="primary"
+          text-color="primary"
+          class="app-layout__tenant-chip"
+        >
+          <q-spinner
+            v-if="selectingTenantId !== null"
+            size="14px"
+            color="primary"
+            class="q-mr-xs"
+          />
+          <span class="ellipsis">{{ selectedTenantLabel }}</span>
+          <q-icon name="expand_more" size="16px" class="q-ml-xs" />
+
+          <q-menu
+            v-model="tenantMenuOpen"
+            anchor="bottom right"
+            self="top right"
+          >
+            <q-list style="min-width: 260px">
+              <q-item
+                v-for="option in tenantOptions"
+                :key="option.value"
+                clickable
+                :active="option.value === selectedTenantId"
+                active-class="bg-primary text-white"
+                @click="onSelectTenant(option.value)"
+              >
+                <q-item-section>
+                  <q-item-label>{{ option.label }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-chip>
+      </div>
+
+      <TaskSearchDialog v-model="searchDialogOpen" />
     </template>
 
     <router-view />
@@ -77,12 +93,16 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const route = useRoute()
 const router = useRouter()
 const { links } = useAppWorkspaceLinks()
+
+const searchDialogOpen = ref(false)
+const hasTasksModule = computed(() => authStore.activeModuleKeys.includes('tasks'))
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 )

@@ -20,6 +20,7 @@ export type ModuleKey =
   | 'invoice'
   | 'koba_retail'
   | 'koba_wholesale'
+  | 'tasks'
 
 export type ModuleAction = 'view'
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
@@ -522,6 +523,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Browse Koba Wholesale products',
         icon: 'shopping_cart',
         routeSegment: 'koba/wholesale',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'tasks',
+    name: 'Tasks',
+    description: 'Manage projects, modules, submodules, tasks, notes, discussions, bugs, features.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Tasks',
+        caption: 'Manage tasks and project hierarchy',
+        icon: 'assignment',
+        routeSegment: 'tasks',
         requiredAction: 'view',
       },
     ],
