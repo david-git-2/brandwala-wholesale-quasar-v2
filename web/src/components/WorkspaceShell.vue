@@ -242,6 +242,62 @@
         </q-scroll-area>
       </q-card>
     </q-dialog>
+
+    <!-- ── Sign-out confirmation dialog ───────────────────── -->
+    <q-dialog v-model="showLogoutDialog" persistent class="signout-dialog">
+      <div class="signout-card">
+
+        <!-- Avatar + identity -->
+        <div class="signout-card__identity">
+          <div class="signout-card__avatar">
+            <img
+              v-if="userAvatarUrl"
+              :src="userAvatarUrl"
+              referrerpolicy="no-referrer"
+              alt=""
+            />
+            <span v-else>{{ userInitials }}</span>
+          </div>
+          <div class="signout-card__user">
+            <div class="signout-card__name">{{ userName }}</div>
+            <div class="signout-card__email">{{ userEmail }}</div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="signout-card__sep" aria-hidden="true" />
+
+        <!-- Meta pills -->
+        <div class="signout-card__meta">
+          <span v-if="currentRoleLabel" class="signout-card__pill">
+            <q-icon name="shield" size="0.8rem" />
+            {{ currentRoleLabel }}
+          </span>
+          <span v-if="contextValue" class="signout-card__pill">
+            <q-icon name="apartment" size="0.8rem" />
+            {{ contextValue }}
+          </span>
+        </div>
+
+        <!-- Message -->
+        <p class="signout-card__message">
+          You’ll be signed out of this workspace. Your data stays safe.
+        </p>
+
+        <!-- Actions -->
+        <div class="signout-card__actions">
+          <button class="signout-card__btn signout-card__btn--cancel" @click="showLogoutDialog = false">
+            Stay signed in
+          </button>
+          <button class="signout-card__btn signout-card__btn--confirm" @click="confirmLogout">
+            <q-icon name="logout" size="1rem" />
+            Sign out
+          </button>
+        </div>
+
+      </div>
+    </q-dialog>
+
   </q-layout>
 </template>
 
@@ -252,7 +308,6 @@ import type { QInput } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { requestConfirmation } from 'src/utils/appFeedback'
 
 export interface WorkspaceLink {
   title: string
@@ -272,6 +327,7 @@ const props = defineProps<{
 const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop']
 
 const drawerOpen = ref(false)
+const showLogoutDialog = ref(false)
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -462,17 +518,12 @@ const userInitials = computed(() => {
   return source.slice(0, 2).toUpperCase()
 })
 
-const handleLogout = async () => {
-  const shouldSignOut = await requestConfirmation(
-    'End your current session on this workspace?',
-    'Sign out',
-    'Sign out',
-  )
+const handleLogout = () => {
+  showLogoutDialog.value = true
+}
 
-  if (!shouldSignOut) {
-    return
-  }
-
+const confirmLogout = async () => {
+  showLogoutDialog.value = false
   drawerOpen.value = false
 
   try {
@@ -754,5 +805,160 @@ const handleLogout = async () => {
   z-index: 1;
   background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
   border-top: 1px solid var(--shell-border);
+}
+
+/* ══════════════════════════════════════════════════════
+   SIGN-OUT DIALOG
+   ══════════════════════════════════════════════════════ */
+
+/* Kill Quasar dialog backdrop default bg so our blur shines */
+.signout-dialog :deep(.q-dialog__backdrop) {
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.signout-card {
+  width: min(92vw, 26rem);
+  border-radius: 1.5rem;
+  padding: 1.75rem;
+  background: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  box-shadow:
+    0 2px 0 rgb(255 255 255 / 0.6) inset,
+    0 20px 60px rgb(0 0 0 / 0.14),
+    0 4px 16px rgb(0 0 0 / 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* Identity row */
+.signout-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.signout-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--shell-accent-soft);
+  border: 2px solid rgb(255 255 255 / 0.8);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--shell-accent);
+}
+
+.signout-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.signout-card__name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--shell-ink);
+  line-height: 1.2;
+}
+
+.signout-card__email {
+  font-size: 0.78rem;
+  color: var(--shell-muted);
+  margin-top: 0.15rem;
+}
+
+/* Separator */
+.signout-card__sep {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--shell-border) 30%,
+    var(--shell-border) 70%,
+    transparent
+  );
+}
+
+/* Meta pills */
+.signout-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.signout-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid rgb(var(--bw-theme-primary-rgb, 100 100 100) / 0.15);
+}
+
+/* Message */
+.signout-card__message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--shell-muted);
+  line-height: 1.55;
+}
+
+/* Buttons */
+.signout-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.signout-card__btn {
+  padding: 0.6rem 0;
+  border-radius: 0.65rem;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.18s ease;
+}
+
+.signout-card__btn--cancel {
+  background: rgb(0 0 0 / 0.06);
+  color: var(--shell-ink);
+  border: 1px solid var(--shell-border);
+}
+
+.signout-card__btn--cancel:hover {
+  background: rgb(0 0 0 / 0.1);
+}
+
+.signout-card__btn--confirm {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.signout-card__btn--confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(220 38 38 / 0.35);
 }
 </style>

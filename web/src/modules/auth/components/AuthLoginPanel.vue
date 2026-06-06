@@ -99,8 +99,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
+import type { Ref } from 'vue'
 import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin'
 
 const props = defineProps<{
@@ -115,6 +116,12 @@ const props = defineProps<{
 const route = useRoute()
 const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
   tenantSlug: props.tenantSlug ?? null,
+})
+
+// Push our title up to AuthLayout so the hero canvas tagline stays in sync
+const panelTitle = inject<Ref<string>>('authPanelTitle')
+watchEffect(() => {
+  if (panelTitle) panelTitle.value = props.title
 })
 
 const loginErrorMessage = computed(() => {

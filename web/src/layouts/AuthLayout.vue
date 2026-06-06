@@ -3,61 +3,52 @@
     <q-page-container>
       <q-page class="auth-page">
 
-        <!-- Animated background blobs -->
+        <!-- Animated background blobs (left canvas only) -->
         <div class="auth-bg" aria-hidden="true">
           <div class="auth-bg__blob auth-bg__blob--1" />
           <div class="auth-bg__blob auth-bg__blob--2" />
           <div class="auth-bg__blob auth-bg__blob--3" />
         </div>
 
-        <!-- Main stage -->
-        <section class="auth-stage">
-          <div class="auth-stage__shell">
+        <div class="auth-layout__inner">
 
-            <!-- ── Left hero ──────────────────────────────────── -->
-            <div class="auth-hero">
-              <!-- Brand wordmark -->
-              <div class="auth-hero__brand">
-                <div class="auth-hero__brand-mark">
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect width="28" height="28" rx="7" fill="currentColor" fill-opacity="0.18"/>
-                    <path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="currentColor"/>
-                    <path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="currentColor" fill-opacity="0.7"/>
-                    <path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="currentColor" fill-opacity="0.7"/>
-                    <path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="currentColor" fill-opacity="0.45"/>
-                  </svg>
-                </div>
-                <span class="auth-hero__brand-name">TradeFlowBD</span>
+          <!-- ── Left: full-bleed dark canvas ───────────────── -->
+          <div class="auth-canvas">
+
+            <!-- Brand wordmark — top left -->
+            <div class="auth-canvas__brand">
+              <div class="auth-canvas__brand-mark" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="28" height="28" rx="7" fill="currentColor" fill-opacity="0.2"/>
+                  <path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="currentColor"/>
+                  <path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="currentColor" fill-opacity="0.7"/>
+                  <path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="currentColor" fill-opacity="0.7"/>
+                  <path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="currentColor" fill-opacity="0.45"/>
+                </svg>
               </div>
-
-              <!-- Headline -->
-              <div class="auth-hero__content">
-                <div class="auth-hero__scope-badge">{{ scopeLabel }}</div>
-                <h1 class="auth-hero__headline">{{ heroHeadline }}</h1>
-                <p class="auth-hero__sub">{{ heroSub }}</p>
-
-                <!-- Feature highlights -->
-                <ul class="auth-hero__features" aria-label="Key features">
-                  <li v-for="feat in features" :key="feat.label" class="auth-hero__feature">
-                    <span class="auth-hero__feature-icon" aria-hidden="true">{{ feat.icon }}</span>
-                    <span>{{ feat.label }}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <!-- Footer note -->
-              <div class="auth-hero__footer">
-                Powered by TradeFlowBD
-              </div>
+              <span class="auth-canvas__brand-name">TradeFlowBD</span>
             </div>
 
-            <!-- ── Right panel ─────────────────────────────────── -->
-            <div class="auth-panel-wrap">
-              <router-view />
+            <!-- Giant ghost word — centred vertically -->
+            <div class="auth-canvas__ghost-wrap" aria-hidden="true">
+              <span class="auth-canvas__ghost-word">{{ ghostWord }}</span>
+            </div>
+
+            <!-- Bottom tagline -->
+            <div class="auth-canvas__footer">
+              <p class="auth-canvas__tagline">{{ tagline }}</p>
+              <p class="auth-canvas__credit">Powered by TradeFlowBD</p>
             </div>
 
           </div>
-        </section>
+
+          <!-- ── Right: login card panel ─────────────────────── -->
+          <div class="auth-panel">
+            <router-view />
+          </div>
+
+        </div>
+
       </q-page>
     </q-page-container>
   </q-layout>
@@ -69,122 +60,88 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-// Child panels inject this and set it so the hero headline is dynamic
+// Injected by AuthLoginPanel so the headline can use the real store name
 const panelTitle = ref('')
 provide('authPanelTitle', panelTitle)
 
-const authScope = computed(
-  () => (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope ?? 'app',
-)
+const authScope = computed(() => {
+  const metaScope = (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope
+  // The /auth/callback route carries ?scope=shop|app|platform in the URL;
+  // fall back to it when meta doesn't define an authScope.
+  const queryScope = route.query.scope as 'platform' | 'app' | 'shop' | undefined
+  return metaScope ?? queryScope ?? 'app'
+})
 
 const scopeClass = computed(() => `auth-scope--${authScope.value}`)
 
-const scopeLabel = computed(() => {
+// The giant ghost word stamped across the left canvas
+const ghostWord = computed(() => {
   switch (authScope.value) {
-    case 'platform': return 'Platform Console'
-    case 'shop':     return 'Customer Storefront'
-    default:         return 'Operations Hub'
+    case 'platform': return 'Platform'
+    case 'shop':     return 'Store'
+    default:         return 'Operations'
   }
 })
 
-const heroHeadline = computed(() => {
+// Short, confident tagline below the ghost word
+const tagline = computed(() => {
   switch (authScope.value) {
-    case 'platform': return 'Govern your entire platform.'
-    // Use the injected panel title (e.g. tenant name or login button label)
-    // falls back gracefully while loading
-    case 'shop':     return panelTitle.value
-      ? `Welcome to ${panelTitle.value}.`
-      : 'Sign in to your store.'
-    default:         return 'Run your business smarter.'
-  }
-})
-
-const heroSub = computed(() => {
-  switch (authScope.value) {
-    case 'platform': return 'Super-admin access to tenants, roles, billing, and global configuration.'
-    case 'shop':     return 'Browse products, place orders, and track your wholesale history in one place.'
-    default:         return 'Inventory, orders, costing, analytics — everything your team needs, unified.'
-  }
-})
-
-interface Feature { icon: string; label: string }
-
-const features = computed((): Feature[] => {
-  switch (authScope.value) {
-    case 'platform':
-      return [
-        { icon: '🏢', label: 'Tenant & subscription management' },
-        { icon: '🔐', label: 'Role-based access control' },
-        { icon: '📊', label: 'Platform-level analytics' },
-      ]
+    case 'platform': return 'Govern the platform.'
     case 'shop':
-      return [
-        { icon: '🛒', label: 'Browse & order products' },
-        { icon: '📦', label: 'Track your order history' },
-        { icon: '💬', label: 'View costing files & quotes' },
-      ]
-    default:
-      return [
-        { icon: '📋', label: 'Smart inventory management' },
-        { icon: '💰', label: 'Costing & pricing engine' },
-        { icon: '🚚', label: 'Shipment & order tracking' },
-      ]
+      return panelTitle.value ? panelTitle.value : 'Your wholesale store.'
+    default:         return 'Run your business.'
   }
 })
 </script>
 
 <style scoped>
-/* ── Scope-level colour tokens ───────────────────────── */
+/* ── Per-scope colour palette ────────────────────────── */
 .auth-scope--platform {
-  --auth-from:   #1a0a0a;
-  --auth-mid:    #3b0d0d;
-  --auth-accent: #dc2626;
-  --auth-accent-rgb: 220 38 38;
-  --auth-glow:   rgb(220 38 38 / 0.35);
-  --auth-soft:   rgb(220 38 38 / 0.12);
-  --auth-badge-bg: rgb(220 38 38 / 0.18);
-  --auth-badge-color: #fca5a5;
+  --auth-bg:       #100707;
+  --auth-mid:      #2d0a0a;
+  --auth-accent:   #ef4444;
+  --auth-accent-rgb: 239 68 68;
+  --auth-glow:     rgb(239 68 68 / 0.4);
+  --auth-ghost:    rgb(239 68 68 / 0.04);
+  --auth-card-bar: #dc2626;
 }
 
 .auth-scope--app {
-  --auth-from:   #021a10;
-  --auth-mid:    #064e2e;
-  --auth-accent: #10b981;
+  --auth-bg:       #030f08;
+  --auth-mid:      #052e1a;
+  --auth-accent:   #10b981;
   --auth-accent-rgb: 16 185 129;
-  --auth-glow:   rgb(16 185 129 / 0.35);
-  --auth-soft:   rgb(16 185 129 / 0.12);
-  --auth-badge-bg: rgb(16 185 129 / 0.18);
-  --auth-badge-color: #6ee7b7;
+  --auth-glow:     rgb(16 185 129 / 0.38);
+  --auth-ghost:    rgb(16 185 129 / 0.04);
+  --auth-card-bar: #059669;
 }
 
 .auth-scope--shop {
-  --auth-from:   #040d24;
-  --auth-mid:    #0f2361;
-  --auth-accent: #3b82f6;
+  --auth-bg:       #030814;
+  --auth-mid:      #09184a;
+  --auth-accent:   #3b82f6;
   --auth-accent-rgb: 59 130 246;
-  --auth-glow:   rgb(59 130 246 / 0.35);
-  --auth-soft:   rgb(59 130 246 / 0.12);
-  --auth-badge-bg: rgb(59 130 246 / 0.18);
-  --auth-badge-color: #93c5fd;
+  --auth-glow:     rgb(59 130 246 / 0.38);
+  --auth-ghost:    rgb(59 130 246 / 0.04);
+  --auth-card-bar: #2563eb;
 }
 
-/* ── Layout root ─────────────────────────────────────── */
+/* ── Root layout ─────────────────────────────────────── */
 .auth-layout {
   min-height: 100vh;
-  background: var(--auth-from);
+  background: var(--auth-bg);
   position: relative;
   overflow: hidden;
 }
 
 .auth-page {
   min-height: 100vh;
-  padding: 0;
-  /* override the global .q-page white bg for auth pages */
+  padding: 0 !important;
   background: transparent !important;
   max-width: none !important;
 }
 
-/* ── Animated blobs ──────────────────────────────────── */
+/* ── Background blobs ────────────────────────────────── */
 .auth-bg {
   position: fixed;
   inset: 0;
@@ -195,254 +152,220 @@ const features = computed((): Feature[] => {
 .auth-bg__blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.55;
-  animation: blobFloat 14s ease-in-out infinite alternate;
+  filter: blur(100px);
+  animation: blobFloat 16s ease-in-out infinite alternate;
 }
 
 .auth-bg__blob--1 {
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, var(--auth-accent) 0%, transparent 70%);
-  top: -160px;
-  right: -120px;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  left: -100px;
+  background: radial-gradient(circle, var(--auth-accent) 0%, transparent 68%);
+  opacity: 0.18;
   animation-delay: 0s;
-  opacity: 0.3;
 }
 
 .auth-bg__blob--2 {
-  width: 380px;
-  height: 380px;
+  width: 420px;
+  height: 420px;
+  bottom: -100px;
+  left: 20%;
   background: radial-gradient(circle, var(--auth-mid) 0%, transparent 70%);
-  bottom: -80px;
-  left: -80px;
-  animation-delay: -5s;
-  opacity: 0.5;
+  opacity: 0.55;
+  animation-delay: -6s;
 }
 
 .auth-bg__blob--3 {
-  width: 260px;
-  height: 260px;
+  width: 300px;
+  height: 300px;
+  top: 40%;
+  left: 30%;
   background: radial-gradient(circle, var(--auth-accent) 0%, transparent 70%);
-  bottom: 30%;
-  right: 38%;
-  animation-delay: -9s;
-  opacity: 0.18;
+  opacity: 0.1;
+  animation-delay: -11s;
 }
 
 @keyframes blobFloat {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(30px, -40px) scale(1.05); }
-  66%  { transform: translate(-20px, 20px) scale(0.97); }
-  100% { transform: translate(10px, -10px) scale(1.02); }
+  0%   { transform: translate(0,     0)    scale(1); }
+  40%  { transform: translate(40px, -50px) scale(1.06); }
+  70%  { transform: translate(-25px, 30px) scale(0.96); }
+  100% { transform: translate(15px,  -15px) scale(1.03); }
 }
 
-/* ── Stage wrapper ───────────────────────────────────── */
-.auth-stage {
+/* ── Two-column inner ────────────────────────────────── */
+.auth-layout__inner {
   position: relative;
   z-index: 1;
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: clamp(0.75rem, 2vw, 1.5rem);
+  /* left canvas takes most space; card pinned to right */
+  grid-template-columns: 1fr 420px;
 }
 
-/* ── Two-column shell ────────────────────────────────── */
-.auth-stage__shell {
-  width: min(100%, 76rem);
-  min-height: min(90vh, 58rem);
-  display: grid;
-  grid-template-columns: 1fr minmax(22rem, 0.72fr);
-  border-radius: 1.75rem;
-  overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 32px 80px rgb(0 0 0 / 0.55),
-    0 4px 16px rgb(0 0 0 / 0.35);
-}
-
-/* ── Hero (left) ─────────────────────────────────────── */
-.auth-hero {
-  padding: clamp(2rem, 5vw, 3.5rem);
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--auth-from) 80%, transparent) 0%,
-      color-mix(in srgb, var(--auth-mid)  60%, transparent) 100%
-    );
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-right: 1px solid rgb(255 255 255 / 0.06);
+/* ── Left canvas ─────────────────────────────────────── */
+.auth-canvas {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.75rem, 3.5vw, 2.75rem);
   overflow: hidden;
-}
 
-/* subtle grid lines */
-.auth-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  /* subtle grid texture */
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
+    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+
+  /* vertical accent glow line on the right edge */
+  border-right: 1px solid rgb(255 255 255 / 0.05);
 }
 
-/* bottom glow streak */
-.auth-hero::after {
+/* right-edge glow line */
+.auth-canvas::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: -10%;
-  width: 120%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--auth-glow), transparent);
+  top: 5%;
+  right: -1px;
+  width: 1px;
+  height: 90%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--auth-glow) 40%,
+    var(--auth-glow) 60%,
+    transparent 100%
+  );
 }
 
-.auth-hero__brand {
+/* ── Brand wordmark ──────────────────────────────────── */
+.auth-canvas__brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  color: rgb(255 255 255 / 0.9);
-  margin-bottom: auto;
-}
-
-.auth-hero__brand-mark {
+  gap: 0.6rem;
   color: var(--auth-accent);
-  display: flex;
-  align-items: center;
+  flex-shrink: 0;
 }
 
-.auth-hero__brand-name {
-  font-size: 0.9rem;
+.auth-canvas__brand-mark {
+  display: flex;
+  align-items: center;
+  color: var(--auth-accent);
+}
+
+.auth-canvas__brand-name {
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.8);
-}
-
-.auth-hero__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1.25rem;
-  padding: 2.5rem 0;
-}
-
-.auth-hero__scope-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.85rem;
-  border-radius: 999px;
-  background: var(--auth-badge-bg);
-  color: var(--auth-badge-color);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  backdrop-filter: blur(6px);
-  width: fit-content;
-}
-
-.auth-hero__headline {
-  margin: 0;
-  font-size: clamp(1.9rem, 4vw, 3rem);
-  font-weight: 800;
-  line-height: 1.0;
-  letter-spacing: -0.04em;
-  color: #ffffff;
-  max-width: 14ch;
-}
-
-.auth-hero__sub {
-  margin: 0;
-  font-size: clamp(0.88rem, 1.5vw, 1rem);
-  line-height: 1.6;
-  color: rgb(255 255 255 / 0.55);
-  max-width: 36ch;
-}
-
-.auth-hero__features {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.auth-hero__feature {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  font-size: 0.88rem;
   color: rgb(255 255 255 / 0.65);
 }
 
-.auth-hero__feature-icon {
-  font-size: 1.05rem;
+/* ── Giant ghost word ────────────────────────────────── */
+.auth-canvas__ghost-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  /* nudge slightly left so it bleeds off-canvas beautifully */
+  margin-left: -0.05em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.auth-canvas__ghost-word {
+  font-size: clamp(7rem, 16vw, 16rem);
+  font-weight: 900;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+  color: transparent;
+  /* two-layer approach: outline stroke + faint fill */
+  -webkit-text-stroke: 1px rgb(255 255 255 / 0.07);
+  background: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 0.06) 0%,
+    var(--auth-ghost) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ── Footer tagline ──────────────────────────────────── */
+.auth-canvas__footer {
   flex-shrink: 0;
-  width: 1.5rem;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.auth-hero__footer {
-  font-size: 0.7rem;
-  color: rgb(255 255 255 / 0.25);
-  letter-spacing: 0.04em;
-  margin-top: auto;
-  padding-top: 1.5rem;
+.auth-canvas__tagline {
+  margin: 0;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(255 255 255 / 0.7);
 }
 
-/* ── Panel (right) ───────────────────────────────────── */
-.auth-panel-wrap {
-  background: #ffffff;
+.auth-canvas__credit {
+  margin: 0;
+  font-size: 0.68rem;
+  color: rgb(255 255 255 / 0.2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Right panel (login card) ────────────────────────── */
+.auth-panel {
   display: grid;
   align-content: center;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background: #ffffff;
+  padding: clamp(1.75rem, 4vw, 3rem) clamp(1.5rem, 3.5vw, 2.5rem);
+  box-shadow: -24px 0 80px rgb(0 0 0 / 0.45);
 }
 
-/* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 1023px) {
-  .auth-stage__shell {
-    width: min(100%, 44rem);
+/* ── Responsive: collapse to single column ───────────── */
+@media (max-width: 860px) {
+  .auth-layout__inner {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .auth-canvas {
     min-height: unset;
-  }
-
-  .auth-hero {
-    padding: clamp(1.5rem, 4vw, 2.25rem);
     border-right: none;
-    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+    border-bottom: 1px solid rgb(255 255 255 / 0.05);
+    padding: clamp(1.25rem, 3vw, 1.75rem);
   }
 
-  .auth-hero__content {
-    padding: 1.5rem 0;
+  .auth-canvas::after {
+    display: none;
   }
 
-  .auth-hero__headline {
-    font-size: clamp(1.6rem, 5vw, 2.2rem);
+  .auth-canvas__ghost-wrap {
+    /* On tablet the ghost is decorative padding only */
+    min-height: 6rem;
+    flex: unset;
+  }
+
+  .auth-canvas__ghost-word {
+    font-size: clamp(4rem, 18vw, 7rem);
+  }
+
+  .auth-panel {
+    padding: clamp(1.5rem, 5vw, 2.25rem);
+    box-shadow: none;
   }
 }
 
-@media (max-width: 599px) {
-  .auth-stage {
-    padding: 0;
-    align-items: flex-end;
+@media (max-width: 480px) {
+  .auth-canvas {
+    padding: 1.25rem;
   }
 
-  .auth-stage__shell {
-    width: 100%;
-    border-radius: 1.4rem 1.4rem 0 0;
-    min-height: 92vh;
+  .auth-canvas__ghost-wrap {
+    min-height: 4rem;
   }
 
-  .auth-hero,
-  .auth-panel-wrap {
+  .auth-panel {
     padding: 1.25rem;
   }
 }
