@@ -1,11 +1,8 @@
 <template>
   <AuthLoginPanel
     scope="app"
-    eyebrow="Internal Entry"
-    title="Enter the app workspace"
-    description="Use your approved Google account to access internal operations."
+    title="App Login"
     cta-label="Continue with Google"
-    support-text="Internal access is granted from tenant memberships."
     :tenant-slug="tenantSlug"
     tone="app"
   />

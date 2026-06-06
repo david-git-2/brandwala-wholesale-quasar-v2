@@ -569,7 +569,6 @@ const confirmDelete = () => {
   $q.dialog({
     title: 'Confirm Deletion',
     message: 'Are you sure you want to delete this product? This action cannot be undone.',
-    cancel: true,
     persistent: true,
     ok: {
       color: 'negative',
@@ -580,7 +579,7 @@ const confirmDelete = () => {
     cancel: {
       flat: true,
       noCaps: true,
-    }
+    },
   }).onOk(() => {
     void onDelete()
   })

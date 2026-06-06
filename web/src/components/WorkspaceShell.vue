@@ -84,6 +84,7 @@
                 filled
                 dense
                 readonly
+                model-value=""
                 placeholder="Search pages... (⌘K)"
                 class="soft-input cursor-pointer"
                 @click="showCommandPalette = true"
@@ -284,8 +285,8 @@ interface FlattenedLink {
   caption: string
   icon: string
   to?: string
-  target?: string
-  parentTitle?: string
+  target?: string | undefined
+  parentTitle?: string | undefined
 }
 
 const flattenedLinks = computed(() => {
@@ -351,8 +352,9 @@ const onInputKeydown = (e: KeyboardEvent) => {
       (activeIndex.value - 1 + filteredLinks.value.length) % filteredLinks.value.length
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    if (filteredLinks.value[activeIndex.value]) {
-      navigate(filteredLinks.value[activeIndex.value])
+    const selectedLink = filteredLinks.value[activeIndex.value]
+    if (selectedLink) {
+      navigate(selectedLink)
     }
   } else if (e.key === 'Escape') {
     showCommandPalette.value = false
@@ -596,7 +598,7 @@ const handleLogout = async () => {
 .workspace-shell__avatar {
   overflow: hidden;
   border: 1px solid var(--shell-border);
-  background: color-mix(in srgb, var(--shell-accent) 18%, white 82%);
+  background: #ffffff;
 }
 
 .workspace-shell__avatar-image {
@@ -658,7 +660,7 @@ const handleLogout = async () => {
 .workspace-shell__nav-sub-list {
   margin: 0.2rem 0.35rem 0.45rem 2.05rem;
   padding-left: 0.6rem;
-  border-left: 1px solid color-mix(in srgb, var(--shell-accent) 28%, transparent);
+  border-left: 1px solid var(--shell-border);
   display: grid;
   gap: 0.18rem;
 }
