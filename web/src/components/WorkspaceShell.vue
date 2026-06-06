@@ -33,28 +33,47 @@
     >
       <div class="workspace-shell__drawer-inner">
         <div class="workspace-shell__drawer-top">
-          <div class="workspace-shell__summary">
-            <div class="workspace-shell__profile-row">
-              <q-avatar size="42px" class="workspace-shell__avatar">
-                <img
-                  v-if="userAvatarUrl"
-                  :src="userAvatarUrl"
-                  class="workspace-shell__avatar-image"
-                  referrerpolicy="no-referrer"
-                  alt=""
-                >
-                <span v-else class="workspace-shell__avatar-fallback">{{ userInitials }}</span>
-              </q-avatar>
+          <div class="row items-center no-wrap q-gutter-sm q-pa-sm rounded-borders profile-card">
+            <q-avatar size="36px" class="workspace-shell__avatar">
+              <img
+                v-if="userAvatarUrl"
+                :src="userAvatarUrl"
+                class="workspace-shell__avatar-image"
+                referrerpolicy="no-referrer"
+                alt=""
+              >
+              <span v-else class="workspace-shell__avatar-fallback">{{ userInitials }}</span>
+            </q-avatar>
+            <div class="col ellipsis">
+              <div class="text-subtitle2 text-weight-bold ellipsis text-black leading-tight">{{ userName }}</div>
+              <div class="text-caption text-grey-7 ellipsis leading-tight">{{ userEmail }}</div>
             </div>
-            <div class="workspace-shell__summary-label">Signed in as</div>
-            <div class="workspace-shell__summary-value">{{ userName }}</div>
-            <div class="workspace-shell__summary-meta">{{ userEmail }}</div>
-            <div v-if="currentRoleLabel" class="workspace-shell__summary-meta">
-              Role: {{ currentRoleLabel }}
-            </div>
-            <div v-if="contextLabel && contextValue" class="workspace-shell__summary-meta">
-              {{ contextLabel }}: {{ contextValue }}
-            </div>
+            
+            <q-btn flat round dense icon="more_vert" size="sm" color="grey-7">
+              <q-menu style="min-width: 200px">
+                <q-list dense class="q-py-xs">
+                  <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 10px; letter-spacing: 0.1em;">Session Info</q-item-label>
+                  <q-item v-if="currentRoleLabel">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                      <q-icon name="shield" size="xs" color="grey-6" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
+                      <q-item-label caption>{{ currentRoleLabel }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="contextLabel && contextValue">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                      <q-icon name="apartment" size="xs" color="grey-6" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-caption text-weight-medium">{{ contextLabel }}</q-item-label>
+                      <q-item-label caption>{{ contextValue }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
           </div>
         </div>
 
@@ -130,9 +149,12 @@
 
         <div class="workspace-shell__drawer-bottom">
           <q-btn
-            unelevated
+            flat
+            dense
+            no-caps
             icon="logout"
             label="Sign out"
+            color="negative"
             class="workspace-shell__logout"
             @click="handleLogout"
           />
@@ -557,18 +579,18 @@ const handleLogout = async () => {
   padding: 0.75rem;
 }
 
-.workspace-shell__summary {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 0.75rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.24));
+.profile-card {
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--shell-border);
+  transition: background-color 0.2s ease;
 }
 
-.workspace-shell__profile-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.55rem;
+.profile-card:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.leading-tight {
+  line-height: 1.25;
 }
 
 .workspace-shell__avatar {
@@ -646,22 +668,7 @@ const handleLogout = async () => {
   color: var(--shell-ink);
 }
 
-.workspace-shell__logout {
-  width: 100%;
-  padding: 0.65rem 0.8rem;
-  border-radius: 0.65rem;
-  background: var(--shell-accent);
-  color: #fffaf1;
-}
 
-.workspace-shell__drawer-bottom {
-  margin-top: auto;
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
-  border-top: 1px solid var(--shell-border);
-}
 
 .workspace-shell__page-container {
   padding: clamp(0.5rem, 1.2vw, 0.9rem);
@@ -729,5 +736,21 @@ const handleLogout = async () => {
 
 .command-palette-input :deep(.q-field__control) {
   border-radius: 8px;
+}
+
+.workspace-shell__logout {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+.workspace-shell__drawer-bottom {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
+  border-top: 1px solid var(--shell-border);
 }
 </style>
