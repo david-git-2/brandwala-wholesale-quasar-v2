@@ -1,11 +1,11 @@
 :root {
-  --bw-brand-base: #f6f8fa;
-  --bw-brand-surface: rgb(255 255 255 / 0.95);
-  --bw-brand-border: rgb(31 41 55 / 0.1);
-  --bw-brand-ink: #1f2937;
-  --bw-brand-muted: #6b7280;
-  --bw-brand-accent: #2563eb;
-  --bw-brand-accent-rgb: 37 99 235;
+  --bw-brand-base: #fbfaf7;
+  --bw-brand-surface: #ffffff;
+  --bw-brand-border: #e7e1d8;
+  --bw-brand-ink: #171412;
+  --bw-brand-muted: #736a61;
+  --bw-brand-accent: #7c3aed;
+  --bw-brand-accent-rgb: 124 58 237;
 }
 
 .theme-platform,
@@ -14,40 +14,60 @@
   --bw-theme-base: var(--bw-brand-base);
   --bw-theme-surface: var(--bw-brand-surface);
   --bw-theme-border: var(--bw-brand-border);
-  --bw-theme-shadow: rgb(0 0 0 / 0.04);
   --bw-theme-ink: var(--bw-brand-ink);
   --bw-theme-muted: var(--bw-brand-muted);
   --bw-theme-primary: var(--bw-brand-accent);
   --bw-theme-primary-rgb: var(--bw-brand-accent-rgb);
-  --bw-theme-primary-soft: rgb(var(--bw-theme-primary-rgb) / 0.08);
+  --bw-theme-primary-soft: rgb(var(--bw-theme-primary-rgb) / 0.05);
   --q-primary: var(--bw-theme-primary);
+
+  --bw-theme-shadow: 0 10px 30px rgb(31 26 23 / 0.08), 0 2px 8px rgb(31 26 23 / 0.06);
 }
 
+.theme-custom {
+  --bw-theme-base: var(--bw-brand-base);
+  --bw-theme-surface: var(--bw-brand-surface);
+  --bw-theme-border: var(--bw-brand-border);
+  --bw-theme-ink: var(--bw-brand-ink);
+  --bw-theme-muted: var(--bw-brand-muted);
+  --bw-theme-primary: var(--bw-brand-accent);
+  --bw-theme-primary-rgb: var(--bw-brand-accent-rgb);
+  --bw-theme-primary-soft: rgb(var(--bw-theme-primary-rgb) / 0.06);
+  --q-primary: var(--bw-theme-primary);
+  --bw-theme-shadow: 0 10px 30px rgb(31 26 23 / 0.08), 0 2px 8px rgb(31 26 23 / 0.06);
+}
+
+/* 1. Platform Theme (Deep Imperial Amethyst) */
 .theme-platform {
-  --bw-theme-primary: #6247aa;
-  --bw-theme-primary-rgb: 37 99 235;
-  --bw-theme-border: rgb(37 99 235 / 0.14);
-  --bw-theme-shadow: rgb(37 99 235 / 0.08);
-  --bw-theme-ink: #1e293b;
-  --bw-theme-muted: #64748b;
+  --bw-theme-primary: #7f1d1d;
+  --bw-theme-primary-rgb: 127 29 29;
+  --bw-theme-primary-soft: rgb(127 29 29 / 0.07);
+  --bw-theme-border: #fde2e2;
+  --bw-theme-shadow: 0 12px 30px -12px rgb(127 29 29 / 0.18);
+  --bw-theme-ink: #171412;
+  --bw-theme-muted: #746b62;
 }
 
+/* 2. App Theme (Premium Emerald) */
 .theme-app {
-  --bw-theme-primary: #0f766e;
-  --bw-theme-primary-rgb: 15 118 110;
-  --bw-theme-border: rgb(15 118 110 / 0.14);
-  --bw-theme-shadow: rgb(15 118 110 / 0.08);
-  --bw-theme-ink: #1f2937;
-  --bw-theme-muted: #6b7280;
+  --bw-theme-primary: #047857;
+  --bw-theme-primary-rgb: 4 120 87;
+  --bw-theme-primary-soft: rgb(4 120 87 / 0.07);
+  --bw-theme-border: #d1fae5;
+  --bw-theme-shadow: 0 12px 30px -12px rgb(4 120 87 / 0.16);
+  --bw-theme-ink: #171412;
+  --bw-theme-muted: #736a61;
 }
 
+/* 3. Shop Theme (Luxury Sapphire) */
 .theme-shop {
-  --bw-theme-primary: #2978a0;
-  --bw-theme-primary-rgb: 2 132 199;
-  --bw-theme-border: rgb(2 132 199 / 0.14);
-  --bw-theme-shadow: rgb(2 132 199 / 0.08);
-  --bw-theme-ink: #1f2937;
-  --bw-theme-muted: #64748b;
+  --bw-theme-primary: #1e3a8a;
+  --bw-theme-primary-rgb: 30 58 138;
+  --bw-theme-primary-soft: rgb(30 58 138 / 0.07);
+  --bw-theme-border: #dbeafe;
+  --bw-theme-shadow: 0 12px 30px -12px rgb(30 58 138 / 0.16);
+  --bw-theme-ink: #171412;
+  --bw-theme-muted: #736a61;
 }
 
 body {
@@ -59,6 +79,7 @@ body {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  background: #ffffff;
 }
 
 .bw-page {
@@ -107,17 +128,18 @@ body {
 }
 
 .q-editor {
-  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid var(--bw-theme-border) !important;
   border-radius: 8px;
+  background: var(--bw-theme-surface);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    border-color: rgba(0, 0, 0, 0.45) !important;
+    border-color: rgb(var(--bw-theme-primary-rgb) / 0.3) !important;
   }
 
   &:focus-within {
     border-color: var(--q-primary) !important;
-    box-shadow: 0 0 0 1px var(--q-primary) !important;
+    box-shadow: 0 0 0 3px var(--bw-theme-primary-soft) !important;
   }
 }
 
@@ -131,12 +153,14 @@ body {
 
   p {
     margin: 0 0 4px 0;
+
     &:last-child {
       margin-bottom: 0;
     }
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin: 0;
     padding-left: 16px;
   }
@@ -148,12 +172,15 @@ body {
 }
 
 .square-chip {
+  background: var(--bw-theme-primary-soft) !important;
+  color: var(--bw-theme-primary) !important;
+  border: 1px solid rgb(var(--bw-theme-primary-rgb) / 0.1);
   border-radius: 4px !important;
   font-weight: 600;
   font-size: 10px !important;
-  letter-spacing: 0.01em;
-  padding: 2px 6px !important;
+  letter-spacing: 0.03em;
+  padding: 3px 7px !important;
   min-height: 20px !important;
   height: auto !important;
+  text-transform: uppercase;
 }
-
