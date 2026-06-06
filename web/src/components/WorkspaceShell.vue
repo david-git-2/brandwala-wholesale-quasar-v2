@@ -60,6 +60,24 @@
 
         <q-scroll-area class="workspace-shell__drawer-scroll">
           <div class="workspace-shell__nav">
+            <div class="workspace-shell__drawer-search q-mb-md">
+              <q-input
+                filled
+                dense
+                readonly
+                placeholder="Search pages... (⌘K)"
+                class="soft-input cursor-pointer"
+                @click="showCommandPalette = true"
+              >
+                <template #prepend>
+                  <q-icon name="search" size="xs" />
+                </template>
+                <template #append>
+                  <div class="shortcut-badge">⌘K</div>
+                </template>
+              </q-input>
+            </div>
+
             <div class="workspace-shell__nav-label">Workspace</div>
 
             <q-list class="workspace-shell__nav-list">
@@ -125,12 +143,89 @@
     <q-page-container class="workspace-shell__page-container">
       <slot />
     </q-page-container>
+
+    <!-- Command Palette Dialog -->
+    <q-dialog
+      v-model="showCommandPalette"
+      position="top"
+      class="command-palette-dialog"
+      @show="onPaletteShow"
+      @hide="onPaletteHide"
+    >
+      <q-card style="width: 600px; max-width: 90vw; margin-top: 10vh;" class="floating-surface shadow-5 command-palette-card">
+        <q-card-section class="q-pa-sm">
+          <q-input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            placeholder="Type a page name to navigate..."
+            outlined
+            dense
+            autofocus
+            class="soft-input command-palette-input"
+            @keydown="onInputKeydown"
+          >
+            <template #prepend>
+              <q-icon name="search" />
+            </template>
+            <template #append>
+              <q-btn
+                v-if="searchQuery"
+                flat
+                round
+                dense
+                icon="close"
+                size="sm"
+                @click="searchQuery = ''"
+              />
+              <q-badge color="grey-4" text-color="grey-8" class="q-ml-xs">ESC</q-badge>
+            </template>
+          </q-input>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-scroll-area style="height: 300px;">
+          <q-list v-if="filteredLinks.length" class="q-py-xs">
+            <q-item
+              v-for="(link, idx) in filteredLinks"
+              :key="link.to || link.title"
+              clickable
+              :active="idx === activeIndex"
+              active-class="command-palette-item--active"
+              class="command-palette-item q-mx-sm q-my-xs rounded-borders"
+              @click="navigate(link)"
+              @mouseenter="activeIndex = idx"
+            >
+              <q-item-section avatar>
+                <q-icon :name="link.icon" size="sm" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">
+                  {{ link.title }}
+                </q-item-label>
+                <q-item-label caption v-if="link.caption">
+                  {{ link.caption }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side v-if="link.parentTitle">
+                <q-badge outline color="primary" size="sm">{{ link.parentTitle }}</q-badge>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="flex flex-center text-grey-6 q-pa-lg">
+            <q-icon name="search_off" size="md" />
+            <div class="q-ml-sm">No matching pages found</div>
+          </div>
+        </q-scroll-area>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import type { QInput } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -157,6 +252,111 @@ const drawerOpen = ref(false)
 const router = useRouter()
 const authStore = useAuthStore()
 
+const showCommandPalette = ref(false)
+const searchQuery = ref('')
+const activeIndex = ref(0)
+const searchInputRef = ref<QInput | null>(null)
+
+interface FlattenedLink {
+  title: string
+  caption: string
+  icon: string
+  to?: string
+  target?: string
+  parentTitle?: string
+}
+
+const flattenedLinks = computed(() => {
+  const result: FlattenedLink[] = []
+
+  const traverse = (items: WorkspaceLink[], parentTitle?: string) => {
+    for (const item of items) {
+      if (item.children && item.children.length > 0) {
+        traverse(item.children, item.title)
+      } else if (item.to) {
+        result.push({
+          title: item.title,
+          caption: item.caption,
+          icon: item.icon,
+          to: item.to,
+          target: item.target,
+          parentTitle,
+        })
+      }
+    }
+  }
+
+  traverse(props.links)
+  return result
+})
+
+const filteredLinks = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) {
+    return flattenedLinks.value
+  }
+  return flattenedLinks.value.filter((link) => {
+    return (
+      link.title.toLowerCase().includes(query) ||
+      (link.caption && link.caption.toLowerCase().includes(query)) ||
+      (link.parentTitle && link.parentTitle.toLowerCase().includes(query))
+    )
+  })
+})
+
+watch(searchQuery, () => {
+  activeIndex.value = 0
+})
+
+const onPaletteShow = () => {
+  setTimeout(() => {
+    searchInputRef.value?.focus()
+  }, 50)
+}
+
+const onPaletteHide = () => {
+  searchQuery.value = ''
+  activeIndex.value = 0
+}
+
+const onInputKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeIndex.value = (activeIndex.value + 1) % filteredLinks.value.length
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeIndex.value =
+      (activeIndex.value - 1 + filteredLinks.value.length) % filteredLinks.value.length
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    if (filteredLinks.value[activeIndex.value]) {
+      navigate(filteredLinks.value[activeIndex.value])
+    }
+  } else if (e.key === 'Escape') {
+    showCommandPalette.value = false
+  }
+}
+
+const navigate = (link: FlattenedLink) => {
+  showCommandPalette.value = false
+  if (link.target === '_blank' && link.to) {
+    window.open(link.to, '_blank')
+  } else if (link.to) {
+    void router.push(link.to)
+  }
+}
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    showCommandPalette.value = !showCommandPalette.value
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
 const themeClasses = computed(() => [
   `workspace-shell--${props.theme}`,
   `theme-${props.theme}`,
@@ -180,6 +380,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+
   if (typeof document === 'undefined') {
     return
   }
@@ -486,5 +688,46 @@ const handleLogout = async () => {
   min-height: 38px;
   padding-left: 0.55rem;
   margin-left: 0.15rem;
+}
+
+.workspace-shell__drawer-search {
+  cursor: pointer;
+}
+
+.workspace-shell__drawer-search :deep(.q-field__control) {
+  cursor: pointer;
+}
+
+.workspace-shell__drawer-search :deep(input) {
+  cursor: pointer;
+}
+
+.shortcut-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  color: var(--shell-muted);
+  font-weight: 600;
+}
+
+.command-palette-card {
+  border: 1px solid var(--shell-border);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+}
+
+.command-palette-item {
+  transition: all 0.2s ease;
+}
+
+.command-palette-item--active {
+  background: var(--shell-accent-soft) !important;
+  color: var(--shell-ink) !important;
+}
+
+.command-palette-input :deep(.q-field__control) {
+  border-radius: 8px;
 }
 </style>
