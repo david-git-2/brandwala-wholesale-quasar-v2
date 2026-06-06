@@ -1,40 +1,96 @@
 <template>
   <q-page class="q-pa-md store-pricing-page">
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-h6 text-weight-bold text-primary">Store Product Pricing</div>
+            <div class="text-caption text-grey-8">Set regular and minimum sell prices for store products</div>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <!-- Initial Loader -->
     <PageInitialLoader v-if="initialLoading" />
 
     <!-- Main Content -->
     <div v-else>
-      <div class="row items-center justify-between q-mb-md">
-        <div class="text-h6 text-weight-bold text-primary">Store Product Pricing</div>
-      </div>
 
       <!-- Filters & Search Toolbar -->
-      <div class="row items-center q-col-gutter-sm q-mb-md">
-        <div class="col-12 col-sm-4">
+      <div class="row items-center justify-between q-mb-md">
+        <div class="row items-center q-gutter-sm toolbar-left">
+          <q-btn
+            v-if="!showSearchInput"
+            flat
+            round
+            dense
+            icon="search"
+            aria-label="Show search"
+            @click="showSearchInput = true"
+          />
+
           <q-input
+            v-else
             v-model="searchQuery"
             outlined
             dense
-            clearable
+            class="soft-input toolbar-search"
             placeholder="Search by name, code or barcode..."
-            class="soft-input"
+            clearable
+            autofocus
           >
             <template #prepend>
               <q-icon name="search" />
             </template>
+            <template #append>
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                aria-label="Hide search"
+                @click="
+                  () => {
+                    searchQuery = ''
+                    showSearchInput = false
+                  }
+                "
+              />
+            </template>
           </q-input>
+
+          <q-btn
+            flat
+            round
+            dense
+            icon="filter_alt"
+            aria-label="Filters"
+            @click="filterDrawerOpen = true"
+          >
+            <q-badge
+              v-if="activeFilterCount > 0"
+              color="primary"
+              rounded
+              floating
+            >
+              {{ activeFilterCount }}
+            </q-badge>
+          </q-btn>
         </div>
-        <div class="col-12 col-sm-4">
+
+        <!-- Store selection dropdown -->
+        <div class="row items-center q-gutter-sm">
+          <div class="text-caption text-grey-8">Store:</div>
           <q-select
-            v-model="selectedShipmentId"
-            :options="shipmentOptions"
+            v-model="selectedStoreId"
+            :options="storeOptions"
             outlined
             dense
             emit-value
             map-options
             class="soft-input"
-            label="Shipment Filter"
+            style="min-width: 150px;"
           />
         </div>
       </div>
@@ -85,11 +141,14 @@
             </q-td>
 
             <!-- Product Details -->
-            <q-td key="name" :props="props">
-              <div class="text-subtitle2 text-weight-bold text-primary">{{ props.row.name }}</div>
+            <q-td key="name" :props="props" style="white-space: normal;">
+              <div class="text-subtitle2 text-weight-bold text-primary" style="white-space: normal;">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">
                 <span v-if="props.row.product_code" class="q-mr-sm">Code: {{ props.row.product_code }}</span>
                 <span v-if="props.row.barcode">Barcode: {{ props.row.barcode }}</span>
+              </div>
+              <div v-if="props.row.note" class="text-caption text-grey-6 text-italic q-mt-xs" style="white-space: normal;">
+                Note: {{ props.row.note }}
               </div>
             </q-td>
 
@@ -134,9 +193,6 @@
                     val => val === null || val === '' || !tempPrices[props.row.product_id]?.minimum_sell_price_bdt || val <= tempPrices[props.row.product_id]!.minimum_sell_price_bdt! || 'Must be <= min sell price'
                   ]"
                 />
-                <div class="text-caption text-grey-6 q-mt-xs">
-                  Profit: Varies by shipment (expand to see)
-                </div>
               </div>
             </q-td>
 
@@ -165,16 +221,17 @@
             <!-- Actions -->
             <q-td key="actions" :props="props" class="text-center">
               <q-btn
-                unelevated
+                flat
+                round
+                dense
                 color="primary"
-                icon="save"
-                label="Save"
-                no-caps
-                size="sm"
+                icon="o_save"
                 :loading="savingByProductId[props.row.product_id] || false"
                 :disable="!isPriceModified(props.row.product_id)"
                 @click="savePrices(props.row.product_id)"
-              />
+              >
+                <q-tooltip>Save Prices</q-tooltip>
+              </q-btn>
             </q-td>
           </q-tr>
 
@@ -196,6 +253,11 @@
                 <template #body-cell-shipment="expProps">
                   <q-td :props="expProps">
                     {{ expProps.row.shipment?.shipment?.name || '-' }}
+                  </q-td>
+                </template>
+                <template #body-cell-note="expProps">
+                  <q-td :props="expProps" style="white-space: normal; max-width: 250px;">
+                    {{ expProps.row.note || '-' }}
                   </q-td>
                 </template>
                 <template #body-cell-cost="expProps">
@@ -253,16 +315,34 @@
           @update:model-value="onPageChange"
         />
       </div>
+
+      <!-- Filters Drawer -->
+      <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+        <q-select
+          v-model="selectedShipmentId"
+          :options="shipmentOptions"
+          outlined
+          dense
+          emit-value
+          map-options
+          class="soft-input q-mb-md"
+          label="Shipment Filter"
+        />
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+        </div>
+      </FilterSidebar>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
+import { onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
 import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 
 import { supabase } from 'src/boot/supabase'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useStoreStore } from 'src/modules/store/stores/storeStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
@@ -285,6 +365,7 @@ interface PricingTableRow {
   price_bdt: number | null
   minimum_sell_price_bdt: number | null
   stock_override: number | null
+  note: string | null
   items: InventoryItemWithStock[]
 }
 
@@ -296,6 +377,8 @@ const rows = ref<PricingTableRow[]>([])
 const selectedStoreId = ref<number | null>(null)
 const selectedShipmentId = ref<number | null>(null)
 const searchQuery = ref('')
+const showSearchInput = ref(false)
+const filterDrawerOpen = ref(false)
 
 const storeOptions = ref<Array<{ label: string; value: number }>>([])
 const shipmentOptions = ref<Array<{ label: string; value: number | null }>>([])
@@ -312,10 +395,12 @@ const page = ref(1)
 const pageSize = ref(10)
 const totalPages = ref(1)
 
+const activeFilterCount = computed(() => (selectedShipmentId.value ? 1 : 0))
+
 // Columns definitions
 const columns = [
   { name: 'image', label: 'Image', field: 'image_url', align: 'left' as const },
-  { name: 'name', label: 'Product Details', field: 'name', align: 'left' as const },
+  { name: 'name', label: 'Product Details', field: 'name', align: 'left' as const, style: 'min-width: 220px; white-space: normal;' },
   { name: 'original_stock', label: 'Original Stock', field: (row: PricingTableRow) => getOriginalStock(row), align: 'left' as const },
   { name: 'stock_override', label: 'Display Stock Override', field: 'stock_override', align: 'left' as const },
   { name: 'price_bdt', label: 'Regular Price (BDT)', field: 'price_bdt', align: 'left' as const },
@@ -325,6 +410,7 @@ const columns = [
 
 const expandedColumns = [
   { name: 'shipment', label: 'Shipment', field: 'shipment', align: 'left' as const },
+  { name: 'note', label: 'Note', field: 'note', align: 'left' as const },
   { name: 'cost', label: 'Cost (BDT)', field: 'cost', align: 'right' as const },
   { name: 'available', label: 'Available Stock', field: 'available', align: 'right' as const },
   { name: 'profit_reg', label: 'Regular Price Profit', field: 'profit_reg', align: 'right' as const },
@@ -405,6 +491,7 @@ const loadData = async () => {
         price_bdt: number | null
         minimum_sell_price_bdt: number | null
         stock_override: number | null
+        note: string | null
         items: InventoryItemWithStock[]
       }>
       meta: {
@@ -552,6 +639,12 @@ watch(selectedStoreId, () => {
   void loadData()
 })
 
+const onResetFilters = () => {
+  selectedShipmentId.value = null
+  searchQuery.value = ''
+  filterDrawerOpen.value = false
+}
+
 const onPageChange = async (nextPage: number) => {
   page.value = nextPage
   await loadData()
@@ -602,6 +695,10 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
+.hero-surface {
+  border-radius: 16px;
+}
+
 .pricing-q-table {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.86);
@@ -621,5 +718,13 @@ onBeforeUnmount(() => {
 
 .shadow-sm {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-left {
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: min(320px, 75vw);
 }
 </style>

@@ -393,7 +393,8 @@ export type Database = {
           created_at: string
           customer_group_id: number
           id: number
-          product_id: number
+          inventory_item_id: number | null
+          product_id: number | null
           quantity: number
           tenant_id: number
           updated_at: string
@@ -402,7 +403,8 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           id?: number
-          product_id: number
+          inventory_item_id?: number | null
+          product_id?: number | null
           quantity?: number
           tenant_id: number
           updated_at?: string
@@ -411,7 +413,8 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           id?: number
-          product_id?: number
+          inventory_item_id?: number | null
+          product_id?: number | null
           quantity?: number
           tenant_id?: number
           updated_at?: string
@@ -422,6 +425,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cart_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
           {
@@ -3682,10 +3692,12 @@ export type Database = {
         Row: {
           created_at: string
           id: number
+          inventory_item_id: number | null
           is_active: boolean
           minimum_sell_price_bdt: number
           price_bdt: number
-          product_id: number
+          product_id: number | null
+          stock_override: number | null
           store_id: number
           tenant_id: number
           updated_at: string
@@ -3693,10 +3705,12 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: number
+          inventory_item_id?: number | null
           is_active?: boolean
           minimum_sell_price_bdt: number
           price_bdt: number
-          product_id: number
+          product_id?: number | null
+          stock_override?: number | null
           store_id: number
           tenant_id: number
           updated_at?: string
@@ -3704,15 +3718,24 @@ export type Database = {
         Update: {
           created_at?: string
           id?: number
+          inventory_item_id?: number | null
           is_active?: boolean
           minimum_sell_price_bdt?: number
           price_bdt?: number
-          product_id?: number
+          product_id?: number | null
+          stock_override?: number | null
           store_id?: number
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "store_product_prices_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "store_product_prices_product_id_fkey"
             columns: ["product_id"]
@@ -4030,7 +4053,7 @@ export type Database = {
       add_item_to_commerce_cart: {
         Args: {
           p_customer_group_id: number
-          p_product_id: number
+          p_inventory_item_id: number
           p_quantity?: number
           p_tenant_id: number
         }

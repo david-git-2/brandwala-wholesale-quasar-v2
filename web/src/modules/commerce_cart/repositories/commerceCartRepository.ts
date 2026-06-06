@@ -10,16 +10,18 @@ const listCartItems = async (
     .from('commerce_cart')
     .select(`
       id,
-      product_id,
+      inventory_item_id,
       tenant_id,
       customer_group_id,
       quantity,
       created_at,
       updated_at,
-      product:products (
+      inventory_item:inventory_items (
         name,
         image_url,
-        minimum_order_quantity
+        product:products (
+          minimum_order_quantity
+        )
       )
     `)
     .eq('tenant_id', tenantId)
@@ -31,43 +33,45 @@ const listCartItems = async (
 
   const items = (data || []) as unknown as Array<{
     id: number
-    product_id: number
+    inventory_item_id: number
     tenant_id: number
     customer_group_id: number
     quantity: number
     created_at: string
     updated_at: string
-    product: {
+    inventory_item: {
       name: string
       image_url: string | null
-      minimum_order_quantity: number | null
+      product: {
+        minimum_order_quantity: number | null
+      } | null
     } | null
   }>
 
   if (items.length === 0 || storeId == null) {
     return items.map((row) => ({
       id: row.id,
-      product_id: row.product_id,
+      product_id: row.inventory_item_id,
       tenant_id: row.tenant_id,
       customer_group_id: row.customer_group_id,
       quantity: row.quantity,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      name: row.product?.name ?? 'Unnamed product',
-      image_url: row.product?.image_url ?? null,
-      minimum_quantity: row.product?.minimum_order_quantity ?? 1,
+      name: row.inventory_item?.name ?? 'Unnamed batch',
+      image_url: row.inventory_item?.image_url ?? null,
+      minimum_quantity: row.inventory_item?.product?.minimum_order_quantity ?? 1,
       price_bdt: null,
       price_gbp: null,
       minimum_sell_price_bdt: null,
     }))
   }
 
-  const productIds = items.map((item) => item.product_id)
+  const inventoryItemIds = items.map((item) => item.inventory_item_id)
   const { data: priceData, error: priceError } = await supabase
     .from('store_product_prices')
-    .select('product_id, price_bdt, minimum_sell_price_bdt')
+    .select('inventory_item_id, price_bdt, minimum_sell_price_bdt')
     .eq('store_id', storeId)
-    .in('product_id', productIds)
+    .in('inventory_item_id', inventoryItemIds)
 
   if (priceError) {
     throw priceError
@@ -76,7 +80,7 @@ const listCartItems = async (
   const priceMap = new Map<number, { price_bdt: number; minimum_sell_price_bdt: number }>()
   if (priceData) {
     priceData.forEach((row) => {
-      priceMap.set(row.product_id, {
+      priceMap.set(row.inventory_item_id, {
         price_bdt: Number(row.price_bdt),
         minimum_sell_price_bdt: Number(row.minimum_sell_price_bdt),
       })
@@ -84,18 +88,18 @@ const listCartItems = async (
   }
 
   return items.map((row) => {
-    const prices = priceMap.get(row.product_id)
+    const prices = priceMap.get(row.inventory_item_id)
     return {
       id: row.id,
-      product_id: row.product_id,
+      product_id: row.inventory_item_id,
       tenant_id: row.tenant_id,
       customer_group_id: row.customer_group_id,
       quantity: row.quantity,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      name: row.product?.name ?? 'Unnamed product',
-      image_url: row.product?.image_url ?? null,
-      minimum_quantity: row.product?.minimum_order_quantity ?? 1,
+      name: row.inventory_item?.name ?? 'Unnamed batch',
+      image_url: row.inventory_item?.image_url ?? null,
+      minimum_quantity: row.inventory_item?.product?.minimum_order_quantity ?? 1,
       price_bdt: prices?.price_bdt ?? null,
       price_gbp: prices?.price_bdt ?? null,
       minimum_sell_price_bdt: prices?.minimum_sell_price_bdt ?? null,
@@ -108,7 +112,7 @@ const addToCommerceCart = async (payload: AddCommerceItemInput): Promise<Commerc
   const { data: rpcData, error: rpcError } = await supabase.rpc('add_item_to_commerce_cart', {
     p_tenant_id: payload.tenant_id,
     p_customer_group_id: payload.customer_group_id,
-    p_product_id: payload.product_id,
+    p_inventory_item_id: payload.product_id,
     p_quantity: payload.quantity,
   })
 
@@ -118,7 +122,7 @@ const addToCommerceCart = async (payload: AddCommerceItemInput): Promise<Commerc
 
   const rpcRow = rpcData as {
     id: number
-    product_id: number
+    inventory_item_id: number
     tenant_id: number
     customer_group_id: number
     quantity: number
@@ -126,10 +130,16 @@ const addToCommerceCart = async (payload: AddCommerceItemInput): Promise<Commerc
     updated_at: string
   }
 
-  // Fetch product details separately
-  const { data: productData } = await supabase
-    .from('products')
-    .select('name, image_url, minimum_order_quantity')
+  // Fetch inventory item details separately
+  const { data: itemData } = await supabase
+    .from('inventory_items')
+    .select(`
+      name,
+      image_url,
+      product:products (
+        minimum_order_quantity
+      )
+    `)
     .eq('id', payload.product_id)
     .maybeSingle()
 
@@ -142,7 +152,7 @@ const addToCommerceCart = async (payload: AddCommerceItemInput): Promise<Commerc
       .from('store_product_prices')
       .select('price_bdt, minimum_sell_price_bdt')
       .eq('store_id', payload.store_id)
-      .eq('product_id', payload.product_id)
+      .eq('inventory_item_id', payload.product_id)
       .maybeSingle()
 
     if (priceData) {
@@ -151,17 +161,21 @@ const addToCommerceCart = async (payload: AddCommerceItemInput): Promise<Commerc
     }
   }
 
+  const productObj = Array.isArray(itemData?.product)
+    ? itemData.product[0]
+    : (itemData?.product as { minimum_order_quantity?: number | null } | null | undefined)
+
   return {
     id: rpcRow.id,
-    product_id: rpcRow.product_id,
+    product_id: rpcRow.inventory_item_id,
     tenant_id: rpcRow.tenant_id,
     customer_group_id: rpcRow.customer_group_id,
     quantity: rpcRow.quantity,
     created_at: rpcRow.created_at,
     updated_at: rpcRow.updated_at,
-    name: productData?.name ?? 'Unnamed product',
-    image_url: productData?.image_url ?? null,
-    minimum_quantity: productData?.minimum_order_quantity ?? 1,
+    name: itemData?.name ?? 'Unnamed batch',
+    image_url: itemData?.image_url ?? null,
+    minimum_quantity: productObj?.minimum_order_quantity ?? 1,
     price_bdt,
     price_gbp: price_bdt,
     minimum_sell_price_bdt,
