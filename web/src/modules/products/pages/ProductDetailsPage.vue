@@ -10,6 +10,17 @@
           <div v-if="product && !loading" class="col-auto row items-center q-gutter-sm">
             <template v-if="!isEditing">
               <q-btn
+                color="negative"
+                flat
+                round
+                dense
+                icon="o_delete"
+                :loading="deleting"
+                @click="confirmDelete"
+              >
+                <q-tooltip>Delete Product</q-tooltip>
+              </q-btn>
+              <q-btn
                 color="primary"
                 no-caps
                 label="Edit Product"
@@ -375,7 +386,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import type { Product } from '../types'
@@ -384,11 +396,15 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { vendorService } from 'src/modules/vendor/services/vendorService'
 import type { Vendor } from 'src/modules/vendor/types'
 import type { QForm } from 'quasar'
+import { showSuccessNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
+const router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
 
 const loading = ref(false)
+const deleting = ref(false)
 const updating = ref(false)
 const error = ref<string | null>(null)
 const product = ref<Product | null>(null)
@@ -549,6 +565,47 @@ const cancelEdit = () => {
   isEditing.value = false
 }
 
+const confirmDelete = () => {
+  $q.dialog({
+    title: 'Confirm Deletion',
+    message: 'Are you sure you want to delete this product? This action cannot be undone.',
+    cancel: true,
+    persistent: true,
+    ok: {
+      color: 'negative',
+      label: 'Delete',
+      noCaps: true,
+      flat: false,
+    },
+    cancel: {
+      flat: true,
+      noCaps: true,
+    }
+  }).onOk(() => {
+    void onDelete()
+  })
+}
+
+const onDelete = async () => {
+  if (!product.value) return
+  deleting.value = true
+  error.value = null
+  try {
+    const result = await productService.deleteProduct({ id: product.value.id })
+    if (!result.success) {
+      error.value = result.error ?? 'Failed to delete product.'
+      return
+    }
+    showSuccessNotification('Product deleted successfully.')
+    const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
+    await router.push(`${tenantPrefix}/app/products`)
+  } catch (err) {
+    console.error('Error deleting product:', err)
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    deleting.value = false
+  }
+}
 
 const cleanNumber = (val: number | string | null | undefined): number | null => {
   if (val === '' || val == null) return null

@@ -4,9 +4,23 @@
       <q-card-section class="q-py-md row items-center justify-between">
         <div class="row items-center q-gutter-sm">
           <q-icon name="search" size="24px" color="primary" />
-          <div class="text-h6 text-weight-bold">Search Tasks Cross-Tenants</div>
+          <div>
+            <div class="text-h6 text-weight-bold">Search Tasks Cross-Tenants</div>
+            <div class="text-caption text-grey-6">Search across all workspaces you belong to</div>
+          </div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <div class="row items-center q-gutter-xs">
+          <q-btn
+            unelevated
+            color="primary"
+            icon="add"
+            label="New Task"
+            no-caps
+            class="pill-btn"
+            @click="openCreateDialog"
+          />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
@@ -82,12 +96,19 @@
     v-model:item-id="selectedItemId"
     @updated="onTaskUpdated"
   />
+
+  <TaskFormDialog
+    v-model="createOpen"
+    :default-type="'task'"
+    @saved="onTaskCreated"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTasksStore } from '../stores/tasksStore';
 import type { GlobalSearchResult } from '../types';
+import TaskFormDialog from './TaskFormDialog.vue';
 import TaskDetailsDialog from './TaskDetailsDialog.vue';
 
 const props = defineProps<{
@@ -103,6 +124,7 @@ const tasksStore = useTasksStore();
 const searchQuery = ref('');
 const detailsOpen = ref(false);
 const selectedItemId = ref<number | null>(null);
+const createOpen = ref(false);
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -127,8 +149,18 @@ const onSelectResult = (item: GlobalSearchResult) => {
   emit('select-task', item.id, item.tenant_id);
 };
 
+const openCreateDialog = () => {
+  createOpen.value = true;
+};
+
 const onTaskUpdated = () => {
   // Re-run search if active query exists
+  if (searchQuery.value) {
+    void tasksStore.runGlobalSearch(searchQuery.value);
+  }
+};
+
+const onTaskCreated = () => {
   if (searchQuery.value) {
     void tasksStore.runGlobalSearch(searchQuery.value);
   }
@@ -191,5 +223,10 @@ const getTypeColor = (type: string) => {
 
 .search-result-item:hover {
   background: rgba(37, 99, 235, 0.05);
+}
+
+.pill-btn {
+  border-radius: 999px;
+  font-weight: 600;
 }
 </style>

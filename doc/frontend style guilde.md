@@ -40,6 +40,41 @@ Use floating glass-like cards for all major sections.
 }
 ```
 
+### Dialog Glass Effect
+
+To apply the same premium glassmorphic effect to modals and dialogs (`q-dialog`), add the `floating-surface` and shadow classes directly to the child card container (`q-card`).
+
+**Example Template:**
+```html
+<q-dialog v-model="dialogOpen" persistent>
+  <q-card style="width: 960px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+    <!-- Header -->
+    <q-card-section class="row items-center justify-between">
+      <div class="text-h6 text-weight-bold">Dialog Title</div>
+      <q-btn flat round dense icon="close" v-close-popup />
+    </q-card-section>
+    
+    <q-separator />
+    
+    <!-- Body Content -->
+    <q-card-section>
+      <!-- Forms/Inputs here -->
+    </q-card-section>
+  </q-card>
+</q-dialog>
+```
+
+**Required CSS (Scoped or Global):**
+Ensure the `.floating-surface` styles are defined in the component's `<style scoped>` block:
+```css
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+```
+
 ## 3) Header Pattern
 
 Top area should have:

@@ -570,28 +570,20 @@ const savePrices = async (productId: number) => {
   savingByProductId.value = { ...savingByProductId.value, [productId]: true }
 
   try {
-    // 1. Update stock_override in products table (since stock_override is a product column)
-    const { error: productError } = await supabase
-      .from('products')
-      .update({ stock_override: stockOverride })
-      .eq('id', productId)
-      .eq('tenant_id', authStore.tenantId)
-
-    if (productError) throw productError
-
-    // 2. Upsert prices in store_product_prices
+    // Upsert prices and stock override in store_product_prices
     const { data, error: priceError } = await supabase
       .from('store_product_prices')
       .upsert(
         {
           tenant_id: authStore.tenantId,
           store_id: selectedStoreId.value,
-          product_id: productId,
+          inventory_item_id: productId, // Since productId is actually inventory_item_id in row key mapping
           price_bdt: priceBdt,
           minimum_sell_price_bdt: minSellBdt,
+          stock_override: stockOverride,
           is_active: true,
         },
-        { onConflict: 'tenant_id,store_id,product_id' },
+        { onConflict: 'tenant_id,store_id,inventory_item_id' },
       )
       .select('*')
       .single()

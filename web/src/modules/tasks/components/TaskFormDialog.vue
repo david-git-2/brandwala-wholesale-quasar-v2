@@ -301,7 +301,7 @@ const hasStatusAndPriority = computed(() => {
 const parentLabel = computed(() => {
   if (form.value.type === 'module') return 'Parent Project';
   if (form.value.type === 'submodule') return 'Parent Module';
-  return 'Parent Category (Submodule/Module)';
+  return 'Parent Category (Project/Module/Submodule/Note)';
 });
 
 // Dynamic Parent Filtering based on hierarchy
@@ -323,6 +323,22 @@ const getDescendantIds = (rootId: number): Set<number> => {
   return seen;
 };
 
+const getHierarchyPrefix = (item: Item) => {
+  if (item.type === 'project') return '[PROJECT]';
+  if (item.type === 'module') return '[MODULE]';
+  if (item.type === 'submodule') return '[SUBMODULE]';
+  if (item.type === 'note') return '[NOTE]';
+  return `[${item.type.toUpperCase()}]`;
+};
+
+const isAllowedParentType = (type: ItemType, parentType: ItemType) => {
+  if (type === 'project') return false;
+  if (type === 'module') return parentType === 'project';
+  if (type === 'submodule') return parentType === 'module';
+  if (type === 'note') return ['project', 'module', 'submodule', 'note'].includes(parentType);
+  return ['project', 'module', 'submodule', 'note'].includes(parentType);
+};
+
 const parentOptions = computed(() => {
   const currentItemId = props.item?.id ?? null;
   const forbiddenIds = currentItemId ? getDescendantIds(currentItemId) : new Set<number>();
@@ -338,12 +354,12 @@ const parentOptions = computed(() => {
   if (form.value.type === 'submodule') {
     return baseItems
       .filter((i) => i.type === 'module')
-      .map((i) => ({ label: i.title, value: i.id }));
+      .map((i) => ({ label: `${getHierarchyPrefix(i)} ${i.title}`, value: i.id }));
   }
-  // Tasks, bugs, features, discussions, notes can belong to submodules primarily, or modules, or projects, or notes (for child notes)
+  // Tasks, bugs, features, discussions, and notes can belong to higher-level containers.
   return baseItems
-    .filter((i) => ['submodule', 'module', 'project', 'note'].includes(i.type))
-    .map((i) => ({ label: `[${i.type.toUpperCase()}] ${i.title}`, value: i.id }));
+    .filter((i) => isAllowedParentType(form.value.type, i.type))
+    .map((i) => ({ label: `${getHierarchyPrefix(i)} ${i.title}`, value: i.id }));
 });
 
 const onTypeChange = (type: ItemType) => {
@@ -365,11 +381,28 @@ watch(
   }
 );
 
+watch(
+  () => form.value.type,
+  (newType) => {
+    if (!form.value.parent_id) return;
+    const parentItem = tasksStore.items.find((i) => i.id === form.value.parent_id);
+    if (!parentItem) return;
+
+    if (!isAllowedParentType(newType, parentItem.type)) {
+      form.value.parent_id = null;
+    }
+  }
+);
+
 // Form populate on edit
 watch(
   () => isOpen.value,
   (open) => {
     if (open) {
+      if (authStore.tenantId !== null && tasksStore.items.length < 1) {
+        void tasksStore.fetchItemsAction(authStore.tenantId, undefined, 1, 10000);
+      }
+
       if (props.item) {
         const i = props.item;
         // Get tags & assignees from locally cached item state
