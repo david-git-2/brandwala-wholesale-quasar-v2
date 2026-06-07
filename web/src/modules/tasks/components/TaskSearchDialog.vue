@@ -1,32 +1,37 @@
 <template>
   <q-dialog v-model="isOpen" backdrop-filter="blur(4px)">
-    <q-card class="search-card floating-surface shadow-2">
+    <q-card class="search-card floating-surface shadow-2 relative-position">
+      <!-- Absolute close button at top right -->
+      <q-btn flat round dense icon="close" v-close-popup class="absolute-top-right q-mt-sm q-mr-sm" style="z-index: 10;" />
+
       <q-card-section class="q-py-md row items-center justify-between">
-        <div class="row items-center q-gutter-sm">
-          <q-icon name="search" size="24px" color="primary" />
-          <div>
-            <div class="text-h6 text-weight-bold">Search Tasks Cross-Tenants</div>
-            <div class="text-caption text-grey-6">Search across all workspaces you belong to</div>
+        <div class="row items-center q-gutter-sm col">
+          <q-icon name="search" :size="$q.screen.lt.sm ? '20px' : '24px'" color="primary" />
+          <div class="col">
+            <div class="text-weight-bold text-grey-9" :class="$q.screen.lt.sm ? 'text-subtitle2' : 'text-h6'">
+              {{ $q.screen.lt.sm ? 'Search Tasks' : 'Search Tasks Cross-Tenants' }}
+            </div>
+            <div v-if="!$q.screen.lt.sm" class="text-caption text-grey-6">Search across all workspaces you belong to</div>
           </div>
         </div>
-        <div class="row items-center q-gutter-xs">
+        <div class="row items-center q-gutter-xs q-pr-lg">
           <q-btn
             unelevated
+            round
             color="primary"
             icon="add"
-            label="New Task"
-            no-caps
             class="pill-btn"
             @click="openCreateDialog"
-          />
-          <q-btn flat round dense icon="close" v-close-popup />
+          >
+            <q-tooltip>New Task</q-tooltip>
+          </q-btn>
         </div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
         <q-input
           v-model="searchQuery"
-          placeholder="Type to search title, description, tags, comments..."
+          :placeholder="$q.screen.lt.sm ? 'Search tasks...' : 'Type to search title, description, tags, comments...'"
           outlined
           dense
           autofocus
@@ -204,6 +209,11 @@ const getTypeColor = (type: string) => {
   border: 1px solid rgba(34, 56, 101, 0.08);
   backdrop-filter: blur(10px);
 }
+@media (max-width: 600px) {
+  .search-card {
+    width: 95vw;
+  }
+}
 
 .search-input {
   border-radius: 8px;
@@ -219,6 +229,11 @@ const getTypeColor = (type: string) => {
   border-radius: 8px;
   margin: 4px 8px;
   transition: background 0.15s ease;
+}
+@media (max-width: 600px) {
+  .search-result-item {
+    margin: 4px 0;
+  }
 }
 
 .search-result-item:hover {

@@ -6,7 +6,6 @@ const marketRoutes: RouteRecordRaw[] = [
   {
     path: '/platform/markets',
     component: () => import('layouts/PlatformLayout.vue'),
-    name: 'platform-markets',
     beforeEnter: createAccessGuard({
       loginRoute: 'superadmin-login-page',
       requiredScope: 'platform',
@@ -15,6 +14,7 @@ const marketRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        name: 'platform-markets',
         component: () => import('../pages/MarketsPage.vue'),
       },
     ],

@@ -189,6 +189,7 @@
             unelevated
             class="pill-btn"
             no-caps
+            :loading="loading"
           />
         </q-card-actions>
       </q-form>
@@ -242,6 +243,8 @@ const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
 });
+
+const loading = ref(false);
 
 const form = ref({
   type: 'task' as ItemType,
@@ -446,21 +449,22 @@ watch(
 );
 
 const onSave = async () => {
-  const payload: Partial<Item> = {
-    tenant_id: authStore.tenantId,
-    type: form.value.type,
-    title: form.value.title,
-    content: form.value.content || null,
-    parent_id: form.value.parent_id,
-    status: form.value.status,
-    priority: form.value.priority,
-    accessibility: form.value.type === 'note' ? form.value.accessibility : 'public',
-    is_markdown: form.value.is_markdown,
-    start_date: form.value.start_date ? new Date(form.value.start_date).toISOString() : null,
-    due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
-  };
-
+  loading.value = true;
   try {
+    const payload: Partial<Item> = {
+      tenant_id: authStore.tenantId,
+      type: form.value.type,
+      title: form.value.title,
+      content: form.value.content || null,
+      parent_id: form.value.parent_id,
+      status: form.value.status,
+      priority: form.value.priority,
+      accessibility: form.value.type === 'note' ? form.value.accessibility : 'public',
+      is_markdown: form.value.is_markdown,
+      start_date: form.value.start_date ? new Date(form.value.start_date).toISOString() : null,
+      due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
+    };
+
     let savedItem: Item;
     if (isEdit.value && props.item) {
       savedItem = await tasksStore.updateItem(props.item.id, payload);
@@ -498,6 +502,8 @@ const onSave = async () => {
     isOpen.value = false;
   } catch (error) {
     console.error('Failed to save task item', error);
+  } finally {
+    loading.value = false;
   }
 };
 </script>

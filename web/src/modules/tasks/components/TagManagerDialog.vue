@@ -136,7 +136,7 @@
                   round
                   dense
                   color="negative"
-                  icon="delete"
+                  icon="o_delete"
                   size="sm"
                   @click="onDeleteTag(tag.id)"
                 >

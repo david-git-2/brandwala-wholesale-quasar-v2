@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md tasks-dashboard-page">
+  <q-page :class="[$q.screen.lt.sm ? 'q-pa-xs' : 'q-pa-md', 'tasks-dashboard-page']">
     <!-- Page Header Card -->
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
@@ -42,27 +42,6 @@
         </div>
       </q-card-section>
     </q-card>
-
-    <!-- Status Summary Row -->
-    <div class="row no-wrap q-col-gutter-xs q-mb-sm scroll-x">
-      <div v-for="status in statusSummaryItems" :key="status.key" class="col-grow col-sm col-md status-card-wrapper">
-        <q-card
-          flat
-          bordered
-          class="status-summary-card text-center q-py-xs cursor-pointer relative-position"
-          :class="{ 'active-status-card shadow-1': filters.status === status.key }"
-          @click="toggleStatusFilter(status.key)"
-        >
-          <div class="text-caption text-grey-7 text-uppercase font-bold text-weight-medium" style="font-size: 0.65rem; line-height: 1;">
-            {{ status.label }}
-          </div>
-          <div class="text-subtitle1 text-weight-bold text-weight-bold" :class="`text-${status.color}`" style="line-height: 1.1; margin-top: 2px;">
-            {{ status.count }}
-          </div>
-          <div class="status-indicator-bar" :class="`bg-${status.color}`"></div>
-        </q-card>
-      </div>
-    </div>
 
     <!-- Search + Filter Toolbar -->
     <div class="row items-center justify-end q-mb-sm">
@@ -155,6 +134,27 @@
         <q-tab name="my-tasks" icon="person" label="My Tasks" />
       </q-tabs>
 
+      <!-- Status Summary Row -->
+      <div v-if="activeTab === 'tree' || activeTab === 'my-tasks'" class="row no-wrap q-col-gutter-xs q-mb-sm scroll-x">
+        <div v-for="status in statusSummaryItems" :key="status.key" class="col-grow col-sm col-md status-card-wrapper">
+          <q-card
+            flat
+            bordered
+            class="status-summary-card text-center q-py-xs cursor-pointer relative-position"
+            :class="{ 'active-status-card shadow-1': filters.status === status.key }"
+            @click="toggleStatusFilter(status.key)"
+          >
+            <div class="text-caption text-grey-7 text-uppercase font-bold text-weight-medium" style="font-size: 0.65rem; line-height: 1;">
+              {{ status.label }}
+            </div>
+            <div class="text-subtitle1 text-weight-bold text-weight-bold" :class="`text-${status.color}`" style="line-height: 1.1; margin-top: 2px;">
+              {{ status.count }}
+            </div>
+            <div class="status-indicator-bar" :class="`bg-${status.color}`"></div>
+          </q-card>
+        </div>
+      </div>
+
       <q-tab-panels v-model="activeTab" animated class="bg-transparent">
         <!-- TREE VIEW -->
         <q-tab-panel name="tree" class="q-pa-none">
@@ -163,12 +163,23 @@
               <!-- Project Header -->
               <div class="row justify-between items-center q-mb-md cursor-pointer" @click="onClickItem(project.id)">
                 <div class="row items-center q-gutter-sm">
+                  <!-- Toggle Collapse Button for Project -->
+                  <q-btn
+                    v-if="project.children?.length"
+                    flat
+                    round
+                    dense
+                    :icon="collapsedItems[project.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                    size="sm"
+                    @click.stop="toggleCollapse(project.id)"
+                  />
                   <q-icon :name="getTicketIcon(project.type)" :color="getTicketColor(project.type)" size="24px" />
                   <div>
                     <div class="row items-center q-gutter-x-xs">
                       <span
                         class="text-subtitle1 text-weight-bold"
                         :class="`text-${getTicketColor(project.type)}-9`"
+                        style="white-space: normal; word-break: break-word;"
                       >
                         {{ project.title }}
                       </span>
@@ -245,16 +256,26 @@
               </div>
 
               <!-- Modules (only for projects) -->
-              <div v-if="project.type === 'project' && project.children?.length" class="modules-list tree-indent-level border-left q-gutter-y-sm">
+              <div v-if="project.type === 'project' && project.children?.length && !collapsedItems[project.id]" class="modules-list tree-indent-level border-left q-gutter-y-sm">
                 <template v-for="mod in project.children" :key="mod.id">
                   <!-- Render as Module if type is module -->
                   <div v-if="mod.type === 'module'" class="tree-module-box q-pa-sm rounded-borders">
                     <div class="row justify-between items-center q-mb-sm cursor-pointer" @click="onClickItem(mod.id)">
                       <div class="row items-center q-gutter-sm">
+                        <!-- Toggle Collapse Button for Module -->
+                        <q-btn
+                          v-if="mod.children?.length"
+                          flat
+                          round
+                          dense
+                          :icon="collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                          size="xs"
+                          @click.stop="toggleCollapse(mod.id)"
+                        />
                         <q-icon name="view_module" color="blue" size="20px" />
                         <div>
                           <div class="row items-center q-gutter-x-sm">
-                            <span class="text-subtitle2 text-weight-bold text-blue-9">{{ mod.title }}</span>
+                            <span class="text-subtitle2 text-weight-bold text-blue-9" style="white-space: normal; word-break: break-word;">{{ mod.title }}</span>
                             <q-icon
                               v-if="mod.accessibility && mod.accessibility !== 'public'"
                               :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
@@ -286,16 +307,26 @@
                     </div>
 
                     <!-- Submodules -->
-                    <div v-if="mod.children?.length" class="submodules-list tree-indent-level border-left q-gutter-y-sm">
+                    <div v-if="mod.children?.length && !collapsedItems[mod.id]" class="submodules-list tree-indent-level border-left q-gutter-y-sm">
                       <template v-for="sub in mod.children" :key="sub.id">
                         <!-- Render as Submodule if type is submodule -->
                         <div v-if="sub.type === 'submodule'" class="tree-submodule-box q-pa-sm rounded-borders">
                           <div class="row justify-between items-center q-mb-xs cursor-pointer" @click="onClickItem(sub.id)">
                             <div class="row items-center q-gutter-sm">
+                              <!-- Toggle Collapse Button for Submodule -->
+                              <q-btn
+                                v-if="sub.children?.length"
+                                flat
+                                round
+                                dense
+                                :icon="collapsedItems[sub.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                                size="xs"
+                                @click.stop="toggleCollapse(sub.id)"
+                              />
                               <q-icon name="layers" color="cyan" size="18px" />
                               <div>
                                 <div class="row items-center q-gutter-x-sm">
-                                  <span class="text-body2 text-weight-bold text-cyan-9">{{ sub.title }}</span>
+                                  <span class="text-body2 text-weight-bold text-cyan-9" style="white-space: normal; word-break: break-word;">{{ sub.title }}</span>
                                   <q-icon
                                     v-if="sub.accessibility && sub.accessibility !== 'public'"
                                     :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
@@ -327,7 +358,7 @@
                           </div>
 
                           <!-- Tickets / Child items -->
-                          <div v-if="sub.children?.length" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
+                          <div v-if="sub.children?.length && !collapsedItems[sub.id]" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
                             <div
                               v-for="ticket in sub.children"
                               :key="ticket.id"
@@ -335,10 +366,19 @@
                               @click="onClickItem(ticket.id)"
                             >
                               <div class="row items-center q-gutter-sm">
+                                <q-btn
+                                  v-if="ticket.children?.length"
+                                  flat
+                                  round
+                                  dense
+                                  :icon="collapsedItems[ticket.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                                  size="xs"
+                                  @click.stop="toggleCollapse(ticket.id)"
+                                />
                                 <q-icon :name="getTicketIcon(ticket.type)" :color="getTicketColor(ticket.type)" size="16px" />
                                 <div>
                                   <div class="row items-center q-gutter-x-sm">
-                                    <span class="text-body2 text-grey-9 text-weight-medium">
+                                    <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
                                       <span v-if="ticket.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ ticket.id }}</span>
                                       {{ ticket.title }}
                                     </span>
@@ -437,10 +477,19 @@
                           @click="onClickItem(sub.id)"
                         >
                           <div class="row items-center q-gutter-sm">
+                            <q-btn
+                              v-if="sub.children?.length"
+                              flat
+                              round
+                              dense
+                              :icon="collapsedItems[sub.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                              size="xs"
+                              @click.stop="toggleCollapse(sub.id)"
+                            />
                             <q-icon :name="getTicketIcon(sub.type)" :color="getTicketColor(sub.type)" size="16px" />
                             <div>
                               <div class="row items-center q-gutter-x-sm">
-                                <span class="text-body2 text-grey-9 text-weight-medium">
+                                <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
                                   <span v-if="sub.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ sub.id }}</span>
                                   {{ sub.title }}
                                 </span>
@@ -540,10 +589,19 @@
                     @click="onClickItem(mod.id)"
                   >
                     <div class="row items-center q-gutter-sm">
+                      <q-btn
+                        v-if="mod.children?.length"
+                        flat
+                        round
+                        dense
+                        :icon="collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                        size="xs"
+                        @click.stop="toggleCollapse(mod.id)"
+                      />
                       <q-icon :name="getTicketIcon(mod.type)" :color="getTicketColor(mod.type)" size="16px" />
                       <div>
                         <div class="row items-center q-gutter-x-sm">
-                          <span class="text-body2 text-grey-9 text-weight-medium">{{ mod.title }}</span>
+                          <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">{{ mod.title }}</span>
                           <q-icon
                             v-if="mod.accessibility && mod.accessibility !== 'public'"
                             :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
@@ -632,7 +690,8 @@
                 </template>
               </div>
 
-              <div v-else-if="project.type !== 'project' && project.children?.length" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
+              <!-- Direct Children of Project (if any, when not module) -->
+              <div v-else-if="project.type !== 'project' && project.children?.length && !collapsedItems[project.id]" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
                 <div
                   v-for="child in project.children"
                   :key="child.id"
@@ -640,10 +699,19 @@
                   @click="onClickItem(child.id)"
                 >
                   <div class="row items-center q-gutter-sm">
+                    <q-btn
+                      v-if="child.children?.length"
+                      flat
+                      round
+                      dense
+                      :icon="collapsedItems[child.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                      size="xs"
+                      @click.stop="toggleCollapse(child.id)"
+                    />
                     <q-icon :name="getTicketIcon(child.type)" :color="getTicketColor(child.type)" size="16px" />
                     <div>
                       <div class="row items-center q-gutter-x-sm">
-                        <span class="text-body2 text-grey-9 text-weight-medium">
+                        <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
                           <span v-if="child.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ child.id }}</span>
                           {{ child.title }}
                         </span>
@@ -1185,6 +1253,7 @@
       v-model="formOpen"
       :default-parent-id="quickAddParentId"
       :default-type="quickAddType"
+      @saved="refreshData"
     />
 
     <TagManagerDialog
@@ -1194,6 +1263,7 @@
     <TaskDetailsDialog
       v-model="detailsOpen"
       v-model:item-id="selectedItemId"
+      @updated="refreshData"
     />
 
     <BulkDeleteDialog
@@ -1205,6 +1275,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useTasksStore } from '../stores/tasksStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ItemType, ItemStatus, ItemPriority } from '../types';
@@ -1235,6 +1306,7 @@ const priorityMenuOptions: { label: string; value: ItemPriority }[] = [
 const updateItemStatus = async (itemId: number, nextStatus: ItemStatus) => {
   try {
     await tasksStore.updateItem(itemId, { status: nextStatus });
+    refreshData();
   } catch (err) {
     console.error('Failed to update task status from list:', err);
   }
@@ -1243,6 +1315,7 @@ const updateItemStatus = async (itemId: number, nextStatus: ItemStatus) => {
 const updateItemPriority = async (itemId: number, nextPriority: ItemPriority) => {
   try {
     await tasksStore.updateItem(itemId, { priority: nextPriority });
+    refreshData();
   } catch (err) {
     console.error('Failed to update task priority from list:', err);
   }
@@ -1250,6 +1323,14 @@ const updateItemPriority = async (itemId: number, nextPriority: ItemPriority) =>
 
 const tasksStore = useTasksStore();
 const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+// Collapsible tree items state
+const collapsedItems = ref<Record<number, boolean>>({});
+const toggleCollapse = (id: number) => {
+  collapsedItems.value[id] = !collapsedItems.value[id];
+};
 
 // Tab view states
 const activeTab = ref('tree');
@@ -1340,6 +1421,47 @@ const detailsOpen = ref(false);
 const bulkDeleteOpen = ref(false);
 const selectedItemId = ref<number | null>(null);
 
+// Sync query parameter `taskId` with selected task modal on load/route change
+watch(
+  () => route.query.taskId,
+  (newTaskId) => {
+    if (newTaskId) {
+      const idNum = Number(newTaskId);
+      if (!isNaN(idNum) && selectedItemId.value !== idNum) {
+        selectedItemId.value = idNum;
+        detailsOpen.value = true;
+      }
+    } else {
+      detailsOpen.value = false;
+      selectedItemId.value = null;
+    }
+  },
+  { immediate: true }
+);
+
+// Sync selectedItemId changes to URL query params
+watch(selectedItemId, (newId) => {
+  const query = { ...route.query };
+  if (newId) {
+    if (query.taskId !== String(newId)) {
+      query.taskId = String(newId);
+      void router.replace({ query });
+    }
+  } else {
+    if (query.taskId) {
+      delete query.taskId;
+      void router.replace({ query });
+    }
+  }
+});
+
+// Reset selectedItemId when modal is closed
+watch(detailsOpen, (isOpen) => {
+  if (!isOpen) {
+    selectedItemId.value = null;
+  }
+});
+
 // Quick Add states
 const quickAddParentId = ref<number | null>(null);
 const quickAddType = ref<ItemType>('task');
@@ -1358,8 +1480,8 @@ const onClickQuickAdd = (parentId: number, type: ItemType) => {
 };
 
 const onClickItem = (itemId: number) => {
-  selectedItemId.value = itemId;
-  detailsOpen.value = true;
+  const query = { ...route.query, taskId: String(itemId) };
+  void router.replace({ query });
 };
 
 // Actions
@@ -1426,7 +1548,9 @@ const filteredList = computed(() => {
 
 // Filtered tree - simplified as server handles tree matching + parents recursively
 const filteredTree = computed(() => {
-  return tasksStore.itemsTree;
+  return tasksStore.itemsTree.filter(
+    (item) => item.type !== 'note' && item.type !== 'discussion'
+  );
 });
 
 // Notes list

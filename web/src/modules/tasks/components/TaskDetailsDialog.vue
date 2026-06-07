@@ -1,9 +1,7 @@
 <template>
-  <q-dialog v-model="isOpen" backdrop-filter="blur(4px)" @show="onShow">
+  <q-dialog v-model="isOpen" backdrop-filter="blur(4px)">
     <q-card class="details-card floating-surface shadow-2" style="min-height: 250px;">
-      <div v-if="loadingDetails" class="row justify-center items-center q-pa-xl absolute-center full-width" style="height: 250px;">
-        <q-spinner size="40px" color="primary" />
-      </div>
+      <PageInitialLoader v-if="loadingDetails" />
       <div v-else-if="!item" class="row justify-center items-center q-pa-xl text-grey-6 absolute-center full-width text-center" style="height: 250px;">
         <div>
           <q-icon name="warning" size="40px" color="negative" class="q-mb-md" />
@@ -28,12 +26,15 @@
               <span v-if="item.type === 'task'" class="text-h6 text-weight-bold text-primary q-mr-xs">#{{ item.id }}</span>
               <q-input
                 v-model="item.title"
+                type="textarea"
+                autogrow
                 borderless
                 dense
                 input-class="text-h6 text-weight-bold text-grey-9 q-pa-none"
                 class="q-pa-none full-width col"
+                input-style="white-space: normal; word-break: break-word;"
                 @blur="onSaveTitle"
-                @keydown.enter="onSaveTitle"
+                @keydown.enter.prevent="onSaveTitle"
               />
             </div>
             <div class="row items-center q-gutter-x-sm text-caption text-grey-7 q-mt-xs">
@@ -70,7 +71,7 @@
           </div>
         </div>
         <div class="row items-center q-gutter-xs">
-          <q-btn flat round dense icon="delete" color="negative" size="sm" @click="onClickDelete" />
+          <q-btn flat round dense icon="o_delete" color="negative" size="sm" @click="onClickDelete" />
           <q-btn flat round dense icon="close" v-close-popup />
         </div>
       </q-card-section>
@@ -173,7 +174,7 @@
                       dense
                       round
                       color="red"
-                      icon="delete"
+                      icon="o_delete"
                       size="xs"
                       @click="onDeleteComment(c.id)"
                     />
@@ -490,7 +491,7 @@
                       <q-item-label caption class="text-overline">{{ p.role }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
-                      <q-btn flat round dense icon="delete" size="xs" color="red" @click="onDeletePermission(p.user_email)" />
+                      <q-btn flat round dense icon="o_delete" size="xs" color="red" @click="onDeletePermission(p.user_email)" />
                     </q-item-section>
                   </q-item>
                   <div v-if="!permissions.length" class="text-caption text-grey-5">No explicit overrides</div>
@@ -521,6 +522,7 @@ import { tasksRepository } from '../repositories/tasksRepository';
 import type { Item, Tag, Comment, ItemAssignee, ItemPermission, ActivityLog, ItemStatus, ItemPriority, ItemType, ItemAccessibility } from '../types';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import TaskFormDialog from './TaskFormDialog.vue';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { marked } from 'marked';
 
 const props = defineProps<{
@@ -668,13 +670,6 @@ const commentsTree = computed(() => {
 
   return roots;
 });
-
-// Load details on show
-const onShow = async () => {
-  if (props.itemId) {
-    await loadDetails();
-  }
-};
 
 const loadDetails = async () => {
   if (!props.itemId) return;
@@ -899,11 +894,18 @@ const typeDotColor = (type: string) => {
   }
 };
 
-watch(() => props.itemId, async (newId) => {
-  if (newId && isOpen.value) {
-    await loadDetails();
+watch(
+  () => [props.itemId, isOpen.value] as const,
+  async ([newId, newIsOpen], oldVal) => {
+    if (newId && newIsOpen) {
+      const oldId = oldVal ? oldVal[0] : undefined;
+      const oldIsOpen = oldVal ? oldVal[1] : undefined;
+      if (oldId === undefined || newId !== oldId || oldIsOpen === undefined || newIsOpen !== oldIsOpen) {
+        await loadDetails();
+      }
+    }
   }
-});
+);
 
 const onStatusUpdate = async (status: ItemStatus) => {
   if (item.value) {

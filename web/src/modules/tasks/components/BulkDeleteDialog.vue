@@ -187,7 +187,7 @@
             color="negative"
             no-caps
             label="Delete Selected"
-            icon="delete"
+            icon="o_delete"
             :disable="selected.length === 0"
             :loading="deleting"
             @click="confirmDelete"

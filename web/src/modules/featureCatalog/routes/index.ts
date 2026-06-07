@@ -6,7 +6,6 @@ const featureCatalogRoutes: RouteRecordRaw[] = [
   {
     path: '/platform/modules',
     component: () => import('layouts/PlatformLayout.vue'),
-    name: 'platform-modules',
     beforeEnter: createAccessGuard({
       loginRoute: 'superadmin-login-page',
       requiredScope: 'platform',
@@ -15,6 +14,7 @@ const featureCatalogRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        name: 'platform-modules',
         component: () => import('../pages/ModulesPage.vue'),
       },
     ],
