@@ -10,7 +10,7 @@ import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Paths relative to this script
@@ -22,6 +22,8 @@ ROOT_ENV_FILE = ROOT_DIR / ".env"
 DEFAULT_OUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "wts_data.json"
 DEFAULT_OUT_MANIFEST = ROOT_DIR / "web" / "public" / "uk" / "wts_manifest.json"
 DEFAULT_OUT_IMAGES_DIR = ROOT_DIR / "python" / "images" / "uk" / "wts_images"
+DEFAULT_CACHE_JSON = ROOT_DIR / "python" / "data" / "uk" / "wts_cache.json"
+
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -56,7 +58,7 @@ load_env_file(ROOT_ENV_FILE)
 def make_request(url: str, binary: bool = False, retries: int = 3, timeout: int = 15) -> bytes | str | None:
     import random
     # Add a polite random jitter delay to prevent rate limits
-    time.sleep(random.uniform(0.25, 1.25))
+    time.sleep(random.uniform(0.15, 0.45))
     req = urllib.request.Request(url, headers=HEADERS)
     for attempt in range(1, retries + 1):
         try:
@@ -157,12 +159,44 @@ def build_category_map(workers: int = 10) -> dict[str, str]:
     print(f"Built category map with {len(category_map)} product URLs.")
     return category_map
 
-def get_product_urls() -> list[str]:
+def parse_iso_datetime(dt_str: str) -> datetime | None:
+    if not dt_str:
+        return None
+    # Replace 'Z' with '+00:00' for fromisoformat compatibility
+    normalized = dt_str.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            return datetime.strptime(normalized[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            return None
+
+def load_cache(cache_path: Path) -> dict:
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                cache = json.load(f)
+                if isinstance(cache, dict) and "products" in cache:
+                    return cache
+        except Exception as e:
+            print(f"⚠️ Failed to load cache: {e}")
+    return {"products": {}}
+
+def save_cache(cache_path: Path, cache_data: dict) -> None:
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Failed to save cache: {e}")
+
+def get_product_sitemap_data() -> dict[str, str]:
     sitemaps = [
         "https://wholesaletradingsupplies.com/product-sitemap.xml",
         "https://wholesaletradingsupplies.com/product-sitemap2.xml"
     ]
-    urls = []
+    sitemap_data = {}
     for sitemap_url in sitemaps:
         print(f"Fetching sitemap: {sitemap_url}...")
         xml_data = make_request(sitemap_url, binary=True)
@@ -173,14 +207,17 @@ def get_product_urls() -> list[str]:
             namespace = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
             for url_tag in root.findall('ns:url', namespace):
                 loc = url_tag.find('ns:loc', namespace)
+                lastmod = url_tag.find('ns:lastmod', namespace)
                 if loc is not None and loc.text:
                     url = loc.text.strip()
                     # Exclude the shop archive page
                     if url != "https://wholesaletradingsupplies.com/shop/" and "/product/" in url:
-                        urls.append(url)
+                        lastmod_val = lastmod.text.strip() if lastmod is not None and lastmod.text else ""
+                        sitemap_data[url] = lastmod_val
         except Exception as e:
             print(f"❌ Failed to parse XML for sitemap {sitemap_url}: {e}")
-    return sorted(list(set(urls)))
+    return sitemap_data
+
 
 def unescape_text(text: str) -> str:
     if not text:
@@ -304,6 +341,29 @@ def parse_product_html(html_content: str, url: str) -> dict | None:
 
     data["minimum_order_quantity"] = data["case_size"]
 
+    # Extract Category from product HTML
+    category = ""
+    # 1. Try woocommerce-breadcrumb
+    breadcrumb_match = re.search(r'class="woocommerce-breadcrumb"[^>]*>(.*?)<\/nav>', html_content, re.DOTALL)
+    if breadcrumb_match:
+        links = re.findall(r'/product-category/([^/"]+)/[^>]*>([^<]+)</a>', breadcrumb_match.group(1))
+        if links:
+            category = unescape_text(links[-1][1])
+
+    # 2. Try posted_in category markup (WooCommerce default)
+    if not category:
+        posted_in_match = re.search(r'class="posted_in"[^>]*>.*?/product-category/([^/"]+)/[^>]*>([^<]+)</a>', html_content, re.DOTALL)
+        if posted_in_match:
+            category = unescape_text(posted_in_match.group(2))
+
+    # 3. Fallback: first category link on the page
+    if not category:
+        first_cat_match = re.search(r'/product-category/([^/"]+)/[^>]*>([^<]+)</a>', html_content)
+        if first_cat_match:
+            category = unescape_text(first_cat_match.group(2))
+
+    data["category"] = category
+
     return data
 
 def download_product_image(image_url: str, image_key: str, out_dir: Path) -> str | None:
@@ -343,15 +403,16 @@ def format_duration(seconds: float) -> str:
         return f"{m}m {s}s"
     return f"{s}s"
 
-def scrape_worker(url: str, out_images_dir: Path, category_map: dict, skip_images: bool = False) -> dict | None:
+def scrape_worker(url: str, out_images_dir: Path, category_map: dict | None = None, skip_images: bool = False) -> dict | None:
     html = make_request(url)
     if not html:
         return None
     product_data = parse_product_html(html, url)
     if product_data:
-        # Set category
-        normalized_url = url.rstrip("/") + "/"
-        product_data["category"] = category_map.get(normalized_url, "")
+        # Set category if not already parsed from HTML
+        if not product_data.get("category") and category_map:
+            normalized_url = url.rstrip("/") + "/"
+            product_data["category"] = category_map.get(normalized_url, "")
 
         # Download image
         if not skip_images:
@@ -368,9 +429,12 @@ def main():
     parser = argparse.ArgumentParser(description="Scrapes Wholesale Trading Supplies.")
     parser.add_argument("--output", default=str(DEFAULT_OUT_JSON), help="Output JSON path")
     parser.add_argument("--images-dir", default=str(DEFAULT_OUT_IMAGES_DIR), help="Output images directory")
-    parser.add_argument("--workers", type=int, default=3, help="Number of concurrent worker threads")
+    parser.add_argument("--workers", type=int, default=10, help="Number of concurrent worker threads")
     parser.add_argument("--limit", type=int, default=0, help="Limit the number of products to scrape (0 for unlimited)")
     parser.add_argument("--skip-images", action="store_true", help="Skip downloading product images locally during scraping.")
+    parser.add_argument("--crawl-categories", action="store_true", help="Crawl category sitemap to build category map (slow fallback).")
+    parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_JSON), help="Cache JSON path")
+    parser.add_argument("--no-cache", action="store_true", help="Bypass caching and force-scrape all products.")
     args = parser.parse_args()
 
     out_json = Path(args.output).expanduser().resolve()
@@ -383,60 +447,119 @@ def main():
     print("🚀 WHOLESALE TRADING SUPPLIES SCRAPER STARTING")
     print(f"📁 Output JSON: {out_json}")
     print(f"📁 Output Images: {out_images}")
+    print(f"📁 Cache File: {args.cache_file}")
     print(f"🧵 Concurrency: {args.workers} workers")
     if args.limit > 0:
         print(f"🛑 Limit: {args.limit} items")
     print("==============================================\n")
 
-    # 0. Build category map
-    category_map = build_category_map(args.workers)
+    # 0. Build category map (optional fallback)
+    category_map = {}
+    if args.crawl_categories:
+        category_map = build_category_map(args.workers)
+    else:
+        print("Skipping category crawl. Categories will be parsed directly from product pages.")
 
-    # 1. Fetch all product URLs
-    product_urls = get_product_urls()
+    # 1. Fetch all product sitemap data (URL -> lastmod)
+    sitemap_data = get_product_sitemap_data()
+    all_urls = sorted(list(sitemap_data.keys()))
     if args.limit > 0:
-        product_urls = product_urls[:args.limit]
-    total_products = len(product_urls)
-    print(f"Found {total_products} products to scrape.\n")
+        all_urls = all_urls[:args.limit]
+    total_products = len(all_urls)
+    print(f"Found {total_products} products in sitemap.\n")
     
     if total_products == 0:
         print("❌ No products found. Exiting.")
         return 1
 
+    # Load cache
+    cache_path = Path(args.cache_file).expanduser().resolve()
+    cache = load_cache(cache_path)
+    cached_products_map = cache.get("products", {})
+
+    cached_results = []
+    urls_to_scrape = []
+
+    for url in all_urls:
+        sitemap_lastmod = sitemap_data[url]
+        cached_entry = cached_products_map.get(url)
+        
+        # Check if cache is valid and up-to-date
+        is_cache_valid = (
+            not args.no_cache
+            and cached_entry
+            and cached_entry.get("last_modified") == sitemap_lastmod
+            and isinstance(cached_entry.get("data"), dict)
+            # Ensure the required schema keys are present
+            and "minimum_order_quantity" in cached_entry["data"]
+        )
+        
+        if is_cache_valid:
+            cached_results.append(cached_entry["data"])
+        else:
+            urls_to_scrape.append(url)
+
+    print(f"ℹ️ Cache stats: {len(cached_results)} products reused from cache.")
+    print(f"ℹ️ Scraping stats: {len(urls_to_scrape)} products need to be scraped.\n")
+
     # 2. Scrape concurrently
-    products = []
+    products = list(cached_results)
     scraped_count = 0
+    total_to_scrape = len(urls_to_scrape)
     start_ts = time.perf_counter()
 
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = {executor.submit(scrape_worker, url, out_images, category_map, args.skip_images): url for url in product_urls}
-        
-        for future in as_completed(futures):
-            url = futures[future]
-            scraped_count += 1
-            try:
-                data = future.result()
-                if data:
-                    products.append(data)
-            except Exception as e:
-                print(f"❌ Worker crashed for URL {url}: {e}")
-                
-            # Log progress every 20 products
-            if scraped_count % 20 == 0 or scraped_count == total_products:
-                elapsed = max(0.0001, time.perf_counter() - start_ts)
-                rate = scraped_count / elapsed
-                remaining = total_products - scraped_count
-                eta = remaining / rate if rate > 0 else 0
-                percent = (scraped_count / total_products) * 100
-                print(
-                    f"Progress: {scraped_count}/{total_products} ({percent:.1f}%) | "
-                    f"{rate:.2f}/s | ETA {format_duration(eta)}",
-                    flush=True
-                )
+    new_scraped_entries = {}
+    if total_to_scrape > 0:
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {executor.submit(scrape_worker, url, out_images, category_map, args.skip_images): url for url in urls_to_scrape}
+            
+            for future in as_completed(futures):
+                url = futures[future]
+                scraped_count += 1
+                try:
+                    data = future.result()
+                    if data:
+                        products.append(data)
+                        new_scraped_entries[url] = {
+                            "last_modified": sitemap_data[url],
+                            "data": data
+                        }
+                except Exception as e:
+                    print(f"❌ Worker crashed for URL {url}: {e}")
+                    
+                # Log progress every 20 products
+                if scraped_count % 20 == 0 or scraped_count == total_to_scrape:
+                    elapsed = max(0.0001, time.perf_counter() - start_ts)
+                    rate = scraped_count / elapsed
+                    remaining = total_to_scrape - scraped_count
+                    eta = remaining / rate if rate > 0 else 0
+                    percent = (scraped_count / total_to_scrape) * 100
+                    print(
+                        f"Progress: {scraped_count}/{total_to_scrape} ({percent:.1f}%) | "
+                        f"{rate:.2f}/s | ETA {format_duration(eta)}",
+                        flush=True
+                    )
+
+    # Update cache and save (to prune deleted items, etc.)
+    updated_cache_products = {}
+    for url in all_urls:
+        if url in new_scraped_entries:
+            updated_cache_products[url] = new_scraped_entries[url]
+        elif url in cached_products_map:
+            updated_cache_products[url] = cached_products_map[url]
+            
+    pruned_count = len(cached_products_map) - len(updated_cache_products)
+    if pruned_count > 0 or len(new_scraped_entries) > 0:
+        cache["products"] = updated_cache_products
+        cache["scraped_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        save_cache(cache_path, cache)
+        if pruned_count > 0:
+            print(f"ℹ️ Cache pruned: removed {pruned_count} obsolete products.")
 
     # 3. Save JSON and Manifest
     payload = {
         "meta": {
-            "generatedAt": datetime.utcnow().isoformat() + "Z",
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "source": "wholesaletradingsupplies.com",
             "count": len(products),
             "imagesExtracted": len(products),
@@ -451,7 +574,7 @@ def main():
     # Write version manifest
     manifest_path = out_json.parent / out_json.name.replace("_data.json", "_manifest.json")
     manifest = {
-        "version": datetime.utcnow().strftime("%Y%m%d%H%M%S"),
+        "version": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "updated_at": payload["meta"]["generatedAt"],
         "count": len(products)
     }
@@ -461,7 +584,7 @@ def main():
     t_total = time.perf_counter() - t0
     print("\n==============================================")
     print("✅ SCRAPER COMPLETED SUCCESSFULLY")
-    print(f"- Scraped products: {len(products)}")
+    print(f"- Total products output: {len(products)}")
     print(f"- JSON written: {out_json}")
     print(f"- Manifest written: {manifest_path}")
     print(f"⏱️ Total duration: {format_duration(t_total)}")

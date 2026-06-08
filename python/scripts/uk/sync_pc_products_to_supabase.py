@@ -908,7 +908,7 @@ def main() -> int:
     existing_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for item in existing_rows_full:
         key = (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper())
-        if not key[0] or not key[1]:
+        if not key[0]:
             continue
         existing_by_key.setdefault(key, []).append(item)
 
@@ -919,6 +919,11 @@ def main() -> int:
 
     for key, insert_payload in deduped_inserts.items():
         existing_items = existing_by_key.get(key, [])
+        if not existing_items:
+            # Fallback: check if there is an existing row with the same barcode but empty/null product_code
+            fallback_key = (key[0], "")
+            existing_items = existing_by_key.get(fallback_key, [])
+
         is_hazardous = insert_payload.get("hazardous") is True
         is_available = True
 
@@ -932,8 +937,13 @@ def main() -> int:
                 row_id = existing_item["id"]
                 db_source = to_text(existing_item.get("source")).lower()
                 db_image_url = existing_item.get("image_url")
+                db_product_code = to_text(existing_item.get("product_code"))
                 
                 final_update_payload = dict(update_payload)
+                
+                # If the DB has no product_code, backfill it
+                if not db_product_code:
+                    final_update_payload["product_code"] = insert_payload["product_code"]
                 
                 if db_source in ("website", "web"):
                     # Check the DB if the data is present and the source is website,
