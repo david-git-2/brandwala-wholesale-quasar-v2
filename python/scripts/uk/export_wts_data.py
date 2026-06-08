@@ -435,6 +435,7 @@ def main():
     parser.add_argument("--crawl-categories", action="store_true", help="Crawl category sitemap to build category map (slow fallback).")
     parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_JSON), help="Cache JSON path")
     parser.add_argument("--no-cache", action="store_true", help="Bypass caching and force-scrape all products.")
+    parser.add_argument("--vendor-id", type=int, default=4, help="Vendor ID (default: 4)")
     args = parser.parse_args()
 
     out_json = Path(args.output).expanduser().resolve()
@@ -556,6 +557,10 @@ def main():
         if pruned_count > 0:
             print(f"ℹ️ Cache pruned: removed {pruned_count} obsolete products.")
 
+    # Ensure all products have the vendor_id associated
+    for prod in products:
+        prod["vendor_id"] = args.vendor_id
+
     # 3. Save JSON and Manifest
     payload = {
         "meta": {
@@ -563,7 +568,8 @@ def main():
             "source": "wholesaletradingsupplies.com",
             "count": len(products),
             "imagesExtracted": len(products),
-            "productIdRule": "product_id = barcode + '_WTS_' + id"
+            "productIdRule": "product_id = barcode + '_WTS_' + id",
+            "vendor_id": args.vendor_id
         },
         "products": products
     }
