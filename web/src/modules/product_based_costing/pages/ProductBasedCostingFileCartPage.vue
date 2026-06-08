@@ -275,7 +275,7 @@ const loadAvailableProducts = async (params: {
     category: category.value,
     brand: brand.value,
     vendorCode: vendorCode.value,
-    append: params.append,
+    ...(params.append !== undefined ? { append: params.append } : {}),
   })
 }
 
