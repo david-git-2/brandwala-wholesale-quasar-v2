@@ -313,7 +313,7 @@ def build_sync_payloads(
         return None
 
     available_units = to_int_or_none(row.get("available_units"))
-    minimum_order_quantity = to_int_or_none(row.get("minimum_quantity"))
+    minimum_order_quantity = to_int_or_none(row.get("minimum_quantity") or row.get("minimum_order_quantity"))
     if minimum_order_quantity is None:
         minimum_order_quantity = to_int_or_none(row.get("case_size"))
     if minimum_order_quantity is not None and minimum_order_quantity < 1:

@@ -171,7 +171,7 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         product_id = f"{normalized['barcode']}_{normalized['product_code']}"
     normalized["product_id"] = product_id
     
-    normalized["minimum_quantity"] = to_int(row.get("minimum_quantity"), 0)
+    normalized["minimum_quantity"] = to_int(get_first_value(row, ["minimum_quantity", "minimum_order_quantity"]), 0)
     if normalized["minimum_quantity"] <= 0:
         if to_text(normalized.get("sales_unit")) != "":
             normalized["minimum_quantity"] = compute_minimum_quantity(normalized)

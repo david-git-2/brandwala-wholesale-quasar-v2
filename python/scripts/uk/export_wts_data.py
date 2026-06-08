@@ -295,7 +295,14 @@ def parse_product_html(html_content: str, url: str) -> dict | None:
     except (ValueError, TypeError):
         data["case_size"] = 1
 
-    data["minimum_quantity"] = data["case_size"]
+    # Price should be the raw price divided by the pack size, rounded to two decimal places
+    raw_price = data.get("price", 0.0)
+    if data["case_size"] > 0:
+        data["price"] = round(raw_price / data["case_size"], 2)
+    else:
+        data["price"] = round(raw_price, 2)
+
+    data["minimum_order_quantity"] = data["case_size"]
 
     return data
 

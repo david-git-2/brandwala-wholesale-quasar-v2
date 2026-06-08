@@ -369,10 +369,10 @@ const listProducts = async ({
         category,
         brand,
         tenantId,
-        vendorCode,
-        marketCode,
-        isAvailable,
-      }
+      vendorCode,
+      marketCode,
+      isAvailable,
+    }
 
       if (sortPrice) {
         fallbackParams.sortPrice = sortPrice

@@ -34,6 +34,12 @@
       :table-style="{ maxHeight: '100%' }"
       class="costing-q-table"
     >
+      <template #header-cell-select="slotProps">
+        <q-th :props="slotProps">
+          <q-checkbox v-model="isAllSelected" />
+        </q-th>
+      </template>
+
       <template #body="slotProps">
         <q-tr :props="slotProps">
           <q-td key="select" :props="slotProps" class="col-select text-center">
@@ -786,6 +792,20 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
 const tableRows = ref<ProductBasedCostingTableRow[]>([]);
 const selectedRowIds = ref<number[]>([])
 const showBulkDeleteConfirm = ref(false)
+
+const isAllSelected = computed({
+  get: () => {
+    if (tableRows.value.length === 0) return false;
+    return tableRows.value.every((row) => selectedRowIds.value.includes(row.id));
+  },
+  set: (val: boolean) => {
+    if (val) {
+      selectedRowIds.value = tableRows.value.map((row) => row.id);
+    } else {
+      selectedRowIds.value = [];
+    }
+  },
+});
 
 watch(
   () => [props.items, props.cargoRate, props.conversionRate, props.profitRate],

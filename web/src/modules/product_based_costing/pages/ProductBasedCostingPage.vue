@@ -363,10 +363,18 @@ const onSelect = async (item: ProductBasedCostingFile) => {
 
 
 
-const onDelete = async (item: ProductBasedCostingFile) => {
-  console.log('delete', item)
-  await store.deleteProductBasedCostingFile(item.id)
-  await loadFiles()
+const onDelete = (item: ProductBasedCostingFile) => {
+  $q.dialog({
+    title: 'Confirm Deletion',
+    message: `Are you sure you want to delete costing file #${item.id} (${item.name || 'Untitled'})?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    void (async () => {
+      await store.deleteProductBasedCostingFile(item.id)
+      await loadFiles()
+    })()
+  })
 }
 
 const onCopy = async (item: ProductBasedCostingFile) => {
@@ -398,9 +406,10 @@ const onCopy = async (item: ProductBasedCostingFile) => {
   }
 
   const copiedFileId = fileCreateResult.data.id
-  const sourceItems = sourceItemsResult.data ?? []
-  const copyItemTasks = sourceItems.map((sourceItem) =>
-    productBasedCostingService.createProductBasedCostingItem({
+  const sourceItems = [...(sourceItemsResult.data ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+
+  for (const sourceItem of sourceItems) {
+    await productBasedCostingService.createProductBasedCostingItem({
       product_based_costing_file_id: copiedFileId,
       product_id: sourceItem.product_id ?? null,
       name: sourceItem.name ?? null,
@@ -421,10 +430,9 @@ const onCopy = async (item: ProductBasedCostingFile) => {
       status: 'pending',
       input_type: sourceItem.input_type ?? null,
       assigned_shipment_id: null,
-    }),
-  )
+    })
+  }
 
-  await Promise.allSettled(copyItemTasks)
   await loadFiles()
 
   $q.notify({

@@ -15,8 +15,49 @@
       <q-card-section class="q-py-sm">
         <div class="row q-col-gutter-md items-end justify-between">
           <div class="col-12 col-sm-6 col-md-5">
+            <div v-if="showSearchInput" class="row q-col-gutter-sm items-start">
+              <div class="col-12 col-sm-4">
+                <q-select
+                  v-model="searchField"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  class="soft-input"
+                  :options="searchFieldOptions"
+                  label="Search by"
+                />
+              </div>
+              <div class="col-12 col-sm-8">
+                <q-input
+                  v-model="search"
+                  outlined
+                  dense
+                  type="text"
+                  class="soft-input"
+                  :label="searchInputLabel"
+                  clearable
+                  autofocus
+                  @clear="onSearchHide"
+                >
+                  <template #prepend>
+                    <q-icon name="search" />
+                  </template>
+                  <template #append>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      aria-label="Hide search"
+                      @click="onSearchHide"
+                    />
+                  </template>
+                </q-input>
+              </div>
+            </div>
             <q-btn
-              v-if="!showSearchInput"
+              v-else
               flat
               round
               dense
@@ -24,33 +65,6 @@
               aria-label="Show search"
               @click="showSearchInput = true"
             />
-
-            <q-input
-              v-else
-              v-model="search"
-              outlined
-              dense
-              type="text"
-              class="soft-input"
-              label="Search"
-              clearable
-              autofocus
-              @clear="onSearchHide"
-            >
-              <template #prepend>
-                <q-icon name="search" />
-              </template>
-              <template #append>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="close"
-                  aria-label="Hide search"
-                  @click="onSearchHide"
-                />
-              </template>
-            </q-input>
           </div>
 
           <div class="col-auto row items-center q-gutter-sm">
@@ -169,6 +183,11 @@ type FilterOption = {
   value: string | null
 }
 
+type SearchFieldOption = {
+  label: string
+  value: 'name' | 'barcode' | 'product_code' | 'id'
+}
+
 const allBrandOption: FilterOption = {
   label: 'All brands',
   value: null,
@@ -181,6 +200,7 @@ const allCategoryOption: FilterOption = {
 
 const search = ref('')
 const showSearchInput = ref(false)
+const searchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name')
 const category = ref<string | null>(null)
 const brand = ref<string | null>(null)
 const vendorCode = ref<string | null>('PC')
@@ -213,6 +233,17 @@ const filteredCategoryOptions = computed<FilterOption[]>(() => [
   })),
 ])
 
+const searchFieldOptions: SearchFieldOption[] = [
+  { label: 'Name', value: 'name' },
+  { label: 'Barcode', value: 'barcode' },
+  { label: 'Product Code', value: 'product_code' },
+  { label: 'Product ID', value: 'id' },
+]
+
+const searchInputLabel = computed(() =>
+  searchField.value === 'id' ? 'Search by Product ID' : 'Search products',
+)
+
 const vendorOptions = computed<FilterOption[]>(() => [
   { label: 'All vendors', value: null },
   ...vendorStore.items.map((item) => ({
@@ -225,10 +256,26 @@ const loadProducts = async () => {
   await productStore.fetchProducts({
     page: 1,
     search: search.value,
+    searchField: searchField.value,
     category: category.value,
     brand: brand.value,
     vendorCode: vendorCode.value,
-    isAvailable: true,
+  })
+}
+
+const loadAvailableProducts = async (params: {
+  page: number
+  search?: string
+  append?: boolean
+}) => {
+  await productStore.fetchProducts({
+    page: params.page,
+    search: params.search ?? search.value,
+    searchField: searchField.value,
+    category: category.value,
+    brand: brand.value,
+    vendorCode: vendorCode.value,
+    append: params.append,
   })
 }
 
@@ -335,13 +382,8 @@ const isLoadingMore = ref(false)
 const onPaginationClick = async () => {
   isLoadingMore.value = true
   try {
-    await productStore.fetchProducts({
+    await loadAvailableProducts({
       page: productStore.page + 1,
-      search: search.value,
-      category: category.value,
-      brand: brand.value,
-      vendorCode: vendorCode.value,
-      isAvailable: true,
       append: true,
     })
   } finally {
@@ -360,13 +402,9 @@ const onResetFilters = async () => {
     filteredBrandNames.value = [...brandNames.value]
     filteredCategoryNames.value = [...categoryNames.value]
 
-    await productStore.fetchProducts({
+    await loadAvailableProducts({
       page: 1,
       search: '',
-      category: null,
-      brand: null,
-      vendorCode: vendorCode.value,
-      isAvailable: true,
     })
   } finally {
     suppressFilterWatch.value = false
@@ -379,6 +417,14 @@ const onSearchHide = () => {
   showSearchInput.value = false
   void loadProducts()
 }
+
+watch(searchField, () => {
+  if (!showSearchInput.value) {
+    return
+  }
+
+  void loadProducts()
+})
 
 const fileId = computed(() => {
   const parsed = Number(route.params.id)
