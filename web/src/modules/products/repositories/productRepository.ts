@@ -36,7 +36,6 @@ const buildProductPayload = (payload: ProductCreateInput) => ({
   brand: normalizeText(payload.brand),
   category: normalizeText(payload.category),
   available_units: payload.available_units ?? null,
-  stock_override: payload.stock_override ?? null,
   tariff_code: normalizeText(payload.tariff_code),
   languages: normalizeText(payload.languages),
   batch_code_manufacture_date: payload.batch_code_manufacture_date ?? null,
@@ -87,10 +86,6 @@ const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
 
   if ('available_units' in payload) {
     updateData.available_units = payload.available_units ?? null
-  }
-
-  if ('stock_override' in payload) {
-    updateData.stock_override = payload.stock_override ?? null
   }
 
   if ('tariff_code' in payload) {

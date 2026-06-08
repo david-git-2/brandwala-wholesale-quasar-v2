@@ -1,14 +1,9 @@
 import type { Database } from 'src/types/supabase'
 
-export type Product = Database['public']['Tables']['products']['Row'] & {
-  stock_override?: number | null
-}
-export type ProductCreateInput = Database['public']['Tables']['products']['Insert'] & {
-  stock_override?: number | null
-}
+export type Product = Database['public']['Tables']['products']['Row']
+export type ProductCreateInput = Database['public']['Tables']['products']['Insert']
 export type ProductUpdateInput = Database['public']['Tables']['products']['Update'] & {
   id: number
-  stock_override?: number | null
 }
 export type ProductDeleteInput = {
   id: number

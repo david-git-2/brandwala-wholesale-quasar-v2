@@ -858,7 +858,6 @@ const onCreateProduct = async () => {
       product_weight: cleanNumber(createForm.product_weight),
       package_weight: cleanNumber(createForm.package_weight),
       available_units: null,
-      stock_override: null,
       expire_date: null,
       minimum_order_quantity: null,
       tariff_code: null,

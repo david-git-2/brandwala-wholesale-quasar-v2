@@ -3260,7 +3260,6 @@ export type Database = {
           product_code: string | null
           product_weight: number | null
           source: string | null
-          stock_override: number | null
           tariff_code: string | null
           tenant_id: number | null
           updated_at: string
@@ -3289,7 +3288,6 @@ export type Database = {
           product_code?: string | null
           product_weight?: number | null
           source?: string | null
-          stock_override?: number | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string
@@ -3318,7 +3316,6 @@ export type Database = {
           product_code?: string | null
           product_weight?: number | null
           source?: string | null
-          stock_override?: number | null
           tariff_code?: string | null
           tenant_id?: number | null
           updated_at?: string
