@@ -194,7 +194,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { marked } from 'marked'
+import { marked } from 'src/utils/marked'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
@@ -276,13 +276,13 @@ const parsedDescription = ref('')
 
 watch(
   () => props.product.description,
-  async (newVal) => {
+  (newVal) => {
     if (!newVal) {
       parsedDescription.value = ''
       return
     }
     try {
-      parsedDescription.value = await marked.parse(newVal)
+      parsedDescription.value = marked.parse(newVal)
     } catch {
       parsedDescription.value = newVal
     }

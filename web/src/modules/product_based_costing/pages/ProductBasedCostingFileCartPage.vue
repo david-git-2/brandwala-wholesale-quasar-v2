@@ -268,15 +268,17 @@ const loadAvailableProducts = async (params: {
   search?: string
   append?: boolean
 }) => {
-  await productStore.fetchProducts({
+  const fetchParams = {
     page: params.page,
     search: params.search ?? search.value,
     searchField: searchField.value,
     category: category.value,
     brand: brand.value,
     vendorCode: vendorCode.value,
-    append: params.append,
-  })
+    ...(params.append !== undefined ? { append: params.append } : {}),
+  }
+
+  await productStore.fetchProducts(fetchParams)
 }
 
 const loadBrands = async () => {
