@@ -20424,6 +20424,30 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/sanex-roll-on-50ml-nourishing/": {
+      "last_modified": "2026-06-10T13:44:25+00:00",
+      "data": {
+        "title": "Sanex Roll On 50ml Nourishing",
+        "price": 0.87,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/06/Sanex-roll-on-nourishing.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/sanex-roll-on-50ml-nourishing/",
+        "id": "10147",
+        "brand": "Sanex",
+        "barcode": "8718951729926",
+        "barcode_outer": "08718951729919",
+        "description": "Sanex Roll On 50ml Nourishing",
+        "product_code": "WTS_10147",
+        "product_id": "8718951729926_WTS_10147",
+        "imageKey": "8718951729926__WTS_10147",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/sanex-roll-on-50ml-total-protection/": {
       "last_modified": "2025-02-12T14:18:10+00:00",
       "data": {
@@ -20488,6 +20512,30 @@
         "product_code": "WTS_9676",
         "product_id": "8718951592889_WTS_9676",
         "imageKey": "8718951592889__WTS_9676",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
+    "https://wholesaletradingsupplies.com/product/sanex-shower-gel-410ml-sensitive/": {
+      "last_modified": "2026-06-10T13:44:23+00:00",
+      "data": {
+        "title": "Sanex Shower Gel 410ml Sensitive",
+        "price": 1.3,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/06/Sanex-shower-gel-415-sensitive.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/sanex-shower-gel-410ml-sensitive/",
+        "id": "10149",
+        "brand": "Sanex",
+        "barcode": "8715891389373",
+        "barcode_outer": "08718951389366",
+        "description": "Sanex Shower Gel 410ml Sensitive",
+        "product_code": "WTS_10149",
+        "product_id": "8715891389373_WTS_10149",
+        "imageKey": "8715891389373__WTS_10149",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -25249,5 +25297,5 @@
       }
     }
   },
-  "scraped_at": "2026-06-08T17:54:54.689847Z"
+  "scraped_at": "2026-06-10T16:37:48.379775Z"
 }

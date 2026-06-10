@@ -371,6 +371,7 @@
               row-key="id"
               :rows="sortedCustomerGroupMembers"
               :columns="customerGroupMemberColumns"
+              :pagination="{ rowsPerPage: 0 }"
               :dense="$q.screen.lt.md"
               hide-bottom
               class="tenant-detail-card__table costing-list-table"

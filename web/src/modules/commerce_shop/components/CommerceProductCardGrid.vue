@@ -27,38 +27,52 @@
         />
       </div>
 
-      <q-card-section class="card-content">
-        <div class="product-name ellipsis-3-lines">
-          {{ item.name }}
-        </div>
-
-        <div class="product-meta q-mt-sm">
-          <div v-if="item.country_of_origin">Origin: {{ item.country_of_origin || '-' }}</div>
-          <div v-if="props.showInfo" class="row items-center gap-xs">
-            <span class="q-mr-xs">Available Units:</span>
-            <q-chip
-              v-if="item.available_units && item.available_units > 0"
-              color="green-1"
-              text-color="green-9"
-              size="xs"
-              class="text-weight-bold q-ma-none"
-            >
-              {{ item.available_units }}
-            </q-chip>
-            <q-chip
-              v-else
-              color="red-1"
-              text-color="red-9"
-              size="xs"
-              class="text-weight-bold q-ma-none"
-            >
-              Not Available
-            </q-chip>
+      <div class="product-info-wrap">
+        <q-card-section class="card-content">
+          <div class="row no-wrap items-start justify-between">
+            <div class="product-name ellipsis-3-lines col">
+              {{ item.name }}
+            </div>
+            <q-btn
+              v-if="showInfo"
+              class="info-btn-content q-ml-xs"
+              flat
+              round
+              dense
+              color="primary"
+              icon="info"
+              size="sm"
+              @click="openDetails(item)"
+            />
           </div>
-          <div v-if="props.showPrice && item.available_units && item.available_units > 0" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
-          <div v-if="props.showPrice && item.available_units && item.available_units > 0 && item.minimum_sell_price_bdt != null" class="product-selling-price">Selling Price: {{ props.priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}</div>
-        </div>
-      </q-card-section>
+
+          <div class="product-meta q-mt-sm">
+            <div v-if="item.country_of_origin">Origin: {{ item.country_of_origin || '-' }}</div>
+            <div v-if="props.showInfo && !props.showCart" class="row items-center gap-xs">
+              <span class="q-mr-xs">Available Units:</span>
+              <q-chip
+                v-if="item.available_units && item.available_units > 0"
+                color="green-1"
+                text-color="green-9"
+                size="xs"
+                class="text-weight-bold q-ma-none"
+              >
+                {{ item.available_units }}
+              </q-chip>
+              <q-chip
+                v-else
+                color="red-1"
+                text-color="red-9"
+                size="xs"
+                class="text-weight-bold q-ma-none"
+              >
+                Not Available
+              </q-chip>
+            </div>
+            <div v-if="props.showPrice && item.available_units && item.available_units > 0" class="product-price">Price: {{ props.priceSymbol }}{{ formatPrice(getItemPrice(item)) }}</div>
+            <div v-if="props.showPrice && item.available_units && item.available_units > 0 && item.minimum_sell_price_bdt != null" class="product-selling-price">Selling Price: {{ props.priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}</div>
+          </div>
+        </q-card-section>
 
       <q-space />
 
@@ -112,7 +126,8 @@
         <div class="moq-text q-mt-xs">
           MOQ: {{ getStep(item) }}
         </div>
-      </q-card-section>
+        </q-card-section>
+      </div>
     </q-card>
   </div>
 
@@ -449,6 +464,16 @@ const showCart = computed(() => props.showCart)
   background: white;
 }
 
+.info-btn-content {
+  display: none !important;
+}
+
+.product-info-wrap {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
 .card-content {
   padding-top: 12px;
 }
@@ -578,6 +603,91 @@ const showCart = computed(() => props.showCart)
 
   .details-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 599px) {
+  .info-btn {
+    display: none !important;
+  }
+
+  .info-btn-content {
+    display: inline-flex !important;
+    flex-shrink: 0;
+    margin-top: -2px;
+  }
+
+  .product-grid {
+    margin: 0 !important;
+    gap: 0px !important;
+  }
+
+  .product-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: unset;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+    background: #fff;
+    padding: 12px 8px;
+    margin-bottom: 0px;
+  }
+
+  .image-wrapper {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    padding: 0 !important;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  :deep(.product-image) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  :deep(.product-image-fallback) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .product-info-wrap {
+    flex: 1;
+    padding-left: 12px;
+  }
+
+  .card-content {
+    padding: 0 !important;
+  }
+
+  .product-name {
+    min-height: unset;
+    font-size: 13px;
+    line-height: 1.35;
+    margin-bottom: 4px;
+  }
+
+  .product-meta {
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  .q-pt-none {
+    padding-top: 8px !important;
+    padding-bottom: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .cart-row {
+    margin-top: 4px;
   }
 }
 </style>

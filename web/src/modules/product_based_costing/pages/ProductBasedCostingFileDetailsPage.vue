@@ -275,8 +275,8 @@ const confirmRemoveShipmentOpen = ref(false);
 const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
 const alwaysVisibleColumns = ['select', 'sl', 'image', 'name']
 const allColumnNames = [
-  'select', 'sl', 'image', 'name', 'brand', 'note', 'qty', 'barcodeText', 'website', 'priceGbp',
-  'productWeight', 'packageWeight', 'totalWeight', 'cargoRate', 'cargoCostGbp', 'totalCostGbp',
+  'select', 'sl', 'image', 'name', 'brand', 'note', 'qty', 'deliveredQty', 'barcodeText', 'website', 'priceGbp',
+  'totalPurchasePriceGbp', 'productWeight', 'packageWeight', 'totalWeight', 'cargoRate', 'cargoCostGbp', 'totalCostGbp',
   'rowTotalCostGbp', 'costBdt', 'totalCostBdt', 'offerPriceBdt', 'totalBdt', 'profitPerUnitBdt',
   'profitBdt', 'profitRate', 'status', 'action',
 ]
@@ -285,9 +285,11 @@ const columnSelectorOptions = [
   { label: 'Brand', value: 'brand' },
   { label: 'Note', value: 'note' },
   { label: 'Qty', value: 'qty' },
+  { label: 'Delivered Qty', value: 'deliveredQty' },
   { label: 'Barcode / Code / Product ID', value: 'barcodeText' },
   { label: 'Website', value: 'website' },
   { label: 'Price (GBP)/Unit', value: 'priceGbp' },
+  { label: 'Total Purchase Price (GBP)', value: 'totalPurchasePriceGbp' },
   { label: 'Product Wt (g/Unit)', value: 'productWeight' },
   { label: 'Package Wt (g/Unit)', value: 'packageWeight' },
   { label: 'Total Wt (g/Unit)', value: 'totalWeight' },

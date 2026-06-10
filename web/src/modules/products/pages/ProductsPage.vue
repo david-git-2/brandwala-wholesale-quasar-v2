@@ -96,7 +96,7 @@
       <q-pagination
         v-model="page"
         :max="totalPages"
-        :max-pages="8"
+        :max-pages="$q.screen.xs ? 4 : 8"
         boundary-numbers
         direction-links
         @update:model-value="onPageChange"
@@ -453,6 +453,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import type { QForm } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
@@ -465,6 +466,7 @@ import { useProductStore } from '../stores/productStore'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 
 const router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
 const productStore = useProductStore()
 const vendorStore = useVendorStore()
@@ -980,5 +982,69 @@ onMounted(async () => {
 
 .toolbar-search {
   width: min(320px, 75vw);
+}
+
+@media (max-width: 599px) {
+  .products-page {
+    padding: 4px !important;
+  }
+
+  .products-card-grid {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+    row-gap: 0px !important;
+  }
+
+  .products-card-grid > .products-card-item {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    padding: 0 !important;
+  }
+
+  .product-card {
+    width: 100%;
+    min-height: unset;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+    background: #fff;
+    padding: 12px 8px;
+    margin-bottom: 0px;
+  }
+
+  .product-image-wrap {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    border-bottom: none;
+    border-right: none;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .product-image-fallback {
+    border-radius: 4px;
+  }
+
+  .product-card :deep(.q-card__section) {
+    flex: 1;
+    padding: 0 0 0 12px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  .product-name {
+    min-height: unset;
+    font-size: 13px;
+    line-height: 1.35;
+    -webkit-line-clamp: 3;
+    margin: 0;
+  }
 }
 </style>

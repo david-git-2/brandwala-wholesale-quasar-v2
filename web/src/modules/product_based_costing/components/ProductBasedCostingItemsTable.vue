@@ -81,11 +81,11 @@
             </div>
           </q-td>
 
-          <q-td key="brand" :props="slotProps" class="col-brand">
+          <q-td v-if="isColumnVisible('brand')" key="brand" :props="slotProps" class="col-brand">
             {{ slotProps.row.brand || '-' }}
           </q-td>
 
-          <q-td key="note" :props="slotProps" class="col-note editable-cell">
+          <q-td v-if="isColumnVisible('note')" key="note" :props="slotProps" class="col-note editable-cell">
             <div
               v-if="slotProps.row.noteHtml"
               class="item-note-html"
@@ -126,7 +126,7 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td key="qty" :props="slotProps" class="col-qty text-center editable-cell">
+          <q-td v-if="isColumnVisible('qty')" key="qty" :props="slotProps" class="col-qty text-center editable-cell">
             <div class="editable-value">
               {{ slotProps.row.qty }}
             </div>
@@ -156,7 +156,7 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td key="deliveredQty" :props="slotProps" class="col-delivered-qty text-center editable-cell">
+          <q-td v-if="isColumnVisible('deliveredQty')" key="deliveredQty" :props="slotProps" class="col-delivered-qty text-center editable-cell">
             <div class="editable-value">
               {{ slotProps.row.deliveredQty }}
             </div>
@@ -186,7 +186,7 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td key="barcodeText" :props="slotProps" class="col-barcode">
+          <q-td v-if="isColumnVisible('barcodeText')" key="barcodeText" :props="slotProps" class="col-barcode">
             <div class="barcode-lines">
               <div><strong>Barcode:</strong> {{ slotProps.row.barcode || '-' }}</div>
               <div><strong>Code:</strong> {{ slotProps.row.productCode || '-' }}</div>
@@ -194,7 +194,7 @@
             </div>
           </q-td>
 
-          <q-td key="website" :props="slotProps" class="col-website">
+          <q-td v-if="isColumnVisible('website')" key="website" :props="slotProps" class="col-website">
             <a
               v-if="slotProps.row.website"
               :href="slotProps.row.website"
@@ -206,11 +206,21 @@
             <span v-else>-</span>
           </q-td>
 
-          <q-td key="priceGbp" :props="slotProps" class="col-price-gbp text-right">
+          <q-td v-if="isColumnVisible('priceGbp')" key="priceGbp" :props="slotProps" class="col-price-gbp text-right">
             {{ formatNumber(slotProps.row.priceGbp) }}
           </q-td>
 
           <q-td
+            v-if="isColumnVisible('totalPurchasePriceGbp')"
+            key="totalPurchasePriceGbp"
+            :props="slotProps"
+            class="col-total-purchase-price-gbp text-right"
+          >
+            {{ formatNumber(getTotalPurchasePriceGbp(slotProps.row)) }}
+          </q-td>
+
+          <q-td
+            v-if="isColumnVisible('productWeight')"
             key="productWeight"
             :props="slotProps"
             class="col-product-weight text-right editable-cell"
@@ -245,6 +255,7 @@
           </q-td>
 
           <q-td
+            v-if="isColumnVisible('packageWeight')"
             key="packageWeight"
             :props="slotProps"
             class="col-package-weight text-right editable-cell"
@@ -287,11 +298,11 @@
             {{ formatNumber(getTotalWeight(slotProps.row)) }}
           </q-td>
 
-          <q-td key="cargoRate" :props="slotProps" class="col-cargo-rate text-right">
+          <q-td v-if="isColumnVisible('cargoRate')" key="cargoRate" :props="slotProps" class="col-cargo-rate text-right">
             {{ formatNumber(slotProps.row.cargoRate) }}
           </q-td>
 
-          <q-td key="cargoCostGbp" :props="slotProps" class="col-cargo-cost-gbp text-right">
+          <q-td v-if="isColumnVisible('cargoCostGbp')" key="cargoCostGbp" :props="slotProps" class="col-cargo-cost-gbp text-right">
             {{ formatNumber(getCargoCostGbp(slotProps.row)) }}
           </q-td>
 
@@ -313,7 +324,7 @@
             {{ formatNumber(getRowTotalCostGbp(slotProps.row)) }}
           </q-td>
 
-          <q-td key="costBdt" :props="slotProps" class="col-cost-bdt text-right">
+          <q-td v-if="isColumnVisible('costBdt')" key="costBdt" :props="slotProps" class="col-cost-bdt text-right">
             {{ formatNumber(getCostBdt(slotProps.row)) }}
           </q-td>
 
@@ -327,6 +338,7 @@
           </q-td>
 
           <q-td
+            v-if="isColumnVisible('offerPriceBdt')"
             key="offerPriceBdt"
             :props="slotProps"
             class="col-offer-price-bdt text-right editable-cell"
@@ -369,7 +381,7 @@
             {{ formatNumber(getTotalBdt(slotProps.row)) }}
           </q-td>
 
-          <q-td key="profitPerUnitBdt" :props="slotProps" class="col-profit-per-unit-bdt text-right">
+          <q-td v-if="isColumnVisible('profitPerUnitBdt')" key="profitPerUnitBdt" :props="slotProps" class="col-profit-per-unit-bdt text-right">
             {{ formatNumber(getProfitPerUnit(slotProps.row)) }}
           </q-td>
 
@@ -382,11 +394,11 @@
             {{ formatNumber(getProfitBdt(slotProps.row)) }}
           </q-td>
 
-          <q-td key="profitRate" :props="slotProps" class="col-profit-rate text-right">
+          <q-td v-if="isColumnVisible('profitRate')" key="profitRate" :props="slotProps" class="col-profit-rate text-right">
             {{ formatNumber(getProfitRate(slotProps.row)) }}
           </q-td>
 
-          <q-td key="status" :props="slotProps" class="col-status text-center editable-cell">
+          <q-td v-if="isColumnVisible('status')" key="status" :props="slotProps" class="col-status text-center editable-cell">
             <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
             </q-badge>
@@ -417,7 +429,7 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td key="action" :props="slotProps" class="col-action">
+          <q-td v-if="isColumnVisible('action')" key="action" :props="slotProps" class="col-action">
             <div class="row items-center justify-center q-gutter-xs">
               <q-btn
                 icon="o_edit"
@@ -465,6 +477,11 @@
           <q-td v-if="isColumnVisible('priceGbp')" class="totals-row__cell col-price-gbp text-right">
             <div class="totals-row__value bg-gbp">
               {{ formatNumber(totals.priceGbp) }}
+            </div>
+          </q-td>
+          <q-td v-if="isColumnVisible('totalPurchasePriceGbp')" class="totals-row__cell col-total-purchase-price-gbp text-right">
+            <div class="totals-row__value bg-gbp">
+              {{ formatNumber(totals.totalPurchasePriceGbp) }}
             </div>
           </q-td>
           <q-td
@@ -895,6 +912,15 @@ const columns = computed<QTableColumn[]>(() => [
     style: 'text-align: center;',
   },
   {
+    name: 'totalPurchasePriceGbp',
+    label: 'Total Purchase Price (GBP)',
+    field: 'totalPurchasePriceGbp',
+    align: 'center',
+    classes: 'bg-gbp',
+    headerClasses: 'bg-gbp',
+    style: 'text-align: center;',
+  },
+  {
     name: 'productWeight',
     label: 'Product Wt (g/Unit)',
     field: 'productWeight',
@@ -1062,6 +1088,10 @@ watch(
   },
   { immediate: true },
 )
+
+const getTotalPurchasePriceGbp = (row: ProductBasedCostingTableRow) => {
+  return row.priceGbp * row.qty;
+};
 
 const getTotalWeight = (row: ProductBasedCostingTableRow) => {
   return getUnitWeight(row.productWeight, row.packageWeight);
@@ -1293,6 +1323,7 @@ const totals = computed(() => {
     qty: 0,
     deliveredQty: 0,
     priceGbp: 0,
+    totalPurchasePriceGbp: 0,
     productWeight: 0,
     packageWeight: 0,
     totalWeight: 0,
@@ -1313,6 +1344,7 @@ const totals = computed(() => {
     acc.qty += row.qty;
     acc.deliveredQty += row.deliveredQty;
     acc.priceGbp += row.priceGbp;
+    acc.totalPurchasePriceGbp += getTotalPurchasePriceGbp(row);
     acc.productWeight += row.productWeight;
     acc.packageWeight += row.packageWeight;
     acc.totalWeight += getTotalWeight(row);
@@ -1574,6 +1606,13 @@ const totals = computed(() => {
   min-width: 110px;
   width: 110px;
   max-width: 110px;
+  background: #ffffff;
+}
+
+.col-total-purchase-price-gbp {
+  min-width: 150px;
+  width: 150px;
+  max-width: 150px;
   background: #ffffff;
 }
 

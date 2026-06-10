@@ -1,5 +1,5 @@
 <template>
-  <q-page class="bw-page q-pa-md">
+  <q-page class="bw-page q-pa-md cart-page">
     <!-- Header -->
     <div class="cart-header q-mb-md">
       <div class="row items-center q-gutter-sm">
@@ -62,21 +62,36 @@
       <div class="col-12 col-md-8">
         <q-card flat class="cart-card">
           <q-list separator>
-            <q-item v-for="item in cartStore.items" :key="item.id" class="q-py-md item-row">
+            <q-item v-for="item in cartStore.items" :key="item.id" class="item-row cart-row">
               <q-item-section avatar>
-                <q-avatar square size="70px" class="bg-grey-2 item-avatar">
-                  <img v-if="item.image_url" :src="toDirectGoogleImageUrl(item.image_url)" referrerpolicy="no-referrer" />
-                  <q-icon v-else name="image_not_supported" color="grey-5" />
-                </q-avatar>
+                <div class="cart-image-wrap">
+                  <q-avatar square class="bg-grey-2 item-avatar full-width full-height">
+                    <img v-if="item.image_url" :src="toDirectGoogleImageUrl(item.image_url)" referrerpolicy="no-referrer" style="object-fit: contain;" />
+                    <q-icon v-else name="image_not_supported" color="grey-5" />
+                  </q-avatar>
+                </div>
               </q-item-section>
 
-              <q-item-section>
-                <div class="text-caption text-primary text-uppercase text-weight-bold" v-if="item.brand">{{ item.brand }}</div>
-                <div class="text-subtitle1 text-weight-bold text-grey-9 item-name">{{ item.name }}</div>
-                
-                <!-- Qty Stepper and Save / Delete actions -->
-                <div class="row items-center q-gutter-sm q-mt-sm">
-                  <div class="qty-stepper">
+              <div class="cart-content-wrap">
+                <q-item-section class="cart-main">
+                  <div class="text-caption text-primary text-uppercase text-weight-bold" v-if="item.brand">{{ item.brand }}</div>
+                  <div class="text-subtitle1 text-weight-bold text-grey-9 item-name">{{ item.name }}</div>
+                  
+                  <div class="text-caption text-grey-6 row items-center q-gutter-x-xs q-mt-xs">
+                    <span>৳{{ Number(getDraftPrice(item)).toFixed(2) }} each</span>
+                    <q-btn flat round dense icon="o_edit" size="xs" color="primary" class="q-ml-xs">
+                      <q-popup-edit v-model="draftPrice[item.id]" :validate="val => val >= (item.unit_price_gbp || 0)" title="Set Selling Price" buttons v-slot="scope">
+                        <q-input type="number" v-model.number="scope.value" dense autofocus :rules="[val => val >= (item.unit_price_gbp || 0) || 'Cannot be lower than base price']" @keyup.enter="scope.set" />
+                      </q-popup-edit>
+                    </q-btn>
+                  </div>
+                  <div class="text-caption text-positive q-mt-xs" v-if="item.commission">
+                    Commission: ৳{{ Number(((item.commission || 0) - gatewayChargeFlat) * getDraftQty(item)).toFixed(2) }}
+                  </div>
+                </q-item-section>
+
+                <q-item-section side class="cart-actions">
+                  <div class="qty-stepper q-mb-xs">
                     <q-btn
                       flat dense round
                       icon="remove"
@@ -93,48 +108,39 @@
                     />
                   </div>
 
-                  <q-btn
-                    v-if="isDirty(item) || isPriceDirty(item)"
-                    color="primary"
-                    icon="save"
-                    label="Save"
-                    no-caps
-                    dense
-                    unelevated
-                    size="sm"
-                    class="q-px-sm"
-                    :loading="cartStore.saving"
-                    @click="onSaveItem(item)"
-                  />
+                  <div class="text-right text-weight-bold text-primary q-mb-xs">
+                    ৳{{ Number(getDraftPrice(item) * getDraftQty(item)).toFixed(2) }}
+                  </div>
 
-                  <q-btn
-                    flat
-                    round
-                    color="negative"
-                    icon="o_delete"
-                    size="sm"
-                    :loading="cartStore.saving"
-                    @click="onRemoveItem(item)"
-                  />
-                </div>
-              </q-item-section>
+                  <div class="action-buttons">
+                    <q-btn
+                      v-if="isDirty(item) || isPriceDirty(item)"
+                      color="primary"
+                      icon="save"
+                      label="Save"
+                      no-caps
+                      dense
+                      unelevated
+                      size="sm"
+                      class="q-px-sm"
+                      :loading="cartStore.saving"
+                      @click="onSaveItem(item)"
+                    />
 
-              <q-item-section side class="text-right">
-                <div class="text-h6 text-primary text-weight-bold">
-                  ৳{{ Number(getDraftPrice(item) * getDraftQty(item)).toFixed(2) }}
-                </div>
-                <div class="text-caption text-grey-6 row items-center justify-end q-gutter-x-xs">
-                  <span>৳{{ Number(getDraftPrice(item)).toFixed(2) }} each</span>
-                  <q-btn flat round dense icon="o_edit" size="xs" color="primary" class="q-ml-xs">
-                    <q-popup-edit v-model="draftPrice[item.id]" :validate="val => val >= (item.unit_price_gbp || 0)" title="Set Selling Price" buttons v-slot="scope">
-                      <q-input type="number" v-model.number="scope.value" dense autofocus :rules="[val => val >= (item.unit_price_gbp || 0) || 'Cannot be lower than base price']" @keyup.enter="scope.set" />
-                    </q-popup-edit>
-                  </q-btn>
-                </div>
-                <div class="text-caption text-positive q-mt-xs" v-if="item.commission">
-                  Commission: ৳{{ Number(((item.commission || 0) - gatewayChargeFlat) * getDraftQty(item)).toFixed(2) }}
-                </div>
-              </q-item-section>
+                    <q-btn
+                      dense
+                      round
+                      flat
+                      color="negative"
+                      icon="o_delete"
+                      :loading="cartStore.saving"
+                      @click="onRemoveItem(item)"
+                    >
+                      <q-tooltip>Remove</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-item-section>
+              </div>
             </q-item>
           </q-list>
         </q-card>
@@ -642,10 +648,106 @@ async function onCheckout() {
   width: 100%;
 }
 
-@media (max-width: 599px) {
+.cart-row {
+  padding: 14px 12px;
+  transition: background-color 0.18s ease;
+}
+
+.cart-row:hover {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.cart-image-wrap {
+  width: 74px;
+  height: 74px;
+  border-radius: 12px;
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-image-wrap .item-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.cart-content-wrap {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+}
+
+.cart-main {
+  min-width: 0;
+}
+
+.cart-actions {
+  min-width: 170px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+@media (max-width: 680px) {
   .cart-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .cart-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 8px;
+  }
+
+  .cart-image-wrap {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    padding: 4px;
+  }
+
+  .cart-content-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1;
+    padding-left: 12px;
+  }
+
+  .cart-main {
+    padding: 0 !important;
+  }
+
+  .cart-actions {
+    width: 100%;
+    min-width: unset;
+    margin-top: 8px;
+    padding: 0 !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+@media (max-width: 599px) {
+  .cart-page {
+    padding: 4px !important;
   }
 }
 </style>

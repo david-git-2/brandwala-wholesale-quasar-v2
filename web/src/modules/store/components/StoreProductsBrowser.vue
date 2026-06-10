@@ -37,19 +37,21 @@
           bordered
         >
           <div class="image-wrapper-sk">
-            <q-skeleton type="rect" height="180px" />
+            <q-skeleton type="rect" height="180px" class="skeleton-img" />
           </div>
-          <q-card-section>
-            <q-skeleton type="text" width="80%" />
-            <q-skeleton type="text" width="50%" class="q-mt-xs" />
-            <q-skeleton type="text" width="30%" class="q-mt-md" />
-          </q-card-section>
-          <q-card-section class="q-pt-none">
-            <div class="row items-center justify-between q-mt-sm">
-              <q-skeleton type="rect" width="100px" height="32px" style="border-radius: 999px" />
-              <q-skeleton type="circle" size="32px" />
-            </div>
-          </q-card-section>
+          <div class="product-info-sk-wrap">
+            <q-card-section class="q-pb-xs">
+              <q-skeleton type="text" width="80%" />
+              <q-skeleton type="text" width="50%" class="q-mt-xs" />
+              <q-skeleton type="text" width="30%" class="q-mt-md" />
+            </q-card-section>
+            <q-card-section class="q-pt-none">
+              <div class="row items-center justify-between q-mt-sm">
+                <q-skeleton type="rect" width="100px" height="32px" style="border-radius: 999px" />
+                <q-skeleton type="circle" size="32px" />
+              </div>
+            </q-card-section>
+          </div>
         </q-card>
       </div>
     </div>
@@ -670,5 +672,61 @@ onBeforeUnmount(() => {
 .image-wrapper-sk {
   padding: 12px;
   background: #ffffff;
+}
+
+.product-info-sk-wrap {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+@media (max-width: 599px) {
+  .store-products-page {
+    padding: 4px !important;
+  }
+
+  .product-grid-sk {
+    margin: 0 !important;
+    gap: 0px !important;
+  }
+
+  .product-card-sk {
+    width: 100%;
+    max-width: 100%;
+    min-width: unset;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+    background: #fff;
+    padding: 12px 8px;
+    margin-bottom: 0px;
+  }
+
+  .image-wrapper-sk {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    padding: 0 !important;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .skeleton-img {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  .product-info-sk-wrap {
+    flex: 1;
+    padding-left: 12px;
+  }
+
+  .product-info-sk-wrap :deep(.q-card__section) {
+    padding: 0 !important;
+  }
 }
 </style>

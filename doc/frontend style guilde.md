@@ -332,3 +332,59 @@ To reduce duplication, consider moving these into shared UI utilities:
 - shared CSS tokens for `floating-surface`, `soft-input`, `pill-btn`, `slim-btn`
 - shared composable/helper for status color mapping + normalization
 - shared `PageHeaderActions` component
+
+## 15) Responsive Mobile Card Layout (xs Screens)
+
+For lists of items represented as cards (e.g., products, inventory items) on mobile (`xs` screens, `max-width: 599px`), transform the layout from a multi-column grid to a single-column list of horizontal rows:
+
+- **Layout Structure**: Horizontal orientation. Place the product/item image on the left, and details/actions on the right.
+- **Image Sizing**: Set the image container to exactly `1.2in` width and height (`width: 1.2in; height: 1.2in; flex: 0 0 1.2in;`).
+- **Gaps & Backgrounds**: Eliminate vertical margins and gaps between the cards (`row-gap: 0px !important` on the grid parent). Cards should touch directly.
+- **Card Styling**:
+  - Full width (`width: 100%`).
+  - Flex layout (`display: flex; flex-direction: row; align-items: center;`).
+  - Zero out top/bottom margins, remove default borders/shadows, and add a subtle bottom separator border: `border-bottom: 1px solid rgba(34, 56, 101, 0.08)`.
+  - Padding should be compact (e.g., `12px 8px`).
+- **Right Details Area**:
+  - Set `flex: 1` on the details card section.
+  - Apply left padding (e.g., `padding: 0 0 0 12px !important`) to separate text from the image on the left.
+- **Desktop/Full View**: Maintain the default grid layout of standard-sized vertical cards.
+
+### Example CSS Pattern:
+```css
+@media (max-width: 599px) {
+  .products-card-grid {
+    margin: 0 !important;
+    row-gap: 0px !important;
+  }
+  .products-card-item {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    padding: 0 !important;
+  }
+  .product-card {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+    background: #fff;
+    padding: 12px 8px;
+  }
+  .product-image-wrap {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    overflow: hidden;
+  }
+  .product-card :deep(.q-card__section) {
+    flex: 1;
+    padding: 0 0 0 12px !important;
+  }
+}
+```
+

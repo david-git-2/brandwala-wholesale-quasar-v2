@@ -11,6 +11,31 @@ import type {
   TenantServiceResult,
 } from '../types'
 
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (!error) return fallback
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as Record<string, unknown>
+    const msg = errObj.message
+    if (typeof msg === 'string') return msg
+    if (typeof msg === 'number' || typeof msg === 'boolean') return String(msg)
+    
+    const desc = errObj.error_description
+    if (typeof desc === 'string') return desc
+    if (typeof desc === 'number' || typeof desc === 'boolean') return String(desc)
+
+    const sub = errObj.error
+    if (sub && typeof sub === 'object' && sub !== null) {
+      const subErr = sub as Record<string, unknown>
+      const subMsg = subErr.message
+      if (typeof subMsg === 'string') return subMsg
+      if (typeof subMsg === 'number' || typeof subMsg === 'boolean') return String(subMsg)
+    }
+  }
+  return fallback
+}
+
 const listCustomerGroupsByTenant = async (
   tenantId: number,
 ): Promise<TenantServiceResult<CustomerGroup[]>> => {
@@ -24,10 +49,7 @@ const listCustomerGroupsByTenant = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load customer groups.',
+      error: getErrorMessage(error, 'Failed to load customer groups.'),
     }
   }
 }
@@ -45,10 +67,7 @@ const createCustomerGroup = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to create customer group.',
+      error: getErrorMessage(error, 'Failed to create customer group.'),
     }
   }
 }
@@ -66,10 +85,7 @@ const updateCustomerGroup = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update customer group.',
+      error: getErrorMessage(error, 'Failed to update customer group.'),
     }
   }
 }
@@ -87,10 +103,7 @@ const deleteCustomerGroup = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete customer group.',
+      error: getErrorMessage(error, 'Failed to delete customer group.'),
     }
   }
 }
@@ -110,10 +123,7 @@ const listCustomerGroupMembersByGroup = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load customer group members.',
+      error: getErrorMessage(error, 'Failed to load customer group members.'),
     }
   }
 }
@@ -131,10 +141,7 @@ const createCustomerGroupMember = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to create customer group member.',
+      error: getErrorMessage(error, 'Failed to create customer group member.'),
     }
   }
 }
@@ -152,10 +159,7 @@ const updateCustomerGroupMember = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update customer group member.',
+      error: getErrorMessage(error, 'Failed to update customer group member.'),
     }
   }
 }
@@ -173,10 +177,7 @@ const deleteCustomerGroupMember = async (
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete customer group member.',
+      error: getErrorMessage(error, 'Failed to delete customer group member.'),
     }
   }
 }

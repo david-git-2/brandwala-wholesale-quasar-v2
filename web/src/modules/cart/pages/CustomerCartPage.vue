@@ -48,69 +48,72 @@
             />
           </div>
         </q-item-section>
+        <div class="cart-content-wrap">
+          <q-item-section class="cart-main">
+            <q-item-label class="cart-name">{{ item.name }}</q-item-label>
+            <q-item-label caption>
+              Qty: {{ getDraftQty(item.id, item.quantity) }} | MOQ: {{ item.minimum_quantity }}
+            </q-item-label>
+            <q-item-label v-if="storeStore.selectedStore?.see_price" class="text-caption text-grey-7 q-mt-xs">
+              Unit Price: {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item)) }}
+            </q-item-label>
+            <q-item-label v-if="storeStore.selectedStore?.see_price && item.minimum_sell_price_bdt != null" class="text-caption text-green-7 q-mt-xs">
+              Selling Price: {{ priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}
+            </q-item-label>
+          </q-item-section>
 
-        <q-item-section class="cart-main">
-          <q-item-label class="cart-name">{{ item.name }}</q-item-label>
-          <q-item-label caption>
-            Qty: {{ getDraftQty(item.id, item.quantity) }} | MOQ: {{ item.minimum_quantity }}
-          </q-item-label>
-          <q-item-label v-if="storeStore.selectedStore?.see_price" class="text-caption text-grey-7 q-mt-xs">
-            Unit Price: {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item)) }}
-          </q-item-label>
-          <q-item-label v-if="storeStore.selectedStore?.see_price && item.minimum_sell_price_bdt != null" class="text-caption text-green-7 q-mt-xs">
-            Selling Price: {{ priceSymbol }}{{ formatPrice(item.minimum_sell_price_bdt) }}
-          </q-item-label>
-        </q-item-section>
+          <q-item-section side class="cart-actions">
+            <div class="qty-box q-mb-xs">
+              <q-btn
+                dense
+                round
+                flat
+                icon="remove"
+                :disable="cartStore.saving"
+                @click="decrementItem(item.id, item.minimum_quantity)"
+              />
+              <div class="quantity-value">{{ getDraftQty(item.id, item.quantity) }}</div>
+              <q-btn
+                dense
+                round
+                flat
+                icon="add"
+                :disable="cartStore.saving"
+                @click="incrementItem(item.id, item.minimum_quantity)"
+              />
+            </div>
 
-        <q-item-section side class="cart-actions">
-          <div class="qty-box q-mb-xs">
-            <q-btn
-              dense
-              round
-              flat
-              icon="remove"
-              :disable="cartStore.saving"
-              @click="decrementItem(item.id, item.minimum_quantity)"
-            />
-            <div class="quantity-value">{{ getDraftQty(item.id, item.quantity) }}</div>
-            <q-btn
-              dense
-              round
-              flat
-              icon="add"
-              :disable="cartStore.saving"
-              @click="incrementItem(item.id, item.minimum_quantity)"
-            />
-          </div>
-
-          <div v-if="storeStore.selectedStore?.see_price" class="text-right text-weight-medium q-mb-xs">
-            {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item) * getDraftQty(item.id, item.quantity)) }}
-          </div>
-          <div class="action-buttons">
-            <q-btn
-              v-if="isQuantityChanged(item.id, item.quantity)"
-              dense
-              unelevated
-              color="primary"
-              icon="save"
-              label="Save"
-              no-caps
-              class="q-mb-xs"
-              :loading="cartStore.saving"
-              @click="saveQuantity(item.id, item.minimum_quantity)"
-            />
-            <q-btn
-              dense
-              flat
-              color="negative"
-              icon="o_delete"
-              label="Remove"
-              no-caps
-              :loading="cartStore.saving"
-              @click="removeItem(item.id)"
-            />
-          </div>
-        </q-item-section>
+            <div v-if="storeStore.selectedStore?.see_price" class="text-right text-weight-medium q-mb-xs">
+              {{ priceSymbol }}{{ formatPrice(getDisplayPrice(item) * getDraftQty(item.id, item.quantity)) }}
+            </div>
+            <div class="action-buttons">
+              <q-btn
+                v-if="isQuantityChanged(item.id, item.quantity)"
+                color="primary"
+                icon="save"
+                label="Save"
+                no-caps
+                dense
+                unelevated
+                size="sm"
+                class="q-px-sm"
+                :loading="cartStore.saving"
+                @click="saveQuantity(item.id, item.minimum_quantity)"
+              />
+              <q-btn
+                dense
+                round
+                flat
+                color="negative"
+                icon="o_delete"
+                :loading="cartStore.saving"
+                @click="removeItem(item.id)"
+              >
+                <q-tooltip>Remove</q-tooltip>
+              </q-btn>
+            </div>
+          </q-item-section>
+        </div>
       </q-item>
     </q-list>
 
@@ -519,6 +522,14 @@ watch(
   min-width: 170px;
 }
 
+.cart-content-wrap {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+}
+
 .action-buttons {
   display: flex;
   flex-direction: column;
@@ -549,20 +560,45 @@ watch(
   }
 
   .cart-row {
-    flex-wrap: wrap;
+    display: flex;
+    flex-direction: row;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
+    padding: 12px 8px;
+  }
+
+  .cart-image-wrap {
+    width: 1.2in;
+    height: 1.2in;
+    flex: 0 0 1.2in;
+    padding: 4px;
+  }
+
+  .cart-content-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1;
+    padding-left: 12px;
+  }
+
+  .cart-main {
+    padding: 0 !important;
   }
 
   .cart-actions {
     width: 100%;
-    min-width: 0;
+    min-width: unset;
     margin-top: 8px;
-    align-items: stretch;
+    padding: 0 !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .action-buttons {
-    align-items: stretch;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
   }
 
   .cart-footer {
@@ -570,6 +606,12 @@ watch(
     bottom: 8px;
     z-index: 2;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 599px) {
+  .cart-page {
+    padding: 4px !important;
   }
 }
 </style>
