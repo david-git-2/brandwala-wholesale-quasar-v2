@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { marked } from 'marked'
+import { marked } from 'src/utils/marked'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { DOCUMENTATION_REGISTRY } from '../utils/docRegistry'
@@ -156,7 +156,7 @@ const loadDocContent = async () => {
     }
     
     const rawText = await response.text()
-    markdownHtml.value = await marked.parse(rawText)
+    markdownHtml.value = marked.parse(rawText)
     await generateTableOfContents()
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e)

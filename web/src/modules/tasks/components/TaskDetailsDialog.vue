@@ -523,7 +523,7 @@ import type { Item, Tag, Comment, ItemAssignee, ItemPermission, ActivityLog, Ite
 import { requestConfirmation } from 'src/utils/appFeedback';
 import TaskFormDialog from './TaskFormDialog.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { marked } from 'marked';
+import { marked } from 'src/utils/marked';
 
 const props = defineProps<{
   modelValue: boolean;

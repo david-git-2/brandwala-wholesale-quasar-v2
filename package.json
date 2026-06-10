@@ -32,6 +32,7 @@
     "backend:all": "npm run backend:push:all && npm run backend:types"
   },
   "devDependencies": {
+    "supabase": "^2.105.0",
     "wrangler": "^4.93.1"
   }
 }

@@ -300,14 +300,6 @@ const productCardItems = computed<ProductCardItem[]>(() =>
       (item): item is Record<string, unknown> & { id: number; name: string } =>
         typeof item['id'] === 'number' && typeof item['name'] === 'string',
     )
-    .filter((item) => {
-      if (props.mode !== 'customer') return true
-      const price =
-        props.moduleVariant === 'commerce_v2'
-          ? (item['price_bdt'] ?? item['price_gbp'])
-          : item['price_gbp']
-      return price !== null && price !== undefined && Number(price) > 0
-    })
     .map((item) => ({
       ...item,
       id: item.id,
