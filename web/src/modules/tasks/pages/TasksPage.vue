@@ -1027,8 +1027,8 @@
                 row-key="id"
                 flat
                 dense
-                :pagination="{ rowsPerPage: 25 }"
-                hide-pagination
+                v-model:pagination="myTasksPagination"
+                @request="onMyTasksRequest"
                 @row-click="(evt, row) => onClickItem(row.id)"
               >
                 <template #body-cell-id="cellProps">
@@ -1152,7 +1152,7 @@
       </q-tab-panels>
 
       <!-- Pagination Controls (Only for non-tree views) -->
-      <div v-if="activeTab !== 'tree' && totalPages > 1" class="row justify-center q-mt-md q-mb-lg">
+      <div v-if="activeTab !== 'tree' && activeTab !== 'my-tasks' && totalPages > 1" class="row justify-center q-mt-md q-mb-lg">
         <q-pagination
           v-model="page"
           :max="totalPages"
@@ -1239,6 +1239,39 @@
             map-options
             class="soft-input"
           />
+        </div>
+
+        <!-- Date Field Selector -->
+        <div>
+          <q-select
+            v-model="filters.dateField"
+            :options="dateFieldOptions"
+            label="Filter Date By"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            class="soft-input"
+            @update:model-value="onDateFieldChange"
+          />
+        </div>
+
+        <!-- Date Range Selection Pop-up -->
+        <div v-if="filters.dateField">
+          <div class="text-caption text-grey-7 q-mb-xs">Date Range</div>
+          <q-btn outline no-caps class="full-width soft-input text-left justify-start q-px-sm" color="primary">
+            <q-icon name="event" class="q-mr-xs" />
+            <span class="text-caption">{{ dateRangeLabel }}</span>
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date v-model="selectedDateRange" range @update:model-value="onDateRangeChange">
+                <div class="row items-center justify-end q-gutter-sm">
+                  <q-btn v-close-popup label="Clear" color="negative" flat @click="clearDateRange" />
+                  <q-btn v-close-popup label="Close" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-btn>
         </div>
 
         <!-- Reset Button -->
@@ -1343,6 +1376,71 @@ const totalPages = computed(() => tasksStore.totalPages);
 const filterDrawerOpen = ref(false);
 const showSearchInput = ref(false);
 
+// Date range filter states
+const selectedDateRange = ref<any>(null);
+
+const dateFieldOptions = [
+  { label: 'Created Date', value: 'created' },
+  { label: 'Updated Date', value: 'updated' },
+  { label: 'Start Date', value: 'start' },
+  { label: 'Due Date', value: 'due' },
+];
+
+const onDateFieldChange = (val: string | null) => {
+  if (!val) {
+    clearDateRange();
+  }
+};
+
+const onDateRangeChange = (val: any) => {
+  if (!val) {
+    filters.value.dateFrom = null;
+    filters.value.dateTo = null;
+    return;
+  }
+  if (typeof val === 'string') {
+    const dateStr = val.replace(/\//g, '-');
+    filters.value.dateFrom = new Date(`${dateStr}T00:00:00`).toISOString();
+    filters.value.dateTo = new Date(`${dateStr}T23:59:59`).toISOString();
+  } else if (val && typeof val === 'object' && val.from && val.to) {
+    const fromStr = val.from.replace(/\//g, '-');
+    const toStr = val.to.replace(/\//g, '-');
+    filters.value.dateFrom = new Date(`${fromStr}T00:00:00`).toISOString();
+    filters.value.dateTo = new Date(`${toStr}T23:59:59`).toISOString();
+  }
+};
+
+const clearDateRange = () => {
+  selectedDateRange.value = null;
+  filters.value.dateFrom = null;
+  filters.value.dateTo = null;
+};
+
+const dateRangeLabel = computed(() => {
+  if (!selectedDateRange.value) return 'Any Time';
+  if (typeof selectedDateRange.value === 'string') {
+    return selectedDateRange.value;
+  }
+  if (typeof selectedDateRange.value === 'object' && selectedDateRange.value.from && selectedDateRange.value.to) {
+    return `${selectedDateRange.value.from} to ${selectedDateRange.value.to}`;
+  }
+  return 'Any Time';
+});
+
+const syncSelectedDateRangeFromFilters = () => {
+  if (filters.value.dateFrom && filters.value.dateTo) {
+    const fromStr = filters.value.dateFrom.split('T')[0]!.replace(/-/g, '/');
+    const toStr = filters.value.dateTo.split('T')[0]!.replace(/-/g, '/');
+    if (fromStr === toStr) {
+      selectedDateRange.value = fromStr;
+    } else {
+      selectedDateRange.value = { from: fromStr, to: toStr };
+    }
+  } else {
+    selectedDateRange.value = null;
+  }
+};
+
 // Filter states
 const filters = ref({
   search: '',
@@ -1351,6 +1449,9 @@ const filters = ref({
   priority: null as string | null,
   assignee: null as string | null,
   tagId: null as number | null,
+  dateField: null as string | null,
+  dateFrom: null as string | null,
+  dateTo: null as string | null,
 });
 
 const resetFilters = () => {
@@ -1360,6 +1461,10 @@ const resetFilters = () => {
   filters.value.priority = null;
   filters.value.assignee = null;
   filters.value.tagId = null;
+  filters.value.dateField = null;
+  filters.value.dateFrom = null;
+  filters.value.dateTo = null;
+  selectedDateRange.value = null;
   filterDrawerOpen.value = false;
 };
 
@@ -1370,6 +1475,7 @@ const activeFilterCount = computed(() => {
   if (filters.value.priority) count++;
   if (filters.value.assignee) count++;
   if (filters.value.tagId) count++;
+  if (filters.value.dateField) count++;
   return count;
 });
 
@@ -1462,6 +1568,228 @@ watch(detailsOpen, (isOpen) => {
   }
 });
 
+// Sync other states (activeTab, page, filters) to/from URL query params
+watch(
+  [activeTab, page, filters],
+  () => {
+    const query = { ...route.query };
+    
+    if (activeTab.value && activeTab.value !== 'tree') {
+      query.tab = activeTab.value;
+    } else {
+      delete query.tab;
+    }
+
+    if (page.value && page.value > 1) {
+      query.page = String(page.value);
+    } else {
+      delete query.page;
+    }
+
+    if (filters.value.search) {
+      query.search = filters.value.search;
+    } else {
+      delete query.search;
+    }
+
+    if (filters.value.type) {
+      query.type = filters.value.type;
+    } else {
+      delete query.type;
+    }
+
+    if (filters.value.status) {
+      query.status = filters.value.status;
+    } else {
+      delete query.status;
+    }
+
+    if (filters.value.priority) {
+      query.priority = filters.value.priority;
+    } else {
+      delete query.priority;
+    }
+
+    if (filters.value.assignee) {
+      query.assignee = filters.value.assignee;
+    } else {
+      delete query.assignee;
+    }
+
+    if (filters.value.tagId) {
+      query.tagId = String(filters.value.tagId);
+    } else {
+      delete query.tagId;
+    }
+
+    if (filters.value.dateField) {
+      query.dateField = filters.value.dateField;
+    } else {
+      delete query.dateField;
+    }
+
+    if (filters.value.dateFrom) {
+      query.dateFrom = filters.value.dateFrom;
+    } else {
+      delete query.dateFrom;
+    }
+
+    if (filters.value.dateTo) {
+      query.dateTo = filters.value.dateTo;
+    } else {
+      delete query.dateTo;
+    }
+
+    // Check if query actually changed compared to route.query to avoid infinite loop
+    const keys1 = Object.keys(query).sort();
+    const keys2 = Object.keys(route.query).sort();
+    let hasChanged = keys1.length !== keys2.length;
+    if (!hasChanged) {
+      for (const k of keys1) {
+        if (query[k] !== route.query[k]) {
+          hasChanged = true;
+          break;
+        }
+      }
+    }
+
+    if (hasChanged) {
+      void router.replace({ query });
+    }
+  },
+  { deep: true }
+);
+
+// Sync route.query changes back to local refs (e.g. for back/forward navigation or initial load)
+watch(
+  () => route.query,
+  (newQuery) => {
+    if (newQuery.tab !== undefined) {
+      if (activeTab.value !== String(newQuery.tab)) {
+        activeTab.value = String(newQuery.tab);
+      }
+    } else {
+      if (activeTab.value !== 'tree') {
+        activeTab.value = 'tree';
+      }
+    }
+
+    if (newQuery.page !== undefined) {
+      const p = Number(newQuery.page);
+      const targetPage = !isNaN(p) && p > 0 ? p : 1;
+      if (page.value !== targetPage) {
+        page.value = targetPage;
+      }
+    } else {
+      if (page.value !== 1) {
+        page.value = 1;
+      }
+    }
+
+    const searchVal = newQuery.search ? String(newQuery.search) : '';
+    if (filters.value.search !== searchVal) filters.value.search = searchVal;
+
+    const typeVal = newQuery.type ? String(newQuery.type) : null;
+    if (filters.value.type !== typeVal) filters.value.type = typeVal;
+
+    const statusVal = newQuery.status ? String(newQuery.status) : null;
+    if (filters.value.status !== statusVal) filters.value.status = statusVal;
+
+    const priorityVal = newQuery.priority ? String(newQuery.priority) : null;
+    if (filters.value.priority !== priorityVal) filters.value.priority = priorityVal;
+
+    const assigneeVal = newQuery.assignee ? String(newQuery.assignee) : null;
+    if (filters.value.assignee !== assigneeVal) filters.value.assignee = assigneeVal;
+
+    const tagIdVal = newQuery.tagId ? Number(newQuery.tagId) : null;
+    if (filters.value.tagId !== tagIdVal) filters.value.tagId = tagIdVal;
+
+    const dateFieldVal = newQuery.dateField ? String(newQuery.dateField) : null;
+    if (filters.value.dateField !== dateFieldVal) filters.value.dateField = dateFieldVal;
+
+    const dateFromVal = newQuery.dateFrom ? String(newQuery.dateFrom) : null;
+    if (filters.value.dateFrom !== dateFromVal) filters.value.dateFrom = dateFromVal;
+
+    const dateToVal = newQuery.dateTo ? String(newQuery.dateTo) : null;
+    if (filters.value.dateTo !== dateToVal) filters.value.dateTo = dateToVal;
+
+    syncSelectedDateRangeFromFilters();
+  },
+  { deep: true }
+);
+
+// Initialize states from URL parameters on mount
+const initFromQueryParams = () => {
+  if (route.query.tab) {
+    activeTab.value = String(route.query.tab);
+  }
+  if (route.query.page) {
+    const p = Number(route.query.page);
+    if (!isNaN(p) && p > 0) {
+      page.value = p;
+    }
+  }
+  if (route.query.search) {
+    filters.value.search = String(route.query.search);
+  }
+  if (route.query.type) {
+    filters.value.type = String(route.query.type);
+  }
+  if (route.query.status) {
+    filters.value.status = String(route.query.status);
+  }
+  if (route.query.priority) {
+    filters.value.priority = String(route.query.priority);
+  }
+  if (route.query.assignee) {
+    filters.value.assignee = String(route.query.assignee);
+  }
+  if (route.query.tagId) {
+    const tId = Number(route.query.tagId);
+    if (!isNaN(tId)) {
+      filters.value.tagId = tId;
+    }
+  }
+  if (route.query.dateField) {
+    filters.value.dateField = String(route.query.dateField);
+  }
+  if (route.query.dateFrom) {
+    filters.value.dateFrom = String(route.query.dateFrom);
+  }
+  if (route.query.dateTo) {
+    filters.value.dateTo = String(route.query.dateTo);
+  }
+  syncSelectedDateRangeFromFilters();
+};
+
+// Quasar Table Pagination for My Tasks
+const myTasksPagination = computed({
+  get() {
+    return {
+      sortBy: 'id',
+      descending: true,
+      page: page.value,
+      rowsPerPage: pageSize.value,
+      rowsNumber: tasksStore.totalItems
+    };
+  },
+  set(val) {
+    if (val.page) {
+      page.value = val.page;
+    }
+    if (val.rowsPerPage) {
+      pageSize.value = val.rowsPerPage;
+    }
+  }
+});
+
+const onMyTasksRequest = (props: any) => {
+  const { page: newPage, rowsPerPage } = props.pagination;
+  page.value = newPage;
+  pageSize.value = rowsPerPage;
+  refreshData();
+};
+
 // Quick Add states
 const quickAddParentId = ref<number | null>(null);
 const quickAddType = ref<ItemType>('task');
@@ -1493,6 +1821,9 @@ const refreshData = () => {
     priority: filters.value.priority,
     assignee: filters.value.assignee,
     tagId: filters.value.tagId,
+    dateField: filters.value.dateField,
+    dateFrom: filters.value.dateFrom,
+    dateTo: filters.value.dateTo,
     myTasksEmail: null as string | null,
     includeParents: activeTab.value === 'tree',
   };
@@ -1728,6 +2059,7 @@ watch(
 );
 
 onMounted(async () => {
+  initFromQueryParams();
   await tasksStore.loadWorkspaceData(authStore.tenantId);
   refreshData();
 });

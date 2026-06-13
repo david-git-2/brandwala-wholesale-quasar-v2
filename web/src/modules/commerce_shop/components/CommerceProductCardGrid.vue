@@ -48,6 +48,19 @@
 
           <div class="product-meta q-mt-sm">
             <div v-if="item.country_of_origin">Origin: {{ item.country_of_origin || '-' }}</div>
+            <div class="row items-center q-my-xs gap-xs">
+              <span class="q-mr-xs">Status:</span>
+              <q-chip
+                dense
+                square
+                :color="item.is_available ? 'green-1' : 'red-1'"
+                :text-color="item.is_available ? 'green-9' : 'red-9'"
+                size="xs"
+                class="text-weight-bold q-ma-none"
+              >
+                {{ item.is_available ? 'Available' : 'Not Available' }}
+              </q-chip>
+            </div>
             <div v-if="props.showInfo && !props.showCart" class="row items-center gap-xs">
               <span class="q-mr-xs">Available Units:</span>
               <q-chip

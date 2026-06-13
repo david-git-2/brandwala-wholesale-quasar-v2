@@ -75,6 +75,16 @@
       <div v-for="product in productStore.items" :key="product.id" class="products-card-item">
         <q-card flat class="floating-surface shadow-1 product-card">
           <div class="product-image-wrap cursor-pointer" @click="openDetails(product.id)">
+            <q-chip
+              dense
+              square
+              :color="product.is_available ? 'green-1' : 'red-1'"
+              :text-color="product.is_available ? 'green-9' : 'red-9'"
+              size="xs"
+              class="status-badge text-weight-bold q-ma-none"
+            >
+              {{ product.is_available ? 'Available' : 'Not Available' }}
+            </q-chip>
             <SmartImage
               :src="product.image_url"
               :alt="product.name ?? 'Product image'"
@@ -944,9 +954,18 @@ onMounted(async () => {
 }
 
 .product-image-wrap {
+  position: relative;
   height: 190px;
   border-bottom: 1px solid rgba(34, 56, 101, 0.08);
   background: #fff;
+}
+
+.status-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-weight: 700;
 }
 
 .product-image {

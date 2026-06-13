@@ -24,9 +24,13 @@ import type {
 
 const listShipments = async (
   tenantId: number,
-): Promise<ShipmentServiceResult<Shipment[]>> => {
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  status?: string,
+): Promise<ShipmentServiceResult<{ data: Shipment[]; meta: { total: number; page: number; pageSize: number; totalPages: number } }>> => {
   try {
-    const data = await shipmentRepository.listShipments(tenantId)
+    const data = await shipmentRepository.listShipments(tenantId, page, pageSize, search, status)
     return { success: true, data }
   } catch (error) {
     return {

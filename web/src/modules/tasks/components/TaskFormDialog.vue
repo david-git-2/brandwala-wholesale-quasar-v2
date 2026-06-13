@@ -203,6 +203,7 @@ import { useQuasar } from 'quasar';
 import { useTasksStore } from '../stores/tasksStore';
 import type { Item, ItemType, ItemStatus, ItemPriority } from '../types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { tasksRepository } from '../repositories/tasksRepository';
 
 const $q = useQuasar();
 
@@ -245,6 +246,8 @@ const isOpen = computed({
 });
 
 const loading = ref(false);
+const dialogItems = ref<Item[]>([]);
+const loadingParents = ref(false);
 
 const form = ref({
   type: 'task' as ItemType,
@@ -317,7 +320,7 @@ const getDescendantIds = (rootId: number): Set<number> => {
     if (currentId == null || seen.has(currentId)) continue;
     seen.add(currentId);
 
-    tasksStore.items
+    dialogItems.value
       .filter((i) => i.parent_id === currentId)
       .forEach((child) => stack.push(child.id));
   }
@@ -347,7 +350,7 @@ const parentOptions = computed(() => {
   const forbiddenIds = currentItemId ? getDescendantIds(currentItemId) : new Set<number>();
   if (currentItemId) forbiddenIds.add(currentItemId);
 
-  const baseItems = tasksStore.items.filter((i) => !forbiddenIds.has(i.id));
+  const baseItems = dialogItems.value.filter((i) => !forbiddenIds.has(i.id));
 
   if (form.value.type === 'module') {
     return baseItems
@@ -376,7 +379,7 @@ watch(
   () => form.value.parent_id,
   (newParentId) => {
     if (newParentId) {
-      const parentItem = tasksStore.items.find(i => i.id === newParentId);
+      const parentItem = dialogItems.value.find(i => i.id === newParentId);
       if (parentItem?.type === 'note') {
         form.value.type = 'note';
       }
@@ -388,7 +391,7 @@ watch(
   () => form.value.type,
   (newType) => {
     if (!form.value.parent_id) return;
-    const parentItem = tasksStore.items.find((i) => i.id === form.value.parent_id);
+    const parentItem = dialogItems.value.find((i) => i.id === form.value.parent_id);
     if (!parentItem) return;
 
     if (!isAllowedParentType(newType, parentItem.type)) {
@@ -400,16 +403,24 @@ watch(
 // Form populate on edit
 watch(
   () => isOpen.value,
-  (open) => {
+  async (open) => {
     if (open) {
-      if (authStore.tenantId !== null && tasksStore.items.length < 1) {
-        void tasksStore.fetchItemsAction(authStore.tenantId, undefined, 1, 10000);
+      if (authStore.tenantId !== null) {
+        loadingParents.value = true;
+        try {
+          const res = await tasksRepository.fetchItems(authStore.tenantId, undefined, 1, 10000);
+          dialogItems.value = res.data;
+        } catch (e) {
+          console.error('Failed to load parent options', e);
+        } finally {
+          loadingParents.value = false;
+        }
       }
 
       if (props.item) {
         const i = props.item;
         // Get tags & assignees from locally cached item state
-        const itemInStore = tasksStore.items.find(x => x.id === i.id);
+        const itemInStore = dialogItems.value.find(x => x.id === i.id);
         const linkedTags = itemInStore?.tags || [];
         const assignees = itemInStore?.assignees || [];
 

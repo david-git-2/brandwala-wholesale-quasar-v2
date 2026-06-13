@@ -1,9 +1,6 @@
 <template>
   <q-dialog v-model="isOpen" backdrop-filter="blur(4px)">
     <q-card class="search-card floating-surface shadow-2 relative-position">
-      <!-- Absolute close button at top right -->
-      <q-btn flat round dense icon="close" v-close-popup class="absolute-top-right q-mt-sm q-mr-sm" style="z-index: 10;" />
-
       <q-card-section class="q-py-md row items-center justify-between">
         <div class="row items-center q-gutter-sm col">
           <q-icon name="search" :size="$q.screen.lt.sm ? '20px' : '24px'" color="primary" />
@@ -14,7 +11,7 @@
             <div v-if="!$q.screen.lt.sm" class="text-caption text-grey-6">Search across all workspaces you belong to</div>
           </div>
         </div>
-        <div class="row items-center q-gutter-xs q-pr-lg">
+        <div class="row items-center q-gutter-sm">
           <q-btn
             unelevated
             round
@@ -25,6 +22,7 @@
           >
             <q-tooltip>New Task</q-tooltip>
           </q-btn>
+          <q-btn flat round dense icon="close" v-close-popup />
         </div>
       </q-card-section>
 

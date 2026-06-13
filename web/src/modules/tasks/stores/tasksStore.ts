@@ -90,6 +90,9 @@ export const useTasksStore = defineStore('tasks', {
         myTasksEmail?: string | null;
         includeParents?: boolean;
         tagId?: number | null;
+        dateField?: string | null;
+        dateFrom?: string | null;
+        dateTo?: string | null;
       },
       page: number = 1,
       pageSize: number = 20

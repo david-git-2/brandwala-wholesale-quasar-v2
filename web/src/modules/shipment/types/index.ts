@@ -217,6 +217,10 @@ export type ShipmentStoreState = {
   loading: boolean
   saving: boolean
   error: string | null
+  totalShipments: number
+  currentPage: number
+  pageSize: number
+  totalPages: number
 }
 
 export type ShipmentReceiveItemSplit = {

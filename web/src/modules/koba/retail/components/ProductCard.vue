@@ -44,6 +44,13 @@
         <div v-if="product.commission != null" class="text-caption text-grey-6 q-mt-xs">
           Commission: <span class="text-weight-medium text-grey-8">৳{{ formattedCommission }}</span>
         </div>
+        <div class="row items-center q-mt-sm">
+          <q-badge
+            dense
+            :color="product.stock_quantity && product.stock_quantity > 0 ? 'positive' : 'negative'"
+            :label="product.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'"
+          />
+        </div>
       </div>
 
       <!-- Add to cart / Remove -->

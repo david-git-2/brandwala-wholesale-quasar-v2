@@ -31,6 +31,19 @@
         <div><strong>Country:</strong> {{ product.country_of_origin || '-' }}</div>
         <div><strong>Barcode:</strong> {{ product.barcode || '-' }}</div>
         <div><strong>Product Code:</strong> {{ product.product_code || '-' }}</div>
+        <div class="row items-center q-mt-sm gap-xs">
+          <strong class="q-mr-xs">Status:</strong>
+          <q-chip
+            dense
+            square
+            :color="product.is_available ? 'green-1' : 'red-1'"
+            :text-color="product.is_available ? 'green-9' : 'red-9'"
+            size="xs"
+            class="text-weight-bold q-ma-none"
+          >
+            {{ product.is_available ? 'Available' : 'Not Available' }}
+          </q-chip>
+        </div>
       </div>
     </q-card-section>
 

@@ -25,18 +25,44 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
-const listShipments = async (tenantId: number): Promise<Shipment[]> => {
-  const { data, error } = await db
-    .from('shipments')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .order('id', { ascending: false })
+const listShipments = async (
+  tenantId: number,
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  status?: string,
+): Promise<{ data: Shipment[]; meta: { total: number; page: number; pageSize: number; totalPages: number } }> => {
+  const { data, error } = await db.rpc('list_shipments_paginated', {
+    p_tenant_id: tenantId,
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: search || null,
+    p_status: status || null,
+  })
 
   if (error) {
     throw error
   }
 
-  return (data as Shipment[] | null) ?? []
+  const result = data as {
+    data: Shipment[]
+    meta: {
+      total: number
+      page: number
+      page_size: number
+      total_pages: number
+    }
+  }
+
+  return {
+    data: result.data || [],
+    meta: {
+      total: result.meta?.total || 0,
+      page: result.meta?.page || page,
+      pageSize: result.meta?.page_size || pageSize,
+      totalPages: result.meta?.total_pages || 1,
+    },
+  }
 }
 
 const getShipmentById = async (id: number): Promise<Shipment> => {

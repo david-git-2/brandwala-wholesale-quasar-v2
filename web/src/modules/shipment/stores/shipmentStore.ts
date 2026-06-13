@@ -41,6 +41,10 @@ export const useShipmentStore = defineStore('shipment', {
     loading: false,
     saving: false,
     error: null,
+    totalShipments: 0,
+    currentPage: 1,
+    pageSize: 20,
+    totalPages: 1,
   }),
 
   actions: {
@@ -57,12 +61,18 @@ export const useShipmentStore = defineStore('shipment', {
       this.error = null
     },
 
-    async fetchShipments(tenantId: number) {
+    async fetchShipments(
+      tenantId: number,
+      page: number = 1,
+      pageSize: number = 20,
+      search?: string,
+      status?: string,
+    ) {
       this.loading = true
       this.error = null
 
       try {
-        const result = await shipmentService.listShipments(tenantId)
+        const result = await shipmentService.listShipments(tenantId, page, pageSize, search, status)
 
         if (!result.success) {
           this.error = result.error ?? 'Failed to load shipments.'
@@ -70,7 +80,11 @@ export const useShipmentStore = defineStore('shipment', {
           return result
         }
 
-        this.shipments = result.data ?? []
+        this.shipments = result.data?.data ?? []
+        this.totalShipments = result.data?.meta.total ?? 0
+        this.currentPage = result.data?.meta.page ?? 1
+        this.pageSize = result.data?.meta.pageSize ?? 20
+        this.totalPages = result.data?.meta.totalPages ?? 1
         return result
       } finally {
         this.loading = false

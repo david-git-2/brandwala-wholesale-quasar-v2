@@ -23,7 +23,7 @@
 
     <CreateShipmentDialog v-model="showDialog" :initialData="selectedShipment" @submit="onSubmit" />
 
-    <PageInitialLoader v-if="shipmentStore.loading" />
+    <PageInitialLoader v-if="shipmentStore.loading && !shipmentStore.shipments.length" />
 
     <div v-else-if="shipmentStore.error">
       error: {{ shipmentStore.error }}
@@ -45,12 +45,14 @@
           <q-input
             v-else
             v-model="searchText"
+            debounce="300"
             outlined
             dense
             class="soft-input toolbar-search"
             label="Search"
             clearable
             autofocus
+            @update:model-value="onApplyFilters"
             @clear="onApplyFilters"
           >
             <template #prepend>
@@ -100,12 +102,14 @@
       <q-card v-if="viewMode === 'table'" flat class="floating-surface shadow-1">
         <q-table
           flat
-          :rows="filteredShipments"
+          :rows="pagedCardShipments"
           :columns="tableColumns"
           row-key="id"
-          :pagination="tablePagination"
+          v-model:pagination="tablePagination"
+          :loading="shipmentStore.loading"
           :rows-per-page-options="[10, 20, 50]"
           class="shipment-list-table"
+          @request="onTableRequest"
         >
           <template #body="slotProps">
             <q-tr
@@ -184,11 +188,12 @@
 
       <div v-if="viewMode === 'card' && totalCardPages > 1" class="row justify-center q-mt-md">
         <q-pagination
-          v-model="cardPage"
+          :model-value="cardPage"
           :max="totalCardPages"
           :max-pages="8"
           boundary-numbers
           direction-links
+          @update:model-value="onPageChange"
         />
       </div>
     </div>
@@ -262,6 +267,7 @@ const cardRowsPerPage = 12
 const tablePagination = ref({
   page: 1,
   rowsPerPage: 20,
+  rowsNumber: 0,
 })
 
 const tableColumns: QTableColumn[] = [
@@ -288,30 +294,9 @@ const statusFilterOptions = [
 
 const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0))
 
-const filteredShipments = computed(() => {
-  const search = searchText.value.trim().toLowerCase()
-  return shipmentStore.shipments.filter((shipment) => {
-    const matchesSearch =
-      search.length === 0 ||
-      String(shipment.tenant_shipment_id).includes(search) ||
-      shipment.name.toLowerCase().includes(search)
-    const matchesStatus = statusFilter.value === '__all__' || shipment.status === statusFilter.value
-    return matchesSearch && matchesStatus
-  })
-})
+const totalCardPages = computed(() => shipmentStore.totalPages)
 
-const totalCardPages = computed(() => Math.max(1, Math.ceil(filteredShipments.value.length / cardRowsPerPage)))
-
-const pagedCardShipments = computed(() => {
-  const start = (cardPage.value - 1) * cardRowsPerPage
-  return filteredShipments.value.slice(start, start + cardRowsPerPage)
-})
-
-watch(filteredShipments, () => {
-  if (cardPage.value > totalCardPages.value) {
-    cardPage.value = totalCardPages.value
-  }
-})
+const pagedCardShipments = computed(() => shipmentStore.shipments)
 
 type ShipmentStatusVisual = {
   rowBackground: string
@@ -519,14 +504,50 @@ const onSelectShipment = async (shipment: Shipment) => {
   await router.push(`${tenantPrefix}/app/shipment/${shipment.id}`)
 }
 
-const onApplyFilters = () => {
-  cardPage.value = 1
+const loadShipments = async (nextPage = 1) => {
+  const tenantId = tenantStore.selectedTenant?.id ?? 1
+  const searchParam = searchText.value.trim() || undefined
+  const statusParam = statusFilter.value !== '__all__' ? statusFilter.value : undefined
+  const rowsPerPage = viewMode.value === 'table' ? tablePagination.value.rowsPerPage : cardRowsPerPage
+
+  await shipmentStore.fetchShipments(
+    tenantId,
+    nextPage,
+    rowsPerPage,
+    searchParam,
+    statusParam,
+  )
+
+  if (viewMode.value === 'table') {
+    tablePagination.value.page = shipmentStore.currentPage
+    tablePagination.value.rowsPerPage = shipmentStore.pageSize
+    tablePagination.value.rowsNumber = shipmentStore.totalShipments
+  } else {
+    cardPage.value = shipmentStore.currentPage
+  }
 }
 
-const onCloseSearch = () => {
+const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
+  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage
+  await loadShipments(props.pagination.page)
+}
+
+const onPageChange = async (nextPage: number) => {
+  await loadShipments(nextPage)
+}
+
+watch(viewMode, async () => {
+  await loadShipments(1)
+})
+
+const onApplyFilters = async () => {
+  await loadShipments(1)
+}
+
+const onCloseSearch = async () => {
   searchText.value = ''
   showSearchInput.value = false
-  onApplyFilters()
+  await onApplyFilters()
 }
 
 const openFilterDrawer = () => {
@@ -534,21 +555,21 @@ const openFilterDrawer = () => {
   filterDrawerOpen.value = true
 }
 
-const onDrawerStatusChange = () => {
+const onDrawerStatusChange = async () => {
   statusFilter.value = draftStatusFilter.value
-  cardPage.value = 1
+  await loadShipments(1)
 }
 
-const onResetFilters = () => {
+const onResetFilters = async () => {
   searchText.value = ''
   statusFilter.value = '__all__'
   draftStatusFilter.value = '__all__'
-  cardPage.value = 1
   filterDrawerOpen.value = false
+  await loadShipments(1)
 }
 
 onMounted(async () => {
-  await shipmentStore.fetchShipments(tenantStore.selectedTenant?.id ?? 1)
+  await loadShipments(1)
 })
 </script>
 

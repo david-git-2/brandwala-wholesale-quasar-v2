@@ -671,14 +671,19 @@ const commentsTree = computed(() => {
   return roots;
 });
 
-const loadDetails = async () => {
+const loadDetails = async (silent = false) => {
   if (!props.itemId) return;
-  loadingDetails.value = true;
+  if (!silent) {
+    loadingDetails.value = true;
+  }
   try {
     const details = await tasksRepository.fetchFullItemDetails(props.itemId);
 
     item.value = details.item;
-    editedDescription.value = details.item.content || '';
+    if (!isEditMode.value) {
+      editedDescription.value = details.item.content || '';
+      isMarkdownMode.value = details.item.is_markdown || false;
+    }
     assignees.value = details.assignees;
     itemTags.value = details.tags;
     comments.value = details.comments;
@@ -686,9 +691,13 @@ const loadDetails = async () => {
     activityLogs.value = details.activityLogs;
   } catch (err) {
     console.error('Failed to load item details', err);
-    item.value = null;
+    if (!silent) {
+      item.value = null;
+    }
   } finally {
-    loadingDetails.value = false;
+    if (!silent) {
+      loadingDetails.value = false;
+    }
   }
 };
 
@@ -700,7 +709,7 @@ const onSaveDescription = async () => {
       is_markdown: isMarkdownMode.value
     });
     isEditMode.value = false;
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   } catch (err) {
     console.error('Failed to save description', err);
@@ -724,23 +733,25 @@ const onStartEdit = () => {
 const onSaveTitle = async () => {
   if (item.value && item.value.title.trim()) {
     await tasksStore.updateItem(item.value.id, { title: item.value.title.trim() });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
 
 const onSaveType = async (type: string) => {
   if (item.value) {
+    item.value.type = type as ItemType;
     await tasksStore.updateItem(item.value.id, { type: type as ItemType });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
 
 const onParentUpdate = async (parentId: number | null) => {
   if (item.value) {
+    item.value.parent_id = parentId;
     await tasksStore.updateItem(item.value.id, { parent_id: parentId });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -901,6 +912,7 @@ watch(
       const oldId = oldVal ? oldVal[0] : undefined;
       const oldIsOpen = oldVal ? oldVal[1] : undefined;
       if (oldId === undefined || newId !== oldId || oldIsOpen === undefined || newIsOpen !== oldIsOpen) {
+        isEditMode.value = false;
         await loadDetails();
       }
     }
@@ -910,7 +922,7 @@ watch(
 const onStatusUpdate = async (status: ItemStatus) => {
   if (item.value) {
     await tasksStore.updateItem(item.value.id, { status });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -918,7 +930,7 @@ const onStatusUpdate = async (status: ItemStatus) => {
 const onPriorityUpdate = async (priority: ItemPriority) => {
   if (item.value) {
     await tasksStore.updateItem(item.value.id, { priority });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -929,7 +941,7 @@ const onAddAssignee = async (email: string) => {
     await tasksStore.addAssignee(item.value.id, email);
     showAddAssignee.value = false;
     selectedAssigneeEmail.value = '';
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -937,7 +949,7 @@ const onAddAssignee = async (email: string) => {
 const onRemoveAssignee = async (email: string) => {
   if (item.value && email) {
     await tasksStore.removeAssignee(item.value.id, email);
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -948,7 +960,7 @@ const onAddTag = async (tagId: number) => {
     await tasksStore.linkTag(item.value.id, tagId);
     showAddTag.value = false;
     selectedTagId.value = null;
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -956,7 +968,7 @@ const onAddTag = async (tagId: number) => {
 const onRemoveTag = async (tagId: number) => {
   if (item.value && tagId) {
     await tasksStore.unlinkTag(item.value.id, tagId);
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -975,7 +987,7 @@ const onAddComment = async (parentId: number | null) => {
     } else {
       commentText.value = '';
     }
-    await loadDetails();
+    await loadDetails(true);
   } catch (err) {
     console.error('Failed to post comment', err);
   }
@@ -984,7 +996,7 @@ const onAddComment = async (parentId: number | null) => {
 const onDeleteComment = async (commentId: number) => {
   try {
     await tasksRepository.deleteComment(commentId);
-    await loadDetails();
+    await loadDetails(true);
   } catch (err) {
     console.error('Failed to delete comment', err);
   }
@@ -997,7 +1009,7 @@ const onSavePermission = async () => {
     await tasksRepository.savePermission(item.value.id, newPerm.value.email, newPerm.value.role);
     showAddPerm.value = false;
     newPerm.value = { email: '', role: 'viewer' };
-    await loadDetails();
+    await loadDetails(true);
   } catch (err) {
     console.error('Failed to save permissions', err);
   }
@@ -1007,7 +1019,7 @@ const onDeletePermission = async (email: string) => {
   if (!item.value) return;
   try {
     await tasksRepository.deletePermission(item.value.id, email);
-    await loadDetails();
+    await loadDetails(true);
   } catch (err) {
     console.error('Failed to delete permission', err);
   }
@@ -1051,7 +1063,7 @@ const onUpdateStartDate = async (val: string | null) => {
   if (item.value) {
     const isoDate = val ? new Date(val).toISOString() : null;
     await tasksStore.updateItem(item.value.id, { start_date: isoDate });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -1065,7 +1077,7 @@ const onUpdateDueDate = async (val: string | null) => {
   if (item.value) {
     const isoDate = val ? new Date(val).toISOString() : null;
     await tasksStore.updateItem(item.value.id, { due_date: isoDate });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };
@@ -1107,7 +1119,7 @@ const accessibilityIcon = (acc: string | undefined) => {
 const onAccessibilityUpdate = async (accessibility: 'public' | 'private' | 'restricted') => {
   if (item.value) {
     await tasksStore.updateItem(item.value.id, { accessibility });
-    await loadDetails();
+    await loadDetails(true);
     emit('updated');
   }
 };

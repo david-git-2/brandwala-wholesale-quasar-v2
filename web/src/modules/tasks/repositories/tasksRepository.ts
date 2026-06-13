@@ -22,6 +22,9 @@ export const tasksRepository = {
       myTasksEmail?: string | null;
       includeParents?: boolean;
       tagId?: number | null;
+      dateField?: string | null;
+      dateFrom?: string | null;
+      dateTo?: string | null;
     },
     page: number = 1,
     pageSize: number = 20
@@ -38,6 +41,9 @@ export const tasksRepository = {
       p_my_tasks_email: filters?.myTasksEmail || null,
       p_include_parents: filters?.includeParents || false,
       p_tag_id: filters?.tagId || null,
+      p_date_field: filters?.dateField || null,
+      p_date_from: filters?.dateFrom || null,
+      p_date_to: filters?.dateTo || null,
     });
 
     if (error) throw error;
