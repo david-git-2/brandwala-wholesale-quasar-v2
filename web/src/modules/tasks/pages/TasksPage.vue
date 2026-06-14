@@ -1377,7 +1377,7 @@ const filterDrawerOpen = ref(false);
 const showSearchInput = ref(false);
 
 // Date range filter states
-const selectedDateRange = ref<any>(null);
+const selectedDateRange = ref<string | { from: string; to: string } | null>(null);
 
 const dateFieldOptions = [
   { label: 'Created Date', value: 'created' },
@@ -1392,7 +1392,7 @@ const onDateFieldChange = (val: string | null) => {
   }
 };
 
-const onDateRangeChange = (val: any) => {
+const onDateRangeChange = (val: string | { from: string; to: string } | null) => {
   if (!val) {
     filters.value.dateFrom = null;
     filters.value.dateTo = null;
@@ -1402,7 +1402,7 @@ const onDateRangeChange = (val: any) => {
     const dateStr = val.replace(/\//g, '-');
     filters.value.dateFrom = new Date(`${dateStr}T00:00:00`).toISOString();
     filters.value.dateTo = new Date(`${dateStr}T23:59:59`).toISOString();
-  } else if (val && typeof val === 'object' && val.from && val.to) {
+  } else if (val && typeof val === 'object' && 'from' in val && 'to' in val) {
     const fromStr = val.from.replace(/\//g, '-');
     const toStr = val.to.replace(/\//g, '-');
     filters.value.dateFrom = new Date(`${fromStr}T00:00:00`).toISOString();
@@ -1783,7 +1783,12 @@ const myTasksPagination = computed({
   }
 });
 
-const onMyTasksRequest = (props: any) => {
+const onMyTasksRequest = (props: {
+  pagination: {
+    page: number;
+    rowsPerPage: number;
+  };
+}) => {
   const { page: newPage, rowsPerPage } = props.pagination;
   page.value = newPage;
   pageSize.value = rowsPerPage;

@@ -74,7 +74,7 @@
     <div v-else class="row q-col-gutter-md products-card-grid">
       <div v-for="product in productStore.items" :key="product.id" class="products-card-item">
         <q-card flat class="floating-surface shadow-1 product-card">
-          <div class="product-image-wrap cursor-pointer" @click="openDetails(product.id)">
+          <div class="product-image-wrap">
             <q-chip
               dense
               square
@@ -86,7 +86,8 @@
               {{ product.is_available ? 'Available' : 'Not Available' }}
             </q-chip>
             <SmartImage
-              :src="product.image_url"
+              v-model:src="product.image_url"
+              :product-id="product.id"
               :alt="product.name ?? 'Product image'"
               imgClass="product-image"
               fallbackClass="product-image-fallback"

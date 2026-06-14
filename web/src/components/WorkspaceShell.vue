@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="workspace-shell" :class="themeClasses">
+  <q-layout view="hHh lpR fFf" class="workspace-shell" :class="[...themeClasses, { 'workspace-shell--has-secondary': hasSecondaryHeader }]">
     <q-header class="workspace-shell__header">
       <q-toolbar class="workspace-shell__toolbar">
         <q-btn
@@ -21,6 +21,10 @@
         <div class="workspace-shell__actions">
           <slot name="header-extra" />
         </div>
+      </q-toolbar>
+
+      <q-toolbar v-if="hasSecondaryHeader" class="workspace-shell__secondary-toolbar">
+        <slot name="header-secondary" />
       </q-toolbar>
     </q-header>
 
@@ -302,7 +306,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, useSlots } from 'vue'
 import { useRouter } from 'vue-router'
 import type { QInput } from 'quasar'
 
@@ -330,6 +334,9 @@ const drawerOpen = ref(false)
 const showLogoutDialog = ref(false)
 const router = useRouter()
 const authStore = useAuthStore()
+const slots = useSlots()
+
+const hasSecondaryHeader = computed(() => !!slots['header-secondary'])
 
 const showCommandPalette = ref(false)
 const searchQuery = ref('')
@@ -556,6 +563,24 @@ const confirmLogout = async () => {
   --shell-accent-soft: var(--bw-theme-primary-soft, rgb(37 99 235 / 0.12));
   background: var(--shell-base);
   color: var(--shell-ink);
+}
+
+@media (min-width: 600px) {
+  .workspace-shell--has-secondary {
+    --workspace-header-offset: 94px;
+  }
+}
+@media (max-width: 599px) {
+  .workspace-shell--has-secondary {
+    --workspace-header-offset: 90px;
+  }
+}
+
+.workspace-shell__secondary-toolbar {
+  border-top: 1px solid var(--shell-border);
+  padding: 0.2rem 0.75rem;
+  min-height: 36px;
+  background: color-mix(in srgb, var(--shell-surface) 95%, white 5%);
 }
 
 .workspace-shell__header {

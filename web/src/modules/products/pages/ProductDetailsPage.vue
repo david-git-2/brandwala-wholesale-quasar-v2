@@ -65,8 +65,10 @@
           <div class="col-12 col-md-4">
             <div class="details-image-wrap q-mb-md">
               <SmartImage
-                :src="isEditing ? form.image_url : product.image_url"
-                :alt="(isEditing ? form.name : product.name) ?? ''"
+                :src="isEditing ? form.image_url : (product?.image_url ?? '')"
+                @update:src="val => { if (isEditing) form.image_url = val; else if (product) product.image_url = val; }"
+                :product-id="isEditing ? null : (product?.id ?? null)"
+                :alt="(isEditing ? form.name : product?.name) ?? ''"
                 imgClass="details-image"
                 fallbackClass="details-image-fallback"
               />

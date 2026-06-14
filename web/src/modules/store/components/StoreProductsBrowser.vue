@@ -116,32 +116,100 @@
       :options="storeOptions"
       @update:model-value="onStoreSelectionChange"
     />
-    <ProductCardGrid
-      :items="productCardItems"
-      :show-price="props.mode === 'admin' || customerCanSeePrice"
-      :price-field="props.moduleVariant === 'commerce_v2' ? 'price_bdt' : 'price_gbp'"
-      :price-symbol="props.moduleVariant === 'commerce_v2' ? '৳' : '£'"
-      :show-cart="props.mode === 'customer'"
-      :show-info="true"
-      :store-id="selectedStoreId"
-      :cart-item-by-product-id="cartItemByProductId"
-      :cart-quantity-by-product-id="cartQuantityByProductId"
-      @add-to-cart="onAddToCart"
-      @remove-from-cart="onRemoveFromCart"
-      @update-cart-qty="onUpdateCartQty"
-    />
-
-    <div v-if="totalPages > 1" class="row justify-center q-mt-md">
-      <q-pagination
-        :model-value="storeStore.productsPage"
-        :max="totalPages"
-        :max-pages="$q.screen.gt.xs? 7 : 3"
-        boundary-numbers
-        direction-links
-        :size="$q.screen.gt.xs? 'md' : 'sm'"
-        @update:model-value="onPageChange"
+    <!-- Active Filters Chips -->
+    <div v-if="hasActiveFilters" class="row items-center q-gutter-xs q-mb-md active-filters-section">
+      <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">Active Filters:</span>
+      <q-chip
+        v-if="search"
+        removable
+        outline
+        color="primary"
+        text-color="primary"
+        size="sm"
+        class="q-ma-xs"
+        @remove="onSearchHide"
+      >
+        Search: "{{ search }}"
+      </q-chip>
+      <q-chip
+        v-if="brand"
+        removable
+        outline
+        color="primary"
+        text-color="primary"
+        size="sm"
+        class="q-ma-xs"
+        @remove="brand = null"
+      >
+        Brand: {{ brand }}
+      </q-chip>
+      <q-chip
+        v-if="category"
+        removable
+        outline
+        color="primary"
+        text-color="primary"
+        size="sm"
+        class="q-ma-xs"
+        @remove="category = null"
+      >
+        Category: {{ category }}
+      </q-chip>
+      <q-btn
+        flat
+        dense
+        no-caps
+        color="primary"
+        label="Clear All"
+        size="sm"
+        class="q-px-sm q-ml-xs text-weight-bold"
+        @click="onResetFilters"
       />
     </div>
+
+    <!-- Empty State View -->
+    <div
+      v-if="!storeStore.loading && productCardItems.length === 0"
+      class="column items-center justify-center q-pa-xl text-center empty-state-container q-mb-md"
+    >
+      <q-icon name="o_shopping_bag" size="64px" color="grey-5" class="q-mb-md" />
+      <div class="text-h6 text-weight-bold text-grey-8">No Products Found</div>
+      <p class="text-body2 text-grey-6 q-mt-sm q-mb-md" style="max-width: 320px;">
+        There are no products available in this store matching the applied filters.
+      </p>
+      <q-btn
+        v-if="hasActiveFilters"
+        color="primary"
+        outline
+        no-caps
+        label="Clear Filters"
+        class="pill-btn slim-btn"
+        @click="onResetFilters"
+      />
+    </div>
+
+    <q-infinite-scroll ref="infiniteScrollRef" @load="onLoadMore" :offset="250">
+      <ProductCardGrid
+        v-if="productCardItems.length > 0"
+        :items="productCardItems"
+        :show-price="props.mode === 'admin' || customerCanSeePrice"
+        :price-field="props.moduleVariant === 'commerce_v2' ? 'price_bdt' : 'price_gbp'"
+        :price-symbol="props.moduleVariant === 'commerce_v2' ? '৳' : '£'"
+        :show-cart="props.mode === 'customer'"
+        :show-info="true"
+        :store-id="selectedStoreId"
+        :cart-item-by-product-id="cartItemByProductId"
+        :cart-quantity-by-product-id="cartQuantityByProductId"
+        @add-to-cart="onAddToCart"
+        @remove-from-cart="onRemoveFromCart"
+        @update-cart-qty="onUpdateCartQty"
+      />
+      <template #loading>
+        <div v-if="storeStore.loading" class="row justify-center q-my-md">
+          <q-spinner-dots color="primary" size="40px" />
+        </div>
+      </template>
+    </q-infinite-scroll>
 
     <FilterSidebar v-model="filterDrawerOpen" title="Filters">
       <q-select
@@ -185,7 +253,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -195,6 +263,7 @@ import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useStoreStore } from '../stores/storeStore'
 import ProductCardGrid from './ProductCardGrid.vue'
+import type { QInfiniteScroll } from 'quasar'
 
 const props = withDefaults(
   defineProps<{
@@ -293,9 +362,10 @@ const activeFilterCount = computed(() => {
   return count
 })
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(storeStore.productsTotal / storeStore.productsPageSize)),
-)
+const hasActiveFilters = computed(() => {
+  return Boolean(search.value || brand.value || category.value)
+})
+
 const productCardItems = computed<ProductCardItem[]>(() =>
   storeStore.productItems
     .filter(
@@ -344,31 +414,38 @@ const cartQuantityByProductId = computed<Record<number, number>>(() => {
   return map
 })
 
-const loadProducts = async (storeId: number, page = 1) => {
+const infiniteScrollRef = ref<QInfiniteScroll | null>(null)
+
+const onLoadMore = async (index: number, done: (stop?: boolean) => void) => {
+  if (!selectedStoreId.value) {
+    done(true)
+    return
+  }
+
   const limit = storeStore.productsPageSize || 20
-  const offset = Math.max(0, (page - 1) * limit)
+  const offset = (index - 1) * limit
 
+  const fields =
+    props.mode === 'customer'
+      ? [
+          'brand',
+          'category',
+          'id',
+          'image_url',
+          'is_available',
+          'name',
+          'available_units',
+          'stock_override',
+          ...(props.moduleVariant === 'commerce_v2'
+            ? ['price_bdt', 'minimum_sell_price_bdt']
+            : ['price_gbp']),
+          'minimum_order_quantity',
+          'country_of_origin',
+        ]
+      : null
 
-const fields =
-  props.mode === 'customer'
-    ? [
-        'brand',
-        'category',
-        'id',
-        'image_url',
-        'is_available',
-        'name',
-        'available_units',
-        'stock_override',
-        ...(props.moduleVariant === 'commerce_v2'
-          ? ['price_bdt', 'minimum_sell_price_bdt']
-          : ['price_gbp']),
-        'minimum_order_quantity',
-        'country_of_origin',
-      ]
-    : null
-  await storeStore.fetchStoreProducts({
-    store_id: storeId,
+  const result = await storeStore.fetchStoreProducts({
+    store_id: selectedStoreId.value,
     module_variant: props.moduleVariant,
     search: search.value || null,
     category: category.value || null,
@@ -378,8 +455,27 @@ const fields =
     sort_dir: 'asc',
     limit,
     offset,
-    fields: fields,
+    fields,
+    append: index > 1,
+  })
 
+  if (result.success) {
+    const loadedCount = result.data?.data?.length ?? 0
+    const total = result.data?.meta?.total ?? 0
+    const currentTotal = storeStore.productItems.length
+    const hasMore = loadedCount > 0 && currentTotal < total
+    done(!hasMore)
+  } else {
+    done(true)
+  }
+}
+
+const resetInfiniteScroll = () => {
+  void nextTick(() => {
+    if (infiniteScrollRef.value) {
+      infiniteScrollRef.value.reset()
+      infiniteScrollRef.value.resume()
+    }
   })
 }
 
@@ -426,7 +522,8 @@ const onStoreSelectionChange = async (storeId: number | string | null) => {
     suppressFilterWatch.value = false
   }
 
-  await loadProducts(numericStoreId, 1)
+  storeStore.productItems = []
+  resetInfiniteScroll()
 
   if (props.mode === 'customer') {
     const tenantId = authStore.tenantId
@@ -478,7 +575,8 @@ const scheduleSearchLoad = () => {
   }
 
   searchDebounceTimer = setTimeout(() => {
-    void loadProducts(selectedStoreId.value!, 1)
+    storeStore.productItems = []
+    resetInfiniteScroll()
   }, 400)
 }
 
@@ -491,18 +589,11 @@ watch([category, brand], () => {
     return
   }
 
-  void loadProducts(selectedStoreId.value, 1)
+  storeStore.productItems = []
+  resetInfiniteScroll()
 })
 
-const onPageChange = async (page: number) => {
-  if (!selectedStoreId.value) {
-    return
-  }
-
-  await loadProducts(selectedStoreId.value, page)
-}
-
-const onResetFilters = async () => {
+const onResetFilters = () => {
   if (!selectedStoreId.value) {
     return
   }
@@ -516,16 +607,19 @@ const onResetFilters = async () => {
     category.value = null
     filteredBrandNames.value = [...brandNames.value]
     filteredCategoryNames.value = [...categoryNames.value]
-    await loadProducts(selectedStoreId.value, 1)
+    storeStore.productItems = []
+    resetInfiniteScroll()
   } finally {
     suppressFilterWatch.value = false
   }
 }
+
 const onSearchHide = () => {
   search.value = ''
   showSearchInput.value = false
   if (selectedStoreId.value) {
-    void loadProducts(selectedStoreId.value, 1)
+    storeStore.productItems = []
+    resetInfiniteScroll()
   }
 }
 
@@ -613,7 +707,7 @@ onMounted(async () => {
       storeStore.productsCanSeePrice = Boolean(firstStore.see_price)
     }
     await Promise.all([loadBrands(firstStore.vendor_code), loadCategories(firstStore.vendor_code)])
-    await loadProducts(firstStore.id, 1)
+    storeStore.productItems = []
 
     if (props.mode === 'customer') {
       const tenantId = authStore.tenantId
@@ -660,9 +754,9 @@ onBeforeUnmount(() => {
 }
 
 .product-card-sk {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
   display: flex;
   flex-direction: column;
   border-radius: 12px;
@@ -728,5 +822,17 @@ onBeforeUnmount(() => {
   .product-info-sk-wrap :deep(.q-card__section) {
     padding: 0 !important;
   }
+}
+
+.empty-state-container {
+  min-height: 320px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  border: 1px dashed rgba(34, 56, 101, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.active-filters-section {
+  flex-wrap: wrap;
 }
 </style>

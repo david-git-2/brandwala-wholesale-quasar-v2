@@ -24,52 +24,86 @@
     </template>
 
     <template #header-extra>
-      <div class="row items-center q-gutter-sm">
+      <!-- Mobile Only: Three Dots (Dropdown Menu) -->
+      <div v-if="$q.screen.xs" class="row items-center">
         <q-btn
-          v-if="hasTasksModule"
           flat
           round
           dense
           color="primary"
-          icon="assignment"
-          @click="searchDialogOpen = true"
+          icon="more_vert"
         >
-          <q-tooltip>Search Tasks Cross-Tenants</q-tooltip>
-        </q-btn>
+          <q-menu style="min-width: 180px">
+            <q-list class="q-py-xs">
+              <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 10px; letter-spacing: 0.1em;">Quick Actions</q-item-label>
 
-        <q-btn
-          v-if="hasInventoryModule"
-          flat
-          round
-          dense
-          color="primary"
-          icon="inventory_2"
-          @click="stockSearchDialogOpen = true"
-        >
-          <q-tooltip>Search Stock Cross-Tenants</q-tooltip>
-        </q-btn>
+              <!-- Task search on mobile -->
+              <q-item v-if="hasTasksModule" clickable @click="searchDialogOpen = true">
+                <q-item-section avatar class="q-pr-none" style="min-width: 32px;">
+                  <q-icon name="assignment" size="sm" color="primary" />
+                </q-item-section>
+                <q-item-section>Search Tasks</q-item-section>
+              </q-item>
 
-        <q-chip
-          v-if="tenantOptions.length"
-          clickable
-          outline
-          color="primary"
-          text-color="primary"
-          class="app-layout__tenant-chip"
-        >
-          <q-spinner
-            v-if="selectingTenantId !== null"
-            size="14px"
+              <!-- Stock search on mobile -->
+              <q-item v-if="hasInventoryModule" clickable @click="stockSearchDialogOpen = true">
+                <q-item-section avatar class="q-pr-none" style="min-width: 32px;">
+                  <q-icon name="inventory_2" size="sm" color="primary" />
+                </q-item-section>
+                <q-item-section>Search Stock</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+      </div>
+
+      <!-- Desktop: Actions are empty here, placed in header-secondary instead -->
+      <div v-else class="row items-center q-gutter-sm">
+      </div>
+
+      <TaskSearchDialog v-model="searchDialogOpen" />
+      <StockSearchDialog v-model="stockSearchDialogOpen" />
+    </template>
+
+    <template #header-secondary>
+      <div class="row items-center justify-end full-width q-px-sm">
+        <div class="row items-center q-gutter-sm col-xs-12 col-sm-auto justify-end">
+          <q-btn
+            v-if="hasTasksModule"
+            flat
+            no-caps
+            dense
+            size="sm"
             color="primary"
-            class="q-mr-xs"
+            icon="assignment"
+            label="Search Tasks"
+            class="pill-btn slim-btn q-px-sm gt-xs"
+            @click="searchDialogOpen = true"
           />
-          <span class="ellipsis">{{ selectedTenantLabel }}</span>
-          <q-icon name="expand_more" size="16px" class="q-ml-xs" />
 
-          <q-menu
-            v-model="tenantMenuOpen"
-            anchor="bottom right"
-            self="top right"
+          <q-btn
+            v-if="hasInventoryModule"
+            flat
+            no-caps
+            dense
+            size="sm"
+            color="primary"
+            icon="inventory_2"
+            label="Search Stock"
+            class="pill-btn slim-btn q-px-sm gt-xs"
+            @click="stockSearchDialogOpen = true"
+          />
+
+          <q-btn-dropdown
+            v-if="tenantOptions.length"
+            outline
+            no-caps
+            dense
+            size="sm"
+            color="primary"
+            class="tenant-dropdown-btn pill-btn q-px-md col-xs-12 col-sm-auto"
+            :label="selectedTenantLabel"
+            :loading="selectingTenantId !== null"
           >
             <q-list style="min-width: 260px">
               <q-item
@@ -85,12 +119,9 @@
                 </q-item-section>
               </q-item>
             </q-list>
-          </q-menu>
-        </q-chip>
+          </q-btn-dropdown>
+        </div>
       </div>
-
-      <TaskSearchDialog v-model="searchDialogOpen" />
-      <StockSearchDialog v-model="stockSearchDialogOpen" />
     </template>
 
     <router-view />
@@ -262,12 +293,31 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.pill-btn {
+  border-radius: 999px;
+}
+
+.slim-btn {
+  min-height: 26px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.tenant-dropdown-btn {
+  font-weight: 600;
+  font-size: 0.78rem;
+  min-height: 26px;
+}
+
 @media (max-width: 600px) {
   .app-context__title {
     max-width: 100px;
   }
   .app-layout__tenant-chip {
     max-width: 90px !important;
+  }
+  .tenant-dropdown-btn {
+    width: 100%;
   }
 }
 </style>

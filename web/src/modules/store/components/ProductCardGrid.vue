@@ -9,7 +9,8 @@
     >
       <div class="image-wrapper">
         <SmartImage
-          :src="item.image_url ?? null"
+          v-model:src="item.image_url"
+          :product-id="item.id"
           :alt="item.name"
           img-class="product-image"
           fallback-class="product-image-fallback"
@@ -408,9 +409,9 @@ const showCart = computed(() => props.showCart)
 }
 
 .product-card {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
   display: flex;
   flex-direction: column;
   border-radius: 12px;

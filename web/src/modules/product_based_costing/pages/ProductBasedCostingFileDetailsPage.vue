@@ -5,12 +5,12 @@
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col">
+            <div class="col-12 col-sm">
               <div class="row items-center q-gutter-sm">
                 <q-badge color="primary" outline class="text-weight-medium">
                   #{{ store?.item?.id ?? '-' }}
                 </q-badge>
-                <div class="text-h6 text-weight-bold">
+                <div class="text-subtitle1 text-weight-bold">
                   {{ store?.item?.name ?? 'Costing File' }}
                 </div>
               </div>
@@ -18,14 +18,14 @@
                 Created for {{ store?.item?.order_for ?? '-' }}
               </div>
             </div>
-            <div class="col-auto row items-center q-gutter-sm">
+            <div class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap">
               <q-chip
                 v-if="store.item"
                 dense
                 square
                 clickable
                 :style="statusChipStyle(status)"
-                class="costing-file-status-chip q-px-md q-py-sm"
+                class="costing-file-status-chip q-px-md q-py-sm header-status-chip"
               >
                 <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(status) }" />
                 {{ status }}
@@ -51,7 +51,7 @@
                 icon="add"
                 dense
                 label="Add Item"
-                class="q-px-md q-py-sm"
+                class="q-px-md q-py-sm action-button"
                 @click="openCreateDialog"
               />
               <q-btn
@@ -63,7 +63,7 @@
                 dense
                 label="Columns"
                 aria-label="Select columns"
-                class="q-px-md q-py-sm"
+                class="q-px-md q-py-sm action-button"
               >
                 <q-menu>
                   <q-list style="min-width: 240px">
@@ -99,7 +99,7 @@
                 size="sm"
                 dense
                 label="Actions"
-                class="q-px-md q-py-sm"
+                class="q-px-md q-py-sm action-button"
                 dropdown-icon="expand_more"
               >
                 <q-list dense>
@@ -165,7 +165,7 @@
               <q-input v-model.number="profit_rate" dense filled   type="number" class="soft-input" label="Profit Rate" />
             </div>
             <div class="col-12 col-sm-auto row justify-end">
-              <q-btn color="primary" label="Save" no-caps size="sm" class="pill-btn slim-btn rates-save-btn" @click="onRateSave" />
+              <q-btn color="primary" label="Save" no-caps size="sm" class="pill-btn slim-btn rates-save-btn full-width-xs" @click="onRateSave" />
             </div>
           </div>
         </q-card-section>
@@ -937,5 +937,20 @@ const onDefaultShipmentChange = async (shipmentId: number | null) => {
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+@media (max-width: 599px) {
+  .full-width-xs {
+    width: 100%;
+  }
+  .action-button {
+    flex: 1 1 auto;
+    min-width: 80px;
+  }
+  .header-status-chip {
+    flex: 1 1 100%;
+    justify-content: center;
+    margin-right: 0 !important;
+  }
 }
 </style>

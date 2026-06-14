@@ -69,6 +69,7 @@ export type StoreProductsQueryInput = {
   sort_dir?: string | null
   limit?: number
   offset?: number
+  append?: boolean
 }
 
 export type StoreProductsPage = {

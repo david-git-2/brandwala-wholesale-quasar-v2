@@ -327,7 +327,11 @@ export const useStoreStore = defineStore('store', {
         const items = result.data?.data ?? []
         const meta = result.data?.meta
 
-        this.productItems = items
+        if (payload.append) {
+          this.productItems = [...this.productItems, ...items]
+        } else {
+          this.productItems = items
+        }
         this.productsTotal = meta?.total ?? 0
         this.productsOffset = meta?.offset ?? safeOffset
         this.productsPageSize = meta?.limit ?? safeLimit

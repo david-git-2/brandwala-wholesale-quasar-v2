@@ -3,16 +3,16 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col">
+          <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Product Based Costing</div>
             <div class="text-caption text-grey-8">Manage costing files and open details</div>
           </div>
-          <div class="col-auto">
+          <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
               color="primary"
               no-caps
               size="sm"
-              class="pill-btn slim-btn"
+              class="pill-btn slim-btn full-width-mobile"
               label="Create Costing File"
               @click="openCreateDialog"
             />
@@ -676,4 +676,9 @@ const onDrawerStatusChange = async () => {
   width: min(320px, 75vw);
 }
 
+@media (max-width: 599px) {
+  .full-width-mobile {
+    width: 100%;
+  }
+}
 </style>
