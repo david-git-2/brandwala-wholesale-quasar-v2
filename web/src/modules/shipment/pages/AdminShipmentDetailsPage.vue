@@ -152,7 +152,7 @@
         </div>
         <div class="shipment-summary-card" v-if="shipmentStore.selectedShipment?.is_gbp">
           <div class="text-caption text-grey-8">Total Weight</div>
-          <div class="text-body1 text-weight-bold">{{ formatDecimal(totals.total_weight_gm / 1000) }} kg</div>
+          <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.total_weight_gm / 1000) }} kg</div>
         </div>
       </q-card-section>
     </q-card>
@@ -302,6 +302,7 @@
                     alt="shipment item"
                     imgClass="shipment-item-image"
                     fallbackClass="shipment-item-image-fallback"
+                    :enable-edit="false"
                   />
                 </div>
               </td>
@@ -592,10 +593,10 @@
 
 
               <td v-if="isColumnVisible('product_weight')" class="text-right text-weight-bold">
-                {{ formatDecimal(totals.product_weight) }}
+                {{ formatFixed2(totals.product_weight) }}
               </td>
               <td v-if="isColumnVisible('package_weight')" class="text-right text-weight-bold">
-                {{ formatDecimal(totals.package_weight) }}
+                {{ formatFixed2(totals.package_weight) }}
               </td>
               <td v-if="isColumnVisible('actions')"></td>
             </tr>
@@ -1119,7 +1120,12 @@
           <!-- Item info block -->
           <div class="row items-center no-wrap q-mb-md q-pa-sm bg-grey-2 rounded-borders">
             <q-avatar rounded size="64px" class="q-mr-md bg-white">
-              <SmartImage :src="inspectItem.image_url" />
+              <SmartImage
+                :src="inspectItem.image_url"
+                imgClass="shipment-item-image"
+                fallbackClass="shipment-item-image-fallback"
+                :enable-edit="false"
+              />
             </q-avatar>
             <div class="col">
               <div class="text-subtitle1 text-weight-bold leading-normal">{{ inspectItem.name }}</div>
@@ -1386,58 +1392,111 @@
     </q-dialog>
 
     <q-dialog v-model="showShipmentInfoDialog" persistent>
-      <q-card style="min-width: 480px; max-width: 90vw">
+      <q-card style="min-width: 720px; max-width: 90vw">
         <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6">Edit Ingestion Settings</div>
+          <div class="text-h6 text-weight-bold">Edit Ingestion Settings</div>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
         
         <q-separator />
 
-        <q-card-section class="q-gutter-md q-py-md">
-          <q-input
-            v-model.number="shipmentInfoForm.product_conversion_rate"
-            type="number"
-            step="0.0001"
-            label="Product Conversion Rate *"
-            outlined
-            dense
-            :rules="[val => val > 0 || 'Must be greater than 0']"
-          />
-          <q-input
-            v-model.number="shipmentInfoForm.cargo_conversion_rate"
-            type="number"
-            step="0.0001"
-            label="Cargo Conversion Rate *"
-            outlined
-            dense
-            :rules="[val => val > 0 || 'Must be greater than 0']"
-          />
-          <q-input
-            v-model.number="shipmentInfoForm.cargo_rate"
-            type="number"
-            step="0.01"
-            label="Cargo Rate *"
-            outlined
-            dense
-            :rules="[val => val > 0 || 'Must be greater than 0']"
-          />
-          <q-input
-            v-model.number="shipmentInfoForm.weight"
-            type="number"
-            step="0.001"
-            label="Expected Weight (kg)"
-            outlined
-            dense
-          />
-          <q-input
-            v-model.number="shipmentInfoForm.received_weight"
-            type="number"
-            step="0.001"
-            label="Received Weight (kg)"
-            outlined
-            dense
-          />
+        <q-card-section class="q-py-md">
+          <div class="row q-col-gutter-md">
+            <!-- Inputs Column -->
+            <div class="col-12 col-sm-6 q-gutter-y-md">
+              <q-input
+                v-model.number="shipmentInfoForm.product_conversion_rate"
+                type="number"
+                step="0.0001"
+                label="Product Conversion Rate *"
+                outlined
+                dense
+                :rules="[val => val > 0 || 'Must be greater than 0']"
+              />
+              <q-input
+                v-model.number="shipmentInfoForm.cargo_conversion_rate"
+                type="number"
+                step="0.0001"
+                label="Cargo Conversion Rate *"
+                outlined
+                dense
+                :rules="[val => val > 0 || 'Must be greater than 0']"
+              />
+              <q-input
+                v-model.number="shipmentInfoForm.cargo_rate"
+                type="number"
+                step="0.01"
+                label="Cargo Rate *"
+                outlined
+                dense
+                :rules="[val => val > 0 || 'Must be greater than 0']"
+              />
+              <q-input
+                :model-value="`${formatFixed2(totals.total_weight_gm / 1000)} kg`"
+                label="Expected Weight"
+                outlined
+                dense
+                readonly
+                bg-color="grey-2"
+              />
+              <q-input
+                v-model.number="shipmentInfoForm.received_weight"
+                type="number"
+                step="0.001"
+                label="Received Weight (kg)"
+                outlined
+                dense
+              />
+            </div>
+
+            <!-- Real-time Preview Column -->
+            <div class="col-12 col-sm-6">
+              <q-card flat bordered style="background-color: #fafafa; border-radius: 8px;" class="full-height">
+                <q-card-section class="q-pa-md">
+                  <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">Calculated Transaction Rate</div>
+                  
+                  <div class="q-gutter-y-sm">
+                    <div class="row justify-between text-body2">
+                      <span class="text-grey-7">Goods Cost (GBP):</span>
+                      <span class="text-weight-bold">£{{ liveGoodsCostGbp.toFixed(2) }}</span>
+                    </div>
+                    <div class="row justify-between text-body2">
+                      <span class="text-grey-7">Goods Cost (BDT):</span>
+                      <span class="text-weight-bold">৳{{ liveGoodsCostBdt.toFixed(2) }}</span>
+                    </div>
+
+                    <q-separator class="q-my-xs" />
+
+                    <div class="row justify-between text-body2">
+                      <span class="text-grey-7">Cargo Weight (KG):</span>
+                      <span class="text-weight-bold">{{ liveCargoWeight.toFixed(2) }} kg</span>
+                    </div>
+                    <div class="row justify-between text-body2">
+                      <span class="text-grey-7">Cargo Cost (GBP):</span>
+                      <span class="text-weight-bold">£{{ liveCargoCostGbp.toFixed(2) }}</span>
+                    </div>
+                    <div class="row justify-between text-body2">
+                      <span class="text-grey-7">Cargo Cost (BDT):</span>
+                      <span class="text-weight-bold">৳{{ liveCargoCostBdt.toFixed(2) }}</span>
+                    </div>
+
+                    <q-separator class="q-my-xs" />
+
+                    <div class="row justify-between text-body2 text-primary">
+                      <span class="text-weight-medium">Total Costing (BDT):</span>
+                      <span class="text-weight-bold">৳{{ liveCostingBdt.toFixed(2) }}</span>
+                    </div>
+                    
+                    <div class="bg-primary text-white q-pa-md q-mt-md rounded-borders shadow-1 text-center" style="border-radius: 8px;">
+                      <div class="text-caption text-uppercase tracking-wider">Transaction Rate</div>
+                      <div class="text-h5 text-weight-bolder">৳{{ liveTransactionRate.toFixed(2) }}</div>
+                      <div class="text-caption text-grey-3 q-mt-xs">Blended rate for this shipment</div>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
@@ -1495,7 +1554,11 @@ const showBatchEditorDialog = ref(false)
 const initialLoading = ref(true)
 const pendingDeleteItem = ref<ShipmentItem | null>(null)
 const editingManualItem = ref<ShipmentItem | null>(null)
-const selectedDetailsItem = ref<ShipmentItem | null>(null)
+const selectedDetailsItemId = ref<number | null>(null)
+const selectedDetailsItem = computed(() => {
+  if (selectedDetailsItemId.value == null) return null
+  return shipmentStore.shipmentItems.find((item) => item.id === selectedDetailsItemId.value) ?? null
+})
 const batchEditorItem = ref<ShipmentItem | null>(null)
 const batchEditorRows = ref<Array<{ id: number | null; batch_id: string; manufacturing_date: string }>>([])
 const selectedStatus = ref<ShipmentStatus>('Draft')
@@ -1599,8 +1662,39 @@ const shipmentInfoForm = reactive({
   product_conversion_rate: 0,
   cargo_conversion_rate: 0,
   cargo_rate: 0,
-  weight: null as number | null,
   received_weight: null as number | null,
+})
+
+const liveGoodsCostGbp = computed(() => {
+  return (shipmentStore.shipmentItems ?? []).reduce((sum, item) => {
+    return sum + (Number(item.price_gbp ?? 0) * Number(item.quantity ?? 0))
+  }, 0)
+})
+
+const liveGoodsCostBdt = computed(() => {
+  return liveGoodsCostGbp.value * Number(shipmentInfoForm.product_conversion_rate ?? 0)
+})
+
+const liveCargoWeight = computed(() => {
+  return Number(shipmentInfoForm.received_weight ?? 0)
+})
+
+const liveCargoCostGbp = computed(() => {
+  return liveCargoWeight.value * Number(shipmentInfoForm.cargo_rate ?? 0)
+})
+
+const liveCargoCostBdt = computed(() => {
+  return liveCargoCostGbp.value * Number(shipmentInfoForm.cargo_conversion_rate ?? 0)
+})
+
+const liveCostingBdt = computed(() => {
+  return liveGoodsCostBdt.value + liveCargoCostBdt.value
+})
+
+const liveTransactionRate = computed(() => {
+  const totalGbp = liveGoodsCostGbp.value + liveCargoCostGbp.value
+  if (totalGbp <= 0) return 0
+  return liveCostingBdt.value / totalGbp
 })
 
 const openShipmentInfoDialog = () => {
@@ -1609,7 +1703,6 @@ const openShipmentInfoDialog = () => {
   shipmentInfoForm.product_conversion_rate = current.product_conversion_rate ?? 0
   shipmentInfoForm.cargo_conversion_rate = current.cargo_conversion_rate ?? 0
   shipmentInfoForm.cargo_rate = current.cargo_rate ?? 0
-  shipmentInfoForm.weight = current.weight
   shipmentInfoForm.received_weight = current.received_weight
   showShipmentInfoDialog.value = true
 }
@@ -1622,7 +1715,6 @@ const saveShipmentInfoDialog = async () => {
       product_conversion_rate: Number(shipmentInfoForm.product_conversion_rate) || null,
       cargo_conversion_rate: Number(shipmentInfoForm.cargo_conversion_rate) || null,
       cargo_rate: Number(shipmentInfoForm.cargo_rate) || null,
-      weight: shipmentInfoForm.weight != null ? Number(shipmentInfoForm.weight) : null,
       received_weight: shipmentInfoForm.received_weight != null ? Number(shipmentInfoForm.received_weight) : null,
     }
   })
@@ -2224,7 +2316,7 @@ const openEditManualItemDialog = (item: ShipmentItem) => {
 }
 
 const openItemDetailsDialog = (item: ShipmentItem) => {
-  selectedDetailsItem.value = item
+  selectedDetailsItemId.value = item.id
   showItemDetailsDialog.value = true
 }
 
@@ -2528,6 +2620,13 @@ const onSaveManualItemEdit = async () => {
   if (item.product_id != null) {
     const productUpdateResult = await productStore.updateProduct({
       id: item.product_id,
+      name: editManualItemForm.name.trim(),
+      barcode: editManualItemForm.barcode.trim() || null,
+      product_code: editManualItemForm.product_code.trim() || null,
+      image_url: editManualItemForm.image_url.trim() || null,
+      price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
+      product_weight: editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
+      package_weight: editManualItemForm.package_weight == null ? null : Number(editManualItemForm.package_weight),
       vendor_code: editManualItemForm.vendor_code ?? null,
       market_code: editManualItemForm.market_code ?? null,
     })
@@ -2568,6 +2667,7 @@ const calculateItemCostBdt = (item: ShipmentItem) => {
     packageWeight: item.package_weight,
     cargoRate: shipment?.cargo_rate,
     priceGbp: item.price_gbp,
+    transactionRate: shipment?.transaction_rate,
     productConversionRate: shipment?.product_conversion_rate,
     cargoConversionRate: shipment?.cargo_conversion_rate,
   })

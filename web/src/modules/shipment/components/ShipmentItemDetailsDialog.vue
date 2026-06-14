@@ -17,6 +17,7 @@
                 alt="shipment item"
                 imgClass="shipment-item-preview__img"
                 fallbackClass="shipment-item-preview__fallback"
+                @image-updated="onImageUrlSave"
               />
             </div>
           </div>
@@ -40,7 +41,30 @@
             <tr><td class="text-weight-medium">Price (GBP)</td><td>{{ displayNumber(item.price_gbp) }}</td></tr>
             <tr><td class="text-weight-medium">Product Weight</td><td>{{ displayNumber(item.product_weight) }}</td></tr>
             <tr><td class="text-weight-medium">Package Weight</td><td>{{ displayNumber(item.package_weight) }}</td></tr>
-            <tr><td class="text-weight-medium">Image URL</td><td class="text-break">{{ item.image_url ?? '-' }}</td></tr>
+            <tr>
+              <td class="text-weight-medium">Image URL</td>
+              <td class="text-break cursor-pointer relative-position">
+                <span class="q-pr-md">{{ item.image_url ?? '-' }}</span>
+                <q-icon name="edit" size="xs" color="grey-6" class="absolute-right q-mr-sm" />
+                <q-popup-edit
+                  :model-value="item.image_url ?? ''"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  v-slot="scope"
+                  @save="onImageUrlSave"
+                >
+                  <q-input
+                    v-model="scope.value"
+                    dense
+                    outlined
+                    autofocus
+                    label="Image URL"
+                  />
+                </q-popup-edit>
+              </td>
+            </tr>
             <tr><td class="text-weight-medium">Created At</td><td>{{ item.created_at }}</td></tr>
             <tr><td class="text-weight-medium">Updated At</td><td>{{ item.updated_at }}</td></tr>
           </tbody>
@@ -58,8 +82,10 @@
 import SmartImage from 'src/components/SmartImage.vue'
 import type { ShipmentItem } from '../types'
 import { getReceivedQty, getDamagedQty, getStolenQty } from '../utils/splits'
+import { useShipmentStore } from '../stores/shipmentStore'
+import { useProductStore } from 'src/modules/products/stores/productStore'
 
-defineProps<{
+const props = defineProps<{
   modelValue: boolean
   item: ShipmentItem | null
 }>()
@@ -67,6 +93,36 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
 }>()
+
+const shipmentStore = useShipmentStore()
+const productStore = useProductStore()
+
+const onImageUrlSave = async (newUrl: string) => {
+  const currentItem = props.item
+  if (!currentItem) return
+
+  const trimmedUrl = newUrl.trim() || null
+
+  // 1. Update Shipment Item
+  const shipmentItemResult = await shipmentStore.updateShipmentItem({
+    id: currentItem.id,
+    patch: {
+      image_url: trimmedUrl,
+    },
+  })
+
+  if (!shipmentItemResult.success) {
+    return
+  }
+
+  // 2. Update linked Product if present
+  if (currentItem.product_id != null) {
+    await productStore.updateProduct({
+      id: currentItem.product_id,
+      image_url: trimmedUrl,
+    })
+  }
+}
 
 const displayNumber = (value: number | null | undefined) =>
   value == null ? '-' : String(Number(value))

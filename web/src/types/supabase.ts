@@ -3573,10 +3573,10 @@ export type Database = {
           status: string
           tenant_id: number
           tenant_shipment_id: number
+          transaction_rate: number | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
-          weight: number | null
         }
         Insert: {
           cargo_conversion_rate?: number | null
@@ -3592,10 +3592,10 @@ export type Database = {
           status?: string
           tenant_id: number
           tenant_shipment_id: number
+          transaction_rate?: number | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
-          weight?: number | null
         }
         Update: {
           cargo_conversion_rate?: number | null
@@ -3611,10 +3611,10 @@ export type Database = {
           status?: string
           tenant_id?: number
           tenant_shipment_id?: number
+          transaction_rate?: number | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
-          weight?: number | null
         }
         Relationships: [
           {
@@ -4612,10 +4612,10 @@ export type Database = {
           status: string
           tenant_id: number
           tenant_shipment_id: number
+          transaction_rate: number | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
-          weight: number | null
         }
         SetofOptions: {
           from: "*"
@@ -5144,6 +5144,9 @@ export type Database = {
       list_items_paginated: {
         Args: {
           p_assignee?: string
+          p_date_field?: string
+          p_date_from?: string
+          p_date_to?: string
           p_include_parents?: boolean
           p_my_tasks_email?: string
           p_page?: number
@@ -5222,6 +5225,16 @@ export type Database = {
           p_sort_dir?: string
           p_tenant_id?: number
           p_vendor_code?: string
+        }
+        Returns: Json
+      }
+      list_shipments_paginated: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
         }
         Returns: Json
       }
@@ -5365,6 +5378,10 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      recalculate_shipment_transaction_rate: {
+        Args: { p_shipment_id: number }
+        Returns: number
       }
       recompute_invoice_payment_status: {
         Args: { p_invoice_id: number }
@@ -5610,10 +5627,10 @@ export type Database = {
           status: string
           tenant_id: number
           tenant_shipment_id: number
+          transaction_rate: number | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
-          weight: number | null
         }
         SetofOptions: {
           from: "*"

@@ -1,8 +1,8 @@
 <template>
-  <q-page class="q-pa-md costing-details-page">
+  <q-page class="q-pa-xs q-sm-pa-md costing-details-page">
     <PageInitialLoader v-if="store.loading" />
     <template v-else>
-      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card flat class="q-mb-sm q-sm-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-12 col-sm">
@@ -138,7 +138,7 @@
         </q-card-section>
       </q-card>
 
-      <q-card flat class="q-mb-sm floating-surface shadow-1">
+      <q-card flat class="q-mb-xs q-sm-mb-sm floating-surface shadow-1">
         <q-card-section class="q-py-xs">
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-12 col-sm-3">

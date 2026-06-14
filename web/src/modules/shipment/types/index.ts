@@ -25,8 +25,8 @@ export type Shipment = {
   product_conversion_rate: number | null
   cargo_conversion_rate: number | null
   cargo_rate: number | null
+  transaction_rate: number | null
   inventory_added: boolean
-  weight: number | null
   received_weight: number | null
   vendor_code: string | null
   market_code: string | null
@@ -90,7 +90,7 @@ export type ShipmentUpdateField =
   | 'product_conversion_rate'
   | 'cargo_conversion_rate'
   | 'cargo_rate'
-  | 'weight'
+  | 'transaction_rate'
   | 'received_weight'
   | 'vendor_code'
   | 'market_code'

@@ -118,21 +118,9 @@
             </div>
 
             <div class="row items-center q-col-gutter-sm">
-              <div class="col-12 col-sm-4 text-weight-medium">Weight</div>
+              <div class="col-12 col-sm-4 text-weight-medium">Expected Weight</div>
               <div class="col-12 col-sm-8 row items-center q-gutter-sm">
-                <template v-if="editingField === 'weight'">
-                  <q-input v-model.number="draft.weight" type="number" step="0.001" outlined dense class="col">
-                    <template #prepend>
-                      <q-icon name="scale" />
-                    </template>
-                  </q-input>
-                  <q-btn color="primary" label="Save" :loading="shipmentStore.saving" @click="saveField('weight')" />
-                  <q-btn flat label="Cancel" :disable="shipmentStore.saving" @click="cancelEdit" />
-                </template>
-                <template v-else>
-                  <div class="col">{{ displayNumber(shipmentStore.selectedShipment?.weight) }}</div>
-                  <q-btn flat round dense icon="o_edit" @click="startEdit('weight')" />
-                </template>
+                <div class="col">{{ computedTotalWeight.toFixed(2) }} kg</div>
               </div>
             </div>
 
@@ -180,7 +168,6 @@ type EditableField =
   | 'product_conversion_rate'
   | 'cargo_conversion_rate'
   | 'cargo_rate'
-  | 'weight'
   | 'received_weight'
 const editingField = ref<EditableField | null>(null)
 
@@ -189,7 +176,6 @@ const draft = reactive({
   product_conversion_rate: null as number | null,
   cargo_conversion_rate: null as number | null,
   cargo_rate: null as number | null,
-  weight: null as number | null,
   received_weight: null as number | null,
 })
 
@@ -204,13 +190,18 @@ const displayNumber = (value: unknown) => {
   return n == null ? '-' : String(n)
 }
 
+const computedTotalWeight = computed(() => {
+  return (shipmentStore.shipmentItems ?? []).reduce((sum, item) => {
+    return sum + (Number(item.product_weight ?? 0) + Number(item.package_weight ?? 0)) * Number(item.quantity ?? 0)
+  }, 0) / 1000
+})
+
 const syncDraftFromStore = () => {
   const current = shipmentStore.selectedShipment
   draft.name = current?.name ?? ''
   draft.product_conversion_rate = toNullableNumber(current?.product_conversion_rate)
   draft.cargo_conversion_rate = toNullableNumber(current?.cargo_conversion_rate)
   draft.cargo_rate = toNullableNumber(current?.cargo_rate)
-  draft.weight = toNullableNumber(current?.weight)
   draft.received_weight = toNullableNumber(current?.received_weight)
 }
 
@@ -239,7 +230,6 @@ const saveField = async (field: EditableField) => {
     product_conversion_rate?: number | null
     cargo_conversion_rate?: number | null
     cargo_rate?: number | null
-    weight?: number | null
     received_weight?: number | null
   } = {}
 
@@ -247,7 +237,6 @@ const saveField = async (field: EditableField) => {
   if (field === 'product_conversion_rate') patch.product_conversion_rate = toNullableNumber(draft.product_conversion_rate)
   if (field === 'cargo_conversion_rate') patch.cargo_conversion_rate = toNullableNumber(draft.cargo_conversion_rate)
   if (field === 'cargo_rate') patch.cargo_rate = toNullableNumber(draft.cargo_rate)
-  if (field === 'weight') patch.weight = toNullableNumber(draft.weight)
   if (field === 'received_weight') patch.received_weight = toNullableNumber(draft.received_weight)
 
   const result = await shipmentStore.updateShipment({

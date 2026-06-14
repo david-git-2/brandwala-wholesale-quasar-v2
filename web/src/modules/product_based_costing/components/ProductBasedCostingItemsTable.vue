@@ -33,10 +33,339 @@
       :pagination="{ rowsPerPage: 0 }"
       :table-style="{ maxHeight: '100%' }"
       class="costing-q-table"
+      :grid="$q.screen.xs"
     >
+      <template #item="slotProps">
+        <div class="col-12 col-sm-6 q-pa-xs q-sm-pa-sm">
+          <q-card flat bordered class="costing-item-card floating-surface shadow-1">
+            <!-- Card Header -->
+            <div class="card-header row items-center justify-between q-px-md q-py-sm">
+              <div class="row items-center q-gutter-xs">
+                <q-checkbox
+                  :model-value="selectedRowIds.includes(slotProps.row.id)"
+                  @update:model-value="(checked) => onToggleRowSelection(slotProps.row.id, checked)"
+                  dense
+                />
+                <q-badge color="grey-3" text-color="grey-9" class="text-weight-bold">
+                  #{{ slotProps.row.sl }}
+                </q-badge>
+              </div>
+
+              <div class="row items-center q-gutter-xs">
+                <!-- Status -->
+                <div v-if="isColumnVisible('status')" class="cursor-pointer text-center relative-position">
+                  <q-badge :color="getStatusColor(slotProps.row.status)" outline class="q-px-sm q-py-xs">
+                    {{ slotProps.row.status }}
+                    <q-icon name="arrow_drop_down" size="xs" />
+                  </q-badge>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.status"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.status = toText(value, 'pending').toLowerCase();
+                        onStatusSave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-select
+                      v-model="scope.value"
+                      :options="statusOptions"
+                      dense
+                      outlined
+                      options-dense
+                      emit-value
+                      map-options
+                      autofocus
+                    />
+                  </q-popup-edit>
+                </div>
+
+                <!-- Actions -->
+                <q-btn
+                  v-if="isColumnVisible('action')"
+                  icon="o_edit"
+                  flat
+                  round
+                  dense
+                  color="blue-10"
+                  size="sm"
+                  @click="onEdit(slotProps.row)"
+                />
+                <q-btn
+                  v-if="isColumnVisible('action')"
+                  icon="o_delete"
+                  flat
+                  round
+                  dense
+                  color="negative"
+                  size="sm"
+                  @click="onDelete(slotProps.row)"
+                />
+              </div>
+            </div>
+
+            <q-separator />
+
+            <!-- Card Body -->
+            <q-card-section class="q-pa-md">
+              <div class="row q-col-gutter-sm items-start">
+                <!-- Image -->
+                <div v-if="isColumnVisible('image')" class="col-4 col-sm-3 text-center">
+                  <div class="card-image-wrapper">
+                    <SmartImage
+                      :src="slotProps.row.imageUrl"
+                      :alt="slotProps.row.name || 'Product image'"
+                      img-class="card-image"
+                      fallback-class="card-image-placeholder"
+                    />
+                  </div>
+                </div>
+
+                <!-- Info -->
+                <div class="col-8 col-sm-9">
+                  <div class="row items-start justify-between no-wrap q-gutter-xs">
+                    <span class="card-item-name text-weight-bold">{{ slotProps.row.name }}</span>
+                    <div v-if="props.status === 'processing'" class="card-ship-btn">
+                      <q-btn
+                        icon="local_shipping"
+                        :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        @click="onShip(slotProps.row)"
+                      >
+                        <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+
+                  <div v-if="isColumnVisible('brand') && slotProps.row.brand" class="text-caption text-grey-8 q-mt-xs">
+                    <strong>Brand:</strong> {{ slotProps.row.brand }}
+                  </div>
+
+                  <div v-if="isColumnVisible('barcodeText')" class="card-barcode-lines text-caption text-grey-7 q-mt-xs">
+                    <div v-if="slotProps.row.barcode">Barcode: {{ slotProps.row.barcode }}</div>
+                    <div v-if="slotProps.row.productCode">Code: {{ slotProps.row.productCode }}</div>
+                    <div v-if="slotProps.row.productId">ID: {{ slotProps.row.productId }}</div>
+                  </div>
+
+                  <div v-if="isColumnVisible('website') && slotProps.row.website" class="q-mt-xs">
+                    <q-btn
+                      flat
+                      dense
+                      no-caps
+                      color="primary"
+                      icon="open_in_new"
+                      label="Website"
+                      size="xs"
+                      type="a"
+                      :href="slotProps.row.website"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Note Section -->
+              <div v-if="isColumnVisible('note')" class="card-note-section q-mt-md q-pa-sm rounded-borders cursor-pointer bg-grey-1 text-caption">
+                <div class="text-weight-bold text-grey-7 q-mb-xs">Note:</div>
+                <div
+                  v-if="slotProps.row.noteHtml"
+                  class="item-note-html"
+                  v-html="slotProps.row.noteHtml"
+                />
+                <span v-else class="text-grey-5">No notes. Tap to add one.</span>
+
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="slotProps.row.noteHtml"
+                  cover
+                  :content-style="{ minWidth: '300px', maxWidth: '90vw' }"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="
+                    (value) => {
+                      slotProps.row.noteHtml = toText(value, '');
+                      onNoteSave(slotProps.row);
+                    }
+                  "
+                >
+                  <q-editor
+                    v-model="scope.value"
+                    dense
+                    flat
+                    square
+                    min-height="100px"
+                    :toolbar="[
+                      ['bold', 'italic', 'underline'],
+                      ['removeFormat'],
+                      ['unordered', 'ordered'],
+                      ['undo', 'redo'],
+                    ]"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </div>
+            </q-card-section>
+
+            <q-separator />
+
+            <!-- Costing Grid -->
+            <q-card-section class="q-pa-md bg-grey-0">
+              <div class="row q-col-gutter-sm card-costing-grid">
+                <!-- Qty -->
+                <div v-if="isColumnVisible('qty')" class="col-6 col-sm-3 cursor-pointer text-center">
+                  <div class="metric-label">Qty</div>
+                  <div class="metric-value font-mono font-weight-medium">
+                    {{ slotProps.row.qty }}
+                    <q-icon name="edit" size="xs" color="grey-6" class="q-ml-xs" />
+                  </div>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.qty"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.qty = toNumber(value);
+                        onQtySave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="0"
+                    />
+                  </q-popup-edit>
+                </div>
+
+                <!-- Delivered Qty -->
+                <div v-if="isColumnVisible('deliveredQty')" class="col-6 col-sm-3 cursor-pointer text-center">
+                  <div class="metric-label">Delivered Qty</div>
+                  <div class="metric-value font-mono font-weight-medium">
+                    {{ slotProps.row.deliveredQty }}
+                    <q-icon name="edit" size="xs" color="grey-6" class="q-ml-xs" />
+                  </div>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.deliveredQty"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.deliveredQty = toNumber(value);
+                        onDeliveredQtySave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="0"
+                    />
+                  </q-popup-edit>
+                </div>
+
+                <!-- Price GBP -->
+                <div v-if="isColumnVisible('priceGbp')" class="col-6 col-sm-3 text-center bg-gbp-light q-pa-xs rounded-borders">
+                  <div class="metric-label text-green-9">Price GBP</div>
+                  <div class="metric-value text-green-10 text-weight-bold font-mono">
+                    £{{ formatNumber(slotProps.row.priceGbp) }}
+                  </div>
+                </div>
+
+                <!-- Offer Price BDT -->
+                <div v-if="isColumnVisible('offerPriceBdt')" class="col-6 col-sm-3 cursor-pointer text-center bg-offer-light q-pa-xs rounded-borders">
+                  <div class="metric-label text-purple-9">Offer Price BDT</div>
+                  <div class="metric-value text-purple-10 text-weight-bold font-mono">
+                    ৳{{ formatNumber(slotProps.row.offerPriceBdt) }}
+                    <q-icon name="edit" size="xs" color="purple-6" class="q-ml-xs" />
+                  </div>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.offerPriceBdt"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.offerPriceBdt = toNumber(value);
+                        onOfferPriceBdtSave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="0"
+                    />
+                  </q-popup-edit>
+                </div>
+
+                <!-- Cost BDT -->
+                <div v-if="isColumnVisible('costBdt')" class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders">
+                  <div class="metric-label text-amber-9">Cost BDT</div>
+                  <div class="metric-value text-amber-10 font-mono text-weight-medium">
+                    ৳{{ formatNumber(getCostBdt(slotProps.row)) }}
+                  </div>
+                </div>
+
+                <!-- Total Cost BDT -->
+                <div v-if="isColumnVisible('totalCostBdt')" class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders">
+                  <div class="metric-label text-amber-9">Total Cost BDT</div>
+                  <div class="metric-value text-amber-10 font-mono text-weight-medium">
+                    ৳{{ formatNumber(getTotalCostBdt(slotProps.row)) }}
+                  </div>
+                </div>
+
+                <!-- Profit BDT -->
+                <div v-if="isColumnVisible('profitBdt')" class="col-6 col-sm-3 text-center">
+                  <div class="metric-label">Profit BDT</div>
+                  <div class="metric-value font-mono">
+                    ৳{{ formatNumber(getProfitBdt(slotProps.row)) }}
+                  </div>
+                </div>
+
+                <!-- Profit Rate -->
+                <div v-if="isColumnVisible('profitRate')" class="col-6 col-sm-3 text-center">
+                  <div class="metric-label">Profit Rate</div>
+                  <div class="metric-value font-mono">
+                    {{ formatNumber(getProfitRate(slotProps.row)) }}%
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </template>
+
       <template #header-cell-select="slotProps">
         <q-th :props="slotProps">
-          <q-checkbox v-model="isAllSelected" />
+          <q-checkbox v-model="isAllSelected" dense />
         </q-th>
       </template>
 
@@ -46,6 +375,7 @@
             <q-checkbox
               :model-value="selectedRowIds.includes(slotProps.row.id)"
               @update:model-value="(checked) => onToggleRowSelection(slotProps.row.id, checked)"
+              dense
             />
           </q-td>
           <q-td key="sl" :props="slotProps" class="col-sl text-center">
@@ -422,6 +752,7 @@
                 :options="statusOptions"
                 dense
                 outlined
+                options-dense
                 emit-value
                 map-options
                 autofocus
@@ -840,14 +1171,14 @@ const columns = computed<QTableColumn[]>(() => [
     label: '',
     field: 'select',
     align: 'center',
-    style: 'width: 56px; text-align: center;',
+    style: 'width: 42px; min-width: 42px; max-width: 42px; text-align: center;',
   },
   {
     name: 'sl',
     label: 'SL',
     field: 'sl',
     align: 'center',
-    style: 'text-align: center;',
+    style: 'width: 42px; min-width: 42px; max-width: 42px; text-align: center;',
   },
   {
     name: 'image',
@@ -1427,13 +1758,13 @@ const totals = computed(() => {
 .product-based-costing-table :deep(.costing-q-table td:nth-child(2)),
 .product-based-costing-table :deep(.costing-q-table th:nth-child(2)) {
   position: sticky;
-  left: 60px;
+  left: 42px;
 }
 
 .product-based-costing-table :deep(.costing-q-table td:nth-child(3)),
 .product-based-costing-table :deep(.costing-q-table th:nth-child(3)) {
   position: sticky;
-  left: 120px;
+  left: 84px;
 }
 
 .product-based-costing-table :deep(.costing-q-table td:first-child) {
@@ -1514,10 +1845,16 @@ const totals = computed(() => {
   justify-content: flex-end;
 }
 
+.col-select {
+  min-width: 42px;
+  width: 42px;
+  max-width: 42px;
+}
+
 .col-sl {
-  min-width: 60px;
-  width: 60px;
-  max-width: 60px;
+  min-width: 42px;
+  width: 42px;
+  max-width: 42px;
   background: #f8f9fa;
 }
 
@@ -1791,5 +2128,99 @@ const totals = computed(() => {
 .item-note-html :deep(pre) {
   max-width: 100%;
   overflow: hidden;
+}
+/* Card View Styles */
+.costing-item-card {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.costing-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+.card-header {
+  background-color: var(--bw-theme-surface-variant, #fafafa);
+  min-height: 48px;
+}
+
+.card-image-wrapper {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 11px;
+}
+
+.card-item-name {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #2c3e50;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-barcode-lines {
+  line-height: 1.4;
+}
+
+.card-note-section {
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  background: var(--bw-theme-surface-variant, #f9f9f9);
+}
+
+.card-costing-grid {
+  font-size: 13px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #7f8c8d;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.bg-gbp-light {
+  background-color: color-mix(in srgb, #e6f4ea 35%, var(--bw-theme-surface, #fff));
+}
+
+.bg-offer-light {
+  background-color: color-mix(in srgb, #f3e5f5 35%, var(--bw-theme-surface, #fff));
+}
+
+.bg-bdt-light {
+  background-color: color-mix(in srgb, #fff8e1 35%, var(--bw-theme-surface, #fff));
 }
 </style>

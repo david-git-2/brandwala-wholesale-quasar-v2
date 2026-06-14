@@ -26,7 +26,7 @@
 
     <!-- Admin Image Edit Button -->
     <q-btn
-      v-if="isAdmin"
+      v-if="isAdmin && enableEdit"
       round
       dense
       color="primary"
@@ -108,6 +108,7 @@ const props = withDefaults(defineProps<{
   fallbackClass?: string
   productId?: number | string | null | undefined
   enableLightbox?: boolean
+  enableEdit?: boolean
 }>(), {
   src: '',
   alt: 'Image',
@@ -115,6 +116,7 @@ const props = withDefaults(defineProps<{
   fallbackClass: '',
   productId: null,
   enableLightbox: true,
+  enableEdit: true,
 })
 
 const emit = defineEmits<{

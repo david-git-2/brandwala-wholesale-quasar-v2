@@ -265,6 +265,7 @@ const shipmentRows = computed(() => {
           packageWeight: item.package_weight,
           cargoRate: shipment?.cargo_rate,
           priceGbp: item.price_gbp,
+          transactionRate: shipment?.transaction_rate,
           productConversionRate: shipment?.product_conversion_rate,
           cargoConversionRate: shipment?.cargo_conversion_rate,
         })

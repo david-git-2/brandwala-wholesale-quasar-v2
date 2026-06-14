@@ -163,7 +163,6 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       product_conversion_rate: sourceShipment.product_conversion_rate,
       cargo_conversion_rate: sourceShipment.cargo_conversion_rate,
       cargo_rate: sourceShipment.cargo_rate,
-      weight: sourceShipment.weight,
       received_weight: sourceShipment.received_weight,
       is_gbp: sourceShipment.is_gbp,
       inventory_added: false,

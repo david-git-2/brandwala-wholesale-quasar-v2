@@ -388,3 +388,33 @@ For lists of items represented as cards (e.g., products, inventory items) on mob
 }
 ```
 
+## 16) Responsive Table-to-Card Grid Layout (xs Screens)
+
+For wide tables with fixed/sticky columns (e.g., costing file items, invoice items) on mobile (`xs` screens, `max-width: 599px`), convert the wide table into a responsive card layout to avoid cramped, unreadable scrolling:
+
+### 1. Dynamic Grid Toggle
+Bind the `<q-table>`'s `:grid` attribute to `$q.screen.xs` so Quasar dynamically switches between standard table mode (desktop/tablet) and grid mode (mobile).
+
+```html
+<q-table
+  ...
+  :grid="$q.screen.xs"
+>
+```
+
+### 2. Custom Card Template (`#item` Slot)
+Define the `#item` slot to override the default card rendering. Wrap the item in responsive column classes (e.g., `col-12 q-pa-xs q-sm-pa-sm`) and render a custom `<q-card>` containing:
+- **Card Header**: Row checkbox, Serial Number badge (`#`), Status badge, and Edit/Delete action buttons.
+- **Card Body**: Image wrapper, Product metadata, barcode details, and notes editor.
+- **Costing Grid**: A structured grid showing price variables (Price GBP, Cost BDT, Offer Price BDT, Quantities) with popup editors where appropriate.
+
+### 3. Space-saving Selects & Checkboxes
+To minimize screen usage and make tables/cards more compact:
+- Use `<q-checkbox dense>` for selection checkboxes (header and row-level) to reduce padding.
+- Use `<q-select options-dense>` in popup editors to ensure dropdown menu lists take up less vertical space.
+
+### 4. Spacing & Padding Adjustments
+On `xs` screens, compact the overall page structure to prevent clutter:
+- **Page Wrapper Spacing**: On the main `q-page`, use `q-pa-xs q-sm-pa-md` to use minimal padding on mobile devices while maintaining comfortable spacing on tablets and desktops.
+- **Card Margins**: Use responsive bottom margins (e.g. `q-mb-sm q-sm-mb-md` on hero header cards, and `q-mb-xs q-sm-mb-sm` on secondary control cards) to compress the vertical layout.
+- **Card Grid Container Spacing**: Use `q-pa-xs q-sm-pa-sm` on the grid cell wrapping your card to keep card grid margins tight.

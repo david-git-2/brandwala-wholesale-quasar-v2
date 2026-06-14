@@ -155,14 +155,17 @@ const shipmentId = computed(() => {
 const totalShipmentCost = computed(() => {
   const shipment = shipmentStore.selectedShipment
   return shipmentStore.shipmentItems.reduce((sum, item) => {
-    const unitCost = calculateCostBdt({
-      productWeight: item.product_weight,
-      packageWeight: item.package_weight,
-      cargoRate: shipment?.cargo_rate,
-      priceGbp: item.price_gbp,
-      productConversionRate: shipment?.product_conversion_rate,
-      cargoConversionRate: shipment?.cargo_conversion_rate,
-    })
+    const unitCost = shipment && !shipment.is_gbp
+      ? Number(item.cost_bdt ?? 0)
+      : calculateCostBdt({
+          productWeight: item.product_weight,
+          packageWeight: item.package_weight,
+          cargoRate: shipment?.cargo_rate,
+          priceGbp: item.price_gbp,
+          transactionRate: shipment?.transaction_rate,
+          productConversionRate: shipment?.product_conversion_rate,
+          cargoConversionRate: shipment?.cargo_conversion_rate,
+        })
     return sum + unitCost * Number(item.quantity ?? 0)
   }, 0)
 })
