@@ -381,7 +381,9 @@ const fetchInventoryItems = async () => {
     return
   }
 
-  const filters: Record<string, unknown> = {}
+  const filters: Record<string, unknown> = {
+    exclude_zero_qty: 'true'
+  }
   if (searchText.value.trim()) {
     filters[searchField.value] = searchText.value.trim()
   }

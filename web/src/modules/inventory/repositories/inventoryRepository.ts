@@ -1080,6 +1080,7 @@ const getInventoryItemImages = async (ids: number[]): Promise<Array<{ id: number
     .from('inventory_items')
     .select('id, image_url')
     .in('id', ids)
+    .order('created_at', { ascending: true })
   if (error) throw error
   return (data as Array<{ id: number; image_url: string | null }>) || []
 }

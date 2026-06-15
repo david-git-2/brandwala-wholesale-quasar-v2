@@ -162,14 +162,16 @@
                     label-set="Save"
                     label-cancel="Cancel"
                     @save="onUpdateDiscount"
+                    v-slot="scope"
                   >
                     <q-input
-                      :model-value="Number(invoice?.discount_amount ?? 0)"
+                      v-model.number="scope.value"
                       type="number"
                       dense
                       autofocus
                       min="0"
                       label="Invoice Discount"
+                      @keyup.enter="scope.set"
                     />
                   </q-popup-edit>
                 </div>
@@ -203,6 +205,7 @@
                     <th class="text-right">Cost</th>
                     <th class="text-right">Sell Price</th>
                     <th class="text-right">Quantity</th>
+                    <th class="text-right">Discount</th>
                     <th class="text-right">Returned</th>
                     <th class="text-right">Return Amount</th>
                     <th class="text-right">Line Total</th>
@@ -262,9 +265,12 @@
                         />
                       </q-popup-edit>
                     </td>
+                    <td class="text-right text-orange-9 text-weight-medium">
+                      {{ formatAmount(Number(row.line_discount_amount ?? 0)) }}
+                    </td>
                     <td class="text-right text-black">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
                     <td class="text-right text-black">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
-                    <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row)) }}</td>
+                    <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row) - Number(row.line_discount_amount ?? 0)) }}</td>
                     <td class="text-right">
                       <q-btn
                         flat
@@ -291,9 +297,10 @@
                   <tr v-if="invoiceStore.invoiceItems.length" class="totals-row">
                     <td colspan="5" class="text-right text-weight-bold">Total</td>
                     <td class="text-right text-weight-bold text-black">{{ totalQuantity }}</td>
+                    <td class="text-right text-weight-bold text-orange-9">{{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}</td>
                     <td class="text-right text-weight-bold text-black">{{ formatQuantity(totalReturnedQuantity) }}</td>
                     <td class="text-right text-weight-bold text-black">{{ formatAmount(totalReturnedAmount) }}</td>
-                    <td class="text-right text-weight-bold text-black text-primary">{{ formatAmount(totalSellAmount) }}</td>
+                    <td class="text-right text-weight-bold text-black text-primary">{{ formatAmount(totalSellAmount - Number(invoice?.discount_amount ?? 0)) }}</td>
                     <td></td>
                   </tr>
                 </tbody>
@@ -628,6 +635,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
 import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import type { CreateInvoiceItemInput } from '../types/index'
 import { inventoryService } from 'src/modules/inventory/services/inventoryService'
 import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
 import { showWarningDialog } from 'src/utils/appFeedback'
@@ -967,7 +975,7 @@ const load = async () => {
         page: 1,
         page_size: 100,
         sortBy: 'created_at',
-        sortOrder: 'desc',
+        sortOrder: 'asc',
       }),
       billingProfileStore.fetchBillingProfiles({
         tenant_id: authStore.tenantId,
@@ -1120,7 +1128,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       return
     }
     const costAmount = Number(item.cost ?? 0)
-    const createInvoiceItemResult = await invoiceStore.createInvoiceItem({
+    const createInvoiceItemPayload: CreateInvoiceItemInput = {
       tenant_id: authStore.tenantId,
       invoice_id: invoice.value.id,
       shipment_id: (item.shipment?.shipment?.id as number | null | undefined) ?? null,
@@ -1141,7 +1149,10 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       line_discount_amount: 0,
       line_tax_amount: 0,
       line_total_amount: 0,
-    })
+      unit: 'pcs',
+      rate: sellPriceAmount,
+    }
+    const createInvoiceItemResult = await invoiceStore.createInvoiceItem(createInvoiceItemPayload)
 
     if (!createInvoiceItemResult.success) {
       return
@@ -1220,7 +1231,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       page: 1,
       page_size: 100,
       sortBy: 'created_at',
-      sortOrder: 'desc',
+      sortOrder: 'asc',
     })
     await syncInvoiceSellTotal()
     await loadInvoiceItemImages()
@@ -1409,7 +1420,7 @@ const onConfirmReturn = async () => {
     page: 1,
     page_size: 100,
     sortBy: 'created_at',
-    sortOrder: 'desc',
+    sortOrder: 'asc',
   })
   await syncInvoiceSellTotal()
 }
@@ -1439,7 +1450,7 @@ const onUpdateDiscount = async (value: string | number | null) => {
       page: 1,
       page_size: 100,
       sortBy: 'created_at',
-      sortOrder: 'desc',
+      sortOrder: 'asc',
     })
   }
 }
