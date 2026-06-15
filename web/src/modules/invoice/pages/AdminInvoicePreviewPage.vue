@@ -244,6 +244,8 @@
                       outlined
                       dense
                       stack-label
+                      readonly
+                      disable
                       class="soft-input dense-input"
                     />
                   </div>
@@ -255,6 +257,8 @@
                       outlined
                       dense
                       stack-label
+                      readonly
+                      disable
                       class="soft-input dense-input"
                     />
                   </div>
@@ -723,17 +727,23 @@ onMounted(() => {
 }
 
 .dense-input :deep(.q-field__control) {
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .dense-input :deep(.q-field__marginal) {
-  height: 32px;
+  height: 36px;
 }
 
 .dense-input :deep(.q-field__native) {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: 10px !important;
+  padding-bottom: 0 !important;
+  font-size: 11px !important;
+}
+
+.dense-input :deep(.q-field__label) {
+  font-size: 12px !important;
+  transform: translateY(-35%) scale(0.8) !important;
 }
 
 .invoice-sheet {

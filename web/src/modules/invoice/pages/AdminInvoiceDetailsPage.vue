@@ -193,102 +193,112 @@
             No invoice items added yet. Use the "Search Stock" button to add items.
           </div>
           <q-card v-else flat class="floating-surface shadow-1 q-pa-xs">
-            <q-markup-table flat wrap-cells class="invoice-items-table">
-              <thead>
-                <tr>
-                  <th class="text-left" style="width: 56px">SL</th>
-                  <th class="text-left" style="width: 72px">Image</th>
-                  <th class="text-left">Name</th>
-                  <th class="text-right">Cost</th>
-                  <th class="text-right">Sell Price</th>
-                  <th class="text-right">Quantity</th>
-                  <th class="text-right">Returned</th>
-                  <th class="text-right">Return Amount</th>
-                  <th class="text-right">Line Total</th>
-                  <th class="text-right" style="width: 90px">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
-                  <td>{{ index + 1 }}</td>
-                  <td>
-                    <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
-                      <img
-                        :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
-                        alt="item image"
-                        class="invoice-image"
-                        style="object-fit: contain;"
-                      />
-                    </q-avatar>
-                  </td>
-                  <td style="white-space: normal; word-break: break-word; min-width: 260px;" class="text-black text-weight-medium">
-                    {{ row.name_snapshot }}
-                  </td>
-                  <td class="text-right text-black">{{ formatAmountBdt(row.cost_amount) }}</td>
-                  <td class="text-right">
-                    <span class="cursor-pointer text-primary text-weight-medium">{{ formatAmountBdt(row.sell_price_amount) }}</span>
-                    <q-popup-edit
-                      :model-value="row.sell_price_amount"
-                      buttons
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      @save="(value) => onInlineUpdateSellPrice(row.id, value)"
-                    >
-                      <q-input
+            <div class="invoice-table-wrap">
+              <q-markup-table flat wrap-cells class="invoice-items-table">
+                <thead>
+                  <tr>
+                    <th class="text-left" style="width: 56px">SL</th>
+                    <th class="text-left" style="width: 72px">Image</th>
+                    <th class="text-left">Name</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">Sell Price</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Returned</th>
+                    <th class="text-right">Return Amount</th>
+                    <th class="text-right">Line Total</th>
+                    <th class="text-right" style="width: 90px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
+                    <td class="text-grey-7">{{ index + 1 }}</td>
+                    <td>
+                      <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
+                        <img
+                          :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
+                          alt="item image"
+                          class="invoice-image"
+                          style="object-fit: contain;"
+                        />
+                      </q-avatar>
+                    </td>
+                    <td style="white-space: normal; word-break: break-word; min-width: 260px;" class="text-black text-weight-medium">
+                      {{ row.name_snapshot }}
+                    </td>
+                    <td class="text-right text-black">{{ formatAmountBdt(row.cost_amount) }}</td>
+                    <td class="text-right">
+                      <span class="cursor-pointer text-primary text-weight-medium">{{ formatAmountBdt(row.sell_price_amount) }}</span>
+                      <q-popup-edit
                         :model-value="row.sell_price_amount"
-                        type="number"
-                        dense
-                        autofocus
-                        @update:model-value="(value) => row.sell_price_amount = Number(value ?? 0)"
-                      />
-                    </q-popup-edit>
-                  </td>
-                  <td class="text-right">
-                    <span class="cursor-pointer text-primary text-weight-medium">{{ row.quantity }}</span>
-                    <q-popup-edit
-                      :model-value="row.quantity"
-                      buttons
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      @save="(value) => onInlineUpdateQuantity(row.id, value)"
-                    >
-                      <q-input
+                        buttons
+                        label-set="Save"
+                        label-cancel="Cancel"
+                        @save="(value) => onInlineUpdateSellPrice(row.id, value)"
+                      >
+                        <q-input
+                          :model-value="row.sell_price_amount"
+                          type="number"
+                          dense
+                          autofocus
+                          @update:model-value="(value) => row.sell_price_amount = Number(value ?? 0)"
+                        />
+                      </q-popup-edit>
+                    </td>
+                    <td class="text-right">
+                      <span class="cursor-pointer text-primary text-weight-medium">{{ row.quantity }}</span>
+                      <q-popup-edit
                         :model-value="row.quantity"
-                        type="number"
+                        buttons
+                        label-set="Save"
+                        label-cancel="Cancel"
+                        @save="(value) => onInlineUpdateQuantity(row.id, value)"
+                      >
+                        <q-input
+                          :model-value="row.quantity"
+                          type="number"
+                          dense
+                          autofocus
+                          @update:model-value="(value) => row.quantity = Math.max(1, Math.floor(Number(value ?? 1)))"
+                        />
+                      </q-popup-edit>
+                    </td>
+                    <td class="text-right text-black">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
+                    <td class="text-right text-black">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
+                    <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row)) }}</td>
+                    <td class="text-right">
+                      <q-btn
+                        flat
+                        round
                         dense
-                        autofocus
-                        @update:model-value="(value) => row.quantity = Math.max(1, Math.floor(Number(value ?? 1)))"
-                      />
-                    </q-popup-edit>
-                  </td>
-                  <td class="text-right text-black">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
-                  <td class="text-right text-black">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
-                  <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row)) }}</td>
-                  <td class="text-right">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      icon="o_assignment_return"
-                      color="warning"
-                      @click="openReturnDialog(row.id)"
-                    >
-                      <q-tooltip>Return</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      icon="o_delete"
-                      color="negative"
-                      @click="openDeleteInvoiceItem(row.id)"
-                    >
-                      <q-tooltip>Delete</q-tooltip>
-                    </q-btn>
-                  </td>
-                </tr>
-              </tbody>
-            </q-markup-table>
+                        icon="o_assignment_return"
+                        color="warning"
+                        @click="openReturnDialog(row.id)"
+                      >
+                        <q-tooltip>Return</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="o_delete"
+                        color="negative"
+                        @click="openDeleteInvoiceItem(row.id)"
+                      >
+                        <q-tooltip>Delete</q-tooltip>
+                      </q-btn>
+                    </td>
+                  </tr>
+                  <tr v-if="invoiceStore.invoiceItems.length" class="totals-row">
+                    <td colspan="5" class="text-right text-weight-bold">Total</td>
+                    <td class="text-right text-weight-bold text-black">{{ totalQuantity }}</td>
+                    <td class="text-right text-weight-bold text-black">{{ formatQuantity(totalReturnedQuantity) }}</td>
+                    <td class="text-right text-weight-bold text-black">{{ formatAmount(totalReturnedAmount) }}</td>
+                    <td class="text-right text-weight-bold text-black text-primary">{{ formatAmount(totalSellAmount) }}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+            </div>
           </q-card>
         </div>
     </div>
@@ -431,7 +441,7 @@
                         label="Quantity"
                         dense
                         outlined
-                        class="soft-input text-center"
+                        class="soft-input text-center no-number-steppers"
                         style="width: 140px"
                         min="1"
                         :max="getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype)"
@@ -474,7 +484,7 @@
                         outlined
                         min="0"
                         label="Sell Price (BDT)"
-                        class="soft-input"
+                        class="soft-input no-number-steppers"
                         style="width: 130px"
                         lazy-rules
                         :rules="[
@@ -917,6 +927,18 @@ const totalCostAmount = computed(() =>
 const totalReturnedAmount = computed(() =>
   invoiceStore.invoiceItems.reduce(
     (sum, row) => sum + Number(row.return_amount ?? 0),
+    0,
+  ),
+)
+const totalQuantity = computed(() =>
+  invoiceStore.invoiceItems.reduce(
+    (sum, row) => sum + Number(row.quantity ?? 0),
+    0,
+  ),
+)
+const totalReturnedQuantity = computed(() =>
+  invoiceStore.invoiceItems.reduce(
+    (sum, row) => sum + getReturnedQuantity(row),
     0,
   ),
 )
@@ -1804,6 +1826,17 @@ onMounted(load)
   background: #fff;
 }
 
+.no-number-steppers :deep(input[type='number']) {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.no-number-steppers :deep(input[type='number']::-webkit-outer-spin-button),
+.no-number-steppers :deep(input[type='number']::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .floating-surface {
   background: rgba(255, 255, 255, 0.86) !important;
   border-radius: 14px !important;
@@ -1846,5 +1879,48 @@ onMounted(load)
   height: 8px;
   border-radius: 999px;
   margin-right: 6px;
+}
+
+/* ── Scrollable Viewport Wrapper ── */
+.invoice-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 340px);
+}
+
+.invoice-items-table :deep(th) {
+  background: color-mix(in srgb, #f7f9fc 96%, rgba(34, 56, 101, 0.04) 4%);
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b4b66;
+  padding: 10px 12px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid rgba(34, 56, 101, 0.1);
+}
+
+.invoice-items-table :deep(td) {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(34, 56, 101, 0.05);
+  vertical-align: middle;
+}
+
+
+
+/* Totals Row */
+.invoice-items-table :deep(.totals-row td) {
+  background: rgba(248, 250, 254, 0.95) !important;
+  border-top: 2px solid rgba(34, 56, 101, 0.12) !important;
+  font-size: 13px;
+}
+
+/* Mobile compact */
+@media (max-width: 599px) {
+  .invoice-table-wrap {
+    max-height: calc(100vh - 260px);
+  }
 }
 </style>
