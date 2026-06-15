@@ -15,6 +15,7 @@ const FIELDS = [
   'name',
   'email',
   'customer_group_id',
+  'color',
   'phone',
   'address',
   'created_at',

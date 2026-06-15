@@ -123,6 +123,7 @@
         <thead>
           <tr>
             <th class="text-left">SL</th>
+            <th class="text-left">Image</th>
             <th class="text-left">Name</th>
             <th class="text-right">Cost/Unit (BDT)</th>
             <th class="text-right">Qty</th>
@@ -137,10 +138,19 @@
         </thead>
         <tbody>
           <tr v-if="!shipmentStore.shipmentItems.length">
-            <td colspan="11" class="text-center text-grey-7">No shipment items found.</td>
+            <td colspan="12" class="text-center text-grey-7">No shipment items found.</td>
           </tr>
           <tr v-for="(item, index) in shipmentRows" :key="item.id">
             <td>{{ index + 1 }}</td>
+            <td>
+              <q-avatar rounded size="44px" class="bg-grey-2">
+                <img
+                  :src="item.image_url || fallbackImageUrl"
+                  alt="product image"
+                  class="fit"
+                />
+              </q-avatar>
+            </td>
             <td>{{ item.name ?? '-' }}</td>
             <td class="text-right">{{ formatFixed2(item.costPerUnitBdt) }}</td>
             <td class="text-right">{{ item.quantity }}</td>
@@ -153,7 +163,7 @@
             <td class="text-right">{{ item.usableQuantity }}</td>
           </tr>
           <tr v-if="shipmentRows.length" class="text-weight-bold">
-            <td colspan="4" class="text-right">Total</td>
+            <td colspan="5" class="text-right">Total</td>
             <td class="text-right">{{ formatFixed2(totalQuantityCostBdt) }}</td>
             <td class="text-right">{{ formatFixed2(totalReceivedCostBdt) }}</td>
             <td class="text-right text-negative">{{ formatFixed2(totalLossBdt) }}</td>
@@ -249,6 +259,7 @@ const shipmentAccountingEntries = ref<InventoryAccountingEntry[]>([])
 const accountingLoading = ref(false)
 const accountingError = ref<string | null>(null)
 const shipmentInvoicePaidById = ref<Record<string, number>>({})
+const fallbackImageUrl = 'https://placehold.co/44x44?text=No+Image'
 
 const shipmentId = computed(() => {
   const parsed = Number(route.params.id)

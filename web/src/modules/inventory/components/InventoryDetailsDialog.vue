@@ -1,34 +1,41 @@
 <template>
-  <q-dialog v-model="localModelValue" max-width="800px" style="min-width: 600px;">
-    <q-card style="width: 750px; max-width: 95vw; border-radius: 16px;">
-      <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6 text-weight-bold">Stock Batch Details</div>
-        <q-space />
-        <q-btn
-          v-if="item"
-          icon="o_delete"
-          color="negative"
-          flat
-          round
-          dense
-          :disable="!canDeleteBatch"
-          class="q-mr-sm"
-          @click="onDeleteBatch"
-        >
-          <q-tooltip v-if="!canDeleteBatch" anchor="top middle" self="bottom middle">
-            All quantities must be 0 to delete this batch.
-          </q-tooltip>
-          <q-tooltip v-else anchor="top middle" self="bottom middle">
-            Delete this batch
-          </q-tooltip>
-        </q-btn>
-        <q-btn icon="close" flat round dense v-close-popup />
+  <q-dialog v-model="localModelValue" backdrop-filter="blur(4px)">
+    <q-card style="width: 760px; max-width: 95vw; max-height: 90vh;" class="floating-surface shadow-2 q-pa-md scroll">
+      <q-card-section class="row items-center justify-between q-py-sm">
+        <div class="row items-center q-gutter-sm">
+          <q-icon name="inventory_2" size="24px" color="primary" />
+          <div class="text-h6 text-weight-bold text-black">Stock Batch Details</div>
+          <q-badge color="primary" outline class="text-weight-bold q-ml-sm" v-if="item">
+            Batch #{{ item.id }}
+          </q-badge>
+        </div>
+        <div class="row items-center q-gutter-xs">
+          <q-btn
+            v-if="item"
+            icon="o_delete"
+            color="negative"
+            flat
+            round
+            dense
+            :disable="!canDeleteBatch"
+            @click="onDeleteBatch"
+          >
+            <q-tooltip v-if="!canDeleteBatch" anchor="top middle" self="bottom middle">
+              All quantities must be 0 to delete this batch.
+            </q-tooltip>
+            <q-tooltip v-else anchor="top middle" self="bottom middle">
+              Delete this batch
+            </q-tooltip>
+          </q-btn>
+          <q-btn icon="close" flat round dense v-close-popup />
+        </div>
       </q-card-section>
+      <q-separator />
 
-      <q-card-section v-if="item" class="q-pt-sm">
+      <q-card-section v-if="item" class="q-pt-md">
         <div class="row q-col-gutter-md">
           <!-- Item image and key details -->
-          <div class="col-12 col-sm-4 text-center">
+          <div class="col-12 col-sm-4 text-center border-right-light">
             <q-avatar rounded size="120px" class="bg-grey-2 q-mb-sm shadow-1">
               <img
                 :src="item.image_url || 'https://placehold.co/120x120?text=No+Image'"
@@ -36,39 +43,41 @@
                 style="object-fit: contain;"
               />
             </q-avatar>
-            <div class="text-subtitle1 text-weight-bold">{{ item.name }}</div>
-            <div class="text-caption text-grey-7">ID: {{ item.id }}</div>
-            <div class="text-caption text-grey-8 q-mt-xs">
-              <span class="text-weight-bold">Cost:</span> BDT {{ item.cost ?? '-' }}
+            <div class="text-subtitle1 text-weight-bold text-black q-px-xs">{{ item.name }}</div>
+            <div class="text-caption text-grey-8 q-mt-xs">ID: <span class="text-black text-weight-medium">{{ item.id }}</span></div>
+            <div class="text-subtitle2 text-black q-mt-sm">
+              Cost: <strong class="text-primary">BDT {{ item.cost ?? '-' }}</strong>
             </div>
           </div>
 
           <!-- Product meta & quantities -->
           <div class="col-12 col-sm-8">
-            <q-list dense>
+            <q-list dense class="q-mb-md">
               <q-item>
                 <q-item-section>
-                  <q-item-label caption>Barcode</q-item-label>
-                  <q-item-label class="text-weight-medium">{{ item.barcode ?? '-' }}</q-item-label>
+                  <q-item-label caption class="text-grey-8 text-weight-bold">Barcode</q-item-label>
+                  <q-item-label class="text-weight-bold text-black">{{ item.barcode ?? '-' }}</q-item-label>
                 </q-item-section>
               </q-item>
               <q-item>
                 <q-item-section>
-                  <q-item-label caption>Product Code</q-item-label>
-                  <q-item-label class="text-weight-medium">{{ item.product_code ?? '-' }}</q-item-label>
+                  <q-item-label caption class="text-grey-8 text-weight-bold">Product Code</q-item-label>
+                  <q-item-label class="text-weight-bold text-black">{{ item.product_code ?? '-' }}</q-item-label>
                 </q-item-section>
               </q-item>
               <q-item>
                 <q-item-section>
-                  <q-item-label caption>Shipment Source</q-item-label>
-                  <q-item-label class="text-weight-medium">
+                  <q-item-label caption class="text-grey-8 text-weight-bold">Shipment Source</q-item-label>
+                  <q-item-label class="text-weight-medium text-black">
                     {{ item.shipment?.shipment?.name ? `#${item.shipment.shipment.id} ${item.shipment.shipment.name}` : 'Manual Entry' }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
             </q-list>
 
-            <div class="text-subtitle2 q-mt-md q-mb-sm row items-center justify-between">
+            <q-separator class="q-my-sm" />
+
+            <div class="text-subtitle1 text-weight-bold text-black q-mb-sm row items-center justify-between">
               <span>Quantities Status</span>
               <q-btn
                 v-if="item && draftStock"
@@ -76,26 +85,27 @@
                 dense
                 no-caps
                 color="primary"
-                :icon="isEditingQuantities ? 'close' : 'edit'"
+                :icon="isEditingQuantities ? 'close' : 'o_edit'"
                 :label="isEditingQuantities ? 'Cancel Edit' : 'Edit Quantities'"
+                class="pill-btn slim-btn border-light q-px-sm"
                 @click="isEditingQuantities = !isEditingQuantities"
               />
             </div>
 
             <!-- Read-only View -->
-            <div v-if="!isEditingQuantities" class="row q-col-gutter-xs">
+            <div v-if="!isEditingQuantities" class="row q-col-gutter-sm">
               <div v-for="(qty, label) in formattedQuantities" :key="label" class="col-4 text-center">
-                <div class="q-pa-xs rounded text-weight-bold border column items-center justify-center" :class="qty.bg" style="min-height: 60px;">
-                  <div class="text-caption text-grey-9 text-uppercase" style="font-size: 0.7rem;">{{ label }}</div>
-                  <div class="text-subtitle1 font-bold">{{ qty.val }}</div>
+                <div class="q-pa-sm rounded-borders column items-center justify-center soft-qty-card" :class="qty.bg" style="min-height: 64px;">
+                  <div class="text-caption text-grey-9 text-weight-bold text-uppercase text-spacing-wide">{{ label }}</div>
+                  <div class="text-h6 text-weight-bolder text-black q-mt-xs">{{ qty.val }}</div>
                 </div>
               </div>
             </div>
 
             <!-- Edit View -->
-            <div v-else-if="draftStock" class="row q-col-gutter-sm bg-grey-1 q-pa-md rounded border">
-              <div class="col-12 text-caption text-grey-7 q-mb-xs">
-                Modify stock counts directly. Click "Save Quantities" at the bottom to apply.
+            <div v-else-if="draftStock" class="row q-col-gutter-sm bg-grey-1 q-pa-md rounded border-light shadow-1">
+              <div class="col-12 text-caption text-grey-8 text-weight-bold q-mb-xs">
+                Modify stock counts directly. Click "Save Quantities" to apply.
               </div>
               
               <div class="col-6 col-sm-4">
@@ -104,7 +114,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Available (Usable) *"
                   min="0"
                 />
@@ -115,7 +125,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Open Box (Usable) *"
                   min="0"
                 />
@@ -126,7 +136,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Reserved"
                   min="0"
                 />
@@ -137,7 +147,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Damaged"
                   min="0"
                 />
@@ -148,7 +158,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Stolen"
                   min="0"
                 />
@@ -159,7 +169,7 @@
                   type="number"
                   outlined
                   dense
-                  bg-color="white"
+                  class="soft-input bg-white"
                   label="Expired"
                   min="0"
                 />
@@ -171,7 +181,8 @@
                   color="positive"
                   label="Save Quantities"
                   no-caps
-                  icon="save"
+                  icon="o_save"
+                  class="pill-btn slim-btn shadow-1"
                   :loading="isSubmitting"
                   :disable="!hasStockChanges"
                   @click="() => void saveStockChanges()"
@@ -186,18 +197,18 @@
           flat
           no-caps
           color="primary"
-          icon="swap_horiz"
+          icon="o_swap_horiz"
           label="Stock Movement & Split Actions"
-          class="full-width q-my-md text-weight-bold pill-btn"
-          style="background: rgba(63, 103, 179, 0.06); border-radius: 8px;"
+          class="full-width q-my-md text-weight-bold pill-btn slim-btn shadow-1 border-light"
+          style="background: rgba(37, 99, 235, 0.06); border-radius: 12px;"
           @click="showMovementForm = !showMovementForm"
         />
 
         <!-- Stock Action Form Panel -->
         <q-slide-transition>
-          <div v-if="showMovementForm" class="q-mb-md q-pa-md border rounded bg-grey-1" style="border-radius: 12px;">
-            <div class="text-subtitle2 q-mb-md text-weight-bold row items-center">
-              <q-icon name="edit_note" color="primary" size="20px" class="q-mr-sm" />
+          <div v-if="showMovementForm" class="q-mb-md q-pa-md border-light rounded bg-grey-1 shadow-1" style="border-radius: 12px;">
+            <div class="text-subtitle2 q-mb-md text-weight-bold text-black row items-center">
+              <q-icon name="o_edit_note" color="primary" size="20px" class="q-mr-sm" />
               Perform Manual Stock Action
             </div>
 
@@ -208,7 +219,8 @@
               map-options
               outlined
               dense
-              class="q-mb-md bg-white"
+              options-dense
+              class="q-mb-md bg-white soft-input"
               label="Action Type"
             />
 
@@ -221,7 +233,7 @@
                   outlined
                   dense
                   readonly
-                  class="q-mb-md bg-grey-2"
+                  class="q-mb-md bg-grey-2 soft-input"
                 />
               </div>
               <div class="col-12 col-sm-6">
@@ -232,7 +244,8 @@
                   map-options
                   outlined
                   dense
-                  class="bg-white"
+                  options-dense
+                  class="bg-white soft-input"
                   label="Target Split Condition"
                 />
               </div>
@@ -241,12 +254,12 @@
                   v-model="movementForm.nameSuffix"
                   outlined
                   dense
-                  class="bg-white"
+                  class="bg-white soft-input"
                   label="Name Suffix"
                 />
               </div>
-              <div class="col-12 class q-mt-sm text-caption text-grey-8 text-right">
-                Available standard stock: <strong>{{ item.quantities.available }}</strong> units
+              <div class="col-12 class q-mt-sm text-caption text-grey-9 text-right text-weight-bold">
+                Available standard stock: <span class="text-black">{{ item.quantities.available }}</span> units
               </div>
             </div>
 
@@ -259,7 +272,7 @@
                   outlined
                   dense
                   readonly
-                  class="q-mb-md bg-grey-2"
+                  class="q-mb-md bg-grey-2 soft-input"
                 />
               </div>
               <div class="col-12">
@@ -270,13 +283,14 @@
                   map-options
                   outlined
                   dense
-                  class="bg-white"
+                  options-dense
+                  class="bg-white soft-input"
                   label="Move To (Target Batch)"
                   no-data-label="No other active batches found for this product"
                 />
               </div>
-              <div class="col-12 class q-mt-sm text-caption text-grey-8 text-right">
-                Available standard stock: <strong>{{ item.quantities.available }}</strong> units
+              <div class="col-12 class q-mt-sm text-caption text-grey-9 text-right text-weight-bold">
+                Available standard stock: <span class="text-black">{{ item.quantities.available }}</span> units
               </div>
             </div>
 
@@ -287,7 +301,7 @@
                   type="number"
                   outlined
                   dense
-                  class="bg-white"
+                  class="bg-white soft-input"
                   label="Quantity"
                   min="1"
                   :max="item.quantities.available"
@@ -298,7 +312,7 @@
                   v-model="movementForm.note"
                   outlined
                   dense
-                  class="bg-white"
+                  class="bg-white soft-input"
                   :label="movementAction === 'split' ? 'Movement Note (Required) *' : 'Movement Note (Optional)'"
                   :placeholder="movementAction === 'split' ? 'Describe the reason for the split' : 'Why is this stock moving?'"
                 />
@@ -311,6 +325,7 @@
                 color="primary"
                 label="Apply Action"
                 no-caps
+                class="pill-btn slim-btn shadow-1"
                 :loading="isSubmitting"
                 @click="onSubmitMovement"
               />
@@ -732,5 +747,52 @@ const saveStockChanges = async () => {
 }
 .pill-btn {
   border-radius: 999px;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(34, 56, 101, 0.08) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
+.pill-btn {
+  border-radius: 999px !important;
+}
+
+.slim-btn {
+  min-height: 32px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+.border-light {
+  border: 1px solid rgba(34, 56, 101, 0.08) !important;
+}
+
+.border-right-light {
+  border-right: 1px solid rgba(34, 56, 101, 0.08) !important;
+}
+
+.soft-qty-card {
+  border: 1px solid rgba(34, 56, 101, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+  transition: all 0.2s ease;
+}
+
+.soft-qty-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(34, 56, 101, 0.06) !important;
+}
+
+.text-spacing-wide {
+  letter-spacing: 0.05em;
+  font-size: 0.65rem !important;
 }
 </style>

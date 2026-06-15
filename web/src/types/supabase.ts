@@ -106,6 +106,7 @@ export type Database = {
       billing_profiles: {
         Row: {
           address: string | null
+          color: string | null
           created_at: string
           customer_group_id: number | null
           email: string | null
@@ -117,6 +118,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          color?: string | null
           created_at?: string
           customer_group_id?: number | null
           email?: string | null
@@ -128,6 +130,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          color?: string | null
           created_at?: string
           customer_group_id?: number | null
           email?: string | null
@@ -5137,6 +5140,16 @@ export type Database = {
           p_page_size?: number
           p_sort_by?: string
           p_sort_order?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_invoices_paginated: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
           p_tenant_id: number
         }
         Returns: Json

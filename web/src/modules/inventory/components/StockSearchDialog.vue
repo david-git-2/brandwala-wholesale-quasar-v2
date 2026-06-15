@@ -44,18 +44,16 @@
       </q-card-section>
 
       <q-card-section class="q-py-none scroll-area">
-        <q-list separator v-if="searchResults.length">
+        <q-list separator v-if="groupedSearchResults.length">
           <q-item
-            v-for="item in searchResults"
-            :key="item.id"
-            clickable
-            @click="onSelectResult(item)"
-            class="search-result-item"
+            v-for="group in groupedSearchResults"
+            :key="group.key"
+            class="search-result-item q-py-sm"
           >
             <q-item-section avatar>
               <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
                 <img
-                  :src="item.image_url || 'https://placehold.co/48x48?text=No+Image'"
+                  :src="group.image_url || 'https://placehold.co/48x48?text=No+Image'"
                   alt="product image"
                   style="object-fit: contain;"
                 />
@@ -64,28 +62,67 @@
 
             <q-item-section>
               <q-item-label class="text-subtitle2 text-weight-bold row items-center justify-between">
-                <span>{{ item.name }}</span>
-                <span v-if="item.cost !== null" class="text-caption text-grey-8 text-weight-bold">
-                  Cost: BDT {{ item.cost }}
+                <span>{{ group.name }}</span>
+                <span v-if="group.cost !== null" class="text-caption text-grey-8 text-weight-bold">
+                  Cost: BDT {{ group.cost }}
                 </span>
               </q-item-label>
               <q-item-label caption class="text-grey-7 row q-gutter-x-md">
-                <span v-if="item.product_code">Code: {{ item.product_code }}</span>
-                <span v-if="item.barcode">Barcode: {{ item.barcode }}</span>
-                <span>ID: {{ item.id }}</span>
+                <span v-if="group.product_code">Code: {{ group.product_code }}</span>
+                <span v-if="group.barcode">Barcode: {{ group.barcode }}</span>
+                <span v-if="group.shipment?.shipment?.id">Shipment ID: {{ group.shipment.shipment.id }}</span>
               </q-item-label>
               <div class="row items-center q-gutter-xs q-mt-xs">
-                <q-chip dense square color="green-1" text-color="green-8" class="text-overline text-weight-bold">
-                  Usable: {{ item.quantities.usable }}
+                <q-chip
+                  v-if="group.subtypes.standard && group.subtypes.standard.quantities.usable > 0"
+                  clickable
+                  @click="onSelectResult(group.subtypes.standard)"
+                  dense
+                  square
+                  color="green-1"
+                  text-color="green-8"
+                  class="text-overline text-weight-bold animate-hover"
+                >
+                  Usable: {{ group.subtypes.standard.quantities.usable }}
                 </q-chip>
-                <q-chip v-if="item.quantities.open_box" dense square color="blue-1" text-color="blue-8" class="text-overline text-weight-bold">
-                  Open Box: {{ item.quantities.open_box }}
+                <q-chip
+                  v-if="group.subtypes.boxless && group.subtypes.boxless.quantities.open_box > 0"
+                  clickable
+                  @click="onSelectResult(group.subtypes.boxless)"
+                  dense
+                  square
+                  color="blue-1"
+                  text-color="blue-8"
+                  class="text-overline text-weight-bold animate-hover"
+                >
+                  Boxless: {{ group.subtypes.boxless.quantities.open_box }}
                 </q-chip>
-                <q-chip v-if="item.quantities.damaged" dense square color="red-1" text-color="red-8" class="text-overline text-weight-bold">
-                  Damaged: {{ item.quantities.damaged }}
+                <q-chip
+                  v-if="group.subtypes.box_damage && group.subtypes.box_damage.quantities.open_box > 0"
+                  clickable
+                  @click="onSelectResult(group.subtypes.box_damage)"
+                  dense
+                  square
+                  color="orange-1"
+                  text-color="orange-8"
+                  class="text-overline text-weight-bold animate-hover"
+                >
+                  Box Damage: {{ group.subtypes.box_damage.quantities.open_box }}
                 </q-chip>
-                <q-chip v-if="item.tenant_name" dense square color="purple-1" text-color="purple-8" class="text-overline text-weight-bold">
-                  Tenant: {{ item.tenant_name }}
+                <q-chip
+                  v-if="group.subtypes.expired && group.subtypes.expired.quantities.expired > 0"
+                  clickable
+                  @click="onSelectResult(group.subtypes.expired)"
+                  dense
+                  square
+                  color="purple-1"
+                  text-color="purple-8"
+                  class="text-overline text-weight-bold animate-hover"
+                >
+                  Expired: {{ group.subtypes.expired.quantities.expired }}
+                </q-chip>
+                <q-chip v-if="group.tenant_name" dense square color="grey-2" text-color="grey-8" class="text-overline text-weight-bold">
+                  Tenant: {{ group.tenant_name }}
                 </q-chip>
               </div>
             </q-item-section>
@@ -148,6 +185,85 @@ const searchByOptions = [
   { label: 'Product Code', value: 'product_code' },
   { label: 'Product ID', value: 'product_id' },
 ]
+
+interface GroupedInventoryStock {
+  key: string
+  name: string
+  image_url: string | null
+  product_id: number | null
+  barcode: string | null
+  product_code: string | null
+  cost: number | null
+  tenant_name: string | null
+  tenant_id: number
+  shipment: InventoryItemWithStock['shipment']
+  subtypes: {
+    standard?: InventoryItemWithStock
+    boxless?: InventoryItemWithStock
+    box_damage?: InventoryItemWithStock
+    expired?: InventoryItemWithStock
+  }
+}
+
+const cleanName = (name: string) => {
+  return name
+    .replace(/\s*\(Boxless\)$/i, '')
+    .replace(/\s*\(Box Damage\)$/i, '')
+    .replace(/\s*\(Expired\)$/i, '')
+    .replace(/\s*\(Stolen\/Missing\)$/i, '')
+    .replace(/\s*\(Stolen\)$/i, '')
+}
+
+const getSubtypeFromItem = (item: { name: string }) => {
+  const name = item.name || ''
+  if (name.endsWith(' (Boxless)')) return 'boxless'
+  if (name.endsWith(' (Box Damage)')) return 'box_damage'
+  if (name.endsWith(' (Expired)')) return 'expired'
+  if (name.endsWith(' (Stolen/Missing)') || name.endsWith(' (Stolen)')) return 'stolen'
+  return 'standard'
+}
+
+const groupedSearchResults = computed<GroupedInventoryStock[]>(() => {
+  const groups: Record<string, GroupedInventoryStock> = {}
+
+  for (const item of searchResults.value) {
+    const subtype = getSubtypeFromItem(item)
+    if (subtype === 'stolen') continue
+
+    const baseName = cleanName(item.name)
+    const shipmentId = item.shipment?.shipment?.id ? String(Number(item.shipment.shipment.id)) : 'none'
+    const key = `${item.tenant_id}_${item.product_id || baseName}_${shipmentId}`
+
+    let group = groups[key]
+    if (!group) {
+      group = {
+        key,
+        name: baseName,
+        image_url: item.image_url ?? null,
+        product_id: item.product_id,
+        barcode: item.barcode,
+        product_code: item.product_code,
+        cost: item.cost,
+        tenant_name: item.tenant_name ?? null,
+        tenant_id: item.tenant_id,
+        shipment: item.shipment,
+        subtypes: {},
+      }
+      groups[key] = group
+    }
+
+    group.subtypes[subtype] = item
+
+    if (subtype === 'standard') {
+      group.image_url = item.image_url || group.image_url
+      group.barcode = item.barcode || group.barcode
+      group.product_code = item.product_code || group.product_code
+      group.cost = item.cost !== null ? item.cost : group.cost
+    }
+  }
+
+  return Object.values(groups)
+})
 
 const getPlaceholder = computed(() => {
   switch (searchBy.value) {

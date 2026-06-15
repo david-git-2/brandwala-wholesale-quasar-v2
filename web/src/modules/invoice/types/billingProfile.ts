@@ -6,6 +6,7 @@ export type BillingProfile = {
   name: string
   email: string | null
   customer_group_id: number | null
+  color: string | null
   phone: string | null
   address: string | null
   created_at: string

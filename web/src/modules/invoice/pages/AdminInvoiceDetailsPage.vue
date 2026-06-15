@@ -1,112 +1,156 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5 text-weight-bold">Invoice Details</div>
-      <q-btn
-        outline
-        no-caps
-        icon="arrow_back"
-        label="Back"
-        @click="goBack"
-      />
+  <q-page class="q-pa-md costing-details-page" style="background: transparent;">
+    <PageInitialLoader v-if="initialLoading" />
+    <template v-else>
+      <div
+        class="row items-center justify-between q-mb-md hero-surface floating-surface shadow-1 q-pa-sm q-px-md"
+        :style="headerStyle"
+      >
+      <div>
+        <div class="text-h6 text-weight-bold text-black">Invoice Details</div>
+        <div v-if="invoice" class="text-caption text-grey-8 row items-center q-gutter-x-sm wrap">
+          <span>Invoice Name: <span class="text-black text-weight-medium">{{ invoice.invoice_no }}</span></span>
+          <span class="text-grey-4">|</span>
+          <span>Billing Profile: 
+            <span
+              class="text-weight-bold"
+              :style="{ color: billingProfile?.color || 'inherit' }"
+            >
+              {{ billingProfile?.name || '-' }}
+            </span>
+          </span>
+          <q-chip
+            v-if="customerGroup"
+            dense
+            size="xs"
+            class="text-weight-bold"
+            :style="{
+              backgroundColor: customerGroup.accent_color || '#B45F34',
+              color: getContrastYIQ(customerGroup.accent_color || '#B45F34')
+            }"
+          >
+            {{ customerGroup.name }}
+          </q-chip>
+        </div>
+      </div>
+      <div v-if="invoice" class="row items-center q-gutter-sm">
+        <!-- Status Chip Selector (Costing style) -->
+        <q-chip
+          dense
+          square
+          clickable
+          :style="statusChipStyle(invoice.status)"
+          class="costing-file-status-chip q-px-md q-py-sm"
+        >
+          <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(invoice.status) }" />
+          <span class="text-capitalize text-weight-bold">{{ invoice.status.replace('_', ' ') }}</span>
+          <q-menu>
+            <q-list dense style="min-width: 150px">
+              <q-item
+                v-for="option in statusOptions"
+                :key="option.value"
+                clickable
+                v-close-popup
+                @click="onUpdateStatus(option.value)"
+              >
+                <q-item-section class="text-capitalize">{{ option.label }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-chip>
+
+        <!-- Preview Button -->
+        <q-btn
+          v-if="invoice?.status === 'issued'"
+          flat
+          round
+          dense
+          color="secondary"
+          icon="o_visibility"
+          @click="openInvoicePreview"
+        >
+          <q-tooltip>Preview Invoice</q-tooltip>
+        </q-btn>
+
+        <!-- Search Stock Button -->
+        <q-btn
+          flat
+          round
+          dense
+          color="primary"
+          icon="o_search"
+          @click="searchDialogOpen = true"
+        >
+          <q-tooltip>Search Stock</q-tooltip>
+        </q-btn>
+
+        <!-- Customer Payment Button -->
+        <q-btn
+          flat
+          round
+          dense
+          color="secondary"
+          icon="o_payments"
+          :disable="!invoice?.billing_profile_id"
+          @click="openCustomerPaymentDetails"
+        >
+          <q-tooltip>Customer Payment</q-tooltip>
+        </q-btn>
+      </div>
     </div>
-    <div v-if="invoice" class="q-gutter-md">
-        <div>
-          <div class="text-caption text-grey-7">Invoice Name</div>
-          <div class="text-body1 text-weight-medium">{{ invoice.invoice_no }}</div>
-        </div>
-        <div>
-          <div class="text-caption text-grey-7 q-mb-xs">Status</div>
-          <div class="row justify-end items-center q-gutter-sm">
-            <q-btn
-              v-if="invoice?.status === 'issued'"
-              color="secondary"
-              no-caps
-              icon="visibility"
-              label="Preview"
-              @click="openInvoicePreview"
-            />
-            <q-select
-              v-model="selectedStatus"
-              :options="statusOptions"
-              outlined
-              dense
-              emit-value
-              map-options
-              option-value="value"
-              option-label="label"
-              :loading="invoiceStore.saving"
-              style="width: 220px"
-              @update:model-value="onUpdateStatus"
-            />
-            <q-btn
-              color="primary"
-              no-caps
-              icon="search"
-              label="Search Stock"
-              @click="searchDialogOpen = true"
-            />
-            <q-btn
-              color="secondary"
-              no-caps
-              icon="payments"
-              label="Customer Payment"
-              :disable="!invoice?.billing_profile_id"
-              @click="openCustomerPaymentDetails"
-            />
+
+    <div v-if="invoice" class="q-gutter-y-sm">
+        <!-- Metric summaries row 1 -->
+        <div class="row q-col-gutter-sm">
+          <div class="col-12 col-sm-3">
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Total Sell</div>
+                <div class="text-subtitle1 text-weight-bolder text-black">{{ formatAmount(totalSellAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Total Cost</div>
+                <div class="text-subtitle1 text-weight-bolder text-black">{{ formatAmount(totalCostAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Total Profit</div>
+                <div class="text-subtitle1 text-weight-bolder text-positive">{{ formatAmount(totalProfitAmount) }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-3">
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Paid Amount</div>
+                <div class="text-subtitle1 text-weight-bolder text-primary">{{ formatAmount(Number(invoice?.paid_amount ?? 0)) }}</div>
+              </q-card-section>
+            </q-card>
           </div>
         </div>
 
-        <q-separator />
-
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-sm-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Total Sell</div>
-                <div class="text-h6 text-weight-bold">{{ formatAmount(totalSellAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Total Cost</div>
-                <div class="text-h6 text-weight-bold">{{ formatAmount(totalCostAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Total Profit</div>
-                <div class="text-h6 text-weight-bold text-positive">{{ formatAmount(totalProfitAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Paid Amount</div>
-                <div class="text-h6 text-weight-bold text-primary">{{ formatAmount(Number(invoice?.paid_amount ?? 0)) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
-        <div class="row q-col-gutter-md">
+        <!-- Metric summaries row 2 -->
+        <div class="row q-col-gutter-sm">
           <div class="col-12 col-sm-4">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Total Returned Amount</div>
-                <div class="text-h6 text-weight-bold text-warning">{{ formatAmount(totalReturnedAmount) }}</div>
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Total Returned</div>
+                <div class="text-subtitle1 text-weight-bolder text-warning">{{ formatAmount(totalReturnedAmount) }}</div>
               </q-card-section>
             </q-card>
           </div>
           <div class="col-12 col-sm-4">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Discount</div>
-                <div class="text-h6 text-weight-bold text-orange cursor-pointer">
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Discount (Click to edit)</div>
+                <div class="text-subtitle1 text-weight-bolder text-orange-9 cursor-pointer">
                   {{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}
                   <q-popup-edit
                     :model-value="Number(invoice?.discount_amount ?? 0)"
@@ -129,240 +173,325 @@
             </q-card>
           </div>
           <div class="col-12 col-sm-4">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey-7">Outstanding Amount</div>
-                <div class="text-h6 text-weight-bold text-negative">{{ formatAmount(outstandingAmount) }}</div>
+            <q-card flat class="floating-surface shadow-1">
+              <q-card-section class="q-pa-sm text-center">
+                <div class="text-caption text-grey-8 text-weight-medium">Outstanding Amount</div>
+                <div class="text-subtitle1 text-weight-bolder text-negative">{{ formatAmount(outstandingAmount) }}</div>
               </q-card-section>
             </q-card>
           </div>
         </div>
 
-        <div class="q-gutter-sm">
-          <div class="text-subtitle2">Invoice Item List</div>
-          <div v-if="!invoiceStore.invoiceItems.length && !invoiceStore.loading" class="text-grey-7">
-            No invoice items added yet.
+        <!-- Invoice Item list table -->
+        <div class="q-mb-md">
+          <div class="text-subtitle1 text-weight-bold text-black q-mb-sm">Invoice Item List</div>
+          <div v-if="!invoiceStore.invoiceItems.length && !invoiceStore.loading" class="text-grey-8 floating-surface shadow-1 q-pa-md text-center">
+            No invoice items added yet. Use the "Search Stock" button to add items.
           </div>
-          <q-markup-table v-else flat bordered wrap-cells>
-            <thead>
-              <tr>
-                <th class="text-left" style="width: 56px">SL</th>
-                <th class="text-left" style="width: 72px">Image</th>
-                <th class="text-left">Name</th>
-                <th class="text-right">Cost</th>
-                <th class="text-right">Sell Price</th>
-                <th class="text-right">Quantity</th>
-                <th class="text-right">Returned</th>
-                <th class="text-right">Return Amount</th>
-                <th class="text-right">Line Total</th>
-                <th class="text-right" style="width: 90px">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
-                <td>{{ index + 1 }}</td>
-                <td>
-                  <q-avatar rounded size="1in">
-                    <img
-                      :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
-                      alt="item image"
-                      class="invoice-image"
-                    />
-                  </q-avatar>
-                </td>
-                <td style="white-space: normal; word-break: break-word; min-width: 260px;">
-                  {{ row.name_snapshot }}
-                </td>
-                <td class="text-right">{{ formatAmountBdt(row.cost_amount) }}</td>
-                <td class="text-right">
-                  <span class="cursor-pointer text-primary">{{ formatAmountBdt(row.sell_price_amount) }}</span>
-                  <q-popup-edit
-                    :model-value="row.sell_price_amount"
-                    buttons
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="(value) => onInlineUpdateSellPrice(row.id, value)"
-                  >
-                    <q-input
+          <q-card v-else flat class="floating-surface shadow-1 q-pa-xs">
+            <q-markup-table flat wrap-cells class="invoice-items-table">
+              <thead>
+                <tr>
+                  <th class="text-left" style="width: 56px">SL</th>
+                  <th class="text-left" style="width: 72px">Image</th>
+                  <th class="text-left">Name</th>
+                  <th class="text-right">Cost</th>
+                  <th class="text-right">Sell Price</th>
+                  <th class="text-right">Quantity</th>
+                  <th class="text-right">Returned</th>
+                  <th class="text-right">Return Amount</th>
+                  <th class="text-right">Line Total</th>
+                  <th class="text-right" style="width: 90px">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
+                  <td>{{ index + 1 }}</td>
+                  <td>
+                    <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
+                      <img
+                        :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
+                        alt="item image"
+                        class="invoice-image"
+                        style="object-fit: contain;"
+                      />
+                    </q-avatar>
+                  </td>
+                  <td style="white-space: normal; word-break: break-word; min-width: 260px;" class="text-black text-weight-medium">
+                    {{ row.name_snapshot }}
+                  </td>
+                  <td class="text-right text-black">{{ formatAmountBdt(row.cost_amount) }}</td>
+                  <td class="text-right">
+                    <span class="cursor-pointer text-primary text-weight-medium">{{ formatAmountBdt(row.sell_price_amount) }}</span>
+                    <q-popup-edit
                       :model-value="row.sell_price_amount"
-                      type="number"
-                      dense
-                      autofocus
-                      @update:model-value="(value) => row.sell_price_amount = Number(value ?? 0)"
-                    />
-                  </q-popup-edit>
-                </td>
-                <td class="text-right">
-                  <span class="cursor-pointer text-primary">{{ row.quantity }}</span>
-                  <q-popup-edit
-                    :model-value="row.quantity"
-                    buttons
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="(value) => onInlineUpdateQuantity(row.id, value)"
-                  >
-                    <q-input
+                      buttons
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      @save="(value) => onInlineUpdateSellPrice(row.id, value)"
+                    >
+                      <q-input
+                        :model-value="row.sell_price_amount"
+                        type="number"
+                        dense
+                        autofocus
+                        @update:model-value="(value) => row.sell_price_amount = Number(value ?? 0)"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td class="text-right">
+                    <span class="cursor-pointer text-primary text-weight-medium">{{ row.quantity }}</span>
+                    <q-popup-edit
                       :model-value="row.quantity"
-                      type="number"
+                      buttons
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      @save="(value) => onInlineUpdateQuantity(row.id, value)"
+                    >
+                      <q-input
+                        :model-value="row.quantity"
+                        type="number"
+                        dense
+                        autofocus
+                        @update:model-value="(value) => row.quantity = Math.max(1, Math.floor(Number(value ?? 1)))"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td class="text-right text-black">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
+                  <td class="text-right text-black">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
+                  <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row)) }}</td>
+                  <td class="text-right">
+                    <q-btn
+                      flat
+                      round
                       dense
-                      autofocus
-                      @update:model-value="(value) => row.quantity = Math.max(1, Math.floor(Number(value ?? 1)))"
-                    />
-                  </q-popup-edit>
-                </td>
-                <td class="text-right">{{ formatQuantity(getReturnedQuantity(row)) }}</td>
-                <td class="text-right">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
-                <td class="text-right">{{ formatAmount(getNetSellAmount(row)) }}</td>
-                <td class="text-right">
-                  <q-btn
-                    flat
-                    round
-                    icon="assignment_return"
-                    color="warning"
-                    @click="openReturnDialog(row.id)"
-                  >
-                    <q-tooltip>Return</q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    flat
-                    round
-                    icon="o_delete"
-                    color="negative"
-                    @click="openDeleteInvoiceItem(row.id)"
-                  >
-                    <q-tooltip>Delete</q-tooltip>
-                  </q-btn>
-                </td>
-              </tr>
-            </tbody>
-          </q-markup-table>
+                      icon="o_assignment_return"
+                      color="warning"
+                      @click="openReturnDialog(row.id)"
+                    >
+                      <q-tooltip>Return</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="o_delete"
+                      color="negative"
+                      @click="openDeleteInvoiceItem(row.id)"
+                    >
+                      <q-tooltip>Delete</q-tooltip>
+                    </q-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
         </div>
-
-        <q-separator />
     </div>
     <div v-else class="text-body1 text-grey-8">
         Invoice not found.
     </div>
 
-    <q-dialog v-model="searchDialogOpen">
-      <q-card style="width: 1000px; max-width: 92vw; max-height: 85vh">
-        <q-card-section class="row items-center justify-between">
-          <div class="text-h6">Search Stock</div>
+    <q-dialog v-model="searchDialogOpen" backdrop-filter="blur(4px)">
+      <q-card style="width: 1000px; max-width: 95vw; max-height: 85vh" class="floating-surface shadow-2 q-pa-md">
+        <q-card-section class="row items-center justify-between q-py-sm">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="inventory_2" size="24px" color="primary" />
+            <div class="text-h6 text-weight-bold text-black">Search Stock</div>
+          </div>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-separator />
 
-        <q-card-section class="q-gutter-md scroll" style="max-height: calc(85vh - 72px)">
-          <div class="row no-wrap q-col-gutter-sm items-start">
-            <div style="width: 220px; min-width: 220px">
+        <q-card-section class="scroll q-pt-md" style="max-height: calc(85vh - 80px)">
+          <!-- Search Toolbar -->
+          <div class="row items-center q-col-gutter-sm q-mb-md">
+            <div class="col-12 col-sm-3">
               <q-select
                 v-model="searchBy"
                 :options="searchByOptions"
                 label="Search By"
                 outlined
                 dense
+                options-dense
                 emit-value
                 map-options
                 option-value="value"
                 option-label="label"
+                class="soft-input"
               />
             </div>
-            <div class="col">
+            <div class="col-12 col-sm-9 row no-wrap items-center q-gutter-xs">
               <q-input
                 v-model="searchTerm"
-                label="Type to search..."
+                placeholder="Type to search stock batch..."
                 outlined
                 dense
                 autofocus
+                class="col soft-input"
+                :loading="searchLoading"
                 @keyup.enter="onSearchStock"
+                @update:model-value="onSearchInput"
+              >
+                <template #prepend>
+                  <q-icon name="o_search" />
+                </template>
+                <template #append v-if="searchTerm">
+                  <q-btn flat round dense icon="o_close" size="xs" @click="searchTerm = ''; searchResults = []" />
+                </template>
+              </q-input>
+              <q-btn
+                color="primary"
+                no-caps
+                label="Search"
+                class="pill-btn slim-btn shadow-1"
+                :loading="searchLoading"
+                @click="onSearchStock"
               />
             </div>
           </div>
 
-          <div v-if="!sortedSearchItems.length && !inventoryStore.loading" class="text-center text-grey-7 q-py-lg">
-            No stock items found.
+          <div v-if="!sortedSearchItemsGrouped.length && !searchLoading" class="text-center text-grey-7 q-py-xl">
+            <q-icon name="o_inventory" size="48px" color="grey-4" class="q-mb-sm" />
+            <div class="text-weight-medium">No stock items found.</div>
+            <div class="text-caption text-grey-6">Try searching with a different term or field option.</div>
           </div>
 
-          <div v-else class="q-gutter-sm">
+          <div v-else class="q-gutter-y-md">
             <q-card
-              v-for="item in sortedSearchItems"
-              :key="item.id"
+              v-for="group in sortedSearchItemsGrouped"
+              :key="group.key"
               flat
-              bordered
+              class="floating-surface shadow-1 border-light"
             >
-              <q-card-section class="row items-center justify-between q-col-gutter-md">
-                <div class="row items-center no-wrap col">
-                  <q-avatar rounded size="56px" class="q-mr-md">
+              <q-card-section class="q-pa-md">
+                <!-- Product details header -->
+                <div class="row items-center no-wrap q-mb-md">
+                  <q-avatar rounded size="64px" class="q-mr-md bg-grey-2 shadow-1">
                     <img
-                      :src="item.image_url || fallbackImageUrl"
+                      :src="group.image_url || fallbackImageUrl"
                       alt="product image"
                       class="invoice-image"
                     />
                   </q-avatar>
-                  <div>
-                    <div class="text-body1 text-weight-medium">
-                      {{ item.name }}
-                      <span v-if="item.tenant_name" class="text-caption text-grey-7">({{ item.tenant_name }})</span>
+                  <div class="col">
+                    <div class="text-subtitle1 text-weight-bold text-black row items-center wrap">
+                      <span>{{ group.name }}</span>
+                      <q-badge color="purple" outline class="q-ml-sm" v-if="group.tenant_name">
+                        {{ group.tenant_name }}
+                      </q-badge>
+                      <q-badge outline color="primary" class="q-ml-sm" v-if="group.shipment?.shipment?.id">
+                        Shipment #{{ group.shipment.shipment.id }}
+                      </q-badge>
                     </div>
-                    <div class="text-caption text-grey-7">
-                      Shipment ID: {{ item.shipment?.shipment?.id ?? '-' }}
-                    </div>
-                    <div class="text-caption text-grey-7">
-                      Cost: {{ item.cost ?? 0 }}
-                    </div>
-                    <div class="invoice-search__usable text-grey-8">
-                      Usable: {{ item.quantities.usable }}
-                    </div>
-                    <div class="invoice-search__usable text-grey-8">
-                      Open Box: {{ item.quantities.open_box }}
+                    <div class="row items-center q-gutter-x-md text-caption text-grey-7 q-mt-xs">
+                      <span v-if="group.product_code">Code: <strong class="text-black">{{ group.product_code }}</strong></span>
+                      <span v-if="group.barcode">Barcode: <strong class="text-black">{{ group.barcode }}</strong></span>
+                      <span v-if="group.product_id">Product ID: <strong class="text-black">{{ group.product_id }}</strong></span>
                     </div>
                   </div>
                 </div>
-                <div>
-                  <div class="row items-center q-gutter-sm">
-                    <q-checkbox
-                      :model-value="isOpenBoxFirstEnabled(item.id)"
-                      label="Open box first"
-                      @update:model-value="(value) => setOpenBoxFirst(item.id, Boolean(value))"
-                    />
-                    <q-input
-                      :model-value="getAddQuantity(item.id)"
-                      type="number"
-                      label="Quantity *"
-                      dense
-                      outlined
-                      min="1"
-                      :max="item.quantities.usable"
-                      style="width: 90px"
-                      lazy-rules
-                      :rules="[
-                        (value: string | number | null) => Number(value ?? 0) > 0 || 'Quantity is required',
-                      ]"
-                      @update:model-value="(value) => setAddQuantity(item.id, value)"
-                    />
-                    <q-input
-                      :model-value="getSellPrice(item.id)"
-                      type="number"
-                      dense
-                      outlined
-                      min="0"
-                      label="Sell Price *"
-                      style="width: 120px"
-                      lazy-rules
-                      :rules="[
-                        (value: string | number | null) =>
-                          value !== null && value !== '' && Number(value) >= 0 || 'Sell price is required',
-                      ]"
-                      @update:model-value="(value) => setSellPrice(item.id, value)"
-                    />
-                    <q-btn
-                      color="primary"
-                      no-caps
-                      label="Add To Invoice"
-                      :loading="Boolean(addLoadingByItemId[item.id])"
-                      :disable="item.quantities.usable <= 0 || !invoice"
-                      @click="addItemToInvoice(item.id)"
-                    />
+
+                <!-- Subtype batched inventory options -->
+                <div class="q-gutter-y-xs">
+                  <div
+                    v-for="subtype in (['standard', 'boxless', 'box_damage', 'expired'] as const)"
+                    :key="subtype"
+                    v-show="getSubtypeItem(group, subtype) && getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype) > 0"
+                    class="row items-center justify-between q-py-sm border-top"
+                  >
+                    <!-- Subtype label, cost and stock badges -->
+                    <div class="col-12 col-sm-4 text-subtitle2 text-grey-9 row items-center q-gutter-xs">
+                      <q-icon
+                        :name="getSubtypeIcon(subtype)"
+                        :color="getSubtypeIconColor(subtype)"
+                        size="18px"
+                      />
+                      <span class="text-weight-bold text-black">{{ getSubtypeLabel(subtype) }}</span>
+                      <div class="q-ml-sm row items-center q-gutter-xs">
+                        <q-badge color="green-2" text-color="green-10" dense>
+                          Stock: {{ getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype) }}
+                        </q-badge>
+                        <q-badge color="grey-3" text-color="grey-9" dense>
+                          Cost: {{ getSubtypeItem(group, subtype)?.cost ?? 0 }} BDT
+                        </q-badge>
+                      </div>
+                    </div>
+
+                    <!-- Quantity counter with +/- buttons, Sell Price, and action button -->
+                    <div class="col-12 col-sm-8 row items-center justify-end q-gutter-sm q-mt-xs-sm q-mt-sm-none">
+                      <!-- Quantity selector with +/- buttons -->
+                      <q-input
+                        :model-value="getAddQuantity(getSubtypeItem(group, subtype)?.id ?? -1)"
+                        type="number"
+                        label="Quantity"
+                        dense
+                        outlined
+                        class="soft-input text-center"
+                        style="width: 140px"
+                        min="1"
+                        :max="getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype)"
+                        lazy-rules
+                        :rules="[
+                          (value: string | number | null) => Number(value ?? 0) > 0 || 'Required',
+                          (value: string | number | null) => Number(value ?? 0) <= getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype) || 'Exceeds stock',
+                        ]"
+                        @update:model-value="(value) => setAddQuantity(getSubtypeItem(group, subtype)?.id ?? -1, value)"
+                      >
+                        <template #prepend>
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="remove"
+                            size="sm"
+                            class="q-mr-xs"
+                            @click="decrementQty(getSubtypeItem(group, subtype)?.id ?? -1)"
+                          />
+                        </template>
+                        <template #append>
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="add"
+                            size="sm"
+                            class="q-ml-xs"
+                            @click="incrementQty(getSubtypeItem(group, subtype)?.id ?? -1, getAvailableQuantityForSubtype(getSubtypeItem(group, subtype) ?? undefined, subtype))"
+                          />
+                        </template>
+                      </q-input>
+
+                      <!-- Sell Price input (defaults to cost) -->
+                      <q-input
+                        :model-value="getSellPrice(getSubtypeItem(group, subtype)?.id ?? -1)"
+                        type="number"
+                        dense
+                        outlined
+                        min="0"
+                        label="Sell Price (BDT)"
+                        class="soft-input"
+                        style="width: 130px"
+                        lazy-rules
+                        :rules="[
+                          (value: string | number | null) =>
+                            value !== null && value !== '' && Number(value) >= 0 || 'Required',
+                        ]"
+                        @update:model-value="(value) => setSellPrice(getSubtypeItem(group, subtype)?.id ?? -1, value)"
+                      />
+
+                      <!-- Action Button -->
+                      <q-btn
+                        color="primary"
+                        no-caps
+                        label="Add To Invoice"
+                        icon="add"
+                        class="pill-btn slim-btn shadow-1"
+                        :loading="Boolean(addLoadingByItemId[getSubtypeItem(group, subtype)?.id ?? -1])"
+                        :disable="!invoice"
+                        @click="addItemToInvoice(getSubtypeItem(group, subtype)?.id ?? -1)"
+                      />
+                    </div>
                   </div>
                 </div>
               </q-card-section>
@@ -474,11 +603,13 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 import { useRoute, useRouter } from 'vue-router'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
 import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
@@ -487,19 +618,27 @@ import { inventoryService } from 'src/modules/inventory/services/inventoryServic
 import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
 import { showWarningDialog } from 'src/utils/appFeedback'
 import { useInvoiceStore } from '../stores/invoiceStore'
+import { useBillingProfileStore } from '../stores/billingProfileStore'
+import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
 import type { InvoiceStatus } from '../types/index'
 import { formatAmountBdt } from 'src/utils/currency'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const invoiceStore = useInvoiceStore()
 const inventoryStore = useInventoryStore()
+const billingProfileStore = useBillingProfileStore()
+const customerGroupStore = useCustomerGroupStore()
+const initialLoading = ref(false)
 const searchDialogOpen = ref(false)
+const searchLoading = ref(false)
+const searchResults = ref<InventoryItemWithStock[]>([])
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const addLoadingByItemId = ref<Record<number, boolean>>({})
 const addQuantityByItemId = ref<Record<number, number | null>>({})
 const sellPriceByItemId = ref<Record<number, number | null>>({})
-const openBoxFirstByItemId = ref<Record<number, boolean>>({})
 const invoiceItemImageMap = ref<Record<number, string>>({})
 const deleteInvoiceItemOpen = ref(false)
 const selectedInvoiceItemId = ref<number | null>(null)
@@ -532,17 +671,216 @@ const statusOptions: { label: string; value: InvoiceStatus }[] = [
   { label: 'Cancelled', value: 'cancelled' },
 ]
 
+const statusChipStyle = (currentStatus: string) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'issued') {
+    return {
+      backgroundColor: '#d7e7f6',
+      color: '#1a4562',
+      border: '1px solid #9ebfdc',
+    }
+  }
+  if (value === 'partially_paid') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    }
+  }
+  if (value === 'paid') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    }
+  }
+  if (value === 'overdue') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    }
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f5f5f5',
+      color: '#616161',
+      border: '1px solid #e0e0e0',
+    }
+  }
+  return {
+    backgroundColor: '#dbe5f3',
+    color: '#3b4b66',
+    border: '1px solid #b9c8dd',
+  }
+}
+
+const statusDotColor = (currentStatus: string) => {
+  const value = (currentStatus ?? '').toLowerCase()
+  if (value === 'draft') return '#9a6a24'
+  if (value === 'issued') return '#2f6e92'
+  if (value === 'partially_paid') return '#3f51b5'
+  if (value === 'paid') return '#2f8b5d'
+  if (value === 'overdue') return '#a64c62'
+  if (value === 'cancelled') return '#757575'
+  return '#66758c'
+}
+
 const invoiceId = computed(() => Number(route.params.invoiceId))
 const invoice = computed(() =>
   invoiceStore.invoices.find((row) => row.id === invoiceId.value) ?? null,
 )
-const sortedSearchItems = computed(() =>
-  [...inventoryStore.items].sort((a, b) => {
+
+const billingProfile = computed(() => {
+  if (!invoice.value?.billing_profile_id) return null
+  return billingProfileStore.items.find((p) => p.id === invoice.value?.billing_profile_id) ?? null
+})
+
+const customerGroup = computed(() => {
+  if (!billingProfile.value?.customer_group_id) return null
+  return customerGroupStore.groups.find((g) => g.id === billingProfile.value?.customer_group_id) ?? null
+})
+
+const headerStyle = computed(() => {
+  const color = billingProfile.value?.color
+  if (color) {
+    return {
+      borderLeft: `6px solid ${color}`,
+    }
+  }
+  return {}
+})
+
+const getContrastYIQ = (hexcolor: string) => {
+  if (!hexcolor || hexcolor.length < 6) return '#000000'
+  const hex = hexcolor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 128 ? '#000000' : '#ffffff'
+}
+
+interface GroupedInventoryStock {
+  key: string
+  name: string
+  image_url: string | null
+  product_id: number | null
+  barcode: string | null
+  product_code: string | null
+  cost: number | null
+  tenant_name: string | null
+  tenant_id: number
+  shipment: InventoryItemWithStock['shipment']
+  subtypes: {
+    standard?: InventoryItemWithStock
+    boxless?: InventoryItemWithStock
+    box_damage?: InventoryItemWithStock
+    expired?: InventoryItemWithStock
+  }
+}
+
+const cleanName = (name: string) => {
+  return name
+    .replace(/\s*\(Boxless\)$/i, '')
+    .replace(/\s*\(Box Damage\)$/i, '')
+    .replace(/\s*\(Expired\)$/i, '')
+    .replace(/\s*\(Stolen\/Missing\)$/i, '')
+    .replace(/\s*\(Stolen\)$/i, '')
+}
+
+const getSubtypeFromItem = (item: { name: string }) => {
+  const name = item.name || ''
+  if (name.endsWith(' (Boxless)')) return 'boxless'
+  if (name.endsWith(' (Box Damage)')) return 'box_damage'
+  if (name.endsWith(' (Expired)')) return 'expired'
+  if (name.endsWith(' (Stolen/Missing)') || name.endsWith(' (Stolen)')) return 'stolen'
+  return 'standard'
+}
+
+const sortedSearchItemsGrouped = computed<GroupedInventoryStock[]>(() => {
+  const groups: Record<string, GroupedInventoryStock> = {}
+
+  for (const item of searchResults.value) {
+    const subtype = getSubtypeFromItem(item)
+    if (subtype === 'stolen') continue
+
+    const baseName = cleanName(item.name)
+    const shipmentId = item.shipment?.shipment?.id ? String(Number(item.shipment.shipment.id)) : 'none'
+    const key = `${item.tenant_id}_${item.product_id || baseName}_${shipmentId}`
+
+    let group = groups[key]
+    if (!group) {
+      group = {
+        key,
+        name: baseName,
+        image_url: item.image_url ?? null,
+        product_id: item.product_id,
+        barcode: item.barcode,
+        product_code: item.product_code,
+        cost: item.cost,
+        tenant_name: item.tenant_name ?? null,
+        tenant_id: item.tenant_id,
+        shipment: item.shipment,
+        subtypes: {},
+      }
+      groups[key] = group
+    }
+
+    group.subtypes[subtype] = item
+
+    if (subtype === 'standard') {
+      group.image_url = item.image_url || group.image_url
+      group.barcode = item.barcode || group.barcode
+      group.product_code = item.product_code || group.product_code
+      group.cost = item.cost !== null ? item.cost : group.cost
+    }
+  }
+
+  const sortedList = Object.values(groups).sort((a, b) => {
     const shipmentIdA = Number(a.shipment?.shipment?.id ?? Number.MAX_SAFE_INTEGER)
     const shipmentIdB = Number(b.shipment?.shipment?.id ?? Number.MAX_SAFE_INTEGER)
     return shipmentIdA - shipmentIdB
-  }),
-)
+  })
+
+  return sortedList
+})
+
+const getAvailableQuantityForSubtype = (item: InventoryItemWithStock | undefined, subtype: 'standard' | 'boxless' | 'box_damage' | 'expired'): number => {
+  if (!item || !item.stock) return 0
+  const stock = item.stock
+  if (subtype === 'standard') {
+    return Math.max(0, Number(stock.available_quantity ?? 0) - Number(stock.reserved_quantity ?? 0))
+  }
+  if (subtype === 'boxless' || subtype === 'box_damage') {
+    return Math.max(0, Number(stock.open_box_quantity ?? 0))
+  }
+  if (subtype === 'expired') {
+    return Math.max(0, Number(stock.expired_quantity ?? 0))
+  }
+  return 0
+}
+
+const getSubtypeItem = (
+  group: GroupedInventoryStock,
+  subtype: 'standard' | 'boxless' | 'box_damage' | 'expired',
+) => group.subtypes[subtype] ?? null
+
+const getSubtypeLabel = (subtype: 'standard' | 'boxless' | 'box_damage' | 'expired') => {
+  switch (subtype) {
+    case 'standard': return 'Standard/Usable'
+    case 'boxless': return 'Boxless'
+    case 'box_damage': return 'Box Damage'
+    case 'expired': return 'Expired'
+  }
+}
 const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
   Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0) + Number(row.return_damaged_quantity ?? 0)
 const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
@@ -583,23 +921,40 @@ const getRemainingReturnAmount = (row: { quantity: number; sell_price_amount: nu
 
 const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
-  await invoiceStore.fetchInvoices({
-    tenant_id: authStore.tenantId,
-    filters: { id: invoiceId.value },
-    operators: { id: 'eq' },
-    page: 1,
-    page_size: 1,
-  })
-  await invoiceStore.fetchInvoiceItems({
-    tenant_id: authStore.tenantId,
-    filters: { invoice_id: invoiceId.value },
-    operators: { invoice_id: 'eq' },
-    page: 1,
-    page_size: 100,
-    sortBy: 'created_at',
-    sortOrder: 'desc',
-  })
-  await loadInvoiceItemImages()
+  initialLoading.value = true
+  try {
+    const fetches: Promise<unknown>[] = [
+      invoiceStore.fetchInvoices({
+        tenant_id: authStore.tenantId,
+        filters: { id: invoiceId.value },
+        operators: { id: 'eq' },
+        page: 1,
+        page_size: 1,
+      }),
+      invoiceStore.fetchInvoiceItems({
+        tenant_id: authStore.tenantId,
+        filters: { invoice_id: invoiceId.value },
+        operators: { invoice_id: 'eq' },
+        page: 1,
+        page_size: 100,
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      }),
+      billingProfileStore.fetchBillingProfiles({
+        tenant_id: authStore.tenantId,
+        page: 1,
+        page_size: 100,
+      }),
+      customerGroupStore.fetchCustomerGroupsByTenant(authStore.tenantId)
+    ]
+    
+    await Promise.all(fetches)
+    await loadInvoiceItemImages()
+  } catch (error) {
+    console.error('Error during initial fetch of invoice details:', error)
+  } finally {
+    initialLoading.value = false
+  }
 }
 
 const onUpdateStatus = async (value: InvoiceStatus | null) => {
@@ -638,54 +993,57 @@ const openCustomerPaymentDetails = async () => {
   })
 }
 
-const goBack = async () => {
-  if (window.history.length > 1) {
-    router.back()
-    return
-  }
-  await router.push({
-    name: 'app-invoice-page',
-    params: {
-      tenantSlug: authStore.tenantSlug ?? undefined,
-    },
-  })
-}
-
 const onSearchStock = async () => {
   const trimmed = searchTerm.value.trim()
   if (!trimmed) {
-    await inventoryStore.fetchGlobalInventoryItems({
+    searchResults.value = []
+    return
+  }
+
+  searchLoading.value = true
+  const isProductIdSearch = searchBy.value === 'product_id'
+  const productIdValue = Number(trimmed)
+  if (isProductIdSearch && !Number.isFinite(productIdValue)) {
+    searchResults.value = []
+    searchLoading.value = false
+    return
+  }
+
+  try {
+    const res = await inventoryService.listGlobalInventoryItems({
+      filters: {
+        [searchBy.value]: isProductIdSearch ? productIdValue : trimmed,
+      },
+      operators: {
+        [searchBy.value]: isProductIdSearch ? 'eq' : 'ilike',
+      },
       page: 1,
       page_size: 20,
       sortBy: 'id',
       sortOrder: 'desc',
     })
-    return
-  }
 
-  const isProductIdSearch = searchBy.value === 'product_id'
-  const productIdValue = Number(trimmed)
-  if (isProductIdSearch && !Number.isFinite(productIdValue)) {
-    return
+    searchResults.value = res.success && res.data ? res.data.data : []
+  } catch (error) {
+    console.error('Error during invoice stock search:', error)
+    searchResults.value = []
+  } finally {
+    searchLoading.value = false
   }
+}
 
-  await inventoryStore.fetchGlobalInventoryItems({
-    filters: {
-      [searchBy.value]: isProductIdSearch ? productIdValue : trimmed,
-    },
-    operators: {
-      [searchBy.value]: isProductIdSearch ? 'eq' : 'ilike',
-    },
-    page: 1,
-    page_size: 20,
-    sortBy: 'id',
-    sortOrder: 'asc',
-  })
+const onSearchInput = () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    void onSearchStock()
+  }, 350)
 }
 
 const addItemToInvoice = async (inventoryItemId: number) => {
   if (!authStore.tenantId || !invoice.value) return
-  const item = inventoryStore.items.find((row) => row.id === inventoryItemId)
+  const item = searchResults.value.find((row) => row.id === inventoryItemId)
   if (!item) return
 
   const stock = item.stock
@@ -696,18 +1054,29 @@ const addItemToInvoice = async (inventoryItemId: number) => {
 
   const previousAvailable = Number(stock.available_quantity ?? 0)
   const previousOpenBox = Number(stock.open_box_quantity ?? 0)
-  const previousUsable = Math.max(0, previousAvailable - Number(stock.reserved_quantity ?? 0))
-  const totalUsablePool = previousUsable + previousOpenBox
-  if (totalUsablePool <= 0) {
-    showWarningDialog('No usable stock left for this item.')
+  const previousExpired = Number(stock.expired_quantity ?? 0)
+
+  const subtype = getSubtypeFromItem(item)
+  let usablePool = 0
+  if (subtype === 'standard') {
+    usablePool = Math.max(0, previousAvailable - Number(stock.reserved_quantity ?? 0))
+  } else if (subtype === 'boxless' || subtype === 'box_damage') {
+    usablePool = previousOpenBox
+  } else if (subtype === 'expired') {
+    usablePool = previousExpired
+  }
+
+  if (usablePool <= 0) {
+    showWarningDialog('No usable stock left for this item subtype.')
     return
   }
+
   const quantity = getAddQuantity(inventoryItemId)
   if (quantity == null || !Number.isFinite(quantity) || quantity <= 0) {
     showWarningDialog('Please enter a valid quantity.')
     return
   }
-  if (quantity > totalUsablePool) {
+  if (quantity > usablePool) {
     showWarningDialog('Quantity is greater than usable stock.')
     return
   }
@@ -753,18 +1122,14 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       return
     }
 
-    let nextAvailable = previousAvailable
+    const nextAvailable = previousAvailable - quantity
     let nextOpenBox = previousOpenBox
+    let nextExpired = previousExpired
 
-    if (isOpenBoxFirstEnabled(inventoryItemId)) {
-      if (quantity <= previousOpenBox) {
-        nextOpenBox = previousOpenBox - quantity
-      } else {
-        nextOpenBox = 0
-        nextAvailable = previousAvailable - (quantity - previousOpenBox)
-      }
-    } else {
-      nextAvailable = previousAvailable - quantity
+    if (subtype === 'boxless' || subtype === 'box_damage') {
+      nextOpenBox = previousOpenBox - quantity
+    } else if (subtype === 'expired') {
+      nextExpired = previousExpired - quantity
     }
 
     const updateStockResult = await inventoryStore.updateInventoryStock({
@@ -772,6 +1137,7 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       patch: {
         available_quantity: nextAvailable,
         open_box_quantity: nextOpenBox,
+        expired_quantity: nextExpired,
       },
     })
 
@@ -815,9 +1181,8 @@ const addItemToInvoice = async (inventoryItemId: number) => {
 
     addQuantityByItemId.value = { ...addQuantityByItemId.value, [inventoryItemId]: null }
     sellPriceByItemId.value = { ...sellPriceByItemId.value, [inventoryItemId]: null }
-    openBoxFirstByItemId.value = { ...openBoxFirstByItemId.value, [inventoryItemId]: false }
     searchTerm.value = ''
-    inventoryStore.items = []
+    searchResults.value = []
     await invoiceStore.fetchInvoiceItems({
       tenant_id: authStore.tenantId,
       filters: { invoice_id: invoice.value.id },
@@ -829,12 +1194,33 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     })
     await syncInvoiceSellTotal()
     await loadInvoiceItemImages()
+  } catch (error) {
+    console.error('Error during addItemToInvoice:', error)
   } finally {
     addLoadingByItemId.value = { ...addLoadingByItemId.value, [inventoryItemId]: false }
   }
 }
+const getAddQuantity = (itemId: number): number | null => addQuantityByItemId.value[itemId] ?? null
 
-const getAddQuantity = (itemId: number) => addQuantityByItemId.value[itemId] ?? null
+const incrementQty = (itemId: number, maxVal: number) => {
+  const current = getAddQuantity(itemId)
+  const currentVal = (current == null || !Number.isFinite(current)) ? 0 : current
+  const next = currentVal + 1
+  if (next <= maxVal) {
+    setAddQuantity(itemId, next)
+  }
+}
+
+const decrementQty = (itemId: number) => {
+  const current = getAddQuantity(itemId)
+  if (current == null || !Number.isFinite(current)) {
+    return
+  }
+  const next = current - 1
+  if (next >= 1) {
+    setAddQuantity(itemId, next)
+  }
+}
 
 const setAddQuantity = (itemId: number, value: string | number | null) => {
   if (value === null || value === '') {
@@ -849,7 +1235,12 @@ const setAddQuantity = (itemId: number, value: string | number | null) => {
   addQuantityByItemId.value = { ...addQuantityByItemId.value, [itemId]: Math.floor(parsed) }
 }
 
-const getSellPrice = (itemId: number) => sellPriceByItemId.value[itemId] ?? null
+const getSellPrice = (itemId: number): number | null => {
+  if (sellPriceByItemId.value[itemId] !== undefined && sellPriceByItemId.value[itemId] !== null) {
+    return sellPriceByItemId.value[itemId]
+  }
+  return null
+}
 
 const setSellPrice = (itemId: number, value: string | number | null) => {
   if (value === null || value === '') {
@@ -864,10 +1255,25 @@ const setSellPrice = (itemId: number, value: string | number | null) => {
   sellPriceByItemId.value = { ...sellPriceByItemId.value, [itemId]: parsed }
 }
 
-const isOpenBoxFirstEnabled = (itemId: number) => Boolean(openBoxFirstByItemId.value[itemId])
-const setOpenBoxFirst = (itemId: number, value: boolean) => {
-  openBoxFirstByItemId.value = { ...openBoxFirstByItemId.value, [itemId]: value }
+const getSubtypeIcon = (subtype: 'standard' | 'boxless' | 'box_damage' | 'expired') => {
+  switch (subtype) {
+    case 'standard': return 'check_circle'
+    case 'boxless': return 'o_archive'
+    case 'box_damage': return 'warning'
+    case 'expired': return 'schedule'
+  }
 }
+
+const getSubtypeIconColor = (subtype: 'standard' | 'boxless' | 'box_damage' | 'expired') => {
+  switch (subtype) {
+    case 'standard': return 'positive'
+    case 'boxless': return 'primary'
+    case 'box_damage': return 'warning'
+    case 'expired': return 'negative'
+  }
+}
+
+
 
 const openReturnDialog = (invoiceItemId: number) => {
   selectedReturnInvoiceItemId.value = invoiceItemId
@@ -1032,13 +1438,17 @@ const findAccountingEntryByInvoiceItemId = async (
 }
 
 const resetSearchDialogState = () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
   searchBy.value = 'product_id'
   searchTerm.value = ''
+  searchLoading.value = false
+  searchResults.value = []
   addLoadingByItemId.value = {}
   addQuantityByItemId.value = {}
   sellPriceByItemId.value = {}
-  openBoxFirstByItemId.value = {}
-  inventoryStore.items = []
 }
 
 const loadInvoiceItemImages = async () => {
@@ -1139,17 +1549,47 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
     showWarningDialog('Failed to resolve stock record for this item.')
     return
   }
+
+  const subtype = getSubtypeFromItem({ name: row.name_snapshot })
   const currentAvailable = Number(stock.available_quantity ?? 0)
-  const currentUsable = Math.max(0, currentAvailable - Number(stock.reserved_quantity ?? 0))
-  if (quantityDelta > currentUsable) {
+  const currentOpenBox = Number(stock.open_box_quantity ?? 0)
+  const currentExpired = Number(stock.expired_quantity ?? 0)
+
+  let usablePool = 0
+  if (subtype === 'standard') {
+    usablePool = Math.max(0, currentAvailable - Number(stock.reserved_quantity ?? 0))
+  } else if (subtype === 'boxless' || subtype === 'box_damage') {
+    usablePool = currentOpenBox
+  } else if (subtype === 'expired') {
+    usablePool = currentExpired
+  }
+
+  if (quantityDelta > usablePool) {
     showWarningDialog('Not enough usable stock for this quantity.')
     return
   }
-  const nextAvailable = currentAvailable - quantityDelta
 
+  const nextAvailable = currentAvailable - quantityDelta
   if (nextAvailable < 0) {
     showWarningDialog('Not enough usable stock for this quantity.')
     return
+  }
+
+  let nextOpenBox = currentOpenBox
+  let nextExpired = currentExpired
+
+  if (subtype === 'boxless' || subtype === 'box_damage') {
+    nextOpenBox = currentOpenBox - quantityDelta
+    if (nextOpenBox < 0) {
+      showWarningDialog('Not enough open box stock for this quantity.')
+      return
+    }
+  } else if (subtype === 'expired') {
+    nextExpired = currentExpired - quantityDelta
+    if (nextExpired < 0) {
+      showWarningDialog('Not enough expired stock for this quantity.')
+      return
+    }
   }
 
   const result = await invoiceStore.updateInvoiceItem({
@@ -1165,6 +1605,8 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
     id: stock.id,
     patch: {
       available_quantity: nextAvailable,
+      open_box_quantity: nextOpenBox,
+      expired_quantity: nextExpired,
     },
   })
 
@@ -1227,6 +1669,9 @@ const onDeleteInvoiceItem = async () => {
   const netQuantity = Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
   let stockIdToUpdate: number | null = null
   let previousAvailable = 0
+  let previousOpenBox = 0
+  let previousExpired = 0
+  let subtype: 'standard' | 'boxless' | 'box_damage' | 'expired' = 'standard'
 
   if (row.inventory_item_id && netQuantity > 0) {
     const stockResult = await inventoryService.listInventoryStocks({
@@ -1247,6 +1692,9 @@ const onDeleteInvoiceItem = async () => {
     }
     stockIdToUpdate = stock.id
     previousAvailable = Number(stock.available_quantity ?? 0)
+    previousOpenBox = Number(stock.open_box_quantity ?? 0)
+    previousExpired = Number(stock.expired_quantity ?? 0)
+    subtype = getSubtypeFromItem({ name: row.name_snapshot }) as 'standard' | 'boxless' | 'box_damage' | 'expired'
   }
 
   const accountingEntry = await findAccountingEntryByInvoiceItemId(selectedInvoiceItemId.value)
@@ -1254,9 +1702,22 @@ const onDeleteInvoiceItem = async () => {
   if (result.success) {
     if (stockIdToUpdate != null && netQuantity > 0) {
       const nextAvailable = previousAvailable + netQuantity
+      let nextOpenBox = previousOpenBox
+      let nextExpired = previousExpired
+
+      if (subtype === 'boxless' || subtype === 'box_damage') {
+        nextOpenBox = previousOpenBox + netQuantity
+      } else if (subtype === 'expired') {
+        nextExpired = previousExpired + netQuantity
+      }
+
       const updateStockResult = await inventoryStore.updateInventoryStock({
         id: stockIdToUpdate,
-        patch: { available_quantity: nextAvailable },
+        patch: {
+          available_quantity: nextAvailable,
+          open_box_quantity: nextOpenBox,
+          expired_quantity: nextExpired,
+        },
       })
       if (updateStockResult.success && row.inventory_item_id) {
         await inventoryStore.createInventoryMovement({
@@ -1316,6 +1777,8 @@ watch(
 watch(searchDialogOpen, (open) => {
   if (!open) {
     resetSearchDialogState()
+  } else if (searchTerm.value.trim()) {
+    void onSearchStock()
   }
 })
 
@@ -1340,5 +1803,49 @@ onMounted(load)
   height: 100%;
   object-fit: contain;
   background: #fff;
+}
+
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(34, 56, 101, 0.08) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
+.pill-btn {
+  border-radius: 999px !important;
+}
+
+.slim-btn {
+  min-height: 32px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+.border-light {
+  border: 1px solid rgba(34, 56, 101, 0.06) !important;
+}
+
+.border-top {
+  border-top: 1px solid rgba(34, 56, 101, 0.08) !important;
+}
+
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 </style>

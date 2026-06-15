@@ -62,7 +62,23 @@
           dropdown-icon="expand_more"
         >
           <q-list dense>
-            <q-item clickable v-close-popup @click="goToShipmentInfo">
+            <q-item
+              v-if="isInventoryAdded"
+              clickable
+              v-close-popup
+              @click="openReadonlyShipmentInfoDialog"
+            >
+              <q-item-section avatar>
+                <q-icon name="info" />
+              </q-item-section>
+              <q-item-section>View Conversion Details</q-item-section>
+            </q-item>
+            <q-item
+              v-else
+              clickable
+              v-close-popup
+              @click="goToShipmentInfo"
+            >
               <q-item-section avatar>
                 <q-icon name="info" />
               </q-item-section>
@@ -183,7 +199,7 @@
               v-if="shipmentStore.selectedShipment?.is_gbp"
               class="cursor-pointer row items-center q-gutter-xs text-weight-medium transition-colors hover-opacity"
               :class="isAddToInventoryRateInvalid ? 'text-amber-9 text-weight-bold' : 'text-positive'"
-              @click="openShipmentInfoDialog"
+              @click="openEditableShipmentInfoDialog"
             >
               <q-icon :name="isAddToInventoryRateInvalid ? 'warning' : 'check_circle'" size="18px" />
               <div class="column">
@@ -1394,7 +1410,9 @@
     <q-dialog v-model="showShipmentInfoDialog" persistent>
       <q-card style="min-width: 720px; max-width: 90vw">
         <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6 text-weight-bold">Edit Ingestion Settings</div>
+          <div class="text-h6 text-weight-bold">
+            {{ shipmentInfoReadOnly ? 'Conversion Rate Details' : 'Edit Ingestion Settings' }}
+          </div>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
         
@@ -1411,6 +1429,7 @@
                 label="Product Conversion Rate *"
                 outlined
                 dense
+                :readonly="shipmentInfoReadOnly"
                 :rules="[val => val > 0 || 'Must be greater than 0']"
               />
               <q-input
@@ -1420,6 +1439,7 @@
                 label="Cargo Conversion Rate *"
                 outlined
                 dense
+                :readonly="shipmentInfoReadOnly"
                 :rules="[val => val > 0 || 'Must be greater than 0']"
               />
               <q-input
@@ -1429,6 +1449,7 @@
                 label="Cargo Rate *"
                 outlined
                 dense
+                :readonly="shipmentInfoReadOnly"
                 :rules="[val => val > 0 || 'Must be greater than 0']"
               />
               <q-input
@@ -1446,6 +1467,7 @@
                 label="Received Weight (kg)"
                 outlined
                 dense
+                :readonly="shipmentInfoReadOnly"
               />
             </div>
 
@@ -1502,6 +1524,7 @@
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" v-close-popup />
           <q-btn
+            v-if="!shipmentInfoReadOnly"
             color="primary"
             label="Save Details"
             :loading="shipmentStore.saving"
@@ -1658,6 +1681,7 @@ const confirmAllItemsPerfect = async () => {
 }
 
 const showShipmentInfoDialog = ref(false)
+const shipmentInfoReadOnly = ref(false)
 const shipmentInfoForm = reactive({
   product_conversion_rate: 0,
   cargo_conversion_rate: 0,
@@ -1697,9 +1721,10 @@ const liveTransactionRate = computed(() => {
   return liveCostingBdt.value / totalGbp
 })
 
-const openShipmentInfoDialog = () => {
+const openShipmentInfoDialog = (readOnly = false) => {
   const current = shipmentStore.selectedShipment
   if (!current) return
+  shipmentInfoReadOnly.value = readOnly
   shipmentInfoForm.product_conversion_rate = current.product_conversion_rate ?? 0
   shipmentInfoForm.cargo_conversion_rate = current.cargo_conversion_rate ?? 0
   shipmentInfoForm.cargo_rate = current.cargo_rate ?? 0
@@ -1708,6 +1733,7 @@ const openShipmentInfoDialog = () => {
 }
 
 const saveShipmentInfoDialog = async () => {
+  if (shipmentInfoReadOnly.value) return
   if (!shipmentStore.selectedShipment) return
   const result = await shipmentStore.updateShipment({
     id: shipmentStore.selectedShipment.id,
@@ -1721,6 +1747,14 @@ const saveShipmentInfoDialog = async () => {
   if (result.success) {
     showShipmentInfoDialog.value = false
   }
+}
+
+const openEditableShipmentInfoDialog = () => {
+  openShipmentInfoDialog(false)
+}
+
+const openReadonlyShipmentInfoDialog = () => {
+  openShipmentInfoDialog(true)
 }
 
 const canIngestWorkflowCommit = computed(() => {
@@ -2954,6 +2988,12 @@ watch(
   },
   { immediate: true },
 )
+
+watch(showShipmentInfoDialog, (open) => {
+  if (!open) {
+    shipmentInfoReadOnly.value = false
+  }
+})
 
 watch(
   () => columnSelectorOptions.value,

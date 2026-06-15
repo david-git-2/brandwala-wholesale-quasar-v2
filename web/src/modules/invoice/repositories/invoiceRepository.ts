@@ -53,28 +53,6 @@ const applyFilters = <
   return query
 }
 
-const INVOICE_FIELDS = [
-  'id',
-  'tenant_id',
-  'billing_profile_id',
-  'customer_group_id',
-  'invoice_no',
-  'source_type',
-  'source_id',
-  'payment_status',
-  'status',
-  'invoice_date',
-  'due_date',
-  'subtotal_amount',
-  'discount_amount',
-  'total_amount',
-  'paid_amount',
-  'note',
-  'created_by',
-  'created_at',
-  'updated_at',
-] as const
-const INVOICE_FIELDS_ALLOWLIST: readonly string[] = INVOICE_FIELDS
 const INVOICE_ITEM_FIELDS = [
   'id',
   'tenant_id',
@@ -124,35 +102,38 @@ const PAYMENT_ALLOCATION_FIELDS = [
 const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceListPage<Invoice>> => {
   const pageSize = sanitizePage(payload.page_size ?? payload.pageSize, 20)
   const page = sanitizePage(payload.page, 1)
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
 
-  let query = supabase.from('invoices').select('*', { count: 'exact' })
+  // Extract search and status if they exist inside filters
+  const search = (payload.filters?.search as string) || (payload.filters?.invoice_no as string) || ''
+  const status = (payload.filters?.status as string) || ''
 
-  if (typeof payload.tenant_id === 'number') {
-    query = query.eq('tenant_id', payload.tenant_id)
-  }
+  const { data, error } = await supabase.rpc('list_invoices_paginated', {
+    p_tenant_id: payload.tenant_id ?? 0,
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: search || null,
+    p_status: status || null,
+  })
 
-  query = applyFilters(query, payload.filters, payload.operators, INVOICE_FIELDS)
-
-  const sortBy =
-    typeof payload.sortBy === 'string' && INVOICE_FIELDS_ALLOWLIST.includes(payload.sortBy)
-      ? payload.sortBy
-      : 'created_at'
-
-  query = query.order(sortBy, { ascending: payload.sortOrder === 'asc' }).range(from, to)
-
-  const { data, error, count } = await query
   if (error) throw error
 
-  const total = count ?? 0
-  return {
-    data: (data as Invoice[] | null) ?? [],
+  const result = data as unknown as {
+    data: Invoice[]
     meta: {
-      total,
-      page,
-      page_size: pageSize,
-      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+      total: number
+      page: number
+      page_size: number
+      total_pages: number
+    }
+  }
+
+  return {
+    data: result.data || [],
+    meta: {
+      total: result.meta?.total || 0,
+      page: result.meta?.page || page,
+      page_size: result.meta?.page_size || pageSize,
+      total_pages: result.meta?.total_pages || 1,
     },
   }
 }

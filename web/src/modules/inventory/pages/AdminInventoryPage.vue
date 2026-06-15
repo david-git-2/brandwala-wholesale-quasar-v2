@@ -7,7 +7,11 @@
             <div class="text-h6 text-weight-bold">Stock</div>
             <div class="text-caption text-grey-8">Manage stock, quantities, and item-level stock records</div>
           </div>
-          <div class="col-auto row items-center q-gutter-sm" />
+          <div class="col-auto row items-center q-gutter-sm">
+            <div class="text-subtitle1 text-weight-medium text-grey-9">
+              Total Stock: <span class="text-weight-bold text-primary">{{ inventoryStore.total }}</span>
+            </div>
+          </div>
         </div>
       </q-card-section>
     </q-card>

@@ -57,21 +57,46 @@
       <thead>
         <tr>
           <th class="text-left">Name</th>
+          <th class="text-left">Customer Group</th>
           <th class="text-left">Email</th>
           <th class="text-left">Phone</th>
           <th class="text-left">Address</th>
+          <th class="text-left" style="width: 80px">Color</th>
           <th class="text-right" style="width: 80px">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!store.items.length && !store.loading">
-          <td colspan="5" class="text-center text-grey-7">No billing profiles found.</td>
+          <td colspan="7" class="text-center text-grey-7">No billing profiles found.</td>
         </tr>
         <tr v-for="row in filteredItems" :key="row.id">
-          <td>{{ row.name }}</td>
+          <td>
+            <div class="row items-center no-wrap">
+              <span v-if="row.color" class="color-dot" :style="{ backgroundColor: row.color }" />
+              <span>{{ row.name }}</span>
+            </div>
+          </td>
+          <td>
+            <q-chip
+              v-if="row.customer_group_id"
+              dense
+              outline
+              size="sm"
+            >
+              {{ customerGroupNameMap[row.customer_group_id] ?? '-' }}
+            </q-chip>
+            <span v-else class="text-grey-6 text-caption">Others</span>
+          </td>
           <td>{{ row.email ?? '-' }}</td>
           <td>{{ row.phone ?? '-' }}</td>
           <td>{{ row.address ?? '-' }}</td>
+          <td>
+            <div v-if="row.color" class="row items-center q-gutter-x-xs no-wrap">
+              <span class="color-preview" :style="{ backgroundColor: row.color }" />
+              <span class="text-caption text-mono">{{ row.color }}</span>
+            </div>
+            <span v-else class="text-grey-6">-</span>
+          </td>
           <td class="text-right">
             <q-btn flat round dense icon="more_vert">
               <q-menu auto-close>
@@ -151,10 +176,12 @@ import FilterSidebar from 'src/components/FilterSidebar.vue'
 import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue'
 import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue'
 import { useBillingProfileStore } from '../stores/billingProfileStore'
+import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
 import type { BillingProfile, CreateBillingProfileInput } from '../types/billingProfile'
 
 const authStore = useAuthStore()
 const store = useBillingProfileStore()
+const customerGroupStore = useCustomerGroupStore()
 
 const createOpen = ref(false)
 const showSearchInput = ref(false)
@@ -192,15 +219,25 @@ const activeFilterCount = computed(() => {
   return count
 })
 
+const customerGroupNameMap = computed<Record<number, string>>(() =>
+  customerGroupStore.groups.reduce<Record<number, string>>((acc, g) => {
+    acc[g.id] = g.name
+    return acc
+  }, {}),
+)
+
 const load = async () => {
   if (!authStore.tenantId) return
-  await store.fetchBillingProfiles({
-    tenant_id: authStore.tenantId,
-    page: 1,
-    page_size: 50,
-    sortBy: 'created_at',
-    sortOrder: 'desc',
-  })
+  await Promise.all([
+    store.fetchBillingProfiles({
+      tenant_id: authStore.tenantId,
+      page: 1,
+      page_size: 50,
+      sortBy: 'created_at',
+      sortOrder: 'desc',
+    }),
+    customerGroupStore.fetchCustomerGroupsByTenant(authStore.tenantId)
+  ])
 }
 
 const onCreate = async (payload: CreateBillingProfileInput) => {
@@ -223,6 +260,7 @@ const onEdit = async (payload: {
     phone: string | null
     address: string | null
     customer_group_id: number | null
+    color: string | null
   }
 }) => {
   const result = await store.updateBillingProfile(payload)
@@ -281,5 +319,22 @@ onMounted(load)
 .toolbar-search { width: min(320px, 75vw); }
 .billing-profiles-table :deep(th) {
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+}
+.color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+.color-preview {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 </style>
