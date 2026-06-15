@@ -30,6 +30,24 @@
                 </div>
               </div>
               <div class="col-12 col-sm-auto row items-center justify-start justify-sm-end q-gutter-sm">
+                <!-- Summary view mode toggle -->
+                <q-btn-toggle
+                  v-model="summaryViewMode"
+                  dense
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-2"
+                  text-color="grey-8"
+                  size="sm"
+                  :options="[
+                    { label: 'Cards', value: 'regular', icon: 'grid_view' },
+                    { label: 'Charts', value: 'chart', icon: 'analytics' }
+                  ]"
+                  class="pill-btn text-caption"
+                  style="border: 1px solid rgba(0, 0, 0, 0.05); padding: 2px;"
+                />
+
                 <q-chip
                   dense
                   square
@@ -52,292 +70,445 @@
           {{ accountingError }}
         </q-banner>
 
-        <!-- ── Cost Side Summary ────────────────────────────── -->
-        <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
-          <q-card-section class="q-pb-xs">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm section-label">
-              Shipment Cost Summary
-            </div>
-            <div class="row q-col-gutter-md">
-              <div class="col-6 col-sm-3">
-                <div class="stat-card">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Total Landed Cost</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Total Landed Cost</div>
-                            <div class="text-body2">This is the full landed cost of the shipment.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: sum of each shipment row's received total cost.
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              {{ formatFixed2(totalReceivedCostBdt) }} BDT
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              Breakdown: row received cost = cost per unit x received quantity.
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalReceivedCostBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
+        <template v-if="summaryViewMode === 'regular'">
+          <!-- ── Cost Side Summary ────────────────────────────── -->
+          <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
+            <q-card-section class="q-pb-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm section-label">
+                Shipment Cost Summary
+              </div>
+              <div class="row q-col-gutter-md">
+                <div class="col-6 col-sm-3">
+                  <div class="stat-card">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Total Landed Cost</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Total Landed Cost</div>
+                              <div class="text-body2">This is the full landed cost of the shipment.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: sum of each shipment row's received total cost.
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                {{ formatFixed2(totalReceivedCostBdt) }} BDT
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                Breakdown: row received cost = cost per unit x received quantity.
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalReceivedCostBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value">{{ formatFixed2(totalReceivedCostBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
                   </div>
-                  <div class="stat-value">{{ formatFixed2(totalReceivedCostBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="stat-card stat-card--negative">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Damage and Theft Loss Value</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Damage and Theft Loss Value</div>
+                              <div class="text-body2">Cost of stock lost before it could be sold.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: sum of each row's loss total.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                row loss total = cost per unit x (damaged quantity + stolen quantity)
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalLossBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value text-negative">{{ formatFixed2(totalLossBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
+                  </div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="stat-card">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Usable Stock</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Usable Stock</div>
+                              <div class="text-body2">This is the stock value still available to sell.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: Total Shipment Cost - Damage and Theft Loss
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                {{ formatFixed2(totalReceivedCostBdt) }} - {{ formatFixed2(totalLossBdt) }} = {{ formatFixed2(usableCostBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value">{{ formatFixed2(usableCostBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
+                  </div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="stat-card">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Cost of Sold Stock</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Cost of Sold Stock</div>
+                              <div class="text-body2">This is the cost tied to items already sold on invoices.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: sum of total_cost_amount from shipment invoice accounting entries.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                More simply: add up the COGS from every linked invoice line.
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalInvoiceCogsBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value">{{ formatFixed2(totalInvoiceCogsBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
+                  </div>
                 </div>
               </div>
-              <div class="col-6 col-sm-3">
-                <div class="stat-card stat-card--negative">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Damage and Theft Loss Value</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Damage and Theft Loss Value</div>
-                            <div class="text-body2">Cost of stock lost before it could be sold.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: sum of each row's loss total.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              row loss total = cost per unit x (damaged quantity + stolen quantity)
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalLossBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
-                  </div>
-                  <div class="stat-value text-negative">{{ formatFixed2(totalLossBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
-                </div>
-              </div>
-              <div class="col-6 col-sm-3">
-                <div class="stat-card">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Usable Stock</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Usable Stock</div>
-                            <div class="text-body2">This is the stock value still available to sell.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: Total Shipment Cost - Damage and Theft Loss
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              {{ formatFixed2(totalReceivedCostBdt) }} - {{ formatFixed2(totalLossBdt) }} = {{ formatFixed2(usableCostBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
-                  </div>
-                  <div class="stat-value">{{ formatFixed2(usableCostBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
-                </div>
-              </div>
-              <div class="col-6 col-sm-3">
-                <div class="stat-card">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Cost of Sold Stock</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Cost of Sold Stock</div>
-                            <div class="text-body2">This is the cost tied to items already sold on invoices.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: sum of total_cost_amount from shipment invoice accounting entries.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              More simply: add up the COGS from every linked invoice line.
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalInvoiceCogsBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
-                  </div>
-                  <div class="stat-value">{{ formatFixed2(totalInvoiceCogsBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+            </q-card-section>
+          </q-card>
 
-        <!-- ── Earning Side Summary ─────────────────────────── -->
-        <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
-          <q-card-section class="q-pb-xs">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm section-label">
-              Sales Summary
-            </div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-6 col-sm-4 col-md">
-                <div class="stat-card">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Total Invoice Sales</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Total Invoice Sales</div>
-                            <div class="text-body2">Total sales value from invoices linked to this shipment.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: sum of total_sell_amount from shipment invoice accounting entries.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              More simply: add up the selling amount from every linked invoice line.
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalInvoiceRevenueBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
-                  </div>
-                  <div class="stat-value">{{ formatFixed2(totalInvoiceRevenueBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
-                </div>
+          <!-- ── Earning Side Summary ─────────────────────────── -->
+          <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
+            <q-card-section class="q-pb-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm section-label">
+                Sales Summary
               </div>
-              <div class="col-6 col-sm-4 col-md">
-                <div class="stat-card" :class="totalRealizedProfitBdt >= 0 ? 'stat-card--positive' : 'stat-card--negative'">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Realized Gross Profit</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Realized Gross Profit</div>
-                            <div class="text-body2">This is the realized gross profit from sold invoice entries.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: sum of gross_profit_amount from shipment invoice accounting entries.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              Per line: gross profit = total sell amount - total cost amount.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }} = {{ formatFixed2(totalRealizedProfitBdt) }} BDT
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalRealizedProfitBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
+              <div class="row q-col-gutter-sm">
+                <div class="col-6 col-sm-4 col-md">
+                  <div class="stat-card">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Total Invoice Sales</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Total Invoice Sales</div>
+                              <div class="text-body2">Total sales value from invoices linked to this shipment.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: sum of total_sell_amount from shipment invoice accounting entries.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                More simply: add up the selling amount from every linked invoice line.
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalInvoiceRevenueBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value">{{ formatFixed2(totalInvoiceRevenueBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
                   </div>
-                  <div class="stat-value" :class="totalRealizedProfitBdt >= 0 ? 'text-positive' : 'text-negative'">
-                    {{ formatFixed2(totalRealizedProfitBdt) }}
-                  </div>
-                  <div class="stat-unit">BDT</div>
                 </div>
-              </div>
-              <div class="col-6 col-sm-4 col-md">
-                <div class="stat-card stat-card--primary">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Payments Received</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Payments Received</div>
-                            <div class="text-body2">How much customers have paid against invoices linked to this shipment.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: summed paid amount from the related invoices.
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              This is cash collected so far, not the invoice total.
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              Value: {{ formatFixed2(totalInvoicePaidBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
+                <div class="col-6 col-sm-4 col-md">
+                  <div class="stat-card" :class="totalRealizedProfitBdt >= 0 ? 'stat-card--positive' : 'stat-card--negative'">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Realized Gross Profit</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Realized Gross Profit</div>
+                              <div class="text-body2">This is the realized gross profit from sold invoice entries.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: sum of gross_profit_amount from shipment invoice accounting entries.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                Per line: gross profit = total sell amount - total cost amount.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }} = {{ formatFixed2(totalRealizedProfitBdt) }} BDT
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalRealizedProfitBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value" :class="totalRealizedProfitBdt >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ formatFixed2(totalRealizedProfitBdt) }}
+                    </div>
+                    <div class="stat-unit">BDT</div>
                   </div>
-                  <div class="stat-value text-primary">{{ formatFixed2(totalInvoicePaidBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
                 </div>
-              </div>
-              <div class="col-6 col-sm-6 col-md">
-                <div class="stat-card">
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Remaining Unsold Stock Value</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Remaining Unsold Stock Value</div>
-                            <div class="text-body2">This is the value of unsold stock that remains in inventory.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: Unsold Inventory Cost - Cost of Sold Items
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              {{ formatFixed2(usableCostBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }}
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              {{ formatFixed2(usableCostBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }} = {{ formatFixed2(remainingInventoryCostBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
+                <div class="col-6 col-sm-4 col-md">
+                  <div class="stat-card stat-card--primary">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Payments Received</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Payments Received</div>
+                              <div class="text-body2">How much customers have paid against invoices linked to this shipment.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: summed paid amount from the related invoices.
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                This is cash collected so far, not the invoice total.
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                Value: {{ formatFixed2(totalInvoicePaidBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value text-primary">{{ formatFixed2(totalInvoicePaidBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
                   </div>
-                  <div class="stat-value">{{ formatFixed2(remainingInventoryCostBdt) }}</div>
-                  <div class="stat-unit">BDT</div>
                 </div>
-              </div>
-              <div class="col-6 col-sm-6 col-md">
-                <div
-                  class="stat-card"
-                  :class="profitLossVsShipmentCostBdt >= 0 ? 'stat-card--positive' : 'stat-card--negative'"
-                >
-                  <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <div class="stat-label">Revenue Minus Total Cost</div>
-                    <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
-                      <q-menu anchor="top right" self="top left">
-                        <q-card style="min-width: 280px; max-width: 360px">
-                          <q-card-section class="q-gutter-xs">
-                            <div class="text-subtitle2 text-weight-bold">Revenue Minus Total Cost</div>
-                            <div class="text-body2">This compares total invoice revenue against the shipment’s landed cost.</div>
-                            <div class="text-body2 text-grey-8">
-                              Formula: Invoice Revenue - Total Shipment Cost
-                            </div>
-                            <div class="text-body2 text-grey-8">
-                              {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalReceivedCostBdt) }}
-                            </div>
-                            <div class="text-body2 text-weight-medium">
-                              {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalReceivedCostBdt) }} = {{ formatFixed2(profitLossVsShipmentCostBdt) }} BDT
-                            </div>
-                          </q-card-section>
-                        </q-card>
-                      </q-menu>
-                    </q-btn>
+                <div class="col-6 col-sm-6 col-md">
+                  <div class="stat-card">
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Remaining Unsold Stock Value</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Remaining Unsold Stock Value</div>
+                              <div class="text-body2">This is the value of unsold stock that remains in inventory.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: Unsold Inventory Cost - Cost of Sold Items
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                {{ formatFixed2(usableCostBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }}
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                {{ formatFixed2(usableCostBdt) }} - {{ formatFixed2(totalInvoiceCogsBdt) }} = {{ formatFixed2(remainingInventoryCostBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div class="stat-value">{{ formatFixed2(remainingInventoryCostBdt) }}</div>
+                    <div class="stat-unit">BDT</div>
                   </div>
+                </div>
+                <div class="col-6 col-sm-6 col-md">
                   <div
-                    class="stat-value"
-                    :class="profitLossVsShipmentCostBdt >= 0 ? 'text-positive' : 'text-negative'"
+                    class="stat-card"
+                    :class="profitLossVsShipmentCostBdt >= 0 ? 'stat-card--positive' : 'stat-card--negative'"
                   >
-                    {{ formatFixed2(profitLossVsShipmentCostBdt) }}
+                    <div class="row items-start justify-between no-wrap q-gutter-xs">
+                      <div class="stat-label">Revenue Minus Total Cost</div>
+                      <q-btn flat round dense size="sm" icon="info" class="metric-info-btn">
+                        <q-menu anchor="top right" self="top left">
+                          <q-card style="min-width: 280px; max-width: 360px">
+                            <q-card-section class="q-gutter-xs">
+                              <div class="text-subtitle2 text-weight-bold">Revenue Minus Total Cost</div>
+                              <div class="text-body2">This compares total invoice revenue against the shipment’s landed cost.</div>
+                              <div class="text-body2 text-grey-8">
+                                Formula: Invoice Revenue - Total Shipment Cost
+                              </div>
+                              <div class="text-body2 text-grey-8">
+                                {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalReceivedCostBdt) }}
+                              </div>
+                              <div class="text-body2 text-weight-medium">
+                                {{ formatFixed2(totalInvoiceRevenueBdt) }} - {{ formatFixed2(totalReceivedCostBdt) }} = {{ formatFixed2(profitLossVsShipmentCostBdt) }} BDT
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </q-menu>
+                      </q-btn>
+                    </div>
+                    <div
+                      class="stat-value"
+                      :class="profitLossVsShipmentCostBdt >= 0 ? 'text-positive' : 'text-negative'"
+                    >
+                      {{ formatFixed2(profitLossVsShipmentCostBdt) }}
+                    </div>
+                    <div class="stat-unit">BDT</div>
                   </div>
-                  <div class="stat-unit">BDT</div>
                 </div>
               </div>
-            </div>
-          </q-card-section>
-        </q-card>
+            </q-card-section>
+          </q-card>
+        </template>
+
+        <template v-else-if="summaryViewMode === 'chart'">
+          <!-- ── Visual Analytics Summary ─────────────────────── -->
+          <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
+            <q-card-section class="q-pb-md">
+              <div class="text-subtitle2 text-weight-bold q-mb-md section-label">
+                Shipment Visual Analytics
+              </div>
+
+              <div class="row q-col-gutter-lg">
+                <!-- Left column: Circular margin and rate indicators -->
+                <div class="col-12 col-md-6">
+                  <div class="row q-col-gutter-md justify-around text-center">
+                    
+                    <!-- Gross Profit Margin Gauge -->
+                    <div class="col-6 col-sm-4">
+                      <div class="flex flex-center flex-column q-pa-sm">
+                        <q-circular-progress
+                          show-value
+                          class="text-weight-bold text-positive q-my-xs"
+                          :value="grossProfitMarginPercent"
+                          size="90px"
+                          :thickness="0.16"
+                          color="positive"
+                          track-color="grey-2"
+                        >
+                          {{ grossProfitMarginPercent }}%
+                        </q-circular-progress>
+                        <div class="text-caption text-weight-bold text-grey-9 q-mt-sm">Gross Profit Margin</div>
+                        <div class="text-grey-6 text-weight-medium" style="font-size: 10px;">
+                          Margin on Sales
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Damage & Loss Rate Gauge -->
+                    <div class="col-6 col-sm-4">
+                      <div class="flex flex-center flex-column q-pa-sm">
+                        <q-circular-progress
+                          show-value
+                          class="text-weight-bold text-negative q-my-xs"
+                          :value="lossRatePercent"
+                          size="90px"
+                          :thickness="0.16"
+                          color="negative"
+                          track-color="grey-2"
+                        >
+                          {{ lossRatePercent }}%
+                        </q-circular-progress>
+                        <div class="text-caption text-weight-bold text-grey-9 q-mt-sm">Loss Value Rate</div>
+                        <div class="text-grey-6 text-weight-medium" style="font-size: 10px;">
+                          Loss of Landed Cost
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Stock Sold Ratio Gauge -->
+                    <div class="col-6 col-sm-4">
+                      <div class="flex flex-center flex-column q-pa-sm">
+                        <q-circular-progress
+                          show-value
+                          class="text-weight-bold text-primary q-my-xs"
+                          :value="soldQuantityRatioPercent"
+                          size="90px"
+                          :thickness="0.16"
+                          color="primary"
+                          track-color="grey-2"
+                        >
+                          {{ soldQuantityRatioPercent }}%
+                        </q-circular-progress>
+                        <div class="text-caption text-weight-bold text-grey-9 q-mt-sm">Stock Sold Ratio</div>
+                        <div class="text-grey-6 text-weight-medium" style="font-size: 10px;">
+                          Sold Qty / Usable Qty
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Right column: Linear progress charts -->
+                <div class="col-12 col-md-6 flex flex-column justify-between q-gutter-y-md">
+                  
+                  <!-- Revenue Recovery Progress -->
+                  <div>
+                    <div class="row justify-between items-center q-mb-xs">
+                      <span class="text-caption text-weight-bold text-grey-9">Landed Cost Recovery</span>
+                      <span class="text-caption text-weight-bold" :class="revenueRecoveryRatePercent >= 100 ? 'text-positive' : 'text-primary'">
+                        {{ revenueRecoveryRatePercent }}% Recovered
+                      </span>
+                    </div>
+                    <q-linear-progress
+                      :value="Math.min(1, (revenueRecoveryRatePercent / 100))"
+                      :color="revenueRecoveryRatePercent >= 100 ? 'positive' : 'primary'"
+                      track-color="grey-2"
+                      rounded
+                      size="12px"
+                    />
+                    <div class="row justify-between text-caption q-mt-xs text-grey-8" style="font-size: 11px">
+                      <span>Landed Cost: <strong>{{ formatFixed2(totalReceivedCostBdt) }}</strong> BDT</span>
+                      <span>Sales Revenue: <strong>{{ formatFixed2(totalInvoiceRevenueBdt) }}</strong> BDT</span>
+                    </div>
+                  </div>
+
+                  <!-- Cash Collection Rate -->
+                  <div>
+                    <div class="row justify-between items-center q-mb-xs">
+                      <span class="text-caption text-weight-bold text-grey-9">Cash Collection Progress</span>
+                      <span class="text-caption text-weight-bold text-indigo">
+                        {{ cashCollectionRatePercent }}% Paid
+                      </span>
+                    </div>
+                    <q-linear-progress
+                      :value="cashCollectionRatePercent / 100"
+                      color="indigo"
+                      track-color="grey-2"
+                      rounded
+                      size="12px"
+                    />
+                    <div class="row justify-between text-caption q-mt-xs text-grey-8" style="font-size: 11px">
+                      <span>Collected Cash: <strong>{{ formatFixed2(totalInvoicePaidBdt) }}</strong> BDT</span>
+                      <span>Total Invoiced: <strong>{{ formatFixed2(totalInvoiceRevenueBdt) }}</strong> BDT</span>
+                    </div>
+                  </div>
+
+                  <!-- Usable Stock Utilization -->
+                  <div>
+                    <div class="row justify-between items-center q-mb-xs">
+                      <span class="text-caption text-weight-bold text-grey-9">Usable Stock Sold (COGS)</span>
+                      <span class="text-caption text-weight-bold text-teal">
+                        {{ inventoryRealizedPercent }}% Sold
+                      </span>
+                    </div>
+                    <q-linear-progress
+                      :value="inventoryRealizedPercent / 100"
+                      color="teal"
+                      track-color="grey-2"
+                      rounded
+                      size="12px"
+                    />
+                    <div class="row justify-between text-caption q-mt-xs text-grey-8" style="font-size: 11px">
+                      <span>COGS: <strong>{{ formatFixed2(totalInvoiceCogsBdt) }}</strong> BDT</span>
+                      <span>Usable Value: <strong>{{ formatFixed2(usableCostBdt) }}</strong> BDT</span>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </template>
 
         <!-- ── Tabbed Tables ─────────────────────────────────── -->
         <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
@@ -627,6 +798,45 @@ const shipmentInvoicePaidById = ref<Record<string, number>>({})
 const fallbackImageUrl = 'https://placehold.co/44x44?text=No+Image'
 const activeTab = ref<'breakdown' | 'entries'>('breakdown')
 const expandedInvoices = ref<Set<string>>(new Set())
+const summaryViewMode = ref<'regular' | 'chart'>('regular')
+
+const grossProfitMarginPercent = computed(() => {
+  if (!totalInvoiceRevenueBdt.value) return 0
+  const val = (totalRealizedProfitBdt.value / totalInvoiceRevenueBdt.value) * 100
+  return Math.max(0, Math.round(val))
+})
+
+const lossRatePercent = computed(() => {
+  if (!totalReceivedCostBdt.value) return 0
+  const val = (totalLossBdt.value / totalReceivedCostBdt.value) * 100
+  return Math.max(0, Math.round(val))
+})
+
+const soldQuantityRatioPercent = computed(() => {
+  const totalUsableQty = shipmentRows.value.reduce((sum, item) => sum + item.usableQuantity, 0)
+  if (!totalUsableQty) return 0
+  const val = (totalSoldQuantity.value / totalUsableQty) * 100
+  return Math.min(100, Math.max(0, Math.round(val)))
+})
+
+const revenueRecoveryRatePercent = computed(() => {
+  if (!totalReceivedCostBdt.value) return 0
+  const val = (totalInvoiceRevenueBdt.value / totalReceivedCostBdt.value) * 100
+  return Math.max(0, Math.round(val))
+})
+
+const cashCollectionRatePercent = computed(() => {
+  if (!totalInvoiceRevenueBdt.value) return 0
+  const val = (totalInvoicePaidBdt.value / totalInvoiceRevenueBdt.value) * 100
+  return Math.min(100, Math.max(0, Math.round(val)))
+})
+
+const inventoryRealizedPercent = computed(() => {
+  if (!usableCostBdt.value) return 0
+  const val = (totalInvoiceCogsBdt.value / usableCostBdt.value) * 100
+  return Math.min(100, Math.max(0, Math.round(val)))
+})
+
 
 const toggleInvoice = (key: string) => {
   const next = new Set(expandedInvoices.value)

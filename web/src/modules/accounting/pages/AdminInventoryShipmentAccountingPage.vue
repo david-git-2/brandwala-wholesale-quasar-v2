@@ -39,6 +39,14 @@
     <PageInitialLoader v-if="inventoryStore.loading" />
 
     <template v-else>
+      <!-- Stale Data Notice Banner -->
+      <div class="q-mb-sm q-sm-mb-md rounded-borders q-pa-sm shadow-1 flex items-center no-wrap" style="background: rgba(255, 248, 225, 0.7); border: 1px solid rgba(217, 119, 6, 0.15); color: #7f5f07;">
+        <q-icon name="o_info" size="20px" class="q-mr-sm text-amber-8 flex-shrink-0" />
+        <div class="text-caption text-weight-medium">
+          This summary is pre-computed. If inventory records or shipment details have changed, please click the <span class="text-weight-bold">Refresh</span> button to update.
+        </div>
+      </div>
+
       <!-- ── Summary Stat Cards ──────────────────────────────── -->
       <q-card flat class="q-mb-sm q-sm-mb-md floating-surface shadow-1">
         <q-card-section class="q-pb-xs">
