@@ -10,15 +10,6 @@
         <div class="text-h6 text-weight-bold text-black">Invoice Details</div>
         <div v-if="invoice" class="text-caption text-grey-8 row items-center q-gutter-x-sm wrap">
           <span>Invoice Name: <span class="text-black text-weight-medium">{{ invoice.invoice_no }}</span></span>
-          <span class="text-grey-4">|</span>
-          <span>Billing Profile: 
-            <span
-              class="text-weight-bold"
-              :style="{ color: billingProfile?.color || 'inherit' }"
-            >
-              {{ billingProfile?.name || '-' }}
-            </span>
-          </span>
           <q-chip
             v-if="customerGroup"
             dense
@@ -59,9 +50,22 @@
           </q-menu>
         </q-chip>
 
+        <!-- Issue Invoice CTA Button -->
+        <q-btn
+          v-if="invoice?.status === 'draft' || invoice?.status === 'invoicing'"
+          color="accent"
+          no-caps
+          label="Issue Invoice"
+          class="slim-btn shadow-1 q-px-sm"
+          style="border-radius: 4px !important;"
+          @click="onUpdateStatus('issued')"
+        >
+          <q-tooltip>Mark status as Issued</q-tooltip>
+        </q-btn>
+
         <!-- Preview Button -->
         <q-btn
-          v-if="invoice?.status === 'issued'"
+          v-if="invoice?.status !== 'draft'"
           flat
           round
           dense
@@ -664,6 +668,7 @@ const searchByOptions: { label: string; value: StockSearchField }[] = [
 ]
 const statusOptions: { label: string; value: InvoiceStatus }[] = [
   { label: 'Draft', value: 'draft' },
+  { label: 'Invoicing', value: 'invoicing' },
   { label: 'Issued', value: 'issued' },
   { label: 'Partially Paid', value: 'partially_paid' },
   { label: 'Paid', value: 'paid' },
@@ -678,6 +683,13 @@ const statusChipStyle = (currentStatus: string) => {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
+    }
+  }
+  if (value === 'invoicing') {
+    return {
+      backgroundColor: '#e1bee7',
+      color: '#4a148c',
+      border: '1px solid #ce93d8',
     }
   }
   if (value === 'issued') {
@@ -725,6 +737,7 @@ const statusChipStyle = (currentStatus: string) => {
 const statusDotColor = (currentStatus: string) => {
   const value = (currentStatus ?? '').toLowerCase()
   if (value === 'draft') return '#9a6a24'
+  if (value === 'invoicing') return '#8e24aa'
   if (value === 'issued') return '#2f6e92'
   if (value === 'partially_paid') return '#3f51b5'
   if (value === 'paid') return '#2f8b5d'
@@ -924,13 +937,7 @@ const load = async () => {
   initialLoading.value = true
   try {
     const fetches: Promise<unknown>[] = [
-      invoiceStore.fetchInvoices({
-        tenant_id: authStore.tenantId,
-        filters: { id: invoiceId.value },
-        operators: { id: 'eq' },
-        page: 1,
-        page_size: 1,
-      }),
+      invoiceStore.fetchInvoiceById(invoiceId.value),
       invoiceStore.fetchInvoiceItems({
         tenant_id: authStore.tenantId,
         filters: { invoice_id: invoiceId.value },
@@ -970,15 +977,16 @@ const onUpdateStatus = async (value: InvoiceStatus | null) => {
   })
 }
 
-const openInvoicePreview = async () => {
+const openInvoicePreview = () => {
   if (!invoice.value) return
-  await router.push({
+  const routeData = router.resolve({
     name: 'app-invoice-preview-page',
     params: {
       tenantSlug: authStore.tenantSlug ?? undefined,
       invoiceId: invoice.value.id,
     },
   })
+  window.open(routeData.href, '_blank')
 }
 
 const openCustomerPaymentDetails = async () => {
@@ -1400,13 +1408,7 @@ const onUpdateDiscount = async (value: string | number | null) => {
     },
   })
   if (authStore.tenantId) {
-    await invoiceStore.fetchInvoices({
-      tenant_id: authStore.tenantId,
-      filters: { id: invoice.value.id },
-      operators: { id: 'eq' },
-      page: 1,
-      page_size: 1,
-    })
+    await invoiceStore.fetchInvoiceById(invoice.value.id)
     // Reload items to get latest line discounts
     await invoiceStore.fetchInvoiceItems({
       tenant_id: authStore.tenantId,
@@ -1464,13 +1466,16 @@ const loadInvoiceItemImages = async () => {
     return
   }
 
-  const entries = await Promise.all(
-    ids.map(async (id) => {
-      const result = await inventoryService.getInventoryItemById(id)
-      return [id, result.success ? (result.data?.image_url ?? fallbackImageUrl) : fallbackImageUrl] as const
-    }),
-  )
-  invoiceItemImageMap.value = Object.fromEntries(entries)
+  const res = await inventoryService.getInventoryItemImages(ids)
+  if (res.success && res.data) {
+    invoiceItemImageMap.value = Object.fromEntries(
+      res.data.map((item) => [item.id, item.image_url ?? fallbackImageUrl]),
+    )
+  } else {
+    invoiceItemImageMap.value = Object.fromEntries(
+      ids.map((id) => [id, fallbackImageUrl]),
+    )
+  }
 }
 
 const onInlineUpdateSellPrice = async (invoiceItemId: number, value: string | number | null) => {
@@ -1757,13 +1762,7 @@ const syncInvoiceSellTotal = async () => {
   if (!updateResult.success) return
   await invoiceStore.recomputeInvoicePaymentStatus(invoice.value.id)
   if (!authStore.tenantId) return
-  await invoiceStore.fetchInvoices({
-    tenant_id: authStore.tenantId,
-    filters: { id: invoice.value.id },
-    operators: { id: 'eq' },
-    page: 1,
-    page_size: 1,
-  })
+  await invoiceStore.fetchInvoiceById(invoice.value.id)
 }
 
 watch(

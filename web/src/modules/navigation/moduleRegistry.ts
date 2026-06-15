@@ -439,6 +439,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'invoices/billing-profiles',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Invoice Brands',
+        caption: 'Manage brands and addresses for invoices',
+        icon: 'branding_watermark',
+        routeSegment: 'invoices/brands',
+        requiredAction: 'view',
+      },
     ],
   },
   {

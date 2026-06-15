@@ -15,6 +15,10 @@ import type {
   UpdateInvoiceInput,
   UpdatePaymentInput,
   UpdatePaymentAllocationAmountInput,
+  InvoiceBrand,
+  CreateInvoiceBrandInput,
+  InvoiceBox,
+  CreateInvoiceBoxInput,
 } from '../types/index'
 
 export const useInvoiceStore = defineStore('invoice', {
@@ -27,6 +31,8 @@ export const useInvoiceStore = defineStore('invoice', {
     loading: false,
     saving: false,
     error: null,
+    brands: [],
+    boxes: [],
   }),
   actions: {
     async fetchInvoices(payload: InvoiceListQuery = {}) {
@@ -42,6 +48,26 @@ export const useInvoiceStore = defineStore('invoice', {
         }
 
         this.invoices = result.data?.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+    async fetchInvoiceById(id: number) {
+      this.loading = true
+      this.error = null
+      try {
+        const result = await invoiceService.getInvoiceById(id)
+        if (!result.success || !result.data) {
+          this.error = result.error ?? 'Failed to retrieve invoice.'
+          return result
+        }
+        const index = this.invoices.findIndex((row) => row.id === id)
+        if (index >= 0) {
+          this.invoices.splice(index, 1, result.data)
+        } else {
+          this.invoices.push(result.data)
+        }
         return result
       } finally {
         this.loading = false
@@ -364,6 +390,130 @@ export const useInvoiceStore = defineStore('invoice', {
           handleApiFailure(result, this.error)
           return result
         }
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchInvoiceBrands(payload: { tenant_id?: number } = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        const result = await invoiceService.listInvoiceBrands(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load brands.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        this.brands = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createInvoiceBrand(payload: CreateInvoiceBrandInput) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.createInvoiceBrand(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create brand.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        showSuccessNotification('Brand created successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateInvoiceBrand(payload: { id: number; patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>> }) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.updateInvoiceBrand(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update brand.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        showSuccessNotification('Brand updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteInvoiceBrand(payload: { id: number }) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.deleteInvoiceBrand(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete brand.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        this.brands = this.brands.filter((b) => b.id !== payload.id)
+        showSuccessNotification('Brand deleted successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchInvoiceBoxes(payload: { invoice_id: number; tenant_id?: number }) {
+      this.loading = true
+      this.error = null
+      try {
+        const result = await invoiceService.listInvoiceBoxes(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to load box weights.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        this.boxes = result.data ?? []
+        return result
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createInvoiceBox(payload: CreateInvoiceBoxInput) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.createInvoiceBox(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to add box weight.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        if (result.data) {
+          this.boxes.push(result.data)
+        }
+        showSuccessNotification('Box weight added successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteInvoiceBox(payload: { id: number }) {
+      this.saving = true
+      this.error = null
+      try {
+        const result = await invoiceService.deleteInvoiceBox(payload)
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to delete box weight.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+        this.boxes = this.boxes.filter((b) => b.id !== payload.id)
+        showSuccessNotification('Box weight deleted successfully.')
         return result
       } finally {
         this.saving = false

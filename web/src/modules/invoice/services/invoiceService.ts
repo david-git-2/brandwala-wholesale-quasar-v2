@@ -20,6 +20,10 @@ import type {
   UpdateInvoiceInput,
   UpdatePaymentInput,
   UpdatePaymentAllocationAmountInput,
+  InvoiceBrand,
+  CreateInvoiceBrandInput,
+  InvoiceBox,
+  CreateInvoiceBoxInput,
 } from '../types/index'
 
 const wrap = async <T>(
@@ -57,6 +61,8 @@ export const invoiceService = {
       () => invoiceRepository.listInvoices(payload),
       'Failed to load invoices.',
     ),
+  getInvoiceById: (id: number) =>
+    wrap<Invoice>(() => invoiceRepository.getInvoiceById(id), 'Failed to retrieve invoice.'),
   listInvoiceItems: (payload: InvoiceListQuery = {}) =>
     wrap<InvoiceListPage<InvoiceItem>>(
       () => invoiceRepository.listInvoiceItems(payload),
@@ -118,5 +124,40 @@ export const invoiceService = {
     wrap<ApplyInvoiceItemReturnResult>(
       () => invoiceRepository.applyInvoiceItemReturn(payload),
       'Failed to apply invoice item return.',
+    ),
+  listInvoiceBrands: (payload: { tenant_id?: number } = {}) =>
+    wrap<(InvoiceBrand & { tenants?: { name: string } })[]>(
+      () => invoiceRepository.listInvoiceBrands(payload),
+      'Failed to load invoice brands.',
+    ),
+  createInvoiceBrand: (payload: CreateInvoiceBrandInput) =>
+    wrap<InvoiceBrand>(
+      () => invoiceRepository.createInvoiceBrand(payload),
+      'Failed to create brand.',
+    ),
+  updateInvoiceBrand: (payload: { id: number; patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>> }) =>
+    wrap<InvoiceBrand>(
+      () => invoiceRepository.updateInvoiceBrand(payload),
+      'Failed to update brand.',
+    ),
+  deleteInvoiceBrand: (payload: { id: number }) =>
+    wrap<void>(
+      () => invoiceRepository.deleteInvoiceBrand(payload),
+      'Failed to delete brand.',
+    ),
+  listInvoiceBoxes: (payload: { invoice_id: number; tenant_id?: number }) =>
+    wrap<InvoiceBox[]>(
+      () => invoiceRepository.listInvoiceBoxes(payload),
+      'Failed to load box weights.',
+    ),
+  createInvoiceBox: (payload: CreateInvoiceBoxInput) =>
+    wrap<InvoiceBox>(
+      () => invoiceRepository.createInvoiceBox(payload),
+      'Failed to add box weight.',
+    ),
+  deleteInvoiceBox: (payload: { id: number }) =>
+    wrap<void>(
+      () => invoiceRepository.deleteInvoiceBox(payload),
+      'Failed to delete box weight.',
     ),
 }

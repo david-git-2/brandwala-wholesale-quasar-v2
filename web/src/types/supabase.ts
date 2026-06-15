@@ -1639,6 +1639,86 @@ export type Database = {
           },
         ]
       }
+      invoice_boxes: {
+        Row: {
+          box_number: string
+          created_at: string
+          id: number
+          invoice_id: number
+          tenant_id: number
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          box_number: string
+          created_at?: string
+          id?: number
+          invoice_id: number
+          tenant_id: number
+          updated_at?: string
+          weight: number
+        }
+        Update: {
+          box_number?: string
+          created_at?: string
+          id?: number
+          invoice_id?: number
+          tenant_id?: number
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_boxes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_boxes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_brands: {
+        Row: {
+          address: string
+          created_at: string
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: number
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: number
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_brands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           barcode_snapshot: string | null
@@ -1654,6 +1734,7 @@ export type Database = {
           product_code_snapshot: string | null
           product_id: number | null
           quantity: number
+          rate: number | null
           return_amount: number
           return_damaged_quantity: number
           return_normal_quantity: number
@@ -1663,6 +1744,7 @@ export type Database = {
           source_item_id: number
           source_item_type: string
           tenant_id: number
+          unit: string
           updated_at: string
         }
         Insert: {
@@ -1679,6 +1761,7 @@ export type Database = {
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity: number
+          rate?: number | null
           return_amount?: number
           return_damaged_quantity?: number
           return_normal_quantity?: number
@@ -1688,6 +1771,7 @@ export type Database = {
           source_item_id: number
           source_item_type: string
           tenant_id: number
+          unit?: string
           updated_at?: string
         }
         Update: {
@@ -1704,6 +1788,7 @@ export type Database = {
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity?: number
+          rate?: number | null
           return_amount?: number
           return_damaged_quantity?: number
           return_normal_quantity?: number
@@ -1713,6 +1798,7 @@ export type Database = {
           source_item_id?: number
           source_item_type?: string
           tenant_id?: number
+          unit?: string
           updated_at?: string
         }
         Relationships: [
@@ -1755,10 +1841,16 @@ export type Database = {
       }
       invoices: {
         Row: {
+          advance_amount: number
           billing_profile_id: number | null
+          brand_address: string | null
+          brand_name: string | null
+          client_name: string | null
+          client_tr: string | null
           created_at: string
           created_by: string | null
           customer_group_id: number | null
+          delivery_charge: number
           discount_amount: number
           due_date: string | null
           id: number
@@ -1767,19 +1859,28 @@ export type Database = {
           note: string | null
           paid_amount: number
           payment_status: string
+          previous_due: number
           source_id: number
           source_type: string
           status: string
           subtotal_amount: number
           tenant_id: number
+          thank_you_message: string | null
           total_amount: number
+          total_boxes: number | null
           updated_at: string
         }
         Insert: {
+          advance_amount?: number
           billing_profile_id?: number | null
+          brand_address?: string | null
+          brand_name?: string | null
+          client_name?: string | null
+          client_tr?: string | null
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
+          delivery_charge?: number
           discount_amount?: number
           due_date?: string | null
           id?: number
@@ -1788,19 +1889,28 @@ export type Database = {
           note?: string | null
           paid_amount?: number
           payment_status?: string
+          previous_due?: number
           source_id: number
           source_type: string
           status?: string
           subtotal_amount?: number
           tenant_id: number
+          thank_you_message?: string | null
           total_amount?: number
+          total_boxes?: number | null
           updated_at?: string
         }
         Update: {
+          advance_amount?: number
           billing_profile_id?: number | null
+          brand_address?: string | null
+          brand_name?: string | null
+          client_name?: string | null
+          client_tr?: string | null
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
+          delivery_charge?: number
           discount_amount?: number
           due_date?: string | null
           id?: number
@@ -1809,12 +1919,15 @@ export type Database = {
           note?: string | null
           paid_amount?: number
           payment_status?: string
+          previous_due?: number
           source_id?: number
           source_type?: string
           status?: string
           subtotal_amount?: number
           tenant_id?: number
+          thank_you_message?: string | null
           total_amount?: number
+          total_boxes?: number | null
           updated_at?: string
         }
         Relationships: [

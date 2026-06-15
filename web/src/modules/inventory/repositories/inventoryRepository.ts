@@ -1072,14 +1072,22 @@ const deleteInventoryNote = async (
     .delete()
     .eq('id', payload.id)
 
-  if (error) {
-    throw error
-  }
+}
+
+const getInventoryItemImages = async (ids: number[]): Promise<Array<{ id: number; image_url: string | null }>> => {
+  if (!ids.length) return []
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .select('id, image_url')
+    .in('id', ids)
+  if (error) throw error
+  return (data as Array<{ id: number; image_url: string | null }>) || []
 }
 
 export const inventoryRepository = {
   listInventoryItems,
   listGlobalInventoryItems,
+  getInventoryItemImages,
   getInventoryItemById,
   createInventoryItem,
   createInventoryItemsBulk,

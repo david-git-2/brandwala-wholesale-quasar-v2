@@ -20,6 +20,10 @@ import type {
   UpdateInvoiceItemInput,
   UpdateInvoiceInput,
   UpdatePaymentAllocationAmountInput,
+  InvoiceBrand,
+  CreateInvoiceBrandInput,
+  InvoiceBox,
+  CreateInvoiceBoxInput,
 } from '../types/index'
 
 const sanitizePage = (value: number | undefined, fallback: number) =>
@@ -136,6 +140,12 @@ const listInvoices = async (payload: InvoiceListQuery = {}): Promise<InvoiceList
       total_pages: result.meta?.total_pages || 1,
     },
   }
+}
+
+const getInvoiceById = async (id: number): Promise<Invoice> => {
+  const { data, error } = await supabase.from('invoices').select('*').eq('id', id).single()
+  if (error) throw error
+  return data as Invoice
 }
 
 const createInvoice = async (payload: CreateInvoiceInput) => {
@@ -407,8 +417,62 @@ const deletePayment = async (payload: DeletePaymentInput): Promise<void> => {
   }
 }
 
+const listInvoiceBrands = async (payload: { tenant_id?: number } = {}): Promise<(InvoiceBrand & { tenants?: { name: string } })[]> => {
+  let query = supabase.from('invoice_brands').select('*, tenants(name)')
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { data, error } = await query.order('name', { ascending: true })
+  if (error) throw error
+  return (data as unknown as (InvoiceBrand & { tenants?: { name: string } })[]) || []
+}
+
+const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<InvoiceBrand> => {
+  const { data, error } = await supabase.from('invoice_brands').insert([payload]).select('*').single()
+  if (error) throw error
+  return data as InvoiceBrand
+}
+
+const updateInvoiceBrand = async (payload: { id: number; patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>> }): Promise<InvoiceBrand> => {
+  const { data, error } = await supabase
+    .from('invoice_brands')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InvoiceBrand
+}
+
+const deleteInvoiceBrand = async (payload: { id: number }): Promise<void> => {
+  const { error } = await supabase.from('invoice_brands').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
+const listInvoiceBoxes = async (payload: { invoice_id: number; tenant_id?: number }): Promise<InvoiceBox[]> => {
+  let query = supabase.from('invoice_boxes').select('*').eq('invoice_id', payload.invoice_id)
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { data, error } = await query.order('box_number', { ascending: true })
+  if (error) throw error
+  return (data as InvoiceBox[]) || []
+}
+
+const createInvoiceBox = async (payload: CreateInvoiceBoxInput): Promise<InvoiceBox> => {
+  const { data, error } = await supabase.from('invoice_boxes').insert([payload]).select('*').single()
+  if (error) throw error
+  return data as InvoiceBox
+}
+
+const deleteInvoiceBox = async (payload: { id: number }): Promise<void> => {
+  const { error } = await supabase.from('invoice_boxes').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
 export const invoiceRepository = {
   listInvoices,
+  getInvoiceById,
   listInvoiceItems,
   listPayments,
   listPaymentAllocations,
@@ -425,4 +489,11 @@ export const invoiceRepository = {
   deleteInvoiceItem,
   recomputeInvoicePaymentStatus,
   applyInvoiceItemReturn,
+  listInvoiceBrands,
+  createInvoiceBrand,
+  updateInvoiceBrand,
+  deleteInvoiceBrand,
+  listInvoiceBoxes,
+  createInvoiceBox,
+  deleteInvoiceBox,
 }

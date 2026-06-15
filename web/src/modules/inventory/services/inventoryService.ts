@@ -73,6 +73,21 @@ const getInventoryItemById = async (id: number): Promise<InventoryServiceResult<
   }
 }
 
+const getInventoryItemImages = async (
+  ids: number[],
+): Promise<InventoryServiceResult<Array<{ id: number; image_url: string | null }>>> => {
+  try {
+    const data = await inventoryRepository.getInventoryItemImages(ids)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load inventory item images.',
+    }
+  }
+}
+
+
 const createInventoryItem = async (
   payload: CreateInventoryItemInput,
 ): Promise<InventoryServiceResult<InventoryItem>> => {
@@ -413,6 +428,7 @@ export const inventoryService = {
   listInventoryItems,
   listGlobalInventoryItems,
   getInventoryItemById,
+  getInventoryItemImages,
   createInventoryItem,
   createInventoryItemsBulk,
   updateInventoryItem,

@@ -43,6 +43,18 @@ const invoiceRoutes: RouteRecordRaw[] = [
           requiredModule: 'invoice',
         }),
       },
+      {
+        path: 'brands',
+        name: 'app-invoice-brands-page',
+        component: () => import('../pages/AdminInvoiceBrandsPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'invoice',
+        }),
+      },
     ],
   },
   {

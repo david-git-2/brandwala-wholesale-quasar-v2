@@ -77,9 +77,6 @@
             <div class="row items-start justify-between">
               <div>
                 <div class="text-subtitle1 text-weight-bold text-black">{{ row.invoice_no }}</div>
-                <div class="text-caption text-black text-weight-medium">
-                  {{ billingProfileNameMap[row.billing_profile_id ?? -1] ?? '-' }}
-                </div>
               </div>
               <div class="row items-center q-gutter-xs">
                 <!-- Premium Dot Status Chip -->
@@ -297,6 +294,7 @@ const editForm = reactive({
 
 const statusFilterOptions = [
   { label: 'Draft', value: 'draft' },
+  { label: 'Invoicing', value: 'invoicing' },
   { label: 'Issued', value: 'issued' },
   { label: 'Partially Paid', value: 'partially_paid' },
   { label: 'Paid', value: 'paid' },
@@ -513,6 +511,13 @@ const statusChipStyle = (currentStatus: string) => {
       border: '1px solid #9fd4b7',
     }
   }
+  if (value === 'invoicing') {
+    return {
+      backgroundColor: '#e1bee7',
+      color: '#4a148c',
+      border: '1px solid #ce93d8',
+    }
+  }
   if (value === 'partially_paid') {
     return {
       backgroundColor: '#fff3cd',
@@ -552,6 +557,7 @@ const statusChipStyle = (currentStatus: string) => {
 const statusDotColor = (currentStatus: string) => {
   const value = (currentStatus ?? '').toLowerCase()
   if (value === 'paid') return '#2f8b5d'
+  if (value === 'invoicing') return '#8e24aa'
   if (value === 'partially_paid') return '#ffc107'
   if (value === 'overdue') return '#dc3545'
   if (value === 'cancelled') return '#6c757d'

@@ -2,7 +2,7 @@ export type SortOrder = 'asc' | 'desc'
 export type FilterOperator = 'eq' | 'ilike' | 'gte' | 'lte' | 'in'
 
 export type InvoicePaymentStatus = 'due' | 'partially_paid' | 'paid'
-export type InvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled'
+export type InvoiceStatus = 'draft' | 'invoicing' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled'
 export type InvoiceSourceType = 'order' | 'product_based_costing_file'
 
 export type InvoiceListQuery = {
@@ -52,6 +52,15 @@ export type Invoice = {
   created_by: string | null
   created_at: string
   updated_at: string
+  brand_name: string | null
+  brand_address: string | null
+  total_boxes: number | null
+  delivery_charge: number
+  advance_amount: number
+  previous_due: number
+  thank_you_message: string | null
+  client_name: string | null
+  client_tr: string | null
 }
 
 export type CreateInvoiceInput = {
@@ -102,6 +111,8 @@ export type InvoiceItem = {
   line_total_amount: number
   created_at: string
   updated_at: string
+  unit: string
+  rate: number | null
 }
 
 export type CreateInvoiceItemInput = Omit<InvoiceItem, 'id' | 'created_at' | 'updated_at'>
@@ -139,6 +150,8 @@ export type InvoiceStoreState = {
   loading: boolean
   saving: boolean
   error: string | null
+  brands: (InvoiceBrand & { tenants?: { name: string } })[]
+  boxes: InvoiceBox[]
 }
 
 export type PaymentMethod = 'cash' | 'bank' | 'mobile_banking' | 'other'
@@ -201,3 +214,27 @@ export type DeletePaymentInput = {
   tenant_id: number
   payment_id: number
 }
+
+export type InvoiceBrand = {
+  id: number
+  tenant_id: number
+  name: string
+  address: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type CreateInvoiceBrandInput = Omit<InvoiceBrand, 'id' | 'created_at' | 'updated_at'>
+
+export type InvoiceBox = {
+  id: number
+  tenant_id: number
+  invoice_id: number
+  box_number: string
+  weight: number
+  created_at?: string
+  updated_at?: string
+}
+
+export type CreateInvoiceBoxInput = Omit<InvoiceBox, 'id' | 'created_at' | 'updated_at'>
+
