@@ -267,7 +267,56 @@
       </q-card>
     </div>
 
+    <!-- Generate Invoice Dialog -->
+    <q-dialog v-model="generateInvoiceDialog" persistent>
+      <q-card style="width: 500px; max-width: 90vw" class="rounded-borders">
+        <q-card-section class="row items-center justify-between bg-primary text-white">
+          <div class="text-h6">Generate Invoice</div>
+          <q-btn flat round dense icon="close" v-close-popup color="white" />
+        </q-card-section>
+        
+        <q-separator />
 
+        <q-card-section class="q-pa-md q-gutter-y-md">
+          <div class="text-body2 text-grey-8">
+            This will create a new invoice for Order #{{ order?.id }}.
+            <template v-if="order?.invoice_ids && order.invoice_ids.length">
+              <div class="q-mt-xs">Existing invoice(s): {{ order.invoice_ids.map(id => `#${id}`).join(', ') }}.</div>
+            </template>
+            <template v-else>
+              <div class="q-mt-xs">No invoice is currently linked to this order.</div>
+            </template>
+          </div>
+
+          <q-select
+            v-model="selectedBillingProfileId"
+            :options="billingProfileOptions"
+            label="Commerce Billing Profile *"
+            outlined
+            dense
+            emit-value
+            map-options
+            class="soft-input"
+            :rules="[val => !!val || 'Billing profile is required']"
+          />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-sm bg-grey-1">
+          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            label="Create Invoice"
+            color="secondary"
+            class="pill-btn slim-btn"
+            :loading="creatingInvoice"
+            :disable="!selectedBillingProfileId"
+            @click="submitGenerateInvoice"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -276,6 +325,7 @@ import { computed, onMounted, ref, reactive } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useCommerceBillingProfileStore } from 'src/modules/commerce_invoice/stores/commerceBillingProfileStore'
 import { commerceOrderService } from '../services/commerceOrderService'
 import { supabase } from 'src/boot/supabase'
 import type { CommerceOrder, CommerceOrderDetailsItem, CommerceOrderStatus } from '../types'
@@ -293,6 +343,17 @@ const error = ref<string | null>(null)
 const order = ref<CommerceOrder | null>(null)
 const items = ref<CommerceOrderDetailsItem[]>([])
 const creatingInvoice = ref(false)
+
+const generateInvoiceDialog = ref(false)
+const selectedBillingProfileId = ref<number | null>(null)
+const commerceBillingProfileStore = useCommerceBillingProfileStore()
+
+const billingProfileOptions = computed(() => {
+  return commerceBillingProfileStore.items.map(bp => ({
+    label: bp.name,
+    value: bp.id
+  }))
+})
 
 const editChargesMode = ref(false)
 const savingCharges = ref(false)
@@ -423,81 +484,93 @@ const onDeleteOrder = () => {
   })
 }
 
-const onGenerateInvoice = () => {
+const onGenerateInvoice = async () => {
   if (!order.value || !authStore.tenantId) return
-  const orderId = order.value.id
-  const existingInvoices = order.value.invoice_ids || []
-  const invoiceList = existingInvoices.length > 0 ? `Existing invoice(s): ${existingInvoices.map((id) => `#${id}`).join(', ')}.` : 'No invoice is currently linked to this order.'
-
-  $q.dialog({
-    title: 'Generate Invoice?',
-    message: `This will create a new invoice for Order #${orderId}. ${invoiceList}`,
-    persistent: true,
-    ok: {
-      label: 'Create Invoice',
-      color: 'secondary',
-      flat: true,
-    },
-    cancel: {
-      label: 'Cancel',
-      color: 'grey-7',
-      flat: true,
-    },
-  }).onOk(() => {
-    void (async () => {
-      creatingInvoice.value = true
-      try {
-        let defaultDelivery = 0
-        let defaultWrapping = 0
-        let defaultCodPercent = 0
-
-        if (authStore.tenantId) {
-          const settingsRes = await commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
-          if (settingsRes.success && settingsRes.data) {
-            defaultDelivery = Number(settingsRes.data.default_delivery_charge) || 0
-            defaultWrapping = Number(settingsRes.data.default_wrapping_charge) || 0
-            defaultCodPercent = Number(settingsRes.data.default_cod_percent) || 0
-          }
-        }
-
-        const subtotal = uninvoicedItems.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
-
-        const isInclusive = !!order.value?.is_delivery_charge_inclusive
-        const deliveryCharge = Number(order.value?.delivery_charge) || defaultDelivery
-        const wrappingCharge = Number(order.value?.wrapping_charge) || defaultWrapping
-        const codCharge = Number(order.value?.cod) || Number(((defaultCodPercent / 100) * subtotal).toFixed(2))
-
-        // Calculate invoice total amount: exclude delivery charge if inclusive
-        const totalAmount = subtotal + (isInclusive ? 0 : deliveryCharge)
-
-        const { data, error: err } = await supabase.rpc('create_commerce_invoice', {
-          p_tenant_id: authStore.tenantId,
-          p_order_id: orderId,
-          p_delivery_charge: isInclusive ? 0 : deliveryCharge,
-          p_wrapping_charge: wrappingCharge,
-          p_cod: codCharge,
-          p_total_amount: totalAmount,
-          p_amount_paid: 0,
-          p_delivered_by: '',
-        })
-
-        if (err) throw err
-
-        showSuccessNotification(`Commerce Invoice #${data} generated successfully.`)
-
-        // Redirect to the commerce invoice details page
-        const tenantSlugParam = route.params.tenantSlug
-        const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
-        const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
-        void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${data}`)
-      } catch (err) {
-        console.error(err)
-        handleApiFailure({ success: false, error: err instanceof Error ? err.message : String(err) }, 'Failed to generate invoice.')
-      } finally {
-        creatingInvoice.value = false
+  
+  selectedBillingProfileId.value = null
+  generateInvoiceDialog.value = true
+  
+  loading.value = true
+  try {
+    await commerceBillingProfileStore.fetchCommerceBillingProfiles({
+      tenant_id: authStore.tenantId,
+      page: 1,
+      page_size: 100,
+      sortBy: 'name',
+      sortOrder: 'asc',
+    })
+    
+    // Auto-select billing profile if one matches the order's customer group
+    if (order.value.customer_group_id) {
+      const match = commerceBillingProfileStore.items.find(
+        (bp) => bp.customer_group_id === order.value!.customer_group_id
+      )
+      if (match) {
+        selectedBillingProfileId.value = match.id
       }
-    })()
-  })
+    }
+  } catch (err) {
+    console.error('Failed to load billing profiles:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const submitGenerateInvoice = async () => {
+  if (!order.value || !authStore.tenantId || !selectedBillingProfileId.value) return
+  const orderId = order.value.id
+  
+  creatingInvoice.value = true
+  try {
+    let defaultDelivery = 0
+    let defaultWrapping = 0
+    let defaultCodPercent = 0
+
+    const settingsRes = await commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
+    if (settingsRes.success && settingsRes.data) {
+      defaultDelivery = Number(settingsRes.data.default_delivery_charge) || 0
+      defaultWrapping = Number(settingsRes.data.default_wrapping_charge) || 0
+      defaultCodPercent = Number(settingsRes.data.default_cod_percent) || 0
+    }
+
+    const subtotal = uninvoicedItems.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
+
+    const isInclusive = !!order.value?.is_delivery_charge_inclusive
+    const deliveryCharge = Number(order.value?.delivery_charge) || defaultDelivery
+    const wrappingCharge = Number(order.value?.wrapping_charge) || defaultWrapping
+    const codCharge = Number(order.value?.cod) || Number(((defaultCodPercent / 100) * subtotal).toFixed(2))
+
+    // Calculate invoice total amount: exclude delivery charge if inclusive
+    const totalAmount = subtotal + (isInclusive ? 0 : deliveryCharge)
+
+    const { data, error: err } = await supabase.rpc('create_commerce_invoice', {
+      p_tenant_id: authStore.tenantId,
+      p_order_id: orderId,
+      p_delivery_charge: isInclusive ? 0 : deliveryCharge,
+      p_wrapping_charge: wrappingCharge,
+      p_cod: codCharge,
+      p_total_amount: totalAmount,
+      p_amount_paid: 0,
+      p_delivered_by: '',
+      p_billing_profile_id: selectedBillingProfileId.value,
+    })
+
+    if (err) throw err
+
+    showSuccessNotification(`Commerce Invoice #${data} generated successfully.`)
+    generateInvoiceDialog.value = false
+
+    // Redirect to the commerce invoice details page
+    const tenantSlugParam = route.params.tenantSlug
+    const tenantSlug = Array.isArray(tenantSlugParam) ? tenantSlugParam[0] : tenantSlugParam
+    const tenantPrefix = tenantSlug ? `/${tenantSlug}` : ''
+    void router.push(`${tenantPrefix}/app/commerce-shop/invoices/${data}`)
+  } catch (err) {
+    console.error(err)
+    handleApiFailure({ success: false, error: err instanceof Error ? err.message : String(err) }, 'Failed to generate invoice.')
+  } finally {
+    creatingInvoice.value = false
+  }
 }
 
 const statusChipStyle = (status: CommerceOrderStatus) => {

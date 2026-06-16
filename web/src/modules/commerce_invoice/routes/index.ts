@@ -19,6 +19,18 @@ const commerceInvoiceRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: 'billing-profiles',
+        name: 'app-commerce-billing-profiles',
+        component: () => import('../pages/CommerceBillingProfilesPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          requireTenantContext: true,
+          allowedRoles: ['admin', 'staff'],
+          requiredModule: 'commerce_invoice',
+        }),
+      },
+      {
         path: ':invoiceId',
         name: 'app-commerce-invoice-details',
         component: () => import('../pages/CommerceInvoiceDetailsPage.vue'),

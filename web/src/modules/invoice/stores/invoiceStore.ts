@@ -17,7 +17,6 @@ import type {
   UpdatePaymentAllocationAmountInput,
   InvoiceBrand,
   CreateInvoiceBrandInput,
-  InvoiceBox,
   CreateInvoiceBoxInput,
 } from '../types/index'
 

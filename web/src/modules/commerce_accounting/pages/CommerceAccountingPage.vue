@@ -1,157 +1,162 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5 text-weight-bold text-primary">Commerce Accounting</div>
-    </div>
+  <q-page class="q-pa-xs q-sm-pa-md commerce-accounting-dashboard">
+    <!-- ── Hero Header ──────────────────────────────────────── -->
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-md">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-12 col-sm">
+            <div class="text-subtitle1 text-weight-bold text-primary flex items-center">
+              <q-icon name="account_balance" class="q-mr-sm" size="24px" />
+              Commerce Accounting Dashboard
+            </div>
+            <div class="text-caption text-grey-8 q-mt-xs">
+              Manage unified ledger entries, shipments, and inventory summaries for e-commerce.
+            </div>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="row justify-center q-my-xl">
-      <q-spinner-dots size="40px" color="primary" />
-    </div>
+    <!-- ── Dashboard Navigation Grid ────────────────────────── -->
+    <div class="row q-col-gutter-md">
+      <!-- Invoice Accounting Card -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card
+          flat
+          class="dashboard-card cursor-pointer floating-surface shadow-1 hover-scale"
+          @click="navigateTo('app-commerce-accounting-invoice-page')"
+        >
+          <q-card-section class="column justify-between full-height q-pa-lg">
+            <div class="column q-gutter-y-sm">
+              <div class="card-icon-wrapper bg-indigo-1 text-indigo">
+                <q-icon name="receipt_long" size="28px" />
+              </div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9 q-mt-md">Invoice Accounting</div>
+              <div class="text-caption text-grey-7">
+                Track payments, cost of goods sold (COGS), total revenues, and profit margins on e-commerce invoices.
+              </div>
+            </div>
+            <div class="row items-center justify-between q-mt-lg text-primary text-weight-medium text-caption">
+              <span>View Invoices</span>
+              <q-icon name="arrow_forward" size="16px" class="arrow-icon" />
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-    <!-- Empty State -->
-    <div v-else-if="!records.length" class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block">
-      <q-icon name="account_balance" size="64px" class="q-mb-sm text-grey-4" />
-      <div class="text-subtitle1 text-weight-medium">No Commerce Accounting Records Found</div>
-      <div class="text-caption text-grey-5">Accounting entries will generate automatically upon invoice creation.</div>
-    </div>
+      <!-- Shipment Accounting Card -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card
+          flat
+          class="dashboard-card cursor-pointer floating-surface shadow-1 hover-scale"
+          @click="navigateTo('app-commerce-accounting-shipment-page')"
+        >
+          <q-card-section class="column justify-between full-height q-pa-lg">
+            <div class="column q-gutter-y-sm">
+              <div class="card-icon-wrapper bg-teal-1 text-teal">
+                <q-icon name="local_shipping" size="28px" />
+              </div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9 q-mt-md">Shipment Accounting</div>
+              <div class="text-caption text-grey-7">
+                Analyze landed costs, sales revenues, realized gross profit margins, usable inventory, and losses per shipment.
+              </div>
+            </div>
+            <div class="row items-center justify-between q-mt-lg text-primary text-weight-medium text-caption">
+              <span>View Shipments</span>
+              <q-icon name="arrow_forward" size="16px" class="arrow-icon" />
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-    <!-- Accounting Table -->
-    <div v-else>
-      <q-table
-        flat
-        bordered
-        :rows="records"
-        :columns="columns"
-        row-key="id"
-        class="floating-surface shadow-1 rounded-borders"
-      >
-        <template #body-cell-is_customer_group_paid="props">
-          <q-td :props="props">
-            <q-chip
-              square
-              dense
-              :color="props.value ? 'green' : 'red'"
-              text-color="white"
-              class="text-weight-bold"
-            >
-              {{ props.value ? 'SETTLED' : 'PENDING' }}
-            </q-chip>
-          </q-td>
-        </template>
-
-        <template #body-cell-order_payment_status="props">
-          <q-td :props="props">
-            <q-chip
-              square
-              dense
-              :color="props.value ? 'green' : 'red'"
-              text-color="white"
-              class="text-weight-bold"
-            >
-              {{ props.value ? 'PAID' : 'UNPAID' }}
-            </q-chip>
-          </q-td>
-        </template>
-
-        <template #body-cell-created_at="props">
-          <q-td :props="props">
-            {{ formatDate(props.value) }}
-          </q-td>
-        </template>
-
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="q-gutter-xs text-center">
-            <q-btn
-              flat
-              round
-              color="primary"
-              :icon="props.row.is_customer_group_paid ? 'undo' : 'check_circle'"
-              size="sm"
-              @click="togglePaymentStatus(props.row)"
-            >
-              <q-tooltip>{{ props.row.is_customer_group_paid ? 'Mark Pending' : 'Mark Settled' }}</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </q-table>
+      <!-- Inventory Shipment Summary Card -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card
+          flat
+          class="dashboard-card cursor-pointer floating-surface shadow-1 hover-scale"
+          @click="navigateTo('app-commerce-accounting-inventory-shipment-page')"
+        >
+          <q-card-section class="column justify-between full-height q-pa-lg">
+            <div class="column q-gutter-y-sm">
+              <div class="card-icon-wrapper bg-amber-1 text-amber-9">
+                <q-icon name="inventory_2" size="28px" />
+              </div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9 q-mt-md">Stock Shipment Summary</div>
+              <div class="text-caption text-grey-7">
+                Review batch-wise inventory tracking, usable quantities, cost totals, and losses (damaged/stolen/expired) across shipments.
+              </div>
+            </div>
+            <div class="row items-center justify-between q-mt-lg text-primary text-weight-medium text-caption">
+              <span>View Stock Summary</span>
+              <q-icon name="arrow_forward" size="16px" class="arrow-icon" />
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import type { QTableColumn } from 'quasar'
-import { onMounted, ref } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { commerceAccountingService } from '../services/commerceAccountingService'
-import type { CommerceAccounting } from '../types'
-import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
+import { useRouter, useRoute } from 'vue-router'
 
-const authStore = useAuthStore()
+const router = useRouter()
+const route = useRoute()
 
-// State
-const loading = ref(true)
-const records = ref<CommerceAccounting[]>([])
-
-const columns: QTableColumn[] = [
-  { name: 'id', label: 'Entry ID', field: 'id', align: 'left', sortable: true },
-  { name: 'order_item_id', label: 'Order Item ID', field: 'order_item_id', align: 'left', sortable: true },
-  { name: 'inventory_item_id', label: 'Inventory Item ID', field: 'inventory_item_id', align: 'left', sortable: true },
-  { name: 'cost_bdt', label: 'Cost (BDT)', field: 'cost_bdt', align: 'left' },
-  { name: 'sell_price_bdt', label: 'Sell Price (BDT)', field: 'sell_price_bdt', align: 'left' },
-  { name: 'recipient_sell_price_bdt', label: 'Recipient Sell (BDT)', field: 'recipient_sell_price_bdt', align: 'left' },
-  { name: 'customer_group_id', label: 'Customer Group ID', field: 'customer_group_id', align: 'left' },
-  { name: 'order_payment_status', label: 'Order Payment', field: 'order_payment_status', align: 'left', sortable: true },
-  { name: 'is_customer_group_paid', label: 'Settlement Status', field: 'is_customer_group_paid', align: 'left', sortable: true },
-  { name: 'created_at', label: 'Created Date', field: 'created_at', align: 'left' },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
-]
-
-const loadRecords = async () => {
-  if (!authStore.tenantId) return
-  loading.value = true
-  try {
-    const res = await commerceAccountingService.listCommerceAccounting(authStore.tenantId)
-    if (res.success && res.data) {
-      records.value = res.data
-    } else {
-      records.value = []
+const navigateTo = (routeName: string) => {
+  void router.push({
+    name: routeName,
+    params: {
+      tenantSlug: route.params.tenantSlug
     }
-  } finally {
-    loading.value = false
-  }
+  })
 }
-
-const togglePaymentStatus = async (record: CommerceAccounting) => {
-  const newStatus = !record.is_customer_group_paid
-  try {
-    const res = await commerceAccountingService.updateAccountingPaymentStatus(record.id, newStatus)
-    if (res.success) {
-      showSuccessNotification(`Accounting entry status updated successfully.`)
-      await loadRecords()
-    } else {
-      showWarningDialog(res.error || 'Failed to update accounting entry.')
-    }
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString()
-}
-
-onMounted(() => {
-  void loadRecords()
-})
 </script>
 
 <style scoped>
-.empty-state-block {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid #e7e2d8;
+.commerce-accounting-dashboard {
+  background: transparent;
+}
+
+/* ── Floating surface ── */
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
   border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
   backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+/* ── Dashboard Cards ── */
+.dashboard-card {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(34, 56, 101, 0.12) !important;
+}
+
+.dashboard-card:hover .arrow-icon {
+  transform: translateX(4px);
+}
+
+.arrow-icon {
+  transition: transform 0.2s ease;
+}
+
+.card-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

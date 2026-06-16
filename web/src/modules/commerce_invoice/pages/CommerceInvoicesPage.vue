@@ -40,6 +40,20 @@
           </q-td>
         </template>
 
+        <template #body-cell-invoice_type="props">
+          <q-td :props="props">
+            <q-chip
+              square
+              dense
+              :color="props.value === 'wholesale' ? 'purple-2' : 'blue-2'"
+              :text-color="props.value === 'wholesale' ? 'purple-10' : 'blue-10'"
+              class="text-weight-bold text-capitalize"
+            >
+              {{ props.value || 'retail' }}
+            </q-chip>
+          </q-td>
+        </template>
+
         <template #body-cell-order_id="props">
           <q-td :props="props">
             #{{ props.value }}
@@ -143,16 +157,31 @@
 
         <q-card-section class="q-pa-md">
           <q-form @submit="submitCreateInvoice" class="q-gutter-y-md">
+            <div class="row items-center justify-between q-mb-sm border-all q-pa-sm rounded-borders bg-grey-1">
+              <span class="text-subtitle2 text-grey-8 text-weight-bold">Invoice Type:</span>
+              <q-btn-toggle
+                v-model="createForm.invoice_type"
+                toggle-color="primary"
+                flat
+                dense
+                unelevated
+                :options="[
+                  { label: 'Retail', value: 'retail' },
+                  { label: 'Wholesale', value: 'wholesale' }
+                ]"
+              />
+            </div>
+
             <q-select
-              v-model="createForm.customer_group_id"
-              :options="customerGroupOptions"
-              label="Customer Group *"
+              v-model="createForm.billing_profile_id"
+              :options="billingProfileOptions"
+              label="Billing Profile *"
               outlined
               dense
               emit-value
               map-options
               class="soft-input"
-              :rules="[val => !!val || 'Customer Group is required']"
+              :rules="[val => !!val || 'Billing Profile is required']"
             />
             <q-input
               v-model="createForm.recipient_name"
@@ -162,49 +191,52 @@
               class="soft-input"
               :rules="[val => !!val || 'Recipient Name is required']"
             />
-            <q-input
-              v-model="createForm.recipient_phone"
-              label="Recipient Phone *"
-              outlined
-              dense
-              class="soft-input"
-              :rules="[val => !!val || 'Recipient Phone is required']"
-            />
-            <q-input
-              v-model="createForm.shipping_address"
-              label="Shipping Address *"
-              outlined
-              dense
-              class="soft-input"
-              :rules="[val => !!val || 'Shipping Address is required']"
-            />
-            <q-input
-              v-model.number="createForm.delivery_charge"
-              type="number"
-              label="Delivery Charge"
-              outlined
-              dense
-              class="soft-input"
-              :rules="[val => val >= 0 || 'Must be >= 0']"
-            />
-            <q-input
-              v-model.number="createForm.wrapping_charge"
-              type="number"
-              label="Wrapping Charge"
-              outlined
-              dense
-              class="soft-input"
-              :rules="[val => val >= 0 || 'Must be >= 0']"
-            />
-            <q-input
-              v-model.number="createForm.cod"
-              type="number"
-              label="COD Charge"
-              outlined
-              dense
-              class="soft-input"
-              :rules="[val => val >= 0 || 'Must be >= 0']"
-            />
+            
+            <template v-if="createForm.invoice_type === 'retail'">
+              <q-input
+                v-model="createForm.recipient_phone"
+                label="Recipient Phone *"
+                outlined
+                dense
+                class="soft-input"
+                :rules="[val => !!val || 'Recipient Phone is required']"
+              />
+              <q-input
+                v-model="createForm.shipping_address"
+                label="Shipping Address *"
+                outlined
+                dense
+                class="soft-input"
+                :rules="[val => !!val || 'Shipping Address is required']"
+              />
+              <q-input
+                v-model.number="createForm.delivery_charge"
+                type="number"
+                label="Delivery Charge"
+                outlined
+                dense
+                class="soft-input"
+                :rules="[val => val >= 0 || 'Must be >= 0']"
+              />
+              <q-input
+                v-model.number="createForm.wrapping_charge"
+                type="number"
+                label="Wrapping Charge"
+                outlined
+                dense
+                class="soft-input"
+                :rules="[val => val >= 0 || 'Must be >= 0']"
+              />
+              <q-input
+                v-model.number="createForm.cod"
+                type="number"
+                label="COD Charge"
+                outlined
+                dense
+                class="soft-input"
+                :rules="[val => val >= 0 || 'Must be >= 0']"
+              />
+            </template>
 
             <div class="row justify-end q-mt-lg">
               <q-btn label="Cancel" flat color="grey-7" v-close-popup class="q-mr-sm" />
@@ -219,19 +251,19 @@
 
 <script setup lang="ts">
 import type { QTableColumn } from 'quasar'
-import { onMounted, ref, reactive, computed } from 'vue'
+import { onMounted, ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceInvoiceService } from '../services/commerceInvoiceService'
-import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
+import { useCommerceBillingProfileStore } from '../stores/commerceBillingProfileStore'
 import { commerceOrderService } from 'src/modules/commerce_order/services/commerceOrderService'
 import type { CommerceInvoice } from '../types'
-import type { CustomerGroup } from 'src/modules/tenant/types'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const commerceBillingProfileStore = useCommerceBillingProfileStore()
 
 // State
 const loading = ref(true)
@@ -244,9 +276,9 @@ const submittingPayment = ref(false)
 // Create Invoice Dialog
 const createDialog = ref(false)
 const creatingInvoice = ref(false)
-const customerGroups = ref<CustomerGroup[]>([])
 const createForm = reactive({
-  customer_group_id: null as number | null,
+  billing_profile_id: null as number | null,
+  invoice_type: 'retail' as 'retail' | 'wholesale',
   recipient_name: '',
   recipient_phone: '',
   shipping_address: '',
@@ -255,15 +287,26 @@ const createForm = reactive({
   cod: 0,
 })
 
-const customerGroupOptions = computed(() => {
-  return customerGroups.value.map(cg => ({
-    label: cg.name,
-    value: cg.id
+const billingProfileOptions = computed(() => {
+  return commerceBillingProfileStore.items.map(bp => ({
+    label: bp.name,
+    value: bp.id
   }))
+})
+
+watch(() => createForm.billing_profile_id, (bpId) => {
+  if (!bpId) return
+  const bp = commerceBillingProfileStore.items.find(p => p.id === bpId)
+  if (bp) {
+    createForm.recipient_name = bp.name || ''
+    createForm.recipient_phone = bp.phone || ''
+    createForm.shipping_address = bp.address || ''
+  }
 })
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Invoice ID', field: 'id', align: 'left', sortable: true },
+  { name: 'invoice_type', label: 'Type', field: 'invoice_type', align: 'left', sortable: true },
   { name: 'order_id', label: 'Order ID', field: 'order_id', align: 'left', sortable: true },
   { name: 'total_amount', label: 'Total (BDT)', field: 'total_amount', align: 'left' },
   { name: 'amount_paid', label: 'Paid (BDT)', field: 'amount_paid', align: 'left' },
@@ -320,7 +363,8 @@ const submitPayment = async () => {
 
 const openCreateDialog = async () => {
   if (!authStore.tenantId) return
-  createForm.customer_group_id = null
+  createForm.billing_profile_id = null
+  createForm.invoice_type = 'retail'
   createForm.recipient_name = ''
   createForm.recipient_phone = ''
   createForm.shipping_address = ''
@@ -330,14 +374,17 @@ const openCreateDialog = async () => {
 
   loading.value = true
   try {
-    const [cgRes, settingsRes] = await Promise.all([
-      customerGroupService.listCustomerGroupsByTenant(authStore.tenantId),
+    const [, settingsRes] = await Promise.all([
+      commerceBillingProfileStore.fetchCommerceBillingProfiles({
+        tenant_id: authStore.tenantId,
+        page: 1,
+        page_size: 100,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }),
       commerceOrderService.getCommerceOrderSettings(authStore.tenantId)
     ])
 
-    if (cgRes.success && cgRes.data) {
-      customerGroups.value = cgRes.data
-    }
     if (settingsRes.success && settingsRes.data) {
       createForm.delivery_charge = Number(settingsRes.data.default_delivery_charge) || 0
       createForm.wrapping_charge = Number(settingsRes.data.default_wrapping_charge) || 0
@@ -349,18 +396,20 @@ const openCreateDialog = async () => {
 }
 
 const submitCreateInvoice = async () => {
-  if (!authStore.tenantId || !createForm.customer_group_id) return
+  if (!authStore.tenantId || !createForm.billing_profile_id) return
   creatingInvoice.value = true
   try {
+    const isWholesale = createForm.invoice_type === 'wholesale'
     const res = await commerceInvoiceService.createManualInvoice({
       tenant_id: authStore.tenantId,
-      customer_group_id: createForm.customer_group_id,
+      billing_profile_id: createForm.billing_profile_id,
+      invoice_type: createForm.invoice_type,
       recipient_name: createForm.recipient_name,
-      recipient_phone: createForm.recipient_phone,
-      shipping_address: createForm.shipping_address,
-      delivery_charge: createForm.delivery_charge,
-      wrapping_charge: createForm.wrapping_charge,
-      cod: createForm.cod,
+      recipient_phone: isWholesale ? null : createForm.recipient_phone,
+      shipping_address: isWholesale ? null : createForm.shipping_address,
+      delivery_charge: isWholesale ? 0 : createForm.delivery_charge,
+      wrapping_charge: isWholesale ? 0 : createForm.wrapping_charge,
+      cod: isWholesale ? 0 : createForm.cod,
     })
 
     if (res.success && res.data) {

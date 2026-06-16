@@ -11,7 +11,9 @@ const listCommerceAccounting = async (tenantId: number): Promise<CommerceAccount
   if (error) throw error
 
   const rows = (data || []) as CommerceAccounting[]
-  const orderItemIds = Array.from(new Set(rows.map((row) => row.order_item_id).filter((id) => Boolean(id))))
+  const orderItemIds = Array.from(
+    new Set(rows.map((row) => row.order_item_id).filter((id): id is number => Boolean(id))),
+  )
 
   const orderPaymentStatusByOrderItemId = new Map<number, boolean | null>()
 
@@ -53,7 +55,7 @@ const listCommerceAccounting = async (tenantId: number): Promise<CommerceAccount
 
   return rows.map((row) => ({
     ...row,
-    order_payment_status: orderPaymentStatusByOrderItemId.get(row.order_item_id) ?? null,
+    order_payment_status: row.order_item_id ? (orderPaymentStatusByOrderItemId.get(row.order_item_id) ?? null) : null,
   }))
 }
 

@@ -37,10 +37,11 @@ export const commerceInvoiceService = {
     ),
   createManualInvoice: (payload: {
     tenant_id: number
-    customer_group_id: number
+    billing_profile_id: number
+    invoice_type?: 'retail' | 'wholesale'
     recipient_name: string
-    recipient_phone: string
-    shipping_address: string
+    recipient_phone: string | null
+    shipping_address: string | null
     delivery_charge: number
     wrapping_charge: number
     cod: number

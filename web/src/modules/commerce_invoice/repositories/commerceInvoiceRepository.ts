@@ -200,6 +200,7 @@ const maintainAccountingEntry = async (
   customerGroupId: number,
   tenantId: number,
   isPaid: boolean,
+  billingProfileId?: number | null,
 ) => {
   const payload = {
     order_item_id: item.id,
@@ -209,6 +210,7 @@ const maintainAccountingEntry = async (
     sell_price_bdt: Number(item.sell_price_bdt || 0),
     recipient_sell_price_bdt: Number(item.recipient_price_bdt || 0),
     customer_group_id: customerGroupId,
+    billing_profile_id: billingProfileId || null,
     is_customer_group_paid: isPaid,
     tenant_id: tenantId,
   }
@@ -285,7 +287,7 @@ const updateInvoicePayment = async (
 const getCommerceInvoiceDetails = async (invoiceId: number) => {
   const { data: invoice, error: invoiceError } = await supabase
     .from('commerce_invoices')
-    .select('*, commerce_orders(*)')
+    .select('*, commerce_orders(*), billing_profiles(*)')
     .eq('id', invoiceId)
     .maybeSingle()
 
@@ -345,20 +347,29 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
 const createManualInvoice = async (payload: {
   tenant_id: number
-  customer_group_id: number
+  billing_profile_id: number
+  invoice_type?: 'retail' | 'wholesale'
   recipient_name: string
-  recipient_phone: string
-  shipping_address: string
+  recipient_phone: string | null
+  shipping_address: string | null
   delivery_charge: number
   wrapping_charge: number
   cod: number
 }) => {
+  const { data: bp } = await supabase
+    .from('billing_profiles')
+    .select('customer_group_id')
+    .eq('id', payload.billing_profile_id)
+    .single()
+
+  const customerGroupId = bp?.customer_group_id || null
+
   const { data: order, error: orderErr } = await supabase
     .from('commerce_orders')
     .insert([
       {
         tenant_id: payload.tenant_id,
-        customer_group_id: payload.customer_group_id,
+        customer_group_id: customerGroupId,
         recipient_name: payload.recipient_name,
         recipient_phone: payload.recipient_phone,
         shipping_address: payload.shipping_address,
@@ -388,6 +399,8 @@ const createManualInvoice = async (payload: {
         amount_paid: 0,
         amount_due: order.shipment_payment,
         is_customer_group_paid: false,
+        billing_profile_id: payload.billing_profile_id,
+        invoice_type: payload.invoice_type || 'retail',
       },
     ])
     .select()
@@ -502,7 +515,7 @@ const addCommerceInvoiceItem = async (
 
   const { data: invoice } = await supabase
     .from('commerce_invoices')
-    .select('is_customer_group_paid')
+    .select('is_customer_group_paid, billing_profile_id')
     .eq('id', invoiceId)
     .single()
 
@@ -511,6 +524,7 @@ const addCommerceInvoiceItem = async (
     Number(order.customer_group_id || 0),
     resolvedTenantId,
     Boolean(invoice?.is_customer_group_paid),
+    invoice?.billing_profile_id,
   )
 
   await syncInvoiceTotals(invoiceId)
@@ -523,7 +537,7 @@ const updateOrderItemInventoryAssignment = async (
 ) => {
   const { data: invoice, error: invoiceError } = await supabase
     .from('commerce_invoices')
-    .select('id, order_id, tenant_id, is_customer_group_paid')
+    .select('id, order_id, tenant_id, is_customer_group_paid, billing_profile_id')
     .eq('id', invoiceId)
     .single()
 
@@ -604,6 +618,7 @@ const updateOrderItemInventoryAssignment = async (
     Number(order.customer_group_id || 0),
     resolvedTenantId,
     Boolean(invoice.is_customer_group_paid),
+    invoice.billing_profile_id,
   )
 
   await syncInvoiceTotals(invoiceId)
@@ -617,7 +632,7 @@ const unassignOrderItemInventory = async (
 ) => {
   const { data: invoice, error: invoiceError } = await supabase
     .from('commerce_invoices')
-    .select('id, order_id, tenant_id, is_customer_group_paid')
+    .select('id, order_id, tenant_id, is_customer_group_paid, billing_profile_id')
     .eq('id', invoiceId)
     .single()
 
@@ -670,6 +685,7 @@ const unassignOrderItemInventory = async (
     Number(order.customer_group_id || 0),
     Number(order.tenant_id),
     Boolean(invoice.is_customer_group_paid),
+    invoice.billing_profile_id,
   )
 
   await syncInvoiceTotals(invoiceId)

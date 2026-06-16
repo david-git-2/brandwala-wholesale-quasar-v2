@@ -72,21 +72,51 @@
             <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
               <q-icon name="assignment" class="q-mr-xs" /> Recipient Details
             </div>
-            <div v-if="order" class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 text-grey-7">Recipient Name</div>
-                <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_name }}</div>
+            <div>
+              <div v-if="invoice && invoice.billing_profiles" class="row q-col-gutter-md">
+                <div class="col-12 col-sm-4">
+                  <div class="text-subtitle2 text-grey-7">Recipient Name</div>
+                  <div class="text-body1 text-weight-medium text-grey-9">{{ invoice.billing_profiles.name }}</div>
+                </div>
+                <template v-if="invoice.invoice_type !== 'wholesale'">
+                  <div class="col-12 col-sm-4">
+                    <div class="text-subtitle2 text-grey-7">Recipient Phone</div>
+                    <div class="text-body1 text-weight-medium text-grey-9">{{ invoice.billing_profiles.phone || '-' }}</div>
+                  </div>
+                  <div class="col-12 col-sm-4">
+                    <div class="text-subtitle2 text-grey-7">Recipient Email</div>
+                    <div class="text-body1 text-weight-medium text-grey-9">{{ invoice.billing_profiles.email || '-' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <div class="text-subtitle2 text-grey-7">Billing/Shipping Address</div>
+                    <div class="text-body1 text-grey-9">{{ invoice.billing_profiles.address || '-' }}</div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="col-12 col-sm-8">
+                    <div class="text-subtitle2 text-grey-7">Recipient Email</div>
+                    <div class="text-body1 text-weight-medium text-grey-9">{{ invoice.billing_profiles.email || '-' }}</div>
+                  </div>
+                </template>
               </div>
-              <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 text-grey-7">Recipient Phone</div>
-                <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_phone }}</div>
+              <div v-else-if="order" class="row q-col-gutter-md">
+                <div class="col-12 col-sm-6">
+                  <div class="text-subtitle2 text-grey-7">Recipient Name</div>
+                  <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_name }}</div>
+                </div>
+                <template v-if="invoice && invoice.invoice_type !== 'wholesale'">
+                  <div class="col-12 col-sm-6">
+                    <div class="text-subtitle2 text-grey-7">Recipient Phone</div>
+                    <div class="text-body1 text-weight-medium text-grey-9">{{ order.recipient_phone }}</div>
+                  </div>
+                  <div class="col-12">
+                    <div class="text-subtitle2 text-grey-7">Shipping Address</div>
+                    <div class="text-body1 text-grey-9">{{ order.shipping_address }}</div>
+                  </div>
+                </template>
               </div>
-              <div class="col-12">
-                <div class="text-subtitle2 text-grey-7">Shipping Address</div>
-                <div class="text-body1 text-grey-9">{{ order.shipping_address }}</div>
-              </div>
+              <div v-else class="text-grey-6">No associated order details found.</div>
             </div>
-            <div v-else class="text-grey-6">No associated order details found.</div>
           </q-card>
         </div>
 
@@ -128,56 +158,58 @@
             </div>
 
             <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-2">
-                <q-input
-                  v-model.number="chargesForm.delivery_charge"
-                  type="number"
-                  step="0.01"
-                  label="Delivery Charge"
-                  outlined
-                  dense
-                  class="soft-input"
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
-                  @update:model-value="markChargesDirty"
-                />
-              </div>
-              <div class="col-12 col-md-2">
-                <q-input
-                  v-model="chargesForm.delivered_by"
-                  label="Delivered By"
-                  outlined
-                  dense
-                  class="soft-input"
-                  @update:model-value="markChargesDirty"
-                />
-              </div>
-              <div class="col-12 col-md-2">
-                <q-input
-                  v-model.number="chargesForm.wrapping_charge"
-                  type="number"
-                  step="0.01"
-                  label="Wrapping"
-                  outlined
-                  dense
-                  class="soft-input"
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
-                  @update:model-value="markChargesDirty"
-                />
-              </div>
-              <div class="col-12 col-md-2">
-                <q-input
-                  v-model.number="chargesForm.cod"
-                  type="number"
-                  step="0.01"
-                  label="COD"
-                  outlined
-                  dense
-                  class="soft-input"
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
-                  @update:model-value="markChargesDirty"
-                />
-              </div>
-              <div class="col-12 col-md-2">
+              <template v-if="invoice.invoice_type !== 'wholesale'">
+                <div class="col-12 col-md-2">
+                  <q-input
+                    v-model.number="chargesForm.delivery_charge"
+                    type="number"
+                    step="0.01"
+                    label="Delivery Charge"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                    @update:model-value="markChargesDirty"
+                  />
+                </div>
+                <div class="col-12 col-md-2">
+                  <q-input
+                    v-model="chargesForm.delivered_by"
+                    label="Delivered By"
+                    outlined
+                    dense
+                    class="soft-input"
+                    @update:model-value="markChargesDirty"
+                  />
+                </div>
+                <div class="col-12 col-md-2">
+                  <q-input
+                    v-model.number="chargesForm.wrapping_charge"
+                    type="number"
+                    step="0.01"
+                    label="Wrapping"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                    @update:model-value="markChargesDirty"
+                  />
+                </div>
+                <div class="col-12 col-md-2">
+                  <q-input
+                    v-model.number="chargesForm.cod"
+                    type="number"
+                    step="0.01"
+                    label="COD"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                    @update:model-value="markChargesDirty"
+                  />
+                </div>
+              </template>
+              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-6' : 'col-md-2'">
                 <q-input
                   v-model.number="chargesForm.discount_amount"
                   type="number"
@@ -190,7 +222,7 @@
                   @update:model-value="markChargesDirty"
                 />
               </div>
-              <div class="col-12 col-md-2">
+              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-6' : 'col-md-2'">
                 <q-input
                   v-model.number="chargesForm.amount_paid"
                   type="number"
@@ -466,6 +498,14 @@ type CommerceInvoiceRow = {
   created_at: string
   status: 'draft' | 'ready' | 'handed_to_customer'
   discount_amount?: number
+  invoice_type?: 'retail' | 'wholesale'
+  billing_profiles?: {
+    id: number
+    name: string
+    email: string | null
+    phone: string | null
+    address: string | null
+  } | null
 }
 
 type CommerceOrderRow = {
@@ -634,11 +674,12 @@ const saveCharges = async () => {
   if (!invoice.value) return
   savingCharges.value = true
   try {
+    const isWholesale = invoice.value.invoice_type === 'wholesale'
     const res = await commerceInvoiceService.updateCommerceInvoiceCharges(invoice.value.id, {
-      delivery_charge: chargesForm.delivery_charge,
-      wrapping_charge: chargesForm.wrapping_charge,
-      cod: chargesForm.cod,
-      delivered_by: chargesForm.delivered_by,
+      delivery_charge: isWholesale ? 0 : chargesForm.delivery_charge,
+      wrapping_charge: isWholesale ? 0 : chargesForm.wrapping_charge,
+      cod: isWholesale ? 0 : chargesForm.cod,
+      delivered_by: isWholesale ? '' : chargesForm.delivered_by,
       amount_paid: chargesForm.amount_paid,
       discount_amount: chargesForm.discount_amount,
     })

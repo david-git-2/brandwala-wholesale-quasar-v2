@@ -77,7 +77,7 @@
               v-else
               clickable
               v-close-popup
-              @click="goToShipmentInfo"
+              @click="openEditableShipmentInfoDialog"
             >
               <q-item-section avatar>
                 <q-icon name="info" />
@@ -2264,11 +2264,6 @@ const saveBatchEditorRows = async () => {
 
   await shipmentStore.fetchBatchCodePcByShipment(shipmentStore.selectedShipment.id)
   showBatchEditorDialog.value = false
-}
-
-const goToShipmentInfo = async () => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/info`)
 }
 
 const goToBatchCodePage = async () => {

@@ -1072,6 +1072,9 @@ const deleteInventoryNote = async (
     .delete()
     .eq('id', payload.id)
 
+  if (error) {
+    throw error
+  }
 }
 
 const getInventoryItemImages = async (ids: number[]): Promise<Array<{ id: number; image_url: string | null }>> => {
