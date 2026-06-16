@@ -16,6 +16,13 @@ export type CommerceInvoiceDetailsItem = CommerceOrderItem & {
   } | null
   inventory_items?: {
     name?: string | null
+    cost?: number | null
+    product_code?: string | null
+    barcode?: string | null
+    source_type?: string | null
+    source_id?: number | null
+    shipment_name?: string | null
+    tenant_shipment_id?: number | null
   } | null
 }
 

@@ -287,8 +287,11 @@
                 <div class="text-caption text-grey-7">Code: {{ row.products?.product_code || '-' }}</div>
                 <div class="text-caption text-grey-7">
                   Shipment:
-                  <template v-if="row.source_type === 'shipment' && row.source_id">
-                    #{{ row.source_id }}
+                  <template v-if="row.inventory_items?.source_type === 'shipment' && row.inventory_items?.source_id">
+                    #{{ row.inventory_items.tenant_shipment_id ?? row.inventory_items.source_id }}
+                    <template v-if="row.inventory_items.shipment_name">
+                      - {{ row.inventory_items.shipment_name }}
+                    </template>
                   </template>
                   <template v-else>
                     -
@@ -405,6 +408,9 @@
                       <span v-if="item.tenant_name" class="text-caption text-grey-7">({{ item.tenant_name }})</span>
                     </div>
                     <div class="text-caption text-grey-7">Code: {{ item.product_code || '-' }} | ID: {{ item.id }}</div>
+                    <div class="text-caption text-grey-7" v-if="item.shipment?.shipment">
+                      Shipment: #{{ item.shipment.shipment.tenant_shipment_id ?? item.shipment.shipment.id }} - {{ item.shipment.shipment.name }}
+                    </div>
                     <div class="text-caption text-grey-7">
                       Usable: {{ Number(item.quantities?.usable || 0) }} | Cost: ৳{{ formatAmount(Number(item.cost || 0)) }}
                     </div>
@@ -532,6 +538,9 @@ type CommerceInvoiceItemRow = {
   } | null
   inventory_items?: {
     name?: string | null
+    source_type?: string | null
+    source_id?: number | null
+    shipment_name?: string | null
   } | null
 }
 

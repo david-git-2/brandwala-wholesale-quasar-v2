@@ -401,8 +401,8 @@
                       <q-badge color="purple" outline class="q-ml-sm" v-if="group.tenant_name">
                         {{ group.tenant_name }}
                       </q-badge>
-                      <q-badge outline color="primary" class="q-ml-sm" v-if="group.shipment?.shipment?.id">
-                        Shipment #{{ group.shipment.shipment.id }}
+                      <q-badge outline color="primary" class="q-ml-sm" v-if="group.shipment?.shipment">
+                        Shipment #{{ group.shipment.shipment.tenant_shipment_id ?? group.shipment.shipment.id }} - {{ group.shipment.shipment.name }}
                       </q-badge>
                     </div>
                     <div class="row items-center q-gutter-x-md text-caption text-grey-7 q-mt-xs">

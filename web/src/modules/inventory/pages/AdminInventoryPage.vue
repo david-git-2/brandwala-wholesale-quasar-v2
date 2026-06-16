@@ -173,7 +173,10 @@
       </template>
       <template #body-cell-shipment="props">
         <q-td :props="props">
-          {{ props.row.shipment?.shipment?.name ?? '-' }}
+          <span v-if="props.row.shipment?.shipment">
+            #{{ props.row.shipment.shipment.tenant_shipment_id ?? props.row.shipment.shipment.id }} - {{ props.row.shipment.shipment.name }}
+          </span>
+          <span v-else>-</span>
         </q-td>
       </template>
       <template #body-cell-actions="props">

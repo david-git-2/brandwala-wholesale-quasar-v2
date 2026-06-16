@@ -312,7 +312,7 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
   const inventoryItemsById = new Map<
     number,
-    { name?: string | null; cost?: number | null; product_code?: string | null; barcode?: string | null; source_type?: string | null; source_id?: number | null }
+    { name?: string | null; cost?: number | null; product_code?: string | null; barcode?: string | null; source_type?: string | null; source_id?: number | null; shipment_name?: string | null; tenant_shipment_id?: number | null }
   >()
 
   if (inventoryItemIds.length > 0) {
@@ -323,7 +323,32 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
     if (inventoryItemsError) throw inventoryItemsError
 
+    const shipmentIds = Array.from(
+      new Set(
+        (inventoryItems || [])
+          .filter((item) => item.source_type === 'shipment' && item.source_id)
+          .map((item) => Number(item.source_id)),
+      ),
+    )
+
+    const shipmentsById = new Map<number, { name: string; tenant_shipment_id: number }>()
+    if (shipmentIds.length > 0) {
+      const { data: shipmentsData, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select('id, name, tenant_shipment_id')
+        .in('id', shipmentIds)
+      if (!shipmentsError && shipmentsData) {
+        for (const sh of shipmentsData) {
+          shipmentsById.set(sh.id, { name: sh.name, tenant_shipment_id: sh.tenant_shipment_id })
+        }
+      }
+    }
+
     for (const inventoryItem of inventoryItems || []) {
+      const shipmentInfo = inventoryItem.source_type === 'shipment' && inventoryItem.source_id
+        ? shipmentsById.get(Number(inventoryItem.source_id)) ?? null
+        : null
+
       inventoryItemsById.set(inventoryItem.id, {
         name: inventoryItem.name,
         cost: inventoryItem.cost,
@@ -331,6 +356,8 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
         barcode: inventoryItem.barcode,
         source_type: inventoryItem.source_type,
         source_id: inventoryItem.source_id,
+        shipment_name: shipmentInfo?.name ?? null,
+        tenant_shipment_id: shipmentInfo?.tenant_shipment_id ?? null,
       })
     }
   }

@@ -7,8 +7,12 @@
             <SmartImage class="compact-card__image" :src="item.image_url" />
             <div class="text-subtitle2 full-width" style="word-break: break-word; white-space: normal;">{{ item.name }}</div>
             <div class="text-body2 text-grey-9">Cost: {{ item.cost ?? '-' }}</div>
-            <div class="text-caption text-grey-8">
-              Shipment: {{ getShipmentId(item) != null ? `#${getShipmentId(item)}` : '-' }}
+            <div class="text-caption text-grey-8 row items-center justify-center">
+              <q-icon name="directions_boat" size="16px" class="q-mr-xs" />
+              <span v-if="item.shipment?.shipment">
+                #{{ item.shipment.shipment.tenant_shipment_id ?? item.shipment.shipment.id }} - {{ item.shipment.shipment.name }}
+              </span>
+              <span v-else>-</span>
             </div>
           </div>
           
@@ -41,13 +45,7 @@ const emit = defineEmits<{
   (e: 'view-details', item: InventoryItemWithStock): void
 }>()
 
-const getShipmentId = (item: InventoryItemWithStock): number | null => {
-  const shipmentObj = item.shipment?.shipment
-  if (!shipmentObj) return null
-  const raw = shipmentObj.id
-  const num = typeof raw === 'number' ? raw : Number(raw)
-  return Number.isFinite(num) ? num : null
-}
+
 </script>
 
 <style scoped>

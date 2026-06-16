@@ -69,7 +69,7 @@
                 <q-item-section>
                   <q-item-label caption class="text-grey-8 text-weight-bold">Shipment Source</q-item-label>
                   <q-item-label class="text-weight-medium text-black">
-                    {{ item.shipment?.shipment?.name ? `#${item.shipment.shipment.id} ${item.shipment.shipment.name}` : 'Manual Entry' }}
+                    {{ item.shipment?.shipment ? `#${item.shipment.shipment.tenant_shipment_id ?? item.shipment.shipment.id} - ${item.shipment.shipment.name}` : 'Manual Entry' }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
