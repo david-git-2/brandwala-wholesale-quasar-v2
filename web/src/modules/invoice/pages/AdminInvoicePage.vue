@@ -181,6 +181,27 @@
             class="soft-input"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Name is required']"
           />
+          <q-input
+            v-model="form.invoice_date"
+            label="Invoice Date"
+            outlined
+            dense
+            readonly
+            class="soft-input"
+            :rules="[(value: string) => Boolean(value) || 'Invoice Date is required']"
+          >
+            <template #append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy ref="createDateProxy" cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="form.invoice_date" mask="YYYY-MM-DD" @update:model-value="() => createDateProxy?.hide()">
+                    <div class="row items-center justify-end">
+                      <q-btn v-close-popup label="Close" color="primary" flat />
+                    </div>
+                  </q-date>
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -216,6 +237,26 @@
             option-label="label"
             class="soft-input"
           />
+          <q-input
+            v-model="editForm.invoice_date"
+            label="Invoice Date"
+            outlined
+            dense
+            readonly
+            class="soft-input"
+          >
+            <template #append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy ref="editDateProxy" cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="editForm.invoice_date" mask="YYYY-MM-DD" @update:model-value="() => editDateProxy?.hide()">
+                    <div class="row items-center justify-end">
+                      <q-btn v-close-popup label="Close" color="primary" flat />
+                    </div>
+                  </q-date>
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -261,6 +302,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useBillingProfileStore } from '../stores/billingProfileStore'
 import { useInvoiceStore } from '../stores/invoiceStore'
 import type { Invoice } from '../types/index'
+import type { QPopupProxy } from 'quasar'
 import { formatAmountBdt } from 'src/utils/currency'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
@@ -272,6 +314,8 @@ const billingProfileStore = useBillingProfileStore()
 
 const createOpen = ref(false)
 const editOpen = ref(false)
+const createDateProxy = ref<QPopupProxy | null>(null)
+const editDateProxy = ref<QPopupProxy | null>(null)
 const deleteOpen = ref(false)
 const selectedInvoiceId = ref<number | null>(null)
 const lastAutoFilledInvoiceName = ref('')
@@ -286,10 +330,12 @@ const billingProfileFilter = ref<number | null>(null)
 const form = reactive({
   name: '',
   billingProfileId: null as number | null,
+  invoice_date: new Date().toISOString().slice(0, 10),
 })
 const editForm = reactive({
   name: '',
   billingProfileId: null as number | null,
+  invoice_date: '',
 })
 
 const statusFilterOptions = [
@@ -388,11 +434,13 @@ const load = async () => {
 const resetForm = () => {
   form.name = ''
   form.billingProfileId = null
+  form.invoice_date = new Date().toISOString().slice(0, 10)
   lastAutoFilledInvoiceName.value = ''
 }
 const resetEditForm = () => {
   editForm.name = ''
   editForm.billingProfileId = null
+  editForm.invoice_date = ''
   lastAutoFilledEditInvoiceName.value = ''
 }
 
@@ -406,6 +454,7 @@ const openEdit = (invoiceId: number) => {
   selectedInvoiceId.value = row.id
   editForm.name = row.invoice_no
   editForm.billingProfileId = row.billing_profile_id
+  editForm.invoice_date = row.invoice_date
   lastAutoFilledEditInvoiceName.value = row.invoice_no
   editOpen.value = true
 }
@@ -435,6 +484,7 @@ const onCreateInvoice = async () => {
     discount_amount: 0,
     total_amount: 0,
     paid_amount: 0,
+    invoice_date: form.invoice_date,
   })
 
   if (result.success) {
@@ -456,6 +506,7 @@ const onEditInvoice = async () => {
       invoice_no: editForm.name.trim(),
       billing_profile_id: editForm.billingProfileId,
       customer_group_id: selectedBillingProfile?.customer_group_id ?? null,
+      invoice_date: editForm.invoice_date,
     },
   })
 

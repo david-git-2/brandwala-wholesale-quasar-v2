@@ -10,6 +10,18 @@
         <div class="text-h6 text-weight-bold text-black">Invoice Details</div>
         <div v-if="invoice" class="text-caption text-grey-8 row items-center q-gutter-x-sm wrap">
           <span>Invoice Name: <span class="text-black text-weight-medium">{{ invoice.invoice_no }}</span></span>
+          <span class="q-ml-md">Invoice Date:
+            <span class="text-black text-weight-medium cursor-pointer">
+              {{ invoice.invoice_date || '-' }}
+              <q-popup-proxy ref="headerDateProxy" cover transition-show="scale" transition-hide="scale">
+                <q-date :model-value="invoice.invoice_date" mask="YYYY-MM-DD" @update:model-value="(val) => { void onUpdateInvoiceDate(val); headerDateProxy?.hide(); }">
+                  <div class="row items-center justify-end">
+                    <q-btn v-close-popup label="Close" color="primary" flat />
+                  </div>
+                </q-date>
+              </q-popup-proxy>
+            </span>
+          </span>
           <q-chip
             v-if="customerGroup"
             dense
@@ -630,6 +642,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import type { QPopupProxy } from 'quasar'
 import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 import { useRoute, useRouter } from 'vue-router'
 import { accountingService } from 'src/modules/accounting/services/accountingService'
@@ -653,6 +666,7 @@ const invoiceStore = useInvoiceStore()
 const inventoryStore = useInventoryStore()
 const billingProfileStore = useBillingProfileStore()
 const customerGroupStore = useCustomerGroupStore()
+const headerDateProxy = ref<QPopupProxy | null>(null)
 const initialLoading = ref(false)
 const searchDialogOpen = ref(false)
 const searchLoading = ref(false)
@@ -1003,6 +1017,16 @@ const onUpdateStatus = async (value: InvoiceStatus | null) => {
       status: value,
       subtotal_amount: nextTotal,
       total_amount: nextTotal,
+    },
+  })
+}
+
+const onUpdateInvoiceDate = async (value: string) => {
+  if (!invoice.value || !value || value === invoice.value.invoice_date) return
+  await invoiceStore.updateInvoice({
+    id: invoice.value.id,
+    patch: {
+      invoice_date: value,
     },
   })
 }

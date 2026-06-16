@@ -269,15 +269,10 @@
 
     <!-- Generate Invoice Dialog -->
     <q-dialog v-model="generateInvoiceDialog" persistent>
-      <q-card style="width: 500px; max-width: 90vw" class="rounded-borders">
-        <q-card-section class="row items-center justify-between bg-primary text-white">
-          <div class="text-h6">Generate Invoice</div>
-          <q-btn flat round dense icon="close" v-close-popup color="white" />
-        </q-card-section>
-        
-        <q-separator />
+      <q-card style="min-width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-sm">
+        <q-card-section class="text-h6 text-weight-bold text-black">Generate Invoice</q-card-section>
 
-        <q-card-section class="q-pa-md q-gutter-y-md">
+        <q-card-section class="q-gutter-y-md">
           <div class="text-body2 text-grey-8">
             This will create a new invoice for Order #{{ order?.id }}.
             <template v-if="order?.invoice_ids && order.invoice_ids.length">
@@ -299,19 +294,39 @@
             class="soft-input"
             :rules="[val => !!val || 'Billing profile is required']"
           />
+
+          <q-input
+            v-model="invoiceDate"
+            label="Invoice Date *"
+            outlined
+            dense
+            readonly
+            class="soft-input"
+            :rules="[val => !!val || 'Invoice Date is required']"
+          >
+            <template #append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy ref="invoiceDateProxy" cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="invoiceDate" mask="YYYY-MM-DD" @update:model-value="() => invoiceDateProxy?.hide()">
+                    <div class="row items-center justify-end">
+                      <q-btn v-close-popup label="Close" color="primary" flat />
+                    </div>
+                  </q-date>
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
         </q-card-section>
 
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-sm bg-grey-1">
-          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" class="text-black text-weight-bold" v-close-popup />
           <q-btn
-            unelevated
-            label="Create Invoice"
-            color="secondary"
+            color="primary"
             class="pill-btn slim-btn"
+            no-caps
+            label="Create Invoice"
             :loading="creatingInvoice"
-            :disable="!selectedBillingProfileId"
+            :disable="!selectedBillingProfileId || !invoiceDate"
             @click="submitGenerateInvoice"
           />
         </q-card-actions>
@@ -322,7 +337,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QPopupProxy } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useCommerceBillingProfileStore } from 'src/modules/commerce_invoice/stores/commerceBillingProfileStore'
@@ -346,6 +361,8 @@ const creatingInvoice = ref(false)
 
 const generateInvoiceDialog = ref(false)
 const selectedBillingProfileId = ref<number | null>(null)
+const invoiceDate = ref(new Date().toISOString().slice(0, 10))
+const invoiceDateProxy = ref<QPopupProxy | null>(null)
 const commerceBillingProfileStore = useCommerceBillingProfileStore()
 
 const billingProfileOptions = computed(() => {
@@ -488,6 +505,7 @@ const onGenerateInvoice = async () => {
   if (!order.value || !authStore.tenantId) return
   
   selectedBillingProfileId.value = null
+  invoiceDate.value = new Date().toISOString().slice(0, 10)
   generateInvoiceDialog.value = true
   
   loading.value = true
@@ -553,6 +571,7 @@ const submitGenerateInvoice = async () => {
       p_amount_paid: 0,
       p_delivered_by: '',
       p_billing_profile_id: selectedBillingProfileId.value,
+      p_invoice_date: invoiceDate.value,
     })
 
     if (err) throw err

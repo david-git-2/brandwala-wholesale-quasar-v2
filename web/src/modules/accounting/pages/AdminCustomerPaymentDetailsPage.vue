@@ -129,8 +129,8 @@
             <q-input v-model="editPaymentDate" label="Payment Date" outlined dense readonly>
               <template #append>
                 <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="editPaymentDate" mask="YYYY-MM-DD" />
+                  <q-popup-proxy ref="editPaymentDateProxy" cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="editPaymentDate" mask="YYYY-MM-DD" @update:model-value="() => editPaymentDateProxy?.hide()" />
                   </q-popup-proxy>
                 </q-icon>
               </template>
@@ -330,8 +330,8 @@
             <q-input v-model="paymentDate" label="Payment Date" outlined dense readonly>
               <template #append>
                 <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="paymentDate" mask="YYYY-MM-DD" />
+                  <q-popup-proxy ref="paymentDateProxy" cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="paymentDate" mask="YYYY-MM-DD" @update:model-value="() => paymentDateProxy?.hide()" />
                   </q-popup-proxy>
                 </q-icon>
               </template>
@@ -409,6 +409,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { QPopupProxy } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -422,6 +423,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 const invoiceStore = useInvoiceStore()
 const billingProfileStore = useBillingProfileStore()
+
+const paymentDateProxy = ref<QPopupProxy | null>(null)
+const editPaymentDateProxy = ref<QPopupProxy | null>(null)
 
 const openDialog = ref(false)
 const paymentAmount = ref<number | null>(null)

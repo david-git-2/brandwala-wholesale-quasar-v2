@@ -382,6 +382,7 @@ const createManualInvoice = async (payload: {
   delivery_charge: number
   wrapping_charge: number
   cod: number
+  invoice_date?: string
 }) => {
   const { data: bp } = await supabase
     .from('billing_profiles')
@@ -428,6 +429,7 @@ const createManualInvoice = async (payload: {
         is_customer_group_paid: false,
         billing_profile_id: payload.billing_profile_id,
         invoice_type: payload.invoice_type || 'retail',
+        invoice_date: payload.invoice_date,
       },
     ])
     .select()
@@ -762,6 +764,7 @@ const updateCommerceInvoiceCharges = async (
     delivered_by?: string
     amount_paid?: number
     discount_amount?: number
+    invoice_date?: string
   },
 ) => {
   await supabase.from('commerce_invoices').update(charges).eq('id', invoiceId)

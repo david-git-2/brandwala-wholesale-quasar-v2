@@ -88,9 +88,9 @@
           </q-td>
         </template>
 
-        <template #body-cell-created_at="props">
+        <template #body-cell-invoice_date="props">
           <q-td :props="props">
-            {{ formatDate(props.value) }}
+            {{ props.value || '-' }}
           </q-td>
         </template>
 
@@ -146,18 +146,14 @@
         </q-card-section>
       </q-card>
     </q-dialog>
-
     <!-- Create Invoice Dialog -->
     <q-dialog v-model="createDialog">
-      <q-card style="width: 500px; max-width: 90vw;" class="rounded-borders">
-        <q-card-section class="bg-primary text-white row items-center justify-between">
-          <div class="text-h6">Create Commerce Invoice</div>
-          <q-btn flat round icon="close" v-close-popup color="white" />
-        </q-card-section>
+      <q-card style="min-width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-sm">
+        <q-card-section class="text-h6 text-weight-bold text-black">Create Commerce Invoice</q-card-section>
 
-        <q-card-section class="q-pa-md">
+        <q-card-section>
           <q-form @submit="submitCreateInvoice" class="q-gutter-y-md">
-            <div class="row items-center justify-between q-mb-sm border-all q-pa-sm rounded-borders bg-grey-1">
+            <div class="row items-center justify-between q-mb-sm border-all q-pa-sm rounded-borders bg-grey-1" style="border: 1px solid rgba(34, 56, 101, 0.08);">
               <span class="text-subtitle2 text-grey-8 text-weight-bold">Invoice Type:</span>
               <q-btn-toggle
                 v-model="createForm.invoice_type"
@@ -183,6 +179,29 @@
               class="soft-input"
               :rules="[val => !!val || 'Billing Profile is required']"
             />
+
+            <q-input
+              v-model="createForm.invoice_date"
+              label="Invoice Date *"
+              outlined
+              dense
+              readonly
+              class="soft-input"
+              :rules="[val => !!val || 'Invoice Date is required']"
+            >
+              <template #append>
+                <q-icon name="event" class="cursor-pointer">
+                  <q-popup-proxy ref="createDateProxy" cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="createForm.invoice_date" mask="YYYY-MM-DD" @update:model-value="() => createDateProxy?.hide()">
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="Close" color="primary" flat />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+
             <q-input
               v-model="createForm.recipient_name"
               label="Recipient Name *"
@@ -239,8 +258,15 @@
             </template>
 
             <div class="row justify-end q-mt-lg">
-              <q-btn label="Cancel" flat color="grey-7" v-close-popup class="q-mr-sm" />
-              <q-btn label="Create" type="submit" color="primary" unelevated :loading="creatingInvoice" />
+              <q-btn flat no-caps label="Cancel" class="text-black text-weight-bold q-mr-sm" v-close-popup />
+              <q-btn
+                color="primary"
+                class="pill-btn slim-btn"
+                no-caps
+                label="Create"
+                type="submit"
+                :loading="creatingInvoice"
+              />
             </div>
           </q-form>
         </q-card-section>
@@ -250,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import type { QTableColumn } from 'quasar'
+import type { QTableColumn, QPopupProxy } from 'quasar'
 import { onMounted, ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -276,9 +302,11 @@ const submittingPayment = ref(false)
 // Create Invoice Dialog
 const createDialog = ref(false)
 const creatingInvoice = ref(false)
+const createDateProxy = ref<QPopupProxy | null>(null)
 const createForm = reactive({
   billing_profile_id: null as number | null,
   invoice_type: 'retail' as 'retail' | 'wholesale',
+  invoice_date: '',
   recipient_name: '',
   recipient_phone: '',
   shipping_address: '',
@@ -314,7 +342,7 @@ const columns: QTableColumn[] = [
   { name: 'is_customer_group_paid', label: 'Payment Status', field: 'is_customer_group_paid', align: 'left', sortable: true },
   { name: 'status', label: 'Invoice Status', field: 'status', align: 'left', sortable: true },
   { name: 'delivered_by', label: 'Delivered By', field: 'delivered_by', align: 'left' },
-  { name: 'created_at', label: 'Created Date', field: 'created_at', align: 'left' },
+  { name: 'invoice_date', label: 'Invoice Date', field: 'invoice_date', align: 'left', sortable: true },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
 
@@ -365,6 +393,7 @@ const openCreateDialog = async () => {
   if (!authStore.tenantId) return
   createForm.billing_profile_id = null
   createForm.invoice_type = 'retail'
+  createForm.invoice_date = new Date().toISOString().slice(0, 10)
   createForm.recipient_name = ''
   createForm.recipient_phone = ''
   createForm.shipping_address = ''
@@ -410,6 +439,7 @@ const submitCreateInvoice = async () => {
       delivery_charge: isWholesale ? 0 : createForm.delivery_charge,
       wrapping_charge: isWholesale ? 0 : createForm.wrapping_charge,
       cod: isWholesale ? 0 : createForm.cod,
+      invoice_date: createForm.invoice_date,
     })
 
     if (res.success && res.data) {

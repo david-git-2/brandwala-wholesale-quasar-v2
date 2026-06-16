@@ -17,7 +17,7 @@
           <div class="row items-center">
             <div>
               <div class="text-h6 text-weight-bold text-black">Invoice #{{ invoice.id }}</div>
-              <div class="text-caption text-black">Order Ref: #{{ invoice.order_id }} | Created on {{ formatDate(invoice.created_at) }}</div>
+              <div class="text-caption text-black">Order Ref: #{{ invoice.order_id }} | Invoice Date: {{ invoice.invoice_date || '-' }}</div>
             </div>
           </div>
           <div class="row items-center q-gutter-sm">
@@ -158,6 +158,30 @@
             </div>
 
             <div class="row q-col-gutter-md">
+              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-4' : 'col-md-2'">
+                <q-input
+                  v-model="chargesForm.invoice_date"
+                  label="Invoice Date"
+                  outlined
+                  dense
+                  readonly
+                  class="soft-input"
+                  @update:model-value="markChargesDirty"
+                >
+                  <template #append>
+                    <q-icon name="event" class="cursor-pointer">
+                      <q-popup-proxy ref="chargesDateProxy" cover transition-show="scale" transition-hide="scale">
+                        <q-date v-model="chargesForm.invoice_date" mask="YYYY-MM-DD" @update:model-value="(val) => { markChargesDirty(); chargesDateProxy?.hide(); }">
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+
               <template v-if="invoice.invoice_type !== 'wholesale'">
                 <div class="col-12 col-md-2">
                   <q-input
@@ -209,7 +233,7 @@
                   />
                 </div>
               </template>
-              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-6' : 'col-md-2'">
+              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-4' : 'col-md-2'">
                 <q-input
                   v-model.number="chargesForm.discount_amount"
                   type="number"
@@ -222,7 +246,7 @@
                   @update:model-value="markChargesDirty"
                 />
               </div>
-              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-6' : 'col-md-2'">
+              <div class="col-12" :class="invoice.invoice_type === 'wholesale' ? 'col-md-4' : 'col-md-2'">
                 <q-input
                   v-model.number="chargesForm.amount_paid"
                   type="number"
@@ -476,7 +500,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QPopupProxy } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceInvoiceService } from '../services/commerceInvoiceService'
 import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
@@ -489,6 +513,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const inventoryStore = useInventoryStore()
 const $q = useQuasar()
+
+const chargesDateProxy = ref<QPopupProxy | null>(null)
 
 type CommerceInvoiceRow = {
   id: number
@@ -505,6 +531,7 @@ type CommerceInvoiceRow = {
   status: 'draft' | 'ready' | 'handed_to_customer'
   discount_amount?: number
   invoice_type?: 'retail' | 'wholesale'
+  invoice_date?: string | null
   billing_profiles?: {
     id: number
     name: string
@@ -516,8 +543,8 @@ type CommerceInvoiceRow = {
 
 type CommerceOrderRow = {
   recipient_name: string
-  recipient_phone: string
-  shipping_address: string
+  recipient_phone: string | null
+  shipping_address: string | null
   invoice_ids?: number[] | null
 }
 
@@ -541,6 +568,7 @@ type CommerceInvoiceItemRow = {
     source_type?: string | null
     source_id?: number | null
     shipment_name?: string | null
+    tenant_shipment_id?: number | null
   } | null
 }
 
@@ -560,6 +588,7 @@ const chargesForm = reactive({
   delivered_by: '',
   amount_paid: 0,
   discount_amount: 0,
+  invoice_date: '',
 })
 
 // Search states
@@ -676,6 +705,7 @@ const startEditCharges = () => {
   chargesForm.delivered_by = invoice.value.delivered_by || ''
   chargesForm.amount_paid = Number(invoice.value.amount_paid) || 0
   chargesForm.discount_amount = Number(invoice.value.discount_amount) || 0
+  chargesForm.invoice_date = invoice.value.invoice_date || ''
   chargesDirty.value = false
 }
 
@@ -691,6 +721,7 @@ const saveCharges = async () => {
       delivered_by: isWholesale ? '' : chargesForm.delivered_by,
       amount_paid: chargesForm.amount_paid,
       discount_amount: chargesForm.discount_amount,
+      invoice_date: chargesForm.invoice_date,
     })
     if (res.success) {
       showSuccessNotification('Charges updated successfully.')

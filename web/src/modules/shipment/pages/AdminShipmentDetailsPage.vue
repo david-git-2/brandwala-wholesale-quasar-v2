@@ -753,149 +753,274 @@
     </q-dialog>
 
     <q-dialog v-model="showAddProductDialog" persistent>
-      <q-card style="min-width: 560px; max-width: 92vw">
-        <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6">Add Product + Add to Shipment</div>
-          <q-btn icon="close" flat round dense @click="showAddProductDialog = false" />
+      <q-card style="width: 960px; max-width: 95vw;">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6 text-weight-bold">
+            Add Product + Add to Shipment
+          </div>
+          <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section>
-          <q-form ref="addProductFormRef" class="q-gutter-sm">
-          <q-input
-            v-model="addProductForm.name"
-            label="Name *"
-            outlined
-            dense
-            autofocus
-            hide-bottom-space
-            :rules="[(value: string) => Boolean(value?.trim()) || 'Name is required']"
-          />
-          <q-input
-            v-model.number="addProductForm.quantity"
-            label="Quantity *"
-            type="number"
-            min="1"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
-          />
-          <q-input v-model="addProductForm.barcode" label="Barcode" outlined dense hide-bottom-space />
-          <q-input v-model="addProductForm.product_code" label="Product Code" outlined dense hide-bottom-space />
-          <q-input
-            v-model="addProductForm.image_url"
-            label="Image URL *"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: string) => Boolean(value?.trim()) || 'Image URL is required']"
-          />
-          <div v-if="addProductForm.image_url?.trim()" class="shipment-form-preview">
-            <div class="text-caption text-grey-7 q-mb-xs">Image Preview</div>
-            <div class="shipment-form-preview-box">
-              <SmartImage
-                :src="addProductForm.image_url"
-                alt="product preview"
-                imgClass="shipment-form-preview-image"
-                fallbackClass="shipment-form-preview-fallback"
-              />
+        <q-separator />
+
+        <q-card-section class="q-pa-md">
+          <q-form ref="addProductFormRef" @submit.prevent="onCreateProductAndAddToShipment">
+            <div class="row q-col-gutter-lg">
+              <!-- Left Column (Image & Identification) -->
+              <div class="col-12 col-md-5 q-gutter-y-md">
+                <div class="image-preview-container border rounded-borders q-pa-sm bg-grey-1 text-center">
+                  <div v-if="addProductForm.image_url" class="image-preview-box">
+                    <SmartImage :src="addProductForm.image_url" style="max-height: 200px; max-width: 100%; object-fit: contain; margin: 0 auto;" />
+                  </div>
+                  <div v-else class="image-preview-placeholder flex flex-center text-grey-6" style="height: 200px;">
+                    <div class="column items-center">
+                      <q-icon name="image" size="48px" />
+                      <div class="text-caption q-mt-sm">No Image Preview</div>
+                    </div>
+                  </div>
+                </div>
+
+                <q-input
+                  v-model="addProductForm.image_url"
+                  label="Image URL *"
+                  outlined
+                  dense
+                  class="soft-input"
+                  hide-bottom-space
+                  :rules="[(value: string) => Boolean(value?.trim()) || 'Image URL is required']"
+                >
+                  <template #prepend>
+                    <q-icon name="image" />
+                  </template>
+                </q-input>
+
+                <q-input
+                  v-model="addProductForm.name"
+                  label="Name *"
+                  type="textarea"
+                  autogrow
+                  outlined
+                  dense
+                  class="soft-input"
+                  hide-bottom-space
+                  :rules="[(value: string) => Boolean(value?.trim()) || 'Name is required']"
+                >
+                  <template #prepend>
+                    <q-icon name="inventory_2" />
+                  </template>
+                </q-input>
+
+                <q-input
+                  v-model="addProductForm.barcode"
+                  label="Barcode"
+                  outlined
+                  dense
+                  class="soft-input"
+                  hide-bottom-space
+                >
+                  <template #prepend>
+                    <q-icon name="qr_code" />
+                  </template>
+                </q-input>
+
+                <q-input
+                  v-model="addProductForm.product_code"
+                  label="Product Code"
+                  outlined
+                  dense
+                  class="soft-input"
+                  hide-bottom-space
+                >
+                  <template #prepend>
+                    <q-icon name="badge" />
+                  </template>
+                </q-input>
+              </div>
+
+              <!-- Right Column (Metadata, Parameters & Note) -->
+              <div class="col-12 col-md-7 q-gutter-y-md">
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="addProductForm.vendor_code"
+                      :options="vendorOptions"
+                      emit-value
+                      map-options
+                      option-value="value"
+                      option-label="label"
+                      label="Vendor"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      @update:model-value="onAddProductVendorChange"
+                    >
+                      <template #prepend>
+                        <q-icon name="storefront" />
+                      </template>
+                    </q-select>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="addProductForm.market_code"
+                      :options="marketOptions"
+                      emit-value
+                      map-options
+                      option-value="value"
+                      option-label="label"
+                      label="Market"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      @update:model-value="onAddProductDefaultMarketChange"
+                    >
+                      <template #prepend>
+                        <q-icon name="public" />
+                      </template>
+                    </q-select>
+                  </div>
+                </div>
+
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="addProductForm.category"
+                      :options="categoryOptions"
+                      emit-value
+                      map-options
+                      option-value="value"
+                      option-label="label"
+                      label="Category"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                    >
+                      <template #prepend>
+                        <q-icon name="category" />
+                      </template>
+                    </q-select>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="addProductForm.minimum_order_quantity"
+                      label="Minimum Order Quantity"
+                      type="number"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                    >
+                      <template #prepend>
+                        <q-icon name="warehouse" />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="addProductForm.quantity"
+                      label="Quantity *"
+                      type="number"
+                      min="1"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) > 0) || 'Quantity is required']"
+                    >
+                      <template #prepend>
+                        <q-icon name="numbers" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <!-- Price fields -->
+                    <q-input
+                      v-if="shipmentStore.selectedShipment?.is_gbp"
+                      v-model.number="addProductForm.price_gbp"
+                      label="Price GBP *"
+                      type="number"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Price GBP is required']"
+                    >
+                      <template #prepend>
+                        <q-icon name="currency_pound" />
+                      </template>
+                    </q-input>
+                    <q-input
+                      v-else
+                      v-model.number="addProductForm.cost_bdt"
+                      label="Cost BDT *"
+                      type="number"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Cost BDT is required']"
+                    >
+                      <template #prepend>
+                        <q-icon name="payments" />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+
+                <!-- Weight fields (GBP only) -->
+                <div class="row q-col-gutter-sm" v-if="shipmentStore.selectedShipment?.is_gbp">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="addProductForm.product_weight"
+                      label="Product Weight *"
+                      type="number"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Product Weight is required']"
+                    >
+                      <template #prepend>
+                        <q-icon name="scale" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="addProductForm.package_weight"
+                      label="Package Weight *"
+                      type="number"
+                      outlined
+                      dense
+                      class="soft-input"
+                      hide-bottom-space
+                      :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Package Weight is required']"
+                    >
+                      <template #prepend>
+                        <q-icon name="fitness_center" />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <q-input
-            v-if="shipmentStore.selectedShipment?.is_gbp"
-            v-model.number="addProductForm.price_gbp"
-            label="Price GBP *"
-            type="number"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Price GBP is required']"
-          />
-          <q-input
-            v-if="shipmentStore.selectedShipment?.is_gbp"
-            v-model.number="addProductForm.product_weight"
-            label="Product Weight *"
-            type="number"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Product Weight is required']"
-          />
-          <q-input
-            v-if="shipmentStore.selectedShipment?.is_gbp"
-            v-model.number="addProductForm.package_weight"
-            label="Package Weight *"
-            type="number"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Package Weight is required']"
-          />
-          <q-input
-            v-if="!shipmentStore.selectedShipment?.is_gbp"
-            v-model.number="addProductForm.cost_bdt"
-            label="Cost BDT *"
-            type="number"
-            outlined
-            dense
-            hide-bottom-space
-            :rules="[(value: number | null) => (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) || 'Cost BDT is required']"
-          />
-          <q-select
-            v-model="addProductForm.vendor_code"
-            :options="vendorOptions"
-            emit-value
-            map-options
-            option-value="value"
-            option-label="label"
-            label="Vendor"
-            outlined
-            dense
-            hide-bottom-space
-            @update:model-value="onAddProductVendorChange"
-          />
-          <q-select
-            v-model="addProductForm.category"
-            :options="categoryOptions"
-            emit-value
-            map-options
-            option-value="value"
-            option-label="label"
-            label="Category"
-            outlined
-            dense
-            hide-bottom-space
-          />
-          <q-select
-            v-model="addProductForm.market_code"
-            :options="marketOptions"
-            emit-value
-            map-options
-            option-value="value"
-            option-label="label"
-            label="Market"
-            outlined
-            dense
-            hide-bottom-space
-            @update:model-value="onAddProductDefaultMarketChange"
-          />
-          <q-input
-            v-model.number="addProductForm.minimum_order_quantity"
-            label="Minimum Order Quantity"
-            type="number"
-            outlined
-            dense
-            hide-bottom-space
-          />
           </q-form>
         </q-card-section>
 
+        <q-separator />
+        
         <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancel" @click="showAddProductDialog = false" />
+          <q-btn flat no-caps label="Cancel" color="grey-7" @click="showAddProductDialog = false" />
           <q-btn
             color="primary"
             no-caps
             label="Create & Add"
+            class="pill-btn slim-btn shadow-1 q-px-md"
             :loading="productStore.saving || shipmentStore.saving"
             @click="onCreateProductAndAddToShipment"
           />
@@ -1746,6 +1871,10 @@ const saveShipmentInfoDialog = async () => {
   })
   if (result.success) {
     showShipmentInfoDialog.value = false
+    await Promise.all([
+      shipmentStore.fetchShipmentById(shipmentStore.selectedShipment.id),
+      shipmentStore.fetchBatchCodePcByShipment(shipmentStore.selectedShipment.id),
+    ])
   }
 }
 
@@ -3037,6 +3166,27 @@ watch(showAddItemDialog, (open) => {
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.image-preview-container {
+  border: 1px dashed #cfd8dc;
+  border-radius: 8px;
+  background-color: #fafafa;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.image-preview-container:hover {
+  border-color: var(--q-primary);
+  background-color: #f5f7fa;
+}
+.image-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+.image-preview-placeholder {
+  min-height: 200px;
 }
 
 .shipment-item-image-box {

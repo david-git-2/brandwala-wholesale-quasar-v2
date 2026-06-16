@@ -45,6 +45,7 @@ export const commerceInvoiceService = {
     delivery_charge: number
     wrapping_charge: number
     cod: number
+    invoice_date?: string
   }) =>
     wrap<CommerceInvoice>(
       () => commerceInvoiceRepository.createManualInvoice(payload),
@@ -91,6 +92,7 @@ export const commerceInvoiceService = {
       delivered_by?: string
       amount_paid?: number
       discount_amount?: number
+      invoice_date?: string
     },
   ) =>
     wrap<void>(

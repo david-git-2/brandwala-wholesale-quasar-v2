@@ -440,6 +440,7 @@ export type Database = {
           delivery_charge: number
           discount_amount: number
           id: number
+          invoice_date: string
           invoice_type: string
           is_customer_group_paid: boolean
           order_id: number
@@ -459,6 +460,7 @@ export type Database = {
           delivery_charge?: number
           discount_amount?: number
           id?: number
+          invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
           order_id: number
@@ -478,6 +480,7 @@ export type Database = {
           delivery_charge?: number
           discount_amount?: number
           id?: number
+          invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
           order_id?: number
@@ -4789,20 +4792,36 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      create_commerce_invoice: {
-        Args: {
-          p_amount_paid: number
-          p_billing_profile_id?: number
-          p_cod: number
-          p_delivered_by: string
-          p_delivery_charge: number
-          p_order_id: number
-          p_tenant_id: number
-          p_total_amount: number
-          p_wrapping_charge: number
-        }
-        Returns: number
-      }
+      create_commerce_invoice:
+        | {
+            Args: {
+              p_amount_paid: number
+              p_billing_profile_id?: number
+              p_cod: number
+              p_delivered_by: string
+              p_delivery_charge: number
+              p_order_id: number
+              p_tenant_id: number
+              p_total_amount: number
+              p_wrapping_charge: number
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_amount_paid: number
+              p_billing_profile_id?: number
+              p_cod: number
+              p_delivered_by: string
+              p_delivery_charge: number
+              p_invoice_date?: string
+              p_order_id: number
+              p_tenant_id: number
+              p_total_amount: number
+              p_wrapping_charge: number
+            }
+            Returns: number
+          }
       create_costing_file:
         | {
             Args: {
