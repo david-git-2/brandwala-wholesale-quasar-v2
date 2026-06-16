@@ -36,7 +36,7 @@ export type InventoryAccountingEntry = {
   tenant_id: number
   invoice_id: number | null
   invoice_item_id: number | null
-  inventory_item_id: number
+  inventory_item_id: number | null
   shipment_id: number | null
   shipment_item_id: number | null
   product_id: number | null
@@ -55,6 +55,12 @@ export type InventoryAccountingEntry = {
   created_at: string
   updated_at?: string
   type?: 'normal' | 'commerce'
+  delivery_charge?: number | null
+  wrapping_charge?: number | null
+  cod?: number | null
+  print_charge?: number | null
+  discount_amount?: number | null
+  is_charges?: boolean
 }
 
 export type InvoiceAccountingPayment = {

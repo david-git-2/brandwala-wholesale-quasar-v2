@@ -89,7 +89,7 @@
             <div class="row items-start justify-between no-wrap">
               <div>
                 <div class="text-subtitle1 text-weight-bold text-black">Invoice #{{ row.id }}</div>
-                <div class="text-caption text-grey-7">Order Ref: #{{ row.order_id }}</div>
+                <div class="text-caption text-grey-7">Order Ref: {{ row.order_id ? '#' + row.order_id : 'Direct Invoice' }}</div>
               </div>
               <div class="row items-center q-gutter-x-xs no-wrap">
                 <!-- Type Chip -->
@@ -540,7 +540,7 @@ const filteredInvoices = computed(() => {
     const matchesSearch =
       !search ||
       String(row.id).includes(search) ||
-      String(row.order_id).includes(search) ||
+      (row.order_id ? String(row.order_id).includes(search) : false) ||
       bpName.includes(search) ||
       (row.delivered_by || '').toLowerCase().includes(search)
 

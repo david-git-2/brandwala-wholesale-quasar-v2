@@ -6,7 +6,7 @@ export type CommerceOrder = Database['public']['Tables']['commerce_orders']['Row
 
 export type CommerceInvoiceDetailsOrder = Pick<
   CommerceOrder,
-  'recipient_name' | 'recipient_phone' | 'shipping_address'
+  'recipient_name' | 'recipient_phone' | 'shipping_address' | 'is_delivery_charge_inclusive' | 'invoice_ids'
 > | null
 
 export type CommerceInvoiceDetailsItem = CommerceOrderItem & {
@@ -23,6 +23,7 @@ export type CommerceInvoiceDetailsItem = CommerceOrderItem & {
     source_id?: number | null
     shipment_name?: string | null
     tenant_shipment_id?: number | null
+    tenant_name?: string | null
   } | null
 }
 

@@ -17,7 +17,7 @@
           <div>
             <div class="text-h6 text-weight-bold text-black">Invoice #{{ invoice.id }}</div>
             <div class="text-caption text-grey-8 row items-center q-gutter-x-sm wrap">
-              <span>Order Ref: <span class="text-black text-weight-medium">#{{ invoice.order_id }}</span></span>
+              <span>Order Ref: <span class="text-black text-weight-medium">{{ invoice.order_id ? '#' + invoice.order_id : 'Direct Invoice' }}</span></span>
               <span class="q-ml-md">Invoice Date:
                 <span class="text-black text-weight-medium cursor-pointer">
                   {{ invoice.invoice_date || '-' }}
@@ -50,7 +50,7 @@
             <q-btn color="primary" icon="o_search" flat dense class="pill-btn slim-btn" @click="openSearchDialogForAdd">
               <q-tooltip>Add From Stock</q-tooltip>
             </q-btn>
-
+ 
             <!-- Invoice Status Chip Selector -->
             <q-chip
               square
@@ -75,7 +75,7 @@
                 </q-list>
               </q-menu>
             </q-chip>
-
+ 
             <!-- Paid Status Chip -->
             <q-chip
               square
@@ -89,12 +89,12 @@
           </div>
         </div>
       </q-card>
-
+ 
       <!-- Main Content Grid -->
       <div class="row q-col-gutter-md q-mt-xs">
         <!-- Left Panel: Items Table (col-12 col-md-8) -->
-        <div class="col-12 col-md-8">
-          <q-card flat class="floating-surface shadow-1 full-height column">
+        <div class="col-12 col-md-8" style="min-width: 0;">
+          <q-card flat class="floating-surface shadow-1 q-pa-xs" style="overflow: hidden;">
             <!-- Items Header & Add From Stock button -->
             <q-card-section class="row items-center justify-between q-py-sm q-px-md">
               <div class="text-subtitle1 text-weight-bold text-black row items-center">
@@ -112,10 +112,10 @@
                 <q-tooltip>Add From Stock</q-tooltip>
               </q-btn>
             </q-card-section>
-
+ 
             <q-separator />
-
-            <q-card-section class="q-pa-none col scroll">
+ 
+            <div>
               <div v-if="!items.length" class="text-grey-7 q-pa-xl text-center">
                 <q-icon name="o_shopping_bag" size="48px" class="q-mb-xs text-grey-4" />
                 <div class="text-subtitle2 text-weight-medium">No items on this invoice</div>
@@ -141,7 +141,7 @@
                       <td class="text-grey-7">{{ idx + 1 }}</td>
                       <td>
                         <q-avatar rounded size="48px" class="bg-grey-2 border-all shadow-1">
-                          <img :src="row.image_url || 'https://placehold.co/48x48?text=No+Image'" alt="" style="object-fit: contain;" />
+                           <img :src="row.image_url || 'https://placehold.co/48x48?text=No+Image'" alt="" style="object-fit: contain;" />
                         </q-avatar>
                       </td>
                       <td style="white-space: normal; word-break: break-word; min-width: 200px;">
@@ -154,6 +154,9 @@
                             <template v-if="row.inventory_items.shipment_name">
                               - {{ row.inventory_items.shipment_name }}
                             </template>
+                            <template v-if="row.inventory_items.tenant_name">
+                              (Tenant: {{ row.inventory_items.tenant_name }})
+                            </template>
                           </template>
                           <template v-else>
                             -
@@ -162,7 +165,7 @@
                         <div class="text-caption text-grey-7">
                           Stock:
                           <template v-if="row.inventory_item_id">
-                            #{{ row.inventory_item_id }} - {{ row.inventory_items?.name || 'Assigned' }}
+                            #{{ row.inventory_item_id }}
                           </template>
                           <template v-else>
                             Not assigned
@@ -171,11 +174,8 @@
                       </td>
                       <td class="text-right">৳{{ formatAmount(Number(row.cost_bdt || 0)) }}</td>
                       <!-- Sell Price (editable) -->
-                      <td class="text-right editable-cell cursor-pointer">
-                        <div class="row items-center justify-end text-primary text-weight-medium">
-                          <span>৳{{ formatAmount(Number(row.sell_price_bdt || 0)) }}</span>
-                          <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
-                        </div>
+                      <td class="text-right">
+                        <span class="cursor-pointer text-primary text-weight-medium">৳{{ formatAmount(Number(row.sell_price_bdt || 0)) }}</span>
                         <q-popup-edit
                           :model-value="row.sell_price_bdt"
                           buttons
@@ -195,11 +195,8 @@
                         </q-popup-edit>
                       </td>
                       <!-- Recipient Price (editable) -->
-                      <td class="text-right editable-cell cursor-pointer">
-                        <div class="row items-center justify-end text-primary text-weight-medium">
-                          <span>৳{{ formatAmount(Number(row.recipient_price_bdt || 0)) }}</span>
-                          <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
-                        </div>
+                      <td class="text-right">
+                        <span class="cursor-pointer text-primary text-weight-medium">৳{{ formatAmount(Number(row.recipient_price_bdt || 0)) }}</span>
                         <q-popup-edit
                           :model-value="row.recipient_price_bdt"
                           buttons
@@ -219,11 +216,8 @@
                         </q-popup-edit>
                       </td>
                       <!-- Quantity (editable) -->
-                      <td class="text-right editable-cell cursor-pointer">
-                        <div class="row items-center justify-end text-primary text-weight-medium">
-                          <span>{{ row.quantity }}</span>
-                          <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
-                        </div>
+                      <td class="text-right">
+                        <span class="cursor-pointer text-primary text-weight-medium">{{ row.quantity }}</span>
                         <q-popup-edit
                           :model-value="row.quantity"
                           buttons
@@ -276,10 +270,10 @@
                   </tbody>
                 </q-markup-table>
               </div>
-            </q-card-section>
+            </div>
           </q-card>
         </div>
-
+ 
         <!-- Right Panel: Summary & Details (col-12 col-md-4) -->
         <div class="col-12 col-md-4 q-gutter-y-md">
           <!-- Billing Summary Card (Receipt style) -->
@@ -288,20 +282,19 @@
               <q-icon name="o_receipt" class="q-mr-xs" size="20px" />
               <span>Billing Summary</span>
             </div>
-
+ 
             <div class="q-gutter-y-sm">
               <!-- Subtotal -->
               <div class="row justify-between items-center text-body2 q-py-xs">
                 <div class="text-grey-7">Subtotal</div>
                 <div class="text-weight-bold text-black">৳{{ formatAmount(subtotalAmount) }}</div>
               </div>
-
+ 
               <!-- Delivery Charge -->
               <div class="row justify-between items-center text-body2 q-py-xs editable-field">
                 <div class="text-grey-7">Delivery Charge</div>
                 <div class="text-weight-bold text-black cursor-pointer row items-center">
                   <span>৳{{ formatAmount(invoice.delivery_charge) }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
                     v-if="invoice.invoice_type !== 'wholesale'"
                     :model-value="Number(invoice.delivery_charge || 0)"
@@ -323,15 +316,13 @@
                   <q-tooltip v-if="invoice.invoice_type === 'wholesale'">Wholesale invoices have no delivery charge</q-tooltip>
                 </div>
               </div>
-
+ 
               <!-- Wrapping Charge -->
               <div class="row justify-between items-center text-body2 q-py-xs editable-field">
                 <div class="text-grey-7">Wrapping Charge</div>
                 <div class="text-weight-bold text-black cursor-pointer row items-center">
                   <span>৳{{ formatAmount(invoice.wrapping_charge) }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
-                    v-if="invoice.invoice_type !== 'wholesale'"
                     :model-value="Number(invoice.wrapping_charge || 0)"
                     buttons
                     label-set="Save"
@@ -348,16 +339,14 @@
                       label="Wrapping Charge"
                     />
                   </q-popup-edit>
-                  <q-tooltip v-if="invoice.invoice_type === 'wholesale'">Wholesale invoices have no wrapping charge</q-tooltip>
                 </div>
               </div>
-
+ 
               <!-- COD Charge -->
               <div class="row justify-between items-center text-body2 q-py-xs editable-field">
                 <div class="text-grey-7">COD Charge</div>
                 <div class="text-weight-bold text-black cursor-pointer row items-center">
                   <span>৳{{ formatAmount(invoice.cod) }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
                     v-if="invoice.invoice_type !== 'wholesale'"
                     :model-value="Number(invoice.cod || 0)"
@@ -379,13 +368,37 @@
                   <q-tooltip v-if="invoice.invoice_type === 'wholesale'">Wholesale invoices have no COD charge</q-tooltip>
                 </div>
               </div>
-
+ 
+              <!-- Print Charge -->
+              <div class="row justify-between items-center text-body2 q-py-xs editable-field">
+                <div class="text-grey-7">Print Charge</div>
+                <div class="text-weight-bold text-black cursor-pointer row items-center">
+                  <span>৳{{ formatAmount(invoice.print_charge) }}</span>
+                  <q-popup-edit
+                    :model-value="Number(invoice.print_charge || 0)"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="(val) => onUpdateInvoiceCharge('print_charge', val)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      min="0"
+                      label="Print Charge"
+                    />
+                  </q-popup-edit>
+                </div>
+              </div>
+ 
               <!-- Discount -->
               <div class="row justify-between items-center text-body2 q-py-xs editable-field">
                 <div class="text-grey-7">Discount</div>
                 <div class="text-weight-bold text-orange-9 cursor-pointer row items-center">
                   <span>-৳{{ formatAmount(Number(invoice.discount_amount || 0)) }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
                     :model-value="Number(invoice.discount_amount || 0)"
                     buttons
@@ -405,21 +418,20 @@
                   </q-popup-edit>
                 </div>
               </div>
-
+ 
               <q-separator class="q-my-xs" />
-
+ 
               <!-- Grand Total -->
               <div class="row justify-between items-center q-py-xs">
                 <div class="text-subtitle2 text-weight-bold text-grey-9">Grand Total</div>
                 <div class="text-subtitle1 text-weight-bolder text-black">৳{{ formatAmount(Number(invoice.total_amount || 0)) }}</div>
               </div>
-
+ 
               <!-- Paid Amount -->
               <div class="row justify-between items-center text-body2 q-py-xs editable-field">
                 <div class="text-grey-7">Paid Amount</div>
                 <div class="text-weight-bold text-primary cursor-pointer row items-center">
                   <span>৳{{ formatAmount(Number(invoice.amount_paid || 0)) }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
                     :model-value="Number(invoice.amount_paid || 0)"
                     buttons
@@ -439,7 +451,7 @@
                   </q-popup-edit>
                 </div>
               </div>
-
+ 
               <!-- Amount Due status section -->
               <div
                 class="row justify-between items-center q-pa-sm q-mt-sm rounded-borders text-subtitle2"
@@ -450,38 +462,48 @@
               </div>
             </div>
           </q-card>
-
+ 
           <!-- Recipient Details Card -->
           <q-card flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
               <q-icon name="o_assignment" class="q-mr-xs" size="20px" />
               <span>Recipient Details</span>
             </div>
-
+ 
             <div class="q-gutter-y-xs">
-              <div v-if="invoice && invoice.billing_profiles" class="q-gutter-y-sm">
+              <div v-if="invoice" class="q-gutter-y-sm">
                 <div>
                   <div class="text-caption text-grey-7 text-weight-medium">Recipient Name</div>
-                  <div class="text-body2 text-weight-bold text-grey-9">{{ invoice.billing_profiles.name }}</div>
+                  <div class="text-body2 text-weight-bold text-grey-9">
+                    {{ invoice.recipient_name || invoice.billing_profiles?.name || order?.recipient_name || '-' }}
+                  </div>
                 </div>
                 <template v-if="invoice.invoice_type !== 'wholesale'">
                   <div>
                     <div class="text-caption text-grey-7 text-weight-medium">Recipient Phone</div>
-                    <div class="text-body2 text-weight-medium text-grey-9">{{ invoice.billing_profiles.phone || '-' }}</div>
+                    <div class="text-body2 text-weight-medium text-grey-9">
+                      {{ invoice.recipient_phone || invoice.billing_profiles?.phone || order?.recipient_phone || '-' }}
+                    </div>
                   </div>
-                  <div>
+                  <div v-if="invoice.billing_profiles?.email">
                     <div class="text-caption text-grey-7 text-weight-medium">Recipient Email</div>
-                    <div class="text-body2 text-weight-medium text-grey-9">{{ invoice.billing_profiles.email || '-' }}</div>
+                    <div class="text-body2 text-weight-medium text-grey-9">
+                      {{ invoice.billing_profiles.email }}
+                    </div>
                   </div>
                   <div>
                     <div class="text-caption text-grey-7 text-weight-medium">Billing/Shipping Address</div>
-                    <div class="text-body2 text-grey-9 text-weight-medium" style="white-space: pre-wrap;">{{ invoice.billing_profiles.address || '-' }}</div>
+                    <div class="text-body2 text-grey-9 text-weight-medium" style="white-space: pre-wrap;">
+                      {{ invoice.shipping_address || invoice.billing_profiles?.address || order?.shipping_address || '-' }}
+                    </div>
                   </div>
                 </template>
                 <template v-else>
-                  <div>
+                  <div v-if="invoice.billing_profiles?.email">
                     <div class="text-caption text-grey-7 text-weight-medium">Recipient Email</div>
-                    <div class="text-body2 text-weight-medium text-grey-9">{{ invoice.billing_profiles.email || '-' }}</div>
+                    <div class="text-body2 text-weight-medium text-grey-9">
+                      {{ invoice.billing_profiles.email }}
+                    </div>
                   </div>
                 </template>
               </div>
@@ -517,7 +539,6 @@
                 <div class="text-caption text-grey-7 text-weight-medium">Delivered By</div>
                 <div class="text-body2 text-weight-bold text-grey-9 cursor-pointer row items-center">
                   <span>{{ invoice.delivered_by || 'Not Assigned' }}</span>
-                  <q-icon name="edit" size="12px" class="edit-pencil-icon q-ml-xs" />
                   <q-popup-edit
                     v-if="invoice.invoice_type !== 'wholesale'"
                     :model-value="invoice.delivered_by || ''"
@@ -632,11 +653,14 @@
                   <div class="col">
                     <div class="text-subtitle1 text-weight-bold text-black row items-center wrap">
                       <span>{{ group.name }}</span>
+                      <q-badge color="grey-3" text-color="black" class="q-ml-sm text-weight-bold" v-if="getMainStockId(group)">
+                        Stock #: {{ getMainStockId(group) }}
+                      </q-badge>
                       <q-badge color="purple" outline class="q-ml-sm" v-if="group.tenant_name">
                         {{ group.tenant_name }}
                       </q-badge>
                       <q-badge outline color="primary" class="q-ml-sm" v-if="group.shipment?.shipment">
-                        Shipment #{{ group.shipment.shipment.tenant_shipment_id ?? group.shipment.shipment.id }} - {{ group.shipment.shipment.name }}
+                        Shipment #{{ group.shipment.shipment.tenant_shipment_id ?? group.shipment.shipment.id }}<template v-if="group.shipment.shipment.name"> - {{ group.shipment.shipment.name }}</template><template v-if="group.tenant_name"> (Tenant: {{ group.tenant_name }})</template>
                       </q-badge>
                     </div>
                     <div class="row items-center q-gutter-x-md text-caption text-grey-7 q-mt-xs">
@@ -663,8 +687,7 @@
                         size="18px"
                       />
                       <div class="column q-ml-xs">
-                        <span class="text-weight-bold text-black" style="font-size: 13px;">{{ getSubtypeItem(group, subtype)?.name || getSubtypeLabel(subtype) }}</span>
-                        <span class="text-caption text-grey-7" style="font-size: 11px;">Stock #: <strong class="text-black">{{ getSubtypeItem(group, subtype)?.id }}</strong></span>
+                        <span class="text-weight-bold text-black" style="font-size: 13px;">{{ getSubtypeLabel(subtype) }}</span>
                       </div>
                       <div class="row items-center q-gutter-xs q-mt-xs q-ml-sm">
                         <q-badge color="green-2" text-color="green-10" dense>
@@ -767,7 +790,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, reactive, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QPopupProxy } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -776,6 +799,9 @@ import { useInventoryStore } from 'src/modules/inventory/stores/inventoryStore'
 import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import { storeToRefs } from 'pinia'
+import { useCommerceInvoiceStore } from '../stores/commerceInvoiceStore'
+import type { CommerceInvoiceDetailsItem } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -785,72 +811,17 @@ const $q = useQuasar()
 
 const headerDateProxy = ref<QPopupProxy | null>(null)
 
-type CommerceInvoiceRow = {
-  id: number
-  order_id: number
-  delivery_charge: number
-  wrapping_charge: number
-  cod: number
-  total_amount: number
-  amount_paid: number
-  amount_due: number
-  is_customer_group_paid: boolean
-  delivered_by: string | null
-  created_at: string
-  status: 'draft' | 'ready' | 'handed_to_customer'
-  discount_amount?: number
-  invoice_type?: 'retail' | 'wholesale'
-  invoice_date?: string | null
-  billing_profiles?: {
-    id: number
-    name: string
-    email: string | null
-    phone: string | null
-    address: string | null
-    color?: string | null
-  } | null
-}
-
-type CommerceOrderRow = {
-  recipient_name: string
-  recipient_phone: string | null
-  shipping_address: string | null
-  invoice_ids?: number[] | null
-}
-
-type CommerceInvoiceItemRow = {
-  id: number
-  product_id: number
-  quantity: number
-  cost_bdt: number
-  sell_price_bdt: number
-  recipient_price_bdt: number
-  image_url: string | null
-  inventory_item_id: number | null
-  source_type?: 'manual' | 'shipment' | null
-  source_id?: number | null
-  products?: {
-    name?: string | null
-    product_code?: string | null
-  } | null
-  inventory_items?: {
-    name?: string | null
-    cost?: number | null
-    product_code?: string | null
-    barcode?: string | null
-    source_type?: string | null
-    source_id?: number | null
-    shipment_name?: string | null
-    tenant_shipment_id?: number | null
-  } | null
-}
+type CommerceInvoiceItemRow = CommerceInvoiceDetailsItem
 
 // State
-const loading = ref(true)
-const error = ref<string | null>(null)
-const invoice = ref<CommerceInvoiceRow | null>(null)
-const order = ref<CommerceOrderRow | null>(null)
-const items = ref<CommerceInvoiceItemRow[]>([])
+const commerceInvoiceStore = useCommerceInvoiceStore()
+const {
+  invoice,
+  order,
+  items,
+  loading,
+  error,
+} = storeToRefs(commerceInvoiceStore)
 
 // Stock search & subtypes state
 const searchDialogOpen = ref(false)
@@ -900,20 +871,7 @@ const loadInvoiceDetails = async () => {
     return
   }
 
-  loading.value = true
-  error.value = null
-  try {
-    const res = await commerceInvoiceService.getCommerceInvoiceDetails(invoiceId.value)
-    if (res.success && res.data) {
-      invoice.value = res.data.invoice as CommerceInvoiceRow
-      order.value = res.data.order
-      items.value = res.data.items as CommerceInvoiceItemRow[]
-    } else {
-      error.value = res.error || 'Failed to load commerce invoice details.'
-    }
-  } finally {
-    loading.value = false
-  }
+  await commerceInvoiceStore.fetchInvoiceDetails(invoiceId.value)
 }
 
 const openInvoicePreview = () => {
@@ -1044,29 +1002,33 @@ const onUpdateInvoiceCharge = async (key: string, val: unknown) => {
   if (!invoice.value) return
   loading.value = true
   try {
-    const chargesPayload: Record<string, unknown> = {
+    type Charges = Parameters<typeof commerceInvoiceStore.updateInvoiceCharges>[1]
+    const chargesPayload: Charges = {
       delivery_charge: Number(invoice.value.delivery_charge) || 0,
       wrapping_charge: Number(invoice.value.wrapping_charge) || 0,
       cod: Number(invoice.value.cod) || 0,
+      print_charge: Number(invoice.value.print_charge) || 0,
       amount_paid: Number(invoice.value.amount_paid) || 0,
       discount_amount: Number(invoice.value.discount_amount) || 0,
       invoice_date: invoice.value.invoice_date || '',
       delivered_by: invoice.value.delivered_by || '',
     }
     
-    chargesPayload[key] = val
+    if (key === 'delivery_charge' || key === 'wrapping_charge' || key === 'cod' || key === 'print_charge' || key === 'amount_paid' || key === 'discount_amount') {
+      chargesPayload[key] = Number(val)
+    } else if (key === 'invoice_date' || key === 'delivered_by') {
+      chargesPayload[key] = val as string
+    }
 
     if (invoice.value.invoice_type === 'wholesale') {
       chargesPayload.delivery_charge = 0
-      chargesPayload.wrapping_charge = 0
       chargesPayload.cod = 0
       chargesPayload.delivered_by = ''
     }
 
-    const res = await commerceInvoiceService.updateCommerceInvoiceCharges(invoice.value.id, chargesPayload as any)
+    const res = await commerceInvoiceStore.updateInvoiceCharges(invoice.value.id, chargesPayload)
     if (res.success) {
       showSuccessNotification('Invoice charge updated successfully.')
-      await loadInvoiceDetails()
     } else {
       showWarningDialog(res.error || 'Failed to update invoice.')
     }
@@ -1078,13 +1040,17 @@ const onUpdateInvoiceCharge = async (key: string, val: unknown) => {
 const onDeleteInvoice = () => {
   if (!invoice.value) return
 
-  const linkedInvoicesText = order.value?.invoice_ids?.length
-    ? `This order currently has linked invoice(s): ${order.value.invoice_ids.map((id) => `#${id}`).join(', ')}.`
-    : 'This order does not have any linked invoices listed yet.'
+  const linkedInvoicesText = order.value
+    ? (order.value.invoice_ids?.length
+      ? `This order currently has linked invoice(s): ${order.value.invoice_ids.map((id) => `#${id}`).join(', ')}.`
+      : 'This order does not have any linked invoices listed yet.')
+    : ''
+
+  const orderMsg = order.value ? ', and remove the invoice ID from the order' : ''
 
   $q.dialog({
     title: 'Delete Invoice?',
-    message: `This will permanently delete Invoice #${invoice.value.id}, remove its related accounting records, unassign and restock any linked inventory items, and remove the invoice ID from the order. ${linkedInvoicesText}`,
+    message: `This will permanently delete Invoice #${invoice.value.id}, remove its related accounting records, and unassign and restock any linked inventory items${orderMsg}. ${linkedInvoicesText}`,
     persistent: true,
     ok: {
       label: 'Delete',
@@ -1121,6 +1087,8 @@ const onDeleteInvoice = () => {
 }
 
 const removeItem = async (orderItemId: number) => {
+  const confirm = window.confirm('Are you sure you want to remove this item from the invoice? This will also unassign and restock the inventory item if it is linked.')
+  if (!confirm) return
   loading.value = true
   try {
     const res = await commerceInvoiceService.removeCommerceInvoiceItem(orderItemId, invoiceId.value)
@@ -1137,7 +1105,13 @@ const removeItem = async (orderItemId: number) => {
 
 const unassignInventoryItem = async (row: CommerceInvoiceItemRow) => {
   if (!invoice.value) return
-  const confirm = window.confirm('Unassign this stock item and restock it?')
+  const confirm = window.confirm(
+    'Are you sure you want to unassign this stock item?\n\n' +
+    'If you proceed, the following will happen:\n' +
+    '1. The allocated quantity will be added back and restocked into your inventory.\n' +
+    '2. The order item will be disconnected from physical stock and shipment tracking.\n' +
+    '3. Sales accounting entries for this item will be updated immediately.'
+  )
   if (!confirm) return
 
   loading.value = true
@@ -1282,6 +1256,14 @@ const sortedSearchItemsGrouped = computed<GroupedInventoryStock[]>(() => {
   })
 })
 
+const getMainStockId = (group: GroupedInventoryStock) => {
+  return group.subtypes.standard?.id ||
+         group.subtypes.boxless?.id ||
+         group.subtypes.box_damage?.id ||
+         group.subtypes.expired?.id ||
+         ''
+}
+
 const getAvailableQuantityForSubtype = (item: InventoryItemWithStock | undefined, subtype: 'standard' | 'boxless' | 'box_damage' | 'expired'): number => {
   if (!item || !item.stock) return 0
   const stock = item.stock
@@ -1333,21 +1315,21 @@ const getAddQuantity = (itemId: number): number => {
   if (addQuantityByItemId.value[itemId] === undefined || addQuantityByItemId.value[itemId] === null) {
     addQuantityByItemId.value[itemId] = Math.max(1, Number(selectedOrderItem.value?.quantity || 1))
   }
-  return addQuantityByItemId.value[itemId] as number
+  return addQuantityByItemId.value[itemId] ?? 0
 }
 
 const getSellPrice = (itemId: number, defaultCost: number): number => {
   if (sellPriceByItemId.value[itemId] === undefined || sellPriceByItemId.value[itemId] === null) {
     sellPriceByItemId.value[itemId] = Number(selectedOrderItem.value?.sell_price_bdt || defaultCost || 0)
   }
-  return sellPriceByItemId.value[itemId] as number
+  return sellPriceByItemId.value[itemId] ?? 0
 }
 
 const getRecipientPrice = (itemId: number, defaultCost: number): number => {
   if (recipientPriceByItemId.value[itemId] === undefined || recipientPriceByItemId.value[itemId] === null) {
     recipientPriceByItemId.value[itemId] = Number(selectedOrderItem.value?.recipient_price_bdt || defaultCost || 0)
   }
-  return recipientPriceByItemId.value[itemId] as number
+  return recipientPriceByItemId.value[itemId] ?? 0
 }
 
 const setAddQuantity = (itemId: number, value: string | number | null) => {
@@ -1467,7 +1449,7 @@ const addInventoryItemToInvoice = async (inventoryItem: InventoryItemWithStock) 
     return
   }
   
-  const subtype = getSubtypeFromItem(inventoryItem) as 'standard' | 'boxless' | 'box_damage' | 'expired'
+  const subtype = getSubtypeFromItem(inventoryItem)
   const usableStock = getAvailableQuantityForSubtype(inventoryItem, subtype)
   if (qty > usableStock) {
     showWarningDialog('Quantity is greater than usable stock for this item subtype.')
@@ -1505,7 +1487,7 @@ const assignInventoryItemToOrderItem = async (inventoryItem: InventoryItemWithSt
     return
   }
 
-  const subtype = getSubtypeFromItem(inventoryItem) as 'standard' | 'boxless' | 'box_damage' | 'expired'
+  const subtype = getSubtypeFromItem(inventoryItem)
   const usableStock = getAvailableQuantityForSubtype(inventoryItem, subtype)
   const requiredQty = Math.max(1, Number(row.quantity || 1))
   if (requiredQty > usableStock) {

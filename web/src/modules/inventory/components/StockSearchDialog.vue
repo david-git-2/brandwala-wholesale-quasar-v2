@@ -70,7 +70,9 @@
               <q-item-label caption class="text-grey-7 row q-gutter-x-md">
                 <span v-if="group.product_code">Code: {{ group.product_code }}</span>
                 <span v-if="group.barcode">Barcode: {{ group.barcode }}</span>
-                <span v-if="group.shipment?.shipment">Shipment: #{{ group.shipment.shipment.tenant_shipment_id ?? group.shipment.shipment.id }} - {{ group.shipment.shipment.name }}</span>
+                <span v-if="group.shipment?.shipment">
+                  Shipment: #{{ group.shipment.shipment.tenant_shipment_id ?? group.shipment.shipment.id }}<template v-if="group.shipment.shipment.name"> - {{ group.shipment.shipment.name }}</template><template v-if="group.tenant_name"> (Tenant: {{ group.tenant_name }})</template>
+                </span>
               </q-item-label>
               <div class="row items-center q-gutter-xs q-mt-xs">
                 <q-chip

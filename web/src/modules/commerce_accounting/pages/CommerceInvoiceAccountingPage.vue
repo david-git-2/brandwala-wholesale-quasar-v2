@@ -98,22 +98,35 @@
         <div class="invoice-table-wrap">
           <q-markup-table flat wrap-cells class="invoice-table">
             <thead>
-              <tr>
+              <!-- Top Header Grouping -->
+              <tr class="header-group-row">
+                <th colspan="5" class="text-left bg-light-blue-1 text-primary text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">General Details</th>
+                <th colspan="3" class="text-right bg-blue-1 text-indigo-9 text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">Product Stock Totals</th>
+                <th colspan="5" class="text-right bg-orange-1 text-orange-9 text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">Charges & Adjustments</th>
+                <th colspan="2" class="text-right bg-green-1 text-green-9 text-weight-bold">Outcomes</th>
+              </tr>
+              <!-- Column Headers -->
+              <tr class="column-header-row">
                 <th style="width: 36px"></th>
                 <th class="text-left">Invoice ID</th>
                 <th class="text-left">Type</th>
                 <th class="text-left">Latest Date</th>
-                <th class="text-right">Entries</th>
+                <th class="text-right" style="border-right: 1px solid rgba(34,56,101,.08)">Entries</th>
                 <th class="text-right">Total Qty</th>
                 <th class="text-right">COGS (BDT)</th>
-                <th class="text-right">Revenue (BDT)</th>
-                <th class="text-right">Gross Profit (BDT)</th>
+                <th class="text-right" style="border-right: 1px solid rgba(34,56,101,.08)">Revenue (BDT)</th>
+                <th class="text-right">Delivery</th>
+                <th class="text-right">Wrapping</th>
+                <th class="text-right">COD</th>
+                <th class="text-right">Print</th>
+                <th class="text-right" style="border-right: 1px solid rgba(34,56,101,.08)">Discount</th>
+                <th class="text-right">Gross Profit</th>
                 <th class="text-left">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="!groupedEntries.length">
-                <td colspan="10" class="text-center text-grey-7 q-pa-lg">
+                <td colspan="15" class="text-center text-grey-7 q-pa-lg">
                   No accounting entries found.
                 </td>
               </tr>
@@ -133,27 +146,32 @@
                     />
                   </td>
                   <td>
-                    <span class="text-weight-bold">
-                      {{ group.invoice_id ? `#${group.invoice_id}` : '—' }}
+                    <span class="text-weight-bold text-primary">
+                       {{ group.invoice_id ? `#${group.invoice_id}` : '—' }}
                     </span>
                   </td>
                   <td>
                     <q-badge
                       outline
                       :color="group.type === 'commerce' ? 'indigo' : 'primary'"
-                      class="text-capitalize"
-                      style="font-size: 10px"
+                      class="text-capitalize text-weight-bold"
+                      style="font-size: 10px; padding: 2px 6px;"
                     >
                       {{ group.type ?? 'normal' }}
                     </q-badge>
                   </td>
                   <td class="text-grey-8">{{ group.latestDate }}</td>
-                  <td class="text-right text-grey-7">{{ group.entries.length }}</td>
-                  <td class="text-right text-weight-medium">{{ group.totalQty }}</td>
-                  <td class="text-right">{{ fmt(group.totalCogs) }}</td>
-                  <td class="text-right">{{ fmt(group.totalRevenue) }}</td>
+                  <td class="text-right text-grey-7" style="border-right: 1px solid rgba(34,56,101,.05)">{{ group.entries.length }}</td>
+                  <td class="text-right text-weight-bold text-grey-9">{{ group.totalQty }}</td>
+                  <td class="text-right text-grey-8">{{ fmt(group.totalCogs) }}</td>
+                  <td class="text-right text-weight-medium text-grey-9" style="border-right: 1px solid rgba(34,56,101,.05)">{{ fmt(group.totalRevenue) }}</td>
+                  <td class="text-right" :class="group.totalDelivery ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ group.totalDelivery ? fmt(group.totalDelivery) : '—' }}</td>
+                  <td class="text-right" :class="group.totalWrapping ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ group.totalWrapping ? fmt(group.totalWrapping) : '—' }}</td>
+                  <td class="text-right" :class="group.totalCod ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ group.totalCod ? fmt(group.totalCod) : '—' }}</td>
+                  <td class="text-right" :class="group.totalPrint ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ group.totalPrint ? fmt(group.totalPrint) : '—' }}</td>
+                  <td class="text-right" :class="group.totalDiscount ? 'text-weight-bold text-red-8' : 'text-grey-4'">{{ group.totalDiscount ? `-${fmt(group.totalDiscount)}` : '—' }}</td>
                   <td
-                    class="text-right text-weight-medium"
+                    class="text-right text-weight-bold"
                     :class="group.totalProfit >= 0 ? 'text-positive' : 'text-negative'"
                   >
                     {{ fmt(group.totalProfit) }}
@@ -169,52 +187,86 @@
                   </td>
                 </tr>
 
-                <!-- ── Child (line item) rows ── -->
+                <!-- ── Child (nested line items) ── -->
                 <template v-if="expandedKeys.has(group.invoiceKey)">
-                  <!-- child sub-header -->
-                  <tr class="child-header-row">
+                  <tr class="expanded-detail-row">
                     <td></td>
-                    <td class="text-caption text-grey-6">Entry ID</td>
-                    <td class="text-caption text-grey-6">Shipment</td>
-                    <td class="text-caption text-grey-6">Entry Date</td>
-                    <td class="text-caption text-grey-6">Product</td>
-                    <td class="text-right text-caption text-grey-6">Qty</td>
-                    <td class="text-right text-caption text-grey-6">Cost/Unit</td>
-                    <td class="text-right text-caption text-grey-6">Sell/Unit</td>
-                    <td class="text-right text-caption text-grey-6">Gross Profit</td>
-                    <td class="text-caption text-grey-6">Status</td>
-                  </tr>
-                  <tr
-                    v-for="row in group.entries"
-                    :key="row.id"
-                    class="child-row"
-                  >
-                    <td></td>
-                    <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
-                    <td class="text-grey-8" style="font-size: 11px">
-                      {{ row.shipment_id ? `#${row.shipment_id}` : '—' }}
-                    </td>
-                    <td class="text-grey-8">{{ row.entry_date ?? '—' }}</td>
-                    <td class="text-grey-7" style="font-size: 11px">
-                      {{ row.product_id ? `#${row.product_id}` : '—' }}
-                    </td>
-                    <td class="text-right">{{ row.quantity }}</td>
-                    <td class="text-right">{{ fmt(row.cost_amount) }}</td>
-                    <td class="text-right">{{ fmt(row.sell_price_amount) }}</td>
-                    <td
-                      class="text-right"
-                      :class="Number(row.gross_profit_amount ?? 0) >= 0 ? 'text-positive' : 'text-negative'"
-                    >
-                      {{ fmt(row.gross_profit_amount) }}
-                    </td>
-                    <td>
-                      <span
-                        class="entry-status-chip entry-status-chip--sm"
-                        :class="`entry-status-chip--${row.status ?? 'unknown'}`"
-                      >
-                        <span class="status-dot" :style="{ backgroundColor: statusDotColor(row.status) }" />
-                        {{ row.status }}
-                      </span>
+                    <td colspan="14" class="q-pa-sm bg-grey-1">
+                      <div class="nested-table-card shadow-1 q-pa-sm bg-white">
+                        <div class="row items-center justify-between q-mb-sm q-px-xs">
+                          <div class="text-caption text-weight-bold text-indigo-9">
+                            Invoice Details & Charges Breakdown
+                          </div>
+                        </div>
+
+                        <q-markup-table flat dense wrap-cells class="nested-detail-table">
+                          <thead>
+                            <tr class="nested-header-row bg-indigo-1">
+                              <th class="text-left text-indigo-9 text-caption">Entry ID</th>
+                              <th class="text-left text-indigo-9 text-caption">Shipment</th>
+                              <th class="text-left text-indigo-9 text-caption">Entry Date</th>
+                              <th class="text-left text-indigo-9 text-caption">Product / Item</th>
+                              <th class="text-right text-indigo-9 text-caption">Qty</th>
+                              <th class="text-right text-indigo-9 text-caption">Cost/Unit</th>
+                              <th class="text-right text-indigo-9 text-caption">Sell/Unit</th>
+                              <th class="text-right text-orange-9 text-caption">Delivery</th>
+                              <th class="text-right text-orange-9 text-caption">Wrapping</th>
+                              <th class="text-right text-orange-9 text-caption">COD</th>
+                              <th class="text-right text-orange-9 text-caption">Print</th>
+                              <th class="text-right text-red text-caption">Discount</th>
+                              <th class="text-right text-indigo-9 text-caption">Gross Profit</th>
+                              <th class="text-left text-indigo-9 text-caption">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              v-for="row in group.entries"
+                              :key="row.id"
+                              class="nested-row"
+                              :class="{ 'nested-row--charges': row.is_charges }"
+                            >
+                              <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
+                              <td class="text-grey-8" style="font-size: 11px">
+                                {{ row.shipment_id ? `#${row.shipment_id}` : '—' }}
+                              </td>
+                              <td class="text-grey-8" style="font-size: 11px">{{ row.entry_date ?? '—' }}</td>
+                              <td class="text-grey-7" style="font-size: 11px">
+                                <template v-if="row.is_charges">
+                                  <q-badge color="deep-purple-1" text-color="deep-purple-9" class="text-weight-bold" style="font-size: 9px; padding: 2px 6px;">
+                                    Invoice Charges & Fees
+                                  </q-badge>
+                                </template>
+                                <template v-else>
+                                  {{ row.product_id ? `#${row.product_id}` : '—' }}
+                                </template>
+                              </td>
+                              <td class="text-right">{{ row.is_charges ? '—' : row.quantity }}</td>
+                              <td class="text-right">{{ row.is_charges ? '—' : fmt(row.cost_amount) }}</td>
+                              <td class="text-right">{{ row.is_charges ? '—' : fmt(row.sell_price_amount) }}</td>
+                              <td class="text-right" :class="row.delivery_charge ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ row.delivery_charge ? fmt(row.delivery_charge) : '—' }}</td>
+                              <td class="text-right" :class="row.wrapping_charge ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ row.wrapping_charge ? fmt(row.wrapping_charge) : '—' }}</td>
+                              <td class="text-right" :class="row.cod ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ row.cod ? fmt(row.cod) : '—' }}</td>
+                              <td class="text-right" :class="row.print_charge ? 'text-weight-bold text-grey-9' : 'text-grey-4'">{{ row.print_charge ? fmt(row.print_charge) : '—' }}</td>
+                              <td class="text-right" :class="row.discount_amount ? 'text-weight-bold text-red-8' : 'text-grey-4'">{{ row.discount_amount ? `-${fmt(row.discount_amount)}` : '—' }}</td>
+                              <td
+                                class="text-right text-weight-medium"
+                                :class="Number(row.gross_profit_amount ?? 0) >= 0 ? 'text-positive' : 'text-negative'"
+                              >
+                                {{ fmt(row.gross_profit_amount) }}
+                              </td>
+                              <td>
+                                <span
+                                  class="entry-status-chip entry-status-chip--sm"
+                                  :class="`entry-status-chip--${row.status ?? 'unknown'}`"
+                                >
+                                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(row.status) }" />
+                                  {{ row.status }}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </q-markup-table>
+                      </div>
                     </td>
                   </tr>
                 </template>
@@ -222,10 +274,15 @@
 
               <!-- Grand total row -->
               <tr v-if="groupedEntries.length" class="totals-row">
-                <td colspan="5" class="text-right text-weight-bold">Grand Total</td>
-                <td class="text-right text-weight-bold">{{ totals.qty }}</td>
-                <td class="text-right text-weight-bold">{{ fmt(totals.cogs) }}</td>
-                <td class="text-right text-weight-bold">{{ fmt(totals.revenue) }}</td>
+                <td colspan="5" class="text-right text-weight-bold text-primary">Grand Total</td>
+                <td class="text-right text-weight-bold text-grey-9">{{ totals.qty }}</td>
+                <td class="text-right text-weight-bold text-grey-8">{{ fmt(totals.cogs) }}</td>
+                <td class="text-right text-weight-bold text-grey-9" style="border-right: 1px solid rgba(34,56,101,.10)">{{ fmt(totals.revenue) }}</td>
+                <td class="text-right text-weight-bold text-grey-8">{{ fmt(totals.delivery) }}</td>
+                <td class="text-right text-weight-bold text-grey-8">{{ fmt(totals.wrapping) }}</td>
+                <td class="text-right text-weight-bold text-grey-8">{{ fmt(totals.cod) }}</td>
+                <td class="text-right text-weight-bold text-grey-8">{{ fmt(totals.print) }}</td>
+                <td class="text-right text-weight-bold text-red-8" style="border-right: 1px solid rgba(34,56,101,.10)">{{ totals.discount ? `-${fmt(totals.discount)}` : '—' }}</td>
                 <td
                   class="text-right text-weight-bold"
                   :class="totals.profit >= 0 ? 'text-positive' : 'text-negative'"
@@ -290,20 +347,46 @@ const groupedEntries = computed(() => {
     const totalCogs    = entries.reduce((s, e) => s + Number(e.total_cost_amount ?? 0), 0)
     const totalRevenue = entries.reduce((s, e) => s + Number(e.total_sell_amount ?? 0), 0)
     const totalProfit  = entries.reduce((s, e) => s + Number(e.gross_profit_amount ?? 0), 0)
+    const totalDelivery = entries.reduce((s, e) => s + Number(e.delivery_charge ?? 0), 0)
+    const totalWrapping = entries.reduce((s, e) => s + Number(e.wrapping_charge ?? 0), 0)
+    const totalCod      = entries.reduce((s, e) => s + Number(e.cod ?? 0), 0)
+    const totalPrint    = entries.reduce((s, e) => s + Number(e.print_charge ?? 0), 0)
+    const totalDiscount = entries.reduce((s, e) => s + Number(e.discount_amount ?? 0), 0)
     const dominantStatus = entries.some((e) => e.status === 'due') ? 'due' : 'paid'
     const latestDate = entries.map((e) => e.entry_date ?? '').filter(Boolean).sort().at(-1) ?? '—'
 
-    return { invoiceKey, invoice_id: first.invoice_id, type: first.type, entries, totalQty, totalCogs, totalRevenue, totalProfit, dominantStatus, latestDate }
+    return {
+      invoiceKey,
+      invoice_id: first.invoice_id,
+      type: first.type,
+      entries,
+      totalQty,
+      totalCogs,
+      totalRevenue,
+      totalDelivery,
+      totalWrapping,
+      totalCod,
+      totalPrint,
+      totalDiscount,
+      totalProfit,
+      dominantStatus,
+      latestDate
+    }
   })
 })
 
 // ── Grand totals ─────────────────────────────────────────────
 const totals = computed(() => ({
-  qty:     groupedEntries.value.reduce((s, g) => s + g.totalQty, 0),
-  cogs:    groupedEntries.value.reduce((s, g) => s + g.totalCogs, 0),
-  revenue: groupedEntries.value.reduce((s, g) => s + g.totalRevenue, 0),
-  profit:  groupedEntries.value.reduce((s, g) => s + g.totalProfit, 0),
-  due:     accountingStore.accountingEntries.filter((e) => e.status === 'due').length,
+  qty:      groupedEntries.value.reduce((s, g) => s + g.totalQty, 0),
+  cogs:     groupedEntries.value.reduce((s, g) => s + g.totalCogs, 0),
+  revenue:  groupedEntries.value.reduce((s, g) => s + g.totalRevenue, 0),
+  delivery: groupedEntries.value.reduce((s, g) => s + g.totalDelivery, 0),
+  wrapping: groupedEntries.value.reduce((s, g) => s + g.totalWrapping, 0),
+  cod:      groupedEntries.value.reduce((s, g) => s + g.totalCod, 0),
+  print:    groupedEntries.value.reduce((s, g) => s + g.totalPrint, 0),
+  discount: groupedEntries.value.reduce((s, g) => s + g.totalDiscount, 0),
+  profit:   groupedEntries.value.reduce((s, g) => s + g.totalProfit, 0),
+  due:      accountingStore.accountingEntries.filter((e) => e.status === 'due').length,
 }))
 
 const statusDotColor = (status: string | null | undefined) => {
@@ -386,6 +469,14 @@ onMounted(load)
   border-bottom: 1px solid rgba(34,56,101,.10);
 }
 
+.invoice-table :deep(.header-group-row th) {
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 12px !important;
+  border-bottom: 2px solid rgba(34,56,101,.12) !important;
+}
+
 .invoice-table :deep(td) {
   padding: 9px 12px; font-size: 13px;
   border-bottom: 1px solid rgba(34,56,101,.05);
@@ -408,10 +499,20 @@ onMounted(load)
   padding: 4px 12px;
   border-bottom: none;
 }
+.child-header-row.header-group-row td {
+  font-size: 10px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 12px !important;
+  border-bottom: 1px solid rgba(34,56,101,.10) !important;
+}
 .child-row td {
   background: rgba(248,250,254,.85);
   padding: 6px 12px;
   font-size: 12px;
+}
+.child-row--charges td {
+  background: rgba(237, 231, 246, 0.20) !important; /* soft violet-indigo tint to highlight charges row */
 }
 .child-row:last-of-type td { border-bottom: 2px solid rgba(34,56,101,.08); }
 

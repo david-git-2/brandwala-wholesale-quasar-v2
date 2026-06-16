@@ -199,6 +199,41 @@
                   dense
                   stack-label
                   class="soft-input"
+                  :disable="invoice?.invoice_type === 'wholesale'"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model.number="wrappingCharge"
+                  type="number"
+                  label="Wrapping Charge"
+                  outlined
+                  dense
+                  stack-label
+                  class="soft-input"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model.number="codCharge"
+                  type="number"
+                  label="COD Charge"
+                  outlined
+                  dense
+                  stack-label
+                  class="soft-input"
+                  :disable="invoice?.invoice_type === 'wholesale'"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model.number="printCharge"
+                  type="number"
+                  label="Print Charge"
+                  outlined
+                  dense
+                  stack-label
+                  class="soft-input"
                 />
               </div>
               <div class="col-6">
@@ -212,7 +247,7 @@
                   class="soft-input"
                 />
               </div>
-              <div class="col-12">
+              <div class="col-6">
                 <q-input
                   v-model.number="previousDue"
                   type="number"
@@ -402,6 +437,18 @@
                 <div>Delivery Charge:</div>
                 <div class="text-mono">{{ formatMoney(deliveryCharge) }}</div>
               </div>
+              <div class="row justify-between text-grey-9" style="font-size: 11px; padding: 2px 4px;" v-if="wrappingCharge">
+                <div>Wrapping Charge:</div>
+                <div class="text-mono">{{ formatMoney(wrappingCharge) }}</div>
+              </div>
+              <div class="row justify-between text-grey-9" style="font-size: 11px; padding: 2px 4px;" v-if="codCharge">
+                <div>COD Charge:</div>
+                <div class="text-mono">{{ formatMoney(codCharge) }}</div>
+              </div>
+              <div class="row justify-between text-grey-9" style="font-size: 11px; padding: 2px 4px;" v-if="printCharge">
+                <div>Print Charge:</div>
+                <div class="text-mono">{{ formatMoney(printCharge) }}</div>
+              </div>
               <div class="row justify-between text-grey-9" style="font-size: 11px; padding: 2px 4px;" v-if="previousDue">
                 <div>Previous Due:</div>
                 <div class="text-mono">{{ formatMoney(previousDue) }}</div>
@@ -457,7 +504,10 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { commerceInvoiceService } from '../services/commerceInvoiceService'
 import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
-import type { CommerceInvoice, CommerceInvoiceBox, InvoiceBrand, CommerceInvoiceDetailsItem } from '../types/index'
+import type { CommerceInvoiceBox, InvoiceBrand, CommerceInvoiceDetailsItem } from '../types/index'
+
+import { storeToRefs } from 'pinia'
+import { useCommerceInvoiceStore } from '../stores/commerceInvoiceStore'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -470,6 +520,9 @@ const brandName = ref('')
 const brandAddress = ref('')
 const totalBoxes = ref<number | null>(null)
 const deliveryCharge = ref(0)
+const wrappingCharge = ref(0)
+const codCharge = ref(0)
+const printCharge = ref(0)
 const advanceAmount = ref(0)
 const previousDue = ref(0)
 const thankYouMessage = ref('Thank you for your business!')
@@ -483,12 +536,12 @@ const clientTr = ref('')
 const newBoxNumber = ref('')
 const newBoxWeight = ref<number | null>(null)
 
-// Local state
-const invoice = ref<CommerceInvoice | null>(null)
-const order = ref<any>(null)
+// Store & Local state
+const commerceInvoiceStore = useCommerceInvoiceStore()
+const { invoice, order } = storeToRefs(commerceInvoiceStore)
 const boxes = ref<CommerceInvoiceBox[]>([])
 const brands = ref<(InvoiceBrand & { tenants?: { name: string } })[]>([])
-const billingProfile = ref<any>(null)
+const billingProfile = computed(() => invoice.value?.billing_profiles ?? null)
 
 const localItems = ref<CommerceInvoiceDetailsItem[]>([])
 const savingChanges = ref(false)
@@ -512,8 +565,21 @@ const subTotal = computed(() =>
 )
 
 const grandTotalAmount = computed(() => {
-  const base = subTotal.value - Number(invoice.value?.discount_amount ?? 0)
-  return Math.max(0, base + Number(deliveryCharge.value ?? 0) + Number(previousDue.value ?? 0))
+  const discount = Number(invoice.value?.discount_amount ?? 0)
+  const wrapping = Number(wrappingCharge.value ?? 0)
+  const codVal = Number(codCharge.value ?? 0)
+  const print = Number(printCharge.value ?? 0)
+  const delivery = Number(deliveryCharge.value ?? 0)
+  const prevDue = Number(previousDue.value ?? 0)
+
+  const isWholesale = invoice.value?.invoice_type === 'wholesale'
+  const isDeliveryInclusive = Boolean(order.value?.is_delivery_charge_inclusive)
+
+  const deliveryToUse = isWholesale || isDeliveryInclusive ? 0 : delivery
+  const codToUse = isWholesale ? 0 : codVal
+
+  const base = subTotal.value - discount
+  return Math.max(0, base + deliveryToUse + wrapping + codToUse + print + prevDue)
 })
 
 const totalDueAmount = computed(() => {
@@ -578,12 +644,15 @@ const saveCustomizations = async () => {
   savingChanges.value = true
   try {
     const isDraftOrInvoicing = invoice.value.status === 'draft' || invoice.value.status === 'invoicing'
-    // 1. Update invoice columns
-    const res = await commerceInvoiceService.updateCommerceInvoiceCharges(invoiceId.value, {
+    // 1. Update invoice columns via store action
+    const res = await commerceInvoiceStore.updateInvoiceCharges(invoiceId.value, {
       brand_name: brandName.value.trim() || null,
       brand_address: brandAddress.value.trim() || null,
       total_boxes: totalBoxes.value,
       delivery_charge: Number(deliveryCharge.value ?? 0),
+      wrapping_charge: Number(wrappingCharge.value ?? 0),
+      cod: Number(codCharge.value ?? 0),
+      print_charge: Number(printCharge.value ?? 0),
       advance_amount: Number(advanceAmount.value ?? 0),
       previous_due: Number(previousDue.value ?? 0),
       thank_you_message: thankYouMessage.value.trim() || null,
@@ -598,9 +667,9 @@ const saveCustomizations = async () => {
       return
     }
 
-    // 2. Update line item rate/unit modifications
+    // 2. Update line item rate/unit modifications via store action
     for (const item of localItems.value) {
-      await commerceInvoiceService.updateCommerceInvoiceItem(invoiceId.value, item.id, {
+      await commerceInvoiceStore.updateInvoiceItem(invoiceId.value, item.id, {
         quantity: Number(item.quantity ?? 0),
         sell_price_bdt: Number(item.sell_price_bdt ?? 0),
         recipient_price_bdt: Number(item.recipient_price_bdt ?? 0),
@@ -609,7 +678,28 @@ const saveCustomizations = async () => {
     }
 
     showSuccessNotification('Invoice customized and saved.')
-    await load()
+
+    // Synchronize local form fields from the updated store
+    if (invoice.value) {
+      brandName.value = invoice.value.brand_name || ''
+      brandAddress.value = invoice.value.brand_address || ''
+      totalBoxes.value = invoice.value.total_boxes
+      deliveryCharge.value = Number(invoice.value.delivery_charge ?? 0)
+      wrappingCharge.value = Number(invoice.value.wrapping_charge ?? 0)
+      codCharge.value = Number(invoice.value.cod ?? 0)
+      printCharge.value = Number(invoice.value.print_charge ?? 0)
+      advanceAmount.value = Number(invoice.value.advance_amount ?? 0)
+      previousDue.value = Number(invoice.value.previous_due ?? 0)
+      thankYouMessage.value = invoice.value.thank_you_message || 'Thank you for your business!'
+      customClientName.value = invoice.value.client_name || ''
+      clientTr.value = invoice.value.client_tr || ''
+
+      localItems.value = commerceInvoiceStore.items.map((item) => ({
+        ...item,
+        unit: item.unit || 'pcs',
+        recipient_price_bdt: Number(item.recipient_price_bdt ?? 0),
+      }))
+    }
   } catch (error) {
     console.error('Error saving customizations:', error)
   } finally {
@@ -623,36 +713,35 @@ const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
 
   const [detailsRes, brandsRes] = await Promise.all([
-    commerceInvoiceService.getCommerceInvoiceDetails(invoiceId.value),
+    commerceInvoiceStore.fetchInvoiceDetails(invoiceId.value),
     commerceInvoiceService.listCommerceInvoiceBrands(authStore.tenantId),
   ])
 
   if (detailsRes.success && detailsRes.data) {
-    const data = detailsRes.data
-    invoice.value = data.invoice
-    order.value = data.order
-    localItems.value = data.items.map((item) => ({
+    localItems.value = commerceInvoiceStore.items.map((item) => ({
       ...item,
       unit: item.unit || 'pcs',
       recipient_price_bdt: Number(item.recipient_price_bdt ?? 0),
     }))
-    billingProfile.value = data.invoice.billing_profiles
 
-    // Populate local fields from invoice record
-    brandName.value = data.invoice.brand_name || ''
-    brandAddress.value = data.invoice.brand_address || ''
-    totalBoxes.value = data.invoice.total_boxes
-    deliveryCharge.value = Number(data.invoice.delivery_charge ?? 0)
-    advanceAmount.value = Number(data.invoice.advance_amount ?? 0)
-    previousDue.value = Number(data.invoice.previous_due ?? 0)
-    thankYouMessage.value = data.invoice.thank_you_message || 'Thank you for your business!'
-    customClientName.value = data.invoice.client_name || ''
-    clientTr.value = data.invoice.client_tr || ''
+    if (invoice.value) {
+      brandName.value = invoice.value.brand_name || ''
+      brandAddress.value = invoice.value.brand_address || ''
+      totalBoxes.value = invoice.value.total_boxes
+      deliveryCharge.value = Number(invoice.value.delivery_charge ?? 0)
+      wrappingCharge.value = Number(invoice.value.wrapping_charge ?? 0)
+      codCharge.value = Number(invoice.value.cod ?? 0)
+      printCharge.value = Number(invoice.value.print_charge ?? 0)
+      advanceAmount.value = Number(invoice.value.advance_amount ?? 0)
+      previousDue.value = Number(invoice.value.previous_due ?? 0)
+      thankYouMessage.value = invoice.value.thank_you_message || 'Thank you for your business!'
+      customClientName.value = invoice.value.client_name || ''
+      clientTr.value = invoice.value.client_tr || ''
+    }
   }
 
   if (brandsRes.success && brandsRes.data) {
     brands.value = brandsRes.data
-    // Fallback populated brand selection matches
     if (invoice.value) {
       const matchedBrand = brands.value.find((b) => b.name === invoice.value?.brand_name)
       if (matchedBrand) selectedBrandId.value = matchedBrand.id

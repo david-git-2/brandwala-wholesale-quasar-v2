@@ -68,6 +68,12 @@ const INVENTORY_ACCOUNTING_ENTRY_FIELDS = [
   'created_at',
   'updated_at',
   'type',
+  'delivery_charge',
+  'wrapping_charge',
+  'cod',
+  'print_charge',
+  'discount_amount',
+  'is_charges',
 ] as const
 
 const INVOICE_ACCOUNTING_PAYMENT_FIELDS = [

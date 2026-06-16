@@ -713,7 +713,11 @@
                           <td></td>
                           <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
                           <td class="text-grey-8">{{ row.entry_date ?? '-' }}</td>
-                          <td class="text-grey-7" style="font-size: 11px; max-width: 160px; word-break: break-word;">{{ row.note ?? '-' }}</td>
+                          <td class="text-grey-7" style="font-size: 11px; max-width: 160px; word-break: break-word;">
+                            <span :class="{ 'text-weight-bold text-indigo': !row.inventory_item_id }">
+                              {{ row.note ?? '-' }}
+                            </span>
+                          </td>
                           <td></td>
                           <td class="text-right">{{ row.quantity }}</td>
                           <td class="text-right">{{ formatFixed2(row.total_cost_amount) }}</td>

@@ -115,99 +115,40 @@
       </div>
     </div>
 
-    <div v-if="invoice" class="q-gutter-y-sm">
-        <!-- Metric summaries row 1 -->
-        <div class="row q-col-gutter-sm">
-          <div class="col-12 col-sm-3">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Total Sell</div>
-                <div class="text-subtitle1 text-weight-bolder text-black">{{ formatAmount(totalSellAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Total Cost</div>
-                <div class="text-subtitle1 text-weight-bolder text-black">{{ formatAmount(totalCostAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Total Profit</div>
-                <div class="text-subtitle1 text-weight-bolder text-positive">{{ formatAmount(totalProfitAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Paid Amount</div>
-                <div class="text-subtitle1 text-weight-bolder text-primary">{{ formatAmount(Number(invoice?.paid_amount ?? 0)) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
+    <div v-if="invoice" class="row q-col-gutter-md q-mt-xs">
 
-        <!-- Metric summaries row 2 -->
-        <div class="row q-col-gutter-sm">
-          <div class="col-12 col-sm-4">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Total Returned</div>
-                <div class="text-subtitle1 text-weight-bolder text-warning">{{ formatAmount(totalReturnedAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Discount (Click to edit)</div>
-                <div class="text-subtitle1 text-weight-bolder text-orange-9 cursor-pointer">
-                  {{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}
-                  <q-popup-edit
-                    :model-value="Number(invoice?.discount_amount ?? 0)"
-                    buttons
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="onUpdateDiscount"
-                    v-slot="scope"
-                  >
-                    <q-input
-                      v-model.number="scope.value"
-                      type="number"
-                      dense
-                      autofocus
-                      min="0"
-                      label="Invoice Discount"
-                      @keyup.enter="scope.set"
-                    />
-                  </q-popup-edit>
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-card flat class="floating-surface shadow-1">
-              <q-card-section class="q-pa-sm text-center">
-                <div class="text-caption text-grey-8 text-weight-medium">Outstanding Amount</div>
-                <div class="text-subtitle1 text-weight-bolder text-negative">{{ formatAmount(outstandingAmount) }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
+      <!-- ═══════════════════════════════════════════════════════
+           LEFT COLUMN: Items Table
+           ═══════════════════════════════════════════════════════ -->
+      <div class="col-12 col-md-8" style="min-width: 0;">
+        <q-card flat class="floating-surface shadow-1 q-pa-xs" style="overflow: hidden;">
+          <!-- Table Header -->
+          <q-card-section class="row items-center justify-between q-py-sm q-px-md">
+            <div class="text-subtitle1 text-weight-bold text-black row items-center">
+              <q-icon name="receipt_long" class="q-mr-xs text-primary" size="22px" />
+              <span>Invoice Items ({{ invoiceStore.invoiceItems.length }})</span>
+            </div>
+            <q-btn
+              color="primary"
+              icon="add"
+              label="Add Items"
+              no-caps
+              class="pill-btn slim-btn shadow-1"
+              @click="searchDialogOpen = true"
+            >
+              <q-tooltip>Search &amp; Add Stock</q-tooltip>
+            </q-btn>
+          </q-card-section>
 
-        <!-- Invoice Item list table -->
-        <div class="q-mb-md">
-          <div class="text-subtitle1 text-weight-bold text-black q-mb-sm">Invoice Item List</div>
-          <div v-if="!invoiceStore.invoiceItems.length && !invoiceStore.loading" class="text-grey-8 floating-surface shadow-1 q-pa-md text-center">
-            No invoice items added yet. Use the "Search Stock" button to add items.
-          </div>
-          <q-card v-else flat class="floating-surface shadow-1 q-pa-xs">
-            <div class="invoice-table-wrap">
+          <q-separator />
+
+          <div>
+            <div v-if="!invoiceStore.invoiceItems.length && !invoiceStore.loading" class="text-grey-7 q-pa-xl text-center">
+              <q-icon name="o_receipt_long" size="48px" class="q-mb-xs text-grey-4" />
+              <div class="text-subtitle2 text-weight-medium">No items on this invoice</div>
+              <div class="text-caption text-grey-6">Click "Add Items" to add products from stock.</div>
+            </div>
+            <div v-else class="invoice-table-wrap">
               <q-markup-table flat wrap-cells class="invoice-items-table">
                 <thead>
                   <tr>
@@ -219,13 +160,13 @@
                     <th class="text-right">Quantity</th>
                     <th class="text-right">Discount</th>
                     <th class="text-right">Returned</th>
-                    <th class="text-right">Return Amount</th>
+                    <th class="text-right">Return Amt</th>
                     <th class="text-right">Line Total</th>
                     <th class="text-right" style="width: 90px">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id">
+                  <tr v-for="(row, index) in invoiceStore.invoiceItems" :key="row.id" class="item-row">
                     <td class="text-grey-7">{{ index + 1 }}</td>
                     <td>
                       <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
@@ -237,7 +178,7 @@
                         />
                       </q-avatar>
                     </td>
-                    <td style="white-space: normal; word-break: break-word; min-width: 260px;" class="text-black text-weight-medium">
+                    <td style="white-space: normal; word-break: break-word; min-width: 200px;" class="text-black text-weight-medium">
                       {{ row.name_snapshot }}
                     </td>
                     <td class="text-right text-black">{{ formatAmountBdt(row.cost_amount) }}</td>
@@ -284,24 +225,10 @@
                     <td class="text-right text-black">{{ formatAmount(Number(row.return_amount ?? 0)) }}</td>
                     <td class="text-right text-black text-weight-bold">{{ formatAmount(getNetSellAmount(row) - Number(row.line_discount_amount ?? 0)) }}</td>
                     <td class="text-right">
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="o_assignment_return"
-                        color="warning"
-                        @click="openReturnDialog(row.id)"
-                      >
+                      <q-btn flat round dense icon="o_assignment_return" color="warning" @click="openReturnDialog(row.id)">
                         <q-tooltip>Return</q-tooltip>
                       </q-btn>
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="o_delete"
-                        color="negative"
-                        @click="openDeleteInvoiceItem(row.id)"
-                      >
+                      <q-btn flat round dense icon="o_delete" color="negative" @click="openDeleteInvoiceItem(row.id)">
                         <q-tooltip>Delete</q-tooltip>
                       </q-btn>
                     </td>
@@ -312,14 +239,175 @@
                     <td class="text-right text-weight-bold text-orange-9">{{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}</td>
                     <td class="text-right text-weight-bold text-black">{{ formatQuantity(totalReturnedQuantity) }}</td>
                     <td class="text-right text-weight-bold text-black">{{ formatAmount(totalReturnedAmount) }}</td>
-                    <td class="text-right text-weight-bold text-black text-primary">{{ formatAmount(totalSellAmount - Number(invoice?.discount_amount ?? 0)) }}</td>
+                    <td class="text-right text-weight-bold text-primary">{{ formatAmount(totalSellAmount - Number(invoice?.discount_amount ?? 0)) }}</td>
                     <td></td>
                   </tr>
                 </tbody>
               </q-markup-table>
             </div>
-          </q-card>
-        </div>
+          </div>
+        </q-card>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           RIGHT COLUMN: Summary + Customer Info
+           ═══════════════════════════════════════════════════════ -->
+      <div class="col-12 col-md-4 q-gutter-y-md">
+
+        <!-- Billing Summary Card -->
+        <q-card flat class="floating-surface shadow-1 q-pa-md receipt-card">
+          <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
+            <q-icon name="o_receipt" class="q-mr-xs" size="20px" />
+            <span>Billing Summary</span>
+          </div>
+
+          <div class="q-gutter-y-sm">
+            <!-- Total Sell -->
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Total Sell</div>
+              <div class="text-weight-bold text-black">{{ formatAmount(totalSellAmount) }}</div>
+            </div>
+
+            <!-- Total Cost -->
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Total Cost</div>
+              <div class="text-weight-bold text-black">{{ formatAmount(totalCostAmount) }}</div>
+            </div>
+
+            <!-- Discount -->
+            <div class="row justify-between items-center text-body2 q-py-xs editable-field">
+              <div class="text-grey-7">Discount</div>
+              <div class="text-weight-bold text-orange-9 cursor-pointer row items-center">
+                <span>-{{ formatAmount(Number(invoice?.discount_amount ?? 0)) }}</span>
+                <q-popup-edit
+                  :model-value="Number(invoice?.discount_amount ?? 0)"
+                  buttons
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="onUpdateDiscount"
+                  v-slot="scope"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    dense
+                    autofocus
+                    min="0"
+                    label="Invoice Discount"
+                    @keyup.enter="scope.set"
+                  />
+                </q-popup-edit>
+                <q-icon name="o_edit" size="14px" class="q-ml-xs edit-pencil-icon" />
+              </div>
+            </div>
+
+            <!-- Total Returned -->
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Total Returned</div>
+              <div class="text-weight-bold text-warning">-{{ formatAmount(totalReturnedAmount) }}</div>
+            </div>
+
+            <q-separator class="q-my-xs" />
+
+            <!-- Net Total -->
+            <div class="row justify-between items-center q-py-xs">
+              <div class="text-subtitle2 text-weight-bold text-grey-9">Net Total</div>
+              <div class="text-subtitle1 text-weight-bolder text-black">
+                {{ formatAmount(totalSellAmount - Number(invoice?.discount_amount ?? 0) - totalReturnedAmount) }}
+              </div>
+            </div>
+
+            <!-- Paid Amount -->
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Paid Amount</div>
+              <div class="text-weight-bold text-positive">{{ formatAmount(Number(invoice?.paid_amount ?? 0)) }}</div>
+            </div>
+
+            <!-- Outstanding -->
+            <div
+              class="row justify-between items-center q-pa-sm q-mt-sm rounded-borders text-subtitle2"
+              :class="outstandingAmount > 0 ? 'bg-red-1 text-red-9' : 'bg-green-1 text-green-9'"
+            >
+              <div class="text-weight-bold">Outstanding</div>
+              <div class="text-weight-bolder">{{ formatAmount(outstandingAmount) }}</div>
+            </div>
+          </div>
+        </q-card>
+
+        <!-- Profit Summary Card -->
+        <q-card flat class="floating-surface shadow-1 q-pa-md">
+          <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
+            <q-icon name="o_trending_up" class="q-mr-xs" size="20px" />
+            <span>Profit Summary</span>
+          </div>
+          <div class="q-gutter-y-sm">
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Gross Profit</div>
+              <div class="text-weight-bold" :class="totalProfitAmount >= 0 ? 'text-positive' : 'text-negative'">
+                {{ formatAmount(totalProfitAmount) }}
+              </div>
+            </div>
+            <div class="row justify-between items-center text-body2 q-py-xs">
+              <div class="text-grey-7">Total Returned</div>
+              <div class="text-weight-bold text-warning">{{ formatAmount(totalReturnedAmount) }}</div>
+            </div>
+          </div>
+        </q-card>
+
+        <!-- Customer / Billing Profile Card -->
+        <q-card flat class="floating-surface shadow-1 q-pa-md" v-if="billingProfile">
+          <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
+            <q-icon name="o_person" class="q-mr-xs" size="20px" />
+            <span>Customer Info</span>
+          </div>
+          <div class="q-gutter-y-xs">
+            <div>
+              <div class="text-caption text-grey-7 text-weight-medium">Billing Profile</div>
+              <div class="text-body2 text-weight-bold text-grey-9">{{ billingProfile.name }}</div>
+            </div>
+            <div v-if="billingProfile.phone">
+              <div class="text-caption text-grey-7 text-weight-medium">Phone</div>
+              <div class="text-body2 text-weight-medium text-grey-9">{{ billingProfile.phone }}</div>
+            </div>
+            <div v-if="billingProfile.email">
+              <div class="text-caption text-grey-7 text-weight-medium">Email</div>
+              <div class="text-body2 text-weight-medium text-grey-9">{{ billingProfile.email }}</div>
+            </div>
+            <div v-if="billingProfile.address">
+              <div class="text-caption text-grey-7 text-weight-medium">Address</div>
+              <div class="text-body2 text-grey-9 text-weight-medium" style="white-space: pre-wrap;">{{ billingProfile.address }}</div>
+            </div>
+            <div v-if="customerGroup">
+              <div class="text-caption text-grey-7 text-weight-medium">Customer Group</div>
+              <q-chip
+                dense
+                size="sm"
+                class="text-weight-bold q-ma-none"
+                :style="{
+                  backgroundColor: customerGroup.accent_color || '#B45F34',
+                  color: getContrastYIQ(customerGroup.accent_color || '#B45F34')
+                }"
+              >
+                {{ customerGroup.name }}
+              </q-chip>
+            </div>
+            <div class="q-mt-sm">
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="secondary"
+                icon="o_payments"
+                label="View Payments"
+                class="pill-btn slim-btn full-width"
+                :disable="!invoice?.billing_profile_id"
+                @click="openCustomerPaymentDetails"
+              />
+            </div>
+          </div>
+        </q-card>
+
+      </div>
     </div>
     <div v-else class="text-body1 text-grey-8">
         Invoice not found.
@@ -1920,7 +2008,54 @@ onMounted(load)
 .invoice-table-wrap {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 340px);
+  max-height: calc(100vh - 260px);
+}
+
+.pill-btn {
+  border-radius: 8px !important;
+}
+
+.slim-btn {
+  min-height: 36px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.receipt-card {
+  border-left: 4px solid var(--q-primary) !important;
+  border-top-left-radius: 4px !important;
+  border-bottom-left-radius: 4px !important;
+}
+
+.editable-field {
+  transition: background-color 0.2s ease;
+}
+
+.editable-field:hover {
+  background-color: rgba(34, 56, 101, 0.035) !important;
+}
+
+.edit-pencil-icon {
+  opacity: 0.35;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #3b4b66;
+}
+
+.editable-field:hover .edit-pencil-icon {
+  opacity: 1 !important;
+  color: var(--q-primary) !important;
+}
+
+.item-row {
+  transition: background-color 0.2s ease;
+}
+
+.item-row:hover {
+  background-color: rgba(34, 56, 101, 0.015);
+}
+
+.rounded-borders {
+  border-radius: 8px !important;
 }
 
 .invoice-items-table :deep(th) {

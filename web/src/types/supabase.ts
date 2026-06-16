@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_logs: {
@@ -518,8 +493,12 @@ export type Database = {
           invoice_date: string
           invoice_type: string
           is_customer_group_paid: boolean
-          order_id: number
+          order_id: number | null
           previous_due: number
+          print_charge: number
+          recipient_name: string | null
+          recipient_phone: string | null
+          shipping_address: string | null
           status: string
           tenant_id: number
           thank_you_message: string | null
@@ -546,8 +525,12 @@ export type Database = {
           invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
-          order_id: number
+          order_id?: number | null
           previous_due?: number
+          print_charge?: number
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_address?: string | null
           status?: string
           tenant_id: number
           thank_you_message?: string | null
@@ -574,8 +557,12 @@ export type Database = {
           invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
-          order_id?: number
+          order_id?: number | null
           previous_due?: number
+          print_charge?: number
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_address?: string | null
           status?: string
           tenant_id?: number
           thank_you_message?: string | null
@@ -616,7 +603,7 @@ export type Database = {
           image_url: string | null
           inventory_item_id: number | null
           invoice_id: number | null
-          order_id: number
+          order_id: number | null
           phone_invite_id: string | null
           product_id: number
           quantity: number
@@ -633,7 +620,7 @@ export type Database = {
           image_url?: string | null
           inventory_item_id?: number | null
           invoice_id?: number | null
-          order_id: number
+          order_id?: number | null
           phone_invite_id?: string | null
           product_id: number
           quantity?: number
@@ -650,7 +637,7 @@ export type Database = {
           image_url?: string | null
           inventory_item_id?: number | null
           invoice_id?: number | null
-          order_id?: number
+          order_id?: number | null
           phone_invite_id?: string | null
           product_id?: number
           quantity?: number
@@ -1118,19 +1105,24 @@ export type Database = {
       inventory_accounting_entries: {
         Row: {
           billing_profile_id: number | null
+          cod: number
           commerce_invoice_id: number | null
           commerce_order_item_id: number | null
           cost_amount: number
           created_at: string
           created_by: string | null
           customer_group_id: number | null
+          delivery_charge: number
+          discount_amount: number
           entry_date: string
           gross_profit_amount: number
           id: number
-          inventory_item_id: number
+          inventory_item_id: number | null
           invoice_id: number | null
           invoice_item_id: number | null
+          is_charges: boolean
           note: string | null
+          print_charge: number
           product_id: number | null
           quantity: number
           recipient_sell_price_amount: number | null
@@ -1145,22 +1137,28 @@ export type Database = {
           total_sell_amount: number
           type: string
           updated_at: string
+          wrapping_charge: number
         }
         Insert: {
           billing_profile_id?: number | null
+          cod?: number
           commerce_invoice_id?: number | null
           commerce_order_item_id?: number | null
           cost_amount?: number
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
+          delivery_charge?: number
+          discount_amount?: number
           entry_date?: string
           gross_profit_amount?: number
           id?: number
-          inventory_item_id: number
+          inventory_item_id?: number | null
           invoice_id?: number | null
           invoice_item_id?: number | null
+          is_charges?: boolean
           note?: string | null
+          print_charge?: number
           product_id?: number | null
           quantity: number
           recipient_sell_price_amount?: number | null
@@ -1175,22 +1173,28 @@ export type Database = {
           total_sell_amount?: number
           type?: string
           updated_at?: string
+          wrapping_charge?: number
         }
         Update: {
           billing_profile_id?: number | null
+          cod?: number
           commerce_invoice_id?: number | null
           commerce_order_item_id?: number | null
           cost_amount?: number
           created_at?: string
           created_by?: string | null
           customer_group_id?: number | null
+          delivery_charge?: number
+          discount_amount?: number
           entry_date?: string
           gross_profit_amount?: number
           id?: number
-          inventory_item_id?: number
+          inventory_item_id?: number | null
           invoice_id?: number | null
           invoice_item_id?: number | null
+          is_charges?: boolean
           note?: string | null
+          print_charge?: number
           product_id?: number | null
           quantity?: number
           recipient_sell_price_amount?: number | null
@@ -1205,6 +1209,7 @@ export type Database = {
           total_sell_amount?: number
           type?: string
           updated_at?: string
+          wrapping_charge?: number
         }
         Relationships: [
           {
@@ -4306,15 +4311,20 @@ export type Database = {
       }
       v_shipment_accounting_ledger: {
         Row: {
+          cod: number | null
           cost_amount: number | null
           created_at: string | null
+          delivery_charge: number | null
+          discount_amount: number | null
           entry_date: string | null
           gross_profit_amount: number | null
           id: number | null
           inventory_item_id: number | null
           invoice_id: number | null
           invoice_item_id: number | null
+          is_charges: boolean | null
           note: string | null
+          print_charge: number | null
           product_id: number | null
           quantity: number | null
           sell_price_amount: number | null
@@ -4325,17 +4335,23 @@ export type Database = {
           total_cost_amount: number | null
           total_sell_amount: number | null
           type: string | null
+          wrapping_charge: number | null
         }
         Insert: {
+          cod?: number | null
           cost_amount?: number | null
           created_at?: string | null
+          delivery_charge?: number | null
+          discount_amount?: number | null
           entry_date?: string | null
           gross_profit_amount?: number | null
           id?: number | null
           inventory_item_id?: number | null
           invoice_id?: never
           invoice_item_id?: number | null
+          is_charges?: boolean | null
           note?: string | null
+          print_charge?: number | null
           product_id?: number | null
           quantity?: number | null
           sell_price_amount?: number | null
@@ -4346,17 +4362,23 @@ export type Database = {
           total_cost_amount?: number | null
           total_sell_amount?: number | null
           type?: string | null
+          wrapping_charge?: number | null
         }
         Update: {
+          cod?: number | null
           cost_amount?: number | null
           created_at?: string | null
+          delivery_charge?: number | null
+          discount_amount?: number | null
           entry_date?: string | null
           gross_profit_amount?: number | null
           id?: number | null
           inventory_item_id?: number | null
           invoice_id?: never
           invoice_item_id?: number | null
+          is_charges?: boolean | null
           note?: string | null
+          print_charge?: number | null
           product_id?: number | null
           quantity?: number | null
           sell_price_amount?: number | null
@@ -4367,6 +4389,7 @@ export type Database = {
           total_cost_amount?: number | null
           total_sell_amount?: number | null
           type?: string | null
+          wrapping_charge?: number | null
         }
         Relationships: [
           {
@@ -4415,6 +4438,20 @@ export type Database = {
       }
     }
     Functions: {
+      add_commerce_invoice_item: {
+        Args: {
+          p_cost_bdt: number
+          p_image_url: string
+          p_inventory_item_id: number
+          p_invoice_id: number
+          p_order_id: number
+          p_product_id: number
+          p_quantity: number
+          p_recipient_price_bdt: number
+          p_sell_price_bdt: number
+        }
+        Returns: undefined
+      }
       add_item_to_cart: {
         Args: {
           p_can_see_price?: boolean
@@ -4913,6 +4950,22 @@ export type Database = {
               p_delivery_charge: number
               p_invoice_date?: string
               p_order_id: number
+              p_tenant_id: number
+              p_total_amount: number
+              p_wrapping_charge: number
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_amount_paid: number
+              p_billing_profile_id?: number
+              p_cod: number
+              p_delivered_by: string
+              p_delivery_charge: number
+              p_invoice_date?: string
+              p_order_id: number
+              p_print_charge?: number
               p_tenant_id: number
               p_total_amount: number
               p_wrapping_charge: number
@@ -5845,6 +5898,29 @@ export type Database = {
         Args: { p_value: number }
         Returns: number
       }
+      update_commerce_invoice_charges: {
+        Args: {
+          p_advance_amount?: number
+          p_amount_paid?: number
+          p_brand_address?: string
+          p_brand_name?: string
+          p_client_name?: string
+          p_client_tr?: string
+          p_cod?: number
+          p_delivered_by?: string
+          p_delivery_charge?: number
+          p_discount_amount?: number
+          p_invoice_date?: string
+          p_invoice_id: number
+          p_previous_due?: number
+          p_print_charge?: number
+          p_status?: string
+          p_thank_you_message?: string
+          p_total_boxes?: number
+          p_wrapping_charge?: number
+        }
+        Returns: Json
+      }
       update_costing_file: {
         Args: {
           p_customer_group_id?: number
@@ -6304,9 +6380,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer"],

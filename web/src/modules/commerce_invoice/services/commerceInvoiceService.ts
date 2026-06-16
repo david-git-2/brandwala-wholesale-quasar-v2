@@ -106,6 +106,7 @@ export const commerceInvoiceService = {
       delivery_charge?: number
       wrapping_charge?: number
       cod?: number
+      print_charge?: number
       delivered_by?: string | null
       amount_paid?: number
       discount_amount?: number
@@ -121,7 +122,7 @@ export const commerceInvoiceService = {
       status?: string
     },
   ) =>
-    wrap<void>(
+    wrap<{ invoice: CommerceInvoice; order: CommerceInvoiceDetails['order'] }>(
       () => commerceInvoiceRepository.updateCommerceInvoiceCharges(invoiceId, charges),
       'Failed to update invoice charges.',
     ),

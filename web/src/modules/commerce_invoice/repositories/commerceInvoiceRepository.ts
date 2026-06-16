@@ -163,16 +163,21 @@ const syncInvoiceTotals = async (invoiceId: number) => {
   const deliveryCharge = Number(invoice.delivery_charge) || 0
   const wrappingCharge = Number(invoice.wrapping_charge) || 0
   const cod = Number(invoice.cod) || 0
-  const { data: orderRow } = await supabase
-    .from('commerce_orders')
-    .select('is_delivery_charge_inclusive')
-    .eq('id', invoice.order_id)
-    .maybeSingle()
-  const isDeliveryInclusive = Boolean(orderRow?.is_delivery_charge_inclusive)
+  const printCharge = Number(invoice.print_charge) || 0
+  
+  let isDeliveryInclusive = false
+  if (invoice.order_id) {
+    const { data: orderRow } = await supabase
+      .from('commerce_orders')
+      .select('is_delivery_charge_inclusive')
+      .eq('id', invoice.order_id)
+      .maybeSingle()
+    isDeliveryInclusive = Boolean(orderRow?.is_delivery_charge_inclusive)
+  }
   const deliveryChargeForTotal = isDeliveryInclusive ? 0 : deliveryCharge
 
   const discountAmount = Number(invoice.discount_amount) || 0
-  const totalAmount = Math.max(0, round2(subtotal + deliveryChargeForTotal - discountAmount))
+  const totalAmount = Math.max(0, round2(subtotal + deliveryChargeForTotal + wrappingCharge + cod + printCharge - discountAmount))
   const amountDue = Math.max(0, round2(totalAmount - Number(invoice.amount_paid || 0)))
   const isPaid = Number(invoice.amount_paid || 0) >= totalAmount
 
@@ -185,15 +190,18 @@ const syncInvoiceTotals = async (invoiceId: number) => {
     })
     .eq('id', invoiceId)
 
-  await supabase
-    .from('commerce_orders')
-    .update({
-      delivery_charge: deliveryCharge,
-      wrapping_charge: wrappingCharge,
-      cod,
-      shipment_payment: totalAmount,
-    })
-    .eq('id', invoice.order_id)
+  if (invoice.order_id) {
+    await supabase
+      .from('commerce_orders')
+      .update({
+        delivery_charge: deliveryCharge,
+        wrapping_charge: wrappingCharge,
+        cod,
+        invoice_print_charge: printCharge,
+        shipment_payment: totalAmount,
+      })
+      .eq('id', invoice.order_id)
+  }
 }
 
 const maintainAccountingEntry = async (
@@ -216,12 +224,28 @@ const maintainAccountingEntry = async (
     tenant_id: tenantId,
   }
 
-  const { error } = await supabase
+  // Check if entry already exists to avoid ON CONFLICT on the view
+  const { data: existing, error: findError } = await supabase
     .from('commerce_accounting')
-    .upsert(payload, { onConflict: 'order_item_id' })
+    .select('id')
+    .eq('order_item_id', item.id)
+    .maybeSingle()
 
-  if (error) {
-    throw error
+  if (findError) {
+    throw findError
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('commerce_accounting')
+      .update(payload)
+      .eq('id', existing.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('commerce_accounting')
+      .insert(payload)
+    if (error) throw error
   }
 }
 
@@ -313,7 +337,17 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
   const inventoryItemsById = new Map<
     number,
-    { name?: string | null; cost?: number | null; product_code?: string | null; barcode?: string | null; source_type?: string | null; source_id?: number | null; shipment_name?: string | null; tenant_shipment_id?: number | null }
+    {
+      name?: string | null
+      cost?: number | null
+      product_code?: string | null
+      barcode?: string | null
+      source_type?: string | null
+      source_id?: number | null
+      shipment_name?: string | null
+      tenant_shipment_id?: number | null
+      tenant_name?: string | null
+    }
   >()
 
   if (inventoryItemIds.length > 0) {
@@ -324,7 +358,7 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
 
     if (inventoryItemsError) throw inventoryItemsError
 
-    const shipmentIds = Array.from(
+    const shipmentItemIds = Array.from(
       new Set(
         (inventoryItems || [])
           .filter((item) => item.source_type === 'shipment' && item.source_id)
@@ -332,22 +366,48 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
       ),
     )
 
-    const shipmentsById = new Map<number, { name: string; tenant_shipment_id: number }>()
+    const shipmentItemToShipmentId = new Map<number, number>()
+    const shipmentIds: number[] = []
+
+    if (shipmentItemIds.length > 0) {
+      const { data: shipmentItemsData, error: shipmentItemsError } = await supabase
+        .from('shipment_items')
+        .select('id, shipment_id')
+        .in('id', shipmentItemIds)
+      if (!shipmentItemsError && shipmentItemsData) {
+        for (const si of shipmentItemsData) {
+          if (si.shipment_id) {
+            shipmentItemToShipmentId.set(si.id, si.shipment_id)
+            shipmentIds.push(si.shipment_id)
+          }
+        }
+      }
+    }
+
+    const shipmentsById = new Map<number, { name: string; tenant_shipment_id: number | null; tenant_name?: string | null }>()
     if (shipmentIds.length > 0) {
       const { data: shipmentsData, error: shipmentsError } = await supabase
         .from('shipments')
-        .select('id, name, tenant_shipment_id')
-        .in('id', shipmentIds)
+        .select('id, name, tenant_shipment_id, tenants(name)')
+        .in('id', Array.from(new Set(shipmentIds)))
       if (!shipmentsError && shipmentsData) {
         for (const sh of shipmentsData) {
-          shipmentsById.set(sh.id, { name: sh.name, tenant_shipment_id: sh.tenant_shipment_id })
+          const tenantObj = sh.tenants as unknown as { name: string } | null
+          shipmentsById.set(sh.id, {
+            name: sh.name,
+            tenant_shipment_id: sh.tenant_shipment_id,
+            tenant_name: tenantObj?.name ?? null,
+          })
         }
       }
     }
 
     for (const inventoryItem of inventoryItems || []) {
-      const shipmentInfo = inventoryItem.source_type === 'shipment' && inventoryItem.source_id
-        ? shipmentsById.get(Number(inventoryItem.source_id)) ?? null
+      const shipmentId = inventoryItem.source_type === 'shipment' && inventoryItem.source_id
+        ? shipmentItemToShipmentId.get(Number(inventoryItem.source_id)) ?? null
+        : null
+      const shipmentInfo = shipmentId
+        ? shipmentsById.get(shipmentId) ?? null
         : null
 
       inventoryItemsById.set(inventoryItem.id, {
@@ -359,6 +419,7 @@ const getCommerceInvoiceDetails = async (invoiceId: number) => {
         source_id: inventoryItem.source_id,
         shipment_name: shipmentInfo?.name ?? null,
         tenant_shipment_id: shipmentInfo?.tenant_shipment_id ?? null,
+        tenant_name: shipmentInfo?.tenant_name ?? null,
       })
     }
   }
@@ -383,54 +444,32 @@ const createManualInvoice = async (payload: {
   delivery_charge: number
   wrapping_charge: number
   cod: number
+  print_charge?: number
   invoice_date?: string
 }) => {
-  const { data: bp } = await supabase
-    .from('billing_profiles')
-    .select('customer_group_id')
-    .eq('id', payload.billing_profile_id)
-    .single()
-
-  const customerGroupId = bp?.customer_group_id || null
-
-  const { data: order, error: orderErr } = await supabase
-    .from('commerce_orders')
-    .insert([
-      {
-        tenant_id: payload.tenant_id,
-        customer_group_id: customerGroupId,
-        recipient_name: payload.recipient_name,
-        recipient_phone: payload.recipient_phone,
-        shipping_address: payload.shipping_address,
-        delivery_charge: payload.delivery_charge,
-        wrapping_charge: payload.wrapping_charge,
-        cod: payload.cod,
-        shipment_payment: payload.delivery_charge,
-        is_delivery_charge_inclusive: false,
-        status: 'reviewing',
-      },
-    ])
-    .select()
-    .single()
-
-  if (orderErr || !order) throw orderErr || new Error('Failed to create commerce order.')
+  const printCharge = payload.print_charge || 0
+  const baseTotal = payload.delivery_charge + payload.wrapping_charge + payload.cod + printCharge
 
   const { data: invoice, error: invoiceErr } = await supabase
     .from('commerce_invoices')
     .insert([
       {
-        order_id: order.id,
+        order_id: null,
         tenant_id: payload.tenant_id,
         delivery_charge: payload.delivery_charge,
         wrapping_charge: payload.wrapping_charge,
         cod: payload.cod,
-        total_amount: order.shipment_payment,
+        print_charge: printCharge,
+        total_amount: baseTotal,
         amount_paid: 0,
-        amount_due: order.shipment_payment,
+        amount_due: baseTotal,
         is_customer_group_paid: false,
         billing_profile_id: payload.billing_profile_id,
         invoice_type: payload.invoice_type || 'retail',
         invoice_date: payload.invoice_date,
+        recipient_name: payload.recipient_name,
+        recipient_phone: payload.recipient_phone,
+        shipping_address: payload.shipping_address,
       },
     ])
     .select()
@@ -438,19 +477,12 @@ const createManualInvoice = async (payload: {
 
   if (invoiceErr || !invoice) throw invoiceErr || new Error('Failed to create commerce invoice.')
 
-  await supabase
-    .from('commerce_orders')
-    .update({
-      invoice_ids: [invoice.id],
-    })
-    .eq('id', order.id)
-
   return invoice
 }
 
 const addCommerceInvoiceItem = async (
   invoiceId: number,
-  orderId: number,
+  orderId: number | null,
   item: {
     product_id: number
     quantity: number
@@ -461,104 +493,23 @@ const addCommerceInvoiceItem = async (
     inventory_item_id?: number | null
   },
 ) => {
-  const order = await getCommerceOrderContext(orderId)
+  const { error } = await supabase.rpc('add_commerce_invoice_item', {
+    p_invoice_id: invoiceId,
+    p_order_id: orderId,
+    p_product_id: item.product_id,
+    p_quantity: Math.max(1, Math.floor(Number(item.quantity || 1))),
+    p_cost_bdt: Number(item.cost_bdt || 0),
+    p_sell_price_bdt: item.sell_price_bdt,
+    p_recipient_price_bdt: item.recipient_price_bdt,
+    p_image_url: item.image_url || null,
+    p_inventory_item_id: item.inventory_item_id ?? null,
+  })
 
-  const quantity = Math.max(1, Math.floor(Number(item.quantity || 1)))
-
-  let resolvedCost = Number(item.cost_bdt || 0)
-  const resolvedInventoryItemId: number | null = item.inventory_item_id ?? null
-  let resolvedShipmentItemId: number | null = null
-  let resolvedTenantId = Number(order.tenant_id)
-
-  if (resolvedInventoryItemId) {
-    const { inventoryItem } = await adjustInventoryStock({
-      inventoryItemId: resolvedInventoryItemId,
-      delta: -quantity,
-      note: `Assigned to commerce invoice #${invoiceId}`,
-    })
-    resolvedCost = Number(inventoryItem.cost || 0)
-    resolvedShipmentItemId =
-      inventoryItem.source_type === 'shipment' ? Number(inventoryItem.source_id || 0) || null : null
-    resolvedTenantId = inventoryItem.tenant_id
+  if (error) {
+    throw error
   }
-
-  let existingQuery = supabase
-    .from('commerce_order_items')
-    .select('*')
-    .eq('order_id', orderId)
-    .eq('product_id', item.product_id)
-    .eq('invoice_id', invoiceId)
-
-  if (resolvedInventoryItemId) {
-    existingQuery = existingQuery.eq('inventory_item_id', resolvedInventoryItemId)
-  } else {
-    existingQuery = existingQuery.is('inventory_item_id', null)
-  }
-
-  const { data: existingItem } = await existingQuery.maybeSingle()
-
-  let orderItem: CommerceOrderItemRow
-  if (existingItem) {
-    const { data: updated, error: updateError } = await supabase
-      .from('commerce_order_items')
-      .update({
-        quantity: Number(existingItem.quantity) + quantity,
-        cost_bdt: resolvedCost,
-        sell_price_bdt: item.sell_price_bdt,
-        recipient_price_bdt: item.recipient_price_bdt,
-        inventory_item_id: resolvedInventoryItemId,
-        shipment_item_id: resolvedShipmentItemId,
-      })
-      .eq('id', existingItem.id)
-      .select('*')
-      .single()
-
-    if (updateError || !updated) {
-      throw updateError || new Error('Failed to update order item.')
-    }
-    orderItem = updated as CommerceOrderItemRow
-  } else {
-    const { data: inserted, error: insertError } = await supabase
-      .from('commerce_order_items')
-      .insert([
-        {
-          order_id: orderId,
-          invoice_id: invoiceId,
-          product_id: item.product_id,
-          quantity,
-          cost_bdt: resolvedCost,
-          sell_price_bdt: item.sell_price_bdt,
-          recipient_price_bdt: item.recipient_price_bdt,
-          image_url: item.image_url || null,
-          inventory_item_id: resolvedInventoryItemId,
-          shipment_item_id: resolvedShipmentItemId,
-        },
-      ])
-      .select('*')
-      .single()
-
-    if (insertError || !inserted) {
-      throw insertError || new Error('Failed to create order item.')
-    }
-    orderItem = inserted as CommerceOrderItemRow
-  }
-
-  const { data: invoice } = await supabase
-    .from('commerce_invoices')
-    .select('is_customer_group_paid, billing_profile_id')
-    .eq('id', invoiceId)
-    .single()
-
-  await maintainAccountingEntry(
-    orderItem,
-    Number(order.customer_group_id || 0),
-    resolvedTenantId,
-    Boolean(invoice?.is_customer_group_paid),
-    invoice?.billing_profile_id,
-  )
-
-  await syncInvoiceTotals(invoiceId)
 }
+
 
 const updateCommerceInvoiceItem = async (
   invoiceId: number,
@@ -622,20 +573,32 @@ const updateCommerceInvoiceItem = async (
 
   const { data: invoice } = await supabase
     .from('commerce_invoices')
-    .select('is_customer_group_paid, billing_profile_id, order_id')
+    .select('is_customer_group_paid, billing_profile_id, order_id, tenant_id')
     .eq('id', invoiceId)
     .single()
 
-  const order = await getCommerceOrderContext(Number(invoice?.order_id))
+  let customerGroupId = 0
+  let tenantId = resolvedTenantId || Number(invoice?.tenant_id || 0)
 
-  if (!resolvedTenantId) {
-    resolvedTenantId = Number(order.tenant_id)
+  if (invoice?.order_id) {
+    const order = await getCommerceOrderContext(Number(invoice.order_id))
+    customerGroupId = Number(order.customer_group_id || 0)
+    if (!resolvedTenantId) {
+      tenantId = Number(order.tenant_id)
+    }
+  } else if (invoice?.billing_profile_id) {
+    const { data: bp } = await supabase
+      .from('billing_profiles')
+      .select('customer_group_id')
+      .eq('id', invoice.billing_profile_id)
+      .single()
+    customerGroupId = Number(bp?.customer_group_id || 0)
   }
 
   await maintainAccountingEntry(
     updated as CommerceOrderItemRow,
-    Number(order.customer_group_id || 0),
-    resolvedTenantId,
+    customerGroupId,
+    tenantId,
     Boolean(invoice?.is_customer_group_paid),
     invoice?.billing_profile_id,
   )
@@ -658,14 +621,34 @@ const updateOrderItemInventoryAssignment = async (
     throw invoiceError || new Error('Invoice not found.')
   }
 
-  const order = await getCommerceOrderContext(Number(invoice.order_id))
+  let customerGroupId = 0
+  let tenantId = Number(invoice.tenant_id || 0)
 
-  const { data: rawOrderItem, error: orderItemError } = await supabase
+  if (invoice.order_id) {
+    const order = await getCommerceOrderContext(Number(invoice.order_id))
+    customerGroupId = Number(order.customer_group_id || 0)
+    tenantId = Number(order.tenant_id || tenantId)
+  } else if (invoice.billing_profile_id) {
+    const { data: bp } = await supabase
+      .from('billing_profiles')
+      .select('customer_group_id')
+      .eq('id', invoice.billing_profile_id)
+      .single()
+    customerGroupId = Number(bp?.customer_group_id || 0)
+  }
+
+  const query = supabase
     .from('commerce_order_items')
     .select('*')
     .eq('id', orderItemId)
-    .eq('order_id', invoice.order_id)
-    .single()
+
+  if (invoice.order_id) {
+    void query.eq('order_id', invoice.order_id)
+  } else {
+    void query.eq('invoice_id', invoiceId)
+  }
+
+  const { data: rawOrderItem, error: orderItemError } = await query.single()
 
   if (orderItemError || !rawOrderItem) {
     throw orderItemError || new Error('Order item not found.')
@@ -675,7 +658,7 @@ const updateOrderItemInventoryAssignment = async (
   const quantity = Math.max(0, Number(orderItem.quantity || 0))
   const previousInventoryItemId = orderItem.inventory_item_id
 
-  let resolvedTenantId = Number(order.tenant_id)
+  let resolvedTenantId = tenantId
 
   if (previousInventoryItemId && previousInventoryItemId !== inventoryItemId && quantity > 0) {
     await adjustInventoryStock({
@@ -728,7 +711,7 @@ const updateOrderItemInventoryAssignment = async (
 
   await maintainAccountingEntry(
     updatedOrderItem as CommerceOrderItemRow,
-    Number(order.customer_group_id || 0),
+    customerGroupId,
     resolvedTenantId,
     Boolean(invoice.is_customer_group_paid),
     invoice.billing_profile_id,
@@ -753,14 +736,34 @@ const unassignOrderItemInventory = async (
     throw invoiceError || new Error('Invoice not found.')
   }
 
-  const order = await getCommerceOrderContext(Number(invoice.order_id))
+  let customerGroupId = 0
+  let tenantId = Number(invoice.tenant_id || 0)
 
-  const { data: rawOrderItem, error: orderItemError } = await supabase
+  if (invoice.order_id) {
+    const order = await getCommerceOrderContext(Number(invoice.order_id))
+    customerGroupId = Number(order.customer_group_id || 0)
+    tenantId = Number(order.tenant_id || tenantId)
+  } else if (invoice.billing_profile_id) {
+    const { data: bp } = await supabase
+      .from('billing_profiles')
+      .select('customer_group_id')
+      .eq('id', invoice.billing_profile_id)
+      .single()
+    customerGroupId = Number(bp?.customer_group_id || 0)
+  }
+
+  const query = supabase
     .from('commerce_order_items')
     .select('*')
     .eq('id', orderItemId)
-    .eq('order_id', invoice.order_id)
-    .single()
+
+  if (invoice.order_id) {
+    void query.eq('order_id', invoice.order_id)
+  } else {
+    void query.eq('invoice_id', invoiceId)
+  }
+
+  const { data: rawOrderItem, error: orderItemError } = await query.single()
 
   if (orderItemError || !rawOrderItem) {
     throw orderItemError || new Error('Order item not found.')
@@ -795,8 +798,8 @@ const unassignOrderItemInventory = async (
 
   await maintainAccountingEntry(
     updatedOrderItem as CommerceOrderItemRow,
-    Number(order.customer_group_id || 0),
-    Number(order.tenant_id),
+    customerGroupId,
+    tenantId,
     Boolean(invoice.is_customer_group_paid),
     invoice.billing_profile_id,
   )
@@ -845,6 +848,7 @@ const updateCommerceInvoiceCharges = async (
     delivery_charge?: number
     wrapping_charge?: number
     cod?: number
+    print_charge?: number
     delivered_by?: string | null
     amount_paid?: number
     discount_amount?: number
@@ -859,10 +863,37 @@ const updateCommerceInvoiceCharges = async (
     client_tr?: string | null
     status?: string
   },
-) => {
-  await supabase.from('commerce_invoices').update(charges).eq('id', invoiceId)
+): Promise<{ invoice: CommerceInvoice; order: CommerceInvoiceDetails['order'] }> => {
+  const { data, error } = await supabase.rpc('update_commerce_invoice_charges', {
+    p_invoice_id: invoiceId,
+    p_delivery_charge: charges.delivery_charge,
+    p_wrapping_charge: charges.wrapping_charge,
+    p_cod: charges.cod,
+    p_print_charge: charges.print_charge,
+    p_amount_paid: charges.amount_paid,
+    p_discount_amount: charges.discount_amount,
+    p_invoice_date: charges.invoice_date || null,
+    p_delivered_by: charges.delivered_by,
+    p_brand_name: charges.brand_name,
+    p_brand_address: charges.brand_address,
+    p_total_boxes: charges.total_boxes,
+    p_advance_amount: charges.advance_amount,
+    p_previous_due: charges.previous_due,
+    p_thank_you_message: charges.thank_you_message,
+    p_client_name: charges.client_name,
+    p_client_tr: charges.client_tr,
+    p_status: charges.status,
+  })
 
-  await syncInvoiceTotals(invoiceId)
+  if (error) {
+    throw error
+  }
+
+  const result = data as { invoice: CommerceInvoice; order: CommerceInvoiceDetails['order'] }
+  return {
+    invoice: result.invoice,
+    order: result.order,
+  }
 }
 
 const deleteCommerceInvoice = async (invoiceId: number) => {
