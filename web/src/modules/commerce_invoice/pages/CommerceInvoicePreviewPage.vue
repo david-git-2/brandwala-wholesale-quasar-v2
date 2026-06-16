@@ -26,7 +26,7 @@
             <div class="text-caption text-weight-bold q-mb-xs" :style="{ color: customizerBrandColor }">Brand Information</div>
             <q-select
               v-model="selectedBrandId"
-              :options="invoiceStore.brands"
+              :options="brands"
               option-value="id"
               option-label="name"
               label="Select Pre-configured Brand"
@@ -41,12 +41,12 @@
             />
             <div class="row justify-end q-mb-xs">
               <router-link
-                :to="{ name: 'app-invoice-brands-page', params: { tenantSlug: route.params.tenantSlug } }"
+                :to="{ name: 'app-commerce-billing-profiles', params: { tenantSlug: route.params.tenantSlug } }"
                 target="_blank"
                 class="text-caption text-weight-medium cursor-pointer"
                 :style="{ color: customizerBrandColor, textDecoration: 'underline' }"
               >
-                Add/Manage Brands
+                Add/Manage Billing Profiles
               </router-link>
             </div>
             <q-input
@@ -160,9 +160,9 @@
               </div>
 
               <!-- List of added boxes -->
-              <div v-if="invoiceStore.boxes.length" class="q-mt-sm q-gutter-y-xs scroll" style="max-height: 120px;">
+              <div v-if="boxes.length" class="q-mt-sm q-gutter-y-xs scroll" style="max-height: 120px;">
                 <div
-                  v-for="box in invoiceStore.boxes"
+                  v-for="box in boxes"
                   :key="box.id"
                   class="row items-center justify-between q-px-sm q-py-xs bg-white rounded-borders shadow-1 border-light"
                 >
@@ -235,7 +235,7 @@
                 :key="item.id"
                 class="q-pa-xs rounded-borders bg-grey-1 border-light q-mb-xs"
               >
-                <div class="text-caption text-weight-bold text-black ellipsis">{{ item.name_snapshot }}</div>
+                <div class="text-caption text-weight-bold text-black ellipsis">{{ item.products?.name || item.inventory_items?.name || 'Product ID: ' + item.product_id }}</div>
                 <div class="row q-col-gutter-xs q-mt-xs">
                   <div class="col-6">
                     <q-input
@@ -244,21 +244,17 @@
                       outlined
                       dense
                       stack-label
-                      readonly
-                      disable
                       class="soft-input dense-input"
                     />
                   </div>
                   <div class="col-6">
                     <q-input
-                      v-model.number="item.sell_price_amount"
+                      v-model.number="item.recipient_price_bdt"
                       type="number"
                       label="Rate (BDT)"
                       outlined
                       dense
                       stack-label
-                      readonly
-                      disable
                       class="soft-input dense-input"
                     />
                   </div>
@@ -306,17 +302,15 @@
             <!-- Invoice meta info -->
             <div class="col-5 text-right" style="font-size: 11px; line-height: 1.25;">
               <div class="text-subtitle1 text-weight-bold text-green-accent q-mb-xs" style="line-height: 1.1;">INVOICE</div>
-              <div class="text-black"><strong>Invoice No:</strong> {{ invoice?.invoice_no ?? '-' }}</div>
+              <div class="text-black"><strong>Invoice No:</strong> {{ invoice?.id ?? '-' }}</div>
               <div class="text-grey-8"><strong>SL Code:</strong> {{ slCode }}</div>
               <div class="text-grey-8"><strong>Date:</strong> {{ invoice?.invoice_date ?? '-' }}</div>
-              <div class="text-grey-8" v-if="invoice?.due_date"><strong>Due Date:</strong> {{ invoice?.due_date }}</div>
               <div class="text-grey-8" v-if="totalBoxes"><strong>Total Boxes:</strong> {{ totalBoxes }}</div>
             </div>
           </div>
 
           <!-- Billing Info (Name : TR and taking less space) -->
           <div class="billing-profile-box border-light q-pa-sm rounded-borders bg-grey-1 q-mb-xs">
-            
             <div class="row items-center q-col-gutter-x-md wrap" style="font-size: 11px;">
               <div><strong>Name:</strong> <span class="text-weight-bold text-black">{{ customClientName || originalClientName || '-' }}</span></div>
               <div class="text-grey-4">|</div>
@@ -333,11 +327,11 @@
           </div>
 
           <!-- Box Weights Table (if present) -->
-          <div v-if="invoiceStore.boxes.length" class="q-mb-xs">
+          <div v-if="boxes.length" class="q-mb-xs">
             <div class="text-caption text-weight-bold text-green-accent q-mb-xs" style="font-size: 11px;">BOX WEIGHT DETAILS:</div>
             <div class="q-gutter-y-xs">
               <div
-                v-for="box in invoiceStore.boxes"
+                v-for="box in boxes"
                 :key="box.id"
               >
                 <q-badge color="grey-3" text-color="black" class="q-py-xs q-px-sm text-caption" style="font-size: 10px;">
@@ -348,7 +342,7 @@
           </div>
 
           <!-- Total Weight Section (in separate div) -->
-          <div v-if="invoiceStore.boxes.length" class="q-mb-xs">
+          <div v-if="boxes.length" class="q-mb-xs">
             <q-badge color="primary" text-color="white" class="q-py-xs q-px-sm text-caption brand-badge" style="font-size: 10px;">
               Total Weight: <strong>{{ totalBoxWeight }} kg</strong>
             </q-badge>
@@ -372,23 +366,23 @@
                 <td :colspan="showImages ? 7 : 6" class="text-center text-grey-7">No invoice items.</td>
               </tr>
               <tr v-for="(row, index) in localItems" :key="row.id">
-                <td class="text-center">{{ Number(index) + 1 }}</td>
+                <td class="text-center">{{ index + 1 }}</td>
                 <td v-if="showImages" class="text-center">
                   <q-avatar rounded size="0.5in" class="bg-grey-2 border-light">
                     <img
-                      :src="invoiceItemImageMap[row.inventory_item_id ?? -1] ?? fallbackImageUrl"
+                      :src="row.image_url || fallbackImageUrl"
                       alt="item image"
                       style="object-fit: contain;"
                     />
                   </q-avatar>
                 </td>
                 <td class="text-black text-weight-medium" style="word-break: break-word; white-space: normal;">
-                  {{ row.name_snapshot }}
+                  {{ row.products?.name || row.inventory_items?.name || 'Product ID: ' + row.product_id }}
                 </td>
-                <td class="text-right text-mono">{{ formatMoney(row.sell_price_amount) }}</td>
-                <td class="text-right text-mono">{{ getNetQuantity(row) }}</td>
+                <td class="text-right text-mono">{{ formatMoney(row.recipient_price_bdt) }}</td>
+                <td class="text-right text-mono">{{ row.quantity }}</td>
                 <td class="text-left text-capitalize">{{ row.unit || 'pcs' }}</td>
-                <td class="text-right text-weight-bold text-black text-mono">{{ formatMoney(getNetQuantity(row) * row.sell_price_amount) }}</td>
+                <td class="text-right text-weight-bold text-black text-mono">{{ formatMoney(row.quantity * row.recipient_price_bdt) }}</td>
               </tr>
             </tbody>
           </q-markup-table>
@@ -459,21 +453,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { useInvoiceStore } from '../stores/invoiceStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useBillingProfileStore } from '../stores/billingProfileStore'
-import { inventoryService } from 'src/modules/inventory/services/inventoryService'
+import { commerceInvoiceService } from '../services/commerceInvoiceService'
 import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
-import type { InvoiceItem } from '../types/index'
+import type { CommerceInvoice, CommerceInvoiceBox, InvoiceBrand, CommerceInvoiceDetailsItem } from '../types/index'
 
 const route = useRoute()
 const authStore = useAuthStore()
-const invoiceStore = useInvoiceStore()
-const billingProfileStore = useBillingProfileStore()
 
 const showImages = ref(false)
-const invoiceItemImageMap = ref<Record<number, string>>({})
 const fallbackImageUrl = 'https://placehold.co/56x56?text=No+Image'
 
 const selectedBrandId = ref<number | null>(null)
@@ -494,17 +483,17 @@ const clientTr = ref('')
 const newBoxNumber = ref('')
 const newBoxWeight = ref<number | null>(null)
 
-// Local invoice item edit list
-const localItems = ref<Array<InvoiceItem & { name_snapshot: string }>>([])
+// Local state
+const invoice = ref<CommerceInvoice | null>(null)
+const order = ref<any>(null)
+const boxes = ref<CommerceInvoiceBox[]>([])
+const brands = ref<(InvoiceBrand & { tenants?: { name: string } })[]>([])
+const billingProfile = ref<any>(null)
+
+const localItems = ref<CommerceInvoiceDetailsItem[]>([])
 const savingChanges = ref(false)
 
 const invoiceId = computed(() => Number(route.params.invoiceId))
-const invoice = computed(() => invoiceStore.invoices.find((row) => row.id === invoiceId.value) ?? null)
-
-const billingProfile = computed(() => {
-  if (!invoice.value?.billing_profile_id) return null
-  return billingProfileStore.items.find((p) => p.id === invoice.value?.billing_profile_id) ?? null
-})
 
 const customizerBrandColor = computed(() => {
   return billingProfile.value?.color || '#1b4332'
@@ -518,13 +507,8 @@ const slCode = computed(() => {
   return `${tenantId}-${invoiceIdVal}-${dateStr}`
 })
 
-const getReturnedQuantity = (row: { return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
-  Number(row.return_normal_quantity ?? 0) + Number(row.return_open_box_quantity ?? 0) + Number(row.return_damaged_quantity ?? 0)
-const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number; return_open_box_quantity?: number; return_damaged_quantity?: number }) =>
-  Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
-
 const subTotal = computed(() =>
-  localItems.value.reduce((sum, item) => sum + (getNetQuantity(item) * item.sell_price_amount), 0)
+  localItems.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
 )
 
 const grandTotalAmount = computed(() => {
@@ -537,14 +521,14 @@ const totalDueAmount = computed(() => {
 })
 
 const totalBoxWeight = computed(() => {
-  return Number(invoiceStore.boxes.reduce((sum, b) => sum + Number(b.weight ?? 0), 0).toFixed(2))
+  return Number(boxes.value.reduce((sum, b) => sum + Number(b.weight ?? 0), 0).toFixed(2))
 })
 
 const formatMoney = (val: number | null | undefined) => formatAmountBdt(val ?? 0)
 
 const onBrandSelect = (brandId: number | null) => {
   if (!brandId) return
-  const found = invoiceStore.brands.find((b) => b.id === brandId)
+  const found = brands.value.find((b) => b.id === brandId)
   if (found) {
     brandName.value = found.name
     brandAddress.value = found.address
@@ -557,21 +541,36 @@ const addBoxWeight = async () => {
     return
   }
 
-  const res = await invoiceStore.createInvoiceBox({
+  const res = await commerceInvoiceService.createCommerceInvoiceBox({
     tenant_id: authStore.tenantId ?? 0,
     invoice_id: invoiceId.value,
     box_number: newBoxNumber.value.trim(),
     weight: newBoxWeight.value,
   })
 
-  if (res.success) {
+  if (res.success && res.data) {
     newBoxNumber.value = ''
     newBoxWeight.value = null
+    await loadBoxes()
+  } else {
+    showWarningDialog(res.error || 'Failed to add box weight.')
   }
 }
 
 const deleteBoxWeight = async (boxId: number) => {
-  await invoiceStore.deleteInvoiceBox({ id: boxId })
+  const res = await commerceInvoiceService.deleteCommerceInvoiceBox(boxId)
+  if (res.success) {
+    await loadBoxes()
+  } else {
+    showWarningDialog(res.error || 'Failed to delete box weight.')
+  }
+}
+
+const loadBoxes = async () => {
+  const res = await commerceInvoiceService.listCommerceInvoiceBoxes(invoiceId.value, authStore.tenantId ?? undefined)
+  if (res.success && res.data) {
+    boxes.value = res.data
+  }
 }
 
 const saveCustomizations = async () => {
@@ -580,39 +579,37 @@ const saveCustomizations = async () => {
   try {
     const isDraftOrInvoicing = invoice.value.status === 'draft' || invoice.value.status === 'invoicing'
     // 1. Update invoice columns
-    const res = await invoiceStore.updateInvoice({
-      id: invoiceId.value,
-      patch: {
-        brand_name: brandName.value.trim() || null,
-        brand_address: brandAddress.value.trim() || null,
-        total_boxes: totalBoxes.value,
-        delivery_charge: Number(deliveryCharge.value ?? 0),
-        advance_amount: Number(advanceAmount.value ?? 0),
-        previous_due: Number(previousDue.value ?? 0),
-        thank_you_message: thankYouMessage.value.trim() || null,
-        client_name: customClientName.value.trim() || null,
-        client_tr: clientTr.value.trim() || null,
-        status: isDraftOrInvoicing ? 'issued' : invoice.value.status,
-      },
+    const res = await commerceInvoiceService.updateCommerceInvoiceCharges(invoiceId.value, {
+      brand_name: brandName.value.trim() || null,
+      brand_address: brandAddress.value.trim() || null,
+      total_boxes: totalBoxes.value,
+      delivery_charge: Number(deliveryCharge.value ?? 0),
+      advance_amount: Number(advanceAmount.value ?? 0),
+      previous_due: Number(previousDue.value ?? 0),
+      thank_you_message: thankYouMessage.value.trim() || null,
+      client_name: customClientName.value.trim() || null,
+      client_tr: clientTr.value.trim() || null,
+      status: isDraftOrInvoicing ? 'issued' : invoice.value.status,
     })
 
     if (!res.success) {
+      showWarningDialog(res.error || 'Failed to save customizations.')
       savingChanges.value = false
       return
     }
 
     // 2. Update line item rate/unit modifications
     for (const item of localItems.value) {
-      await invoiceStore.updateInvoiceItem({
-        id: item.id,
-        patch: {
-          unit: item.unit.trim() || 'pcs',
-          sell_price_amount: Number(item.sell_price_amount ?? 0),
-        },
+      await commerceInvoiceService.updateCommerceInvoiceItem(invoiceId.value, item.id, {
+        quantity: Number(item.quantity ?? 0),
+        sell_price_bdt: Number(item.sell_price_bdt ?? 0),
+        recipient_price_bdt: Number(item.recipient_price_bdt ?? 0),
+        unit: (item.unit || '').trim() || 'pcs',
       })
     }
 
     showSuccessNotification('Invoice customized and saved.')
+    await load()
   } catch (error) {
     console.error('Error saving customizations:', error)
   } finally {
@@ -625,76 +622,44 @@ const printInvoice = () => window.print()
 const load = async () => {
   if (!authStore.tenantId || !Number.isFinite(invoiceId.value)) return
 
-  await Promise.all([
-    invoiceStore.fetchInvoiceById(invoiceId.value),
-    invoiceStore.fetchInvoiceItems({
-      tenant_id: authStore.tenantId,
-      filters: { invoice_id: invoiceId.value },
-      operators: { invoice_id: 'eq' },
-      page: 1,
-      page_size: 500,
-      sortBy: 'created_at',
-      sortOrder: 'asc',
-    }),
-    invoiceStore.fetchInvoiceBrands(),
-    invoiceStore.fetchInvoiceBoxes({ invoice_id: invoiceId.value }),
-    billingProfileStore.fetchBillingProfiles({
-      tenant_id: authStore.tenantId,
-      page: 1,
-      page_size: 100,
-    }),
+  const [detailsRes, brandsRes] = await Promise.all([
+    commerceInvoiceService.getCommerceInvoiceDetails(invoiceId.value),
+    commerceInvoiceService.listCommerceInvoiceBrands(authStore.tenantId),
   ])
 
-  // Populate local fields from invoice record
-  if (invoice.value) {
-    brandName.value = invoice.value.brand_name || ''
-    brandAddress.value = invoice.value.brand_address || ''
-    totalBoxes.value = invoice.value.total_boxes
-    deliveryCharge.value = Number(invoice.value.delivery_charge ?? 0)
-    advanceAmount.value = Number(invoice.value.advance_amount ?? 0)
-    previousDue.value = Number(invoice.value.previous_due ?? 0)
-    thankYouMessage.value = invoice.value.thank_you_message || 'Thank you for your business!'
-    customClientName.value = invoice.value.client_name || ''
-    clientTr.value = invoice.value.client_tr || ''
+  if (detailsRes.success && detailsRes.data) {
+    const data = detailsRes.data
+    invoice.value = data.invoice
+    order.value = data.order
+    localItems.value = data.items.map((item) => ({
+      ...item,
+      unit: item.unit || 'pcs',
+      recipient_price_bdt: Number(item.recipient_price_bdt ?? 0),
+    }))
+    billingProfile.value = data.invoice.billing_profiles
 
+    // Populate local fields from invoice record
+    brandName.value = data.invoice.brand_name || ''
+    brandAddress.value = data.invoice.brand_address || ''
+    totalBoxes.value = data.invoice.total_boxes
+    deliveryCharge.value = Number(data.invoice.delivery_charge ?? 0)
+    advanceAmount.value = Number(data.invoice.advance_amount ?? 0)
+    previousDue.value = Number(data.invoice.previous_due ?? 0)
+    thankYouMessage.value = data.invoice.thank_you_message || 'Thank you for your business!'
+    customClientName.value = data.invoice.client_name || ''
+    clientTr.value = data.invoice.client_tr || ''
+  }
+
+  if (brandsRes.success && brandsRes.data) {
+    brands.value = brandsRes.data
     // Fallback populated brand selection matches
-    const matchedBrand = invoiceStore.brands.find((b) => b.name === invoice.value?.brand_name)
-    if (matchedBrand) selectedBrandId.value = matchedBrand.id
+    if (invoice.value) {
+      const matchedBrand = brands.value.find((b) => b.name === invoice.value?.brand_name)
+      if (matchedBrand) selectedBrandId.value = matchedBrand.id
+    }
   }
 
-  // Populate local line items for editing
-  localItems.value = invoiceStore.invoiceItems.map((item) => ({
-    ...item,
-    unit: item.unit || 'pcs',
-    sell_price_amount: Number(item.sell_price_amount ?? 0),
-  }))
-
-  await loadInvoiceItemImages()
-}
-
-const loadInvoiceItemImages = async () => {
-  const ids: number[] = Array.from(
-    new Set(
-      invoiceStore.invoiceItems
-        .map((item) => item.inventory_item_id)
-        .filter((id): id is number => typeof id === 'number'),
-    ),
-  )
-  if (!ids.length) {
-    invoiceItemImageMap.value = {}
-    return
-  }
-
-  const res = await inventoryService.getInventoryItemImages(ids)
-  if (res.success && res.data) {
-    invoiceItemImageMap.value = Object.fromEntries(
-      res.data.map((item) => [item.id, item.image_url ?? fallbackImageUrl]),
-    )
-  } else {
-    invoiceItemImageMap.value = Object.fromEntries(
-      ids.map((id) => [id, fallbackImageUrl]),
-    )
-  }
+  await loadBoxes()
 }
 
 onMounted(() => {
@@ -760,7 +725,7 @@ onMounted(() => {
 }
 
 .brand-title {
-  color: #1b4332;
+  color: var(--brand-color, #1b4332);
   line-height: 1.1;
   margin-bottom: 4px;
 }
@@ -783,7 +748,7 @@ onMounted(() => {
 .invoice-items-print-table :deep(th) {
   font-weight: 700;
   font-size: 11px;
-  background: #1b4332 !important;
+  background: var(--brand-color, #1b4332) !important;
   color: #ffffff !important;
   padding: 4px 6px !important;
 }
@@ -805,7 +770,7 @@ onMounted(() => {
 }
 
 .signature-line {
-  border-bottom: 1px dashed #1b4332;
+  border-bottom: 1px dashed var(--brand-color, #1b4332);
   width: 60%;
   margin: 0 auto 6px auto;
 }
@@ -819,7 +784,7 @@ onMounted(() => {
 }
 
 .pill-btn {
-  border-radius: 99px;
+  border-radius: 8px !important;
 }
 
 .slim-btn {
@@ -827,11 +792,11 @@ onMounted(() => {
 }
 
 .text-green-accent {
-  color: #1b4332 !important;
+  color: var(--brand-color, #1b4332) !important;
 }
 
 .brand-badge {
-  background: #1b4332 !important;
+  background: var(--brand-color, #1b4332) !important;
 }
 
 @media print {
@@ -864,7 +829,7 @@ onMounted(() => {
   }
 
   .invoice-items-print-table :deep(th) {
-    background: #1b4332 !important;
+    background: var(--brand-color, #1b4332) !important;
     color: #ffffff !important;
   }
 }

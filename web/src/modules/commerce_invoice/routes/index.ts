@@ -44,6 +44,24 @@ const commerceInvoiceRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/commerce-shop/invoices/:invoiceId/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: createAccessGuard({
+      loginRoute: 'admin-login-page',
+      requiredScope: 'app',
+      requireTenantContext: true,
+      allowedRoles: ['admin', 'staff'],
+      requiredModule: 'commerce_invoice',
+    }),
+    children: [
+      {
+        path: '',
+        name: 'app-commerce-invoice-preview',
+        component: () => import('../pages/CommerceInvoicePreviewPage.vue'),
+      },
+    ],
+  },
 ]
 
 export default commerceInvoiceRoutes

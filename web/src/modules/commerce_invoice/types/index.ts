@@ -27,7 +27,16 @@ export type CommerceInvoiceDetailsItem = CommerceOrderItem & {
 }
 
 export type CommerceInvoiceDetails = {
-  invoice: CommerceInvoice
+  invoice: CommerceInvoice & {
+    billing_profiles?: {
+      id: number
+      name: string
+      email: string | null
+      phone: string | null
+      address: string | null
+      color?: string | null
+    } | null
+  }
   order: CommerceInvoiceDetailsOrder
   items: CommerceInvoiceDetailsItem[]
 }
@@ -37,3 +46,7 @@ export interface CommerceInvoiceServiceResult<T> {
   data?: T
   error?: string
 }
+
+export type CommerceInvoiceBox = Database['public']['Tables']['commerce_invoice_boxes']['Row']
+export type CreateCommerceInvoiceBoxInput = Database['public']['Tables']['commerce_invoice_boxes']['Insert']
+export type InvoiceBrand = Database['public']['Tables']['invoice_brands']['Row']

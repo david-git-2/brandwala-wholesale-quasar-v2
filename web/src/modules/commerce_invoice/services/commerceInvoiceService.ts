@@ -3,6 +3,9 @@ import type {
   CommerceInvoice,
   CommerceInvoiceDetails,
   CommerceInvoiceServiceResult,
+  CommerceInvoiceBox,
+  CreateCommerceInvoiceBoxInput,
+  InvoiceBrand,
 } from '../types'
 
 const wrap = async <T>(
@@ -68,6 +71,20 @@ export const commerceInvoiceService = {
       () => commerceInvoiceRepository.addCommerceInvoiceItem(invoiceId, orderId, item),
       'Failed to add item to commerce invoice.',
     ),
+  updateCommerceInvoiceItem: (
+    invoiceId: number,
+    orderItemId: number,
+    payload: {
+      quantity: number
+      sell_price_bdt: number
+      recipient_price_bdt: number
+      unit?: string
+    },
+  ) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.updateCommerceInvoiceItem(invoiceId, orderItemId, payload),
+      'Failed to update item on commerce invoice.',
+    ),
   updateOrderItemInventoryAssignment: (invoiceId: number, orderItemId: number, inventoryItemId: number) =>
     wrap<Record<string, unknown>>(
       () => commerceInvoiceRepository.updateOrderItemInventoryAssignment(invoiceId, orderItemId, inventoryItemId),
@@ -86,13 +103,22 @@ export const commerceInvoiceService = {
   updateCommerceInvoiceCharges: (
     invoiceId: number,
     charges: {
-      delivery_charge: number
-      wrapping_charge: number
-      cod: number
-      delivered_by?: string
+      delivery_charge?: number
+      wrapping_charge?: number
+      cod?: number
+      delivered_by?: string | null
       amount_paid?: number
       discount_amount?: number
       invoice_date?: string
+      brand_name?: string | null
+      brand_address?: string | null
+      total_boxes?: number | null
+      advance_amount?: number
+      previous_due?: number
+      thank_you_message?: string | null
+      client_name?: string | null
+      client_tr?: string | null
+      status?: string
     },
   ) =>
     wrap<void>(
@@ -104,9 +130,33 @@ export const commerceInvoiceService = {
       () => commerceInvoiceRepository.deleteCommerceInvoice(invoiceId),
       'Failed to delete commerce invoice.',
     ),
-  updateCommerceInvoiceStatus: (invoiceId: number, status: 'draft' | 'ready' | 'handed_to_customer') =>
+  updateCommerceInvoiceStatus: (invoiceId: number, status: string) =>
     wrap<CommerceInvoice>(
       () => commerceInvoiceRepository.updateCommerceInvoiceStatus(invoiceId, status),
       'Failed to update commerce invoice status.',
+    ),
+  listCommerceInvoiceBrands: (tenantId: number) =>
+    wrap<(InvoiceBrand & { tenants?: { name: string } })[]>(
+      () => commerceInvoiceRepository.listCommerceInvoiceBrands({ tenant_id: tenantId }),
+      'Failed to load invoice brands.',
+    ),
+  listCommerceInvoiceBoxes: (invoiceId: number, tenantId?: number) =>
+    wrap<CommerceInvoiceBox[]>(
+      () =>
+        commerceInvoiceRepository.listCommerceInvoiceBoxes({
+          invoice_id: invoiceId,
+          ...(tenantId !== undefined ? { tenant_id: tenantId } : {}),
+        }),
+      'Failed to load invoice boxes.',
+    ),
+  createCommerceInvoiceBox: (payload: CreateCommerceInvoiceBoxInput) =>
+    wrap<CommerceInvoiceBox>(
+      () => commerceInvoiceRepository.createCommerceInvoiceBox(payload),
+      'Failed to create invoice box.',
+    ),
+  deleteCommerceInvoiceBox: (id: number) =>
+    wrap<void>(
+      () => commerceInvoiceRepository.deleteCommerceInvoiceBox({ id }),
+      'Failed to delete invoice box.',
     ),
 }

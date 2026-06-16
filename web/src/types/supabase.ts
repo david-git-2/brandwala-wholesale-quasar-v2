@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -429,11 +454,61 @@ export type Database = {
           },
         ]
       }
+      commerce_invoice_boxes: {
+        Row: {
+          box_number: string
+          created_at: string
+          id: number
+          invoice_id: number
+          tenant_id: number
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          box_number: string
+          created_at?: string
+          id?: number
+          invoice_id: number
+          tenant_id: number
+          updated_at?: string
+          weight: number
+        }
+        Update: {
+          box_number?: string
+          created_at?: string
+          id?: number
+          invoice_id?: number
+          tenant_id?: number
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_invoice_boxes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_invoice_boxes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_invoices: {
         Row: {
+          advance_amount: number
           amount_due: number
           amount_paid: number
           billing_profile_id: number | null
+          brand_address: string | null
+          brand_name: string | null
+          client_name: string | null
+          client_tr: string | null
           cod: number
           created_at: string
           delivered_by: string | null
@@ -444,16 +519,24 @@ export type Database = {
           invoice_type: string
           is_customer_group_paid: boolean
           order_id: number
+          previous_due: number
           status: string
           tenant_id: number
+          thank_you_message: string | null
           total_amount: number
+          total_boxes: number | null
           updated_at: string
           wrapping_charge: number
         }
         Insert: {
+          advance_amount?: number
           amount_due?: number
           amount_paid?: number
           billing_profile_id?: number | null
+          brand_address?: string | null
+          brand_name?: string | null
+          client_name?: string | null
+          client_tr?: string | null
           cod?: number
           created_at?: string
           delivered_by?: string | null
@@ -464,16 +547,24 @@ export type Database = {
           invoice_type?: string
           is_customer_group_paid?: boolean
           order_id: number
+          previous_due?: number
           status?: string
           tenant_id: number
+          thank_you_message?: string | null
           total_amount?: number
+          total_boxes?: number | null
           updated_at?: string
           wrapping_charge?: number
         }
         Update: {
+          advance_amount?: number
           amount_due?: number
           amount_paid?: number
           billing_profile_id?: number | null
+          brand_address?: string | null
+          brand_name?: string | null
+          client_name?: string | null
+          client_tr?: string | null
           cod?: number
           created_at?: string
           delivered_by?: string | null
@@ -484,9 +575,12 @@ export type Database = {
           invoice_type?: string
           is_customer_group_paid?: boolean
           order_id?: number
+          previous_due?: number
           status?: string
           tenant_id?: number
+          thank_you_message?: string | null
           total_amount?: number
+          total_boxes?: number | null
           updated_at?: string
           wrapping_charge?: number
         }
@@ -529,6 +623,7 @@ export type Database = {
           recipient_price_bdt: number
           sell_price_bdt: number
           shipment_item_id: number | null
+          unit: string
           updated_at: string
         }
         Insert: {
@@ -545,6 +640,7 @@ export type Database = {
           recipient_price_bdt?: number
           sell_price_bdt?: number
           shipment_item_id?: number | null
+          unit?: string
           updated_at?: string
         }
         Update: {
@@ -561,6 +657,7 @@ export type Database = {
           recipient_price_bdt?: number
           sell_price_bdt?: number
           shipment_item_id?: number | null
+          unit?: string
           updated_at?: string
         }
         Relationships: [
@@ -6207,6 +6304,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer"],

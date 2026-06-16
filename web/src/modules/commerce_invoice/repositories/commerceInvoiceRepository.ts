@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase'
-import type { CommerceInvoice, CommerceInvoiceDetails } from '../types'
+import type { CommerceInvoice, CommerceInvoiceDetails, CommerceInvoiceBox, CreateCommerceInvoiceBoxInput, InvoiceBrand } from '../types'
 
 type CommerceOrderRow = {
   id: number
@@ -24,6 +24,7 @@ type CommerceOrderItemRow = {
   image_url: string | null
   inventory_item_id: number | null
   shipment_item_id: number | null
+  unit: string
 }
 
 type InventoryItemRow = {
@@ -559,6 +560,89 @@ const addCommerceInvoiceItem = async (
   await syncInvoiceTotals(invoiceId)
 }
 
+const updateCommerceInvoiceItem = async (
+  invoiceId: number,
+  orderItemId: number,
+  payload: {
+    quantity: number
+    sell_price_bdt: number
+    recipient_price_bdt: number
+    unit?: string
+  },
+) => {
+  const { data: item, error: itemError } = await supabase
+    .from('commerce_order_items')
+    .select('*')
+    .eq('id', orderItemId)
+    .single()
+
+  if (itemError || !item) {
+    throw itemError || new Error('Order item not found.')
+  }
+
+  const orderItem = item as CommerceOrderItemRow
+  const quantity = Math.max(1, Math.floor(Number(payload.quantity || 1)))
+  const qtyDelta = quantity - Number(orderItem.quantity)
+
+  let resolvedTenantId = 0
+
+  if (qtyDelta !== 0 && orderItem.inventory_item_id) {
+    const { inventoryItem } = await adjustInventoryStock({
+      inventoryItemId: Number(orderItem.inventory_item_id),
+      delta: -qtyDelta,
+      note: `Adjusted quantity from ${orderItem.quantity} to ${quantity} on commerce invoice #${invoiceId}`,
+    })
+    resolvedTenantId = inventoryItem.tenant_id
+  } else if (orderItem.inventory_item_id) {
+    const { data: inventoryItem } = await supabase
+      .from('inventory_items')
+      .select('tenant_id')
+      .eq('id', orderItem.inventory_item_id)
+      .single()
+    if (inventoryItem) {
+      resolvedTenantId = inventoryItem.tenant_id
+    }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('commerce_order_items')
+    .update({
+      quantity,
+      sell_price_bdt: payload.sell_price_bdt,
+      recipient_price_bdt: payload.recipient_price_bdt,
+      unit: payload.unit || orderItem.unit || 'pcs',
+    })
+    .eq('id', orderItemId)
+    .select('*')
+    .single()
+
+  if (updateError || !updated) {
+    throw updateError || new Error('Failed to update order item.')
+  }
+
+  const { data: invoice } = await supabase
+    .from('commerce_invoices')
+    .select('is_customer_group_paid, billing_profile_id, order_id')
+    .eq('id', invoiceId)
+    .single()
+
+  const order = await getCommerceOrderContext(Number(invoice?.order_id))
+
+  if (!resolvedTenantId) {
+    resolvedTenantId = Number(order.tenant_id)
+  }
+
+  await maintainAccountingEntry(
+    updated as CommerceOrderItemRow,
+    Number(order.customer_group_id || 0),
+    resolvedTenantId,
+    Boolean(invoice?.is_customer_group_paid),
+    invoice?.billing_profile_id,
+  )
+
+  await syncInvoiceTotals(invoiceId)
+}
+
 const updateOrderItemInventoryAssignment = async (
   invoiceId: number,
   orderItemId: number,
@@ -758,13 +842,22 @@ const removeCommerceInvoiceItem = async (orderItemId: number, invoiceId: number)
 const updateCommerceInvoiceCharges = async (
   invoiceId: number,
   charges: {
-    delivery_charge: number
-    wrapping_charge: number
-    cod: number
-    delivered_by?: string
+    delivery_charge?: number
+    wrapping_charge?: number
+    cod?: number
+    delivered_by?: string | null
     amount_paid?: number
     discount_amount?: number
     invoice_date?: string
+    brand_name?: string | null
+    brand_address?: string | null
+    total_boxes?: number | null
+    advance_amount?: number
+    previous_due?: number
+    thank_you_message?: string | null
+    client_name?: string | null
+    client_tr?: string | null
+    status?: string
   },
 ) => {
   await supabase.from('commerce_invoices').update(charges).eq('id', invoiceId)
@@ -830,7 +923,7 @@ const deleteCommerceInvoice = async (invoiceId: number) => {
 
 const updateCommerceInvoiceStatus = async (
   invoiceId: number,
-  status: 'draft' | 'ready' | 'handed_to_customer',
+  status: string,
 ): Promise<CommerceInvoice> => {
   const { data, error } = await supabase
     .from('commerce_invoices')
@@ -843,16 +936,52 @@ const updateCommerceInvoiceStatus = async (
   return data
 }
 
+const listCommerceInvoiceBrands = async (payload: { tenant_id?: number } = {}): Promise<(InvoiceBrand & { tenants?: { name: string } })[]> => {
+  let query = supabase.from('invoice_brands').select('*, tenants(name)')
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { data, error } = await query.order('name', { ascending: true })
+  if (error) throw error
+  return (data as unknown as (InvoiceBrand & { tenants?: { name: string } })[]) || []
+}
+
+const listCommerceInvoiceBoxes = async (payload: { invoice_id: number; tenant_id?: number }): Promise<CommerceInvoiceBox[]> => {
+  let query = supabase.from('commerce_invoice_boxes').select('*').eq('invoice_id', payload.invoice_id)
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { data, error } = await query.order('box_number', { ascending: true })
+  if (error) throw error
+  return (data as CommerceInvoiceBox[]) || []
+}
+
+const createCommerceInvoiceBox = async (payload: CreateCommerceInvoiceBoxInput): Promise<CommerceInvoiceBox> => {
+  const { data, error } = await supabase.from('commerce_invoice_boxes').insert([payload]).select('*').single()
+  if (error) throw error
+  return data as CommerceInvoiceBox
+}
+
+const deleteCommerceInvoiceBox = async (payload: { id: number }): Promise<void> => {
+  const { error } = await supabase.from('commerce_invoice_boxes').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
 export const commerceInvoiceRepository = {
   listCommerceInvoices,
   updateInvoicePayment,
   getCommerceInvoiceDetails,
   createManualInvoice,
   addCommerceInvoiceItem,
+  updateCommerceInvoiceItem,
   updateOrderItemInventoryAssignment,
   unassignOrderItemInventory,
   removeCommerceInvoiceItem,
   updateCommerceInvoiceCharges,
   deleteCommerceInvoice,
   updateCommerceInvoiceStatus,
+  listCommerceInvoiceBrands,
+  listCommerceInvoiceBoxes,
+  createCommerceInvoiceBox,
+  deleteCommerceInvoiceBox,
 }

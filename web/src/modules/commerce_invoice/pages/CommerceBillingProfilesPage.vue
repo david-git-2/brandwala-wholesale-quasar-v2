@@ -299,7 +299,7 @@ onMounted(load)
   backdrop-filter: blur(6px);
 }
 .hero-surface { border-radius: 16px; }
-.pill-btn { border-radius: 999px; }
+.pill-btn { border-radius: 8px !important; }
 .slim-btn { min-height: 32px; padding-left: 10px; padding-right: 10px; }
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;

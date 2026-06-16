@@ -568,7 +568,7 @@
                       </td>
                     </tr>
                     <tr v-for="(item, index) in shipmentRows" :key="item.id" class="breakdown-row">
-                      <td class="sticky-col sticky-col-sl text-grey-7">{{ index + 1 }}</td>
+                      <td class="sticky-col sticky-col-sl text-grey-7">{{ Number(index) + 1 }}</td>
                       <td class="sticky-col sticky-col-img">
                         <q-avatar rounded size="40px" class="bg-grey-2">
                           <img
@@ -949,7 +949,7 @@ const totalSoldQuantity = computed(() =>
   shipmentAccountingEntries.value.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0),
 )
 const totalInvoicePaidBdt = computed(() =>
-  Object.values(shipmentInvoicePaidById.value).reduce((sum, value) => sum + Number(value ?? 0), 0),
+  Object.values(shipmentInvoicePaidById.value).reduce((sum: number, value) => sum + Number(value ?? 0), 0),
 )
 
 const remainingInventoryCostBdt = computed(() =>
