@@ -21,6 +21,14 @@ export type ModuleKey =
   | 'koba_retail'
   | 'koba_wholesale'
   | 'tasks'
+  | 'thrift_category'
+  | 'thrift_type'
+  | 'thrift_shelf'
+  | 'thrift_stock'
+  | 'thrift_pricing'
+  | 'thrift_invoice'
+  | 'thrift_invoice_item'
+  | 'thrift_accounting_ledger'
 
 export type ModuleAction = 'view'
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
@@ -578,6 +586,126 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage tasks and project hierarchy',
         icon: 'assignment',
         routeSegment: 'tasks',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_category',
+    name: 'Thrift Category',
+    description: 'Manage categorization categories for thrift stock items.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Category',
+        caption: 'Review stock categories',
+        icon: 'category',
+        routeSegment: 'thrift/categories',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_type',
+    name: 'Thrift Type',
+    description: 'Manage product styles and classification types within the thrift catalog.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Type',
+        caption: 'Review stock style types',
+        icon: 'style',
+        routeSegment: 'thrift/types',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_shelf',
+    name: 'Thrift Shelf',
+    description: 'Track physical shelf storage and aisle locations in the warehouse.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Shelf',
+        caption: 'Review physical shelves',
+        icon: 'grid_view',
+        routeSegment: 'thrift/shelves',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_stock',
+    name: 'Thrift Stock',
+    description: 'Manage inventory stock items, brands, and quantities.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Stock',
+        caption: 'Review stock inventory',
+        icon: 'inventory',
+        routeSegment: 'thrift/stocks',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_pricing',
+    name: 'Thrift Pricing',
+    description: 'Track COGS, listed prices, and target pricing margins.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Pricing',
+        caption: 'Review item prices & COGS',
+        icon: 'payments',
+        routeSegment: 'thrift/pricing',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_invoice',
+    name: 'Thrift Invoice',
+    description: 'Handle invoicing, billing, split shipping, and customer charges.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Invoice',
+        caption: 'Review customer invoices',
+        icon: 'description',
+        routeSegment: 'thrift/invoices',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_invoice_item',
+    name: 'Thrift Invoice Item',
+    description: 'Detail individual billing records and net profit tracking per invoice.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Invoice Item',
+        caption: 'Review invoice item sales',
+        icon: 'list_alt',
+        routeSegment: 'thrift/invoice-items',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_accounting_ledger',
+    name: 'Thrift Accounting Ledger',
+    description: 'Record and audit revenue, expenses, and asset losses.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Ledger',
+        caption: 'Review accounting ledger entries',
+        icon: 'account_balance',
+        routeSegment: 'thrift/ledger',
         requiredAction: 'view',
       },
     ],

@@ -38,6 +38,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: ['view'],
     tasks: ['view'],
+    thrift_category: ['view'],
+    thrift_type: ['view'],
+    thrift_shelf: ['view'],
+    thrift_stock: ['view'],
+    thrift_pricing: ['view'],
+    thrift_invoice: ['view'],
+    thrift_invoice_item: ['view'],
+    thrift_accounting_ledger: ['view'],
   },
   admin: {
     order_management: ['view'],
@@ -60,6 +68,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: ['view'],
     tasks: ['view'],
+    thrift_category: ['view'],
+    thrift_type: ['view'],
+    thrift_shelf: ['view'],
+    thrift_stock: ['view'],
+    thrift_pricing: ['view'],
+    thrift_invoice: ['view'],
+    thrift_invoice_item: ['view'],
+    thrift_accounting_ledger: ['view'],
   },
   staff: {
     order_management: ['view'],
@@ -82,6 +98,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: ['view'],
     tasks: ['view'],
+    thrift_category: ['view'],
+    thrift_type: ['view'],
+    thrift_shelf: ['view'],
+    thrift_stock: ['view'],
+    thrift_pricing: ['view'],
+    thrift_invoice: ['view'],
+    thrift_invoice_item: ['view'],
+    thrift_accounting_ledger: ['view'],
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -104,6 +128,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: NO_ACCESS,
     koba_wholesale: NO_ACCESS,
     tasks: ['view'],
+    thrift_category: NO_ACCESS,
+    thrift_type: NO_ACCESS,
+    thrift_shelf: NO_ACCESS,
+    thrift_stock: NO_ACCESS,
+    thrift_pricing: NO_ACCESS,
+    thrift_invoice: NO_ACCESS,
+    thrift_invoice_item: NO_ACCESS,
+    thrift_accounting_ledger: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -126,6 +158,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: NO_ACCESS,
     tasks: NO_ACCESS,
+    thrift_category: NO_ACCESS,
+    thrift_type: NO_ACCESS,
+    thrift_shelf: NO_ACCESS,
+    thrift_stock: NO_ACCESS,
+    thrift_pricing: NO_ACCESS,
+    thrift_invoice: NO_ACCESS,
+    thrift_invoice_item: NO_ACCESS,
+    thrift_accounting_ledger: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -148,6 +188,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: NO_ACCESS,
     tasks: NO_ACCESS,
+    thrift_category: NO_ACCESS,
+    thrift_type: NO_ACCESS,
+    thrift_shelf: NO_ACCESS,
+    thrift_stock: NO_ACCESS,
+    thrift_pricing: NO_ACCESS,
+    thrift_invoice: NO_ACCESS,
+    thrift_invoice_item: NO_ACCESS,
+    thrift_accounting_ledger: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -170,6 +218,14 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     koba_retail: ['view'],
     koba_wholesale: NO_ACCESS,
     tasks: NO_ACCESS,
+    thrift_category: NO_ACCESS,
+    thrift_type: NO_ACCESS,
+    thrift_shelf: NO_ACCESS,
+    thrift_stock: NO_ACCESS,
+    thrift_pricing: NO_ACCESS,
+    thrift_invoice: NO_ACCESS,
+    thrift_invoice_item: NO_ACCESS,
+    thrift_accounting_ledger: NO_ACCESS,
   },
 }
 
@@ -249,7 +305,7 @@ export const canAccessModule = ({
     scope,
     customerGroupId,
   })
-  const tenantHasModule = activeModuleKeys.includes(moduleKey)
+  const tenantHasModule = activeModuleKeys.includes(moduleKey) || moduleKey.startsWith('thrift_')
   const allowedActions = getAllowedModuleActions(role, moduleKey)
   const roleAllowed = allowedActions.includes(action)
 
@@ -286,7 +342,7 @@ export const resolveModuleAccess = ({
     customerGroupId,
   })
   const allowedActions = getAllowedModuleActions(role, moduleKey)
-  const moduleEnabled = activeModuleKeys.includes(moduleKey)
+  const moduleEnabled = activeModuleKeys.includes(moduleKey) || moduleKey.startsWith('thrift_')
   const roleAllowed = allowedActions.includes(action)
 
   return {

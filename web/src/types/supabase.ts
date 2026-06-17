@@ -4165,6 +4165,503 @@ export type Database = {
         }
         Relationships: []
       }
+      thrift_accounting_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          inserted_by: string
+          note: string | null
+          reference_id: number
+          source: Database["public"]["Enums"]["thrift_ledger_source"]
+          tenant_id: number
+          type: Database["public"]["Enums"]["thrift_ledger_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date?: string
+          id?: number
+          inserted_by: string
+          note?: string | null
+          reference_id: number
+          source: Database["public"]["Enums"]["thrift_ledger_source"]
+          tenant_id: number
+          type: Database["public"]["Enums"]["thrift_ledger_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: number
+          inserted_by?: string
+          note?: string | null
+          reference_id?: number
+          source?: Database["public"]["Enums"]["thrift_ledger_source"]
+          tenant_id?: number
+          type?: Database["public"]["Enums"]["thrift_ledger_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_accounting_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          inserted_by: string
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          inserted_by: string
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          inserted_by?: string
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_invoice_items: {
+        Row: {
+          created_at: string
+          id: number
+          invoice_id: number
+          item_status: Database["public"]["Enums"]["thrift_item_status"]
+          net_profit: number
+          platform_fees: number
+          quantity: number
+          return_action:
+            | Database["public"]["Enums"]["thrift_return_action"]
+            | null
+          return_cost_charged_to_customer: number
+          return_cost_paid_by_shop: number
+          return_reason: string | null
+          shipping_cost_paid_by_shop: number
+          sold_price: number
+          stock_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          invoice_id: number
+          item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          net_profit?: number
+          platform_fees?: number
+          quantity: number
+          return_action?:
+            | Database["public"]["Enums"]["thrift_return_action"]
+            | null
+          return_cost_charged_to_customer?: number
+          return_cost_paid_by_shop?: number
+          return_reason?: string | null
+          shipping_cost_paid_by_shop?: number
+          sold_price?: number
+          stock_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          invoice_id?: number
+          item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          net_profit?: number
+          platform_fees?: number
+          quantity?: number
+          return_action?:
+            | Database["public"]["Enums"]["thrift_return_action"]
+            | null
+          return_cost_charged_to_customer?: number
+          return_cost_paid_by_shop?: number
+          return_reason?: string | null
+          shipping_cost_paid_by_shop?: number
+          sold_price?: number
+          stock_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_invoice_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_invoices: {
+        Row: {
+          address: string
+          cod_charge: number
+          created_at: string
+          delivery_status: Database["public"]["Enums"]["thrift_delivery_status"]
+          id: number
+          inserted_by: string
+          invoice_number: string
+          invoice_print_charge: number
+          packing_charge: number
+          payment_status: Database["public"]["Enums"]["thrift_payment_status"]
+          phone: string
+          recipient_name: string
+          shipping_charge_customer: number
+          tenant_id: number
+          total_invoice_amount: number
+          transaction_method: Database["public"]["Enums"]["thrift_transaction_method"]
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          cod_charge?: number
+          created_at?: string
+          delivery_status?: Database["public"]["Enums"]["thrift_delivery_status"]
+          id?: number
+          inserted_by: string
+          invoice_number: string
+          invoice_print_charge?: number
+          packing_charge?: number
+          payment_status?: Database["public"]["Enums"]["thrift_payment_status"]
+          phone: string
+          recipient_name: string
+          shipping_charge_customer?: number
+          tenant_id: number
+          total_invoice_amount?: number
+          transaction_method: Database["public"]["Enums"]["thrift_transaction_method"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          cod_charge?: number
+          created_at?: string
+          delivery_status?: Database["public"]["Enums"]["thrift_delivery_status"]
+          id?: number
+          inserted_by?: string
+          invoice_number?: string
+          invoice_print_charge?: number
+          packing_charge?: number
+          payment_status?: Database["public"]["Enums"]["thrift_payment_status"]
+          phone?: string
+          recipient_name?: string
+          shipping_charge_customer?: number
+          tenant_id?: number
+          total_invoice_amount?: number
+          transaction_method?: Database["public"]["Enums"]["thrift_transaction_method"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_pricings: {
+        Row: {
+          cost_of_goods_sold: number
+          created_at: string
+          id: number
+          inserted_by: string
+          listed_price: number
+          stock_id: number
+          target_price: number
+          updated_at: string
+        }
+        Insert: {
+          cost_of_goods_sold?: number
+          created_at?: string
+          id?: number
+          inserted_by: string
+          listed_price?: number
+          stock_id: number
+          target_price?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_of_goods_sold?: number
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          listed_price?: number
+          stock_id?: number
+          target_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_pricings_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_shelves: {
+        Row: {
+          created_at: string
+          id: number
+          inserted_by: string
+          location_bay: string | null
+          name: string
+          shelf_code: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          inserted_by: string
+          location_bay?: string | null
+          name: string
+          shelf_code: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          location_bay?: string | null
+          name?: string
+          shelf_code?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_shelves_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_stock_images: {
+        Row: {
+          created_at: string
+          id: number
+          image_url: string
+          inserted_by: string
+          is_primary: boolean
+          stock_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          image_url: string
+          inserted_by: string
+          is_primary?: boolean
+          stock_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          image_url?: string
+          inserted_by?: string
+          is_primary?: boolean
+          stock_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_stock_images_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_stocks: {
+        Row: {
+          brand_name: string | null
+          category_id: number
+          color: string
+          condition: Database["public"]["Enums"]["thrift_condition"]
+          created_at: string
+          id: number
+          inserted_by: string
+          name: string
+          note: string | null
+          quantity: number
+          section: Database["public"]["Enums"]["thrift_section"]
+          shelf_id: number
+          shipment_id: number
+          size: string
+          sku: string
+          status: Database["public"]["Enums"]["thrift_stock_status"]
+          stock_type: Database["public"]["Enums"]["thrift_stock_type"]
+          tenant_id: number
+          type_id: number
+          updated_at: string
+          weight_gm: number | null
+        }
+        Insert: {
+          brand_name?: string | null
+          category_id: number
+          color: string
+          condition: Database["public"]["Enums"]["thrift_condition"]
+          created_at?: string
+          id?: number
+          inserted_by: string
+          name: string
+          note?: string | null
+          quantity?: number
+          section: Database["public"]["Enums"]["thrift_section"]
+          shelf_id: number
+          shipment_id: number
+          size: string
+          sku: string
+          status?: Database["public"]["Enums"]["thrift_stock_status"]
+          stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
+          tenant_id: number
+          type_id: number
+          updated_at?: string
+          weight_gm?: number | null
+        }
+        Update: {
+          brand_name?: string | null
+          category_id?: number
+          color?: string
+          condition?: Database["public"]["Enums"]["thrift_condition"]
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          name?: string
+          note?: string | null
+          quantity?: number
+          section?: Database["public"]["Enums"]["thrift_section"]
+          shelf_id?: number
+          shipment_id?: number
+          size?: string
+          sku?: string
+          status?: Database["public"]["Enums"]["thrift_stock_status"]
+          stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
+          tenant_id?: number
+          type_id?: number
+          updated_at?: string
+          weight_gm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_stocks_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stocks_shelf_id_fkey"
+            columns: ["shelf_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_shelves"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stocks_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stocks_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          inserted_by: string
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          inserted_by: string
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          inserted_by?: string
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -5752,6 +6249,23 @@ export type Database = {
           region: string
         }[]
       }
+      mark_thrift_items_as_sold: {
+        Args: {
+          p_address: string
+          p_cod_charge: number
+          p_inserted_by: string
+          p_invoice_number: string
+          p_invoice_print_charge: number
+          p_items: Json
+          p_packing_charge: number
+          p_phone: string
+          p_recipient_name: string
+          p_shipping_charge_customer: number
+          p_tenant_id: number
+          p_transaction_method: Database["public"]["Enums"]["thrift_transaction_method"]
+        }
+        Returns: number
+      }
       next_tenant_scoped_counter: {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: number
@@ -6234,6 +6748,22 @@ export type Database = {
         | "invoicing"
         | "invoiced"
       shipment_investment_status: "active" | "closed" | "cancelled"
+      thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
+      thrift_delivery_status:
+        | "PENDING"
+        | "SHIPPED"
+        | "DELIVERED"
+        | "RETURNED"
+        | "PARTIALLY_RETURNED"
+      thrift_item_status: "SOLD" | "RETURNED"
+      thrift_ledger_source: "INVOICE" | "SHIPMENT" | "OPERATIONAL"
+      thrift_ledger_type: "REVENUE" | "EXPENSE" | "REFUND" | "LOSS"
+      thrift_payment_status: "UNPAID" | "PAID" | "REFUNDED"
+      thrift_return_action: "RESTOCK" | "WRITE_OFF"
+      thrift_section: "MALE" | "FEMALE" | "UNISEX" | "KIDS" | "HOME"
+      thrift_stock_status: "AVAILABLE" | "OUT_OF_STOCK" | "DAMAGED" | "STOLEN"
+      thrift_stock_type: "SINGLE" | "BULK"
+      thrift_transaction_method: "CASH" | "CARD" | "MOBILE_BANKING" | "COD"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6404,6 +6934,23 @@ export const Constants = {
         "invoiced",
       ],
       shipment_investment_status: ["active", "closed", "cancelled"],
+      thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
+      thrift_delivery_status: [
+        "PENDING",
+        "SHIPPED",
+        "DELIVERED",
+        "RETURNED",
+        "PARTIALLY_RETURNED",
+      ],
+      thrift_item_status: ["SOLD", "RETURNED"],
+      thrift_ledger_source: ["INVOICE", "SHIPMENT", "OPERATIONAL"],
+      thrift_ledger_type: ["REVENUE", "EXPENSE", "REFUND", "LOSS"],
+      thrift_payment_status: ["UNPAID", "PAID", "REFUNDED"],
+      thrift_return_action: ["RESTOCK", "WRITE_OFF"],
+      thrift_section: ["MALE", "FEMALE", "UNISEX", "KIDS", "HOME"],
+      thrift_stock_status: ["AVAILABLE", "OUT_OF_STOCK", "DAMAGED", "STOLEN"],
+      thrift_stock_type: ["SINGLE", "BULK"],
+      thrift_transaction_method: ["CASH", "CARD", "MOBILE_BANKING", "COD"],
     },
   },
 } as const

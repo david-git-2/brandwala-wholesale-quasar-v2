@@ -25,6 +25,14 @@ import commerceCartRoutes from 'src/modules/commerce_cart/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
+import thriftCategoryRoutes from 'src/modules/thrift_category/routes';
+import thriftTypeRoutes from 'src/modules/thrift_type/routes';
+import thriftShelfRoutes from 'src/modules/thrift_shelf/routes';
+import thriftStockRoutes from 'src/modules/thrift_stock/routes';
+import thriftPricingRoutes from 'src/modules/thrift_pricing/routes';
+import thriftInvoiceRoutes from 'src/modules/thrift_invoice/routes';
+import thriftInvoiceItemRoutes from 'src/modules/thrift_invoice_item/routes';
+import thriftLedgerRoutes from 'src/modules/thrift_accounting_ledger/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -107,6 +115,14 @@ const routes: RouteRecordRaw[] = [
   ...documentationRoutes,
   ...kobaRoutes,
   ...tasksRoutes,
+  ...thriftCategoryRoutes,
+  ...thriftTypeRoutes,
+  ...thriftShelfRoutes,
+  ...thriftStockRoutes,
+  ...thriftPricingRoutes,
+  ...thriftInvoiceRoutes,
+  ...thriftInvoiceItemRoutes,
+  ...thriftLedgerRoutes,
 
   // Always leave this as last one
   {

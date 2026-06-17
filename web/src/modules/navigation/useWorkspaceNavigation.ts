@@ -289,6 +289,11 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'koba_retail',
     )
+    const hasThriftAccess = scopedModuleRouteDefinitions.some(
+      (routeDefinition) =>
+        routeDefinition.scope === 'app' &&
+        routeDefinition.moduleKey.startsWith('thrift_'),
+    )
 
     if (
       !hasStoreModuleAccess &&
@@ -301,7 +306,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       !hasCommerceInvoiceModuleAccess &&
       !hasCommerceAccountingModuleAccess &&
       !hasCommerceCartModuleAccess &&
-      !hasKobaRetailModuleAccess
+      !hasKobaRetailModuleAccess &&
+      !hasThriftAccess
     ) {
       return [...baseLinks, ...moduleLinks]
     }
@@ -318,7 +324,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           routeDefinition.moduleKey !== 'commerce_order' &&
           routeDefinition.moduleKey !== 'commerce_invoice' &&
           routeDefinition.moduleKey !== 'commerce_accounting' &&
-          routeDefinition.moduleKey !== 'koba_retail',
+          routeDefinition.moduleKey !== 'koba_retail' &&
+          routeDefinition.moduleKey !== 'thrift_invoice_item',
       )
       .map((routeDefinition) => ({
         title: routeDefinition.title,
