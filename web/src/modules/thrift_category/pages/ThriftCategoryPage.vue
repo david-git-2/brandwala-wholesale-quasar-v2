@@ -10,6 +10,16 @@
           </div>
           <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
+              outline
+              color="secondary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn q-mr-sm"
+              icon="cloud_upload"
+              label="Test Uploader"
+              @click="isTestUploaderOpen = true"
+            />
+            <q-btn
               color="primary"
               no-caps
               size="sm"
@@ -54,6 +64,45 @@
         <q-card-section class="q-pt-md q-gutter-sm">
           <q-input v-model="form.name" outlined dense label="Category Name *" class="soft-input" />
           <q-input v-model="form.description" outlined dense label="Description (Optional)" class="soft-input" />
+          
+          <!-- Cloudinary Image Upload Showcase -->
+          <div class="q-mt-sm q-pa-sm border-dashed rounded-borders bg-grey-1">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">Category Image (Cloudinary Showcase)</div>
+            <div class="row items-center q-gutter-md">
+              <q-avatar v-if="form.imageUrl" size="60px" rounded class="bg-grey-2 border-grey">
+                <img :src="form.imageUrl" style="object-fit: cover" />
+              </q-avatar>
+              <q-btn
+                outline
+                no-caps
+                color="primary"
+                size="sm"
+                class="pill-btn"
+                icon="cloud_upload"
+                :label="form.imageUrl ? 'Change Image' : 'Upload Image'"
+                @click="isUploaderOpen = true"
+              />
+              <q-btn
+                v-if="form.imageUrl"
+                flat
+                round
+                dense
+                color="negative"
+                icon="delete"
+                size="sm"
+                @click="form.imageUrl = ''"
+              />
+            </div>
+            <q-input
+              v-model="form.imageUrl"
+              outlined
+              dense
+              label="Uploaded Image URL"
+              class="soft-input q-mt-sm"
+              readonly
+              placeholder="URL will appear here after upload"
+            />
+          </div>
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
@@ -61,6 +110,20 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Global Cloudinary Uploader Dialog -->
+    <CloudinaryUploaderDialog
+      v-model="isUploaderOpen"
+      folder="thrift-categories"
+      @uploaded="(url) => form.imageUrl = url"
+    />
+
+    <!-- Test Cloudinary Uploader Dialog -->
+    <CloudinaryUploaderDialog
+      v-model="isTestUploaderOpen"
+      folder="test-uploads"
+      @uploaded="handleTestUpload"
+    />
   </q-page>
 </template>
 
@@ -75,8 +138,10 @@ const authStore = useAuthStore();
 const store = useThriftCategoryStore();
 
 const dialogOpen = ref(false);
+const isUploaderOpen = ref(false);
+const isTestUploaderOpen = ref(false);
 const editingId = ref<number | null>(null);
-const form = ref({ name: '', description: '' });
+const form = ref({ name: '', description: '', imageUrl: '' });
 
 const categories = computed(() => store.categories);
 const loading = computed(() => store.loading);
@@ -96,8 +161,17 @@ onMounted(async () => {
 
 function openDialog(row?: { id: number; name: string; description?: string | null }) {
   editingId.value = row?.id ?? null;
-  form.value = { name: row?.name ?? '', description: row?.description ?? '' };
+  form.value = { name: row?.name ?? '', description: row?.description ?? '', imageUrl: '' };
   dialogOpen.value = true;
+}
+
+function handleTestUpload(url: string) {
+  console.log('Successfully uploaded! URL:', url);
+  $q.notify({
+    type: 'info',
+    message: `Test Upload Success! URL printed to console: ${url}`,
+    timeout: 8000,
+  });
 }
 
 async function save() {
@@ -111,7 +185,7 @@ async function save() {
       authStore.user?.email || 'admin@brandwala.com'
     );
     $q.notify({ type: 'positive', message: 'Category saved successfully' });
-    form.value = { name: '', description: '' };
+    form.value = { name: '', description: '', imageUrl: '' };
     editingId.value = null;
     dialogOpen.value = false;
   } catch (err: any) {

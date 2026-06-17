@@ -23,7 +23,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['supabase', 'currency'],
+    boot: ['supabase', 'currency', 'global-components'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -47,8 +47,10 @@ export default defineConfig((ctx) => {
     build: {
          env: {
           SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-     SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
-     GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,
+          SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+          GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,
+          VITE_CLOUDINARY_CLOUD_NAME: process.env.VITE_CLOUDINARY_CLOUD_NAME,
+          VITE_CLOUDINARY_UPLOAD_PRESET: process.env.VITE_CLOUDINARY_UPLOAD_PRESET,
       },
       target: {
         browser: 'baseline-widely-available',
