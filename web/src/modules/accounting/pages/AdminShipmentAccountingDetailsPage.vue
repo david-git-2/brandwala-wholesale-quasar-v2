@@ -524,16 +524,29 @@
           >
             <q-tab name="breakdown" label="Shipment Cost Breakdown" />
             <q-tab name="entries">
-              <span>Invoice Accounting Entries</span>
+              <span>Local Sales Entries</span>
               <q-badge
-                v-if="shipmentAccountingEntries.length"
+                v-if="localAccountingEntries.length"
                 color="primary"
                 floating
                 rounded
                 class="q-ml-sm"
                 style="position: relative; top: unset; right: unset;"
               >
-                {{ shipmentAccountingEntries.length }}
+                {{ localAccountingEntries.length }}
+              </q-badge>
+            </q-tab>
+            <q-tab name="other_entries">
+              <span>Other Tenant Sales</span>
+              <q-badge
+                v-if="otherAccountingEntries.length"
+                color="indigo"
+                floating
+                rounded
+                class="q-ml-sm"
+                style="position: relative; top: unset; right: unset;"
+              >
+                {{ otherAccountingEntries.length }}
               </q-badge>
             </q-tab>
           </q-tabs>
@@ -743,18 +756,180 @@
 
                     <!-- Grand total row -->
                     <tr
-                      v-if="!accountingLoading && shipmentAccountingEntries.length"
+                      v-if="!accountingLoading && localAccountingEntries.length"
                       class="totals-row"
                     >
                       <td colspan="5" class="text-right text-weight-bold">Grand Total</td>
-                      <td class="text-right text-weight-bold">{{ totalSoldQuantity }}</td>
-                      <td class="text-right text-weight-bold">{{ formatFixed2(totalInvoiceCogsBdt) }}</td>
-                      <td class="text-right text-weight-bold">{{ formatFixed2(totalInvoiceRevenueBdt) }}</td>
+                      <td class="text-right text-weight-bold">{{ localTotalSoldQuantity }}</td>
+                      <td class="text-right text-weight-bold">{{ formatFixed2(localTotalInvoiceCogsBdt) }}</td>
+                      <td class="text-right text-weight-bold">{{ formatFixed2(localTotalInvoiceRevenueBdt) }}</td>
                       <td
                         class="text-right text-weight-bold"
-                        :class="totalRealizedProfitBdt >= 0 ? 'text-positive' : 'text-negative'"
+                        :class="localTotalRealizedProfitBdt >= 0 ? 'text-positive' : 'text-negative'"
                       >
-                        {{ formatFixed2(totalRealizedProfitBdt) }}
+                        {{ formatFixed2(localTotalRealizedProfitBdt) }}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-tab-panel>
+
+            <!-- ── Other Tenant Sales panel (grouped + expandable) ── -->
+            <q-tab-panel name="other_entries" class="q-pa-none">
+              <div class="shipment-table-wrap">
+                <q-markup-table flat wrap-cells class="invoice-entries-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 32px"></th>
+                      <th class="text-left">Invoice</th>
+                      <th class="text-left">Type</th>
+                      <th class="text-left">Latest Entry</th>
+                      <th class="text-right">Items</th>
+                      <th class="text-right">Total Qty</th>
+                      <th class="text-right">COGS (BDT)</th>
+                      <th class="text-right">Revenue (BDT)</th>
+                      <th class="text-right">Gross Profit (BDT)</th>
+                      <th class="text-left">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Loading -->
+                    <tr v-if="accountingLoading">
+                      <td colspan="10" class="text-center text-grey-7 q-pa-lg">
+                        <q-spinner color="primary" size="24px" /><br />
+                        Loading accounting entries…
+                      </td>
+                    </tr>
+
+                    <!-- Empty -->
+                    <tr v-else-if="!groupedOtherInvoiceEntries.length">
+                      <td colspan="10" class="text-center text-grey-7 q-pa-lg">
+                        No other tenant sales for this shipment.
+                      </td>
+                    </tr>
+
+                    <!-- Invoice groups -->
+                    <template
+                      v-for="group in groupedOtherInvoiceEntries"
+                      :key="group.invoiceKey"
+                    >
+                      <!-- ── Parent row (invoice summary) ── -->
+                      <tr
+                        class="invoice-group-row"
+                        :class="{ 'invoice-group-row--expanded': expandedInvoices.has(group.invoiceKey) }"
+                        @click="toggleInvoice(group.invoiceKey)"
+                      >
+                        <td class="text-center expand-toggle-cell">
+                          <q-icon
+                            :name="expandedInvoices.has(group.invoiceKey) ? 'expand_more' : 'chevron_right'"
+                            size="18px"
+                            class="text-grey-6"
+                          />
+                        </td>
+                        <td>
+                          <span class="text-weight-bold">
+                            {{ group.invoice_id ? `#${group.invoice_id}` : 'No Invoice' }}
+                          </span>
+                        </td>
+                        <td>
+                          <q-badge
+                            outline
+                            :color="group.type === 'commerce' ? 'indigo' : 'primary'"
+                            class="text-capitalize"
+                            style="font-size: 10px"
+                          >
+                            {{ group.type ?? 'normal' }}
+                          </q-badge>
+                        </td>
+                        <td class="text-grey-8">{{ group.latestDate }}</td>
+                        <td class="text-right text-grey-7">{{ group.entries.length }}</td>
+                        <td class="text-right text-weight-medium">{{ group.totalQty }}</td>
+                        <td class="text-right">{{ formatFixed2(group.totalCogs) }}</td>
+                        <td class="text-right">{{ formatFixed2(group.totalRevenue) }}</td>
+                        <td
+                          class="text-right text-weight-medium"
+                          :class="group.totalProfit >= 0 ? 'text-positive' : 'text-negative'"
+                        >
+                          {{ formatFixed2(group.totalProfit) }}
+                        </td>
+                        <td>
+                          <span
+                            class="invoice-status-chip"
+                            :class="`invoice-status-chip--${(group.dominantStatus ?? 'unknown').toLowerCase()}`"
+                          >
+                            <span class="status-chip-dot" :style="{ backgroundColor: invoiceStatusDotColor(group.dominantStatus) }" />
+                            {{ group.dominantStatus }}
+                          </span>
+                        </td>
+                      </tr>
+
+                      <!-- ── Child rows (line items) ── -->
+                      <template v-if="expandedInvoices.has(group.invoiceKey)">
+                        <!-- child header -->
+                        <tr class="child-header-row">
+                          <td></td>
+                          <td class="text-caption text-grey-6">Entry ID</td>
+                          <td class="text-caption text-grey-6">Entry Date</td>
+                          <td class="text-caption text-grey-6">Note</td>
+                          <td></td>
+                          <td class="text-right text-caption text-grey-6">Qty</td>
+                          <td class="text-right text-caption text-grey-6">COGS</td>
+                          <td class="text-right text-caption text-grey-6">Revenue</td>
+                          <td class="text-right text-caption text-grey-6">Gross Profit</td>
+                          <td class="text-caption text-grey-6">Status</td>
+                        </tr>
+                        <tr
+                          v-for="row in group.entries"
+                          :key="row.id"
+                          class="child-row"
+                        >
+                          <td></td>
+                          <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
+                          <td class="text-grey-8">{{ row.entry_date ?? '-' }}</td>
+                          <td class="text-grey-7" style="font-size: 11px; max-width: 160px; word-break: break-word;">
+                            <span :class="{ 'text-weight-bold text-indigo': !row.inventory_item_id }">
+                              {{ row.note ?? '-' }}
+                            </span>
+                          </td>
+                          <td></td>
+                          <td class="text-right">{{ row.quantity }}</td>
+                          <td class="text-right">{{ formatFixed2(row.total_cost_amount) }}</td>
+                          <td class="text-right">{{ formatFixed2(row.total_sell_amount) }}</td>
+                          <td
+                            class="text-right"
+                            :class="Number(row.gross_profit_amount ?? 0) >= 0 ? 'text-positive' : 'text-negative'"
+                          >
+                            {{ formatFixed2(row.gross_profit_amount) }}
+                          </td>
+                          <td>
+                            <span
+                              class="invoice-status-chip invoice-status-chip--sm"
+                              :class="`invoice-status-chip--${(row.status ?? 'unknown').toLowerCase()}`"
+                            >
+                              <span class="status-chip-dot" :style="{ backgroundColor: invoiceStatusDotColor(row.status) }" />
+                              {{ row.status }}
+                            </span>
+                          </td>
+                        </tr>
+                      </template>
+                    </template>
+
+                    <!-- Grand total row -->
+                    <tr
+                      v-if="!accountingLoading && otherAccountingEntries.length"
+                      class="totals-row"
+                    >
+                      <td colspan="5" class="text-right text-weight-bold">Grand Total</td>
+                      <td class="text-right text-weight-bold">{{ otherTotalSoldQuantity }}</td>
+                      <td class="text-right text-weight-bold">{{ formatFixed2(otherTotalInvoiceCogsBdt) }}</td>
+                      <td class="text-right text-weight-bold">{{ formatFixed2(otherTotalInvoiceRevenueBdt) }}</td>
+                      <td
+                        class="text-right text-weight-bold"
+                        :class="otherTotalRealizedProfitBdt >= 0 ? 'text-positive' : 'text-negative'"
+                      >
+                        {{ formatFixed2(otherTotalRealizedProfitBdt) }}
                       </td>
                       <td></td>
                     </tr>
@@ -800,7 +975,7 @@ const accountingLoading = ref(false)
 const accountingError = ref<string | null>(null)
 const shipmentInvoicePaidById = ref<Record<string, number>>({})
 const fallbackImageUrl = 'https://placehold.co/44x44?text=No+Image'
-const activeTab = ref<'breakdown' | 'entries'>('breakdown')
+const activeTab = ref<'breakdown' | 'entries' | 'other_entries'>('breakdown')
 const expandedInvoices = ref<Set<string>>(new Set())
 const summaryViewMode = ref<'regular' | 'chart'>('regular')
 
@@ -852,10 +1027,23 @@ const toggleInvoice = (key: string) => {
   expandedInvoices.value = next
 }
 
-// Group flat entries by invoice_id+type so each invoice is one parent row
-const groupedInvoiceEntries = computed(() => {
+const localAccountingEntries = computed(() => {
+  const tId = authStore.tenantId
+  return shipmentAccountingEntries.value.filter(
+    (e) => !e.sold_in_tenant_id || e.sold_in_tenant_id === tId,
+  )
+})
+
+const otherAccountingEntries = computed(() => {
+  const tId = authStore.tenantId
+  return shipmentAccountingEntries.value.filter(
+    (e) => e.sold_in_tenant_id && e.sold_in_tenant_id !== tId,
+  )
+})
+
+const groupEntries = (entriesList: InventoryAccountingEntry[]) => {
   const map = new Map<string, InventoryAccountingEntry[]>()
-  for (const entry of shipmentAccountingEntries.value) {
+  for (const entry of entriesList) {
     const key = `${entry.invoice_id ?? 'none'}_${entry.type ?? 'normal'}`
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(entry)
@@ -885,7 +1073,43 @@ const groupedInvoiceEntries = computed(() => {
       latestDate,
     }
   })
-})
+}
+
+// Group flat entries by invoice_id+type so each invoice is one parent row
+const groupedInvoiceEntries = computed(() => groupEntries(localAccountingEntries.value))
+const groupedOtherInvoiceEntries = computed(() => groupEntries(otherAccountingEntries.value))
+
+const localTotalSoldQuantity = computed(() =>
+  localAccountingEntries.value.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0),
+)
+
+const localTotalInvoiceCogsBdt = computed(() =>
+  localAccountingEntries.value.reduce((sum, row) => sum + Number(row.total_cost_amount ?? 0), 0),
+)
+
+const localTotalInvoiceRevenueBdt = computed(() =>
+  localAccountingEntries.value.reduce((sum, row) => sum + Number(row.total_sell_amount ?? 0), 0),
+)
+
+const localTotalRealizedProfitBdt = computed(() =>
+  localAccountingEntries.value.reduce((sum, row) => sum + Number(row.gross_profit_amount ?? 0), 0),
+)
+
+const otherTotalSoldQuantity = computed(() =>
+  otherAccountingEntries.value.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0),
+)
+
+const otherTotalInvoiceCogsBdt = computed(() =>
+  otherAccountingEntries.value.reduce((sum, row) => sum + Number(row.total_cost_amount ?? 0), 0),
+)
+
+const otherTotalInvoiceRevenueBdt = computed(() =>
+  otherAccountingEntries.value.reduce((sum, row) => sum + Number(row.total_sell_amount ?? 0), 0),
+)
+
+const otherTotalRealizedProfitBdt = computed(() =>
+  otherAccountingEntries.value.reduce((sum, row) => sum + Number(row.gross_profit_amount ?? 0), 0),
+)
 
 const shipmentId = computed(() => {
   const parsed = Number(route.params.id)

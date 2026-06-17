@@ -120,6 +120,7 @@ export const commerceInvoiceService = {
       client_name?: string | null
       client_tr?: string | null
       status?: string
+      note?: string | null
     },
   ) =>
     wrap<{ invoice: CommerceInvoice; order: CommerceInvoiceDetails['order'] }>(

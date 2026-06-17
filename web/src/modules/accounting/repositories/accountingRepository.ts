@@ -69,6 +69,7 @@ const INVENTORY_ACCOUNTING_ENTRY_FIELDS = [
   'created_at',
   'updated_at',
   'type',
+  'sold_in_tenant_id',
   'delivery_charge',
   'wrapping_charge',
   'cod',

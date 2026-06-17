@@ -407,6 +407,40 @@
           </div>
         </q-card>
 
+        <!-- Invoice Note Card -->
+        <q-card flat class="floating-surface shadow-1 q-pa-md" v-if="invoice">
+          <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
+            <q-icon name="o_description" class="q-mr-xs" size="20px" />
+            <span>Invoice Note</span>
+          </div>
+
+          <div class="q-gutter-y-sm">
+            <div class="editable-field">
+              <div class="text-body2 text-grey-9 cursor-pointer row items-center">
+                <span v-if="invoice.note" style="white-space: pre-wrap;">{{ invoice.note }}</span>
+                <span v-else class="text-grey-5 text-italic">Click to add a note...</span>
+                <q-popup-edit
+                  :model-value="invoice.note || ''"
+                  buttons
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="onUpdateInvoiceNote"
+                  v-slot="scope"
+                >
+                  <q-input
+                    v-model="scope.value"
+                    type="textarea"
+                    dense
+                    autofocus
+                    label="Invoice Note"
+                    style="min-width: 250px"
+                  />
+                </q-popup-edit>
+              </div>
+            </div>
+          </div>
+        </q-card>
+
       </div>
     </div>
     <div v-else class="text-body1 text-grey-8">
@@ -1113,6 +1147,16 @@ const onUpdateInvoiceDate = async (value: string) => {
     id: invoice.value.id,
     patch: {
       invoice_date: value,
+    },
+  })
+}
+
+const onUpdateInvoiceNote = async (value: string | null) => {
+  if (!invoice.value || value === invoice.value.note) return
+  await invoiceStore.updateInvoice({
+    id: invoice.value.id,
+    patch: {
+      note: value || null,
     },
   })
 }

@@ -567,6 +567,40 @@
               </div>
             </div>
           </q-card>
+
+          <!-- Invoice Note Card -->
+          <q-card flat class="floating-surface shadow-1 q-pa-md">
+            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md row items-center">
+              <q-icon name="o_description" class="q-mr-xs" size="20px" />
+              <span>Invoice Note</span>
+            </div>
+
+            <div class="q-gutter-y-sm">
+              <div class="editable-field">
+                <div class="text-body2 text-grey-9 cursor-pointer row items-center">
+                  <span v-if="invoice.note" style="white-space: pre-wrap;">{{ invoice.note }}</span>
+                  <span v-else class="text-grey-5 text-italic">Click to add a note...</span>
+                  <q-popup-edit
+                    :model-value="invoice.note || ''"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="(val) => onUpdateInvoiceCharge('note', val)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model="scope.value"
+                      type="textarea"
+                      dense
+                      autofocus
+                      label="Invoice Note"
+                      style="min-width: 250px"
+                    />
+                  </q-popup-edit>
+                </div>
+              </div>
+            </div>
+          </q-card>
         </div>
       </div>
     </div>
@@ -1016,11 +1050,12 @@ const onUpdateInvoiceCharge = async (key: string, val: unknown) => {
       discount_amount: Number(invoice.value.discount_amount) || 0,
       invoice_date: invoice.value.invoice_date || '',
       delivered_by: invoice.value.delivered_by || '',
+      note: invoice.value.note || '',
     }
     
     if (key === 'delivery_charge' || key === 'wrapping_charge' || key === 'cod' || key === 'print_charge' || key === 'amount_paid' || key === 'discount_amount') {
       chargesPayload[key] = Number(val)
-    } else if (key === 'invoice_date' || key === 'delivered_by') {
+    } else if (key === 'invoice_date' || key === 'delivered_by' || key === 'note') {
       chargesPayload[key] = val as string
     }
 
@@ -1032,7 +1067,7 @@ const onUpdateInvoiceCharge = async (key: string, val: unknown) => {
 
     const res = await commerceInvoiceStore.updateInvoiceCharges(invoice.value.id, chargesPayload)
     if (res.success) {
-      showSuccessNotification('Invoice charge updated successfully.')
+      showSuccessNotification('Invoice updated successfully.')
     } else {
       showWarningDialog(res.error || 'Failed to update invoice.')
     }

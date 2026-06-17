@@ -212,13 +212,53 @@
         clearable
         emit-value
         map-options
-        class="soft-input q-mb-md"
+        class="soft-input q-mb-sm"
         @update:model-value="onSearchChange"
       >
         <template #selected-item="scope">
           <span class="text-black text-weight-medium">{{ scope.opt.label }}</span>
         </template>
       </q-select>
+
+      <!-- Start Date Filter -->
+      <q-input
+        v-model="startDateFilter"
+        label="Start Date"
+        outlined
+        dense
+        clearable
+        mask="####-##-##"
+        class="soft-input q-mb-sm"
+        @update:model-value="onSearchChange"
+      >
+        <template v-slot:append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date v-model="startDateFilter" mask="YYYY-MM-DD" @update:model-value="onSearchChange" />
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
+
+      <!-- End Date Filter -->
+      <q-input
+        v-model="endDateFilter"
+        label="End Date"
+        outlined
+        dense
+        clearable
+        mask="####-##-##"
+        class="soft-input q-mb-md"
+        @update:model-value="onSearchChange"
+      >
+        <template v-slot:append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date v-model="endDateFilter" mask="YYYY-MM-DD" @update:model-value="onSearchChange" />
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
 
       <div class="row q-gutter-sm justify-end">
         <q-btn flat no-caps label="Reset" class="text-black text-weight-bold" @click="onResetFilters" />
@@ -443,6 +483,8 @@ const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const billingProfileFilter = ref<number | null>(null)
 const invoiceTypeFilter = ref<string | null>(null)
+const startDateFilter = ref<string | null>(null)
+const endDateFilter = ref<string | null>(null)
 
 const statusFilterOptions = [
   { label: 'Draft', value: 'draft' },
@@ -466,6 +508,8 @@ const activeFilterCount = computed(() => {
   if (statusFilter.value) count += 1
   if (billingProfileFilter.value) count += 1
   if (invoiceTypeFilter.value) count += 1
+  if (startDateFilter.value) count += 1
+  if (endDateFilter.value) count += 1
   return count
 })
 
@@ -534,6 +578,8 @@ const filteredInvoices = computed(() => {
   const status = statusFilter.value
   const bp = billingProfileFilter.value
   const type = invoiceTypeFilter.value
+  const start = startDateFilter.value
+  const end = endDateFilter.value
 
   return invoices.value.filter((row) => {
     const bpName = getBillingProfileName(row.billing_profile_id).toLowerCase()
@@ -547,8 +593,10 @@ const filteredInvoices = computed(() => {
     const matchesStatus = !status || row.status === status
     const matchesBp = !bp || row.billing_profile_id === bp
     const matchesType = !type || row.invoice_type === type
+    const matchesStart = !start || (row.invoice_date && row.invoice_date.replace(/\//g, '-') >= start.replace(/\//g, '-'))
+    const matchesEnd = !end || (row.invoice_date && row.invoice_date.replace(/\//g, '-') <= end.replace(/\//g, '-'))
 
-    return matchesSearch && matchesStatus && matchesBp && matchesType
+    return matchesSearch && matchesStatus && matchesBp && matchesType && matchesStart && matchesEnd
   })
 })
 
@@ -561,6 +609,8 @@ const onResetFilters = () => {
   statusFilter.value = null
   billingProfileFilter.value = null
   invoiceTypeFilter.value = null
+  startDateFilter.value = null
+  endDateFilter.value = null
 }
 
 const openPaymentDialog = (invoice: CommerceInvoice) => {

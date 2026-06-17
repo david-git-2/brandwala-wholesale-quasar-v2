@@ -56,6 +56,7 @@ export type InventoryAccountingEntry = {
   created_at: string
   updated_at?: string
   type?: 'normal' | 'commerce'
+  sold_in_tenant_id?: number | null
   delivery_charge?: number | null
   wrapping_charge?: number | null
   cod?: number | null

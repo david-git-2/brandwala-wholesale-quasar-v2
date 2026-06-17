@@ -493,6 +493,7 @@ export type Database = {
           invoice_date: string
           invoice_type: string
           is_customer_group_paid: boolean
+          note: string | null
           order_id: number | null
           previous_due: number
           print_charge: number
@@ -525,6 +526,7 @@ export type Database = {
           invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
+          note?: string | null
           order_id?: number | null
           previous_due?: number
           print_charge?: number
@@ -557,6 +559,7 @@ export type Database = {
           invoice_date?: string
           invoice_type?: string
           is_customer_group_paid?: boolean
+          note?: string | null
           order_id?: number | null
           previous_due?: number
           print_charge?: number
@@ -1131,6 +1134,7 @@ export type Database = {
           sell_price_amount: number
           shipment_id: number | null
           shipment_item_id: number | null
+          sold_in_tenant_id: number | null
           status: string
           tenant_id: number
           total_cost_amount: number
@@ -1167,6 +1171,7 @@ export type Database = {
           sell_price_amount?: number
           shipment_id?: number | null
           shipment_item_id?: number | null
+          sold_in_tenant_id?: number | null
           status?: string
           tenant_id: number
           total_cost_amount?: number
@@ -1203,6 +1208,7 @@ export type Database = {
           sell_price_amount?: number
           shipment_id?: number | null
           shipment_item_id?: number | null
+          sold_in_tenant_id?: number | null
           status?: string
           tenant_id?: number
           total_cost_amount?: number
@@ -1280,6 +1286,13 @@ export type Database = {
             columns: ["shipment_item_id"]
             isOneToOne: false
             referencedRelation: "shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_sold_in_tenant_id_fkey"
+            columns: ["sold_in_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -4213,32 +4226,70 @@ export type Database = {
     Views: {
       v_shipment_accounting_ledger: {
         Row: {
-          cod: number | null
           cost_amount: number | null
           created_at: string | null
-          delivery_charge: number | null
-          discount_amount: number | null
           entry_date: string | null
           gross_profit_amount: number | null
           id: number | null
           inventory_item_id: number | null
           invoice_id: number | null
           invoice_item_id: number | null
-          is_charges: boolean | null
           note: string | null
-          print_charge: number | null
           product_id: number | null
           quantity: number | null
           sell_price_amount: number | null
           shipment_id: number | null
           shipment_item_id: number | null
-          shipment_name: string | null
+          sold_in_tenant_id: number | null
           status: string | null
           tenant_id: number | null
           total_cost_amount: number | null
           total_sell_amount: number | null
           type: string | null
-          wrapping_charge: number | null
+        }
+        Insert: {
+          cost_amount?: number | null
+          created_at?: string | null
+          entry_date?: string | null
+          gross_profit_amount?: number | null
+          id?: number | null
+          inventory_item_id?: number | null
+          invoice_id?: never
+          invoice_item_id?: number | null
+          note?: string | null
+          product_id?: number | null
+          quantity?: number | null
+          sell_price_amount?: number | null
+          shipment_id?: number | null
+          shipment_item_id?: number | null
+          sold_in_tenant_id?: number | null
+          status?: string | null
+          tenant_id?: number | null
+          total_cost_amount?: number | null
+          total_sell_amount?: number | null
+          type?: string | null
+        }
+        Update: {
+          cost_amount?: number | null
+          created_at?: string | null
+          entry_date?: string | null
+          gross_profit_amount?: number | null
+          id?: number | null
+          inventory_item_id?: number | null
+          invoice_id?: never
+          invoice_item_id?: number | null
+          note?: string | null
+          product_id?: number | null
+          quantity?: number | null
+          sell_price_amount?: number | null
+          shipment_id?: number | null
+          shipment_item_id?: number | null
+          sold_in_tenant_id?: number | null
+          status?: string | null
+          tenant_id?: number | null
+          total_cost_amount?: number | null
+          total_sell_amount?: number | null
+          type?: string | null
         }
         Relationships: [
           {
@@ -4274,6 +4325,13 @@ export type Database = {
             columns: ["shipment_item_id"]
             isOneToOne: false
             referencedRelation: "shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_accounting_entries_sold_in_tenant_id_fkey"
+            columns: ["sold_in_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -5812,6 +5870,7 @@ export type Database = {
           p_discount_amount?: number
           p_invoice_date?: string
           p_invoice_id: number
+          p_note?: string
           p_previous_due?: number
           p_print_charge?: number
           p_status?: string

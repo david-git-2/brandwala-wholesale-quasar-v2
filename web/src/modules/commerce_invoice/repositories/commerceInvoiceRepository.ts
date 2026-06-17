@@ -353,6 +353,7 @@ const updateCommerceInvoiceCharges = async (
     client_name?: string | null
     client_tr?: string | null
     status?: string
+    note?: string | null
   },
 ): Promise<{ invoice: CommerceInvoice; order: CommerceInvoiceDetails['order'] }> => {
   const { data, error } = await supabase.rpc('update_commerce_invoice_charges', {
@@ -374,6 +375,7 @@ const updateCommerceInvoiceCharges = async (
     p_client_name: charges.client_name,
     p_client_tr: charges.client_tr,
     p_status: charges.status,
+    p_note: charges.note,
   })
 
   if (error) {
