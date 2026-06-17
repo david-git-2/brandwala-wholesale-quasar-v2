@@ -32,4 +32,6 @@ export interface ThriftStock {
     target_price: number;
     listed_price: number;
   };
+  image_url?: string | undefined;
+  origin_purchase_price?: number | undefined;
 }

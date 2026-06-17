@@ -22,6 +22,15 @@ const thriftStockRoutes: RouteRecordRaw[] = [
                headerTitle: 'Stock Catalog',
             },
          },
+         {
+            path: 'settings',
+            name: 'thrift-stock-settings-page',
+            component: () => import('../pages/ThriftStockSettingsPage.vue'),
+            meta: {
+               title: 'Thrift Stock Settings',
+               headerTitle: 'Stock Uploader Settings',
+            },
+         },
       ],
    },
 ];

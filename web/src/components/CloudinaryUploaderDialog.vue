@@ -127,7 +127,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
-  (e: 'uploaded', url: string): void;
+  (e: 'uploaded', url: string, deleteToken?: string): void;
 }>();
 
 const $q = useQuasar();
@@ -299,7 +299,7 @@ async function uploadToCloudinary() {
   try {
     const xhr = new XMLHttpRequest();
     
-    const promise = new Promise<string>((resolve, reject) => {
+    const promise = new Promise<{ secureUrl: string; deleteToken?: string }>((resolve, reject) => {
       xhr.open('POST', url, true);
 
       xhr.upload.onprogress = (e) => {
@@ -312,7 +312,10 @@ async function uploadToCloudinary() {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
-            resolve(response.secure_url);
+            resolve({
+              secureUrl: response.secure_url,
+              deleteToken: response.delete_token
+            });
           } catch (err) {
             reject(new Error('Failed to parse Cloudinary response'));
           }
@@ -333,14 +336,14 @@ async function uploadToCloudinary() {
       xhr.send(formData);
     });
 
-    const secureUrl = await promise;
+    const result = await promise;
 
     $q.notify({
       type: 'positive',
       message: 'Image uploaded successfully!',
     });
 
-    emit('uploaded', secureUrl);
+    emit('uploaded', result.secureUrl, result.deleteToken);
     clearSelection();
     isOpen.value = false;
   } catch (error: any) {

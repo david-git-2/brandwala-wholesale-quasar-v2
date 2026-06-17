@@ -42,7 +42,9 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       extraWeight: number | undefined,
       note: string,
       userEmail: string,
-      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number }
+      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+      imageUrl?: string,
+      originPurchasePrice?: number
     ) {
       try {
         const stock = await thriftStockRepository.createStock(
@@ -67,13 +69,38 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             status: 'AVAILABLE' as any,
             note: note || '',
             inserted_by: userEmail,
+            origin_purchase_price: originPurchasePrice,
           },
-          pricing
+          pricing,
+          imageUrl
         );
         this.stocks.unshift(stock);
         return stock;
       } catch (err: any) {
         this.error = err.message || 'Failed to create stock';
+        throw err;
+      }
+    },
+
+    async updateStock(
+      id: number,
+      stock: Partial<ThriftStock>,
+      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number }
+    ) {
+      try {
+        const updated = await thriftStockRepository.updateStock(id, stock, pricing);
+        const idx = this.stocks.findIndex(s => s.id === id);
+        if (idx !== -1) {
+          this.stocks[idx] = {
+            ...this.stocks[idx],
+            ...updated,
+            // Keep previous image if not returned
+            image_url: this.stocks[idx]?.image_url,
+          };
+        }
+        return updated;
+      } catch (err: any) {
+        this.error = err.message || 'Failed to update stock';
         throw err;
       }
     },
@@ -87,6 +114,16 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         }
       } catch (err: any) {
         this.error = err.message || 'Failed to update stock status';
+        throw err;
+      }
+    },
+
+    async deleteStock(id: number) {
+      try {
+        await thriftStockRepository.deleteStock(id);
+        this.stocks = this.stocks.filter(s => s.id !== id);
+      } catch (err: any) {
+        this.error = err.message || 'Failed to delete stock';
         throw err;
       }
     },

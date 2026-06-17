@@ -4215,6 +4215,57 @@ export type Database = {
           },
         ]
       }
+      thrift_boxes: {
+        Row: {
+          created_at: string
+          id: number
+          inserted_by: string
+          name: string
+          received_weight: number | null
+          shipment_id: number
+          tenant_id: number
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          inserted_by: string
+          name: string
+          received_weight?: number | null
+          shipment_id: number
+          tenant_id: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          name?: string
+          received_weight?: number | null
+          shipment_id?: number
+          tenant_id?: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_boxes_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_boxes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_categories: {
         Row: {
           created_at: string
@@ -4516,17 +4567,73 @@ export type Database = {
           },
         ]
       }
+      thrift_stock_settings: {
+        Row: {
+          created_at: string
+          default_box_id: number | null
+          default_origin_purchase_price: number
+          default_purchase_price: number
+          default_shipment_id: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_box_id?: number | null
+          default_origin_purchase_price?: number
+          default_purchase_price?: number
+          default_shipment_id?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_box_id?: number | null
+          default_origin_purchase_price?: number
+          default_purchase_price?: number
+          default_shipment_id?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_stock_settings_default_box_id_fkey"
+            columns: ["default_box_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stock_settings_default_shipment_id_fkey"
+            columns: ["default_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_stock_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_stocks: {
         Row: {
+          box_id: number | null
           brand_name: string | null
           category_id: number
           color: string
           condition: Database["public"]["Enums"]["thrift_condition"]
           created_at: string
+          extra_weight: number | null
           id: number
           inserted_by: string
           name: string
           note: string | null
+          origin_purchase_price: number | null
+          product_weight: number | null
           quantity: number
           section: Database["public"]["Enums"]["thrift_section"]
           shelf_id: number
@@ -4538,18 +4645,21 @@ export type Database = {
           tenant_id: number
           type_id: number
           updated_at: string
-          weight_gm: number | null
         }
         Insert: {
+          box_id?: number | null
           brand_name?: string | null
           category_id: number
           color: string
           condition: Database["public"]["Enums"]["thrift_condition"]
           created_at?: string
+          extra_weight?: number | null
           id?: number
           inserted_by: string
           name: string
           note?: string | null
+          origin_purchase_price?: number | null
+          product_weight?: number | null
           quantity?: number
           section: Database["public"]["Enums"]["thrift_section"]
           shelf_id: number
@@ -4561,18 +4671,21 @@ export type Database = {
           tenant_id: number
           type_id: number
           updated_at?: string
-          weight_gm?: number | null
         }
         Update: {
+          box_id?: number | null
           brand_name?: string | null
           category_id?: number
           color?: string
           condition?: Database["public"]["Enums"]["thrift_condition"]
           created_at?: string
+          extra_weight?: number | null
           id?: number
           inserted_by?: string
           name?: string
           note?: string | null
+          origin_purchase_price?: number | null
+          product_weight?: number | null
           quantity?: number
           section?: Database["public"]["Enums"]["thrift_section"]
           shelf_id?: number
@@ -4584,9 +4697,15 @@ export type Database = {
           tenant_id?: number
           type_id?: number
           updated_at?: string
-          weight_gm?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "thrift_stocks_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_boxes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thrift_stocks_category_id_fkey"
             columns: ["category_id"]

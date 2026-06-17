@@ -107,6 +107,7 @@
         no-caps
       >
         <q-tab name="stocks" icon="inventory" label="Stocks" />
+        <q-tab name="shipments" icon="local_shipping" label="Shipments" />
         <q-tab name="boxes" icon="inventory_2" label="Boxes" />
         <q-tab name="invoices" icon="description" label="Invoices" />
         <q-tab name="shelves" icon="grid_view" label="Shelves" />
@@ -193,6 +194,23 @@
               </q-td>
             </template>
           </q-table>
+        </q-card>
+      </q-tab-panel>
+
+      <!-- SHIPMENTS PANEL -->
+      <q-tab-panel name="shipments" class="q-pa-none">
+        <div class="row justify-between items-center q-mb-md">
+          <div class="text-subtitle1 text-weight-bold text-grey-8">Thrift Shipments</div>
+        </div>
+        <q-card flat bordered>
+          <q-table
+            flat
+            :rows="shipments"
+            :columns="shipmentColumns"
+            row-key="id"
+            :loading="loading"
+            class="thrift-table"
+          />
         </q-card>
       </q-tab-panel>
 
@@ -750,7 +768,7 @@
 
             <div class="row justify-between items-center">
               <div class="text-subtitle2 text-grey-8">Invoice Items</div>
-              <q-btn flat color="primary" icon="add" label="Add Line" size="sm" @close-popup @click="addInvoiceLine" />
+              <q-btn flat color="primary" icon="add" label="Add Line" size="sm" @click="addInvoiceLine" />
             </div>
 
             <div v-for="(line, idx) in invoiceLines" :key="idx" class="row q-col-gutter-xs items-center q-mb-sm">
@@ -934,12 +952,26 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStore } from '../stores/thriftStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
+import { useRoute } from 'vue-router';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const thriftStore = useThriftStore();
+const route = useRoute();
 
 const activeTab = ref('stocks');
+
+watch(
+  () => route.path,
+  (path) => {
+    if (path.endsWith('/shipments')) {
+      activeTab.value = 'shipments';
+    } else if (path.endsWith('/boxes')) {
+      activeTab.value = 'boxes';
+    }
+  },
+  { immediate: true }
+);
 
 // Load values computed
 const categories = computed(() => thriftStore.categories);
@@ -1129,6 +1161,11 @@ const stockColumns: QTableColumn[] = [
   { name: 'pricing', align: 'left', label: 'Pricing', field: 'pricing' },
   { name: 'status', align: 'center', label: 'Status', field: 'status', sortable: true },
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
+];
+
+const shipmentColumns: QTableColumn[] = [
+  { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true },
+  { name: 'name', align: 'left', label: 'Shipment Name', field: 'name', sortable: true },
 ];
 
 const boxColumns: QTableColumn[] = [
