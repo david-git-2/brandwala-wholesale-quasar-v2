@@ -8,6 +8,10 @@ import type {
   ThriftInvoice,
   ThriftLedgerEntry,
   ThriftBox,
+  ThriftSection,
+  ThriftCondition,
+  ThriftStockType,
+  ThriftStockStatus,
 } from '../types';
 
 export const useThriftStore = defineStore('thrift', {
@@ -45,8 +49,8 @@ export const useThriftStore = defineStore('thrift', {
         this.invoices = invs;
         this.ledgerEntries = ldgr;
         this.boxes = bxs;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to load Thrift module data';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load Thrift module data';
       } finally {
         this.loading = false;
       }
@@ -62,8 +66,8 @@ export const useThriftStore = defineStore('thrift', {
         });
         this.categories.push(cat);
         return cat;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create category';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create category';
         throw err;
       }
     },
@@ -78,8 +82,8 @@ export const useThriftStore = defineStore('thrift', {
         });
         this.types.push(typ);
         return typ;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create type';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create type';
         throw err;
       }
     },
@@ -95,8 +99,8 @@ export const useThriftStore = defineStore('thrift', {
         });
         this.shelves.push(shlf);
         return shlf;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create shelf';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create shelf';
         throw err;
       }
     },
@@ -113,8 +117,8 @@ export const useThriftStore = defineStore('thrift', {
         });
         this.boxes.push(box);
         return box;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create box';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create box';
         throw err;
       }
     },
@@ -123,8 +127,8 @@ export const useThriftStore = defineStore('thrift', {
       try {
         await thriftRepository.deleteBox(id);
         this.boxes = this.boxes.filter(b => b.id !== id);
-      } catch (err: any) {
-        this.error = err.message || 'Failed to delete box';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete box';
         throw err;
       }
     },
@@ -160,13 +164,13 @@ export const useThriftStore = defineStore('thrift', {
             brand_name: brandName || undefined,
             category_id: categoryId,
             type_id: typeId,
-            section: section as any,
+            section: section as ThriftSection,
             shelf_id: shelfId,
             color,
             size,
-            condition: condition as any,
+            condition: condition as ThriftCondition,
             sku,
-            stock_type: stockType as any,
+            stock_type: stockType as ThriftStockType,
             quantity,
             box_id: boxId || undefined,
             product_weight: productWeight || undefined,
@@ -179,8 +183,8 @@ export const useThriftStore = defineStore('thrift', {
         );
         this.stocks.unshift(stock);
         return stock;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create stock';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create stock';
         throw err;
       }
     },
@@ -190,10 +194,10 @@ export const useThriftStore = defineStore('thrift', {
         await thriftRepository.updateStockStatus(id, status);
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1 && this.stocks[idx]) {
-          this.stocks[idx].status = status as any;
+          this.stocks[idx].status = status as ThriftStockStatus;
         }
-      } catch (err: any) {
-        this.error = err.message || 'Failed to update stock status';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update stock status';
         throw err;
       }
     },
@@ -224,8 +228,8 @@ export const useThriftStore = defineStore('thrift', {
         // Refresh local cache data
         await this.loadModuleData(params.tenantId);
         return invoiceId;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to mark items as sold';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to mark items as sold';
         throw err;
       } finally {
         this.loading = false;

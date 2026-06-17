@@ -316,7 +316,7 @@ async function uploadToCloudinary() {
               secureUrl: response.secure_url,
               deleteToken: response.delete_token
             });
-          } catch (err) {
+          } catch {
             reject(new Error('Failed to parse Cloudinary response'));
           }
         } else {
@@ -346,10 +346,10 @@ async function uploadToCloudinary() {
     emit('uploaded', result.secureUrl, result.deleteToken);
     clearSelection();
     isOpen.value = false;
-  } catch (error: any) {
+  } catch (error: unknown) {
     $q.notify({
       type: 'negative',
-      message: error.message || 'Image upload failed',
+      message: (error as Error).message || 'Image upload failed',
     });
     console.error('Cloudinary Upload Error:', error);
   } finally {

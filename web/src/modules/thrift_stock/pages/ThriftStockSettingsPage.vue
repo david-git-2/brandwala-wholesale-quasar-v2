@@ -104,7 +104,7 @@ const authStore = useAuthStore();
 const thriftStore = useThriftStore();
 
 const saving = ref(false);
-const shipments = ref<any[]>([]);
+const shipments = ref<Array<{ id: number; name: string }>>([]);
 
 const form = ref({
   default_shipment_id: null as number | null,
@@ -124,7 +124,8 @@ function onShipmentChange() {
 
 function goBack() {
   const tenantSlug = route.params.tenantSlug || authStore.tenantSlug;
-  router.push(tenantSlug ? `/${tenantSlug}/app/thrift/stocks` : '/app/thrift/stocks');
+  const slugStr = Array.isArray(tenantSlug) ? tenantSlug[0] : (tenantSlug || '');
+  void router.push(slugStr ? `/${slugStr}/app/thrift/stocks` : '/app/thrift/stocks');
 }
 
 async function loadShipments() {
@@ -134,7 +135,7 @@ async function loadShipments() {
     .select('id, name')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
-  shipments.value = data || [];
+  shipments.value = (data || []) as Array<{ id: number; name: string }>;
 }
 
 async function loadSettings() {
@@ -155,7 +156,7 @@ async function loadSettings() {
         default_origin_purchase_price: Number(data.default_origin_purchase_price || 0),
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to load settings:', err);
   }
 }
@@ -183,10 +184,10 @@ async function saveSettings() {
       message: 'Defaults saved successfully',
     });
     goBack();
-  } catch (err: any) {
+  } catch (err: unknown) {
     $q.notify({
       type: 'negative',
-      message: err.message || 'Saving failed',
+      message: (err as Error).message || 'Saving failed',
     });
   } finally {
     saving.value = false;

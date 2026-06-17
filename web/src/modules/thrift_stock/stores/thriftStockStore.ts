@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
-import type { ThriftStock } from '../types';
+import type { ThriftStock, ThriftSection, ThriftCondition, ThriftStockType, ThriftStockStatus } from '../types';
 
 export const useThriftStockStore = defineStore('thrift_stock', {
   state: () => ({
@@ -15,8 +15,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       this.error = null;
       try {
         this.stocks = await thriftStockRepository.fetchStocks(tenantId);
-      } catch (err: any) {
-        this.error = err.message || 'Failed to load stock';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load stock';
       } finally {
         this.loading = false;
       }
@@ -55,18 +55,18 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             brand_name: brandName || '',
             category_id: categoryId,
             type_id: typeId,
-            section: section as any,
+            section: section as ThriftSection,
             shelf_id: shelfId,
             color,
             size,
-            condition: condition as any,
+            condition: condition as ThriftCondition,
             sku,
-            stock_type: stockType as any,
+            stock_type: stockType as ThriftStockType,
             quantity,
             box_id: boxId || undefined,
             product_weight: productWeight || undefined,
             extra_weight: extraWeight || undefined,
-            status: 'AVAILABLE' as any,
+            status: 'AVAILABLE' as ThriftStockStatus,
             note: note || '',
             inserted_by: userEmail,
             origin_purchase_price: originPurchasePrice,
@@ -76,8 +76,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         );
         this.stocks.unshift(stock);
         return stock;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to create stock';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create stock';
         throw err;
       }
     },
@@ -99,8 +99,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
           };
         }
         return updated;
-      } catch (err: any) {
-        this.error = err.message || 'Failed to update stock';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update stock';
         throw err;
       }
     },
@@ -109,11 +109,12 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       try {
         await thriftStockRepository.updateStockStatus(id, status);
         const idx = this.stocks.findIndex(s => s.id === id);
-        if (idx !== -1) {
-          this.stocks[idx]!.status = status as any;
+        const stock = this.stocks[idx];
+        if (stock) {
+          stock.status = status as ThriftStockStatus;
         }
-      } catch (err: any) {
-        this.error = err.message || 'Failed to update stock status';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update stock status';
         throw err;
       }
     },
@@ -122,8 +123,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       try {
         await thriftStockRepository.deleteStock(id);
         this.stocks = this.stocks.filter(s => s.id !== id);
-      } catch (err: any) {
-        this.error = err.message || 'Failed to delete stock';
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete stock';
         throw err;
       }
     },

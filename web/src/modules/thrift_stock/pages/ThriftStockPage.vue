@@ -350,6 +350,7 @@ import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
+import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -366,7 +367,7 @@ const isUploaderOpen = ref(false);
 const quickSubmitting = ref(false);
 const settingsLoaded = ref(false);
 const deleteConfirmOpen = ref(false);
-const selectedRow = ref<any>(null);
+const selectedRow = ref<ThriftStock | null>(null);
 
 const defaults = ref({
   default_shipment_id: null as number | null,
@@ -409,7 +410,7 @@ const form = ref({
   origin_purchase_price: 0,
 });
 
-const shipments = ref<any[]>([]);
+const shipments = ref<{ id: number; name: string }[]>([]);
 
 async function loadShipments() {
   if (!authStore.tenantId) return;
@@ -471,8 +472,9 @@ onMounted(async () => {
 });
 
 function goToSettings() {
-  const tenantSlug = route.params.tenantSlug || authStore.tenantSlug;
-  router.push(tenantSlug ? `/${tenantSlug}/app/thrift/stocks/settings` : '/app/thrift/stocks/settings');
+  const slug = route.params.tenantSlug || authStore.tenantSlug;
+  const tenantSlug = Array.isArray(slug) ? slug[0] : slug;
+  void router.push(tenantSlug ? `/${tenantSlug}/app/thrift/stocks/settings` : '/app/thrift/stocks/settings');
 }
 
 async function loadTenantSettings() {
@@ -643,7 +645,7 @@ async function submitQuickAdd() {
 
     // Transition straight into the edit dialog populated with this draft details
     openEditDialog(draftStock);
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (quickAddForm.value.deleteToken) {
       await deleteCloudinaryImage(quickAddForm.value.deleteToken);
       quickAddForm.value.imageUrl = '';
@@ -651,14 +653,14 @@ async function submitQuickAdd() {
     }
     $q.notify({
       type: 'negative',
-      message: err.message || 'Draft creation failed',
+      message: (err as Error).message || 'Draft creation failed',
     });
   } finally {
     quickSubmitting.value = false;
   }
 }
 
-function openEditDialog(row: any) {
+function openEditDialog(row: ThriftStock) {
   editingId.value = row.id;
   form.value = {
     category_id: row.category_id,
@@ -692,14 +694,14 @@ async function updateStatus(stockId: number, status: string) {
   try {
     await store.updateStockStatus(stockId, status);
     $q.notify({ type: 'positive', message: `Stock marked as ${status}` });
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Update failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
   } finally {
     $q.loading.hide();
   }
 }
 
-function confirmDelete(row: any) {
+function confirmDelete(row: ThriftStock) {
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
@@ -712,8 +714,8 @@ async function deleteItem() {
     $q.notify({ type: 'positive', message: 'Stock item deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Delete failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
     $q.loading.hide();
   }
@@ -729,11 +731,11 @@ async function onSubmit() {
       brand_name: form.value.brand_name,
       category_id: form.value.category_id!,
       type_id: form.value.type_id!,
-      section: form.value.section as any,
+      section: form.value.section as ThriftSection,
       shelf_id: form.value.shelf_id!,
       color: form.value.color,
       size: form.value.size,
-      condition: form.value.condition as any,
+      condition: form.value.condition as ThriftCondition,
       sku: form.value.sku,
       quantity: form.value.quantity,
       box_id: form.value.box_id || undefined,
@@ -774,8 +776,8 @@ async function onSubmit() {
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }
     dialogOpen.value = false;
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Saving failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
   } finally {
     $q.loading.hide();
   }

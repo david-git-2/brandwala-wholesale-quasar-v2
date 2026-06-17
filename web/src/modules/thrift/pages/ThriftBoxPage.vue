@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
@@ -124,13 +124,13 @@ import { supabase } from 'src/boot/supabase';
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-const boxes = ref<any[]>([]);
-const shipments = ref<any[]>([]);
+const boxes = ref<Array<Record<string, unknown>>>([]);
+const shipments = ref<Array<Record<string, unknown>>>([]);
 const loading = ref(false);
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
-const selectedRow = ref<any>(null);
+const selectedRow = ref<Record<string, unknown> | null>(null);
 
 const form = ref({
   name: '',
@@ -154,7 +154,7 @@ async function loadShipments() {
     .select('id, name')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
-  shipments.value = data || [];
+  shipments.value = (data || []) as Array<Record<string, unknown>>;
 }
 
 async function loadBoxes() {
@@ -167,9 +167,9 @@ async function loadBoxes() {
       .eq('tenant_id', authStore.tenantId)
       .order('name', { ascending: true });
     if (error) throw error;
-    boxes.value = data || [];
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Failed to load boxes' });
+    boxes.value = (data || []) as Array<Record<string, unknown>>;
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load boxes' });
   } finally {
     loading.value = false;
   }
@@ -177,7 +177,7 @@ async function loadBoxes() {
 
 function getShipmentName(shipmentId: number) {
   const sh = shipments.value.find(s => s.id === shipmentId);
-  return sh ? sh.name : `Shipment #${shipmentId}`;
+  return sh ? (sh.name as string) : `Shipment #${shipmentId}`;
 }
 
 onMounted(async () => {
@@ -187,20 +187,20 @@ onMounted(async () => {
   ]);
 });
 
-function openDialog(row?: any) {
+function openDialog(row?: Record<string, unknown>) {
   if (row) {
-    editingId.value = row.id;
+    editingId.value = row.id as number;
     form.value = {
-      name: row.name,
-      shipment_id: row.shipment_id,
-      weight: row.weight || 0,
-      received_weight: row.received_weight || 0,
+      name: row.name as string,
+      shipment_id: row.shipment_id as number,
+      weight: (row.weight as number) || 0,
+      received_weight: (row.received_weight as number) || 0,
     };
   } else {
     editingId.value = null;
     form.value = {
       name: '',
-      shipment_id: shipments.value[0]?.id || null,
+      shipment_id: (shipments.value[0]?.id as number) || null,
       weight: 0,
       received_weight: 0,
     };
@@ -239,14 +239,14 @@ async function save() {
     }
     dialogOpen.value = false;
     await loadBoxes();
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Save failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
   } finally {
     $q.loading.hide();
   }
 }
 
-function confirmDelete(row: any) {
+function confirmDelete(row: Record<string, unknown>) {
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
@@ -258,14 +258,14 @@ async function deleteItem() {
     const { error } = await supabase
       .from('thrift_boxes')
       .delete()
-      .eq('id', selectedRow.value.id);
+      .eq('id', selectedRow.value.id as number);
     if (error) throw error;
     $q.notify({ type: 'positive', message: 'Box deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
     await loadBoxes();
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Delete failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
     $q.loading.hide();
   }

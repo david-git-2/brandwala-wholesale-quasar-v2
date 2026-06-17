@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
@@ -95,12 +95,12 @@ import { supabase } from 'src/boot/supabase';
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-const shipments = ref<any[]>([]);
+const shipments = ref<Array<Record<string, unknown>>>([]);
 const loading = ref(false);
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
-const selectedRow = ref<any>(null);
+const selectedRow = ref<Record<string, unknown> | null>(null);
 
 const form = ref({
   name: '',
@@ -128,9 +128,9 @@ async function loadShipments() {
       .eq('tenant_id', authStore.tenantId)
       .order('name', { ascending: true });
     if (error) throw error;
-    shipments.value = data || [];
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Failed to load shipments' });
+    shipments.value = (data || []) as Array<Record<string, unknown>>;
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load shipments' });
   } finally {
     loading.value = false;
   }
@@ -140,14 +140,14 @@ onMounted(async () => {
   await loadShipments();
 });
 
-function openDialog(row?: any) {
+function openDialog(row?: Record<string, unknown>) {
   if (row) {
-    editingId.value = row.id;
+    editingId.value = row.id as number;
     form.value = {
-      name: row.name,
-      cargo_conversion_rate: row.cargo_conversion_rate || null,
-      cargo_rate: row.cargo_rate || null,
-      product_conversion_rate: row.product_conversion_rate || null,
+      name: row.name as string,
+      cargo_conversion_rate: (row.cargo_conversion_rate as number) || null,
+      cargo_rate: (row.cargo_rate as number) || null,
+      product_conversion_rate: (row.product_conversion_rate as number) || null,
     };
   } else {
     editingId.value = null;
@@ -192,14 +192,14 @@ async function save() {
     }
     dialogOpen.value = false;
     await loadShipments();
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Save failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
   } finally {
     $q.loading.hide();
   }
 }
 
-function confirmDelete(row: any) {
+function confirmDelete(row: Record<string, unknown>) {
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
@@ -211,14 +211,14 @@ async function deleteItem() {
     const { error } = await supabase
       .from('thrift_shipments')
       .delete()
-      .eq('id', selectedRow.value.id);
+      .eq('id', selectedRow.value.id as number);
     if (error) throw error;
     $q.notify({ type: 'positive', message: 'Shipment deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
     await loadShipments();
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Delete failed' });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
     $q.loading.hide();
   }

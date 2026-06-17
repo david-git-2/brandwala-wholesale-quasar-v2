@@ -111,9 +111,9 @@ export const thriftRepository = {
       .order('created_at', { ascending: false });
     if (error) throw error;
     
-    return (data || []).map((stock: any) => ({
+    return (data || []).map((stock: Record<string, unknown>) => ({
       ...stock,
-      pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
+      pricing: (stock.thrift_pricings as unknown[])?.[0] || stock.thrift_pricings || undefined,
     })) as ThriftStock[];
   },
 
