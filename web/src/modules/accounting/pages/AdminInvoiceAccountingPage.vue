@@ -192,7 +192,15 @@
                     <td></td>
                     <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
                     <td class="text-grey-8" style="font-size: 11px">
-                      {{ row.shipment_id ? `#${row.shipment_id}` : '—' }}
+                      <template v-if="row.shipment_id">
+                        <q-badge color="indigo-1" text-color="indigo-9" class="q-mr-xs" style="font-size: 10px">
+                          #{{ row.shipment_id }}
+                        </q-badge>
+                        <span>{{ row.shipment_name ?? '—' }}</span>
+                      </template>
+                      <template v-else>
+                        —
+                      </template>
                     </td>
                     <td class="text-grey-8">{{ row.entry_date ?? '—' }}</td>
                     <td class="text-grey-7" style="font-size: 11px">

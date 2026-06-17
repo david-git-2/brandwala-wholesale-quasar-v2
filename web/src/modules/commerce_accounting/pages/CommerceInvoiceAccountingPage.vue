@@ -103,7 +103,7 @@
                 <th colspan="5" class="text-left bg-light-blue-1 text-primary text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">General Details</th>
                 <th colspan="3" class="text-right bg-blue-1 text-indigo-9 text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">Product Stock Totals</th>
                 <th colspan="5" class="text-right bg-orange-1 text-orange-9 text-weight-bold" style="border-right: 1px solid rgba(34,56,101,.08)">Charges & Adjustments</th>
-                <th colspan="2" class="text-right bg-green-1 text-green-9 text-weight-bold">Outcomes</th>
+                <th colspan="3" class="text-right bg-green-1 text-green-9 text-weight-bold">Outcomes & Actions</th>
               </tr>
               <!-- Column Headers -->
               <tr class="column-header-row">
@@ -122,11 +122,12 @@
                 <th class="text-right" style="border-right: 1px solid rgba(34,56,101,.08)">Discount</th>
                 <th class="text-right">Gross Profit</th>
                 <th class="text-left">Status</th>
+                <th class="text-center" style="width: 60px">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="!groupedEntries.length">
-                <td colspan="15" class="text-center text-grey-7 q-pa-lg">
+                <td colspan="16" class="text-center text-grey-7 q-pa-lg">
                   No accounting entries found.
                 </td>
               </tr>
@@ -185,13 +186,27 @@
                       {{ group.dominantStatus }}
                     </span>
                   </td>
+                  <td class="text-center" @click.stop>
+                    <q-btn
+                      v-if="group.invoice_id"
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      icon="o_delete"
+                      size="sm"
+                      @click="onDeleteInvoice(group.invoice_id)"
+                    >
+                      <q-tooltip>Delete Invoice & Accounting Entries</q-tooltip>
+                    </q-btn>
+                  </td>
                 </tr>
 
                 <!-- ── Child (nested line items) ── -->
                 <template v-if="expandedKeys.has(group.invoiceKey)">
                   <tr class="expanded-detail-row">
                     <td></td>
-                    <td colspan="14" class="q-pa-sm bg-grey-1">
+                    <td colspan="15" class="q-pa-sm bg-grey-1">
                       <div class="nested-table-card shadow-1 q-pa-sm bg-white">
                         <div class="row items-center justify-between q-mb-sm q-px-xs">
                           <div class="text-caption text-weight-bold text-indigo-9">
@@ -227,7 +242,15 @@
                             >
                               <td class="text-grey-7" style="font-size: 11px">#{{ row.id }}</td>
                               <td class="text-grey-8" style="font-size: 11px">
-                                {{ row.shipment_id ? `#${row.shipment_id}` : '—' }}
+                                <template v-if="row.shipment_id">
+                                  <q-badge color="indigo-1" text-color="indigo-9" class="q-mr-xs" style="font-size: 10px">
+                                    #{{ row.shipment_id }}
+                                  </q-badge>
+                                  <span>{{ row.shipment_name ?? '—' }}</span>
+                                </template>
+                                <template v-else>
+                                  —
+                                </template>
                               </td>
                               <td class="text-grey-8" style="font-size: 11px">{{ row.entry_date ?? '—' }}</td>
                               <td class="text-grey-7" style="font-size: 11px">
@@ -290,6 +313,7 @@
                   {{ fmt(totals.profit) }}
                 </td>
                 <td></td>
+                <td></td>
               </tr>
             </tbody>
           </q-markup-table>
@@ -301,12 +325,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAccountingStore } from 'src/modules/accounting/stores/accountingStore'
 import { formatAmountBdt } from 'src/utils/currency'
 import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
+import { commerceInvoiceService } from 'src/modules/commerce_invoice/services/commerceInvoiceService'
+import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 
+const $q = useQuasar()
 const authStore = useAuthStore()
 const accountingStore = useAccountingStore()
 
@@ -341,7 +369,7 @@ const groupedEntries = computed(() => {
     map.get(key)!.push(entry)
   }
 
-  return Array.from(map.entries()).map(([invoiceKey, entries]) => {
+  const res = Array.from(map.entries()).map(([invoiceKey, entries]) => {
     const first = entries[0]!
     const totalQty     = entries.reduce((s, e) => s + Number(e.quantity ?? 0), 0)
     const totalCogs    = entries.reduce((s, e) => s + Number(e.total_cost_amount ?? 0), 0)
@@ -355,7 +383,7 @@ const groupedEntries = computed(() => {
     const dominantStatus = entries.some((e) => e.status === 'due') ? 'due' : 'paid'
     const latestDate = entries.map((e) => e.entry_date ?? '').filter(Boolean).sort().at(-1) ?? '—'
 
-    return {
+    const result = {
       invoiceKey,
       invoice_id: first.invoice_id,
       type: first.type,
@@ -372,7 +400,9 @@ const groupedEntries = computed(() => {
       dominantStatus,
       latestDate
     }
+    return result
   })
+  return res
 })
 
 // ── Grand totals ─────────────────────────────────────────────
@@ -407,6 +437,38 @@ const load = async () => {
     operators: { type: 'eq' },
     sortBy: 'entry_date',
     sortOrder: 'desc',
+  })
+}
+
+const onDeleteInvoice = (invoiceId: number) => {
+  $q.dialog({
+    title: 'Delete Invoice?',
+    message: `This will permanently delete Invoice #${invoiceId}, remove its related accounting records, and unassign and restock any linked inventory items.`,
+    persistent: true,
+    ok: {
+      label: 'Delete',
+      color: 'negative',
+      flat: true,
+    },
+    cancel: {
+      label: 'Cancel',
+      color: 'grey-7',
+      flat: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        const res = await commerceInvoiceService.deleteCommerceInvoice(invoiceId)
+        if (res.success) {
+          showSuccessNotification(`Invoice #${invoiceId} deleted successfully.`)
+          await load()
+        } else {
+          showWarningDialog(res.error || 'Failed to delete invoice.')
+        }
+      } catch (err) {
+        showWarningDialog(err instanceof Error ? err.message : 'An error occurred while deleting invoice.')
+      }
+    })()
   })
 }
 

@@ -56,7 +56,7 @@ export const commerceInvoiceService = {
     ),
   addCommerceInvoiceItem: (
     invoiceId: number,
-    orderId: number,
+    orderId: number | null,
     item: {
       product_id: number
       quantity: number

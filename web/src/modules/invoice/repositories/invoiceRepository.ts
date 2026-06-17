@@ -166,29 +166,67 @@ const updateInvoice = async (payload: UpdateInvoiceInput) => {
 }
 
 const deleteInvoice = async (payload: DeleteInvoiceInput) => {
-  const { error } = await supabase.from('invoices').delete().eq('id', payload.id)
+  const { error } = await supabase.rpc('delete_invoice_transactional', {
+    p_invoice_id: payload.id,
+  })
   if (error) throw error
 }
 
 const createInvoiceItem = async (payload: CreateInvoiceItemInput) => {
-  const { data, error } = await supabase.from('invoice_items').insert([payload]).select('*').single()
+  const { data: { user } } = await supabase.auth.getUser()
+  const createdBy = user?.id || null
+
+  const { data, error } = await supabase.rpc('add_invoice_item_transactional', {
+    p_tenant_id: payload.tenant_id,
+    p_invoice_id: payload.invoice_id,
+    p_inventory_item_id: payload.inventory_item_id,
+    p_quantity: payload.quantity,
+    p_cost_amount: payload.cost_amount,
+    p_sell_price_amount: payload.sell_price_amount,
+    p_name_snapshot: payload.name_snapshot,
+    p_barcode_snapshot: payload.barcode_snapshot,
+    p_product_code_snapshot: payload.product_code_snapshot,
+    p_source_item_type: payload.source_item_type,
+    p_source_item_id: payload.source_item_id,
+    p_line_discount_amount: payload.line_discount_amount || 0,
+    p_line_tax_amount: payload.line_tax_amount || 0,
+    p_created_by: createdBy,
+  })
+
   if (error) throw error
   return data as InvoiceItem
 }
 
 const updateInvoiceItem = async (payload: UpdateInvoiceItemInput) => {
-  const { data, error } = await supabase
+  const { data: currentItem, error: fetchError } = await supabase
     .from('invoice_items')
-    .update(payload.patch)
+    .select('quantity, sell_price_amount, unit')
     .eq('id', payload.id)
-    .select('*')
     .single()
+
+  if (fetchError || !currentItem) {
+    throw fetchError || new Error('Invoice item not found')
+  }
+
+  const quantity = payload.patch.quantity !== undefined ? payload.patch.quantity : currentItem.quantity
+  const sellPrice = payload.patch.sell_price_amount !== undefined ? payload.patch.sell_price_amount : currentItem.sell_price_amount
+  const unit = payload.patch.unit !== undefined ? payload.patch.unit : (currentItem.unit || 'pcs')
+
+  const { data, error } = await supabase.rpc('update_invoice_item_transactional', {
+    p_invoice_item_id: payload.id,
+    p_quantity: quantity,
+    p_sell_price_amount: sellPrice,
+    p_unit: unit,
+  })
+
   if (error) throw error
   return data as InvoiceItem
 }
 
 const deleteInvoiceItem = async (payload: DeleteInvoiceItemInput) => {
-  const { error } = await supabase.from('invoice_items').delete().eq('id', payload.id)
+  const { error } = await supabase.rpc('delete_invoice_item_transactional', {
+    p_invoice_item_id: payload.id,
+  })
   if (error) throw error
 }
 

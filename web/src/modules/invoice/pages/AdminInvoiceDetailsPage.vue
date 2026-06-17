@@ -733,8 +733,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { QPopupProxy } from 'quasar'
 import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 import { useRoute, useRouter } from 'vue-router'
-import { accountingService } from 'src/modules/accounting/services/accountingService'
-import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import type { CreateInvoiceItemInput } from '../types/index'
 import { inventoryService } from 'src/modules/inventory/services/inventoryService'
@@ -1269,73 +1267,13 @@ const addItemToInvoice = async (inventoryItemId: number) => {
     if (!createInvoiceItemResult.success) {
       return
     }
-    const createdInvoiceItem = createInvoiceItemResult.data
-    if (!createdInvoiceItem) {
-      showWarningDialog('Failed to resolve created invoice item.')
-      return
-    }
-
-    const nextAvailable = previousAvailable - quantity
-    let nextOpenBox = previousOpenBox
-    let nextExpired = previousExpired
-
-    if (subtype === 'boxless' || subtype === 'box_damage') {
-      nextOpenBox = previousOpenBox - quantity
-    } else if (subtype === 'expired') {
-      nextExpired = previousExpired - quantity
-    }
-
-    const updateStockResult = await inventoryStore.updateInventoryStock({
-      id: stock.id,
-      patch: {
-        available_quantity: nextAvailable,
-        open_box_quantity: nextOpenBox,
-        expired_quantity: nextExpired,
-      },
-    })
-
-    if (!updateStockResult.success) {
-      return
-    }
-
-    await inventoryStore.createInventoryMovement({
-      inventory_item_id: item.id,
-      type: 'sold',
-      quantity,
-      previous_quantity: previousAvailable,
-      new_quantity: nextAvailable,
-      note: `Auto-deducted from invoice #${invoice.value.invoice_no}`,
-      created_by: authStore.user?.id ?? null,
-    })
-
-    const totalCostAmount = Number((costAmount * quantity).toFixed(2))
-    const totalSellAmount = Number((sellPriceAmount * quantity).toFixed(2))
-    await accountingService.createInventoryAccountingEntry({
-      tenant_id: item.tenant_id,
-      invoice_id: invoice.value.id,
-      invoice_item_id: createdInvoiceItem.id,
-      inventory_item_id: item.id,
-      shipment_id: (item.shipment?.shipment?.id as number | null | undefined) ?? null,
-      shipment_item_id: (item.shipment?.shipment_item?.id as number | null | undefined) ?? null,
-      product_id: item.product_id ?? null,
-      quantity,
-      return_quantity: 0,
-      return_amount: 0,
-      cost_amount: costAmount,
-      sell_price_amount: sellPriceAmount,
-      total_cost_amount: totalCostAmount,
-      total_sell_amount: totalSellAmount,
-      gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
-      status: 'due',
-      entry_date: toDateOnly(new Date()),
-      note: `Created from invoice #${invoice.value.invoice_no} (Sold via Tenant: ${authStore.selectedTenant?.name || authStore.tenantId})`,
-      created_by: authStore.user?.id ?? null,
-    })
 
     addQuantityByItemId.value = { ...addQuantityByItemId.value, [inventoryItemId]: null }
     sellPriceByItemId.value = { ...sellPriceByItemId.value, [inventoryItemId]: null }
     searchTerm.value = ''
     searchResults.value = []
+    
+    await invoiceStore.fetchInvoiceById(invoice.value.id)
     await invoiceStore.fetchInvoiceItems({
       tenant_id: authStore.tenantId,
       filters: { invoice_id: invoice.value.id },
@@ -1345,7 +1283,6 @@ const addItemToInvoice = async (inventoryItemId: number) => {
       sortBy: 'created_at',
       sortOrder: 'asc',
     })
-    await syncInvoiceSellTotal()
     await loadInvoiceItemImages()
   } catch (error) {
     console.error('Error during addItemToInvoice:', error)
@@ -1567,22 +1504,7 @@ const onUpdateDiscount = async (value: string | number | null) => {
   }
 }
 
-const toDateOnly = (value: Date) => value.toISOString().slice(0, 10)
 
-const findAccountingEntryByInvoiceItemId = async (
-  invoiceItemId: number,
-): Promise<InventoryAccountingEntry | null> => {
-  const result = await accountingService.listInventoryAccountingEntries({
-    filters: { invoice_item_id: invoiceItemId },
-    operators: { invoice_item_id: 'eq' },
-    page: 1,
-    page_size: 1,
-    sortBy: 'id',
-    sortOrder: 'desc',
-  })
-  if (!result.success) return null
-  return result.data?.data?.[0] ?? null
-}
 
 const resetSearchDialogState = () => {
   if (searchDebounceTimer) {
@@ -1624,7 +1546,7 @@ const loadInvoiceItemImages = async () => {
 }
 
 const onInlineUpdateSellPrice = async (invoiceItemId: number, value: string | number | null) => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId || !invoice.value) return
   const row = invoiceStore.invoiceItems.find((item) => item.id === invoiceItemId)
   if (!row) return
   const sellPriceAmount = Math.max(0, Number(value ?? 0))
@@ -1632,36 +1554,24 @@ const onInlineUpdateSellPrice = async (invoiceItemId: number, value: string | nu
     id: invoiceItemId,
     patch: {
       sell_price_amount: sellPriceAmount,
-      line_total_amount: 0,
     },
   })
   if (!result.success) return
 
-  const accountingEntry = await findAccountingEntryByInvoiceItemId(invoiceItemId)
-  if (!accountingEntry) return
-  const soldQuantity = Number(row.quantity ?? 0)
-  const returnedQuantity = getReturnedQuantity(row)
-  const netQuantity = Math.max(0, soldQuantity - returnedQuantity)
-  const returnAmount = Number(row.return_amount ?? 0)
-  const totalSellAmount = Number(Math.max(0, sellPriceAmount * soldQuantity - returnAmount).toFixed(2))
-  const totalCostAmount = Number((Number(row.cost_amount ?? 0) * netQuantity).toFixed(2))
-  await accountingService.updateInventoryAccountingEntry({
-    id: accountingEntry.id,
-    patch: {
-      quantity: netQuantity,
-      sell_price_amount: sellPriceAmount,
-      return_quantity: Number(returnedQuantity.toFixed(3)),
-      return_amount: Number(returnAmount.toFixed(2)),
-      total_sell_amount: totalSellAmount,
-      total_cost_amount: totalCostAmount,
-      gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
-    },
+  await invoiceStore.fetchInvoiceById(invoice.value.id)
+  await invoiceStore.fetchInvoiceItems({
+    tenant_id: authStore.tenantId,
+    filters: { invoice_id: invoice.value.id },
+    operators: { invoice_id: 'eq' },
+    page: 1,
+    page_size: 100,
+    sortBy: 'created_at',
+    sortOrder: 'asc',
   })
-  await syncInvoiceSellTotal()
 }
 
 const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | number | null) => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId || !invoice.value) return
   const row = invoiceStore.invoiceItems.find((item) => item.id === invoiceItemId)
   if (!row) return
   const quantity = Math.max(1, Math.floor(Number(value ?? 1)))
@@ -1675,134 +1585,24 @@ const onInlineUpdateQuantity = async (invoiceItemId: number, value: string | num
 
   if (quantityDelta === 0) return
 
-  const inventoryItemId = row.inventory_item_id
-  if (!inventoryItemId) {
-    showWarningDialog('This invoice item has no linked inventory item.')
-    return
-  }
-
-  const stockResult = await inventoryService.listInventoryStocks({
-    tenant_id: authStore.tenantId,
-    filters: { inventory_item_id: inventoryItemId },
-    operators: { inventory_item_id: 'eq' },
-    page: 1,
-    page_size: 1,
-  })
-
-  if (!stockResult.success || !stockResult.data?.data.length) {
-    showWarningDialog(stockResult.error ?? 'Failed to load stock for this item.')
-    return
-  }
-
-  const stock = stockResult.data?.data?.[0]
-  if (!stock) {
-    showWarningDialog('Failed to resolve stock record for this item.')
-    return
-  }
-
-  const subtype = getSubtypeFromItem({ name: row.name_snapshot })
-  const currentAvailable = Number(stock.available_quantity ?? 0)
-  const currentOpenBox = Number(stock.open_box_quantity ?? 0)
-  const currentExpired = Number(stock.expired_quantity ?? 0)
-
-  let usablePool = 0
-  if (subtype === 'standard') {
-    usablePool = Math.max(0, currentAvailable - Number(stock.reserved_quantity ?? 0))
-  } else if (subtype === 'boxless' || subtype === 'box_damage') {
-    usablePool = currentOpenBox
-  } else if (subtype === 'expired') {
-    usablePool = currentExpired
-  }
-
-  if (quantityDelta > usablePool) {
-    showWarningDialog('Not enough usable stock for this quantity.')
-    return
-  }
-
-  const nextAvailable = currentAvailable - quantityDelta
-  if (nextAvailable < 0) {
-    showWarningDialog('Not enough usable stock for this quantity.')
-    return
-  }
-
-  let nextOpenBox = currentOpenBox
-  let nextExpired = currentExpired
-
-  if (subtype === 'boxless' || subtype === 'box_damage') {
-    nextOpenBox = currentOpenBox - quantityDelta
-    if (nextOpenBox < 0) {
-      showWarningDialog('Not enough open box stock for this quantity.')
-      return
-    }
-  } else if (subtype === 'expired') {
-    nextExpired = currentExpired - quantityDelta
-    if (nextExpired < 0) {
-      showWarningDialog('Not enough expired stock for this quantity.')
-      return
-    }
-  }
-
   const result = await invoiceStore.updateInvoiceItem({
     id: invoiceItemId,
     patch: {
       quantity,
-      line_total_amount: 0,
     },
   })
   if (!result.success) return
 
-  const updateStockResult = await inventoryStore.updateInventoryStock({
-    id: stock.id,
-    patch: {
-      available_quantity: nextAvailable,
-      open_box_quantity: nextOpenBox,
-      expired_quantity: nextExpired,
-    },
+  await invoiceStore.fetchInvoiceById(invoice.value.id)
+  await invoiceStore.fetchInvoiceItems({
+    tenant_id: authStore.tenantId,
+    filters: { invoice_id: invoice.value.id },
+    operators: { invoice_id: 'eq' },
+    page: 1,
+    page_size: 100,
+    sortBy: 'created_at',
+    sortOrder: 'asc',
   })
-
-  if (!updateStockResult.success) {
-    await invoiceStore.updateInvoiceItem({
-      id: invoiceItemId,
-      patch: {
-        quantity: previousQuantity,
-        line_total_amount: 0,
-      },
-    })
-    return
-  }
-
-  await inventoryStore.createInventoryMovement({
-    inventory_item_id: inventoryItemId,
-    type: quantityDelta > 0 ? 'sold' : 'adjustment',
-    quantity: Math.abs(quantityDelta),
-    previous_quantity: currentAvailable,
-    new_quantity: nextAvailable,
-    note: `Invoice quantity changed from ${previousQuantity} to ${quantity}.`,
-    created_by: authStore.user?.id ?? null,
-  })
-
-  const accountingEntry = await findAccountingEntryByInvoiceItemId(invoiceItemId)
-  if (!accountingEntry) return
-  const sellPriceAmount = Number(row.sell_price_amount ?? 0)
-  const costAmount = Number(row.cost_amount ?? 0)
-  const returnAmount = Number(row.return_amount ?? 0)
-  const netQuantity = Math.max(0, quantity - returnedQuantity)
-  const totalSellAmount = Number(Math.max(0, sellPriceAmount * quantity - returnAmount).toFixed(2))
-  const totalCostAmount = Number((costAmount * netQuantity).toFixed(2))
-  await accountingService.updateInventoryAccountingEntry({
-    id: accountingEntry.id,
-    patch: {
-      quantity: netQuantity,
-      sell_price_amount: sellPriceAmount,
-      cost_amount: costAmount,
-      return_quantity: Number(returnedQuantity.toFixed(3)),
-      return_amount: Number(returnAmount.toFixed(2)),
-      total_sell_amount: totalSellAmount,
-      total_cost_amount: totalCostAmount,
-      gross_profit_amount: Number((totalSellAmount - totalCostAmount).toFixed(2)),
-    },
-  })
-  await syncInvoiceSellTotal()
 }
 
 const openDeleteInvoiceItem = (id: number) => {
@@ -1812,82 +1612,22 @@ const openDeleteInvoiceItem = (id: number) => {
 
 const onDeleteInvoiceItem = async () => {
   if (!selectedInvoiceItemId.value) return
-  if (!authStore.tenantId) return
-  const row = invoiceStore.invoiceItems.find((item) => item.id === selectedInvoiceItemId.value)
-  if (!row) return
+  if (!authStore.tenantId || !invoice.value) return
 
-  const netQuantity = Math.max(0, Number(row.quantity ?? 0) - getReturnedQuantity(row))
-  let stockIdToUpdate: number | null = null
-  let previousAvailable = 0
-  let previousOpenBox = 0
-  let previousExpired = 0
-  let subtype: 'standard' | 'boxless' | 'box_damage' | 'expired' = 'standard'
-
-  if (row.inventory_item_id && netQuantity > 0) {
-    const stockResult = await inventoryService.listInventoryStocks({
-      tenant_id: authStore.tenantId,
-      filters: { inventory_item_id: row.inventory_item_id },
-      operators: { inventory_item_id: 'eq' },
-      page: 1,
-      page_size: 1,
-    })
-    if (!stockResult.success || !stockResult.data?.data.length) {
-      showWarningDialog(stockResult.error ?? 'Failed to load stock for delete rollback.')
-      return
-    }
-    const stock = stockResult.data.data[0]
-    if (!stock) {
-      showWarningDialog('Stock record is missing for this invoice item.')
-      return
-    }
-    stockIdToUpdate = stock.id
-    previousAvailable = Number(stock.available_quantity ?? 0)
-    previousOpenBox = Number(stock.open_box_quantity ?? 0)
-    previousExpired = Number(stock.expired_quantity ?? 0)
-    subtype = getSubtypeFromItem({ name: row.name_snapshot }) as 'standard' | 'boxless' | 'box_damage' | 'expired'
-  }
-
-  const accountingEntry = await findAccountingEntryByInvoiceItemId(selectedInvoiceItemId.value)
   const result = await invoiceStore.deleteInvoiceItem({ id: selectedInvoiceItemId.value })
   if (result.success) {
-    if (stockIdToUpdate != null && netQuantity > 0) {
-      const nextAvailable = previousAvailable + netQuantity
-      let nextOpenBox = previousOpenBox
-      let nextExpired = previousExpired
-
-      if (subtype === 'boxless' || subtype === 'box_damage') {
-        nextOpenBox = previousOpenBox + netQuantity
-      } else if (subtype === 'expired') {
-        nextExpired = previousExpired + netQuantity
-      }
-
-      const updateStockResult = await inventoryStore.updateInventoryStock({
-        id: stockIdToUpdate,
-        patch: {
-          available_quantity: nextAvailable,
-          open_box_quantity: nextOpenBox,
-          expired_quantity: nextExpired,
-        },
-      })
-      if (updateStockResult.success && row.inventory_item_id) {
-        await inventoryStore.createInventoryMovement({
-          inventory_item_id: row.inventory_item_id,
-          type: 'adjustment',
-          quantity: netQuantity,
-          previous_quantity: previousAvailable,
-          new_quantity: nextAvailable,
-          note: `Invoice item deleted from #${invoice.value?.invoice_no ?? '-'}`,
-          created_by: authStore.user?.id ?? null,
-        })
-      }
-    }
-
-    if (accountingEntry) {
-      await accountingService.deleteInventoryAccountingEntry({ id: accountingEntry.id })
-    }
     deleteInvoiceItemOpen.value = false
     selectedInvoiceItemId.value = null
-    await syncInvoiceSellTotal()
+    await invoiceStore.fetchInvoiceById(invoice.value.id)
+    await invoiceStore.fetchInvoiceItems({
+      tenant_id: authStore.tenantId,
+      filters: { invoice_id: invoice.value.id },
+      operators: { invoice_id: 'eq' },
+      page: 1,
+      page_size: 100,
+      sortBy: 'created_at',
+      sortOrder: 'asc',
+    })
     await loadInvoiceItemImages()
   }
 }

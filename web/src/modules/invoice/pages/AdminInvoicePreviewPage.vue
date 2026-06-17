@@ -319,8 +319,10 @@
             
             <div class="row items-center q-col-gutter-x-md wrap" style="font-size: 11px;">
               <div><strong>Name:</strong> <span class="text-weight-bold text-black">{{ customClientName || originalClientName || '-' }}</span></div>
-              <div class="text-grey-4">|</div>
-              <div><strong>TR:</strong> <span class="text-weight-bold text-black">{{ clientTr || '-' }}</span></div>
+              <template v-if="clientTr && clientTr !== '-'">
+                <div class="text-grey-4">|</div>
+                <div><strong>TR:</strong> <span class="text-weight-bold text-black">{{ clientTr }}</span></div>
+              </template>
             </div>
 
             <div class="row items-center q-gutter-x-sm text-grey-7 q-mt-none wrap" style="font-size: 10px; line-height: 1.2; margin-top: 4px;">
@@ -368,11 +370,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!localItems.length">
+              <tr v-if="!aggregatedPrintItems.length">
                 <td :colspan="showImages ? 7 : 6" class="text-center text-grey-7">No invoice items.</td>
               </tr>
-              <tr v-for="(row, index) in localItems" :key="row.id">
-                <td class="text-center">{{ Number(index) + 1 }}</td>
+              <tr v-for="(row, index) in aggregatedPrintItems" :key="row.name_snapshot + '_' + row.sell_price_amount + '_' + row.unit">
+                <td class="text-center">{{ index + 1 }}</td>
                 <td v-if="showImages" class="text-center">
                   <q-avatar rounded size="0.5in" class="bg-grey-2 border-light">
                     <img
@@ -386,9 +388,9 @@
                   {{ row.name_snapshot }}
                 </td>
                 <td class="text-right text-mono">{{ formatMoney(row.sell_price_amount) }}</td>
-                <td class="text-right text-mono">{{ getNetQuantity(row) }}</td>
+                <td class="text-right text-mono">{{ row.quantity }}</td>
                 <td class="text-left text-capitalize">{{ row.unit || 'pcs' }}</td>
-                <td class="text-right text-weight-bold text-black text-mono">{{ formatMoney(getNetQuantity(row) * row.sell_price_amount) }}</td>
+                <td class="text-right text-weight-bold text-black text-mono">{{ formatMoney(row.quantity * row.sell_price_amount) }}</td>
               </tr>
             </tbody>
           </q-markup-table>
@@ -526,6 +528,40 @@ const getNetQuantity = (row: { quantity: number; return_normal_quantity?: number
 const subTotal = computed(() =>
   localItems.value.reduce((sum, item) => sum + (getNetQuantity(item) * item.sell_price_amount), 0)
 )
+
+const aggregatedPrintItems = computed(() => {
+  const groups: Record<string, {
+    id: number
+    name_snapshot: string
+    sell_price_amount: number
+    unit: string
+    quantity: number
+    inventory_item_id: number | null
+  }> = {}
+
+  for (const item of localItems.value) {
+    const name = item.name_snapshot || ''
+    const rate = Number(item.sell_price_amount ?? 0)
+    const unit = (item.unit || 'pcs').toLowerCase().trim()
+    const key = `${name}_${rate}_${unit}`
+    const netQty = getNetQuantity(item)
+
+    if (groups[key]) {
+      groups[key].quantity += netQty
+    } else {
+      groups[key] = {
+        id: item.id,
+        name_snapshot: name,
+        sell_price_amount: rate,
+        unit: item.unit || 'pcs',
+        quantity: netQty,
+        inventory_item_id: item.inventory_item_id,
+      }
+    }
+  }
+
+  return Object.values(groups)
+})
 
 const grandTotalAmount = computed(() => {
   const base = subTotal.value - Number(invoice.value?.discount_amount ?? 0)

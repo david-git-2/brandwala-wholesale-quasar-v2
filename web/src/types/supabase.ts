@@ -1710,13 +1710,6 @@ export type Database = {
             foreignKeyName: "invoice_accounting_payments_inventory_accounting_entry_id_fkey"
             columns: ["inventory_accounting_entry_id"]
             isOneToOne: false
-            referencedRelation: "commerce_accounting"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_accounting_payments_inventory_accounting_entry_id_fkey"
-            columns: ["inventory_accounting_entry_id"]
-            isOneToOne: false
             referencedRelation: "inventory_accounting_entries"
             referencedColumns: ["id"]
           },
@@ -4218,97 +4211,6 @@ export type Database = {
       }
     }
     Views: {
-      commerce_accounting: {
-        Row: {
-          billing_profile_id: number | null
-          cost_bdt: number | null
-          created_at: string | null
-          customer_group_id: number | null
-          id: number | null
-          inventory_item_id: number | null
-          is_customer_group_paid: boolean | null
-          order_item_id: number | null
-          recipient_sell_price_bdt: number | null
-          sell_price_bdt: number | null
-          shipment_item_id: number | null
-          tenant_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          billing_profile_id?: number | null
-          cost_bdt?: number | null
-          created_at?: string | null
-          customer_group_id?: number | null
-          id?: number | null
-          inventory_item_id?: number | null
-          is_customer_group_paid?: never
-          order_item_id?: number | null
-          recipient_sell_price_bdt?: number | null
-          sell_price_bdt?: number | null
-          shipment_item_id?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          billing_profile_id?: number | null
-          cost_bdt?: number | null
-          created_at?: string | null
-          customer_group_id?: number | null
-          id?: number | null
-          inventory_item_id?: number | null
-          is_customer_group_paid?: never
-          order_item_id?: number | null
-          recipient_sell_price_bdt?: number | null
-          sell_price_bdt?: number | null
-          shipment_item_id?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_accounting_entries_billing_profile_id_fkey"
-            columns: ["billing_profile_id"]
-            isOneToOne: false
-            referencedRelation: "billing_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_accounting_entries_commerce_order_item_id_fkey"
-            columns: ["order_item_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_order_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_accounting_entries_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_accounting_entries_inventory_item_id_fkey"
-            columns: ["inventory_item_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_accounting_entries_shipment_item_id_fkey"
-            columns: ["shipment_item_id"]
-            isOneToOne: false
-            referencedRelation: "shipment_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_accounting_entries_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_shipment_accounting_ledger: {
         Row: {
           cod: number | null
@@ -4330,66 +4232,13 @@ export type Database = {
           sell_price_amount: number | null
           shipment_id: number | null
           shipment_item_id: number | null
+          shipment_name: string | null
           status: string | null
           tenant_id: number | null
           total_cost_amount: number | null
           total_sell_amount: number | null
           type: string | null
           wrapping_charge: number | null
-        }
-        Insert: {
-          cod?: number | null
-          cost_amount?: number | null
-          created_at?: string | null
-          delivery_charge?: number | null
-          discount_amount?: number | null
-          entry_date?: string | null
-          gross_profit_amount?: number | null
-          id?: number | null
-          inventory_item_id?: number | null
-          invoice_id?: never
-          invoice_item_id?: number | null
-          is_charges?: boolean | null
-          note?: string | null
-          print_charge?: number | null
-          product_id?: number | null
-          quantity?: number | null
-          sell_price_amount?: number | null
-          shipment_id?: number | null
-          shipment_item_id?: number | null
-          status?: string | null
-          tenant_id?: number | null
-          total_cost_amount?: number | null
-          total_sell_amount?: number | null
-          type?: string | null
-          wrapping_charge?: number | null
-        }
-        Update: {
-          cod?: number | null
-          cost_amount?: number | null
-          created_at?: string | null
-          delivery_charge?: number | null
-          discount_amount?: number | null
-          entry_date?: string | null
-          gross_profit_amount?: number | null
-          id?: number | null
-          inventory_item_id?: number | null
-          invoice_id?: never
-          invoice_item_id?: number | null
-          is_charges?: boolean | null
-          note?: string | null
-          print_charge?: number | null
-          product_id?: number | null
-          quantity?: number | null
-          sell_price_amount?: number | null
-          shipment_id?: number | null
-          shipment_item_id?: number | null
-          status?: string | null
-          tenant_id?: number | null
-          total_cost_amount?: number | null
-          total_sell_amount?: number | null
-          type?: string | null
-          wrapping_charge?: number | null
         }
         Relationships: [
           {
@@ -4451,6 +4300,25 @@ export type Database = {
           p_sell_price_bdt: number
         }
         Returns: undefined
+      }
+      add_invoice_item_transactional: {
+        Args: {
+          p_barcode_snapshot: string
+          p_cost_amount: number
+          p_created_by: string
+          p_inventory_item_id: number
+          p_invoice_id: number
+          p_line_discount_amount: number
+          p_line_tax_amount: number
+          p_name_snapshot: string
+          p_product_code_snapshot: string
+          p_quantity: number
+          p_sell_price_amount: number
+          p_source_item_id: number
+          p_source_item_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       add_item_to_cart: {
         Args: {
@@ -4638,6 +4506,14 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      assign_commerce_order_item_inventory_transactional: {
+        Args: {
+          p_inventory_item_id: number
+          p_invoice_id: number
+          p_order_item_id: number
+        }
+        Returns: undefined
       }
       bulk_add_shipment_items_from_product_ids: {
         Args: { p_items: Json; p_shipment_id: number }
@@ -5181,6 +5057,18 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      delete_commerce_invoice_transactional: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
+      delete_invoice_item_transactional: {
+        Args: { p_invoice_item_id: number }
+        Returns: undefined
+      }
+      delete_invoice_transactional: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
       delete_shipment: { Args: { p_id: number }; Returns: undefined }
       delete_shipment_item_quantity: {
         Args: { p_id: number; p_quantity: number }
@@ -5229,6 +5117,10 @@ export type Database = {
           public_domain: string
           slug: string
         }[]
+      }
+      fn_recalculate_normal_invoice_totals: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
       }
       get_active_module_keys_for_tenant: {
         Args: { p_tenant_id: number }
@@ -5867,6 +5759,10 @@ export type Database = {
         Args: { p_shipment_id?: number; p_tenant_id: number }
         Returns: number
       }
+      remove_commerce_invoice_item_transactional: {
+        Args: { p_invoice_id: number; p_order_item_id: number }
+        Returns: undefined
+      }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -5898,6 +5794,10 @@ export type Database = {
         Args: { p_value: number }
         Returns: number
       }
+      unassign_commerce_order_item_inventory_transactional: {
+        Args: { p_invoice_id: number; p_order_item_id: number }
+        Returns: undefined
+      }
       update_commerce_invoice_charges: {
         Args: {
           p_advance_amount?: number
@@ -5920,6 +5820,17 @@ export type Database = {
           p_wrapping_charge?: number
         }
         Returns: Json
+      }
+      update_commerce_invoice_item_transactional: {
+        Args: {
+          p_invoice_id: number
+          p_order_item_id: number
+          p_quantity: number
+          p_recipient_price_bdt: number
+          p_sell_price_bdt: number
+          p_unit: string
+        }
+        Returns: undefined
       }
       update_costing_file: {
         Args: {
@@ -6080,6 +5991,15 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_invoice_item_transactional: {
+        Args: {
+          p_invoice_item_id: number
+          p_quantity: number
+          p_sell_price_amount: number
+          p_unit: string
+        }
+        Returns: Json
       }
       update_payment_allocation_amount: {
         Args: { p_allocation_id: number; p_amount: number; p_tenant_id: number }

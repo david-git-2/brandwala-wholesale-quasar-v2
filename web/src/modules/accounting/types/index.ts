@@ -38,6 +38,7 @@ export type InventoryAccountingEntry = {
   invoice_item_id: number | null
   inventory_item_id: number | null
   shipment_id: number | null
+  shipment_name?: string | null
   shipment_item_id: number | null
   product_id: number | null
   quantity: number

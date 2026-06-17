@@ -348,8 +348,10 @@
           <div class="billing-profile-box border-light q-pa-sm rounded-borders bg-grey-1 q-mb-xs">
             <div class="row items-center q-col-gutter-x-md wrap" style="font-size: 11px;">
               <div><strong>Name:</strong> <span class="text-weight-bold text-black">{{ customClientName || originalClientName || '-' }}</span></div>
-              <div class="text-grey-4">|</div>
-              <div><strong>TR:</strong> <span class="text-weight-bold text-black">{{ clientTr || '-' }}</span></div>
+              <template v-if="clientTr && clientTr !== '-'">
+                <div class="text-grey-4">|</div>
+                <div><strong>TR:</strong> <span class="text-weight-bold text-black">{{ clientTr }}</span></div>
+              </template>
             </div>
 
             <div class="row items-center q-gutter-x-sm text-grey-7 q-mt-none wrap" style="font-size: 10px; line-height: 1.2; margin-top: 4px;">
@@ -397,10 +399,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!localItems.length">
+              <tr v-if="!aggregatedPrintItems.length">
                 <td :colspan="showImages ? 7 : 6" class="text-center text-grey-7">No invoice items.</td>
               </tr>
-              <tr v-for="(row, index) in localItems" :key="row.id">
+              <tr v-for="(row, index) in aggregatedPrintItems" :key="row.product_id + '_' + row.recipient_price_bdt + '_' + row.unit">
                 <td class="text-center">{{ index + 1 }}</td>
                 <td v-if="showImages" class="text-center">
                   <q-avatar rounded size="0.5in" class="bg-grey-2 border-light">
@@ -563,6 +565,43 @@ const slCode = computed(() => {
 const subTotal = computed(() =>
   localItems.value.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.recipient_price_bdt)), 0)
 )
+
+const aggregatedPrintItems = computed(() => {
+  const groups: Record<string, {
+    id: number
+    product_id: number
+    products: CommerceInvoiceDetailsItem['products']
+    inventory_items: CommerceInvoiceDetailsItem['inventory_items']
+    recipient_price_bdt: number
+    quantity: number
+    unit: string
+    image_url: string | null
+  }> = {}
+
+  for (const item of localItems.value) {
+    const productId = item.product_id || 0
+    const rate = Number(item.recipient_price_bdt ?? 0)
+    const unit = (item.unit || 'pcs').toLowerCase().trim()
+    const key = `${productId}_${rate}_${unit}`
+
+    if (groups[key]) {
+      groups[key].quantity += Number(item.quantity || 0)
+    } else {
+      groups[key] = {
+        id: item.id,
+        product_id: item.product_id,
+        products: item.products,
+        inventory_items: item.inventory_items,
+        recipient_price_bdt: rate,
+        quantity: Number(item.quantity || 0),
+        unit: item.unit || 'pcs',
+        image_url: item.image_url,
+      }
+    }
+  }
+
+  return Object.values(groups)
+})
 
 const grandTotalAmount = computed(() => {
   const discount = Number(invoice.value?.discount_amount ?? 0)

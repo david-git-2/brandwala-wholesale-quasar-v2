@@ -194,26 +194,31 @@
                           />
                         </q-popup-edit>
                       </td>
-                      <!-- Recipient Price (editable) -->
+                      <!-- Recipient Price (editable/readonly) -->
                       <td class="text-right">
-                        <span class="cursor-pointer text-primary text-weight-medium">৳{{ formatAmount(Number(row.recipient_price_bdt || 0)) }}</span>
-                        <q-popup-edit
-                          :model-value="row.recipient_price_bdt"
-                          buttons
-                          label-set="Save"
-                          label-cancel="Cancel"
-                          @save="(val) => onInlineUpdateItem(row, 'recipient_price_bdt', val)"
-                          v-slot="scope"
-                        >
-                          <q-input
-                            v-model.number="scope.value"
-                            type="number"
-                            dense
-                            autofocus
-                            min="0"
-                            label="Recipient Price"
-                          />
-                        </q-popup-edit>
+                        <template v-if="invoice?.invoice_type === 'wholesale'">
+                          <span class="text-grey-9 text-weight-medium">৳{{ formatAmount(Number(row.recipient_price_bdt || 0)) }}</span>
+                        </template>
+                        <template v-else>
+                          <span class="cursor-pointer text-primary text-weight-medium">৳{{ formatAmount(Number(row.recipient_price_bdt || 0)) }}</span>
+                          <q-popup-edit
+                            :model-value="row.recipient_price_bdt"
+                            buttons
+                            label-set="Save"
+                            label-cancel="Cancel"
+                            @save="(val) => onInlineUpdateItem(row, 'recipient_price_bdt', val)"
+                            v-slot="scope"
+                          >
+                            <q-input
+                              v-model.number="scope.value"
+                              type="number"
+                              dense
+                              autofocus
+                              min="0"
+                              label="Recipient Price"
+                            />
+                          </q-popup-edit>
+                        </template>
                       </td>
                       <!-- Quantity (editable) -->
                       <td class="text-right">
@@ -512,16 +517,14 @@
                   <div class="text-caption text-grey-7 text-weight-medium">Recipient Name</div>
                   <div class="text-body2 text-weight-bold text-grey-9">{{ order.recipient_name }}</div>
                 </div>
-                <template v-if="invoice && invoice.invoice_type !== 'wholesale'">
-                  <div>
-                    <div class="text-caption text-grey-7 text-weight-medium">Recipient Phone</div>
-                    <div class="text-body2 text-weight-medium text-grey-9">{{ order.recipient_phone }}</div>
-                  </div>
-                  <div>
-                    <div class="text-caption text-grey-7 text-weight-medium">Shipping Address</div>
-                    <div class="text-body2 text-grey-9 text-weight-medium" style="white-space: pre-wrap;">{{ order.shipping_address }}</div>
-                  </div>
-                </template>
+                <div>
+                  <div class="text-caption text-grey-7 text-weight-medium">Recipient Phone</div>
+                  <div class="text-body2 text-weight-medium text-grey-9">{{ order.recipient_phone }}</div>
+                </div>
+                <div>
+                  <div class="text-caption text-grey-7 text-weight-medium">Shipping Address</div>
+                  <div class="text-body2 text-grey-9 text-weight-medium" style="white-space: pre-wrap;">{{ order.shipping_address }}</div>
+                </div>
               </div>
               <div v-else class="text-grey-6 q-pa-xs">No associated details found.</div>
             </div>
@@ -765,6 +768,7 @@
                         label="Recipient Price"
                         class="soft-input no-number-steppers"
                         style="width: 130px"
+                        :readonly="invoice?.invoice_type === 'wholesale'"
                       />
 
                       <q-btn
@@ -1145,6 +1149,16 @@ const onInlineUpdateItem = async (row: CommerceInvoiceItemRow, field: 'quantity'
       payload.recipient_price_bdt = Math.max(0, Number(value || 0))
     }
 
+    if (invoice.value?.invoice_type === 'wholesale') {
+      if (field === 'sell_price_bdt') {
+        payload.recipient_price_bdt = payload.sell_price_bdt
+      } else if (field === 'recipient_price_bdt') {
+        payload.sell_price_bdt = payload.recipient_price_bdt
+      } else {
+        payload.recipient_price_bdt = payload.sell_price_bdt
+      }
+    }
+
     if (field === 'quantity' && row.inventory_item_id) {
       const stockRes = await inventoryStore.fetchGlobalInventoryItems({
         filters: { id: row.inventory_item_id },
@@ -1326,6 +1340,9 @@ const getSellPrice = (itemId: number, defaultCost: number): number => {
 }
 
 const getRecipientPrice = (itemId: number, defaultCost: number): number => {
+  if (invoice.value?.invoice_type === 'wholesale') {
+    return getSellPrice(itemId, defaultCost)
+  }
   if (recipientPriceByItemId.value[itemId] === undefined || recipientPriceByItemId.value[itemId] === null) {
     recipientPriceByItemId.value[itemId] = Number(selectedOrderItem.value?.recipient_price_bdt || defaultCost || 0)
   }
@@ -1337,7 +1354,11 @@ const setAddQuantity = (itemId: number, value: string | number | null) => {
 }
 
 const setSellPrice = (itemId: number, value: string | number | null) => {
-  sellPriceByItemId.value[itemId] = Number(value) || 0
+  const val = Number(value) || 0
+  sellPriceByItemId.value[itemId] = val
+  if (invoice.value?.invoice_type === 'wholesale') {
+    recipientPriceByItemId.value[itemId] = val
+  }
 }
 
 const setRecipientPrice = (itemId: number, value: string | number | null) => {
