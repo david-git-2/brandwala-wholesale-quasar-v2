@@ -14,7 +14,7 @@ interface ThriftStockDbRow {
   color: string;
   size: string;
   condition: string;
-  sku: string;
+  barcode: string;
   stock_type: string;
   quantity: number;
   box_id?: number;

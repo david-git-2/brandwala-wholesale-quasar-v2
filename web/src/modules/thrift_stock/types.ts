@@ -16,7 +16,7 @@ export interface ThriftStock {
   color: string;
   size: string;
   condition: ThriftCondition;
-  sku: string;
+  barcode: string;
   stock_type: ThriftStockType;
   quantity: number;
   box_id?: number | undefined;

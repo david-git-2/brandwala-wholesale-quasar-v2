@@ -161,7 +161,7 @@
                 <q-input v-model="form.brand_name" outlined dense label="Brand Name" class="soft-input" />
               </div>
               <div class="col-12 col-sm-6">
-                <q-input v-model="form.sku" outlined dense label="SKU Code *" class="soft-input"
+                <q-input v-model="form.barcode" outlined dense label="Barcode *" class="soft-input"
                   :rules="[val => !!val && val.length > 0 || 'Required']" />
               </div>
             </div>
@@ -268,16 +268,16 @@
               </div>
             </div>
 
-            <!-- SKU Code -->
+            <!-- Barcode -->
             <div>
-              <label class="text-caption text-weight-medium text-grey-8">Auto-Generated SKU</label>
+              <label class="text-caption text-weight-medium text-grey-8">Auto-Generated Barcode</label>
               <q-input
-                v-model="quickAddForm.sku"
+                v-model="quickAddForm.barcode"
                 outlined
                 dense
                 readonly
                 class="soft-input q-mt-xs"
-                placeholder="Generating SKU..."
+                placeholder="Generating Barcode..."
               />
             </div>
 
@@ -379,7 +379,7 @@ const defaults = ref({
 });
 
 const quickAddForm = ref({
-  sku: '',
+  barcode: '',
   imageUrl: '',
   deleteToken: '',
 });
@@ -397,7 +397,7 @@ const form = ref({
   box_id: null as number | null,
   name: '',
   brand_name: '',
-  sku: '',
+  barcode: '',
   section: 'UNISEX',
   shelf_id: null as number | null,
   color: '',
@@ -445,7 +445,7 @@ const pricing = ref({
 
 const columns: QTableColumn[] = [
   { name: 'image', align: 'center', label: 'Image', field: 'image_url' },
-  { name: 'sku', align: 'left', label: 'SKU', field: 'sku', sortable: true },
+  { name: 'barcode', align: 'left', label: 'Barcode', field: 'barcode', sortable: true },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'brand_name', align: 'left', label: 'Brand', field: 'brand_name' },
   { name: 'section', align: 'left', label: 'Section', field: 'section' },
@@ -514,7 +514,7 @@ async function loadTenantSettings() {
   }
 }
 
-async function generateSku() {
+async function generateBarcode() {
   if (!authStore.tenantId || !defaults.value.default_shipment_id) return;
   
   const tenantId = authStore.tenantId;
@@ -547,18 +547,18 @@ async function generateSku() {
       rand += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
-    quickAddForm.value.sku = `${tenantId}-${shipmentId}-${boxId}-${formattedSeq}-${rand}`;
+    quickAddForm.value.barcode = `${tenantId}-${shipmentId}-${boxId}-${formattedSeq}-${rand}`;
   } catch (err) {
-    console.error('Failed to generate SKU:', err);
-    quickAddForm.value.sku = `SKU-FALLBACK-${Math.floor(Math.random() * 90000 + 10000)}`;
+    console.error('Failed to generate barcode:', err);
+    quickAddForm.value.barcode = `BC-FALLBACK-${Math.floor(Math.random() * 90000 + 10000)}`;
   }
 }
 
 async function openAddDialog() {
-  quickAddForm.value = { sku: '', imageUrl: '', deleteToken: '' };
+  quickAddForm.value = { barcode: '', imageUrl: '', deleteToken: '' };
   await loadTenantSettings();
   if (defaults.value.default_shipment_id) {
-    await generateSku();
+    await generateBarcode();
   }
   quickAddDialogOpen.value = true;
 }
@@ -596,7 +596,7 @@ async function submitQuickAdd() {
   
   quickSubmitting.value = true;
   try {
-    const sku = quickAddForm.value.sku;
+    const barcode = quickAddForm.value.barcode;
     
     const catId = categories.value[0]?.id;
     const typId = types.value[0]?.id;
@@ -619,7 +619,7 @@ async function submitQuickAdd() {
       '', // No prefilled color
       '', // No prefilled size
       'EXCELLENT',
-      sku,
+      barcode,
       'SINGLE',
       1,
       defaults.value.default_box_id || undefined,
@@ -669,7 +669,7 @@ function openEditDialog(row: ThriftStock) {
     box_id: row.box_id || null,
     name: row.name,
     brand_name: row.brand_name || '',
-    sku: row.sku,
+    barcode: row.barcode,
     section: row.section,
     shelf_id: row.shelf_id,
     color: row.color,
@@ -736,7 +736,7 @@ async function onSubmit() {
       color: form.value.color,
       size: form.value.size,
       condition: form.value.condition as ThriftCondition,
-      sku: form.value.sku,
+      barcode: form.value.barcode,
       quantity: form.value.quantity,
       box_id: form.value.box_id || undefined,
       product_weight: form.value.product_weight || undefined,
@@ -746,7 +746,7 @@ async function onSubmit() {
     };
 
     if (editingId.value) {
-      await store.updateStock(editingId.value, stockData, pricing.value);
+      await store.updateStock(editingId.value, stockData as any, pricing.value);
       $q.notify({ type: 'positive', message: 'Thrift stock updated successfully' });
     } else {
       await store.createStock(
@@ -761,7 +761,7 @@ async function onSubmit() {
         form.value.color,
         form.value.size,
         form.value.condition,
-        form.value.sku,
+        form.value.barcode,
         'SINGLE',
         form.value.quantity,
         form.value.box_id || undefined,

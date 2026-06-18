@@ -1,26 +1,87 @@
 <template>
   <div class="callback-stage" :class="`theme-${scope}`">
     <div class="callback-stage__card">
-      <q-spinner-tail color="primary" size="42px" />
-      <div class="callback-stage__title">Finishing sign-in</div>
-      <div class="callback-stage__copy">
-        Checking your access for the selected route and preparing the workspace.
-      </div>
+      <template v-if="isRedirectingToApp">
+        <q-spinner-tail color="primary" size="42px" />
+        <div class="callback-stage__title">Opening Thrift App...</div>
+        <div class="callback-stage__copy">
+          You are being redirected back to the Thrift application.
+        </div>
+        <div v-if="appRedirectUrl" class="q-mt-lg">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            class="q-px-lg q-py-sm font-semibold"
+            :href="appRedirectUrl"
+            label="Open Thrift App"
+          />
+          <div class="text-caption text-grey-6 q-mt-sm">
+            If the app didn't open automatically, click the button above.
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <q-spinner-tail color="primary" size="42px" />
+        <div class="callback-stage__title">Finishing sign-in</div>
+        <div class="callback-stage__copy">
+          Checking your access for the selected route and preparing the workspace.
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-
+import { supabase } from 'src/boot/supabase'
 import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin'
 
 const route = useRoute()
 const scope = (route.query.scope as AuthScope | undefined) ?? 'app'
 const { processLoginResult } = useOAuthLogin(scope)
 
-onMounted(() => {
+const isRedirectingToApp = ref(false)
+const appRedirectUrl = ref('')
+
+onMounted(async () => {
+  const appRedirect = route.query.app_redirect
+  
+  if (appRedirect === 'thrift') {
+    isRedirectingToApp.value = true
+    
+    // Poll for the session to be established by Supabase
+    let session = null
+    for (let i = 0; i < 30; i++) {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        session = data.session
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    
+    if (session) {
+      const tenantSlug = route.query.tenant_slug || 'thrift'
+      const accessToken = session.access_token
+      const refreshToken = session.refresh_token
+      
+      if (accessToken && refreshToken) {
+        const isAndroid = /Android/i.test(navigator.userAgent)
+        if (isAndroid) {
+          // Use Android Intent URI to guarantee Chrome launches the app successfully
+          appRedirectUrl.value = `intent://auth-callback?scope=app&tenant_slug=${tenantSlug}#access_token=${accessToken}&refresh_token=${refreshToken}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`
+        } else {
+          // Standard custom scheme for iOS and fallback
+          appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?scope=app&tenant_slug=${tenantSlug}#access_token=${accessToken}&refresh_token=${refreshToken}`
+        }
+        window.location.href = appRedirectUrl.value
+        return
+      }
+    }
+  }
+
   void processLoginResult()
 })
 </script>
