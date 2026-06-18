@@ -5847,6 +5847,19 @@ export type Database = {
         }
         Returns: number
       }
+      count_search_stock_network: {
+        Args: {
+          p_context_tenant_id: number
+          p_exclude_zero_qty?: boolean
+          p_mode?: string
+          p_product_id?: number
+          p_search?: string
+          p_search_field?: string
+          p_shipment_id?: number
+          p_status?: Database["public"]["Enums"]["global_stock_status"]
+        }
+        Returns: number
+      }
       create_billing_profile_payment_with_allocations: {
         Args: {
           p_allocations: Json
@@ -6308,6 +6321,20 @@ export type Database = {
       get_active_module_keys_for_tenant: {
         Args: { p_tenant_id: number }
         Returns: string[]
+      }
+      get_allocation_reconciliation: {
+        Args: {
+          p_status?: Database["public"]["Enums"]["global_stock_status"]
+          p_stock_id: number
+        }
+        Returns: {
+          allocated_qty: number
+          global_qty: number
+          is_reconciled: boolean
+          status: Database["public"]["Enums"]["global_stock_status"]
+          stock_id: number
+          unallocated_qty: number
+        }[]
       }
       get_app_bootstrap_context: {
         Args: {
@@ -7398,6 +7425,46 @@ export type Database = {
         Args: { p_value: number }
         Returns: number
       }
+      search_stock_network: {
+        Args: {
+          p_context_tenant_id: number
+          p_exclude_zero_qty?: boolean
+          p_limit?: number
+          p_mode?: string
+          p_offset?: number
+          p_product_id?: number
+          p_search?: string
+          p_search_field?: string
+          p_shipment_id?: number
+          p_status?: Database["public"]["Enums"]["global_stock_status"]
+        }
+        Returns: {
+          allocated_qty: number
+          barcode: string
+          box_damage_qty: number
+          box_less_qty: number
+          cost: number
+          excellent_qty: number
+          expired_qty: number
+          global_qty: number
+          global_stock_id: number
+          holding_tenant_id: number
+          holding_tenant_name: string
+          image_url: string
+          is_own_tenant: boolean
+          is_pickable: boolean
+          name: string
+          parent_tenant_id: number
+          product_code: string
+          product_group_key: string
+          product_id: number
+          reserved_qty: number
+          shipment_id: number
+          sort_rank: number
+          stolen_qty: number
+          total_qty: number
+        }[]
+      }
       unassign_commerce_order_item_inventory_transactional: {
         Args: { p_invoice_id: number; p_order_item_id: number }
         Returns: undefined
@@ -7826,6 +7893,13 @@ export type Database = {
       }
       user_can_manage_parent_tenant: {
         Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
+      validate_allocation_reconciliation: {
+        Args: {
+          p_status?: Database["public"]["Enums"]["global_stock_status"]
+          p_stock_id: number
+        }
         Returns: boolean
       }
     }

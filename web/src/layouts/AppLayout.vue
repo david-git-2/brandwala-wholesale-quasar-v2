@@ -46,7 +46,7 @@
               </q-item>
 
               <!-- Stock search on mobile -->
-              <q-item v-if="hasInventoryModule" clickable @click="stockSearchDialogOpen = true">
+              <q-item v-if="hasGlobalStockModule" clickable @click="stockSearchDialogOpen = true">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px;">
                   <q-icon name="inventory_2" size="sm" color="primary" />
                 </q-item-section>
@@ -62,7 +62,7 @@
       </div>
 
       <TaskSearchDialog v-model="searchDialogOpen" />
-      <StockSearchDialog v-model="stockSearchDialogOpen" />
+      <GlobalStockSearchDialog v-model="stockSearchDialogOpen" />
     </template>
 
     <template #header-secondary>
@@ -82,7 +82,7 @@
           />
 
           <q-btn
-            v-if="hasInventoryModule"
+            v-if="hasGlobalStockModule"
             flat
             no-caps
             dense
@@ -142,7 +142,7 @@ import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigat
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue'
-import StockSearchDialog from 'src/modules/inventory/components/StockSearchDialog.vue'
+import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue'
 import type { Tenant } from 'src/modules/tenant/types'
 
 const authStore = useAuthStore()
@@ -154,7 +154,7 @@ const { links } = useAppWorkspaceLinks()
 const searchDialogOpen = ref(false)
 const stockSearchDialogOpen = ref(false)
 const hasTasksModule = computed(() => authStore.activeModuleKeys.includes('tasks'))
-const hasInventoryModule = computed(() => authStore.activeModuleKeys.includes('inventory'))
+const hasGlobalStockModule = computed(() => authStore.activeModuleKeys.includes('global_stock'))
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 )

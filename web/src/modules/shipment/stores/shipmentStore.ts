@@ -25,7 +25,6 @@ import type {
   UpdateShipmentFieldInput,
   ShipmentReceiveItemInput,
   ReceiveShipmentToGlobalStockItem,
-  ShipmentItem,
 } from '../types'
 
 export const useShipmentStore = defineStore('shipment', {

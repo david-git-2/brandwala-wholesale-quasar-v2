@@ -4,10 +4,25 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
-            <div class="text-h6 text-weight-bold">Global Stock</div>
-            <div class="text-caption text-grey-8">Manage stock, quantities, and item-level stock records</div>
+            <div class="row items-center q-gutter-sm q-mb-xs">
+              <div class="text-h6 text-weight-bold">Global Stock</div>
+              <ModuleNavBadge family="global" />
+            </div>
+            <div class="text-caption text-grey-8">
+              Parent pool (source of truth). Use Allocate Stock to split quantities to child tenants.
+            </div>
           </div>
           <div class="col-auto row items-center q-gutter-sm">
+            <q-btn
+              v-if="isParentContext"
+              outline
+              color="primary"
+              no-caps
+              class="pill-btn slim-btn"
+              icon="call_split"
+              label="Allocate Stock"
+              :to="allocateStockRoute"
+            />
             <div class="text-subtitle1 text-weight-medium text-grey-9">
               Total Stock: <span class="text-weight-bold text-primary">{{ globalStockStore.total }}</span>
             </div>
@@ -232,12 +247,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
+import ModuleNavBadge from 'src/components/ui/ModuleNavBadge.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import InventoryCompactCard from 'src/modules/inventory/components/InventoryCompactCard.vue'
 import type { InventoryItemWithStock } from 'src/modules/inventory/types'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
@@ -249,6 +266,7 @@ import { useGlobalStockStore } from '../stores/globalStockStore'
 import type { GlobalStockSearchField } from '../types'
 
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
 const globalStockStore = useGlobalStockStore()
 const shipmentStore = useShipmentStore()
 const $q = useQuasar()
@@ -383,8 +401,27 @@ const openDetailsDialog = (item: InventoryItemWithStock) => {
   detailsDialogOpen.value = true
 }
 
+const effectiveParentTenantId = computed(() => {
+  const current =
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === authStore.tenantId) ??
+    null
+  if (!current) return authStore.tenantId
+  return current.parent_id ?? current.id
+})
+
+const isParentContext = computed(() => {
+  const tenantId = tenantStore.selectedTenantId ?? authStore.tenantId
+  return tenantId != null && effectiveParentTenantId.value != null && tenantId === effectiveParentTenantId.value
+})
+
+const allocateStockRoute = computed(() => {
+  const slug = tenantStore.selectedTenantSlug ?? authStore.tenantSlug
+  return slug ? `/${slug}/app/global/stock/allocate` : '/app/global/stock/allocate'
+})
+
 const fetchGlobalStock = async () => {
-  const tenantId = authStore.tenantId
+  const tenantId = effectiveParentTenantId.value
   if (!tenantId) {
     handleApiFailure({ success: false, error: 'Tenant is not selected.' }, 'Tenant is not selected.')
     return
@@ -493,7 +530,7 @@ const onToggleSelectAllCheckbox = (checked: boolean | null) => {
 }
 
 onMounted(() => {
-  const tenantId = authStore.tenantId
+  const tenantId = effectiveParentTenantId.value
   if (!tenantId) {
     handleApiFailure({ success: false, error: 'Tenant is not selected.' }, 'Tenant is not selected.')
     return
@@ -504,5 +541,12 @@ onMounted(() => {
     fetchGlobalStock(),
   ])
 })
+
+watch(
+  () => tenantStore.selectedTenantId,
+  () => {
+    void fetchGlobalStock()
+  },
+)
 </script>
 

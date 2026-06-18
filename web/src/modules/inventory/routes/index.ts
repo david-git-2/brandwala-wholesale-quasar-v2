@@ -4,13 +4,13 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
 const inventoryRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/inventory',
+    path: '/:tenantSlug?/app/stock',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
-        name: 'app-inventory-page',
-        component: () => import('../pages/AdminInventoryPage.vue'),
+        name: 'app-tenant-stock-page',
+        component: () => import('src/modules/global/pages/TenantStockPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',

@@ -168,14 +168,31 @@ Parent `tenant_id` only.
 | `quantity` | >= 0 |
 | `status` | `excellent`, `box_less`, `box_damage`, `expired`, `stolen`, `reserved` |
 
-### 6.3 `child_tenant_stock_allocations`
+### 6.3 `child_tenant_stock_allocations` (Tenant Stock)
 
-Bridge for what each sister concern **shows** customers (default `is_display_only = true`).
+Virtual allocation layer — **not** duplicate physical stock. Sum of child allocations + parent unallocated pool reconciles to `global_stock_quantities`.
 
 | Field | Notes |
 |-------|-------|
 | `parent_tenant_id`, `child_tenant_id`, `stock_id` | |
-| `quantity`, `status` | Sum <= parent quantity |
+| `quantity`, `status` | Sum <= parent quantity per status |
+
+**Stock network RPC:** `search_stock_network(context_tenant_id, mode)` — modes:
+- `page` — list (parent: full pool; child: allocations only)
+- `search` — header search (own tenant first, then network per product)
+- `invoice` — cross-tenant pick when own allocation empty
+
+**UI:** Global Stock (`/app/global/stock`), Tenant Stock (`/app/stock`), shared `NetworkStockSearchPanel`.
+
+**Sidebar nav separation (do not violate):**
+
+| Sidebar link | Module key | Route |
+|---|---|---|
+| **Global Stock** | `global_stock` | `/app/global/stock` |
+| **Tenant Stock** | `inventory` | `/app/stock` |
+| **Allocate Stock** | `global_stock` | `/app/global/stock/allocate` |
+
+Each feature module is its own sidebar entry. Do **not** nest modules under a shared parent menu (no "Global" group). Domain groups (Invoices, Commerce, …) only group routes from the same module family.
 
 ### 6.4 `business_parties`
 
@@ -296,7 +313,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 |-------|----------------|--------------|
 | **F1 — Shared UI** | Extract/reuse `floating-surface`, `hero-surface`, `pill-btn`, `soft-input`, status chips; align `AppPageHeader` with costing pattern | Style guide §1–16 |
 | **F2 — Parent shipment** | Pull child procurement lines; build parent shipment (local/intl); costing file details pattern | `ProductBasedCostingFileDetailsPage` |
-| **F3 — Global stock** | Parent full stock list; child allocation manager; stock search from global RPC | Inventory + costing list patterns |
+| **F3 — Global stock** | Parent full stock list; tenant stock page + allocation manager; `search_stock_network` RPC; shared network search UI | Inventory + costing list patterns |
 | **F4 — Sales invoice** | Wholesale / retail / dropship create; billing profile; charges; shared print preview (`invoice_shared`) | Commerce invoice layout |
 | **F5 — Parent accounting** | Consolidated ledger, shipment accounting, invoice accounting, cash circulation dashboard | Accounting pages + table column selector |
 | **F6 — Investor (admin + portal)** | See **§10.1 Investor portal** below | Style guide + Thrift `AppPageHeader` |
@@ -342,8 +359,8 @@ Do **not** copy Thrift composable architecture into web — web keeps module/rep
 
 | Module | Parent | Child |
 |--------|--------|-------|
-| `shipment`, legacy `inventory` | Yes | No |
-| `global_stock` | Full | Allocations only |
+| `shipment`, legacy `inventory` (Tenant Stock UI) | Yes | Yes (allocated view) |
+| `global_stock` | Full pool | Search + invoice network pick |
 | `order_management`, `product_based_costing` | No | Yes |
 | `commerce_*` | No | Yes |
 | `global_invoice` / `invoice` | Optional | Yes (desk sales) |

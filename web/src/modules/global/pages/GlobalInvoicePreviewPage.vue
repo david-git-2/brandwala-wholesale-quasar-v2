@@ -64,8 +64,8 @@ const printModel = computed<InvoicePrintModel>(() => {
     brandAddress: brandAddress.value,
     clientName: clientName.value || inv?.billing_profiles?.name || '-',
     recipientName: inv?.recipient_name || inv?.billing_profiles?.name || '-',
-    recipientPhone: inv?.recipient_phone,
-    recipientAddress: inv?.recipient_address,
+    recipientPhone: inv?.recipient_phone ?? null,
+    recipientAddress: inv?.recipient_address ?? null,
     lines: items.value.map((row) => {
       const unit = isDropship
         ? Number(row.recipient_price_amount ?? row.sell_price_amount)

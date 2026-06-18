@@ -60,14 +60,14 @@
 
             <div class="text-subtitle1 text-weight-bold text-black q-mb-sm">Quantities Status</div>
             <div class="row q-col-gutter-sm">
-              <div v-for="(qty, label) in formattedQuantities" :key="label" class="col-4 text-center">
+              <div v-for="entry in formattedQuantities" :key="entry.label" class="col-4 text-center">
                 <div
                   class="q-pa-sm rounded-borders column items-center justify-center soft-qty-card"
-                  :class="qty.bg"
+                  :class="entry.bg"
                   style="min-height: 64px;"
                 >
-                  <div class="text-caption text-grey-9 text-weight-bold text-uppercase">{{ label }}</div>
-                  <div class="text-h6 text-weight-bolder text-black q-mt-xs">{{ qty.val }}</div>
+                  <div class="text-caption text-grey-9 text-weight-bold text-uppercase">{{ entry.label }}</div>
+                  <div class="text-h6 text-weight-bolder text-black q-mt-xs">{{ entry.val }}</div>
                 </div>
               </div>
             </div>
@@ -104,16 +104,16 @@ const shipmentLabel = computed(() => {
 })
 
 const formattedQuantities = computed(() => {
-  if (!props.item) return {}
+  if (!props.item) return []
   const q = props.item.quantities
-  return {
-    available: { val: q.available, bg: 'bg-green-1' },
-    'open box': { val: q.open_box, bg: 'bg-blue-1' },
-    reserved: { val: q.reserved, bg: 'bg-indigo-1' },
-    damaged: { val: q.damaged, bg: 'bg-red-1' },
-    stolen: { val: q.stolen, bg: 'bg-orange-1' },
-    expired: { val: q.expired, bg: 'bg-purple-1' },
-  }
+  return [
+    { label: 'available', val: q.available, bg: 'bg-green-1' },
+    { label: 'open box', val: q.open_box, bg: 'bg-blue-1' },
+    { label: 'reserved', val: q.reserved, bg: 'bg-indigo-1' },
+    { label: 'damaged', val: q.damaged, bg: 'bg-red-1' },
+    { label: 'stolen', val: q.stolen, bg: 'bg-orange-1' },
+    { label: 'expired', val: q.expired, bg: 'bg-purple-1' },
+  ]
 })
 </script>
 

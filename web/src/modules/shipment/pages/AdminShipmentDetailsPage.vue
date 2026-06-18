@@ -2103,6 +2103,8 @@ const baseColumnSelectorOptions = [
   { label: 'Actions', value: 'actions' },
 ] as const
 
+type ShipmentColumnKey = (typeof baseColumnSelectorOptions)[number]['value']
+
 const isInternational = computed(() => isInternationalShipment(shipmentStore.selectedShipment))
 const isLocal = computed(() => isLocalShipment(shipmentStore.selectedShipment))
 

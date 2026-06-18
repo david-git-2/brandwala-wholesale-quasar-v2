@@ -152,37 +152,41 @@
     </div>
 
     <q-dialog v-model="stockDialog" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="floating-surface q-pa-sm">
+      <q-card style="min-width: 560px; max-width: 95vw" class="floating-surface q-pa-sm">
         <q-card-section class="text-h6 text-weight-bold">Add From Stock</q-card-section>
-        <q-card-section class="q-gutter-y-sm">
-          <q-input v-model="stockSearch" label="Search stock" dense outlined clearable class="soft-input" />
-          <q-list bordered separator style="max-height: 320px; overflow: auto">
-            <q-item v-for="stock in stockResults" :key="stock.id" clickable @click="selectedStock = stock">
-              <q-item-section>
-                <q-item-label>{{ stock.name }}</q-item-label>
-                <q-item-label caption>Qty: {{ stock.total_qty }} · Cost: {{ formatAmount(stock.cost) }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-icon v-if="selectedStock?.id === stock.id" name="check_circle" color="primary" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-          <q-input v-model.number="addQty" type="number" label="Quantity" dense outlined min="1" class="soft-input" />
-          <q-input v-model.number="addSellPrice" type="number" label="Sell price" dense outlined min="0" class="soft-input" />
-          <q-input
-            v-if="isDropship"
-            v-model.number="addRecipientPrice"
-            type="number"
-            label="Recipient price"
-            dense
-            outlined
-            min="0"
-            class="soft-input"
+        <q-card-section class="q-pt-none">
+          <NetworkStockSearchPanel
+            v-if="invoice && stockDialog"
+            mode="invoice"
+            :context-tenant-id="invoice.tenant_id"
+            selectable
+            :show-search-controls="true"
+            @select="onSelectStockRow"
           />
+          <div v-if="selectedStock" class="q-mt-md q-gutter-y-sm">
+            <div class="text-subtitle2 text-weight-bold">
+              Selected: {{ selectedStock.name }}
+              <span v-if="selectedStockHoldingLabel" class="text-caption text-grey-7 q-ml-sm">
+                ({{ selectedStockHoldingLabel }})
+              </span>
+            </div>
+            <q-input v-model.number="addQty" type="number" label="Quantity" dense outlined min="1" class="soft-input" />
+            <q-input v-model.number="addSellPrice" type="number" label="Sell price" dense outlined min="0" class="soft-input" />
+            <q-input
+              v-if="isDropship"
+              v-model.number="addRecipientPrice"
+              type="number"
+              label="Recipient price"
+              dense
+              outlined
+              min="0"
+              class="soft-input"
+            />
+          </div>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
-          <q-btn color="primary" label="Add" :loading="addingItem" @click="onAddItem" />
+          <q-btn color="primary" label="Add" :loading="addingItem" :disable="!selectedStock" @click="onAddItem" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -261,7 +265,8 @@ import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 
 import { globalRepository } from '../repositories/globalRepository'
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalStockRow, InvoiceChargeLineRow } from '../types'
+import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, InvoiceChargeLineRow, StockNetworkRow } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -274,9 +279,7 @@ const items = ref<GlobalInvoiceItemRow[]>([])
 const charges = ref<InvoiceChargeLineRow[]>([])
 
 const stockDialog = ref(false)
-const stockSearch = ref('')
-const stockResults = ref<GlobalStockRow[]>([])
-const selectedStock = ref<GlobalStockRow | null>(null)
+const selectedStock = ref<StockNetworkRow | null>(null)
 const addQty = ref(1)
 const addSellPrice = ref(0)
 const addRecipientPrice = ref(0)
@@ -340,27 +343,37 @@ const loadInvoice = async () => {
   }
 }
 
-const searchStock = async () => {
-  if (!invoice.value) return
-  const result = await globalRepository.listGlobalStockPage({
-    tenant_id: invoice.value.parent_tenant_id,
-    search: stockSearch.value,
-    page_size: 30,
-  })
-  stockResults.value = result.data
+const selectedStockHoldingLabel = computed(() => {
+  if (!selectedStock.value) return ''
+  if (selectedStock.value.is_own_tenant && selectedStock.value.allocated_qty === 0) {
+    return 'Available via network'
+  }
+  return selectedStock.value.holding_tenant_name ?? ''
+})
+
+const onSelectStockRow = (row: StockNetworkRow) => {
+  selectedStock.value = row
+  addSellPrice.value = row.cost
 }
 
 const onAddItem = async () => {
   if (!invoice.value || !selectedStock.value || addQty.value <= 0) return
   addingItem.value = true
   try {
-    await globalRepository.addGlobalInvoiceItem({
+    const payload = {
       invoice_id: invoice.value.id,
-      global_stock_id: selectedStock.value.id,
+      global_stock_id: selectedStock.value.global_stock_id,
       quantity: addQty.value,
       sell_price_amount: addSellPrice.value || selectedStock.value.cost,
-      recipient_price_amount: isDropship.value ? addRecipientPrice.value : undefined,
-    })
+    }
+    if (isDropship.value) {
+      await globalRepository.addGlobalInvoiceItem({
+        ...payload,
+        recipient_price_amount: addRecipientPrice.value,
+      })
+    } else {
+      await globalRepository.addGlobalInvoiceItem(payload)
+    }
     stockDialog.value = false
     selectedStock.value = null
     await loadInvoice()
@@ -465,11 +478,9 @@ const onAddReturn = async () => {
 }
 
 watch(stockDialog, (open) => {
-  if (open) void searchStock()
-})
-
-watch(stockSearch, () => {
-  void searchStock()
+  if (!open) {
+    selectedStock.value = null
+  }
 })
 
 onMounted(() => {

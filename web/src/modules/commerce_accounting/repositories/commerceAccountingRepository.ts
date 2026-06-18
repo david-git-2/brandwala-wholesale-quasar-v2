@@ -1,8 +1,20 @@
 import { supabase } from 'src/boot/supabase'
-import type { Database } from 'src/types/supabase'
 import type { CommerceAccounting, CommerceAccountingDetails } from '../types'
 
-type AccountingEntryRow = Database['public']['Tables']['inventory_accounting_entries']['Row']
+type AccountingEntryRow = {
+  id: number
+  tenant_id: number
+  commerce_order_item_id: number | null
+  cost_amount: number | null
+  shipment_item_id: number | null
+  sell_price_amount: number | null
+  recipient_sell_price_amount: number | null
+  customer_group_id: number | null
+  billing_profile_id: number | null
+  status: string | null
+  created_at: string
+  updated_at: string | null
+}
 
 const mapRow = (row: AccountingEntryRow): CommerceAccounting => ({
   id: row.id,

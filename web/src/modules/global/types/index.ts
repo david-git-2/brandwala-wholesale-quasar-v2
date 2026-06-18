@@ -1,5 +1,83 @@
 export type GlobalStockSearchField = 'name' | 'barcode' | 'product_code'
 
+export type StockNetworkMode = 'page' | 'search' | 'invoice'
+
+export type StockNetworkQuery = {
+  context_tenant_id: number
+  mode?: StockNetworkMode
+  search?: string | null
+  search_field?: GlobalStockSearchField | null
+  product_id?: number | null
+  status?: 'excellent' | 'box_less' | 'box_damage' | 'expired' | 'stolen' | 'reserved'
+  shipment_id?: number | null
+  exclude_zero_qty?: boolean
+  page?: number
+  page_size?: number
+}
+
+export type StockNetworkRow = {
+  global_stock_id: number
+  product_id: number | null
+  name: string
+  barcode: string | null
+  product_code: string | null
+  image_url: string | null
+  cost: number
+  shipment_id: number | null
+  parent_tenant_id: number
+  holding_tenant_id: number
+  holding_tenant_name: string | null
+  allocated_qty: number
+  global_qty: number
+  excellent_qty: number
+  box_less_qty: number
+  box_damage_qty: number
+  expired_qty: number
+  stolen_qty: number
+  reserved_qty: number
+  total_qty: number
+  is_own_tenant: boolean
+  is_pickable: boolean
+  sort_rank: number
+  product_group_key: string
+}
+
+export type StockNetworkPage = {
+  data: StockNetworkRow[]
+  meta: {
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }
+}
+
+export type AllocationReconciliationRow = {
+  stock_id: number
+  status: string
+  global_qty: number
+  allocated_qty: number
+  unallocated_qty: number
+  is_reconciled: boolean
+}
+
+export type ChildStockAllocationRow = {
+  id: number
+  parent_tenant_id: number
+  child_tenant_id: number
+  stock_id: number
+  status: string
+  quantity: number
+  is_display_only: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type AllocateChildTenant = {
+  id: number
+  name: string
+}
+
 export type GlobalStockListQuery = {
   tenant_id: number
   page?: number

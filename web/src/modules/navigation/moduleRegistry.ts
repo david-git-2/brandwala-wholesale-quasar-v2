@@ -87,15 +87,15 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'inventory',
-    name: 'Stock',
-    description: 'Monitor stock, availability, and inventory movement.',
+    name: 'Tenant Stock',
+    description: 'Tenant allocated stock view and parent allocation manager. Separate from global_stock.',
     routes: [
       {
         scope: 'app',
-        title: 'Stock',
-        caption: 'Review stock levels and inventory operations',
+        title: 'Tenant Stock',
+        caption: 'Your allocated stock slices (not the global pool)',
         icon: 'inventory_2',
-        routeSegment: 'inventory',
+        routeSegment: 'stock',
         requiredAction: 'view',
       },
     ],
@@ -658,6 +658,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'global/stock',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Allocate Stock',
+        caption: 'Divide global stock quantities to child tenants',
+        icon: 'call_split',
+        routeSegment: 'global/stock/allocate',
+        requiredAction: 'view',
+      },
     ],
   },
   {
@@ -786,6 +794,44 @@ export const GLOBAL_MODULE_KEYS = [
   'global_investor',
   'global_investor_shipment',
 ] as const satisfies readonly ModuleKey[]
+
+/** Top-level tenant modules — must never appear under the Global nav group. */
+export const TENANT_STOCK_MODULE_KEY = 'inventory' as const satisfies ModuleKey
+
+/**
+ * Sidebar nav families for domain grouping only (Invoices, Commerce, …).
+ * Global-prefixed modules (`global_*`) use flat top-level links — not a shared "Global" parent menu.
+ */
+export type ModuleNavFamily =
+  | 'global'
+  | 'tenant_stock'
+  | 'invoice'
+  | 'accounting'
+  | 'store'
+  | 'products'
+  | 'commerce_shop'
+  | 'commerce_order'
+  | 'commerce_invoice'
+  | 'commerce_accounting'
+  | 'investor'
+  | 'koba_retail'
+  | 'standalone'
+
+export const getModuleNavFamily = (moduleKey: ModuleKey): ModuleNavFamily => {
+  if (isGlobalModuleKey(moduleKey)) return 'standalone'
+  if (moduleKey === TENANT_STOCK_MODULE_KEY) return 'tenant_stock'
+  if (moduleKey === 'invoice') return 'invoice'
+  if (moduleKey === 'accounting') return 'accounting'
+  if (moduleKey === 'store') return 'store'
+  if (moduleKey === 'products') return 'products'
+  if (moduleKey === 'commerce_shop') return 'commerce_shop'
+  if (moduleKey === 'commerce_order') return 'commerce_order'
+  if (moduleKey === 'commerce_invoice') return 'commerce_invoice'
+  if (moduleKey === 'commerce_accounting') return 'commerce_accounting'
+  if (moduleKey === 'investor') return 'investor'
+  if (moduleKey === 'koba_retail') return 'koba_retail'
+  return 'standalone'
+}
 
 export const isGlobalModuleKey = (moduleKey: ModuleKey): moduleKey is (typeof GLOBAL_MODULE_KEYS)[number] =>
   (GLOBAL_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey)

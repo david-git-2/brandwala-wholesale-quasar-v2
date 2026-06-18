@@ -7,6 +7,16 @@ import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions'
 
+/**
+ * Sidebar nav grouping for the app scope.
+ *
+ * NAV SEPARATION (do not violate):
+ * - Each enabled feature module gets its own sidebar link (flat or domain group).
+ * - Do NOT nest unrelated modules under a shared parent (e.g. no "Global" mega-menu).
+ * - `global_stock` and `inventory` (Tenant Stock) are separate module keys and separate links.
+ * - Domain groups (Invoices, Accounting, Commerce, …) only contain routes from that same module family.
+ */
+
 type WorkspaceScope = AuthScope
 
 type BaseWorkspaceLinkDefinition = {

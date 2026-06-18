@@ -23,6 +23,12 @@ const globalRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/GlobalStockPage.vue'),
         beforeEnter: guard('global_stock'),
       },
+      {
+        path: 'allocate',
+        name: 'app-global-stock-allocate-page',
+        component: () => import('../pages/TenantStockPage.vue'),
+        beforeEnter: guard('global_stock'),
+      },
     ],
   },
   {
