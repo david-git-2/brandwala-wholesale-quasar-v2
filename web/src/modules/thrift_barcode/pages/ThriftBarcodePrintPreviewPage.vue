@@ -119,7 +119,7 @@ const closePostPrint = async (markAsPrinted: boolean) => {
     loading.value = true
     try {
       const ids = printList.value.map(b => b.id)
-      await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
+      await barcodeStore.markBarcodesPrinted(ids)
       
       // Update local printList states
       printList.value = printList.value.map(b => ({ ...b, is_printed: 1 }))

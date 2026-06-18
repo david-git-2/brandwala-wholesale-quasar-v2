@@ -7,14 +7,52 @@ export const useThriftStockStore = defineStore('thrift_stock', {
     stocks: [] as ThriftStock[],
     loading: false,
     error: null as string | null,
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 0,
+    search: '',
+    statusFilter: null as string | null,
+    conditionFilter: null as string | null,
   }),
 
   actions: {
-    async loadStocks(tenantId: number) {
+    async loadStocks(
+      tenantId: number,
+      options?: {
+        page?: number;
+        pageSize?: number;
+        search?: string;
+        status?: string | null;
+        condition?: string | null;
+      },
+    ) {
       this.loading = true;
       this.error = null;
       try {
-        this.stocks = await thriftStockRepository.fetchStocks(tenantId);
+        const page = options?.page ?? this.page;
+        const pageSize = options?.pageSize ?? this.pageSize;
+        const search = options?.search ?? this.search;
+        const status = options?.status !== undefined ? options.status : this.statusFilter;
+        const condition = options?.condition !== undefined ? options.condition : this.conditionFilter;
+
+        const result = await thriftStockRepository.fetchStocksPaginated({
+          tenantId,
+          page,
+          pageSize,
+          search,
+          status,
+          condition,
+        });
+
+        this.stocks = result.data;
+        this.page = result.meta.page;
+        this.pageSize = result.meta.page_size;
+        this.total = result.meta.total;
+        this.totalPages = result.meta.total_pages;
+        this.search = search;
+        this.statusFilter = status;
+        this.conditionFilter = condition;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load stock';
       } finally {
@@ -75,6 +113,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
           imageUrl
         );
         this.stocks.unshift(stock);
+        this.total += 1;
         return stock;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to create stock';
@@ -123,6 +162,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       try {
         await thriftStockRepository.deleteStock(id);
         this.stocks = this.stocks.filter(s => s.id !== id);
+        this.total = Math.max(0, this.total - 1);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete stock';
         throw err;

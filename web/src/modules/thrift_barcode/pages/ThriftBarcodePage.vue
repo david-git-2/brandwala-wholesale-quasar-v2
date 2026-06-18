@@ -480,7 +480,7 @@ const handleGenerate = async () => {
       insertedBy: authStore.user?.email || 'System',
     })
     selected.value = []
-  } catch (err) {
+  } catch {
     // Error handled by store
   }
 }
@@ -518,9 +518,9 @@ const onMarkPrinted = async () => {
   if (selected.value.length === 0 || !authStore.tenantId) return
   const ids = selected.value.map(s => s.id)
   try {
-    await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
+    await barcodeStore.markBarcodesPrinted(ids)
     selected.value = []
-  } catch (err) {
+  } catch {
     // Handled by store
   }
 }

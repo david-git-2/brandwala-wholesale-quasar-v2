@@ -44,7 +44,7 @@ const { processLoginResult } = useOAuthLogin(scope)
 const isRedirectingToApp = ref(false)
 const appRedirectUrl = ref('')
 
-onMounted(async () => {
+onMounted(() => {
   const appRedirect = route.query.app_redirect
   
   if (appRedirect === 'thrift') {

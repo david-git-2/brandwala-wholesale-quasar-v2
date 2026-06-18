@@ -87,20 +87,6 @@ const { items, loading, error } = storeToRefs(tenantStore)
 const openAddDialog = ref(false)
 const selectedTenant = ref<TenantForm | null>(null)
 
-const activeStatusStyle = {
-  backgroundColor: '#c3e8d2',
-  color: '#1f5d3c',
-  border: '1px solid #9fd4b7',
-  boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
-
-const inactiveStatusStyle = {
-  backgroundColor: '#dbe5f3',
-  color: '#3b4b66',
-  border: '1px solid #b9c8dd',
-  boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
-
 const refreshTenants = () => tenantStore.fetchTenants()
 
 const onClickAddTenant = () => {

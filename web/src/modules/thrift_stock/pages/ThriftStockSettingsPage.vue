@@ -18,8 +18,10 @@
         </q-card-section>
       </q-card>
 
+      <PageInitialLoader v-if="pageLoading" />
+
       <!-- Settings Card -->
-      <q-card flat class="floating-surface shadow-1 q-pa-md" style="max-width: 600px;">
+      <q-card v-else flat class="floating-surface shadow-1 q-pa-md" style="max-width: 600px;">
         <q-card-section class="q-pt-none">
           <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md">Quick Upload Defaults</div>
           
@@ -96,6 +98,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
 import { useQuasar } from 'quasar';
 import { supabase } from 'src/boot/supabase';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -104,6 +107,7 @@ const authStore = useAuthStore();
 const thriftStore = useThriftStore();
 
 const saving = ref(false);
+const pageLoading = ref(true);
 const shipments = ref<Array<{ id: number; name: string }>>([]);
 
 const form = ref({
@@ -196,13 +200,18 @@ async function saveSettings() {
 
 onMounted(async () => {
   if (authStore.tenantId) {
-    $q.loading.show();
-    await Promise.all([
-      loadShipments(),
-      thriftStore.loadModuleData(authStore.tenantId),
-      loadSettings(),
-    ]);
-    $q.loading.hide();
+    pageLoading.value = true;
+    try {
+      await Promise.all([
+        loadShipments(),
+        thriftStore.loadModuleData(authStore.tenantId),
+        loadSettings(),
+      ]);
+    } finally {
+      pageLoading.value = false;
+    }
+  } else {
+    pageLoading.value = false;
   }
 });
 </script>

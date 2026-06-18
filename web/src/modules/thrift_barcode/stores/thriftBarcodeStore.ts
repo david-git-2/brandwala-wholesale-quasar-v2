@@ -41,7 +41,7 @@ export const useThriftBarcodeStore = defineStore('thriftBarcode', {
       }
     },
 
-    async markBarcodesPrinted(ids: number[], tenantId: number) {
+    async markBarcodesPrinted(ids: number[]) {
       this.loading = true;
       this.error = null;
       try {

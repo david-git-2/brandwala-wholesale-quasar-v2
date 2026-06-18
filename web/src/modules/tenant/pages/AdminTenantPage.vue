@@ -48,21 +48,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const { items, loading, error } = storeToRefs(tenantStore)
-const { selectTenantWorkspace, selectingTenantId } = useAdminTenantSelection()
-
-const activeStatusStyle = {
-  backgroundColor: '#c3e8d2',
-  color: '#1f5d3c',
-  border: '1px solid #9fd4b7',
-  boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
-
-const inactiveStatusStyle = {
-  backgroundColor: '#dbe5f3',
-  color: '#3b4b66',
-  border: '1px solid #b9c8dd',
-  boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
+const { selectTenantWorkspace } = useAdminTenantSelection()
 
 const visibleTenants = computed(() => {
   const routeTenantSlug = getTenantSlugFromRoute(route)

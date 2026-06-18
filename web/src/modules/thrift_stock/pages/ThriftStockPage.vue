@@ -33,16 +33,70 @@
       </q-card-section>
     </q-card>
 
+    <!-- Filters -->
+    <q-card flat class="q-mb-md floating-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row q-col-gutter-sm items-end">
+          <div class="col-12 col-md-5">
+            <q-input
+              v-model="searchText"
+              outlined
+              dense
+              label="Search"
+              placeholder="Name, brand, or barcode"
+              debounce="400"
+              @update:model-value="onFiltersChanged"
+            >
+              <template #append>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-6 col-md-3">
+            <q-select
+              v-model="statusFilter"
+              outlined
+              dense
+              label="Status"
+              :options="statusOptions"
+              emit-value
+              map-options
+              clearable
+              @update:model-value="onFiltersChanged"
+            />
+          </div>
+          <div class="col-6 col-md-3">
+            <q-select
+              v-model="conditionFilter"
+              outlined
+              dense
+              label="Condition"
+              :options="conditionOptions"
+              emit-value
+              map-options
+              clearable
+              @update:model-value="onFiltersChanged"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <PageInitialLoader v-if="loading && !stocks.length" />
+
     <!-- Table -->
-    <q-card flat class="floating-surface shadow-1">
+    <q-card v-else flat class="floating-surface shadow-1">
       <q-table
         flat
         :rows="stocks"
         :columns="columns"
         row-key="id"
-        :loading="loading"
+        :loading="loading && stocks.length > 0"
         class="thrift-table"
       >
+        <template #loading>
+          <PageInitialLoader compact />
+        </template>
         <template #body-cell-image="props">
           <q-td :props="props">
             <q-avatar square size="40px" class="rounded-borders shadow-1" style="background: #f7f9fc; overflow: hidden;">
@@ -116,6 +170,21 @@
           </q-td>
         </template>
       </q-table>
+
+      <q-card-section v-if="totalPages > 0" class="row items-center justify-between q-pt-none">
+        <div class="text-caption text-grey-7">
+          Page {{ page }} of {{ totalPages }} · {{ total }} items
+        </div>
+        <q-pagination
+          v-model="page"
+          :max="Math.max(totalPages, 1)"
+          :max-pages="7"
+          direction-links
+          boundary-links
+          color="primary"
+          @update:model-value="onPageChanged"
+        />
+      </q-card-section>
     </q-card>
 
     <!-- Register Stock Dialog -->
@@ -402,6 +471,8 @@
       folder="thrift-stocks"
       @uploaded="onImageUploaded"
     />
+
+    <PageInitialLoader v-if="actionLoading" overlay />
   </q-page>
 </template>
 
@@ -414,6 +485,7 @@ import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 
 const $q = useQuasar();
@@ -433,6 +505,7 @@ const quickSubmitting = ref(false);
 const settingsLoaded = ref(false);
 const deleteConfirmOpen = ref(false);
 const imageRemoveConfirmOpen = ref(false);
+const actionLoading = ref(false);
 const selectedRow = ref<ThriftStock | null>(null);
 
 const defaults = ref({
@@ -459,6 +532,12 @@ const editImage = ref({
 
 const stocks = computed(() => store.stocks);
 const loading = computed(() => store.loading);
+const page = computed({
+  get: () => store.page,
+  set: (value: number) => { store.page = value; },
+});
+const total = computed(() => store.total);
+const totalPages = computed(() => store.totalPages);
 const categories = computed(() => thriftStore.categories);
 const types = computed(() => thriftStore.types);
 const shelves = computed(() => thriftStore.shelves);
@@ -516,6 +595,24 @@ const pricing = ref({
   listed_price: 0,
 });
 
+const searchText = ref('');
+const statusFilter = ref<string | null>(null);
+const conditionFilter = ref<string | null>(null);
+
+const statusOptions = [
+  { label: 'Available', value: 'AVAILABLE' },
+  { label: 'Out of Stock', value: 'OUT_OF_STOCK' },
+  { label: 'Damaged', value: 'DAMAGED' },
+  { label: 'Stolen', value: 'STOLEN' },
+];
+
+const conditionOptions = [
+  { label: 'New With Tags', value: 'NEW_WITH_TAGS' },
+  { label: 'Excellent', value: 'EXCELLENT' },
+  { label: 'Good', value: 'GOOD' },
+  { label: 'Fair', value: 'FAIR' },
+];
+
 const columns: QTableColumn[] = [
   { name: 'image', align: 'center', label: 'Image', field: 'image_url' },
   { name: 'barcode', align: 'left', label: 'Barcode', field: 'barcode', sortable: true },
@@ -537,12 +634,31 @@ const columns: QTableColumn[] = [
 onMounted(async () => {
   if (authStore.tenantId) {
     await Promise.all([
-      store.loadStocks(authStore.tenantId),
+      loadStockPage(1),
       thriftStore.loadModuleData(authStore.tenantId),
       loadShipments()
     ]);
   }
 });
+
+async function loadStockPage(nextPage = store.page) {
+  if (!authStore.tenantId) return;
+  await store.loadStocks(authStore.tenantId, {
+    page: nextPage,
+    pageSize: store.pageSize,
+    search: searchText.value,
+    status: statusFilter.value,
+    condition: conditionFilter.value,
+  });
+}
+
+function onFiltersChanged() {
+  void loadStockPage(1);
+}
+
+function onPageChanged(nextPage: number) {
+  void loadStockPage(nextPage);
+}
 
 function goToSettings() {
   const slug = route.params.tenantSlug || authStore.tenantSlug;
@@ -811,14 +927,15 @@ function openEditDialog(row: ThriftStock) {
 }
 
 async function updateStatus(stockId: number, status: string) {
-  $q.loading.show();
+  actionLoading.value = true;
   try {
     await store.updateStockStatus(stockId, status);
     $q.notify({ type: 'positive', message: `Stock marked as ${status}` });
+    await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
   } finally {
-    $q.loading.hide();
+    actionLoading.value = false;
   }
 }
 
@@ -829,22 +946,23 @@ function confirmDelete(row: ThriftStock) {
 
 async function deleteItem() {
   if (!selectedRow.value) return;
-  $q.loading.show();
+  actionLoading.value = true;
   try {
     await store.deleteStock(selectedRow.value.id);
     $q.notify({ type: 'positive', message: 'Stock item deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
+    await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
-    $q.loading.hide();
+    actionLoading.value = false;
   }
 }
 
 async function onSubmit() {
   if (!authStore.tenantId) return;
-  $q.loading.show();
+  actionLoading.value = true;
   try {
     const stockData = {
       shipment_id: form.value.shipment_id!,
@@ -875,7 +993,7 @@ async function onSubmit() {
 
       await store.updateStock(
         editingId.value,
-        stockData as any,
+        stockData satisfies Partial<ThriftStock>,
         pricing.value,
         imagePayload,
       );
@@ -909,10 +1027,11 @@ async function onSubmit() {
     }
     resetEditImage();
     dialogOpen.value = false;
+    await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
   } finally {
-    $q.loading.hide();
+    actionLoading.value = false;
   }
 }
 

@@ -1,6 +1,27 @@
 import { supabase } from 'src/boot/supabase';
 import type { ThriftStock } from '../types';
 
+export interface ThriftStockListMeta {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ThriftStockListParams {
+  tenantId: number;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string | null;
+  condition?: string | null;
+}
+
+export interface ThriftStockListResult {
+  data: ThriftStock[];
+  meta: ThriftStockListMeta;
+}
+
 interface ThriftStockDbRow {
   id: number;
   tenant_id: number;
@@ -37,7 +58,60 @@ interface ThriftStockDbRow {
   origin_purchase_price?: number;
 }
 
+interface ThriftStockPaginatedRow extends ThriftStockDbRow {
+  pricing?: {
+    cost_of_goods_sold: number;
+    target_price: number;
+    listed_price: number;
+  };
+  image_url?: string | null;
+}
+
 export const thriftStockRepository = {
+  async fetchStocksPaginated(params: ThriftStockListParams): Promise<ThriftStockListResult> {
+    const { data, error } = await supabase.rpc('list_thrift_stocks_paginated', {
+      p_tenant_id: params.tenantId,
+      p_page: params.page ?? 1,
+      p_page_size: params.pageSize ?? 20,
+      p_search: params.search?.trim() || null,
+      p_status: params.status || null,
+      p_condition: params.condition || null,
+    });
+    if (error) throw error;
+
+    const payload = data as {
+      data: ThriftStockPaginatedRow[];
+      meta: ThriftStockListMeta;
+    };
+
+    const rows = payload.data || [];
+
+    return {
+      data: rows.map((stock) => {
+        const pricing = stock.pricing ?? {
+          cost_of_goods_sold: 0,
+          target_price: 0,
+          listed_price: 0,
+        };
+        return {
+          ...(stock as unknown as ThriftStock),
+          pricing: {
+            cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
+            target_price: Number(pricing.target_price) || 0,
+            listed_price: Number(pricing.listed_price) || 0,
+          },
+          image_url: stock.image_url || undefined,
+        };
+      }) as ThriftStock[],
+      meta: {
+        total: Number(payload.meta?.total) || 0,
+        page: Number(payload.meta?.page) || 1,
+        page_size: Number(payload.meta?.page_size) || 20,
+        total_pages: Number(payload.meta?.total_pages) || 0,
+      },
+    };
+  },
+
   async fetchStocks(tenantId: number): Promise<ThriftStock[]> {
     const { data, error } = await supabase
       .from('thrift_stocks')
