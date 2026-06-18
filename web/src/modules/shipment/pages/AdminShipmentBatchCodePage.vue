@@ -270,6 +270,7 @@ import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useShipmentStore } from '../stores/shipmentStore'
 import { getReceivedQty, getDamagedQty, getStolenQty } from '../utils/splits'
+import { buildShipmentDetailPath } from '../utils/shipmentPaths'
 
 const route = useRoute()
 const router = useRouter()
@@ -506,8 +507,7 @@ const insertDisabled = computed(() => {
 })
 
 const onBack = async () => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}`)
+  await router.push(buildShipmentDetailPath(authStore.tenantSlug, shipmentId.value))
 }
 
 const onInsertRows = async () => {

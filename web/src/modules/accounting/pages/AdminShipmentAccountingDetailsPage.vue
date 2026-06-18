@@ -961,6 +961,7 @@ import type { InventoryAccountingEntry } from 'src/modules/accounting/types'
 import { useInvoiceStore } from 'src/modules/invoice/stores/invoiceStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
+import { isLocalShipment } from 'src/modules/shipment/utils/shipmentType'
 import { formatAmountBdt } from 'src/utils/currency'
 
 import { getReceivedQty, getDamagedQty, getStolenQty } from 'src/modules/shipment/utils/splits'
@@ -1119,7 +1120,7 @@ const shipmentId = computed(() => {
 const shipmentRows = computed(() => {
   const shipment = shipmentStore.selectedShipment
   return (shipmentStore.shipmentItems ?? []).map((item) => {
-    const costPerUnitBdt = shipment && !shipment.is_gbp
+    const costPerUnitBdt = shipment && isLocalShipment(shipment)
       ? Number(item.cost_bdt ?? 0)
       : calculateCostBdt({
           productWeight: item.product_weight,

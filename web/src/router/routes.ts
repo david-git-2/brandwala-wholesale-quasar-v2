@@ -28,6 +28,8 @@ import tasksRoutes from 'src/modules/tasks/routes';
 import thriftStockRoutes from 'src/modules/thrift_stock/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
 import thriftBarcodeRoutes from 'src/modules/thrift_barcode/routes';
+import investorPortalRoutes from 'src/modules/investor_portal/routes';
+import globalRoutes from 'src/modules/global/routes';
 
 
 const routes: RouteRecordRaw[] = [
@@ -114,6 +116,8 @@ const routes: RouteRecordRaw[] = [
   ...thriftStockRoutes,
   ...thriftRoutes,
   ...thriftBarcodeRoutes,
+  ...investorPortalRoutes,
+  ...globalRoutes,
 
 
   // Always leave this as last one

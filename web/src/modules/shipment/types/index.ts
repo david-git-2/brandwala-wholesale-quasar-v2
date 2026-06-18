@@ -16,6 +16,8 @@ export const SHIPMENT_STATUS_OPTIONS = [
 
 export type ShipmentStatus = (typeof SHIPMENT_STATUS_OPTIONS)[number]
 
+export type ShipmentType = 'local' | 'international'
+
 export type Shipment = {
   id: number
   tenant_id: number
@@ -30,7 +32,7 @@ export type Shipment = {
   received_weight: number | null
   vendor_code: string | null
   market_code: string | null
-  is_gbp: boolean
+  shipment_type: ShipmentType
   created_at: string
   updated_at: string
 }
@@ -81,7 +83,7 @@ export type BatchCodePc = {
 export type CreateShipmentInput = {
   name: string
   tenant_id: number
-  is_gbp?: boolean
+  shipment_type?: ShipmentType
 }
 
 export type ShipmentUpdateField =
@@ -95,7 +97,7 @@ export type ShipmentUpdateField =
   | 'vendor_code'
   | 'market_code'
   | 'inventory_added'
-  | 'is_gbp'
+  | 'shipment_type'
 
 export type UpdateShipmentFieldInput = {
   id: number

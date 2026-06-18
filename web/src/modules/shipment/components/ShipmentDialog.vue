@@ -51,12 +51,14 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
+import { isGbpFromShipmentType } from '../utils/shipmentType'
 
 const props = defineProps<{
   modelValue: boolean
   initialData?: {
     name?: string
     is_gbp?: boolean
+    shipment_type?: string
   } | null
 }>()
 
@@ -75,7 +77,8 @@ watch(
   (value) => {
     if (value) {
       form.name = props.initialData?.name ?? ''
-      form.is_gbp = props.initialData?.is_gbp ?? true
+      form.is_gbp =
+        props.initialData?.is_gbp ?? isGbpFromShipmentType(props.initialData?.shipment_type)
     }
   },
   { immediate: true }

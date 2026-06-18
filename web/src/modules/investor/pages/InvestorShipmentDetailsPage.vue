@@ -51,8 +51,9 @@
               <th class="text-right">Invested Amount</th>
               <th class="text-right">Coverage %</th>
               <th class="text-right">Covered Amount</th>
+              <th class="text-right">Cost share %</th>
+              <th class="text-right">Computed profit</th>
               <th class="text-left">Status</th>
-              <th class="text-right">Actual Profit</th>
               <th class="text-right">Action</th>
             </tr>
           </thead>
@@ -66,8 +67,9 @@
               <td class="text-right">{{ formatAmount(row.invested_amount) }}</td>
               <td class="text-right">{{ formatCoveragePercentage(row.invested_amount) }}</td>
               <td class="text-right">{{ formatAmount(getCoveredAmount(row.invested_amount)) }}</td>
-              <td>{{ row.status }}</td>
-              <td class="text-right">{{ formatAmount(row.actual_profit) }}</td>
+              <td class="text-right">{{ row.cost_share_pct ?? '—' }}</td>
+              <td class="text-right">{{ formatAmount(row.computed_profit) }}</td>
+              <td>{{ row.profit_status || row.status }}</td>
               <td class="text-right">
                 <q-btn flat round dense icon="more_vert">
                   <q-menu auto-close>
@@ -96,6 +98,18 @@
         </q-card-section>
         <q-card-section>
           <q-input v-model.number="investedAmount" type="number" min="0.01" step="0.01" label="Amount" outlined dense />
+          <q-input
+            v-if="isEditMode"
+            v-model.number="costSharePct"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            label="Cost share %"
+            outlined
+            dense
+            class="q-mt-sm"
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="openDialog = false" />
@@ -144,6 +158,7 @@ const openDeleteConfirmDialog = ref(false)
 const selectedInvestorId = ref<number | null>(null)
 const selectedInvestorName = ref('')
 const investedAmount = ref<number | null>(null)
+const costSharePct = ref<number | null>(null)
 const editingInvestment = ref<ShipmentInvestment | null>(null)
 const deletingInvestment = ref<ShipmentInvestment | null>(null)
 
@@ -155,7 +170,7 @@ const shipmentId = computed(() => {
 const totalShipmentCost = computed(() => {
   const shipment = shipmentStore.selectedShipment
   return shipmentStore.shipmentItems.reduce((sum, item) => {
-    const unitCost = shipment && !shipment.is_gbp
+    const unitCost = shipment && shipment.shipment_type === 'local'
       ? Number(item.cost_bdt ?? 0)
       : calculateCostBdt({
           productWeight: item.product_weight,
@@ -209,6 +224,7 @@ const openEditDialog = (row: ShipmentInvestment) => {
   selectedInvestorId.value = row.investor_id
   selectedInvestorName.value = investorNameById(row.investor_id)
   investedAmount.value = Number(row.invested_amount)
+  costSharePct.value = row.cost_share_pct != null ? Number(row.cost_share_pct) : null
   openDialog.value = true
 }
 
@@ -231,6 +247,13 @@ const saveInvestment = async () => {
       status: editingInvestment.value.status,
       actual_profit: editingInvestment.value.actual_profit,
     })
+
+    if (costSharePct.value != null) {
+      await investorStore.updateShipmentInvestmentCostShare({
+        id: editingInvestment.value.id,
+        cost_share_pct: Number(costSharePct.value),
+      })
+    }
   } else {
     await investorStore.createShipmentInvestment({
       tenant_id: tenantId,

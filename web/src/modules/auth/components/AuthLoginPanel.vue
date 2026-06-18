@@ -110,7 +110,7 @@ const props = defineProps<{
   ctaLabel: string
   disabled?: boolean
   tenantSlug?: string | null
-  tone: 'platform' | 'app' | 'shop'
+  tone: 'platform' | 'app' | 'shop' | 'investor'
 }>()
 
 const route = useRoute()
@@ -156,6 +156,11 @@ const loginErrorMessage = computed(() => {
   --card-accent:     #2563eb;
   --card-accent-rgb: 37 99 235;
   --card-soft:       rgb(37 99 235 / 0.08);
+}
+.auth-card--investor {
+  --card-accent:     #0f766e;
+  --card-accent-rgb: 15 118 110;
+  --card-soft:       rgb(15 118 110 / 0.08);
 }
 
 /* ── Card shell ──────────────────────────────────────── */

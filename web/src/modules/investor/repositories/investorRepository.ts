@@ -242,6 +242,22 @@ const deleteShipmentInvestment = async (
   }
 }
 
+const updateShipmentInvestmentCostShare = async (payload: {
+  id: number
+  cost_share_pct: number
+}): Promise<ShipmentInvestment> => {
+  const { data, error } = await supabase.rpc('update_shipment_investment_cost_share', {
+    p_shipment_investment_id: payload.id,
+    p_cost_share_pct: payload.cost_share_pct,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return data as ShipmentInvestment
+}
+
 export const investorRepository = {
   listInvestorsByTenant,
   listInvestorBalancesByTenant,
@@ -254,4 +270,5 @@ export const investorRepository = {
   createShipmentInvestment,
   updateShipmentInvestment,
   deleteShipmentInvestment,
+  updateShipmentInvestmentCostShare,
 }

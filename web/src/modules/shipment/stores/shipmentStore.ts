@@ -9,6 +9,7 @@ import type {
   CreateInventoryNoteInput,
 } from 'src/modules/inventory/types'
 import { calculateCostBdt } from '../utils/costing'
+import { isInternationalShipment } from '../utils/shipmentType'
 import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
@@ -561,7 +562,7 @@ export const useShipmentStore = defineStore('shipment', {
           const item = this.shipmentItems.find((x) => x.id === receipt.shipmentItemId)
           if (!item) continue
 
-          const itemCost = shipment.is_gbp
+          const itemCost = isInternationalShipment(shipment)
             ? calculateCostBdt({
                 productWeight: item.product_weight,
                 packageWeight: item.package_weight,

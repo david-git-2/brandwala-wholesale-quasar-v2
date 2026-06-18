@@ -172,6 +172,34 @@ body {
   background: transparent;
 }
 
+.floating-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 999px !important;
+  font-weight: 600;
+}
+
+.soft-input .q-field__control {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.theme-investor {
+  --bw-theme-primary: #0f766e;
+  --bw-theme-primary-rgb: 15 118 110;
+  --bw-theme-primary-soft: rgb(15 118 110 / 0.08);
+  --q-primary: var(--bw-theme-primary);
+}
+
 .square-chip {
   background: var(--bw-theme-primary-soft) !important;
   color: var(--bw-theme-primary) !important;
@@ -184,4 +212,246 @@ body {
   min-height: 20px !important;
   height: auto !important;
   text-transform: uppercase;
+}
+
+/* ── Shared list / accounting page utilities ── */
+.inventory-page,
+.invoice-accounting-page,
+.shipment-acct-list-page,
+.shipment-accounting-details-page {
+  background: transparent;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.toolbar-left {
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: min(320px, 75vw);
+}
+
+.stat-card {
+  background: rgba(248, 250, 254, 0.9);
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+  margin-bottom: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.stat-card:hover {
+  box-shadow: 0 2px 12px rgba(34, 56, 101, 0.08);
+}
+
+.stat-card--negative {
+  border-left: 3px solid #e53935;
+  background: rgba(253, 245, 245, 0.9);
+}
+
+.stat-card--positive {
+  border-left: 3px solid #2e7d32;
+  background: rgba(244, 251, 246, 0.9);
+}
+
+.stat-card--primary {
+  border-left: 3px solid var(--q-primary, #1976d2);
+  background: rgba(245, 249, 255, 0.9);
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #555e72;
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a2642;
+  line-height: 1.2;
+}
+
+.stat-unit {
+  font-size: 10px;
+  color: #8896aa;
+  margin-top: 2px;
+}
+
+.empty-state-block {
+  border-radius: 14px;
+  min-height: 200px;
+}
+
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(34, 56, 101, 0.12);
+}
+
+/* ── Inventory table sticky columns ── */
+.inventory-page__table .q-table__middle {
+  max-height: calc(100vh - 340px);
+  overflow: auto;
+}
+
+.inventory-page__table .q-table {
+  table-layout: auto;
+  min-width: 1200px;
+}
+
+.inventory-page__table .q-table th,
+.inventory-page__table .q-table td {
+  white-space: nowrap;
+}
+
+.inventory-page__table .inventory-q-table thead tr th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.inventory-page__table .inventory-q-table td:first-child,
+.inventory-page__table .inventory-q-table th:first-child {
+  position: sticky;
+  left: 0;
+}
+
+.inventory-page__table .inventory-q-table td:nth-child(2),
+.inventory-page__table .inventory-q-table th:nth-child(2) {
+  position: sticky;
+  left: 44px;
+}
+
+.inventory-page__table .inventory-q-table td:first-child {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.inventory-page__table .inventory-q-table td:nth-child(2) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.inventory-page__table .inventory-q-table tr:first-child th:first-child {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.inventory-page__table .inventory-q-table tr:first-child th:nth-child(2) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.inventory-page__table .inventory-page__name-cell {
+  white-space: nowrap !important;
+}
+
+/* ── Shipment accounting list ── */
+.shipment-acct-list-table th {
+  background: color-mix(in srgb, #fff 96%, #f7f9fc 4%);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a8499;
+  padding: 10px 16px;
+}
+
+.shipment-acct-list-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(34, 56, 101, 0.06);
+}
+
+.shipment-row {
+  transition: background 0.15s ease;
+}
+
+.shipment-row:hover {
+  background: rgba(25, 118, 210, 0.04);
+}
+
+/* ── Global invoice accounting table ── */
+.invoice-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 380px);
+}
+
+.invoice-table th {
+  background: color-mix(in srgb, #f7f9fc 96%, rgba(34, 56, 101, 0.04) 4%);
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b4b66;
+  padding: 10px 12px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid rgba(34, 56, 101, 0.1);
+}
+
+.invoice-table td {
+  padding: 9px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(34, 56, 101, 0.05);
+  vertical-align: middle;
+}
+
+.invoice-group-row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.invoice-group-row:hover td {
+  background: rgba(34, 56, 101, 0.04);
+}
+
+.entry-status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  text-transform: capitalize;
+  background: rgba(34, 56, 101, 0.06);
+  color: #3b4b66;
+}
+
+.entry-status-chip--paid {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.entry-status-chip--due {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.totals-row td {
+  background: rgba(248, 250, 254, 0.95) !important;
+  border-top: 2px solid rgba(34, 56, 101, 0.12);
+  font-size: 13px;
 }

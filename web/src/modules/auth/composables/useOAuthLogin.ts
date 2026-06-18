@@ -20,7 +20,7 @@ import {
   type AuthUserSnapshot,
 } from '../stores/authStore'
 
-export type AuthScope = 'platform' | 'app' | 'shop'
+export type AuthScope = 'platform' | 'app' | 'shop' | 'investor'
 
 const scopeConfig: Record<
   AuthScope,
@@ -40,6 +40,10 @@ const scopeConfig: Record<
   shop: {
     homeRouteName: 'customer-dashboard',
     loginRouteName: 'customer-login-page',
+  },
+  investor: {
+    homeRouteName: 'investor-portfolio-page',
+    loginRouteName: 'investor-login-page',
   },
 }
 
@@ -576,6 +580,73 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     return true
   }
 
+  const processInvestorLogin = async (
+    userEmail: string,
+    user: AuthUserSnapshot,
+  ) => {
+    const entryTenant = await resolveShopTenantEntry()
+
+    if (!entryTenant) {
+      return false
+    }
+
+    const { data, error } = await supabase.rpc('get_investor_bootstrap_context', {
+      p_tenant_id: entryTenant.id,
+    })
+
+    if (error) {
+      console.error('[auth:investor] Bootstrap fetch failed', error)
+      await sendBackToLogin('Investor bootstrap fetch failed', error)
+      return false
+    }
+
+    const bootstrap = data as {
+      authenticated?: boolean
+      tenant?: { id: number; name: string; slug: string; is_active?: boolean }
+      investor_account?: { id: number; investor_id: number; email: string; tenant_id: number; is_active?: boolean }
+      module_keys?: string[]
+    }
+
+    if (
+      !bootstrap?.authenticated ||
+      !bootstrap.investor_account ||
+      !bootstrap.tenant
+    ) {
+      await sendBackToLogin('No investor account linked to this email', bootstrap)
+      return false
+    }
+
+    const tenant: AuthTenantSnapshot = {
+      id: bootstrap.tenant.id,
+      name: bootstrap.tenant.name,
+      slug: bootstrap.tenant.slug,
+      isActive: bootstrap.tenant.is_active ?? true,
+    }
+
+    await saveAndRedirect({
+      scope: 'investor',
+      matchedRole: 'investor_portal',
+      user,
+      member: {
+        id: bootstrap.investor_account.investor_id,
+        email: bootstrap.investor_account.email.trim().toLowerCase(),
+        role: 'investor_portal',
+        actorType: 'membership',
+        name: null,
+        tenantId: bootstrap.tenant.id,
+        customerGroupId: null,
+        isActive: Boolean(bootstrap.investor_account.is_active ?? true),
+        createdAt: null,
+        updatedAt: null,
+      },
+      tenant,
+      customerGroup: null,
+      activeModuleKeys: normalizeModuleKeys(bootstrap.module_keys ?? ['investor_portal']),
+    })
+
+    return true
+  }
+
   const processLoginResult = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
     const session = sessionData.session
@@ -616,6 +687,10 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       return processAppLogin(userEmail, user)
     }
 
+    if (resolvedScope === 'investor') {
+      return processInvestorLogin(userEmail, user)
+    }
+
     return processShopLogin(userEmail, user)
   }
 
@@ -633,7 +708,7 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       callbackSearchParams.set('redirect', redirectPath)
     }
 
-    if ((resolvedScope === 'shop' || resolvedScope === 'app') && tenantSlug) {
+    if ((resolvedScope === 'shop' || resolvedScope === 'app' || resolvedScope === 'investor') && tenantSlug) {
       callbackSearchParams.set('tenant_slug', tenantSlug)
     }
 

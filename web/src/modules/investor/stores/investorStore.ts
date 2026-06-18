@@ -289,5 +289,31 @@ export const useInvestorStore = defineStore('investor', {
         this.saving = false
       }
     },
+
+    async updateShipmentInvestmentCostShare(payload: { id: number; cost_share_pct: number }) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const result = await investorService.updateShipmentInvestmentCostShare(payload)
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update cost share.'
+          handleApiFailure(result, this.error)
+          return result
+        }
+
+        if (result.data) {
+          this.shipmentInvestments = this.shipmentInvestments.map((item) =>
+            item.id === result.data.id ? result.data : item,
+          )
+        }
+
+        showSuccessNotification('Cost share updated successfully.')
+        return result
+      } finally {
+        this.saving = false
+      }
+    },
   },
 })

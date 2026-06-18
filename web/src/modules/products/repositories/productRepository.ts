@@ -252,20 +252,16 @@ const listProductsFallback = async ({
 }
 
 const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<string[]> => {
-  let query = supabase.from('product_brands').select('name')
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
+  if (typeof tenantId !== 'number') {
+    return []
   }
-
-  query = query.order('name', { ascending: true })
 
   const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-  if (normalizedVendorCode) {
-    query = query.eq('vendor_code', normalizedVendorCode)
-  }
-
-  const { data, error } = await query
+  const { data, error } = await supabase.rpc('list_product_brands_for_tenant', {
+    p_tenant_id: tenantId,
+    p_vendor_code: normalizedVendorCode,
+    p_vendor_id: null,
+  })
 
   if (error) {
     throw error
@@ -277,20 +273,16 @@ const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}
 }
 
 const listCategories = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<string[]> => {
-  let query = supabase.from('product_categories').select('name')
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
+  if (typeof tenantId !== 'number') {
+    return []
   }
-
-  query = query.order('name', { ascending: true })
 
   const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-  if (normalizedVendorCode) {
-    query = query.eq('vendor_code', normalizedVendorCode)
-  }
-
-  const { data, error } = await query
+  const { data, error } = await supabase.rpc('list_product_categories_for_tenant', {
+    p_tenant_id: tenantId,
+    p_vendor_code: normalizedVendorCode,
+    p_vendor_id: null,
+  })
 
   if (error) {
     throw error
@@ -479,26 +471,19 @@ const listProductBrands = async ({
   vendorId,
   tenantId,
 }: ListProductLookupParams = {}): Promise<ProductBrand[]> => {
-  let query = supabase.from('product_brands').select('*')
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
+  if (typeof tenantId !== 'number') {
+    return []
   }
 
-  query = query.order('name', { ascending: true })
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  const { data, error } = await supabase.rpc('list_product_brands_for_tenant', {
+    p_tenant_id: tenantId,
+    p_vendor_code: normalizedVendorCode,
+    p_vendor_id: typeof vendorId === 'number' ? vendorId : null,
+  })
 
-  if (typeof vendorId === 'number') {
-    query = query.eq('vendor_id', vendorId)
-  } else {
-    const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-    if (normalizedVendorCode) {
-      query = query.eq('vendor_code', normalizedVendorCode)
-    }
-  }
-
-  const { data, error } = await query
   if (error) throw error
-  
+
   return (data as ProductBrand[] | null) ?? []
 }
 
@@ -554,26 +539,19 @@ const listProductCategories = async ({
   vendorId,
   tenantId,
 }: ListProductLookupParams = {}): Promise<ProductCategory[]> => {
-  let query = supabase.from('product_categories').select('*')
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
+  if (typeof tenantId !== 'number') {
+    return []
   }
 
-  query = query.order('name', { ascending: true })
+  const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
+  const { data, error } = await supabase.rpc('list_product_categories_for_tenant', {
+    p_tenant_id: tenantId,
+    p_vendor_code: normalizedVendorCode,
+    p_vendor_id: typeof vendorId === 'number' ? vendorId : null,
+  })
 
-  if (typeof vendorId === 'number') {
-    query = query.eq('vendor_id', vendorId)
-  } else {
-    const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null
-    if (normalizedVendorCode) {
-      query = query.eq('vendor_code', normalizedVendorCode)
-    }
-  }
-
-  const { data, error } = await query
   if (error) throw error
-  
+
   return (data as ProductCategory[] | null) ?? []
 }
 

@@ -22,6 +22,7 @@ export type AccessRole =
   | 'customer_admin'
   | 'customer_negotiator'
   | 'customer_staff'
+  | 'investor_portal'
 
 export const createAccessGuard = ({
   allowedRoles,

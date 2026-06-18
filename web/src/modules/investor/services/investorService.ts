@@ -228,6 +228,28 @@ const deleteShipmentInvestment = async (
   }
 }
 
+const updateShipmentInvestmentCostShare = async (payload: {
+  id: number
+  cost_share_pct: number
+}): Promise<InvestorServiceResult<ShipmentInvestment>> => {
+  try {
+    const data = await investorRepository.updateShipmentInvestmentCostShare(payload)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update shipment investment cost share.',
+    }
+  }
+}
+
 export const investorService = {
   listInvestorsByTenant,
   listInvestorBalancesByTenant,
@@ -240,4 +262,5 @@ export const investorService = {
   createShipmentInvestment,
   updateShipmentInvestment,
   deleteShipmentInvestment,
+  updateShipmentInvestmentCostShare,
 }

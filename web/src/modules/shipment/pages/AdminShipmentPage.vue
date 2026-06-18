@@ -243,6 +243,8 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import type { Shipment } from '../types'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { buildShipmentDetailPath } from '../utils/shipmentPaths'
+import { isGbpFromShipmentType, shipmentTypeFromIsGbp } from '../utils/shipmentType'
 
 const shipmentStore = useShipmentStore()
 const tenantStore = useTenantStore()
@@ -461,7 +463,7 @@ const onSubmit = async (data: { name: string; is_gbp: boolean }) => {
   } else {
     await shipmentStore.createShipment({
       name: data.name,
-      is_gbp: data.is_gbp,
+      shipment_type: shipmentTypeFromIsGbp(data.is_gbp),
       tenant_id: tenantStore.selectedTenant?.id ?? 1,
     })
   }
@@ -471,7 +473,7 @@ const onShipmentEdit = (shipment: Shipment) => {
   selectedShipment.value = {
     id: shipment.id,
     name: shipment.name,
-    is_gbp: shipment.is_gbp,
+    is_gbp: isGbpFromShipmentType(shipment.shipment_type),
   }
   showDialog.value = true
 }
@@ -500,8 +502,7 @@ const confirmDeleteShipment = async () => {
 }
 
 const onSelectShipment = async (shipment: Shipment) => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/shipment/${shipment.id}`)
+  await router.push(buildShipmentDetailPath(authStore.tenantSlug, shipment.id))
 }
 
 const loadShipments = async (nextPage = 1) => {

@@ -25,6 +25,15 @@ export type ModuleKey =
   | 'thrift_shipment'
   | 'thrift_box'
   | 'thrift_barcode'
+  | 'global_shipment'
+  | 'global_stock'
+  | 'global_invoice'
+  | 'global_accounting_ledger'
+  | 'global_shipment_accounting'
+  | 'global_invoice_accounting'
+  | 'global_investor'
+  | 'global_investor_shipment'
+  | 'investor_portal'
 
 
 export type ModuleAction = 'view'
@@ -73,17 +82,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shipment',
     name: 'Shipment',
-    description: 'Coordinate dispatch, logistics, and delivery status.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shipment',
-        caption: 'Track dispatch, handoff, and delivery progress',
-        icon: 'local_shipping',
-        routeSegment: 'shipment',
-        requiredAction: 'view',
-      },
-    ],
+    description: 'Legacy shipment module key (superseded by global_shipment).',
+    routes: [],
   },
   {
     key: 'inventory',
@@ -655,9 +655,149 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
     ],
   },
+  {
+    key: 'global_shipment',
+    name: 'Global Shipment',
+    description: 'Parent-coordinated dispatch, logistics, and delivery.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipment',
+        caption: 'Track dispatch, handoff, and delivery progress',
+        icon: 'local_shipping',
+        routeSegment: 'global/shipment',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_stock',
+    name: 'Global Stock',
+    description: 'Parent-owned stock with child allocation bridge.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Global Stock',
+        caption: 'Parent stock and child allocations',
+        icon: 'inventory_2',
+        routeSegment: 'global/stock',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_invoice',
+    name: 'Global Invoice',
+    description: 'Unified retail and wholesale invoices.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Global Invoices',
+        caption: 'Create and manage global invoices',
+        icon: 'receipt',
+        routeSegment: 'global/invoices',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_accounting_ledger',
+    name: 'Global Ledger',
+    description: 'Consolidated accounting ledger across sister concerns.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Global Ledger',
+        caption: 'Parent consolidated accounting',
+        icon: 'account_balance',
+        routeSegment: 'global/accounting/ledger',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_shipment_accounting',
+    name: 'Shipment Accounting',
+    description: 'Shipment buy/sell cost and profit summary.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipment Accounting',
+        caption: 'Shipment P&L rollups',
+        icon: 'local_shipping',
+        routeSegment: 'global/accounting/shipments',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_invoice_accounting',
+    name: 'Invoice Accounting',
+    description: 'Invoice rollup including charge lines.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Invoice Accounting',
+        caption: 'Invoice P&L and charges',
+        icon: 'summarize',
+        routeSegment: 'global/accounting/invoices',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_investor',
+    name: 'Global Investor',
+    description: 'Parent-managed investor profiles and balances.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Investors',
+        caption: 'Manage investor capital',
+        icon: 'savings',
+        routeSegment: 'global/investors',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_investor_shipment',
+    name: 'Investor Shipment',
+    description: 'Investor cost-share per shipment.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Investor Shipments',
+        caption: 'Cost-share and profit allocation',
+        icon: 'pie_chart',
+        routeSegment: 'global/investor-shipments',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'investor_portal',
+    name: 'Investor Portal',
+    description: 'External investor login and portfolio.',
+    routes: [],
+  },
 ] as const
 
 export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definition.key)
+
+export const GLOBAL_MODULE_KEYS = [
+  'global_shipment',
+  'global_stock',
+  'global_invoice',
+  'global_accounting_ledger',
+  'global_shipment_accounting',
+  'global_invoice_accounting',
+  'global_investor',
+  'global_investor_shipment',
+] as const satisfies readonly ModuleKey[]
+
+export const isGlobalModuleKey = (moduleKey: ModuleKey): moduleKey is (typeof GLOBAL_MODULE_KEYS)[number] =>
+  (GLOBAL_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey)
 
 export const MODULE_REGISTRY_BY_KEY: Readonly<Record<ModuleKey, ModuleDefinition>> =
   Object.freeze(

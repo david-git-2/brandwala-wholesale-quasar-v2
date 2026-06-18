@@ -80,6 +80,10 @@ export type ShipmentInvestment = {
   investor_id: number
   invested_amount: number
   actual_profit: number
+  cost_share_pct: number | null
+  allocated_cost: number
+  computed_profit: number
+  profit_status: string
   status: ShipmentInvestmentStatus
   created_at: string
   updated_at: string

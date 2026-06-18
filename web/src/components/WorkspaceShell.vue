@@ -324,11 +324,11 @@ export interface WorkspaceLink {
 
 const props = defineProps<{
   logoutTo: string
-  theme: 'platform' | 'app' | 'shop'
+  theme: 'platform' | 'app' | 'shop' | 'investor'
   links: WorkspaceLink[]
 }>()
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop']
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor']
 
 const drawerOpen = ref(false)
 const showLogoutDialog = ref(false)
@@ -449,7 +449,7 @@ const themeClasses = computed(() => [
   `theme-${props.theme}`,
 ])
 
-const applyBodyThemeClass = (theme: 'platform' | 'app' | 'shop') => {
+const applyBodyThemeClass = (theme: 'platform' | 'app' | 'shop' | 'investor') => {
   if (typeof document === 'undefined') {
     return
   }

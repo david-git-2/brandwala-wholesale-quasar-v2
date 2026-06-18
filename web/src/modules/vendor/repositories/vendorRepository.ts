@@ -11,14 +11,24 @@ import type {
 const normalizeVendorCode = (code: string) => code.trim().toUpperCase()
 
 const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
+  if (typeof tenantId === 'number') {
+    const { data, error } = await supabase.rpc('list_vendors_for_tenant', {
+      p_tenant_id: tenantId,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return (data as Vendor[] | null) ?? []
+  }
+
   let query = supabase
     .from('vendors')
     .select('*')
     .order('id', { ascending: true })
 
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
-  } else if (tenantId === null) {
+  if (tenantId === null) {
     query = query.is('tenant_id', null)
   }
 
@@ -32,11 +42,22 @@ const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
 }
 
 const getVendorById = async (id: number, tenantId?: number | null): Promise<Vendor | null> => {
+  if (typeof tenantId === 'number') {
+    const { data, error } = await supabase.rpc('get_vendor_for_tenant', {
+      p_id: id,
+      p_tenant_id: tenantId,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return (data as Vendor | null) ?? null
+  }
+
   let query = supabase.from('vendors').select('*').eq('id', id)
 
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
-  } else if (tenantId === null) {
+  if (tenantId === null) {
     query = query.is('tenant_id', null)
   }
 

@@ -1,5 +1,7 @@
 import { supabase } from 'src/boot/supabase'
 
+import { normalizeShipmentType } from '../utils/shipmentType'
+
 import type {
   AddShipmentItemFromProductInput,
   AddShipmentItemManualInput,
@@ -87,7 +89,7 @@ const createShipment = async (payload: CreateShipmentInput): Promise<Shipment> =
   const { data, error } = await db.rpc('create_shipment', {
     p_name: payload.name,
     p_tenant_id: payload.tenant_id,
-    p_is_gbp: payload.is_gbp !== undefined ? payload.is_gbp : true,
+    p_shipment_type: normalizeShipmentType(payload.shipment_type),
   })
 
   if (error) {
@@ -153,7 +155,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
   const copiedShipment = await createShipment({
     name: `${sourceShipment.name} (Copy)`,
     tenant_id: sourceShipment.tenant_id,
-    is_gbp: sourceShipment.is_gbp,
+    shipment_type: sourceShipment.shipment_type,
   })
 
   const { data: updatedShipment, error: updateShipmentError } = await db
@@ -164,7 +166,7 @@ const copyShipment = async (payload: CopyShipmentInput): Promise<Shipment> => {
       cargo_conversion_rate: sourceShipment.cargo_conversion_rate,
       cargo_rate: sourceShipment.cargo_rate,
       received_weight: sourceShipment.received_weight,
-      is_gbp: sourceShipment.is_gbp,
+      shipment_type: sourceShipment.shipment_type,
       inventory_added: false,
     })
     .eq('id', copiedShipment.id)

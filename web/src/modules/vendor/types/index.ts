@@ -4,6 +4,7 @@ export type Vendor = {
   code: string
   market_code: string
   tenant_id: number | null
+  parent_tenant_id: number | null
   email: string | null
   phone: string | null
   address: string | null

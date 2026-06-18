@@ -158,7 +158,7 @@
           <div class="text-caption text-grey-8">Total Quantity</div>
           <div class="text-body1 text-weight-bold">{{ totals.quantity }}</div>
         </div>
-        <div class="shipment-summary-card" v-if="shipmentStore.selectedShipment?.is_gbp">
+        <div class="shipment-summary-card" v-if="isInternational">
           <div class="text-caption text-grey-8">Total Price GBP</div>
           <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.price_gbp) }}</div>
         </div>
@@ -166,7 +166,7 @@
           <div class="text-caption text-grey-8">Total Cost BDT</div>
           <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.cost_bdt) }}</div>
         </div>
-        <div class="shipment-summary-card" v-if="shipmentStore.selectedShipment?.is_gbp">
+        <div class="shipment-summary-card" v-if="isInternational">
           <div class="text-caption text-grey-8">Total Weight</div>
           <div class="text-body1 text-weight-bold">{{ formatFixed2(totals.total_weight_gm / 1000) }} kg</div>
         </div>
@@ -196,7 +196,7 @@
 
             <!-- Step 1: Rate and Weight -->
             <div 
-              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-if="isInternational"
               class="cursor-pointer row items-center q-gutter-xs text-weight-medium transition-colors hover-opacity"
               :class="isAddToInventoryRateInvalid ? 'text-amber-9 text-weight-bold' : 'text-positive'"
               @click="openEditableShipmentInfoDialog"
@@ -209,7 +209,7 @@
               <q-tooltip anchor="top middle" self="bottom middle">Click to configure rates and cargo weight</q-tooltip>
             </div>
 
-            <q-icon v-if="shipmentStore.selectedShipment?.is_gbp" name="chevron_right" color="grey-4" size="18px" />
+            <q-icon v-if="isInternational" name="chevron_right" color="grey-4" size="18px" />
 
             <!-- Step 2: Confirm Quantities (with Confirm All Perfect button below it) -->
             <div 
@@ -441,11 +441,11 @@
                 </q-popup-edit>
               </td>
               <td v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">
-                <span :class="{ 'cursor-pointer': !isInventoryAdded && !shipmentStore.selectedShipment?.is_gbp }">
+                <span :class="{ 'cursor-pointer': !isInventoryAdded && isLocal }">
                   {{ formatFixed2(calculateItemCostBdt(item)) }}
                 </span>
                 <q-popup-edit
-                  v-if="!isInventoryAdded && !shipmentStore.selectedShipment?.is_gbp"
+                  v-if="!isInventoryAdded && isLocal"
                   :model-value="item.cost_bdt"
                   buttons
                   persistent
@@ -940,7 +940,7 @@
                   <div class="col-12 col-sm-6">
                     <!-- Price fields -->
                     <q-input
-                      v-if="shipmentStore.selectedShipment?.is_gbp"
+                      v-if="isInternational"
                       v-model.number="addProductForm.price_gbp"
                       label="Price GBP *"
                       type="number"
@@ -973,7 +973,7 @@
                 </div>
 
                 <!-- Weight fields (GBP only) -->
-                <div class="row q-col-gutter-sm" v-if="shipmentStore.selectedShipment?.is_gbp">
+                <div class="row q-col-gutter-sm" v-if="isInternational">
                   <div class="col-12 col-sm-6">
                     <q-input
                       v-model.number="addProductForm.product_weight"
@@ -1097,7 +1097,7 @@
               :disabled="!canEditQuantity"
             />
             <q-input
-              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-if="isInternational"
               v-model.number="editManualItemForm.price_gbp"
               label="Price GBP"
               type="number"
@@ -1115,7 +1115,7 @@
               hide-bottom-space
             />
             <q-input
-              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-if="isInternational"
               v-model.number="editManualItemForm.product_weight"
               label="Product Weight"
               type="number"
@@ -1124,7 +1124,7 @@
               hide-bottom-space
             />
             <q-input
-              v-if="shipmentStore.selectedShipment?.is_gbp"
+              v-if="isInternational"
               v-model.number="editManualItemForm.package_weight"
               label="Package Weight"
               type="number"
@@ -1675,6 +1675,7 @@ import SmartImage from 'src/components/SmartImage.vue'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import ShipmentItemDetailsDialog from '../components/ShipmentItemDetailsDialog.vue'
 import { calculateCostBdt } from '../utils/costing'
+import { isInternationalShipment, isLocalShipment } from '../utils/shipmentType'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useMarketStore } from 'src/modules/market/stores/marketStore'
@@ -1682,6 +1683,7 @@ import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useShipmentStore } from '../stores/shipmentStore'
 import { SHIPMENT_STATUS_OPTIONS, type BatchCodePc, type ShipmentItem, type ShipmentStatus, type ShipmentReceiveItemInput, type ShipmentReceiveItemSplit, type ShipmentItemReceivingSplits } from '../types'
+import { buildShipmentBatchCodePath } from '../utils/shipmentPaths'
 
 const route = useRoute()
 const router = useRouter()
@@ -2101,10 +2103,11 @@ const baseColumnSelectorOptions = [
   { label: 'Actions', value: 'actions' },
 ] as const
 
-type ShipmentColumnKey = (typeof baseColumnSelectorOptions)[number]['value']
+const isInternational = computed(() => isInternationalShipment(shipmentStore.selectedShipment))
+const isLocal = computed(() => isLocalShipment(shipmentStore.selectedShipment))
 
 const columnSelectorOptions = computed(() => {
-  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
+  const isGbp = isInternationalShipment(shipmentStore.selectedShipment)
   return baseColumnSelectorOptions.filter((option) => {
     if (!isGbp) {
       return (
@@ -2217,7 +2220,7 @@ const isAddToInventoryRateInvalid = computed(() => {
   if (!shipment) {
     return true
   }
-  if (!shipment.is_gbp) {
+  if (isLocalShipment(shipment)) {
     return false
   }
 
@@ -2396,8 +2399,7 @@ const saveBatchEditorRows = async () => {
 }
 
 const goToBatchCodePage = async () => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  await router.push(`${tenantPrefix}/app/shipment/${shipmentId.value}/batch-code-pc`)
+  await router.push(buildShipmentBatchCodePath(authStore.tenantSlug, shipmentId.value))
 }
 
 const resetProductSearchDialog = () => {
@@ -2612,7 +2614,7 @@ const onCreateProductAndAddToShipment = async () => {
 
   const name = addProductForm.name.trim()
   const quantity = Number(addProductForm.quantity ?? 0)
-  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
+  const isGbp = isInternationalShipment(shipmentStore.selectedShipment)
   const priceGbp = isGbp ? Number(addProductForm.price_gbp) : 0
   const productWeight = isGbp ? Number(addProductForm.product_weight) : 0
   const packageWeight = isGbp ? Number(addProductForm.package_weight) : 0
@@ -2817,7 +2819,7 @@ const roundTo = (value: number, decimals = 0) => {
 
 const calculateItemCostBdt = (item: ShipmentItem) => {
   const shipment = shipmentStore.selectedShipment
-  if (shipment && !shipment.is_gbp) {
+  if (shipment && isLocalShipment(shipment)) {
     return item.cost_bdt ?? 0
   }
   return calculateCostBdt({
@@ -2984,7 +2986,7 @@ const downloadShipmentExcel = async () => {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Shipment Items')
 
-  const isGbp = shipmentStore.selectedShipment?.is_gbp !== false
+  const isGbp = isInternationalShipment(shipmentStore.selectedShipment)
   const headers = [
     'SL',
     'Name',
