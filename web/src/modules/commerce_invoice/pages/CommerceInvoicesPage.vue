@@ -5,7 +5,8 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
-            <div class="text-h6 text-weight-bold text-black">Commerce Invoices</div>
+            <div class="text-h6 text-weight-bold text-black">Shop Invoices</div>
+            <div class="text-caption text-grey-8">Order-generated wholesale and retail invoices from the B2B shop</div>
             <div class="text-caption text-grey-8">Manage commerce invoices, orders, and customer payments</div>
           </div>
           <div class="col-auto">

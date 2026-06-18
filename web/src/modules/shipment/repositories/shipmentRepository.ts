@@ -17,6 +17,7 @@ import type {
   DeleteAllBatchCodePcByShipmentInput,
   DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
+  ReceiveShipmentToGlobalStockItem,
   Shipment,
   ShipmentItem,
   UpdateShipmentItemInput,
@@ -526,6 +527,33 @@ const deleteAllBatchCodePcByShipment = async (
   }
 }
 
+const receiveShipmentToGlobalStock = async (
+  shipmentId: number,
+  items: ReceiveShipmentToGlobalStockItem[],
+): Promise<{ shipment_id: number; stocks_created: number; shipment: Shipment | null }> => {
+  const { data, error } = await db.rpc('receive_shipment_to_global_stock', {
+    p_shipment_id: shipmentId,
+    p_items: items,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const result =
+    (data as {
+      shipment_id?: number
+      stocks_created?: number
+      shipment?: Shipment | null
+    } | null) ?? {}
+
+  return {
+    shipment_id: Number(result.shipment_id ?? shipmentId),
+    stocks_created: Number(result.stocks_created ?? 0),
+    shipment: result.shipment ?? null,
+  }
+}
+
 export const shipmentRepository = {
   listShipments,
   getShipmentById,
@@ -549,4 +577,5 @@ export const shipmentRepository = {
   bulkCreateBatchCodePc,
   deleteBatchCodePc,
   deleteAllBatchCodePcByShipment,
+  receiveShipmentToGlobalStock,
 }

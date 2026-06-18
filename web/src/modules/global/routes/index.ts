@@ -36,10 +36,35 @@ const globalRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
+        path: 'billing-profiles',
+        name: 'app-global-billing-profiles',
+        component: () =>
+          import('src/modules/commerce_invoice/pages/CommerceBillingProfilesPage.vue'),
+        beforeEnter: guard('global_invoice'),
+      },
+      {
+        path: 'brands',
+        name: 'app-global-invoice-brands',
+        component: () => import('src/modules/invoice/pages/AdminInvoiceBrandsPage.vue'),
+        beforeEnter: guard('global_invoice'),
+      },
+      {
         path: ':id',
         name: 'app-global-invoice-details-page',
         component: () => import('../pages/GlobalInvoiceDetailsPage.vue'),
         beforeEnter: guard('global_invoice'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/global/invoices/:id/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: guard('global_invoice'),
+    children: [
+      {
+        path: '',
+        name: 'app-global-invoice-preview',
+        component: () => import('../pages/GlobalInvoicePreviewPage.vue'),
       },
     ],
   },

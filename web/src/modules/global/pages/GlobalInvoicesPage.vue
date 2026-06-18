@@ -4,19 +4,13 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
-            <div class="text-h6 text-weight-bold text-black">Global Invoices</div>
-            <div class="text-caption text-grey-8">Unified retail and wholesale invoices across sister concerns</div>
+            <div class="text-h6 text-weight-bold text-black">Sales Invoices</div>
+            <div class="text-caption text-grey-8">Wholesale, retail, and dropship desk invoices across sister concerns</div>
           </div>
-          <div class="col-auto">
-            <q-btn
-              color="primary"
-              icon="add"
-              label="Create Invoice"
-              no-caps
-              unelevated
-              class="pill-btn slim-btn shadow-1"
-              @click="createDialog = true"
-            />
+          <div class="col-auto row q-gutter-sm">
+            <q-btn color="primary" icon="add" label="Wholesale" no-caps unelevated class="pill-btn slim-btn shadow-1" @click="createWholesaleDialog = true" />
+            <q-btn color="secondary" icon="add" label="Retail" no-caps unelevated outline class="pill-btn slim-btn" @click="createRetailDialog = true" />
+            <q-btn color="accent" icon="add" label="Dropship" no-caps unelevated outline class="pill-btn slim-btn" @click="createDropshipDialog = true" />
           </div>
         </div>
       </q-card-section>
@@ -127,6 +121,12 @@
               </div>
             </div>
             <div class="row justify-between items-center q-mt-sm">
+              <div v-if="row.billing_profile_name">
+                <div class="text-caption text-grey-8 text-weight-medium">Billing Profile</div>
+                <div class="text-body2 text-weight-medium ellipsis">{{ row.billing_profile_name }}</div>
+              </div>
+            </div>
+            <div class="row justify-between items-center q-mt-sm">
               <div>
                 <div class="text-caption text-grey-8 text-weight-medium">Paid</div>
                 <div class="text-body2 text-weight-medium">{{ formatAmount(row.paid_amount) }}</div>
@@ -160,6 +160,7 @@
         :options="[
           { label: 'Retail', value: 'retail' },
           { label: 'Wholesale', value: 'wholesale' },
+          { label: 'Dropship', value: 'dropship' },
         ]"
         label="Invoice Type"
         outlined
@@ -174,17 +175,21 @@
       </div>
     </FilterSidebar>
 
-    <q-dialog v-model="createDialog">
-      <q-card style="min-width: 400px; max-width: 95vw" class="floating-surface shadow-2 q-pa-sm">
-        <q-card-section class="text-h6 text-weight-bold text-black">Create Global Invoice</q-card-section>
-        <q-card-section class="text-body2 text-grey-8">
-          Full invoice creation will open the global invoice editor. Use commerce invoicing for child-tenant sales until the global editor ships.
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat no-caps label="Close" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <CreateGlobalInvoiceDialog
+      v-model="createWholesaleDialog"
+      :parent-tenant-id="effectiveParentTenantId"
+      @created="onInvoiceCreated"
+    />
+    <CreateRetailInvoiceDialog
+      v-model="createRetailDialog"
+      :parent-tenant-id="effectiveParentTenantId"
+      @created="onInvoiceCreated"
+    />
+    <CreateDropshipInvoiceDialog
+      v-model="createDropshipDialog"
+      :parent-tenant-id="effectiveParentTenantId"
+      @created="onInvoiceCreated"
+    />
   </q-page>
 </template>
 
@@ -195,21 +200,37 @@ import { useRouter } from 'vue-router'
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { formatAmountBdt } from 'src/utils/currency'
 
+import CreateGlobalInvoiceDialog from '../components/CreateGlobalInvoiceDialog.vue'
+import CreateRetailInvoiceDialog from '../components/CreateRetailInvoiceDialog.vue'
+import CreateDropshipInvoiceDialog from '../components/CreateDropshipInvoiceDialog.vue'
 import { useGlobalInvoiceStore } from '../stores/globalInvoiceStore'
-import type { GlobalInvoiceRow } from '../types'
+import type { GlobalInvoiceCreated, GlobalInvoiceRow } from '../types'
 
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
 const router = useRouter()
 const globalInvoiceStore = useGlobalInvoiceStore()
+
+const effectiveParentTenantId = computed(() => {
+  const current =
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === authStore.tenantId) ??
+    null
+  if (!current) return authStore.tenantId
+  return current.parent_id ?? current.id
+})
 
 const showSearchInput = ref(false)
 const filterDrawerOpen = ref(false)
 const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const invoiceTypeFilter = ref<string | null>(null)
-const createDialog = ref(false)
+const createWholesaleDialog = ref(false)
+const createRetailDialog = ref(false)
+const createDropshipDialog = ref(false)
 
 const statusFilterOptions = [
   { label: 'Paid', value: 'paid' },
@@ -281,6 +302,10 @@ const goToDetails = (row: GlobalInvoiceRow) => {
   })
 }
 
+const onInvoiceCreated = (invoice: GlobalInvoiceCreated) => {
+  goToDetails(invoice)
+}
+
 const onSearchChange = () => {}
 const onCloseSearch = () => {
   showSearchInput.value = false
@@ -292,9 +317,9 @@ const onResetFilters = () => {
 }
 
 const load = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
-  await globalInvoiceStore.fetchInvoices(tenantId)
+  const parentId = effectiveParentTenantId.value
+  if (!parentId) return
+  await globalInvoiceStore.fetchInvoices(parentId)
 }
 
 onMounted(() => {

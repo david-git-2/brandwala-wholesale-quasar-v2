@@ -183,15 +183,30 @@ Ordered-by / recipient for invoices (child-owned).
 
 ### 6.5 `global_invoices` / `global_invoice_items` / `global_return_items`
 
+Unified **Sales Invoices** desk model (module `global_invoice`). Shop order invoices remain on `commerce_invoices` until convergence (Step 9+).
+
 | Field | Notes |
 |-------|-------|
-| `tenant_id` | Issuing tenant |
+| `tenant_id` | Issuing sister concern (parent cannot self-issue via UI) |
 | `parent_tenant_id` | Rollup parent |
-| `invoice_type` | `retail` \| `wholesale` |
-| `ordered_by_id`, `recipient_id` | FK `business_parties` |
-| `status`, `note`, amounts, dates | |
+| `billing_profile_id` | Required; wholesale/retail bill-to; dropship middle man |
+| `invoice_type` | `wholesale` \| `retail` \| `dropship` |
+| `recipient_name`, `recipient_phone`, `recipient_address` | Snapshots; wholesale = billing profile |
+| `collection_source` | `billing_profile` (wholesale/retail) or `recipient` (dropship COD) |
+| `face_subtotal_amount`, `accounting_subtotal_amount` | Dropship dual totals |
+| `middle_man_payout_amount`, `middle_man_payout_status` | Dropship settlement |
 
-Items reference parent `global_stock_id`. **New invoices only** — no bulk migration of old `invoices`.
+**Type rules:**
+
+| Type | Billing profile | Recipient | Charges | Collection |
+|------|-----------------|-----------|---------|------------|
+| Wholesale | Bill-to = recipient | Same as profile | None | Billing profile |
+| Retail | Bill-to | Separate delivery party | COD, delivery, print, wrapping | Billing profile |
+| Dropship | Middle man | End customer (required) | Same as retail | Recipient; payout to middle man |
+
+Items reference parent `global_stock_id`. Line fields: `sell_price_amount` (accounting), `recipient_price_amount` (dropship face). Returns: `return_face_amount`, `return_accounting_amount`, optional `return_charge_amount`.
+
+**UI:** Sales Invoices (`global/invoices`), shared print preview (`invoice_shared`), billing profiles (`global/invoices/billing-profiles`). Commerce shop invoices labeled **Shop Invoices**.
 
 ### 6.6 `invoice_charge_lines`
 
@@ -282,7 +297,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **F1 — Shared UI** | Extract/reuse `floating-surface`, `hero-surface`, `pill-btn`, `soft-input`, status chips; align `AppPageHeader` with costing pattern | Style guide §1–16 |
 | **F2 — Parent shipment** | Pull child procurement lines; build parent shipment (local/intl); costing file details pattern | `ProductBasedCostingFileDetailsPage` |
 | **F3 — Global stock** | Parent full stock list; child allocation manager; stock search from global RPC | Inventory + costing list patterns |
-| **F4 — Global invoice** | Invoice create/edit (parent or child); charge lines (COD, packing, print); party picker | Invoice + costing details |
+| **F4 — Sales invoice** | Wholesale / retail / dropship create; billing profile; charges; shared print preview (`invoice_shared`) | Commerce invoice layout |
 | **F5 — Parent accounting** | Consolidated ledger, shipment accounting, invoice accounting, cash circulation dashboard | Accounting pages + table column selector |
 | **F6 — Investor (admin + portal)** | See **§10.1 Investor portal** below | Style guide + Thrift `AppPageHeader` |
 | **F7 — Commerce retarget** | Commerce assign/sell `global_stock_id`; child sell flow | Existing commerce shop + style guide mobile cards §15–16 |
@@ -331,7 +346,7 @@ Do **not** copy Thrift composable architecture into web — web keeps module/rep
 | `global_stock` | Full | Allocations only |
 | `order_management`, `product_based_costing` | No | Yes |
 | `commerce_*` | No | Yes |
-| `global_invoice` / `invoice` | Optional | Yes |
+| `global_invoice` / `invoice` | Optional | Yes (desk sales) |
 | `global_accounting_ledger`, `global_shipment_accounting` | Yes | No |
 | `global_invoice_accounting` | Yes | Own invoices optional |
 | `global_investor`, `global_investor_shipment` | Yes | No |

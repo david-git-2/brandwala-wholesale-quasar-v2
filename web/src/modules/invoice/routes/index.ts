@@ -2,78 +2,54 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 
+const legacyGuard = createAccessGuard({
+  loginRoute: 'admin-login-page',
+  requiredScope: 'app',
+  requireTenantContext: true,
+  allowedRoles: ['admin', 'staff'],
+  requiredModule: 'invoice',
+})
+
 const invoiceRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/invoices',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-invoice-page',
-        component: () => import('../pages/AdminInvoicePage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          requireTenantContext: true,
-          allowedRoles: ['admin', 'staff'],
-          requiredModule: 'invoice',
-        }),
-      },
-      {
-        path: ':invoiceId',
-        name: 'app-invoice-details-page',
-        component: () => import('../pages/AdminInvoiceDetailsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          requireTenantContext: true,
-          allowedRoles: ['admin', 'staff'],
-          requiredModule: 'invoice',
-        }),
-      },
-      {
-        path: 'billing-profiles',
-        name: 'app-billing-profiles-page',
-        component: () => import('../pages/AdminBillingProfilesPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          requireTenantContext: true,
-          allowedRoles: ['admin', 'staff'],
-          requiredModule: 'invoice',
-        }),
-      },
-      {
-        path: 'brands',
-        name: 'app-invoice-brands-page',
-        component: () => import('../pages/AdminInvoiceBrandsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          requireTenantContext: true,
-          allowedRoles: ['admin', 'staff'],
-          requiredModule: 'invoice',
-        }),
-      },
-    ],
+    redirect: (to) => ({
+      name: 'app-global-invoices-page',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: legacyGuard,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/billing-profiles',
+    redirect: (to) => ({
+      name: 'app-global-billing-profiles',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: legacyGuard,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/brands',
+    redirect: (to) => ({
+      name: 'app-global-invoice-brands',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: legacyGuard,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/:invoiceId',
+    redirect: (to) => ({
+      name: 'app-global-invoice-details-page',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.invoiceId },
+    }),
+    beforeEnter: legacyGuard,
   },
   {
     path: '/:tenantSlug?/app/invoices/:invoiceId/preview',
-    component: () => import('layouts/ExternalLayout.vue'),
-    beforeEnter: createAccessGuard({
-      loginRoute: 'admin-login-page',
-      requiredScope: 'app',
-      requireTenantContext: true,
-      allowedRoles: ['admin', 'staff'],
-      requiredModule: 'invoice',
+    redirect: (to) => ({
+      name: 'app-global-invoice-preview',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.invoiceId },
     }),
-    children: [
-      {
-        path: '',
-        name: 'app-invoice-preview-page',
-        component: () => import('../pages/AdminInvoicePreviewPage.vue'),
-      },
-    ],
+    beforeEnter: legacyGuard,
   },
 ]
 

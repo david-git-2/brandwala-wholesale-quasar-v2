@@ -235,3 +235,9 @@ export type ShipmentReceiveItemInput = {
   shipmentItemId: number
   splits: ShipmentReceiveItemSplit[]
 }
+
+export type ReceiveShipmentToGlobalStockItem = {
+  id: number
+  cost_bdt: number
+  receiving_splits: ShipmentItemReceivingSplits
+}

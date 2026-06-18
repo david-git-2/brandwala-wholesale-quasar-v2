@@ -14,6 +14,7 @@ import type {
   DeleteAllBatchCodePcByShipmentInput,
   DeleteShipmentItemInput,
   DeleteShipmentItemQuantityInput,
+  ReceiveShipmentToGlobalStockItem,
   Shipment,
   ShipmentItem,
   ShipmentServiceResult,
@@ -333,6 +334,23 @@ const deleteAllBatchCodePcByShipment = async (
   }
 }
 
+const receiveShipmentToGlobalStock = async (
+  shipmentId: number,
+  items: ReceiveShipmentToGlobalStockItem[],
+): Promise<
+  ShipmentServiceResult<{ shipment_id: number; stocks_created: number; shipment: Shipment | null }>
+> => {
+  try {
+    const data = await shipmentRepository.receiveShipmentToGlobalStock(shipmentId, items)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to receive shipment to global stock.',
+    }
+  }
+}
+
 export const shipmentService = {
   listShipments,
   getShipmentById,
@@ -356,4 +374,5 @@ export const shipmentService = {
   bulkCreateBatchCodePc,
   deleteBatchCodePc,
   deleteAllBatchCodePcByShipment,
+  receiveShipmentToGlobalStock,
 }
