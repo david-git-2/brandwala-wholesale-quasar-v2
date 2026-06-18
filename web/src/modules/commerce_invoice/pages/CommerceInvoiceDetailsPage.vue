@@ -1180,6 +1180,9 @@ const onInlineUpdateItem = async (row: CommerceInvoiceItemRow, field: 'quantity'
       payload.quantity = Math.max(1, Math.floor(Number(value || 1)))
     } else if (field === 'sell_price_bdt') {
       payload.sell_price_bdt = Math.max(0, Number(value || 0))
+      if (invoice.value?.invoice_type === 'wholesale') {
+        payload.recipient_price_bdt = payload.sell_price_bdt
+      }
     } else if (field === 'recipient_price_bdt') {
       payload.recipient_price_bdt = Math.max(0, Number(value || 0))
     }
@@ -1375,11 +1378,12 @@ const getSellPrice = (itemId: number, defaultCost: number): number => {
 }
 
 const getRecipientPrice = (itemId: number, defaultCost: number): number => {
-  if (invoice.value?.invoice_type === 'wholesale') {
-    return getSellPrice(itemId, defaultCost)
-  }
   if (recipientPriceByItemId.value[itemId] === undefined || recipientPriceByItemId.value[itemId] === null) {
-    recipientPriceByItemId.value[itemId] = Number(selectedOrderItem.value?.recipient_price_bdt || defaultCost || 0)
+    if (invoice.value?.invoice_type === 'wholesale') {
+      recipientPriceByItemId.value[itemId] = getSellPrice(itemId, defaultCost)
+    } else {
+      recipientPriceByItemId.value[itemId] = Number(selectedOrderItem.value?.recipient_price_bdt || defaultCost || 0)
+    }
   }
   return recipientPriceByItemId.value[itemId] ?? 0
 }

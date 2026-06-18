@@ -18,32 +18,9 @@
     <PageInitialLoader v-if="loading" />
 
     <template v-else>
-      <section v-if="visibleTenants.length" class="admin-tenant-page__grid">
-        <q-card
-          v-for="tenant in visibleTenants"
-          :key="tenant.id"
-          flat
-          class="admin-tenant-page__card floating-surface shadow-1 cursor-pointer"
-          @click="goToTenantDetails(tenant.id)"
-        >
-          <q-card-section class="admin-tenant-page__card-section">
-            <div class="row justify-between items-center q-mb-xs">
-              <div class="text-overline text-primary text-weight-bold">Tenant #{{ tenant.id }}</div>
-              <q-chip
-                dense
-                square
-                class="costing-status-chip"
-                :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
-              >
-                <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
-                {{ selectingTenantId === tenant.id ? 'Opening' : tenant.is_active ? 'Active' : 'Inactive' }}
-              </q-chip>
-            </div>
-            <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
-            <div class="text-body2 text-grey-7 q-mt-xs">{{ tenant.slug }}</div>
-          </q-card-section>
-        </q-card>
-      </section>
+      <div v-if="visibleTenants.length" class="admin-tenant-page__tree-container">
+        <TenantTreeList :tenants="visibleTenants" @click-tenant="goToTenantDetails" />
+      </div>
 
       <q-card v-else flat class="floating-surface shadow-1">
         <q-card-section class="text-center q-pa-xl">
@@ -65,6 +42,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection'
 import { useTenantStore } from '../stores/tenantStore'
+import TenantTreeList from '../components/TenantTreeList.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()

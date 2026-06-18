@@ -120,6 +120,7 @@ const createTenant = async (tenant: TenantCreateInput): Promise<Tenant> => {
     p_slug: tenant.slug,
     p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
+    p_parent_id: tenant.parent_id,
   })
 
   if (error) {
@@ -142,6 +143,7 @@ const updateTenant = async (tenant: TenantUpdateInput): Promise<Tenant> => {
     p_slug: tenant.slug,
     p_public_domain: tenant.public_domain,
     p_is_active: tenant.is_active,
+    p_parent_id: tenant.parent_id,
   })
 
   if (error) {

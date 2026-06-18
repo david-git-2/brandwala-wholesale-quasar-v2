@@ -44,6 +44,17 @@
           @update:model-value="onPublicDomainInput"
         />
 
+        <q-select
+          v-model="form.parent_id"
+          :options="parentOptions"
+          label="Parent Tenant"
+          outlined
+          dense
+          emit-value
+          map-options
+          class="q-mt-sm"
+        />
+
         <q-toggle
           v-model="form.is_active"
           label="Is Active"
@@ -89,6 +100,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { formatAppDateTime } from 'src/utils/dateTime'
+import { useTenantStore } from '../stores/tenantStore'
+import type { Tenant } from '../types'
 
 type TenantForm = {
   id?: number
@@ -96,6 +109,7 @@ type TenantForm = {
   slug: string
   public_domain: string | null
   is_active: boolean
+  parent_id: number | null
   created_at?: string
   updated_at?: string
 }
@@ -110,6 +124,8 @@ const emit = defineEmits<{
   (e: 'save', value: TenantForm): void
 }>()
 
+const tenantStore = useTenantStore()
+
 const localModelValue = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value)
@@ -119,13 +135,50 @@ const getDefaultForm = (): TenantForm => ({
   name: '',
   slug: '',
   public_domain: null,
-  is_active: true
+  is_active: true,
+  parent_id: null
 })
 
 const form = reactive<TenantForm>(getDefaultForm())
 const slugEditedManually = ref(false)
 
 const isEdit = computed(() => !!props.initialData?.id)
+
+const getDescendants = (tenantId: number, tenants: Tenant[]): Set<number> => {
+  const descendants = new Set<number>()
+  const visit = (id: number) => {
+    tenants.forEach(t => {
+      if (t.parent_id === id) {
+        if (!descendants.has(t.id)) {
+          descendants.add(t.id)
+          visit(t.id)
+        }
+      }
+    })
+  }
+  visit(tenantId)
+  return descendants
+}
+
+const selectableParents = computed(() => {
+  const allTenants = tenantStore.items
+  if (!isEdit.value || form.id === undefined) {
+    return allTenants
+  }
+  const descendants = getDescendants(form.id, allTenants)
+  return allTenants.filter(t => t.id !== form.id && !descendants.has(t.id))
+})
+
+const parentOptions = computed(() => {
+  const options = selectableParents.value.map(t => ({
+    label: `${t.name} (${t.slug})`,
+    value: t.id
+  }))
+  return [
+    { label: 'None (Root Tenant)', value: null },
+    ...options
+  ]
+})
 
 const slugify = (value: string): string =>
   value
@@ -185,6 +238,7 @@ const onSave = () => {
     slug: slugify(form.slug),
     public_domain: normalizePublicDomain(form.public_domain ?? '') || null,
     is_active: form.is_active,
+    parent_id: form.parent_id
   }
 
   if (form.id !== undefined) {

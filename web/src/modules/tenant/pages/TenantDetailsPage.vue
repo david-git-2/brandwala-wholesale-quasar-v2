@@ -68,6 +68,10 @@
                 <div class="text-weight-bold text-primary">{{ tenant.public_domain || 'Not set' }}</div>
               </div>
               <div class="row items-center justify-between q-py-xs border-bottom">
+                <div class="text-grey-8">Parent Tenant</div>
+                <div class="text-weight-bold">{{ parentTenantName }}</div>
+              </div>
+              <div class="row items-center justify-between q-py-xs border-bottom">
                 <div class="text-grey-8">Status</div>
                 <q-chip
                   dense
@@ -350,6 +354,7 @@ type TenantForm = {
   slug: string
   public_domain: string | null
   is_active: boolean
+  parent_id: number | null
   created_at?: string
   updated_at?: string
 }
@@ -385,6 +390,12 @@ const tenantId = computed(() => Number(route.params.id))
 
 const tenant = computed<Tenant | null>(() => {
   return items.value.find((item) => item.id === tenantId.value) ?? null
+})
+
+const parentTenantName = computed(() => {
+  if (!tenant.value?.parent_id) return 'None'
+  const parent = items.value.find((t) => t.id === tenant.value?.parent_id)
+  return parent ? `${parent.name} (#${parent.id})` : `Tenant #${tenant.value.parent_id}`
 })
 
 const tenantAdminColumns = [
@@ -487,6 +498,7 @@ const onClickEditTenant = () => {
     slug: tenant.value.slug,
     public_domain: tenant.value.public_domain,
     is_active: tenant.value.is_active,
+    parent_id: tenant.value.parent_id,
     created_at: tenant.value.created_at,
     updated_at: tenant.value.updated_at,
   }
@@ -503,6 +515,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
     slug: payload.slug,
     public_domain: payload.public_domain,
     is_active: payload.is_active,
+    parent_id: payload.parent_id,
   }
 
   await tenantStore.updateTenant(updatePayload)

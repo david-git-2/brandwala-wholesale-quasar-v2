@@ -1,7 +1,7 @@
 import type { Enums, Tables } from 'src/types/supabase'
 
-export type Tenant = Tables<'tenants'>
-export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'public_domain' | 'is_active'>
+export type Tenant = Tables<'tenants'> & { parent_id: number | null }
+export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'public_domain' | 'is_active' | 'parent_id'>
 export type TenantEntry = {
   id: Tenant['id']
   name: Tenant['name']
@@ -18,6 +18,7 @@ export type TenantUpdateInput = {
   slug: Tenant['slug']
   public_domain: Tenant['public_domain']
   is_active: Tenant['is_active']
+  parent_id: Tenant['parent_id']
 }
 export type TenantDeleteInput = Pick<Tenant, 'id'>
 

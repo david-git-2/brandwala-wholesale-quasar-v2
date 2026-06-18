@@ -29,32 +29,9 @@
     <PageInitialLoader v-if="loading" />
 
     <template v-else>
-      <section v-if="items.length" class="tenant-page__grid">
-        <q-card
-          v-for="tenant in items"
-          :key="tenant.id"
-          flat
-          class="tenant-page__card floating-surface shadow-1 cursor-pointer"
-          @click="goToTenantDetails(tenant.id)"
-        >
-          <q-card-section>
-            <div class="row justify-between items-center q-mb-xs">
-              <div class="text-overline text-primary text-weight-bold">Tenant #{{ tenant.id }}</div>
-              <q-chip
-                dense
-                square
-                class="costing-status-chip"
-                :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
-              >
-                <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
-                {{ tenant.is_active ? 'Active' : 'Inactive' }}
-              </q-chip>
-            </div>
-            <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
-            <div class="text-body2 text-grey-7 q-mt-xs">{{ tenant.public_domain ? `${tenant.slug} | ${tenant.public_domain}` : tenant.slug }}</div>
-          </q-card-section>
-        </q-card>
-      </section>
+      <div v-if="items.length" class="tenant-page__tree-container">
+        <TenantTreeList :tenants="items" @click-tenant="goToTenantDetails" />
+      </div>
 
       <q-card v-else flat class="floating-surface shadow-1">
         <q-card-section class="text-center q-pa-xl">
@@ -89,6 +66,7 @@ import { useRouter } from 'vue-router'
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useTenantStore } from '../stores/tenantStore'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
+import TenantTreeList from '../components/TenantTreeList.vue'
 import type { TenantCreateInput, TenantUpdateInput } from '../types'
 
 type TenantForm = {
@@ -97,6 +75,7 @@ type TenantForm = {
   slug: string
   public_domain: string | null
   is_active: boolean
+  parent_id: number | null
   created_at?: string
   updated_at?: string
 }
@@ -137,6 +116,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
       slug: payload.slug,
       public_domain: payload.public_domain,
       is_active: payload.is_active,
+      parent_id: payload.parent_id,
     }
 
     await tenantStore.updateTenant(updatePayload)
@@ -146,6 +126,7 @@ const handleSaveTenant = async (payload: TenantForm) => {
       slug: payload.slug,
       public_domain: payload.public_domain,
       is_active: payload.is_active,
+      parent_id: payload.parent_id,
     }
 
     await tenantStore.createTenant(createPayload)

@@ -84,7 +84,7 @@
               label="Search Barcodes"
               outlined
               dense
-              placeholder="e.g. AA-26-"
+              placeholder="e.g. 01-AA-26-"
               clearable
             >
               <template v-slot:append>
@@ -375,7 +375,7 @@ const hasSufficientUnprinted = computed(() => unprintedCount.value >= printQty.v
 // Predict Next Sequence Range
 const estimatedRange = computed(() => {
   const yr = currentYear.value
-  const yearMatch = new RegExp(`^[A-Z]{2}-${yr}-\\d{6}$`)
+  const yearMatch = new RegExp(`^(\\d{2}-)?[A-Z]{2}-${yr}-\\d{6}$`)
   const matching = barcodes.value.filter(b => yearMatch.test(b.barcode_id))
   
   let prefix = 'AA'
@@ -384,10 +384,16 @@ const estimatedRange = computed(() => {
   if (matching.length > 0) {
     const latest = [...matching].sort((a, b) => b.barcode_id.localeCompare(a.barcode_id))[0]
     if (latest) {
-      prefix = latest.barcode_id.slice(0, 2)
-      const currentSeq = parseInt(latest.barcode_id.slice(6), 10)
+      const parts = latest.barcode_id.split('-')
+      if (parts.length === 4) {
+        prefix = parts[1] || 'AA'
+        startSeq = parseInt(parts[3] || '0', 10) + 1
+      } else {
+        prefix = parts[0] || 'AA'
+        startSeq = parseInt(parts[2] || '0', 10) + 1
+      }
       
-      if (currentSeq >= 999999) {
+      if (startSeq > 999999) {
         // Increment prefix
         let c1 = prefix.charCodeAt(0)
         let c2 = prefix.charCodeAt(1)
@@ -398,16 +404,15 @@ const estimatedRange = computed(() => {
         }
         prefix = String.fromCharCode(c1) + String.fromCharCode(c2)
         startSeq = 1
-      } else {
-        startSeq = currentSeq + 1
       }
     }
   }
 
   const startSeqStr = startSeq.toString().padStart(6, '0')
   const endSeqStr = (startSeq + genQuantity.value - 1).toString().padStart(6, '0')
+  const tenantPrefix = authStore.tenantId ? authStore.tenantId.toString().padStart(2, '0') + '-' : ''
 
-  return `${prefix}-${yr}-${startSeqStr} ~ ${prefix}-${yr}-${endSeqStr}`
+  return `${tenantPrefix}${prefix}-${yr}-${startSeqStr} ~ ${tenantPrefix}${prefix}-${yr}-${endSeqStr}`
 })
 
 // Filter logic

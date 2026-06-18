@@ -4141,6 +4141,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number | null
           public_domain: string | null
           slug: string
           updated_at: string
@@ -4150,6 +4151,7 @@ export type Database = {
           id?: number
           is_active?: boolean
           name: string
+          parent_id?: number | null
           public_domain?: string | null
           slug: string
           updated_at?: string
@@ -4159,11 +4161,20 @@ export type Database = {
           id?: number
           is_active?: boolean
           name?: string
+          parent_id?: number | null
           public_domain?: string | null
           slug?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       thrift_accounting_ledger: {
         Row: {
@@ -5781,6 +5792,7 @@ export type Database = {
         Args: {
           p_is_active?: boolean
           p_name: string
+          p_parent_id?: number
           p_public_domain?: string
           p_slug: string
         }
@@ -5789,6 +5801,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
           public_domain: string
           slug: string
           updated_at: string
@@ -5843,6 +5856,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
           public_domain: string
           slug: string
           updated_at: string
@@ -6083,6 +6097,8 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -6315,6 +6331,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
           public_domain: string
           slug: string
           updated_at: string
@@ -6433,6 +6450,8 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
+          public_domain: string
           slug: string
           updated_at: string
         }[]
@@ -6444,6 +6463,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
           public_domain: string
           slug: string
           updated_at: string
@@ -6885,6 +6905,7 @@ export type Database = {
         Args: {
           p_is_active: boolean
           p_name: string
+          p_parent_id?: number
           p_public_domain?: string
           p_slug: string
           p_tenant_id: number
@@ -6894,6 +6915,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          parent_id: number
           public_domain: string
           slug: string
           updated_at: string

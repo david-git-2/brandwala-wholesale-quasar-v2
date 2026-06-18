@@ -112,10 +112,14 @@
                 clickable
                 :active="option.value === selectedTenantId"
                 active-class="bg-primary text-white"
+                :style="{ paddingLeft: 16 + option.depth * 16 + 'px' }"
                 @click="onSelectTenant(option.value)"
               >
                 <q-item-section>
-                  <q-item-label>{{ option.label }}</q-item-label>
+                  <q-item-label class="row items-center no-wrap">
+                    <span v-if="option.depth > 0" class="text-grey-6 q-mr-xs text-weight-bold">↳</span>
+                    <span>{{ option.label }}</span>
+                  </q-item-label>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -139,6 +143,7 @@ import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdmin
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue'
 import StockSearchDialog from 'src/modules/inventory/components/StockSearchDialog.vue'
+import type { Tenant } from 'src/modules/tenant/types'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
@@ -154,12 +159,41 @@ const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 )
 const selectedTenantId = computed(() => tenantStore.selectedTenantId)
-const tenantOptions = computed(() =>
-  tenantStore.availableAdminTenants.map((tenant) => ({
-    label: tenant.name,
-    value: tenant.id,
-  })),
-)
+
+const tenantOptions = computed(() => {
+  const tenants = tenantStore.availableAdminTenants
+  
+  const map = new Map<number, { tenant: Tenant; children: Tenant[] }>()
+  tenants.forEach((t) => {
+    map.set(t.id, { tenant: t, children: [] })
+  })
+
+  const roots: Tenant[] = []
+  tenants.forEach((t) => {
+    if (t.parent_id === null || !map.has(t.parent_id)) {
+      roots.push(t)
+    } else {
+      map.get(t.parent_id)?.children.push(t)
+    }
+  })
+
+  const result: Array<{ label: string; value: number; depth: number }> = []
+  const traverse = (t: Tenant, depth: number) => {
+    result.push({
+      label: t.name,
+      value: t.id,
+      depth,
+    })
+    const entry = map.get(t.id)
+    if (entry) {
+      entry.children.forEach((child) => traverse(child, depth + 1))
+    }
+  }
+
+  roots.forEach((root) => traverse(root, 0))
+  return result
+})
+
 const tenantMenuOpen = ref(false)
 const selectedTenantLabel = computed(() => {
   const selectedOption =
