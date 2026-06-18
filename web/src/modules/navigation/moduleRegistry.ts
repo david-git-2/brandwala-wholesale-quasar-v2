@@ -24,6 +24,8 @@ export type ModuleKey =
   | 'thrift_stock'
   | 'thrift_shipment'
   | 'thrift_box'
+  | 'thrift_barcode'
+
 
 export type ModuleAction = 'view'
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
@@ -634,6 +636,21 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage container boxes & weights',
         icon: 'inventory_2',
         routeSegment: 'thrift/boxes',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_barcode',
+    name: 'Thrift Barcode',
+    description: 'Manage and print barcodes in bulk.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Barcodes',
+        caption: 'Generate and print barcodes',
+        icon: 'qr_code_2',
+        routeSegment: 'thrift/barcodes',
         requiredAction: 'view',
       },
     ],

@@ -4215,6 +4215,47 @@ export type Database = {
           },
         ]
       }
+      thrift_barcodes: {
+        Row: {
+          barcode_id: string
+          created_at: string
+          id: number
+          inserted_by: string
+          is_printed: number
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          barcode_id: string
+          created_at?: string
+          id?: number
+          inserted_by: string
+          is_printed?: number
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          barcode_id?: string
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          is_printed?: number
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_barcodes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_boxes: {
         Row: {
           created_at: string
@@ -4254,7 +4295,7 @@ export type Database = {
             foreignKeyName: "thrift_boxes_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
-            referencedRelation: "shipments"
+            referencedRelation: "thrift_shipments"
             referencedColumns: ["id"]
           },
           {
@@ -4529,6 +4570,50 @@ export type Database = {
           },
         ]
       }
+      thrift_shipments: {
+        Row: {
+          cargo_conversion_rate: number | null
+          cargo_rate: number | null
+          created_at: string
+          id: number
+          inserted_by: string
+          name: string
+          product_conversion_rate: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          cargo_conversion_rate?: number | null
+          cargo_rate?: number | null
+          created_at?: string
+          id?: number
+          inserted_by: string
+          name: string
+          product_conversion_rate?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          cargo_conversion_rate?: number | null
+          cargo_rate?: number | null
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          name?: string
+          product_conversion_rate?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_shipments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_stock_images: {
         Row: {
           created_at: string
@@ -4607,7 +4692,7 @@ export type Database = {
             foreignKeyName: "thrift_stock_settings_default_shipment_id_fkey"
             columns: ["default_shipment_id"]
             isOneToOne: false
-            referencedRelation: "shipments"
+            referencedRelation: "thrift_shipments"
             referencedColumns: ["id"]
           },
           {
@@ -4624,13 +4709,13 @@ export type Database = {
           box_id: number | null
           brand_name: string | null
           category_id: number
-          color: string
+          color: string | null
           condition: Database["public"]["Enums"]["thrift_condition"]
           created_at: string
           extra_weight: number | null
           id: number
           inserted_by: string
-          name: string
+          name: string | null
           note: string | null
           origin_purchase_price: number | null
           product_weight: number | null
@@ -4638,7 +4723,7 @@ export type Database = {
           section: Database["public"]["Enums"]["thrift_section"]
           shelf_id: number
           shipment_id: number
-          size: string
+          size: string | null
           sku: string
           status: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type: Database["public"]["Enums"]["thrift_stock_type"]
@@ -4650,13 +4735,13 @@ export type Database = {
           box_id?: number | null
           brand_name?: string | null
           category_id: number
-          color: string
+          color?: string | null
           condition: Database["public"]["Enums"]["thrift_condition"]
           created_at?: string
           extra_weight?: number | null
           id?: number
           inserted_by: string
-          name: string
+          name?: string | null
           note?: string | null
           origin_purchase_price?: number | null
           product_weight?: number | null
@@ -4664,7 +4749,7 @@ export type Database = {
           section: Database["public"]["Enums"]["thrift_section"]
           shelf_id: number
           shipment_id: number
-          size: string
+          size?: string | null
           sku: string
           status?: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
@@ -4676,13 +4761,13 @@ export type Database = {
           box_id?: number | null
           brand_name?: string | null
           category_id?: number
-          color?: string
+          color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"]
           created_at?: string
           extra_weight?: number | null
           id?: number
           inserted_by?: string
-          name?: string
+          name?: string | null
           note?: string | null
           origin_purchase_price?: number | null
           product_weight?: number | null
@@ -4690,7 +4775,7 @@ export type Database = {
           section?: Database["public"]["Enums"]["thrift_section"]
           shelf_id?: number
           shipment_id?: number
-          size?: string
+          size?: string | null
           sku?: string
           status?: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
@@ -4724,7 +4809,7 @@ export type Database = {
             foreignKeyName: "thrift_stocks_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
-            referencedRelation: "shipments"
+            referencedRelation: "thrift_shipments"
             referencedColumns: ["id"]
           },
           {
@@ -5795,6 +5880,10 @@ export type Database = {
       fn_recalculate_normal_invoice_totals: {
         Args: { p_invoice_id: number }
         Returns: undefined
+      }
+      generate_thrift_barcodes: {
+        Args: { p_inserted_by: string; p_quantity: number; p_tenant_id: number }
+        Returns: string[]
       }
       get_active_module_keys_for_tenant: {
         Args: { p_tenant_id: number }

@@ -41,6 +41,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: ['view'],
     thrift_shipment: ['view'],
     thrift_box: ['view'],
+    thrift_barcode: ['view'],
   },
   admin: {
     order_management: ['view'],
@@ -66,6 +67,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: ['view'],
     thrift_shipment: ['view'],
     thrift_box: ['view'],
+    thrift_barcode: ['view'],
   },
   staff: {
     order_management: ['view'],
@@ -91,6 +93,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: ['view'],
     thrift_shipment: ['view'],
     thrift_box: ['view'],
+    thrift_barcode: ['view'],
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -116,6 +119,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: NO_ACCESS,
     thrift_shipment: NO_ACCESS,
     thrift_box: NO_ACCESS,
+    thrift_barcode: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -141,6 +145,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: NO_ACCESS,
     thrift_shipment: NO_ACCESS,
     thrift_box: NO_ACCESS,
+    thrift_barcode: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -166,6 +171,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: NO_ACCESS,
     thrift_shipment: NO_ACCESS,
     thrift_box: NO_ACCESS,
+    thrift_barcode: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -191,6 +197,7 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     thrift_stock: NO_ACCESS,
     thrift_shipment: NO_ACCESS,
     thrift_box: NO_ACCESS,
+    thrift_barcode: NO_ACCESS,
   },
 }
 

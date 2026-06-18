@@ -27,6 +27,8 @@ import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
 import thriftStockRoutes from 'src/modules/thrift_stock/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
+import thriftBarcodeRoutes from 'src/modules/thrift_barcode/routes';
+
 
 const routes: RouteRecordRaw[] = [
   {
@@ -111,6 +113,8 @@ const routes: RouteRecordRaw[] = [
   ...tasksRoutes,
   ...thriftStockRoutes,
   ...thriftRoutes,
+  ...thriftBarcodeRoutes,
+
 
   // Always leave this as last one
   {
