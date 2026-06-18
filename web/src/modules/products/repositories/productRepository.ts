@@ -193,7 +193,7 @@ const listProductsFallback = async ({
   let query = supabase.from('products').select('*', { count: 'exact' })
 
   if (tenantId !== null && tenantId !== undefined) {
-    query = query.eq('tenant_id', tenantId)
+    query = query.or(`tenant_id.eq.${tenantId},parent_tenant_id.eq.${tenantId}`)
   }
 
   if (normalizedCategory) {
@@ -406,7 +406,24 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
   return data as Product
 }
 
-const getProductById = async (id: number): Promise<Product> => {
+const getProductById = async (id: number, tenantId?: number | null): Promise<Product> => {
+  if (typeof tenantId === 'number') {
+    const { data, error } = await supabase.rpc('get_product_for_tenant', {
+      p_id: id,
+      p_tenant_id: tenantId,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    if (!data) {
+      throw new Error('Product not found.')
+    }
+
+    return data as Product
+  }
+
   const { data, error } = await supabase
     .from('products')
     .select('*')

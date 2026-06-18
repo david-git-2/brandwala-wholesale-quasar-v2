@@ -9,6 +9,7 @@ import type {
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
   GlobalLedgerRow,
+  GlobalShipmentLedgerEntry,
   GlobalShipmentAccountingRow,
   GlobalShipmentInvestmentRow,
   GlobalStockListPage,
@@ -400,6 +401,55 @@ const getGlobalShipmentAccounting = async (
   return (data as GlobalShipmentAccountingRow | null) ?? null
 }
 
+const listGlobalLedgerByShipment = async (
+  parentTenantId: number,
+  shipmentId: number,
+  limit = 500,
+): Promise<GlobalShipmentLedgerEntry[]> => {
+  const { data, error } = await supabase.rpc('list_global_accounting_ledger_by_shipment', {
+    p_parent_tenant_id: parentTenantId,
+    p_shipment_id: shipmentId,
+    p_limit: limit,
+    p_offset: 0,
+  })
+
+  if (error) throw error
+  return (data as GlobalShipmentLedgerEntry[] | null) ?? []
+}
+
+const refreshGlobalShipmentAccounting = async (
+  parentTenantId: number,
+  shipmentId: number,
+): Promise<GlobalShipmentAccountingRow> => {
+  const { data, error } = await supabase.rpc('refresh_global_shipment_accounting', {
+    p_parent_tenant_id: parentTenantId,
+    p_shipment_id: shipmentId,
+  })
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to refresh shipment accounting.')
+  return data as GlobalShipmentAccountingRow
+}
+
+const getGlobalInvoicesPaidAmounts = async (
+  invoiceIds: number[],
+): Promise<Record<string, number>> => {
+  if (!invoiceIds.length) return {}
+
+  const { data, error } = await supabase
+    .from('global_invoices')
+    .select('id, paid_amount')
+    .in('id', invoiceIds)
+
+  if (error) throw error
+
+  const paidAmounts: Record<string, number> = {}
+  for (const invoice of data ?? []) {
+    paidAmounts[`normal_${invoice.id}`] = Number(invoice.paid_amount ?? 0)
+  }
+  return paidAmounts
+}
+
 const listChildStockAllocations = async (
   parentTenantId: number,
   status: StockNetworkQuery['status'] = 'excellent',
@@ -481,6 +531,9 @@ export const globalRepository = {
   listGlobalLedger,
   listGlobalShipmentAccounting,
   getGlobalShipmentAccounting,
+  listGlobalLedgerByShipment,
+  refreshGlobalShipmentAccounting,
+  getGlobalInvoicesPaidAmounts,
   listGlobalInvoiceAccounting,
   getParentCashCirculation,
   listGlobalShipmentInvestments,

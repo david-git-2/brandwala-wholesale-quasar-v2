@@ -102,9 +102,10 @@ const listProducts = async (
 
 const getProductById = async (
   id: number,
+  tenantId?: number | null,
 ): Promise<ProductServiceResult<Product>> => {
   try {
-    const data = await productRepository.getProductById(id)
+    const data = await productRepository.getProductById(id, tenantId)
     return { success: true, data }
   } catch (error) {
     return {

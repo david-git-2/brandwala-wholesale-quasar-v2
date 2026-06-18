@@ -3756,6 +3756,7 @@ export type Database = {
           minimum_order_quantity: number | null
           name: string | null
           package_weight: number | null
+          parent_tenant_id: number | null
           price_gbp: number | null
           product_code: string | null
           product_weight: number | null
@@ -3784,6 +3785,7 @@ export type Database = {
           minimum_order_quantity?: number | null
           name?: string | null
           package_weight?: number | null
+          parent_tenant_id?: number | null
           price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
@@ -3812,6 +3814,7 @@ export type Database = {
           minimum_order_quantity?: number | null
           name?: string | null
           package_weight?: number | null
+          parent_tenant_id?: number | null
           price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
@@ -3829,6 +3832,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "markets"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "products_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "products_tenant_id_fkey"
@@ -6418,6 +6428,44 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: Json
       }
+      get_product_for_tenant: {
+        Args: { p_id: number; p_tenant_id: number }
+        Returns: {
+          available_units: number | null
+          barcode: string | null
+          batch_code_manufacture_date: string | null
+          brand: string | null
+          category: string | null
+          country_of_origin: string | null
+          created_at: string
+          expire_date: string | null
+          hazardous: boolean | null
+          id: number
+          image_url: string | null
+          is_available: boolean | null
+          languages: string | null
+          market_code: string | null
+          minimum_order_quantity: number | null
+          name: string | null
+          package_weight: number | null
+          parent_tenant_id: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_weight: number | null
+          source: string | null
+          tariff_code: string | null
+          tenant_id: number | null
+          updated_at: string
+          vendor_code: string | null
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_shop_bootstrap_context: {
         Args: {
           p_customer_group_member_id?: number
@@ -6759,6 +6807,48 @@ export type Database = {
           p_offset?: number
           p_parent_tenant_id: number
           p_tenant_id?: number
+        }
+        Returns: {
+          charge_type: Database["public"]["Enums"]["invoice_charge_type"] | null
+          cost_amount: number
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          global_invoice_id: number | null
+          global_invoice_item_id: number | null
+          global_stock_id: number | null
+          gross_profit_amount: number
+          id: number
+          is_charge: boolean
+          note: string | null
+          parent_tenant_id: number
+          product_id: number | null
+          quantity: number
+          return_amount: number
+          return_quantity: number
+          sell_price_amount: number
+          shipment_id: number | null
+          shipment_item_id: number | null
+          sold_in_tenant_id: number | null
+          status: string
+          tenant_id: number
+          total_cost_amount: number
+          total_sell_amount: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_accounting_ledger"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_global_accounting_ledger_by_shipment: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_parent_tenant_id: number
+          p_shipment_id: number
         }
         Returns: {
           charge_type: Database["public"]["Enums"]["invoice_charge_type"] | null

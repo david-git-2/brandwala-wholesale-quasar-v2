@@ -5,11 +5,13 @@ import type {
   GlobalInvoiceAccountingRow,
   GlobalLedgerRow,
   GlobalShipmentAccountingRow,
+  GlobalShipmentLedgerEntry,
   ParentCashCirculation,
 } from '../types'
 
 type GlobalAccountingStoreState = {
   ledgerRows: GlobalLedgerRow[]
+  shipmentLedgerRows: GlobalShipmentLedgerEntry[]
   shipmentAccountingRows: GlobalShipmentAccountingRow[]
   invoiceAccountingRows: GlobalInvoiceAccountingRow[]
   cashCirculation: ParentCashCirculation | null
@@ -20,6 +22,7 @@ type GlobalAccountingStoreState = {
 export const useGlobalAccountingStore = defineStore('globalAccounting', {
   state: (): GlobalAccountingStoreState => ({
     ledgerRows: [],
+    shipmentLedgerRows: [],
     shipmentAccountingRows: [],
     invoiceAccountingRows: [],
     cashCirculation: null,
@@ -66,6 +69,42 @@ export const useGlobalAccountingStore = defineStore('globalAccounting', {
         return { success: false as const, error: message }
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchShipmentLedger(parentTenantId: number, shipmentId: number) {
+      this.loading = true
+      this.error = null
+      try {
+        this.shipmentLedgerRows = await globalRepository.listGlobalLedgerByShipment(
+          parentTenantId,
+          shipmentId,
+        )
+        return { success: true as const }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load shipment ledger.'
+        this.error = message
+        return { success: false as const, error: message }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async refreshShipmentAccounting(parentTenantId: number, shipmentId: number) {
+      this.error = null
+      try {
+        const row = await globalRepository.refreshGlobalShipmentAccounting(parentTenantId, shipmentId)
+        const index = this.shipmentAccountingRows.findIndex((item) => item.shipment_id === shipmentId)
+        if (index >= 0) {
+          this.shipmentAccountingRows[index] = row
+        } else {
+          this.shipmentAccountingRows = [row, ...this.shipmentAccountingRows]
+        }
+        return { success: true as const, data: row }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to refresh shipment accounting.'
+        this.error = message
+        return { success: false as const, error: message }
       }
     },
 

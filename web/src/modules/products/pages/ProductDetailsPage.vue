@@ -653,7 +653,7 @@ onMounted(async () => {
   error.value = null
 
   try {
-    const result = await productService.getProductById(id)
+    const result = await productService.getProductById(id, authStore.tenantId)
     if (!result.success) {
       error.value = result.error ?? 'Failed to load product.'
       return

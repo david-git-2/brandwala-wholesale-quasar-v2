@@ -229,6 +229,22 @@ export type GlobalLedgerRow = {
   is_charge: boolean
 }
 
+export type GlobalShipmentLedgerEntry = GlobalLedgerRow & {
+  shipment_id: number | null
+  shipment_item_id: number | null
+  global_invoice_id: number | null
+  global_invoice_item_id: number | null
+  global_stock_id: number | null
+  product_id: number | null
+  sold_in_tenant_id: number | null
+  total_cost_amount: number
+  total_sell_amount: number
+  return_quantity?: number
+  return_amount?: number
+  created_at: string
+  updated_at?: string
+}
+
 export type GlobalShipmentAccountingRow = {
   id: number
   shipment_id: number
