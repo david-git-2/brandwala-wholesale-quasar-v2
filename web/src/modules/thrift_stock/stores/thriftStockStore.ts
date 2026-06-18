@@ -85,17 +85,17 @@ export const useThriftStockStore = defineStore('thrift_stock', {
     async updateStock(
       id: number,
       stock: Partial<ThriftStock>,
-      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number }
+      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+      imageUrl?: string | null,
     ) {
       try {
-        const updated = await thriftStockRepository.updateStock(id, stock, pricing);
+        const updated = await thriftStockRepository.updateStock(id, stock, pricing, imageUrl);
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1) {
           this.stocks[idx] = {
             ...this.stocks[idx],
             ...updated,
-            // Keep previous image if not returned
-            image_url: this.stocks[idx]?.image_url,
+            image_url: imageUrl !== undefined ? (imageUrl || undefined) : this.stocks[idx]?.image_url,
           };
         }
         return updated;

@@ -4717,11 +4717,12 @@ export type Database = {
       }
       thrift_stocks: {
         Row: {
+          barcode: string | null
           box_id: number | null
           brand_name: string | null
-          category_id: number
+          category_id: number | null
           color: string | null
-          condition: Database["public"]["Enums"]["thrift_condition"]
+          condition: Database["public"]["Enums"]["thrift_condition"] | null
           created_at: string
           extra_weight: number | null
           id: number
@@ -4731,23 +4732,23 @@ export type Database = {
           origin_purchase_price: number | null
           product_weight: number | null
           quantity: number
-          section: Database["public"]["Enums"]["thrift_section"]
-          shelf_id: number
+          section: Database["public"]["Enums"]["thrift_section"] | null
+          shelf_id: number | null
           shipment_id: number
           size: string | null
-          sku: string
           status: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type: Database["public"]["Enums"]["thrift_stock_type"]
           tenant_id: number
-          type_id: number
+          type_id: number | null
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           box_id?: number | null
           brand_name?: string | null
-          category_id: number
+          category_id?: number | null
           color?: string | null
-          condition: Database["public"]["Enums"]["thrift_condition"]
+          condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
           extra_weight?: number | null
           id?: number
@@ -4757,23 +4758,23 @@ export type Database = {
           origin_purchase_price?: number | null
           product_weight?: number | null
           quantity?: number
-          section: Database["public"]["Enums"]["thrift_section"]
-          shelf_id: number
+          section?: Database["public"]["Enums"]["thrift_section"] | null
+          shelf_id?: number | null
           shipment_id: number
           size?: string | null
-          sku: string
           status?: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
           tenant_id: number
-          type_id: number
+          type_id?: number | null
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           box_id?: number | null
           brand_name?: string | null
-          category_id?: number
+          category_id?: number | null
           color?: string | null
-          condition?: Database["public"]["Enums"]["thrift_condition"]
+          condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
           extra_weight?: number | null
           id?: number
@@ -4783,15 +4784,14 @@ export type Database = {
           origin_purchase_price?: number | null
           product_weight?: number | null
           quantity?: number
-          section?: Database["public"]["Enums"]["thrift_section"]
-          shelf_id?: number
+          section?: Database["public"]["Enums"]["thrift_section"] | null
+          shelf_id?: number | null
           shipment_id?: number
           size?: string | null
-          sku?: string
           status?: Database["public"]["Enums"]["thrift_stock_status"]
           stock_type?: Database["public"]["Enums"]["thrift_stock_type"]
           tenant_id?: number
-          type_id?: number
+          type_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -6557,6 +6557,32 @@ export type Database = {
       }
       refresh_shipment_inventory_accounting: {
         Args: { p_shipment_id?: number; p_tenant_id: number }
+        Returns: number
+      }
+      register_thrift_stock_from_app: {
+        Args: {
+          p_barcode: string
+          p_box_id?: number
+          p_brand_name?: string
+          p_category_id?: number
+          p_color?: string
+          p_condition?: string
+          p_cost_of_goods_sold?: number
+          p_extra_weight?: number
+          p_image_url: string
+          p_inserted_by?: string
+          p_listed_price?: number
+          p_note?: string
+          p_origin_purchase_price?: number
+          p_product_weight?: number
+          p_section?: string
+          p_shelf_id?: number
+          p_shipment_id: number
+          p_size?: string
+          p_target_price?: number
+          p_tenant_id: number
+          p_type_id?: number
+        }
         Returns: number
       }
       remove_commerce_invoice_item_transactional: {

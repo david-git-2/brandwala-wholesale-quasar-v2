@@ -35,7 +35,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { supabase } from 'src/boot/supabase'
 import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin'
 
 const route = useRoute()
@@ -51,34 +50,24 @@ onMounted(async () => {
   if (appRedirect === 'thrift') {
     isRedirectingToApp.value = true
     
-    // Poll for the session to be established by Supabase
-    let session = null
-    for (let i = 0; i < 30; i++) {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        session = data.session
-        break
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    }
+    // ── PKCE code passthrough ──────────────────────────────────────────
+    // The native app called signInWithOAuth({ skipBrowserRedirect: true })
+    // which stored the PKCE code_verifier in the app's WebView storage.
+    // We must NOT exchange the code here (the web page doesn't have the
+    // code_verifier). Instead, pass the raw `code` straight back to the
+    // app so IT can call exchangeCodeForSession().
+    const code = route.query.code as string | undefined
+    const tenantSlug = (route.query.tenant_slug as string) || 'thrift'
     
-    if (session) {
-      const tenantSlug = route.query.tenant_slug || 'thrift'
-      const accessToken = session.access_token
-      const refreshToken = session.refresh_token
-      
-      if (accessToken && refreshToken) {
-        const isAndroid = /Android/i.test(navigator.userAgent)
-        if (isAndroid) {
-          // Use Android Intent URI to guarantee Chrome launches the app successfully
-          appRedirectUrl.value = `intent://auth-callback?scope=app&tenant_slug=${tenantSlug}#access_token=${accessToken}&refresh_token=${refreshToken}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`
-        } else {
-          // Standard custom scheme for iOS and fallback
-          appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?scope=app&tenant_slug=${tenantSlug}#access_token=${accessToken}&refresh_token=${refreshToken}`
-        }
-        window.location.href = appRedirectUrl.value
-        return
+    if (code) {
+      const isAndroid = /Android/i.test(navigator.userAgent)
+      if (isAndroid) {
+        appRedirectUrl.value = `intent://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`
+      } else {
+        appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}`
       }
+      window.location.href = appRedirectUrl.value
+      return
     }
   }
 

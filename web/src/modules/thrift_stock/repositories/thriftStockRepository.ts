@@ -103,7 +103,8 @@ export const thriftStockRepository = {
   async updateStock(
     id: number,
     stock: Partial<ThriftStock>,
-    pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number }
+    pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+    imageUrl?: string | null,
   ): Promise<ThriftStock> {
     const { data: stockData, error: stockError } = await supabase
       .from('thrift_stocks')
@@ -126,10 +127,60 @@ export const thriftStockRepository = {
       .single();
     if (pricingError) throw pricingError;
 
+    let resolvedImageUrl: string | undefined;
+    if (imageUrl !== undefined) {
+      if (imageUrl) {
+        await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, stockData.inserted_by);
+        resolvedImageUrl = imageUrl;
+      } else {
+        await thriftStockRepository.deletePrimaryStockImage(id);
+        resolvedImageUrl = undefined;
+      }
+    }
+
     return {
       ...stockData,
       pricing: pricingData,
+      ...(resolvedImageUrl !== undefined ? { image_url: resolvedImageUrl } : {}),
     } as ThriftStock;
+  },
+
+  async upsertPrimaryStockImage(stockId: number, imageUrl: string, insertedBy: string): Promise<void> {
+    const { data: existing, error: fetchError } = await supabase
+      .from('thrift_stock_images')
+      .select('id')
+      .eq('stock_id', stockId)
+      .eq('is_primary', true)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+
+    if (existing) {
+      const { error } = await supabase
+        .from('thrift_stock_images')
+        .update({ image_url: imageUrl, inserted_by: insertedBy })
+        .eq('id', existing.id);
+      if (error) throw error;
+      return;
+    }
+
+    const { error } = await supabase
+      .from('thrift_stock_images')
+      .insert({
+        stock_id: stockId,
+        image_url: imageUrl,
+        is_primary: true,
+        inserted_by: insertedBy,
+      });
+    if (error) throw error;
+  },
+
+  async deletePrimaryStockImage(stockId: number): Promise<void> {
+    const { error } = await supabase
+      .from('thrift_stock_images')
+      .delete()
+      .eq('stock_id', stockId)
+      .eq('is_primary', true);
+    if (error) throw error;
   },
 
   async updateStockStatus(id: number, status: string): Promise<void> {

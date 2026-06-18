@@ -128,6 +128,53 @@
         <q-separator />
         <q-card-section>
           <q-form @submit="onSubmit" class="q-gutter-sm q-pt-sm">
+            <!-- Product Image -->
+            <div>
+              <div class="text-caption text-grey-8 q-mb-xs">Product Image</div>
+              <div
+                v-if="editImage.url"
+                class="stock-image-preview relative-position text-center q-pa-sm rounded-borders"
+              >
+                <q-img
+                  :src="editImage.url"
+                  style="max-height: 200px; border-radius: 8px;"
+                  fit="contain"
+                  spinner-color="primary"
+                />
+                <div class="row justify-center q-gutter-sm q-mt-sm">
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="cloud_upload"
+                    label="Replace"
+                    @click="openEditUploader"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    color="negative"
+                    icon="delete"
+                    label="Remove"
+                    @click="imageRemoveConfirmOpen = true"
+                  />
+                </div>
+              </div>
+              <div
+                v-else
+                class="stock-image-upload text-center q-pa-lg rounded-borders cursor-pointer"
+                @click="openEditUploader"
+              >
+                <q-icon name="cloud_upload" size="40px" color="primary" />
+                <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">Upload Image</div>
+                <div class="text-caption text-grey-6">Click to open Cloudinary uploader</div>
+              </div>
+            </div>
+
+            <q-separator />
+
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
                 <q-select v-model="form.shipment_id" outlined dense label="Shipment *" :options="shipments"
@@ -256,7 +303,7 @@
 
           <div v-else class="q-gutter-md">
             <!-- Upload Area -->
-            <div class="text-center q-pa-md border-dashed rounded-borders bg-grey-1 cursor-pointer" @click="isUploaderOpen = true">
+            <div class="text-center q-pa-md border-dashed rounded-borders bg-grey-1 cursor-pointer" @click="uploaderTarget = 'quick'; isUploaderOpen = true">
               <div v-if="quickAddForm.imageUrl" class="text-center">
                 <q-img :src="quickAddForm.imageUrl" style="max-height: 180px; border-radius: 8px;" fit="contain" />
                 <div class="text-caption text-grey-8 q-mt-sm">Image Uploaded Successfully</div>
@@ -332,11 +379,28 @@
       </q-card>
     </q-dialog>
 
+    <!-- Remove Image Confirmation Dialog -->
+    <q-dialog v-model="imageRemoveConfirmOpen" persistent>
+      <q-card style="width: 350px; max-width: 90vw;" class="floating-surface shadow-2 q-pa-md">
+        <q-card-section class="row items-center">
+          <q-avatar icon="image" color="warning" text-color="white" />
+          <span class="q-ml-sm text-weight-bold">Remove Product Image</span>
+        </q-card-section>
+        <q-card-section>
+          Remove this product image? The change is applied when you save the stock item.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+          <q-btn color="negative" label="Remove" no-caps @click="removeEditImage" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Global Cloudinary Uploader Dialog -->
     <CloudinaryUploaderDialog
       v-model="isUploaderOpen"
       folder="thrift-stocks"
-      @uploaded="onQuickImageUploaded"
+      @uploaded="onImageUploaded"
     />
   </q-page>
 </template>
@@ -364,9 +428,11 @@ const dialogOpen = ref(false);
 const editingId = ref<number | null>(null);
 const quickAddDialogOpen = ref(false);
 const isUploaderOpen = ref(false);
+const uploaderTarget = ref<'quick' | 'edit'>('quick');
 const quickSubmitting = ref(false);
 const settingsLoaded = ref(false);
 const deleteConfirmOpen = ref(false);
+const imageRemoveConfirmOpen = ref(false);
 const selectedRow = ref<ThriftStock | null>(null);
 
 const defaults = ref({
@@ -382,6 +448,13 @@ const quickAddForm = ref({
   barcode: '',
   imageUrl: '',
   deleteToken: '',
+});
+
+const editImage = ref({
+  url: '',
+  originalUrl: '',
+  pendingDeleteToken: '',
+  removed: false,
 });
 
 const stocks = computed(() => store.stocks);
@@ -556,6 +629,7 @@ async function generateBarcode() {
 
 async function openAddDialog() {
   quickAddForm.value = { barcode: '', imageUrl: '', deleteToken: '' };
+  uploaderTarget.value = 'quick';
   await loadTenantSettings();
   if (defaults.value.default_shipment_id) {
     await generateBarcode();
@@ -566,6 +640,47 @@ async function openAddDialog() {
 function onQuickImageUploaded(url: string, deleteToken?: string) {
   quickAddForm.value.imageUrl = url;
   quickAddForm.value.deleteToken = deleteToken || '';
+}
+
+function openEditUploader() {
+  uploaderTarget.value = 'edit';
+  isUploaderOpen.value = true;
+}
+
+function onEditImageUploaded(url: string, deleteToken?: string) {
+  if (editImage.value.pendingDeleteToken) {
+    void deleteCloudinaryImage(editImage.value.pendingDeleteToken);
+  }
+  editImage.value.url = url;
+  editImage.value.pendingDeleteToken = deleteToken || '';
+  editImage.value.removed = false;
+}
+
+function onImageUploaded(url: string, deleteToken?: string) {
+  if (uploaderTarget.value === 'edit') {
+    onEditImageUploaded(url, deleteToken);
+  } else {
+    onQuickImageUploaded(url, deleteToken);
+  }
+}
+
+function removeEditImage() {
+  if (editImage.value.pendingDeleteToken) {
+    void deleteCloudinaryImage(editImage.value.pendingDeleteToken);
+    editImage.value.pendingDeleteToken = '';
+  }
+  editImage.value.url = '';
+  editImage.value.removed = true;
+  imageRemoveConfirmOpen.value = false;
+}
+
+function resetEditImage() {
+  editImage.value = {
+    url: '',
+    originalUrl: '',
+    pendingDeleteToken: '',
+    removed: false,
+  };
 }
 
 async function deleteCloudinaryImage(deleteToken: string) {
@@ -662,6 +777,12 @@ async function submitQuickAdd() {
 
 function openEditDialog(row: ThriftStock) {
   editingId.value = row.id;
+  editImage.value = {
+    url: row.image_url || '',
+    originalUrl: row.image_url || '',
+    pendingDeleteToken: '',
+    removed: false,
+  };
   form.value = {
     category_id: row.category_id,
     type_id: row.type_id,
@@ -746,7 +867,18 @@ async function onSubmit() {
     };
 
     if (editingId.value) {
-      await store.updateStock(editingId.value, stockData as any, pricing.value);
+      const imageChanged =
+        editImage.value.removed || editImage.value.url !== editImage.value.originalUrl;
+      const imagePayload = imageChanged
+        ? (editImage.value.removed ? null : (editImage.value.url || null))
+        : undefined;
+
+      await store.updateStock(
+        editingId.value,
+        stockData as any,
+        pricing.value,
+        imagePayload,
+      );
       $q.notify({ type: 'positive', message: 'Thrift stock updated successfully' });
     } else {
       await store.createStock(
@@ -770,11 +902,12 @@ async function onSubmit() {
         form.value.note,
         authStore.user?.email || 'admin@brandwala.com',
         pricing.value,
-        undefined,
+        editImage.value.url || undefined,
         form.value.origin_purchase_price
       );
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }
+    resetEditImage();
     dialogOpen.value = false;
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
@@ -853,5 +986,25 @@ const statusDotColor = (status: string | null | undefined) => {
   height: 8px;
   border-radius: 999px;
   margin-right: 6px;
+}
+
+.stock-image-preview {
+  border: 1px solid rgba(34, 56, 101, 0.1);
+  background: rgba(247, 249, 252, 0.8);
+}
+
+.stock-image-upload {
+  border: 2px dashed rgba(34, 56, 101, 0.2);
+  background: rgba(247, 249, 252, 0.6);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.stock-image-upload:hover {
+  border-color: var(--q-primary);
+  background: rgba(var(--q-primary-rgb, 25, 118, 210), 0.04);
+}
+
+.border-dashed {
+  border: 2px dashed rgba(34, 56, 101, 0.2);
 }
 </style>
