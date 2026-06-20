@@ -9,13 +9,13 @@ export interface ThriftStock {
   shipment_id: number;
   name: string;
   brand_name?: string | undefined;
-  category_id: number;
-  type_id: number;
-  section: ThriftSection;
-  shelf_id: number;
+  category_id: number | null;
+  type_id: number | null;
+  section: ThriftSection | null;
+  shelf_id?: number | null;
   color: string;
   size: string;
-  condition: ThriftCondition;
+  condition: ThriftCondition | null;
   barcode: string;
   stock_type: ThriftStockType;
   quantity: number;

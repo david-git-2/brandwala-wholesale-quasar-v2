@@ -4580,8 +4580,9 @@ export type Database = {
           description: string | null
           id: number
           inserted_by: string
+          is_global: boolean
           name: string
-          tenant_id: number
+          tenant_id: number | null
           updated_at: string
         }
         Insert: {
@@ -4589,8 +4590,9 @@ export type Database = {
           description?: string | null
           id?: number
           inserted_by: string
+          is_global?: boolean
           name: string
-          tenant_id: number
+          tenant_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -4598,8 +4600,9 @@ export type Database = {
           description?: string | null
           id?: number
           inserted_by?: string
+          is_global?: boolean
           name?: string
-          tenant_id?: number
+          tenant_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -4796,6 +4799,35 @@ export type Database = {
           },
         ]
       }
+      thrift_settings: {
+        Row: {
+          created_at: string
+          default_purchase_price_gbp: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_purchase_price_gbp?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_purchase_price_gbp?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_shelves: {
         Row: {
           created_at: string
@@ -4915,58 +4947,6 @@ export type Database = {
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "thrift_stocks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      thrift_stock_settings: {
-        Row: {
-          created_at: string
-          default_box_id: number | null
-          default_origin_purchase_price: number
-          default_purchase_price: number
-          default_shipment_id: number | null
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          default_box_id?: number | null
-          default_origin_purchase_price?: number
-          default_purchase_price?: number
-          default_shipment_id?: number | null
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          default_box_id?: number | null
-          default_origin_purchase_price?: number
-          default_purchase_price?: number
-          default_shipment_id?: number | null
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "thrift_stock_settings_default_box_id_fkey"
-            columns: ["default_box_id"]
-            isOneToOne: false
-            referencedRelation: "thrift_boxes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "thrift_stock_settings_default_shipment_id_fkey"
-            columns: ["default_shipment_id"]
-            isOneToOne: false
-            referencedRelation: "thrift_shipments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "thrift_stock_settings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: true
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -5101,8 +5081,9 @@ export type Database = {
           description: string | null
           id: number
           inserted_by: string
+          is_global: boolean
           name: string
-          tenant_id: number
+          tenant_id: number | null
           updated_at: string
         }
         Insert: {
@@ -5110,8 +5091,9 @@ export type Database = {
           description?: string | null
           id?: number
           inserted_by: string
+          is_global?: boolean
           name: string
-          tenant_id: number
+          tenant_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -5119,8 +5101,9 @@ export type Database = {
           description?: string | null
           id?: number
           inserted_by?: string
+          is_global?: boolean
           name?: string
-          tenant_id?: number
+          tenant_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -7187,6 +7170,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_thrift_barcodes_paginated: {
+        Args: {
+          p_is_printed?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_thrift_stocks_paginated: {
         Args: {
           p_condition?: string
@@ -7501,6 +7495,17 @@ export type Database = {
           slug: string
         }[]
       }
+      resolve_thrift_barcode: {
+        Args: { p_scanned_value: string; p_tenant_id: number }
+        Returns: {
+          barcode_id: string
+          status: string
+        }[]
+      }
+      resolve_thrift_barcode_id_internal: {
+        Args: { p_scanned_value: string; p_tenant_id: number }
+        Returns: string
+      }
       revoke_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -7553,6 +7558,14 @@ export type Database = {
           sort_rank: number
           stolen_qty: number
           total_qty: number
+        }[]
+      }
+      thrift_barcode_sequence_sort_key: {
+        Args: { p_barcode_id: string }
+        Returns: {
+          sort_prefix: string
+          sort_seq: number
+          sort_year: string
         }[]
       }
       unassign_commerce_order_item_inventory_transactional: {

@@ -24,7 +24,7 @@ const renderBarcode = () => {
       width: props.width ?? 1.5,
       height: props.height ?? 40,
       displayValue: props.displayValue ?? false,
-      margin: 0
+      margin: 10
     })
   } catch (err) {
     console.error('JsBarcode rendering error:', err)

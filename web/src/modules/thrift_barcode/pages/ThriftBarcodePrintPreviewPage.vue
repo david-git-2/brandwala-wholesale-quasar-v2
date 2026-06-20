@@ -35,10 +35,10 @@
 
       <!-- Selected items indicator (hidden when printing) -->
       <div v-else-if="printList.length > 0" class="q-mb-md text-caption text-grey-8 no-print">
-        Showing <strong>{{ printList.length }}</strong> barcodes ready for printing.
+        Showing <strong>{{ printList.length }}</strong> barcodes (Not printed + Available).
       </div>
       <div v-else class="text-center q-pa-xl text-grey-6 no-print">
-        No barcodes selected for print. Please return to the Barcode Management page to select barcodes.
+        No eligible barcodes to print. Barcodes must be Not printed and Available.
       </div>
 
       <!-- Printable Barcodes Grid -->
@@ -87,6 +87,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore'
 import BarcodeRenderer from '../components/BarcodeRenderer.vue'
 import type { ThriftBarcode } from '../types'
+import { isBarcodePrintEligible } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,9 +120,8 @@ const closePostPrint = async (markAsPrinted: boolean) => {
     loading.value = true
     try {
       const ids = printList.value.map(b => b.id)
-      await barcodeStore.markBarcodesPrinted(ids)
-      
-      // Update local printList states
+      await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
+
       printList.value = printList.value.map(b => ({ ...b, is_printed: 1 }))
     } catch (err) {
       console.error('Failed to update printed status:', err)
@@ -134,11 +134,11 @@ const closePostPrint = async (markAsPrinted: boolean) => {
 onMounted(async () => {
   if (!authStore.tenantId) return
   loading.value = true
-  
+
   try {
-    await barcodeStore.fetchBarcodes(authStore.tenantId)
     if (barcodeIds.value.length > 0) {
-      printList.value = barcodeStore.barcodes.filter(b => barcodeIds.value.includes(b.id))
+      const rows = await barcodeStore.fetchBarcodesByIds(barcodeIds.value)
+      printList.value = rows.filter(isBarcodePrintEligible)
     }
   } catch (err) {
     console.error(err)

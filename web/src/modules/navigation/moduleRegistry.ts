@@ -24,7 +24,11 @@ export type ModuleKey =
   | 'thrift_stock'
   | 'thrift_shipment'
   | 'thrift_box'
+  | 'thrift_shelf'
   | 'thrift_barcode'
+  | 'thrift_category'
+  | 'thrift_type'
+  | 'thrift_settings'
   | 'global_shipment'
   | 'global_stock'
   | 'global_invoice'
@@ -575,14 +579,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'thrift/stocks',
         requiredAction: 'view',
       },
-      {
-        scope: 'app',
-        title: 'Thrift Stock Settings',
-        caption: 'Manage uploader defaults',
-        icon: 'settings',
-        routeSegment: 'thrift/stocks/settings',
-        requiredAction: 'view',
-      },
     ],
   },
   {
@@ -611,6 +607,66 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage container boxes & weights',
         icon: 'inventory_2',
         routeSegment: 'thrift/boxes',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_shelf',
+    name: 'Thrift Shelf',
+    description: 'Track physical shelf storage and aisle locations in the warehouse.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Shelves',
+        caption: 'Manage shelf locations',
+        icon: 'shelves',
+        routeSegment: 'thrift/shelves',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_category',
+    name: 'Thrift Category',
+    description: 'Manage classification categories for thrift stock items.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Categories',
+        caption: 'Manage stock categories',
+        icon: 'category',
+        routeSegment: 'thrift/categories',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_type',
+    name: 'Thrift Type',
+    description: 'Manage product styles and types within the thrift catalog.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Types',
+        caption: 'Manage dress and item types',
+        icon: 'style',
+        routeSegment: 'thrift/types',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_settings',
+    name: 'Thrift Settings',
+    description: 'Configure default purchase price for stock entries.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Settings',
+        caption: 'Default purchase price (GBP)',
+        icon: 'settings',
+        routeSegment: 'thrift/settings',
         requiredAction: 'view',
       },
     ],

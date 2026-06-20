@@ -8,7 +8,7 @@ const thriftStockRoutes: RouteRecordRaw[] = [
       beforeEnter: createAccessGuard({
          loginRoute: 'admin-login-page',
          requiredScope: 'app',
-         allowedRoles: ['admin', 'staff', 'viewer'],
+         allowedRoles: ['admin', 'staff'],
          requireTenantContext: true,
          requiredModule: 'thrift_stock',
       }),
@@ -20,15 +20,6 @@ const thriftStockRoutes: RouteRecordRaw[] = [
             meta: {
                title: 'Thrift Stocks',
                headerTitle: 'Stock Catalog',
-            },
-         },
-         {
-            path: 'settings',
-            name: 'thrift-stock-settings-page',
-            component: () => import('../pages/ThriftStockSettingsPage.vue'),
-            meta: {
-               title: 'Thrift Stock Settings',
-               headerTitle: 'Stock Uploader Settings',
             },
          },
       ],

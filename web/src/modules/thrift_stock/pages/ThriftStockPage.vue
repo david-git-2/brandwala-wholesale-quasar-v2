@@ -6,7 +6,7 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Thrift Stock</div>
-            <div class="text-caption text-grey-8">Manage bulk and single items, conditions, sizes, and shelf locations</div>
+            <div class="text-caption text-grey-8">Manage bulk and single items, conditions, sizes, boxes, and shelves</div>
           </div>
           <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
@@ -123,11 +123,6 @@
         <template #body-cell-extra_weight="props">
           <q-td :props="props">
             {{ props.value ? `${props.value} kg` : '—' }}
-          </q-td>
-        </template>
-        <template #body-cell-origin_purchase_price="props">
-          <q-td :props="props" class="text-right">
-            {{ props.value ? props.value : '—' }}
           </q-td>
         </template>
         <template #body-cell-status="props">
@@ -284,19 +279,19 @@
 
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-4">
-                <q-select v-model="form.section" outlined dense label="Section *" class="soft-input"
+                <q-select v-model="form.section" outlined dense label="Section" class="soft-input"
                   :options="['MALE', 'FEMALE', 'UNISEX', 'KIDS', 'HOME']"
-                  :rules="[val => !!val || 'Required']" />
+                  clearable />
               </div>
               <div class="col-12 col-sm-4">
-                <q-select v-model="form.condition" outlined dense label="Condition *" class="soft-input"
+                <q-select v-model="form.condition" outlined dense label="Condition" class="soft-input"
                   :options="['NEW_WITH_TAGS', 'EXCELLENT', 'GOOD', 'FAIR']"
-                  :rules="[val => !!val || 'Required']" />
+                  clearable />
               </div>
               <div class="col-12 col-sm-4">
-                <q-select v-model="form.shelf_id" outlined dense label="Shelf *" class="soft-input"
+                <q-select v-model="form.shelf_id" outlined dense label="Shelf" class="soft-input"
                   :options="shelves" option-value="id" option-label="shelf_code" emit-value map-options
-                  :rules="[val => !!val || 'Required']" />
+                  clearable />
               </div>
             </div>
 
@@ -319,12 +314,6 @@
               </div>
               <div class="col-12 col-sm-6">
                 <q-input v-model.number="form.extra_weight" type="number" step="0.001" outlined dense label="Extra Weight (kg)" class="soft-input" />
-              </div>
-            </div>
-
-            <div class="row q-col-gutter-sm">
-              <div class="col-12">
-                <q-input v-model.number="form.origin_purchase_price" type="number" step="0.01" outlined dense label="Origin Purchase Price (Foreign Currency)" class="soft-input" />
               </div>
             </div>
 
@@ -361,16 +350,36 @@
         <q-separator />
 
         <q-card-section class="q-pt-md">
-          <!-- Settings Warning if defaults aren't set -->
-          <div v-if="!settingsLoaded || !defaults.default_shipment_id" class="q-pa-md q-mb-md rounded-borders bg-amber-1 text-amber-9 text-caption row items-center">
-            <q-icon name="warning" class="q-mr-sm" size="sm" />
-            <div>
-              Default shipment parameters are not set. Please configure defaults in settings first!
-              <q-btn flat dense no-caps color="primary" label="Go to Settings" class="q-ml-sm" @click="goToSettings" />
-            </div>
-          </div>
+          <div class="q-gutter-md">
+            <q-select
+              v-model="quickAddForm.shipment_id"
+              outlined
+              dense
+              label="Shipment *"
+              :options="shipments"
+              option-value="id"
+              option-label="name"
+              emit-value
+              map-options
+              class="soft-input"
+              @update:model-value="onQuickShipmentChange"
+            />
 
-          <div v-else class="q-gutter-md">
+            <q-select
+              v-model="quickAddForm.box_id"
+              outlined
+              dense
+              label="Box"
+              :options="quickAddFilteredBoxes"
+              option-value="id"
+              option-label="name"
+              emit-value
+              map-options
+              class="soft-input"
+              clearable
+              @update:model-value="generateBarcode"
+            />
+
             <!-- Upload Area -->
             <div class="text-center q-pa-md border-dashed rounded-borders bg-grey-1 cursor-pointer" @click="uploaderTarget = 'quick'; isUploaderOpen = true">
               <div v-if="quickAddForm.imageUrl" class="text-center">
@@ -397,19 +406,11 @@
               />
             </div>
 
-            <!-- Selected Defaults Summary -->
+            <!-- Purchase default -->
             <div class="q-pa-sm rounded-borders bg-grey-2 text-caption text-grey-8">
               <div class="row justify-between">
-                <span>Shipment:</span>
-                <span class="text-weight-bold">{{ defaults.shipmentName }}</span>
-              </div>
-              <div class="row justify-between q-mt-xs" v-if="defaults.default_box_id">
-                <span>Box:</span>
-                <span class="text-weight-bold">{{ defaults.boxName }}</span>
-              </div>
-              <div class="row justify-between q-mt-xs">
-                <span>Origin Cost:</span>
-                <span class="text-weight-bold">{{ defaults.default_origin_purchase_price }}</span>
+                <span>Default purchase (GBP):</span>
+                <span class="text-weight-bold">£{{ settingsStore.defaultPurchasePriceGbp.toFixed(2) }}</span>
               </div>
             </div>
           </div>
@@ -424,7 +425,7 @@
             class="pill-btn slim-btn px-md"
             label="Submit & Edit Details"
             :loading="quickSubmitting"
-            :disabled="!quickAddForm.imageUrl || !defaults.default_shipment_id"
+            :disabled="!quickAddForm.imageUrl || !quickAddForm.shipment_id"
             @click="submitQuickAdd"
           />
         </q-card-section>
@@ -482,6 +483,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStockStore } from '../stores/thriftStockStore';
 import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
+import { useThriftSettingsStore } from 'src/modules/thrift_settings/stores/thriftSettingsStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
@@ -494,6 +496,7 @@ const route = useRoute();
 const authStore = useAuthStore();
 const store = useThriftStockStore();
 const thriftStore = useThriftStore();
+const settingsStore = useThriftSettingsStore();
 
 // Dialogs state
 const dialogOpen = ref(false);
@@ -502,22 +505,14 @@ const quickAddDialogOpen = ref(false);
 const isUploaderOpen = ref(false);
 const uploaderTarget = ref<'quick' | 'edit'>('quick');
 const quickSubmitting = ref(false);
-const settingsLoaded = ref(false);
 const deleteConfirmOpen = ref(false);
 const imageRemoveConfirmOpen = ref(false);
 const actionLoading = ref(false);
 const selectedRow = ref<ThriftStock | null>(null);
 
-const defaults = ref({
-  default_shipment_id: null as number | null,
-  default_box_id: null as number | null,
-  default_purchase_price: 0,
-  default_origin_purchase_price: 0,
-  shipmentName: '',
-  boxName: '',
-});
-
 const quickAddForm = ref({
+  shipment_id: null as number | null,
+  box_id: null as number | null,
   barcode: '',
   imageUrl: '',
   deleteToken: '',
@@ -550,16 +545,15 @@ const form = ref({
   name: '',
   brand_name: '',
   barcode: '',
-  section: 'UNISEX',
+  section: 'UNISEX' as ThriftSection | null,
   shelf_id: null as number | null,
   color: '',
   size: '',
-  condition: 'EXCELLENT',
+  condition: 'EXCELLENT' as ThriftCondition | null,
   quantity: 1,
   product_weight: 0.25,
   extra_weight: 0,
   note: '',
-  origin_purchase_price: 0,
 });
 
 const shipments = ref<{ id: number; name: string }[]>([]);
@@ -579,11 +573,21 @@ const filteredBoxes = computed(() => {
   return thriftStore.boxes.filter(b => b.shipment_id === form.value.shipment_id);
 });
 
+const quickAddFilteredBoxes = computed(() => {
+  if (!quickAddForm.value.shipment_id) return [];
+  return thriftStore.boxes.filter(b => b.shipment_id === quickAddForm.value.shipment_id);
+});
+
 function onShipmentChange() {
   form.value.box_id = null;
 }
 
-function getBoxName(boxId: number | undefined) {
+function onQuickShipmentChange() {
+  quickAddForm.value.box_id = null;
+  void generateBarcode();
+}
+
+function getBoxName(boxId: number | undefined | null) {
   if (!boxId) return '—';
   const bx = thriftStore.boxes.find(b => b.id === boxId);
   return bx ? bx.name : `#${boxId}`;
@@ -625,7 +629,6 @@ const columns: QTableColumn[] = [
   { name: 'extra_weight', align: 'right', label: 'Extra Wt', field: 'extra_weight' },
   { name: 'condition', align: 'left', label: 'Condition', field: 'condition' },
   { name: 'quantity', align: 'right', label: 'Qty', field: 'quantity', sortable: true },
-  { name: 'origin_purchase_price', align: 'right', label: 'Origin Cost', field: 'origin_purchase_price', sortable: true },
   { name: 'pricing', align: 'left', label: 'Pricing', field: 'pricing' },
   { name: 'status', align: 'center', label: 'Status', field: 'status', sortable: true },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
@@ -636,7 +639,8 @@ onMounted(async () => {
     await Promise.all([
       loadStockPage(1),
       thriftStore.loadModuleData(authStore.tenantId),
-      loadShipments()
+      loadShipments(),
+      settingsStore.loadSettings(authStore.tenantId),
     ]);
   }
 });
@@ -663,52 +667,15 @@ function onPageChanged(nextPage: number) {
 function goToSettings() {
   const slug = route.params.tenantSlug || authStore.tenantSlug;
   const tenantSlug = Array.isArray(slug) ? slug[0] : slug;
-  void router.push(tenantSlug ? `/${tenantSlug}/app/thrift/stocks/settings` : '/app/thrift/stocks/settings');
-}
-
-async function loadTenantSettings() {
-  if (!authStore.tenantId) return;
-  try {
-    const { data, error } = await supabase
-      .from('thrift_stock_settings')
-      .select('*, thrift_shipments(name), thrift_boxes(name)')
-      .eq('tenant_id', authStore.tenantId)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (data) {
-      defaults.value = {
-        default_shipment_id: data.default_shipment_id,
-        default_box_id: data.default_box_id,
-        default_purchase_price: Number(data.default_purchase_price),
-        default_origin_purchase_price: Number(data.default_origin_purchase_price || 0),
-        shipmentName: data.thrift_shipments?.name || `Shipment #${data.default_shipment_id}`,
-        boxName: data.thrift_boxes?.name || `Box #${data.default_box_id}`,
-      };
-      settingsLoaded.value = true;
-    } else {
-      defaults.value = {
-        default_shipment_id: null,
-        default_box_id: null,
-        default_purchase_price: 0,
-        default_origin_purchase_price: 0,
-        shipmentName: '',
-        boxName: '',
-      };
-      settingsLoaded.value = false;
-    }
-  } catch (err) {
-    console.error('Failed to load settings:', err);
-    settingsLoaded.value = false;
-  }
+  void router.push(tenantSlug ? `/${tenantSlug}/app/thrift/settings` : '/app/thrift/settings');
 }
 
 async function generateBarcode() {
-  if (!authStore.tenantId || !defaults.value.default_shipment_id) return;
-  
+  if (!authStore.tenantId || !quickAddForm.value.shipment_id) return;
+
   const tenantId = authStore.tenantId;
-  const shipmentId = defaults.value.default_shipment_id;
-  const boxId = defaults.value.default_box_id || 0;
+  const shipmentId = quickAddForm.value.shipment_id;
+  const boxId = quickAddForm.value.box_id || 0;
 
   try {
     let query = supabase
@@ -717,8 +684,8 @@ async function generateBarcode() {
       .eq('tenant_id', tenantId)
       .eq('shipment_id', shipmentId);
 
-    if (defaults.value.default_box_id) {
-      query = query.eq('box_id', defaults.value.default_box_id);
+    if (quickAddForm.value.box_id) {
+      query = query.eq('box_id', quickAddForm.value.box_id);
     } else {
       query = query.is('box_id', null);
     }
@@ -729,7 +696,6 @@ async function generateBarcode() {
     const seq = (count || 0) + 1;
     const formattedSeq = String(seq).padStart(4, '0');
 
-    // Generate a 3-character random uppercase alphanumeric code to ensure absolute uniqueness
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let rand = '';
     for (let i = 0; i < 3; i++) {
@@ -744,11 +710,10 @@ async function generateBarcode() {
 }
 
 async function openAddDialog() {
-  quickAddForm.value = { barcode: '', imageUrl: '', deleteToken: '' };
+  quickAddForm.value = { shipment_id: null, box_id: null, barcode: '', imageUrl: '', deleteToken: '' };
   uploaderTarget.value = 'quick';
-  await loadTenantSettings();
-  if (defaults.value.default_shipment_id) {
-    await generateBarcode();
+  if (authStore.tenantId) {
+    await settingsStore.loadSettings(authStore.tenantId);
   }
   quickAddDialogOpen.value = true;
 }
@@ -823,48 +788,45 @@ async function deleteCloudinaryImage(deleteToken: string) {
 }
 
 async function submitQuickAdd() {
-  if (!authStore.tenantId || !defaults.value.default_shipment_id || !quickAddForm.value.imageUrl) return;
-  
+  if (!authStore.tenantId || !quickAddForm.value.shipment_id || !quickAddForm.value.imageUrl) return;
+
   quickSubmitting.value = true;
   try {
     const barcode = quickAddForm.value.barcode;
-    
-    const catId = categories.value[0]?.id;
-    const typId = types.value[0]?.id;
-    const shfId = shelves.value[0]?.id;
 
-    if (!catId || !typId || !shfId) {
-      throw new Error('Default category, style/type, or shelf is not available. Please wait for module data to load or refresh.');
+    const catId = categories.value.find(c => c.name === 'Women Clothing')?.id ?? categories.value[0]?.id;
+    const typId = types.value[0]?.id;
+
+    if (!catId || !typId) {
+      throw new Error('Category or type is not available. Please refresh and try again.');
     }
 
-    // Create draft stock record
     const draftStock = await store.createStock(
       authStore.tenantId,
-      defaults.value.default_shipment_id,
-      '', // No prefilled name
+      quickAddForm.value.shipment_id,
+      '',
       '',
       catId,
       typId,
       'UNISEX',
-      shfId,
-      '', // No prefilled color
-      '', // No prefilled size
+      '',
+      '',
       'EXCELLENT',
       barcode,
       'SINGLE',
       1,
-      defaults.value.default_box_id || undefined,
+      quickAddForm.value.box_id || undefined,
       0.25,
       0,
       'Quick register draft entry',
       authStore.user?.email || 'admin@brandwala.com',
       {
-        cost_of_goods_sold: defaults.value.default_purchase_price,
+        cost_of_goods_sold: settingsStore.defaultPurchasePriceGbp,
         target_price: 0,
         listed_price: 0,
       },
       quickAddForm.value.imageUrl,
-      defaults.value.default_origin_purchase_price
+      shelves.value[0]?.id ?? null,
     );
 
     $q.notify({
@@ -908,7 +870,7 @@ function openEditDialog(row: ThriftStock) {
     brand_name: row.brand_name || '',
     barcode: row.barcode,
     section: row.section,
-    shelf_id: row.shelf_id,
+    shelf_id: row.shelf_id ?? null,
     color: row.color,
     size: row.size,
     condition: row.condition,
@@ -916,7 +878,6 @@ function openEditDialog(row: ThriftStock) {
     product_weight: row.product_weight || 0,
     extra_weight: row.extra_weight || 0,
     note: row.note || '',
-    origin_purchase_price: row.origin_purchase_price || 0,
   };
   pricing.value = {
     cost_of_goods_sold: row.pricing?.cost_of_goods_sold || 0,
@@ -970,18 +931,17 @@ async function onSubmit() {
       brand_name: form.value.brand_name,
       category_id: form.value.category_id!,
       type_id: form.value.type_id!,
-      section: form.value.section as ThriftSection,
-      shelf_id: form.value.shelf_id!,
+      section: form.value.section as ThriftSection | null,
+      shelf_id: form.value.shelf_id,
       color: form.value.color,
       size: form.value.size,
-      condition: form.value.condition as ThriftCondition,
+      condition: form.value.condition as ThriftCondition | null,
       barcode: form.value.barcode,
       quantity: form.value.quantity,
       box_id: form.value.box_id || undefined,
       product_weight: form.value.product_weight || undefined,
       extra_weight: form.value.extra_weight || undefined,
       note: form.value.note,
-      origin_purchase_price: form.value.origin_purchase_price,
     };
 
     if (editingId.value) {
@@ -1006,11 +966,10 @@ async function onSubmit() {
         form.value.brand_name,
         form.value.category_id!,
         form.value.type_id!,
-        form.value.section,
-        form.value.shelf_id!,
+        form.value.section || 'UNISEX',
         form.value.color,
         form.value.size,
-        form.value.condition,
+        form.value.condition || 'EXCELLENT',
         form.value.barcode,
         'SINGLE',
         form.value.quantity,
@@ -1021,7 +980,7 @@ async function onSubmit() {
         authStore.user?.email || 'admin@brandwala.com',
         pricing.value,
         editImage.value.url || undefined,
-        form.value.origin_purchase_price
+        form.value.shelf_id,
       );
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }

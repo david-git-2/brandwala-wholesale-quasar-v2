@@ -68,7 +68,6 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       categoryId: number,
       typeId: number,
       section: string,
-      shelfId: number,
       color: string,
       size: string,
       condition: string,
@@ -82,7 +81,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       userEmail: string,
       pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
       imageUrl?: string,
-      originPurchasePrice?: number
+      shelfId?: number | null,
     ) {
       try {
         const stock = await thriftStockRepository.createStock(
@@ -94,7 +93,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             category_id: categoryId,
             type_id: typeId,
             section: section as ThriftSection,
-            shelf_id: shelfId,
+            shelf_id: shelfId ?? null,
             color,
             size,
             condition: condition as ThriftCondition,
@@ -107,7 +106,6 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             status: 'AVAILABLE' as ThriftStockStatus,
             note: note || '',
             inserted_by: userEmail,
-            origin_purchase_price: originPurchasePrice,
           },
           pricing,
           imageUrl

@@ -1,21 +1,12 @@
 import { supabase } from 'src/boot/supabase';
-import type {
-  ThriftCategory,
-  ThriftType,
-  ThriftShelf,
-  ThriftStock,
-  ThriftInvoice,
-  ThriftLedgerEntry,
-  ThriftBox,
-} from '../types';
+import type { ThriftCategory, ThriftType, ThriftBox, ThriftShelf } from '../types';
 
 export const thriftRepository = {
-  // --- Categories ---
   async fetchCategories(tenantId: number): Promise<ThriftCategory[]> {
     const { data, error } = await supabase
       .from('thrift_categories')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .or(`tenant_id.eq.${tenantId},is_global.eq.true`)
       .order('name', { ascending: true });
     if (error) throw error;
     return data as ThriftCategory[];
@@ -24,19 +15,39 @@ export const thriftRepository = {
   async createCategory(category: Partial<ThriftCategory>): Promise<ThriftCategory> {
     const { data, error } = await supabase
       .from('thrift_categories')
-      .insert(category)
+      .insert({ ...category, is_global: false })
       .select()
       .single();
     if (error) throw error;
     return data as ThriftCategory;
   },
 
-  // --- Types ---
+  async updateCategory(id: number, updates: Partial<ThriftCategory>): Promise<ThriftCategory> {
+    const { data, error } = await supabase
+      .from('thrift_categories')
+      .update(updates)
+      .eq('id', id)
+      .eq('is_global', false)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as ThriftCategory;
+  },
+
+  async deleteCategory(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('thrift_categories')
+      .delete()
+      .eq('id', id)
+      .eq('is_global', false);
+    if (error) throw error;
+  },
+
   async fetchTypes(tenantId: number): Promise<ThriftType[]> {
     const { data, error } = await supabase
       .from('thrift_types')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .or(`tenant_id.eq.${tenantId},is_global.eq.true`)
       .order('name', { ascending: true });
     if (error) throw error;
     return data as ThriftType[];
@@ -45,35 +56,34 @@ export const thriftRepository = {
   async createType(type: Partial<ThriftType>): Promise<ThriftType> {
     const { data, error } = await supabase
       .from('thrift_types')
-      .insert(type)
+      .insert({ ...type, is_global: false })
       .select()
       .single();
     if (error) throw error;
     return data as ThriftType;
   },
 
-  // --- Shelves ---
-  async fetchShelves(tenantId: number): Promise<ThriftShelf[]> {
+  async updateType(id: number, updates: Partial<ThriftType>): Promise<ThriftType> {
     const { data, error } = await supabase
-      .from('thrift_shelves')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .order('shelf_code', { ascending: true });
-    if (error) throw error;
-    return data as ThriftShelf[];
-  },
-
-  async createShelf(shelf: Partial<ThriftShelf>): Promise<ThriftShelf> {
-    const { data, error } = await supabase
-      .from('thrift_shelves')
-      .insert(shelf)
+      .from('thrift_types')
+      .update(updates)
+      .eq('id', id)
+      .eq('is_global', false)
       .select()
       .single();
     if (error) throw error;
-    return data as ThriftShelf;
+    return data as ThriftType;
   },
 
-  // --- Boxes ---
+  async deleteType(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('thrift_types')
+      .delete()
+      .eq('id', id)
+      .eq('is_global', false);
+    if (error) throw error;
+  },
+
   async fetchBoxes(tenantId: number): Promise<ThriftBox[]> {
     const { data, error } = await supabase
       .from('thrift_boxes')
@@ -94,6 +104,17 @@ export const thriftRepository = {
     return data as ThriftBox;
   },
 
+  async updateBox(id: number, updates: Partial<ThriftBox>): Promise<ThriftBox> {
+    const { data, error } = await supabase
+      .from('thrift_boxes')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as ThriftBox;
+  },
+
   async deleteBox(id: number): Promise<void> {
     const { error } = await supabase
       .from('thrift_boxes')
@@ -102,119 +123,42 @@ export const thriftRepository = {
     if (error) throw error;
   },
 
-  // --- Stocks ---
-  async fetchStocks(tenantId: number): Promise<ThriftStock[]> {
+  async fetchShelves(tenantId: number): Promise<ThriftShelf[]> {
     const { data, error } = await supabase
-      .from('thrift_stocks')
-      .select('*, thrift_pricings(*)')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    
-    return (data || []).map((stock: Record<string, unknown>) => ({
-      ...stock,
-      pricing: (stock.thrift_pricings as unknown[])?.[0] || stock.thrift_pricings || undefined,
-    })) as ThriftStock[];
-  },
-
-  async createStock(
-    stock: Partial<ThriftStock>,
-    pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number }
-  ): Promise<ThriftStock> {
-    // 1. Insert stock
-    const { data: stockData, error: stockError } = await supabase
-      .from('thrift_stocks')
-      .insert(stock)
-      .select()
-      .single();
-    if (stockError) throw stockError;
-
-    // 2. Insert pricing
-    const { data: pricingData, error: pricingError } = await supabase
-      .from('thrift_pricings')
-      .insert({
-        stock_id: stockData.id,
-        cost_of_goods_sold: pricing.cost_of_goods_sold,
-        target_price: pricing.target_price,
-        listed_price: pricing.listed_price,
-        inserted_by: stockData.inserted_by,
-      })
-      .select()
-      .single();
-    if (pricingError) throw pricingError;
-
-    return {
-      ...stockData,
-      pricing: pricingData,
-    } as ThriftStock;
-  },
-
-  async updateStockStatus(id: number, status: string): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_stocks')
-      .update({ status })
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  // --- Invoices ---
-  async fetchInvoices(tenantId: number): Promise<ThriftInvoice[]> {
-    const { data, error } = await supabase
-      .from('thrift_invoices')
-      .select('*, thrift_invoice_items(*)')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data as ThriftInvoice[];
-  },
-
-  // --- RPC Mark as Sold ---
-  async markItemsAsSold(params: {
-    tenantId: number;
-    invoiceNumber: string;
-    recipientName: string;
-    address: string;
-    phone: string;
-    transactionMethod: string;
-    codCharge: number;
-    packingCharge: number;
-    invoicePrintCharge: number;
-    shippingChargeCustomer: number;
-    insertedBy: string;
-    items: Array<{
-      stock_id: number;
-      quantity: number;
-      sold_price: number;
-      platform_fees: number;
-      shipping_cost_paid_by_shop: number;
-    }>;
-  }): Promise<number> {
-    const { data, error } = await supabase.rpc('mark_thrift_items_as_sold', {
-      p_tenant_id: params.tenantId,
-      p_invoice_number: params.invoiceNumber,
-      p_recipient_name: params.recipientName,
-      p_address: params.address,
-      p_phone: params.phone,
-      p_transaction_method: params.transactionMethod,
-      p_cod_charge: params.codCharge,
-      p_packing_charge: params.packingCharge,
-      p_invoice_print_charge: params.invoicePrintCharge,
-      p_shipping_charge_customer: params.shippingChargeCustomer,
-      p_inserted_by: params.insertedBy,
-      p_items: params.items,
-    });
-    if (error) throw error;
-    return data as number;
-  },
-
-  // --- Ledger ---
-  async fetchLedger(tenantId: number): Promise<ThriftLedgerEntry[]> {
-    const { data, error } = await supabase
-      .from('thrift_accounting_ledger')
+      .from('thrift_shelves')
       .select('*')
       .eq('tenant_id', tenantId)
-      .order('date', { ascending: false });
+      .order('shelf_code', { ascending: true });
     if (error) throw error;
-    return data as ThriftLedgerEntry[];
+    return data as ThriftShelf[];
+  },
+
+  async createShelf(shelf: Partial<ThriftShelf>): Promise<ThriftShelf> {
+    const { data, error } = await supabase
+      .from('thrift_shelves')
+      .insert(shelf)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as ThriftShelf;
+  },
+
+  async updateShelf(id: number, updates: Partial<ThriftShelf>): Promise<ThriftShelf> {
+    const { data, error } = await supabase
+      .from('thrift_shelves')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as ThriftShelf;
+  },
+
+  async deleteShelf(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('thrift_shelves')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   },
 };

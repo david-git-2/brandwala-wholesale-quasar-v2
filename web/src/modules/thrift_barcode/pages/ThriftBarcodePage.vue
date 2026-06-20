@@ -121,13 +121,15 @@
       <q-card-section class="q-pa-none">
         <q-table
           flat
-          :rows="filteredRows"
+          :rows="barcodes"
           :columns="columns"
           row-key="id"
           selection="multiple"
           v-model:selected="selected"
           :loading="loading"
-          :pagination="{ rowsPerPage: 15 }"
+          v-model:pagination="tablePagination"
+          :rows-per-page-options="[50]"
+          @request="onTableRequest"
         >
           <template v-slot:body-cell-status="props">
             <q-td :props="props">
@@ -198,7 +200,8 @@
           </div>
           <div class="text-caption text-grey-8">
             <div>• Total previously generated codes: <strong>{{ prevCount }}</strong></div>
-            <div>• Total available (unprinted) codes: <strong>{{ availableCount }}</strong></div>
+            <div>• Total available catalog codes: <strong>{{ availableCount }}</strong></div>
+            <div>• Total unprinted codes: <strong>{{ unprintedCount }}</strong></div>
           </div>
         </q-card-section>
 
@@ -217,6 +220,13 @@
         </q-card-section>
 
         <q-card-section class="q-py-md">
+          <div class="q-pa-sm rounded-borders bg-blue-1 q-mb-md">
+            <div class="text-caption text-grey-8 q-mb-xs">
+              Only barcodes with <strong>Printed = No</strong> and <strong>Status = Available</strong> can go to print.
+            </div>
+            <div class="text-h6 text-weight-bold text-primary">{{ printableCount }} ready to print</div>
+          </div>
+
           <!-- Option A: Print Selected checkboxes -->
           <div v-if="selected.length > 0" class="q-mb-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Option 1: Print Selected Barcodes</div>
@@ -229,16 +239,24 @@
               label="Print Selected Only"
               icon="print"
               class="pill-btn"
+              :disabled="selectedPrintableCount === 0"
               @click="confirmSelectedPrint"
             />
+            <div
+              v-if="selected.length > selectedPrintableCount"
+              class="text-caption text-warning q-mt-xs"
+            >
+              {{ selected.length - selectedPrintableCount }} barcode(s) skipped (must be Not printed and Available).
+            </div>
             <q-separator class="q-my-lg" />
           </div>
 
-          <!-- Option B: Print Bulk Unprinted range -->
+          <!-- Option B: Bulk print -->
           <div>
-            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Bulk Print Unprinted Barcodes</div>
+            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Bulk Print Barcodes</div>
             <div class="text-body2 text-grey-7 q-mb-md">
-              Choose the quantity of unprinted barcodes you want to print. The system will grab the first available ones.
+              Choose how many eligible barcodes to print. The system picks the first ones in sequence
+              (Not printed + Available only).
             </div>
             
             <div class="row q-col-gutter-sm items-center q-mb-md">
@@ -250,18 +268,18 @@
                   outlined
                   dense
                   min="1"
-                  :max="unprintedCount"
+                  :max="printableCount"
                   hide-bottom-space
                 />
               </div>
               <div class="col-4 text-right text-caption text-grey-7">
-                Available unprinted: <strong>{{ unprintedCount }}</strong>
+                Ready to print: <strong>{{ printableCount }}</strong>
               </div>
             </div>
 
-            <!-- Validation Error Warning -->
-            <q-banner v-if="!hasSufficientUnprinted" class="bg-warning text-dark q-mb-md" rounded dense>
-              Insufficient barcodes. You requested to print {{ printQty }} but only {{ unprintedCount }} unprinted barcodes exist. Please generate more first.
+            <q-banner v-if="!hasSufficientForBulk" class="bg-warning text-dark q-mb-md" rounded dense>
+              Insufficient barcodes. You requested {{ printQty }} but only {{ printableCount }} eligible barcodes
+              (Not printed + Available) exist.
             </q-banner>
 
             <q-btn
@@ -270,7 +288,7 @@
               label="Proceed to Print Preview"
               icon="navigate_next"
               class="pill-btn full-width"
-              :disabled="!hasSufficientUnprinted || printQty <= 0"
+              :disabled="!hasSufficientForBulk || printQty <= 0"
               @click="confirmBulkPrint"
             />
           </div>
@@ -300,7 +318,9 @@
           </div>
 
           <div class="text-caption text-grey-8 q-mt-md">
-            Status: {{ previewBarcode?.status }} | Printed: {{ previewBarcode?.is_printed === 1 ? 'Yes' : 'No' }}
+            <span v-if="previewBarcode?.status === 'AVAILABLE'">Available</span>
+            <span v-if="previewBarcode?.status === 'AVAILABLE' && previewBarcode?.is_printed === 0"> · </span>
+            <span v-if="previewBarcode?.is_printed === 0">Not printed (No)</span>
           </div>
         </q-card-section>
       </q-card>
@@ -309,19 +329,28 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore'
 import BarcodeRenderer from '../components/BarcodeRenderer.vue'
 import type { ThriftBarcode } from '../types'
+import { isBarcodePrintEligible } from '../types'
 
 const router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
 const barcodeStore = useThriftBarcodeStore()
 
-const { barcodes, loading, error } = storeToRefs(barcodeStore)
+const { barcodes, loading, error, page, total, meta } = storeToRefs(barcodeStore)
+
+const tablePagination = ref({
+  page: 1,
+  rowsPerPage: 50,
+  rowsNumber: 0,
+})
 
 // Generator State
 const genQuantity = ref(50)
@@ -353,58 +382,65 @@ const statusOptions = [
 
 const selected = ref<ThriftBarcode[]>([])
 
-// Columns Definitions
 const columns = [
-  { name: 'barcode_id', label: 'Barcode ID', field: 'barcode_id', align: 'left' as const, sortable: true },
-  { name: 'status', label: 'Status', field: 'status', align: 'center' as const, sortable: true },
-  { name: 'is_printed', label: 'Printed', field: 'is_printed', align: 'center' as const, sortable: true },
-  { name: 'inserted_by', label: 'Generated By', field: 'inserted_by', align: 'left' as const, sortable: true },
-  { name: 'created_at', label: 'Created At', field: 'created_at', align: 'left' as const, sortable: true },
+  { name: 'barcode_id', label: 'Barcode ID', field: 'barcode_id', align: 'left' as const, sortable: false },
+  { name: 'status', label: 'Status', field: 'status', align: 'center' as const, sortable: false },
+  { name: 'is_printed', label: 'Printed', field: 'is_printed', align: 'center' as const, sortable: false },
+  { name: 'inserted_by', label: 'Generated By', field: 'inserted_by', align: 'left' as const, sortable: false },
+  { name: 'created_at', label: 'Created At', field: 'created_at', align: 'left' as const, sortable: false },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' as const },
 ]
 
-// Year Calculation
 const currentYear = computed(() => new Date().getFullYear().toString().slice(-2))
 
-// Inventory Metrics
-const prevCount = computed(() => barcodes.value.length)
-const availableCount = computed(() => barcodes.value.filter(b => b.status === 'AVAILABLE').length)
-const unprintedCount = computed(() => barcodes.value.filter(b => b.is_printed === 0).length)
-const hasSufficientUnprinted = computed(() => unprintedCount.value >= printQty.value)
+const prevCount = computed(() => meta.value.total)
+const availableCount = computed(() => meta.value.available_total)
+const unprintedCount = computed(() => meta.value.unprinted_total)
+const printableCount = computed(() => meta.value.printable_total)
+const hasSufficientForBulk = computed(() => printableCount.value >= printQty.value)
+const selectedPrintableCount = computed(() => selected.value.filter(isBarcodePrintEligible).length)
 
-// Predict Next Sequence Range
+function mapPrintedFilter(value: string): number | null {
+  if (value === 'PRINTED') return 1
+  if (value === 'UNPRINTED') return 0
+  return null
+}
+
+function mapStatusFilter(value: string): string | null {
+  return value === 'ALL' ? null : value
+}
+
+function syncTablePagination() {
+  tablePagination.value.page = page.value
+  tablePagination.value.rowsNumber = total.value
+}
+
 const estimatedRange = computed(() => {
   const yr = currentYear.value
-  const yearMatch = new RegExp(`^(\\d{2}-)?[A-Z]{2}-${yr}-\\d{6}$`)
-  const matching = barcodes.value.filter(b => yearMatch.test(b.barcode_id))
-  
   let prefix = 'AA'
   let startSeq = 1
+  const latest = meta.value.latest_current_year_barcode_id
 
-  if (matching.length > 0) {
-    const latest = [...matching].sort((a, b) => b.barcode_id.localeCompare(a.barcode_id))[0]
-    if (latest) {
-      const parts = latest.barcode_id.split('-')
-      if (parts.length === 4) {
-        prefix = parts[1] || 'AA'
-        startSeq = parseInt(parts[3] || '0', 10) + 1
-      } else {
-        prefix = parts[0] || 'AA'
-        startSeq = parseInt(parts[2] || '0', 10) + 1
+  if (latest) {
+    const parts = latest.split('-')
+    if (parts.length === 4) {
+      prefix = parts[1] || 'AA'
+      startSeq = parseInt(parts[3] || '0', 10) + 1
+    } else if (parts.length === 3) {
+      prefix = parts[0] || 'AA'
+      startSeq = parseInt(parts[2] || '0', 10) + 1
+    }
+
+    if (startSeq > 999999) {
+      let c1 = prefix.charCodeAt(0)
+      let c2 = prefix.charCodeAt(1)
+      c2++
+      if (c2 > 90) {
+        c2 = 65
+        c1++
       }
-      
-      if (startSeq > 999999) {
-        // Increment prefix
-        let c1 = prefix.charCodeAt(0)
-        let c2 = prefix.charCodeAt(1)
-        c2++
-        if (c2 > 90) {
-          c2 = 65
-          c1++
-        }
-        prefix = String.fromCharCode(c1) + String.fromCharCode(c2)
-        startSeq = 1
-      }
+      prefix = String.fromCharCode(c1) + String.fromCharCode(c2)
+      startSeq = 1
     }
   }
 
@@ -415,32 +451,6 @@ const estimatedRange = computed(() => {
   return `${tenantPrefix}${prefix}-${yr}-${startSeqStr} ~ ${tenantPrefix}${prefix}-${yr}-${endSeqStr}`
 })
 
-// Filter logic
-const filteredRows = computed(() => {
-  return barcodes.value.filter((row) => {
-    // 1. Text filter
-    if (filterText.value) {
-      const needle = filterText.value.toLowerCase()
-      if (!row.barcode_id.toLowerCase().includes(needle)) {
-        return false
-      }
-    }
-    // 2. Printed filter
-    if (filterPrinted.value === 'PRINTED' && row.is_printed !== 1) {
-      return false
-    }
-    if (filterPrinted.value === 'UNPRINTED' && row.is_printed !== 0) {
-      return false
-    }
-    // 3. Status filter
-    if (filterStatus.value !== 'ALL' && row.status !== filterStatus.value) {
-      return false
-    }
-    return true
-  })
-})
-
-// Chip styling configurations
 const activeChipStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
@@ -467,6 +477,32 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString()
 }
 
+async function loadBarcodes(requestedPage = 1) {
+  if (!authStore.tenantId) return
+  selected.value = []
+  await barcodeStore.loadBarcodes(authStore.tenantId, {
+    page: requestedPage,
+    pageSize: 50,
+    search: filterText.value,
+    isPrinted: mapPrintedFilter(filterPrinted.value),
+    status: mapStatusFilter(filterStatus.value),
+  })
+  syncTablePagination()
+}
+
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+
+watch([filterText, filterPrinted, filterStatus], () => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    void loadBarcodes(1)
+  }, 300)
+})
+
+const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
+  await loadBarcodes(props.pagination.page)
+}
+
 const showConfirmGenDialog = () => {
   confirmGenDialog.value = true
 }
@@ -480,6 +516,7 @@ const handleGenerate = async () => {
       insertedBy: authStore.user?.email || 'System',
     })
     selected.value = []
+    syncTablePagination()
   } catch {
     // Error handled by store
   }
@@ -495,30 +532,60 @@ const onClickPrint = () => {
 }
 
 const confirmSelectedPrint = () => {
-  const ids = selected.value.map(s => s.id).join(',')
+  const printable = selected.value.filter(isBarcodePrintEligible)
+
+  if (printable.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No eligible barcodes in selection (must be Not printed and Available).',
+    })
+    return
+  }
+
+  if (printable.length < selected.value.length) {
+    $q.notify({
+      type: 'info',
+      message: `${selected.value.length - printable.length} barcode(s) skipped (must be Not printed and Available).`,
+    })
+  }
+
+  const ids = printable.map((s) => s.id).join(',')
   printDialog.value = false
   void router.push({
     name: 'thrift-barcodes-print-preview',
-    query: { ids }
+    query: { ids },
   })
 }
 
-const confirmBulkPrint = () => {
-  const unprintedList = barcodes.value.filter(b => b.is_printed === 0)
-  const toPrint = unprintedList.slice(0, printQty.value)
-  const ids = toPrint.map(b => b.id).join(',')
-  printDialog.value = false
-  void router.push({
-    name: 'thrift-barcodes-print-preview',
-    query: { ids }
-  })
+const confirmBulkPrint = async () => {
+  if (!authStore.tenantId) return
+  try {
+    const toPrint = await barcodeStore.fetchPrintableForPrint(authStore.tenantId, printQty.value)
+
+    if (toPrint.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'No eligible barcodes to print (Not printed + Available).',
+      })
+      return
+    }
+
+    const ids = toPrint.map((b) => b.id).join(',')
+    printDialog.value = false
+    void router.push({
+      name: 'thrift-barcodes-print-preview',
+      query: { ids },
+    })
+  } catch {
+    $q.notify({ type: 'negative', message: 'Failed to load barcodes for printing.' })
+  }
 }
 
 const onMarkPrinted = async () => {
   if (selected.value.length === 0 || !authStore.tenantId) return
-  const ids = selected.value.map(s => s.id)
+  const ids = selected.value.map((s) => s.id)
   try {
-    await barcodeStore.markBarcodesPrinted(ids)
+    await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
     selected.value = []
   } catch {
     // Handled by store
@@ -526,9 +593,7 @@ const onMarkPrinted = async () => {
 }
 
 onMounted(() => {
-  if (authStore.tenantId) {
-    void barcodeStore.fetchBarcodes(authStore.tenantId)
-  }
+  void loadBarcodes(1)
 })
 </script>
 
