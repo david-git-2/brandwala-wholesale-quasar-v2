@@ -31,7 +31,9 @@ export interface ThriftStock {
     cost_of_goods_sold: number;
     target_price: number;
     listed_price: number;
+    extra_expense_cost?: number;
   };
   image_url?: string | undefined;
   origin_purchase_price?: number | undefined;
+  extra_origin_purchase_expense?: number | undefined;
 }

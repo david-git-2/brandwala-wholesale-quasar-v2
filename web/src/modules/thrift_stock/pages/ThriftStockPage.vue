@@ -91,11 +91,19 @@
         :rows="stocks"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="loading && stocks.length > 0"
         class="thrift-table"
+        @request="onTableRequest"
       >
         <template #loading>
           <PageInitialLoader compact />
+        </template>
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
         </template>
         <template #body-cell-image="props">
           <q-td :props="props">
@@ -117,12 +125,12 @@
         </template>
         <template #body-cell-product_weight="props">
           <q-td :props="props">
-            {{ props.value ? `${props.value} kg` : '—' }}
+            {{ props.value ? `${props.value} g` : '—' }}
           </q-td>
         </template>
         <template #body-cell-extra_weight="props">
           <q-td :props="props">
-            {{ props.value ? `${props.value} kg` : '—' }}
+            {{ props.value ? `${props.value} g` : '—' }}
           </q-td>
         </template>
         <template #body-cell-status="props">
@@ -141,9 +149,15 @@
         <template #body-cell-pricing="props">
           <q-td :props="props">
             <div v-if="props.value" class="text-caption text-black">
-              <span class="text-grey-7">Cost:</span> {{ props.value.cost_of_goods_sold }}
+              <span class="text-grey-7">Origin:</span> {{ formatThriftAmount(props.row.origin_purchase_price, shipmentPurchaseCurrency(props.row.shipment_id)) }}
               &nbsp;|&nbsp;
-              <span class="text-grey-7">Listed:</span> {{ props.value.listed_price }}
+              <span class="text-grey-7">Extra origin:</span> {{ formatThriftAmount(props.row.extra_origin_purchase_expense, shipmentPurchaseCurrency(props.row.shipment_id)) }}
+              &nbsp;|&nbsp;
+              <span class="text-grey-7">Cost:</span> {{ formatThriftAmount(props.value.cost_of_goods_sold, shipmentCostCurrency(props.row.shipment_id)) }}
+              &nbsp;|&nbsp;
+              <span class="text-grey-7">Extra cost:</span> {{ formatThriftAmount(props.value.extra_expense_cost, shipmentCostCurrency(props.row.shipment_id)) }}
+              &nbsp;|&nbsp;
+              <span class="text-grey-7">Listed:</span> {{ formatThriftAmount(props.value.listed_price, shipmentCostCurrency(props.row.shipment_id)) }}
             </div>
             <div v-else class="text-grey-5">—</div>
           </q-td>
@@ -165,21 +179,6 @@
           </q-td>
         </template>
       </q-table>
-
-      <q-card-section v-if="totalPages > 0" class="row items-center justify-between q-pt-none">
-        <div class="text-caption text-grey-7">
-          Page {{ page }} of {{ totalPages }} · {{ total }} items
-        </div>
-        <q-pagination
-          v-model="page"
-          :max="Math.max(totalPages, 1)"
-          :max-pages="7"
-          direction-links
-          boundary-links
-          color="primary"
-          @update:model-value="onPageChanged"
-        />
-      </q-card-section>
     </q-card>
 
     <!-- Register Stock Dialog -->
@@ -261,7 +260,22 @@
               <div class="col-12 col-sm-6">
                 <q-select v-model="form.type_id" outlined dense label="Product Style/Type *" :options="types"
                   option-value="id" option-label="name" emit-value map-options class="soft-input"
-                  :rules="[val => !!val || 'Required']" />
+                  :rules="[val => !!val || 'Required']">
+                  <template #option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar>
+                        <q-icon :name="resolveTypeIcon(scope.opt.icon)" />
+                      </q-item-section>
+                      <q-item-section>{{ scope.opt.name }}</q-item-section>
+                    </q-item>
+                  </template>
+                  <template #selected-item="scope">
+                    <span v-if="scope.opt" class="row items-center no-wrap">
+                      <q-icon :name="resolveTypeIcon(scope.opt.icon)" class="q-mr-sm" />
+                      {{ scope.opt.name }}
+                    </span>
+                  </template>
+                </q-select>
               </div>
             </div>
 
@@ -310,24 +324,94 @@
 
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <q-input v-model.number="form.product_weight" type="number" step="0.001" outlined dense label="Product Weight (kg)" class="soft-input" />
+                <q-input v-model.number="form.product_weight" type="number" step="1" outlined dense label="Product Weight (g)" class="soft-input" />
               </div>
               <div class="col-12 col-sm-6">
-                <q-input v-model.number="form.extra_weight" type="number" step="0.001" outlined dense label="Extra Weight (kg)" class="soft-input" />
+                <q-input v-model.number="form.extra_weight" type="number" step="1" outlined dense label="Extra Weight (g)" class="soft-input" />
               </div>
             </div>
 
             <q-separator class="q-my-xs" />
-            <div class="text-caption text-grey-8 q-mb-xs">Pricing</div>
+            <div class="text-caption text-grey-8 q-mb-xs">Purchase ({{ purchaseCurrency?.code ?? '—' }})</div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-4">
-                <q-input v-model.number="pricing.cost_of_goods_sold" type="number" step="0.01" outlined dense label="COGS Cost" class="soft-input" />
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="originPurchasePrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  outlined
+                  dense
+                  label="Origin purchase price"
+                  :prefix="purchaseCurrencySymbol"
+                  class="soft-input"
+                />
               </div>
-              <div class="col-12 col-sm-4">
-                <q-input v-model.number="pricing.target_price" type="number" step="0.01" outlined dense label="Target Price" class="soft-input" />
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="extraOriginPurchaseExpense"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  outlined
+                  dense
+                  label="Extra origin purchase expense"
+                  :prefix="purchaseCurrencySymbol"
+                  class="soft-input"
+                />
               </div>
-              <div class="col-12 col-sm-4">
-                <q-input v-model.number="pricing.listed_price" type="number" step="0.01" outlined dense label="Listed Price" class="soft-input" />
+            </div>
+
+            <q-separator class="q-my-xs" />
+            <div class="text-caption text-grey-8 q-mb-xs">Cost / pricing ({{ costCurrency?.code ?? '—' }})</div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="pricing.cost_of_goods_sold"
+                  type="number"
+                  step="0.01"
+                  outlined
+                  dense
+                  label="COGS Cost"
+                  :prefix="costCurrencySymbol"
+                  class="soft-input"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="pricing.extra_expense_cost"
+                  type="number"
+                  step="0.01"
+                  outlined
+                  dense
+                  label="Extra expense cost"
+                  :prefix="costCurrencySymbol"
+                  class="soft-input"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="pricing.target_price"
+                  type="number"
+                  step="0.01"
+                  outlined
+                  dense
+                  label="Target Price"
+                  :prefix="costCurrencySymbol"
+                  class="soft-input"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="pricing.listed_price"
+                  type="number"
+                  step="0.01"
+                  outlined
+                  dense
+                  label="Listed Price"
+                  :prefix="costCurrencySymbol"
+                  class="soft-input"
+                />
               </div>
             </div>
 
@@ -409,8 +493,8 @@
             <!-- Purchase default -->
             <div class="q-pa-sm rounded-borders bg-grey-2 text-caption text-grey-8">
               <div class="row justify-between">
-                <span>Default purchase (GBP):</span>
-                <span class="text-weight-bold">£{{ settingsStore.defaultPurchasePriceGbp.toFixed(2) }}</span>
+                <span>Default origin purchase:</span>
+                <span class="text-weight-bold">{{ formatThriftAmount(settingsStore.defaultOriginPurchasePrice, quickAddPurchaseCurrency) }}</span>
               </div>
             </div>
           </div>
@@ -484,11 +568,15 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStockStore } from '../stores/thriftStockStore';
 import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
 import { useThriftSettingsStore } from 'src/modules/thrift_settings/stores/thriftSettingsStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
+import { formatThriftAmount } from 'src/modules/thrift_currency/utils/formatMoney';
+import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
+import { resolveTypeIcon } from 'src/modules/thrift/utils/typeIcon';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -497,6 +585,14 @@ const authStore = useAuthStore();
 const store = useThriftStockStore();
 const thriftStore = useThriftStore();
 const settingsStore = useThriftSettingsStore();
+const currencyStore = useThriftCurrencyStore();
+
+interface ShipmentOption {
+  id: number;
+  name: string;
+  purchase_currency_id: number;
+  cost_currency_id: number;
+}
 
 // Dialogs state
 const dialogOpen = ref(false);
@@ -527,12 +623,12 @@ const editImage = ref({
 
 const stocks = computed(() => store.stocks);
 const loading = computed(() => store.loading);
-const page = computed({
-  get: () => store.page,
-  set: (value: number) => { store.page = value; },
+
+const tablePagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
 });
-const total = computed(() => store.total);
-const totalPages = computed(() => store.totalPages);
 const categories = computed(() => thriftStore.categories);
 const types = computed(() => thriftStore.types);
 const shelves = computed(() => thriftStore.shelves);
@@ -551,21 +647,61 @@ const form = ref({
   size: '',
   condition: 'EXCELLENT' as ThriftCondition | null,
   quantity: 1,
-  product_weight: 0.25,
+  product_weight: 250,
   extra_weight: 0,
   note: '',
 });
 
-const shipments = ref<{ id: number; name: string }[]>([]);
+const originPurchasePrice = ref(0);
+const extraOriginPurchaseExpense = ref(0);
+
+const purchaseCurrency = computed(() => {
+  const shipmentId = form.value.shipment_id;
+  if (!shipmentId) return undefined;
+  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+});
+const costCurrency = computed(() => {
+  const shipmentId = form.value.shipment_id;
+  if (!shipmentId) return undefined;
+  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
+});
+const purchaseCurrencySymbol = computed(() => purchaseCurrency.value?.symbol ?? '');
+const costCurrencySymbol = computed(() => costCurrency.value?.symbol ?? '');
+
+const quickAddPurchaseCurrency = computed(() => {
+  const shipmentId = quickAddForm.value.shipment_id;
+  if (!shipmentId) return undefined;
+  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+});
+
+const shipments = ref<ShipmentOption[]>([]);
+
+const shipmentById = computed(() => {
+  const map = new Map<number, ShipmentOption>();
+  for (const shipment of shipments.value) {
+    map.set(shipment.id, shipment);
+  }
+  return map;
+});
+
+function shipmentPurchaseCurrency(shipmentId: number | null | undefined): ThriftCurrency | undefined {
+  if (!shipmentId) return undefined;
+  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+}
+
+function shipmentCostCurrency(shipmentId: number | null | undefined): ThriftCurrency | undefined {
+  if (!shipmentId) return undefined;
+  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
+}
 
 async function loadShipments() {
   if (!authStore.tenantId) return;
   const { data } = await supabase
     .from('thrift_shipments')
-    .select('id, name')
+    .select('id, name, purchase_currency_id, cost_currency_id')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
-  shipments.value = data || [];
+  shipments.value = (data || []) as ShipmentOption[];
 }
 
 const filteredBoxes = computed(() => {
@@ -597,6 +733,7 @@ const pricing = ref({
   cost_of_goods_sold: 0,
   target_price: 0,
   listed_price: 0,
+  extra_expense_cost: 0,
 });
 
 const searchText = ref('');
@@ -618,6 +755,8 @@ const conditionOptions = [
 ];
 
 const columns: QTableColumn[] = [
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
   { name: 'image', align: 'center', label: 'Image', field: 'image_url' },
   { name: 'barcode', align: 'left', label: 'Barcode', field: 'barcode', sortable: true },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
@@ -641,27 +780,36 @@ onMounted(async () => {
       thriftStore.loadModuleData(authStore.tenantId),
       loadShipments(),
       settingsStore.loadSettings(authStore.tenantId),
+      currencyStore.loadCurrencies(),
     ]);
   }
 });
+
+function syncTablePagination() {
+  tablePagination.value.page = store.page;
+  tablePagination.value.rowsPerPage = store.pageSize;
+  tablePagination.value.rowsNumber = store.total;
+}
 
 async function loadStockPage(nextPage = store.page) {
   if (!authStore.tenantId) return;
   await store.loadStocks(authStore.tenantId, {
     page: nextPage,
-    pageSize: store.pageSize,
+    pageSize: tablePagination.value.rowsPerPage,
     search: searchText.value,
     status: statusFilter.value,
     condition: conditionFilter.value,
   });
+  syncTablePagination();
 }
 
 function onFiltersChanged() {
   void loadStockPage(1);
 }
 
-function onPageChanged(nextPage: number) {
-  void loadStockPage(nextPage);
+async function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage;
+  await loadStockPage(props.pagination.page);
 }
 
 function goToSettings() {
@@ -708,6 +856,7 @@ async function generateBarcode() {
     quickAddForm.value.barcode = `BC-FALLBACK-${Math.floor(Math.random() * 90000 + 10000)}`;
   }
 }
+
 
 async function openAddDialog() {
   quickAddForm.value = { shipment_id: null, box_id: null, barcode: '', imageUrl: '', deleteToken: '' };
@@ -816,17 +965,20 @@ async function submitQuickAdd() {
       'SINGLE',
       1,
       quickAddForm.value.box_id || undefined,
-      0.25,
+      250,
       0,
       'Quick register draft entry',
       authStore.user?.email || 'admin@brandwala.com',
       {
-        cost_of_goods_sold: settingsStore.defaultPurchasePriceGbp,
+        cost_of_goods_sold: 0,
         target_price: 0,
         listed_price: 0,
+        extra_expense_cost: 0,
       },
       quickAddForm.value.imageUrl,
       shelves.value[0]?.id ?? null,
+      settingsStore.defaultOriginPurchasePrice,
+      0,
     );
 
     $q.notify({
@@ -879,10 +1031,13 @@ function openEditDialog(row: ThriftStock) {
     extra_weight: row.extra_weight || 0,
     note: row.note || '',
   };
+  originPurchasePrice.value = row.origin_purchase_price ?? settingsStore.defaultOriginPurchasePrice;
+  extraOriginPurchaseExpense.value = row.extra_origin_purchase_expense ?? 0;
   pricing.value = {
     cost_of_goods_sold: row.pricing?.cost_of_goods_sold || 0,
     target_price: row.pricing?.target_price || 0,
     listed_price: row.pricing?.listed_price || 0,
+    extra_expense_cost: row.pricing?.extra_expense_cost || 0,
   };
   dialogOpen.value = true;
 }
@@ -931,17 +1086,19 @@ async function onSubmit() {
       brand_name: form.value.brand_name,
       category_id: form.value.category_id!,
       type_id: form.value.type_id!,
-      section: form.value.section as ThriftSection | null,
+      section: form.value.section,
       shelf_id: form.value.shelf_id,
       color: form.value.color,
       size: form.value.size,
-      condition: form.value.condition as ThriftCondition | null,
+      condition: form.value.condition,
       barcode: form.value.barcode,
       quantity: form.value.quantity,
       box_id: form.value.box_id || undefined,
       product_weight: form.value.product_weight || undefined,
       extra_weight: form.value.extra_weight || undefined,
       note: form.value.note,
+      origin_purchase_price: originPurchasePrice.value || undefined,
+      extra_origin_purchase_expense: extraOriginPurchaseExpense.value || undefined,
     };
 
     if (editingId.value) {
@@ -981,6 +1138,8 @@ async function onSubmit() {
         pricing.value,
         editImage.value.url || undefined,
         form.value.shelf_id,
+        originPurchasePrice.value || undefined,
+        extraOriginPurchaseExpense.value || undefined,
       );
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }

@@ -50,12 +50,14 @@ interface ThriftStockDbRow {
     cost_of_goods_sold: number;
     target_price: number;
     listed_price: number;
+    extra_expense_cost?: number;
   }>;
   thrift_stock_images?: Array<{
     image_url: string;
     is_primary: boolean;
   }>;
   origin_purchase_price?: number;
+  extra_origin_purchase_expense?: number;
 }
 
 interface ThriftStockPaginatedRow extends ThriftStockDbRow {
@@ -63,8 +65,16 @@ interface ThriftStockPaginatedRow extends ThriftStockDbRow {
     cost_of_goods_sold: number;
     target_price: number;
     listed_price: number;
+    extra_expense_cost?: number;
   };
   image_url?: string | null;
+}
+
+export interface ThriftStockPricingInput {
+  cost_of_goods_sold: number;
+  target_price: number;
+  listed_price: number;
+  extra_expense_cost?: number;
 }
 
 export const thriftStockRepository = {
@@ -92,6 +102,7 @@ export const thriftStockRepository = {
           cost_of_goods_sold: 0,
           target_price: 0,
           listed_price: 0,
+          extra_expense_cost: 0,
         };
         return {
           ...(stock as unknown as ThriftStock),
@@ -99,6 +110,7 @@ export const thriftStockRepository = {
             cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
             target_price: Number(pricing.target_price) || 0,
             listed_price: Number(pricing.listed_price) || 0,
+            extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
           },
           image_url: stock.image_url || undefined,
         };
@@ -132,7 +144,7 @@ export const thriftStockRepository = {
 
   async createStock(
     stock: Partial<ThriftStock>,
-    pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+    pricing: ThriftStockPricingInput,
     imageUrl?: string
   ): Promise<ThriftStock> {
     const { data: stockData, error: stockError } = await supabase
@@ -149,6 +161,7 @@ export const thriftStockRepository = {
         cost_of_goods_sold: pricing.cost_of_goods_sold,
         target_price: pricing.target_price,
         listed_price: pricing.listed_price,
+        extra_expense_cost: pricing.extra_expense_cost ?? 0,
         inserted_by: stockData.inserted_by,
       })
       .select()
@@ -177,7 +190,7 @@ export const thriftStockRepository = {
   async updateStock(
     id: number,
     stock: Partial<ThriftStock>,
-    pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+    pricing: ThriftStockPricingInput,
     imageUrl?: string | null,
   ): Promise<ThriftStock> {
     const { data: stockData, error: stockError } = await supabase
@@ -195,6 +208,7 @@ export const thriftStockRepository = {
         cost_of_goods_sold: pricing.cost_of_goods_sold,
         target_price: pricing.target_price,
         listed_price: pricing.listed_price,
+        extra_expense_cost: pricing.extra_expense_cost ?? 0,
         inserted_by: stockData.inserted_by,
       })
       .select()

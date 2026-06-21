@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { thriftSettingsRepository } from '../repositories/thriftSettingsRepository';
-import type { ThriftSettings } from '../types';
+import type { ThriftSettings, ThriftSettingsInput } from '../types';
 
 export const useThriftSettingsStore = defineStore('thriftSettings', {
   state: () => ({
@@ -10,8 +10,8 @@ export const useThriftSettingsStore = defineStore('thriftSettings', {
   }),
 
   getters: {
-    defaultPurchasePriceGbp: (state): number =>
-      state.settings?.default_purchase_price_gbp ?? 0,
+    defaultOriginPurchasePrice: (state): number =>
+      state.settings?.default_origin_purchase_price ?? 0,
   },
 
   actions: {
@@ -27,14 +27,11 @@ export const useThriftSettingsStore = defineStore('thriftSettings', {
       }
     },
 
-    async saveSettings(tenantId: number, defaultPurchasePriceGbp: number) {
+    async saveSettings(tenantId: number, input: ThriftSettingsInput) {
       this.loading = true;
       this.error = null;
       try {
-        this.settings = await thriftSettingsRepository.upsertSettings(
-          tenantId,
-          defaultPurchasePriceGbp,
-        );
+        this.settings = await thriftSettingsRepository.upsertSettings(tenantId, input);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save settings';
         throw err;

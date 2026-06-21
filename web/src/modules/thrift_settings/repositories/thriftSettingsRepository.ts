@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { ThriftSettings } from '../types';
+import type { ThriftSettings, ThriftSettingsInput } from '../types';
 
 export const thriftSettingsRepository = {
   async fetchSettings(tenantId: number): Promise<ThriftSettings | null> {
@@ -14,13 +14,13 @@ export const thriftSettingsRepository = {
 
   async upsertSettings(
     tenantId: number,
-    defaultPurchasePriceGbp: number,
+    input: ThriftSettingsInput,
   ): Promise<ThriftSettings> {
     const { data, error } = await supabase
       .from('thrift_settings')
       .upsert({
         tenant_id: tenantId,
-        default_purchase_price_gbp: defaultPurchasePriceGbp,
+        default_origin_purchase_price: input.defaultOriginPurchasePrice,
       })
       .select()
       .single();

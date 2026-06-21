@@ -29,6 +29,7 @@ export type ModuleKey =
   | 'thrift_category'
   | 'thrift_type'
   | 'thrift_settings'
+  | 'thrift_currency'
   | 'global_shipment'
   | 'global_stock'
   | 'global_invoice'
@@ -659,14 +660,29 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'thrift_settings',
     name: 'Thrift Settings',
-    description: 'Configure default purchase price for stock entries.',
+    description: 'Configure default origin purchase price for new stock items.',
     routes: [
       {
         scope: 'app',
         title: 'Thrift Settings',
-        caption: 'Default purchase price (GBP)',
+        caption: 'Default origin purchase price',
         icon: 'settings',
         routeSegment: 'thrift/settings',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_currency',
+    name: 'Thrift Currency',
+    description: 'View the global currency catalog used by shipments and stock pricing.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Thrift Currencies',
+        caption: 'Currency catalog (read-only)',
+        icon: 'payments',
+        routeSegment: 'thrift/currencies',
         requiredAction: 'view',
       },
     ],

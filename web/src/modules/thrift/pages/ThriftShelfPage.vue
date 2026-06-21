@@ -28,9 +28,16 @@
         :rows="thriftStore.shelves"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="thriftStore.loading"
         class="thrift-table"
       >
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
+        </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
             <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
@@ -99,7 +106,11 @@ const selectedRow = ref<ThriftShelf | null>(null);
 
 const form = ref({ name: '', shelf_code: '', location_bay: '' });
 
+const tablePagination = ref({ page: 1, rowsPerPage: 20 });
+
 const columns: QTableColumn[] = [
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
   { name: 'shelf_code', align: 'left', label: 'Code', field: 'shelf_code', sortable: true },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'location_bay', align: 'left', label: 'Location / Bay', field: 'location_bay' },

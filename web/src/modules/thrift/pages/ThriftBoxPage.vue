@@ -30,9 +30,16 @@
         :rows="boxes"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="loading"
         class="thrift-table"
       >
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
+        </template>
         <template #body-cell-shipment="props">
           <q-td :props="props">
             {{ getShipmentName(props.row.shipment_id) }}
@@ -139,7 +146,11 @@ const form = ref({
   received_weight: 0,
 });
 
+const tablePagination = ref({ page: 1, rowsPerPage: 20 });
+
 const columns: QTableColumn[] = [
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
   { name: 'name', align: 'left', label: 'Box Name / Number', field: 'name', sortable: true },
   { name: 'shipment', align: 'left', label: 'Shipment', field: 'shipment' },
   { name: 'weight', align: 'right', label: 'Weight', field: 'weight', sortable: true },

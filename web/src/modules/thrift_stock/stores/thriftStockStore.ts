@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { thriftStockRepository } from '../repositories/thriftStockRepository';
+import { thriftStockRepository, type ThriftStockPricingInput } from '../repositories/thriftStockRepository';
 import type { ThriftStock, ThriftSection, ThriftCondition, ThriftStockType, ThriftStockStatus } from '../types';
 
 export const useThriftStockStore = defineStore('thrift_stock', {
@@ -79,9 +79,11 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       extraWeight: number | undefined,
       note: string,
       userEmail: string,
-      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+      pricing: ThriftStockPricingInput,
       imageUrl?: string,
       shelfId?: number | null,
+      originPurchasePrice?: number,
+      extraOriginPurchaseExpense?: number,
     ) {
       try {
         const stock = await thriftStockRepository.createStock(
@@ -103,6 +105,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             box_id: boxId || undefined,
             product_weight: productWeight || undefined,
             extra_weight: extraWeight || undefined,
+            origin_purchase_price: originPurchasePrice ?? undefined,
+            extra_origin_purchase_expense: extraOriginPurchaseExpense ?? undefined,
             status: 'AVAILABLE' as ThriftStockStatus,
             note: note || '',
             inserted_by: userEmail,
@@ -122,7 +126,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
     async updateStock(
       id: number,
       stock: Partial<ThriftStock>,
-      pricing: { cost_of_goods_sold: number; target_price: number; listed_price: number },
+      pricing: ThriftStockPricingInput,
       imageUrl?: string | null,
     ) {
       try {

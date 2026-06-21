@@ -30,9 +30,22 @@
         :rows="shipments"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="loading"
         class="thrift-table"
       >
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
+        </template>
+        <template #body-cell-purchase_currency="props">
+          <q-td :props="props">{{ currencyCode(props.row.purchase_currency_id) }}</q-td>
+        </template>
+        <template #body-cell-cost_currency="props">
+          <q-td :props="props">{{ currencyCode(props.row.cost_currency_id) }}</q-td>
+        </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
             <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
@@ -59,6 +72,32 @@
           <q-input v-model.number="form.cargo_conversion_rate" type="number" step="0.0001" outlined dense label="Cargo Conversion Rate" class="soft-input" />
           <q-input v-model.number="form.cargo_rate" type="number" step="0.01" outlined dense label="Cargo Rate" class="soft-input" />
           <q-input v-model.number="form.product_conversion_rate" type="number" step="0.0001" outlined dense label="Product Conversion Rate" class="soft-input" />
+          <q-select
+            v-model="form.purchase_currency_id"
+            outlined
+            dense
+            label="Purchase currency *"
+            :options="currencyStore.currencies"
+            option-value="id"
+            :option-label="currencyOptionLabel"
+            emit-value
+            map-options
+            class="soft-input"
+            :rules="[val => !!val || 'Required']"
+          />
+          <q-select
+            v-model="form.cost_currency_id"
+            outlined
+            dense
+            label="Cost currency *"
+            :options="currencyStore.currencies"
+            option-value="id"
+            :option-label="currencyOptionLabel"
+            emit-value
+            map-options
+            class="soft-input"
+            :rules="[val => !!val || 'Required']"
+          />
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
@@ -89,11 +128,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
+import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
+const currencyStore = useThriftCurrencyStore();
 
 const shipments = ref<Array<Record<string, unknown>>>([]);
 const loading = ref(false);
@@ -107,16 +149,32 @@ const form = ref({
   cargo_conversion_rate: null as number | null,
   cargo_rate: null as number | null,
   product_conversion_rate: null as number | null,
+  purchase_currency_id: null as number | null,
+  cost_currency_id: null as number | null,
 });
 
+const tablePagination = ref({ page: 1, rowsPerPage: 20 });
+
 const columns: QTableColumn[] = [
-  { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true },
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true, headerStyle: 'width: 70px' },
   { name: 'name', align: 'left', label: 'Shipment Name', field: 'name', sortable: true },
   { name: 'cargo_conversion_rate', align: 'right', label: 'Cargo Conv. Rate', field: 'cargo_conversion_rate', sortable: true },
   { name: 'cargo_rate', align: 'right', label: 'Cargo Rate', field: 'cargo_rate', sortable: true },
   { name: 'product_conversion_rate', align: 'right', label: 'Product Conv. Rate', field: 'product_conversion_rate', sortable: true },
+  { name: 'purchase_currency', align: 'left', label: 'Purchase', field: 'purchase_currency_id', sortable: true },
+  { name: 'cost_currency', align: 'left', label: 'Cost', field: 'cost_currency_id', sortable: true },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
+
+function currencyOptionLabel(option: ThriftCurrency) {
+  return `${option.code} (${option.symbol}) — ${option.name}`;
+}
+
+function currencyCode(id: unknown): string {
+  const currency = currencyStore.currencyById(id as number);
+  return currency?.code ?? '—';
+}
 
 async function loadShipments() {
   if (!authStore.tenantId) return;
@@ -137,8 +195,17 @@ async function loadShipments() {
 }
 
 onMounted(async () => {
+  await currencyStore.loadCurrencies();
   await loadShipments();
 });
+
+function defaultPurchaseCurrencyId(): number | null {
+  return currencyStore.currencies.find((c) => c.code === 'GBP')?.id ?? null;
+}
+
+function defaultCostCurrencyId(): number | null {
+  return currencyStore.currencies.find((c) => c.code === 'BDT')?.id ?? null;
+}
 
 function openDialog(row?: Record<string, unknown>) {
   if (row) {
@@ -148,6 +215,8 @@ function openDialog(row?: Record<string, unknown>) {
       cargo_conversion_rate: (row.cargo_conversion_rate as number) || null,
       cargo_rate: (row.cargo_rate as number) || null,
       product_conversion_rate: (row.product_conversion_rate as number) || null,
+      purchase_currency_id: row.purchase_currency_id as number,
+      cost_currency_id: row.cost_currency_id as number,
     };
   } else {
     editingId.value = null;
@@ -156,6 +225,8 @@ function openDialog(row?: Record<string, unknown>) {
       cargo_conversion_rate: null,
       cargo_rate: null,
       product_conversion_rate: null,
+      purchase_currency_id: defaultPurchaseCurrencyId(),
+      cost_currency_id: defaultCostCurrencyId(),
     };
   }
   dialogOpen.value = true;
@@ -163,6 +234,7 @@ function openDialog(row?: Record<string, unknown>) {
 
 async function save() {
   if (!authStore.tenantId || !form.value.name) return;
+  if (!form.value.purchase_currency_id || !form.value.cost_currency_id) return;
   $q.loading.show();
   try {
     const payload = {
@@ -171,6 +243,8 @@ async function save() {
       cargo_conversion_rate: form.value.cargo_conversion_rate || null,
       cargo_rate: form.value.cargo_rate || null,
       product_conversion_rate: form.value.product_conversion_rate || null,
+      purchase_currency_id: form.value.purchase_currency_id,
+      cost_currency_id: form.value.cost_currency_id,
     };
 
     if (editingId.value) {

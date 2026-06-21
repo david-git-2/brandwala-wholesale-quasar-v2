@@ -18,16 +18,7 @@
               label="Print Barcodes"
               @click="onClickPrint"
             />
-            <q-btn
-              color="primary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn"
-              icon="check_circle"
-              label="Mark Printed"
-              :disabled="selected.length === 0"
-              @click="onMarkPrinted"
-            />
+
           </div>
         </div>
       </q-card-section>
@@ -258,7 +249,7 @@
               Choose how many eligible barcodes to print. The system picks the first ones in sequence
               (Not printed + Available only).
             </div>
-            
+
             <div class="row q-col-gutter-sm items-center q-mb-md">
               <div class="col-8">
                 <q-input
@@ -310,7 +301,7 @@
         <q-card-section class="q-pa-lg">
           <div class="text-overline text-grey-7 q-mb-xs">THRIFT BARCODE PREVIEW</div>
           <div class="q-mb-md text-weight-bold text-subtitle1">{{ previewBarcode?.barcode_id }}</div>
-          
+
           <div class="q-my-md q-px-md row justify-center">
             <div style="width: 100%; max-width: 240px; border: 1px solid #e0e0e0; padding: 12px; border-radius: 8px; background: #fff;">
               <BarcodeRenderer v-if="previewBarcode" :value="previewBarcode.barcode_id" :display-value="false" />
@@ -581,16 +572,6 @@ const confirmBulkPrint = async () => {
   }
 }
 
-const onMarkPrinted = async () => {
-  if (selected.value.length === 0 || !authStore.tenantId) return
-  const ids = selected.value.map((s) => s.id)
-  try {
-    await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
-    selected.value = []
-  } catch {
-    // Handled by store
-  }
-}
 
 onMounted(() => {
   void loadBarcodes(1)

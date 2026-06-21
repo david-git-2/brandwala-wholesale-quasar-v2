@@ -28,9 +28,16 @@
         :rows="thriftStore.categories"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="thriftStore.loading"
         class="thrift-table"
       >
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
+        </template>
         <template #body-cell-scope="props">
           <q-td :props="props">
             <q-chip dense square :color="props.row.is_global ? 'blue-grey-2' : 'teal-2'" text-color="dark">
@@ -114,7 +121,11 @@ const selectedRow = ref<ThriftCategory | null>(null);
 
 const form = ref({ name: '', description: '' });
 
+const tablePagination = ref({ page: 1, rowsPerPage: 20 });
+
 const columns: QTableColumn[] = [
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
   { name: 'scope', align: 'left', label: 'Scope', field: 'is_global' },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'description', align: 'left', label: 'Description', field: 'description' },

@@ -58,19 +58,30 @@ export const useThriftStore = defineStore('thrift', {
       this.categories = this.categories.filter(c => c.id !== id);
     },
 
-    async createType(tenantId: number, name: string, description: string, userEmail: string) {
+    async createType(
+      tenantId: number,
+      name: string,
+      description: string,
+      userEmail: string,
+      icon?: string | null,
+    ) {
       const typ = await thriftRepository.createType({
         tenant_id: tenantId,
         name,
         description,
+        icon: icon?.trim() || null,
         inserted_by: userEmail,
       });
       this.types.push(typ);
       return typ;
     },
 
-    async updateType(id: number, name: string, description: string) {
-      const typ = await thriftRepository.updateType(id, { name, description });
+    async updateType(id: number, name: string, description: string, icon?: string | null) {
+      const typ = await thriftRepository.updateType(id, {
+        name,
+        description,
+        icon: icon?.trim() || null,
+      });
       const idx = this.types.findIndex(t => t.id === id);
       if (idx !== -1) this.types[idx] = typ;
       return typ;

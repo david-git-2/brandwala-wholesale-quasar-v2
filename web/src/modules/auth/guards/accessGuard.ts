@@ -33,7 +33,7 @@ export const createAccessGuard = ({
   requiredModuleAction,
   validateAccess,
 }: {
-  allowedRoles?: AccessRole[]
+  allowedRoles?: readonly AccessRole[]
   loginRoute: string | ((to: GuardRoute) => RouteLocationRaw)
   requiredScope?: AuthScope
   requireTenantContext?: boolean

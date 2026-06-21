@@ -28,9 +28,21 @@
         :rows="thriftStore.types"
         :columns="columns"
         row-key="id"
+        v-model:pagination="tablePagination"
+        :rows-per-page-options="[10, 20, 50]"
         :loading="thriftStore.loading"
         class="thrift-table"
       >
+        <template #body-cell-sl="props">
+          <q-td :props="props">
+            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+          </q-td>
+        </template>
+        <template #body-cell-icon="props">
+          <q-td :props="props">
+            <q-icon :name="resolveTypeIcon(props.row.icon)" size="22px" color="primary" />
+          </q-td>
+        </template>
         <template #body-cell-scope="props">
           <q-td :props="props">
             <q-chip dense square :color="props.row.is_global ? 'blue-grey-2' : 'teal-2'" text-color="dark">
@@ -70,6 +82,35 @@
         <q-card-section class="q-pt-md q-gutter-md">
           <q-input v-model="form.name" outlined dense label="Type Name *" class="soft-input" :rules="[val => !!val || 'Required']" />
           <q-input v-model="form.description" outlined dense label="Description" class="soft-input" type="textarea" autogrow />
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col">
+              <q-select
+                v-model="form.icon"
+                outlined
+                dense
+                label="Icon (optional)"
+                class="soft-input"
+                :options="THRIFT_TYPE_ICON_OPTIONS"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                clearable
+              >
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section avatar>
+                      <q-icon :name="resolveTypeIcon(scope.opt.value)" />
+                    </q-item-section>
+                    <q-item-section>{{ scope.opt.label }}</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
+            <div class="col-auto">
+              <q-icon :name="resolveTypeIcon(form.icon)" size="28px" color="primary" />
+            </div>
+          </div>
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
@@ -102,6 +143,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStore } from '../stores/thriftStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftType } from '../types';
+import { THRIFT_TYPE_ICON_OPTIONS, resolveTypeIcon } from '../utils/typeIcon';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -112,9 +154,18 @@ const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
 const selectedRow = ref<ThriftType | null>(null);
 
-const form = ref({ name: '', description: '' });
+const form = ref<{ name: string; description: string; icon: string | null }>({
+  name: '',
+  description: '',
+  icon: null,
+});
+
+const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
+  { name: 'icon', align: 'left', label: '', field: 'icon', style: 'width: 48px' },
   { name: 'scope', align: 'left', label: 'Scope', field: 'is_global' },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'description', align: 'left', label: 'Description', field: 'description' },
@@ -130,10 +181,14 @@ onMounted(async () => {
 function openDialog(row?: ThriftType) {
   if (row) {
     editingId.value = row.id;
-    form.value = { name: row.name, description: row.description || '' };
+    form.value = {
+      name: row.name,
+      description: row.description || '',
+      icon: row.icon ?? null,
+    };
   } else {
     editingId.value = null;
-    form.value = { name: '', description: '' };
+    form.value = { name: '', description: '', icon: null };
   }
   dialogOpen.value = true;
 }
@@ -143,7 +198,12 @@ async function save() {
   $q.loading.show();
   try {
     if (editingId.value) {
-      await thriftStore.updateType(editingId.value, form.value.name, form.value.description);
+      await thriftStore.updateType(
+        editingId.value,
+        form.value.name,
+        form.value.description,
+        form.value.icon,
+      );
       $q.notify({ type: 'positive', message: 'Type updated' });
     } else {
       await thriftStore.createType(
@@ -151,6 +211,7 @@ async function save() {
         form.value.name,
         form.value.description,
         authStore.user?.email || '',
+        form.value.icon,
       );
       $q.notify({ type: 'positive', message: 'Type created' });
     }

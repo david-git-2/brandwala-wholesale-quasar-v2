@@ -4615,6 +4615,39 @@ export type Database = {
           },
         ]
       }
+      thrift_currencies: {
+        Row: {
+          code: string
+          country: string
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       thrift_invoice_items: {
         Row: {
           created_at: string
@@ -4762,6 +4795,7 @@ export type Database = {
         Row: {
           cost_of_goods_sold: number
           created_at: string
+          extra_expense_cost: number
           id: number
           inserted_by: string
           listed_price: number
@@ -4772,6 +4806,7 @@ export type Database = {
         Insert: {
           cost_of_goods_sold?: number
           created_at?: string
+          extra_expense_cost?: number
           id?: number
           inserted_by: string
           listed_price?: number
@@ -4782,6 +4817,7 @@ export type Database = {
         Update: {
           cost_of_goods_sold?: number
           created_at?: string
+          extra_expense_cost?: number
           id?: number
           inserted_by?: string
           listed_price?: number
@@ -4802,19 +4838,19 @@ export type Database = {
       thrift_settings: {
         Row: {
           created_at: string
-          default_purchase_price_gbp: number
+          default_origin_purchase_price: number
           tenant_id: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          default_purchase_price_gbp?: number
+          default_origin_purchase_price?: number
           tenant_id: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          default_purchase_price_gbp?: number
+          default_origin_purchase_price?: number
           tenant_id?: number
           updated_at?: string
         }
@@ -4873,37 +4909,57 @@ export type Database = {
         Row: {
           cargo_conversion_rate: number | null
           cargo_rate: number | null
+          cost_currency_id: number
           created_at: string
           id: number
           inserted_by: string
           name: string
           product_conversion_rate: number | null
+          purchase_currency_id: number
           tenant_id: number
           updated_at: string
         }
         Insert: {
           cargo_conversion_rate?: number | null
           cargo_rate?: number | null
+          cost_currency_id: number
           created_at?: string
           id?: number
           inserted_by: string
           name: string
           product_conversion_rate?: number | null
+          purchase_currency_id: number
           tenant_id: number
           updated_at?: string
         }
         Update: {
           cargo_conversion_rate?: number | null
           cargo_rate?: number | null
+          cost_currency_id?: number
           created_at?: string
           id?: number
           inserted_by?: string
           name?: string
           product_conversion_rate?: number | null
+          purchase_currency_id?: number
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thrift_shipments_cost_currency_id_fkey"
+            columns: ["cost_currency_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_shipments_purchase_currency_id_fkey"
+            columns: ["purchase_currency_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_currencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thrift_shipments_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -4960,6 +5016,7 @@ export type Database = {
           color: string | null
           condition: Database["public"]["Enums"]["thrift_condition"] | null
           created_at: string
+          extra_origin_purchase_expense: number | null
           extra_weight: number | null
           id: number
           inserted_by: string
@@ -4986,6 +5043,7 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          extra_origin_purchase_expense?: number | null
           extra_weight?: number | null
           id?: number
           inserted_by: string
@@ -5012,6 +5070,7 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          extra_origin_purchase_expense?: number | null
           extra_weight?: number | null
           id?: number
           inserted_by?: string
@@ -5079,6 +5138,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          icon: string | null
           id: number
           inserted_by: string
           is_global: boolean
@@ -5089,6 +5149,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: number
           inserted_by: string
           is_global?: boolean
@@ -5099,6 +5160,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: number
           inserted_by?: string
           is_global?: boolean
@@ -7453,6 +7515,8 @@ export type Database = {
           p_color?: string
           p_condition?: string
           p_cost_of_goods_sold?: number
+          p_extra_expense_cost?: number
+          p_extra_origin_purchase_expense?: number
           p_extra_weight?: number
           p_image_url: string
           p_inserted_by?: string
