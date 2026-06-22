@@ -1,4 +1,4 @@
-import type { Enums, Tables, Json } from 'src/types/supabase'
+import type { Enums, Tables } from 'src/types/supabase'
 import type { TenantPreferenceSchema } from './preferences'
 
 export type { TenantPreference, TenantPreferenceSchema, ThriftTenantPreference } from './preferences'
@@ -11,7 +11,7 @@ export type Tenant = {
   public_domain: string | null
   is_active: boolean
   parent_id: number | null
-  preference: any
+  preference: unknown
   created_at: string
   updated_at: string
 }
