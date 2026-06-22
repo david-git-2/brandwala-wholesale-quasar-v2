@@ -77,51 +77,175 @@ export interface ThriftStockPricingInput {
   extra_expense_cost?: number;
 }
 
-export const thriftStockRepository = {
-  async fetchStocksPaginated(params: ThriftStockListParams): Promise<ThriftStockListResult> {
-    const { data, error } = await supabase.rpc('list_thrift_stocks_paginated', {
-      p_tenant_id: params.tenantId,
-      p_page: params.page ?? 1,
-      p_page_size: params.pageSize ?? 20,
-      p_search: params.search?.trim() || null,
-      p_status: params.status || null,
-      p_condition: params.condition || null,
-    });
-    if (error) throw error;
+function escapeIlike(value: string): string {
+  return value.replace(/[%_(),]/g, ' ').trim();
+}
 
-    const payload = data as {
-      data: ThriftStockPaginatedRow[];
-      meta: ThriftStockListMeta;
+function shouldFallbackToDirectQuery(error: {
+  code?: string;
+  message?: string;
+  status?: number;
+}): boolean {
+  const message = error.message ?? '';
+
+  if (
+    error.code === 'PGRST202' ||
+    /could not find the function/i.test(message)
+  ) {
+    return true;
+  }
+
+  if (
+    error.code === '57014' ||
+    /statement timeout|canceling statement/i.test(message)
+  ) {
+    return true;
+  }
+
+  if (error.status === 502 || error.status === 504) {
+    return true;
+  }
+
+  return /gateway timeout|bad gateway|504|502/i.test(message);
+}
+
+function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
+  return rows.map((stock) => {
+    const pricing = stock.pricing ?? stock.thrift_pricings?.[0] ?? {
+      cost_of_goods_sold: 0,
+      target_price: 0,
+      listed_price: 0,
+      extra_expense_cost: 0,
     };
-
-    const rows = payload.data || [];
+    const primaryImage =
+      stock.thrift_stock_images?.find((img) => img.is_primary) ||
+      stock.thrift_stock_images?.[0];
 
     return {
-      data: rows.map((stock) => {
-        const pricing = stock.pricing ?? {
-          cost_of_goods_sold: 0,
-          target_price: 0,
-          listed_price: 0,
-          extra_expense_cost: 0,
-        };
-        return {
-          ...(stock as unknown as ThriftStock),
-          pricing: {
-            cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
-            target_price: Number(pricing.target_price) || 0,
-            listed_price: Number(pricing.listed_price) || 0,
-            extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
-          },
-          image_url: stock.image_url || undefined,
-        };
-      }) as ThriftStock[],
-      meta: {
-        total: Number(payload.meta?.total) || 0,
-        page: Number(payload.meta?.page) || 1,
-        page_size: Number(payload.meta?.page_size) || 20,
-        total_pages: Number(payload.meta?.total_pages) || 0,
+      ...(stock as unknown as ThriftStock),
+      pricing: {
+        cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
+        target_price: Number(pricing.target_price) || 0,
+        listed_price: Number(pricing.listed_price) || 0,
+        extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
       },
+      image_url: stock.image_url || primaryImage?.image_url || undefined,
     };
+  }) as ThriftStock[];
+}
+
+function mapRpcPayload(payload: {
+  data: ThriftStockPaginatedRow[];
+  meta: ThriftStockListMeta;
+}): ThriftStockListResult {
+  return {
+    data: mapPaginatedRows(payload.data || []),
+    meta: {
+      total: Number(payload.meta?.total) || 0,
+      page: Number(payload.meta?.page) || 1,
+      page_size: Number(payload.meta?.page_size) || 20,
+      total_pages: Number(payload.meta?.total_pages) || 0,
+    },
+  };
+}
+
+async function fetchStocksPaginatedViaRpc(
+  params: ThriftStockListParams,
+): Promise<ThriftStockListResult> {
+  const { data, error } = await supabase.rpc('list_thrift_stocks_paginated', {
+    p_tenant_id: params.tenantId,
+    p_page: params.page ?? 1,
+    p_page_size: params.pageSize ?? 20,
+    p_search: params.search?.trim() || null,
+    p_status: params.status || null,
+    p_condition: params.condition || null,
+  });
+  if (error) throw error;
+
+  return mapRpcPayload(
+    data as {
+      data: ThriftStockPaginatedRow[];
+      meta: ThriftStockListMeta;
+    },
+  );
+}
+
+async function fetchStocksPaginatedDirect(
+  params: ThriftStockListParams,
+): Promise<ThriftStockListResult> {
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 20;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const search = escapeIlike(params.search?.trim() || '');
+
+  let query = supabase
+    .from('thrift_stocks')
+    .select(
+      `
+        *,
+        thrift_pricings (
+          cost_of_goods_sold,
+          target_price,
+          listed_price,
+          extra_expense_cost
+        ),
+        thrift_stock_images (
+          image_url,
+          is_primary
+        )
+      `,
+      { count: 'exact' },
+    )
+    .eq('tenant_id', params.tenantId)
+    .order('created_at', { ascending: false });
+
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+
+  if (params.condition) {
+    query = query.eq('condition', params.condition);
+  }
+
+  if (search) {
+    query = query.or(
+      `name.ilike.%${search}%,brand_name.ilike.%${search}%,barcode.ilike.%${search}%`,
+    );
+  }
+
+  const { data, error, count } = await query.range(from, to);
+  if (error) throw error;
+
+  const total = count ?? 0;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+
+  return {
+    data: mapPaginatedRows((data || []) as ThriftStockPaginatedRow[]),
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+    },
+  };
+}
+
+export const thriftStockRepository = {
+  async fetchStocksPaginated(params: ThriftStockListParams): Promise<ThriftStockListResult> {
+    try {
+      return await fetchStocksPaginatedViaRpc(params);
+    } catch (error) {
+      if (!shouldFallbackToDirectQuery(error as { code?: string; message?: string; status?: number })) {
+        throw error;
+      }
+
+      console.warn(
+        'list_thrift_stocks_paginated RPC failed; falling back to direct query.',
+        error,
+      );
+      return fetchStocksPaginatedDirect(params);
+    }
   },
 
   async fetchStocks(tenantId: number): Promise<ThriftStock[]> {

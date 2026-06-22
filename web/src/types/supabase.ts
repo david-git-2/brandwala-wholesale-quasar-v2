@@ -7634,6 +7634,8 @@ export type Database = {
           total_qty: number
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       thrift_barcode_sequence_sort_key: {
         Args: { p_barcode_id: string }
         Returns: {

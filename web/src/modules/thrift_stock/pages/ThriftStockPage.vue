@@ -118,6 +118,18 @@
             </q-avatar>
           </q-td>
         </template>
+        <template #body-cell-barcode="props">
+          <q-td :props="props">
+            <span
+              v-if="props.value"
+              class="text-primary cursor-pointer text-weight-medium"
+              @click.stop="openBarcodePreview(props.row)"
+            >
+              {{ props.value }}
+            </span>
+            <span v-else class="text-grey-5">—</span>
+          </q-td>
+        </template>
         <template #body-cell-box="props">
           <q-td :props="props">
             {{ getBoxName(props.row.box_id) }}
@@ -550,6 +562,43 @@
       </q-card>
     </q-dialog>
 
+    <!-- Barcode Preview Dialog -->
+    <q-dialog v-model="barcodePreviewOpen">
+      <q-card style="min-width: 320px; text-align: center; border-radius: 14px;">
+        <q-card-section class="bg-grey-2 q-py-xs text-right">
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-lg">
+          <div class="text-overline text-grey-7 q-mb-xs">THRIFT STOCK BARCODE</div>
+          <div v-if="previewStockLabel" class="text-caption text-grey-7 q-mb-xs">{{ previewStockLabel }}</div>
+          <div class="q-mb-md text-weight-bold text-subtitle1">{{ previewBarcodeValue }}</div>
+
+          <div class="q-my-md q-px-md row justify-center">
+            <div class="barcode-preview-frame">
+              <BarcodeRenderer
+                v-if="previewBarcodeValue"
+                :value="previewBarcodeValue"
+                :display-value="false"
+                :height="48"
+              />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="center" class="q-pb-md">
+          <q-btn
+            color="primary"
+            no-caps
+            icon="content_copy"
+            label="Copy barcode"
+            class="pill-btn"
+            @click="copyPreviewBarcode"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Global Cloudinary Uploader Dialog -->
     <CloudinaryUploaderDialog
       v-model="isUploaderOpen"
@@ -571,10 +620,11 @@ import { useThriftSettingsStore } from 'src/modules/thrift_settings/stores/thrif
 import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
 import { formatThriftAmount } from 'src/modules/thrift_currency/utils/formatMoney';
 import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import BarcodeRenderer from 'src/modules/thrift_barcode/components/BarcodeRenderer.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 import { resolveTypeIcon } from 'src/modules/thrift/utils/typeIcon';
 
@@ -603,6 +653,9 @@ const uploaderTarget = ref<'quick' | 'edit'>('quick');
 const quickSubmitting = ref(false);
 const deleteConfirmOpen = ref(false);
 const imageRemoveConfirmOpen = ref(false);
+const barcodePreviewOpen = ref(false);
+const previewBarcodeValue = ref('');
+const previewStockLabel = ref('');
 const actionLoading = ref(false);
 const selectedRow = ref<ThriftStock | null>(null);
 
@@ -902,6 +955,27 @@ function removeEditImage() {
   editImage.value.url = '';
   editImage.value.removed = true;
   imageRemoveConfirmOpen.value = false;
+}
+
+function openBarcodePreview(row: ThriftStock) {
+  const barcode = row.barcode?.trim();
+  if (!barcode) return;
+
+  previewBarcodeValue.value = barcode;
+  previewStockLabel.value = [row.name, row.brand_name].filter(Boolean).join(' · ');
+  barcodePreviewOpen.value = true;
+}
+
+async function copyPreviewBarcode() {
+  const text = previewBarcodeValue.value.trim();
+  if (!text) return;
+
+  await copyToClipboard(text);
+  $q.notify({
+    type: 'positive',
+    message: 'Barcode copied',
+    position: 'top-right',
+  });
 }
 
 function resetEditImage() {
@@ -1243,5 +1317,14 @@ const statusDotColor = (status: string | null | undefined) => {
 
 .border-dashed {
   border: 2px dashed rgba(34, 56, 101, 0.2);
+}
+
+.barcode-preview-frame {
+  width: 100%;
+  max-width: 280px;
+  border: 1px solid #e0e0e0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
 }
 </style>
