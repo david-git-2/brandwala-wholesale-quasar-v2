@@ -15,6 +15,7 @@ It follows the same `page -> store -> service -> repository` pattern as the exam
 | `slug` | `text` | Required, unique |
 | `public_domain` | `text` | Optional, globally unique when present |
 | `is_active` | `boolean` | Defaults to `true` |
+| `preference` | `jsonb` | Flexible tenant settings object; defaults to `{}` |
 | `created_at` | `timestamptz` | Defaults to `now()` |
 | `updated_at` | `timestamptz` | Defaults to `now()` |
 
@@ -97,6 +98,27 @@ Customer-side entry is now route-aware.
 2. `tenantRepository.deleteTenant()`
 3. `supabase.rpc('delete_tenant_for_superadmin')`
 
+### Update Preference (Tenant Admin)
+
+Tenant admins can store flexible JSON preferences on their tenant. Reads are available through existing tenant list/detail RPCs and direct `tenants` SELECT (any active member). Writes go through:
+
+1. `tenantService.updateTenantPreference()`
+2. `tenantRepository.updateTenantPreference()`
+3. `supabase.rpc('update_tenant_preference_for_admin')`
+
+Access: `is_tenant_admin(p_tenant_id)` or `is_superadmin()`. The RPC replaces the entire `preference` object and validates that the payload is a JSON object.
+
+### Preference keys (registry-driven UI)
+
+| Key | Type | Module | Description |
+| --- | --- | --- | --- |
+| `thrift.default_purchase_currency` | number | thrift_shipment | `global_currencies.id` for new shipment purchase currency |
+| `thrift.default_cost_currency` | number | thrift_shipment | `global_currencies.id` for new shipment cost currency |
+
+Admin UI: `/:tenantSlug/app/tenants/:id/preferences` — fields are defined in `config/tenantPreferenceFields.ts` and rendered by `TenantPreferenceForm` + `TenantPreferenceFieldRenderer`. Add a registry entry + TypeScript schema property to expose a new preference.
+
+Session cache: `tenantPreferenceStore` loads on login/tenant switch via `get_app_bootstrap_context.tenant_preference`, with `ensureLoaded` on app layout refresh.
+
 ## RLS Pattern To Follow Next Time
 
 When you add a new module, follow this order:
@@ -131,4 +153,4 @@ For simple CRUD RPCs:
 - [`supabase/migrations/20260331125000_membership_rls_definer.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331125000_membership_rls_definer.sql)
 - [`supabase/migrations/20260331125500_tenant_list_rpc.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331125500_tenant_list_rpc.sql)
 - [`supabase/migrations/20260331130500_redefine_create_tenant_rpc.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331130500_redefine_create_tenant_rpc.sql)
-- [`supabase/migrations/20260331131000_tenant_update_delete_rpc.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331131000_tenant_update_delete_rpc.sql)
+- [`supabase/migrations/20260731000001_bootstrap_tenant_preference.sql`](/Users/daviditc/Documents/Personal Project/brandwala-wholesale-quasar-v2/supabase/migrations/20260731000001_bootstrap_tenant_preference.sql)

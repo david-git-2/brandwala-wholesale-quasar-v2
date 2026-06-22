@@ -12,6 +12,7 @@ import {
 } from 'src/modules/tenant/utils/tenantRouteContext'
 import { tenantService } from 'src/modules/tenant/services/tenantService'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore'
 import {
   useAuthStore,
   type AuthAccessSnapshot,
@@ -424,6 +425,11 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       slug: bootstrap.tenant_slug,
       isActive: Boolean(bootstrap.tenant_is_active),
     }
+
+    useTenantPreferenceStore().setPreference(
+      bootstrap.tenant_id,
+      bootstrap.tenant_preference,
+    )
 
     await saveAndRedirect({
       scope: 'app',

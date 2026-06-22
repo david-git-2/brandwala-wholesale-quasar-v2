@@ -102,6 +102,7 @@
               <q-btn color="primary" icon="o_groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
               <q-btn color="primary" icon="o_manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
               <q-btn color="primary" icon="o_extension" :label="modulesButtonLabel" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
+              <q-btn color="primary" icon="o_tune" label="Tenant Preferences" no-caps class="pill-btn slim-btn full-width" @click="goToSection('preferences')" />
             </q-card-section>
           </q-card>
         </div>
@@ -212,7 +213,7 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
   }
 }
 
-const goToSection = (section: 'customer-groups' | 'staff' | 'modules') => {
+const goToSection = (section: 'customer-groups' | 'staff' | 'modules' | 'preferences') => {
   const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null
   const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
   void router.push(`${base}/${section}`)

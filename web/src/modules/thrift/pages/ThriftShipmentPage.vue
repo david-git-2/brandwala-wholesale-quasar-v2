@@ -129,6 +129,8 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
+import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
+import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferenceUtils';
 import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
@@ -136,6 +138,7 @@ import { supabase } from 'src/boot/supabase';
 const $q = useQuasar();
 const authStore = useAuthStore();
 const currencyStore = useThriftCurrencyStore();
+const preferenceStore = useTenantPreferenceStore();
 
 const shipments = ref<Array<Record<string, unknown>>>([]);
 const loading = ref(false);
@@ -200,11 +203,19 @@ onMounted(async () => {
 });
 
 function defaultPurchaseCurrencyId(): number | null {
-  return currencyStore.currencies.find((c) => c.code === 'GBP')?.id ?? null;
+  const activeIds = currencyStore.currencies.map((currency) => currency.id);
+  return resolveActiveCurrencyId(
+    preferenceStore.thriftDefaultPurchaseCurrencyId,
+    activeIds,
+  );
 }
 
 function defaultCostCurrencyId(): number | null {
-  return currencyStore.currencies.find((c) => c.code === 'BDT')?.id ?? null;
+  const activeIds = currencyStore.currencies.map((currency) => currency.id);
+  return resolveActiveCurrencyId(
+    preferenceStore.thriftDefaultCostCurrencyId,
+    activeIds,
+  );
 }
 
 function openDialog(row?: Record<string, unknown>) {

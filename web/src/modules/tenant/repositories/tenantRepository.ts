@@ -6,6 +6,7 @@ import type {
   TenantDeleteInput,
   TenantEntry,
   TenantEntryResolveInput,
+  TenantPreferenceUpdateInput,
   TenantUpdateInput,
 } from '../types'
 
@@ -159,6 +160,27 @@ const updateTenant = async (tenant: TenantUpdateInput): Promise<Tenant> => {
   return updatedTenant as Tenant
 }
 
+const updateTenantPreference = async (
+  input: TenantPreferenceUpdateInput,
+): Promise<Tenant> => {
+  const { data, error } = await supabase.rpc('update_tenant_preference_for_admin', {
+    p_tenant_id: input.tenantId,
+    p_preference: input.preference,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const updatedTenant = Array.isArray(data) ? data[0] : data
+
+  if (!updatedTenant) {
+    throw new Error('Tenant preference was not updated.')
+  }
+
+  return updatedTenant as Tenant
+}
+
 const deleteTenant = async (tenant: TenantDeleteInput): Promise<Tenant> => {
   const { data, error } = await supabase.rpc('delete_tenant_for_superadmin', {
     p_tenant_id: tenant.id,
@@ -269,6 +291,7 @@ export const tenantRepository = {
   resolveTenantForEntry,
   createTenant,
   updateTenant,
+  updateTenantPreference,
 
   listTenantModules,
   createTenantModule,

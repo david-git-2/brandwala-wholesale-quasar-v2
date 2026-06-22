@@ -5,12 +5,14 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { showWarningDialog } from 'src/utils/appFeedback'
 import { useTenantStore } from '../stores/tenantStore'
+import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore'
 import type { Tenant } from '../types'
 
 export function useAdminTenantSelection() {
   const router = useRouter()
   const authStore = useAuthStore()
   const tenantStore = useTenantStore()
+  const tenantPreferenceStore = useTenantPreferenceStore()
   const selectingTenantId = ref<number | null>(null)
 
   const selectTenantWorkspace = async (
@@ -93,6 +95,11 @@ export function useAdminTenantSelection() {
         id: bootstrap.tenant_id,
         slug: bootstrap.tenant_slug,
       })
+
+      tenantPreferenceStore.setPreference(
+        bootstrap.tenant_id,
+        bootstrap.tenant_preference,
+      )
 
       if (options?.navigate !== false) {
         if (bootstrap.member_role === 'admin') {

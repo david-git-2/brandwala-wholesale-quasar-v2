@@ -1381,6 +1381,39 @@ export type Database = {
           },
         ]
       }
+      global_currencies: {
+        Row: {
+          code: string
+          country: string
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       global_invoice_accounting: {
         Row: {
           charge_total: number
@@ -4398,6 +4431,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number | null
+          preference: Json
           public_domain: string | null
           slug: string
           updated_at: string
@@ -4408,6 +4442,7 @@ export type Database = {
           is_active?: boolean
           name: string
           parent_id?: number | null
+          preference?: Json
           public_domain?: string | null
           slug: string
           updated_at?: string
@@ -4418,6 +4453,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           parent_id?: number | null
+          preference?: Json
           public_domain?: string | null
           slug?: string
           updated_at?: string
@@ -4614,39 +4650,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      thrift_currencies: {
-        Row: {
-          code: string
-          country: string
-          created_at: string
-          id: number
-          is_active: boolean
-          name: string
-          symbol: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          country: string
-          created_at?: string
-          id?: number
-          is_active?: boolean
-          name: string
-          symbol: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          country?: string
-          created_at?: string
-          id?: number
-          is_active?: boolean
-          name?: string
-          symbol?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       thrift_invoice_items: {
         Row: {
@@ -4950,14 +4953,14 @@ export type Database = {
             foreignKeyName: "thrift_shipments_cost_currency_id_fkey"
             columns: ["cost_currency_id"]
             isOneToOne: false
-            referencedRelation: "thrift_currencies"
+            referencedRelation: "global_currencies"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "thrift_shipments_purchase_currency_id_fkey"
             columns: ["purchase_currency_id"]
             isOneToOne: false
-            referencedRelation: "thrift_currencies"
+            referencedRelation: "global_currencies"
             referencedColumns: ["id"]
           },
           {
@@ -6276,6 +6279,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -6331,6 +6335,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -6406,6 +6411,7 @@ export type Database = {
           tenant_id: number
           tenant_is_active: boolean
           tenant_name: string
+          tenant_preference: Json
           tenant_slug: string
         }[]
       }
@@ -6636,6 +6642,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -7047,6 +7054,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -7214,6 +7222,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -7227,6 +7236,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -7980,6 +7990,7 @@ export type Database = {
           is_active: boolean
           name: string
           parent_id: number
+          preference: Json
           public_domain: string
           slug: string
           updated_at: string
@@ -7998,6 +8009,20 @@ export type Database = {
           is_active: boolean
           module_key: string
           tenant_id: number
+          updated_at: string
+        }[]
+      }
+      update_tenant_preference_for_admin: {
+        Args: { p_preference: Json; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          parent_id: number
+          preference: Json
+          public_domain: string
+          slug: string
           updated_at: string
         }[]
       }

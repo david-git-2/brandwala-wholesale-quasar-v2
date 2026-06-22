@@ -5,6 +5,7 @@ import type {
   TenantDeleteInput,
   TenantEntry,
   TenantEntryResolveInput,
+  TenantPreferenceUpdateInput,
   TenantServiceResult,
   TenantUpdateInput,
   TenantModule,
@@ -153,6 +154,27 @@ const updateTenant = async (
   }
 }
 
+const updateTenantPreference = async (
+  input: TenantPreferenceUpdateInput,
+): Promise<TenantServiceResult<Tenant>> => {
+  try {
+    const data = await tenantRepository.updateTenantPreference(input)
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update tenant preference.',
+    }
+  }
+}
+
 const deleteTenant = async (
   tenant: TenantDeleteInput
 ): Promise<TenantServiceResult<Tenant>> => {
@@ -249,6 +271,7 @@ export const tenantService = {
   resolveTenantForEntry,
   createTenant,
   updateTenant,
+  updateTenantPreference,
 
   listTenantModules,
   createTenantModule,

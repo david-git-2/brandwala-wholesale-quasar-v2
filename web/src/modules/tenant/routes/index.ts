@@ -226,6 +226,48 @@ const tenantRoutes: RouteRecordRaw[] = [
           },
         }),
       },
+      {
+        path: ':id/preferences',
+        name: 'admin-tenant-preferences',
+        component: () => import('../pages/AdminTenantPreferencesPage.vue'),
+        props: true,
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
+              return true
+            }
+
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-preferences',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
+              },
+              selectedTenantSlug,
+            )
+          },
+        }),
+      },
     ],
   },
 ]
