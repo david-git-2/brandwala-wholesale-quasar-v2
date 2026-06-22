@@ -79,15 +79,18 @@ export const useTenantStore = defineStore('tenant', {
   }),
 
   getters: {
-    selectedTenant(state: TenantStoreState): Tenant | null {
+    selectedTenant(state): Tenant | null {
+      const available = state.availableAdminTenants as Tenant[]
+      const items = state.items as Tenant[]
+
       const fromAvailableTenants =
-        state.availableAdminTenants.find((tenant) => tenant.id === state.selectedTenantId) ?? null
+        available.find((tenant) => tenant.id === state.selectedTenantId) ?? null
 
       if (fromAvailableTenants) {
         return fromAvailableTenants
       }
 
-      return state.items.find((tenant) => tenant.id === state.selectedTenantId) ?? null
+      return items.find((tenant) => tenant.id === state.selectedTenantId) ?? null
     },
   },
 
@@ -95,7 +98,7 @@ export const useTenantStore = defineStore('tenant', {
     persistWorkspaceState() {
       writeStorage({
         schemaVersion: 1,
-        availableAdminTenants: this.availableAdminTenants,
+        availableAdminTenants: this.availableAdminTenants as Tenant[],
         selectedTenantId: this.selectedTenantId,
         selectedTenantSlug: this.selectedTenantSlug,
       })
@@ -108,9 +111,12 @@ export const useTenantStore = defineStore('tenant', {
         return
       }
 
+      const available = this.availableAdminTenants as Tenant[]
+      const items = this.items as Tenant[]
+
       const selectedTenant =
-        this.availableAdminTenants.find((tenant) => tenant.id === this.selectedTenantId) ??
-        this.items.find((tenant) => tenant.id === this.selectedTenantId) ??
+        available.find((tenant) => tenant.id === this.selectedTenantId) ??
+        items.find((tenant) => tenant.id === this.selectedTenantId) ??
         null
 
       if (!selectedTenant) {
@@ -129,7 +135,7 @@ export const useTenantStore = defineStore('tenant', {
       this.syncSelectedTenant()
     },
 
-    setSelectedTenant(tenant: Pick<Tenant, 'id' | 'slug'> | null) {
+    setSelectedTenant(tenant: { id: number; slug: string } | null) {
       this.selectedTenantId = tenant?.id ?? null
       this.selectedTenantSlug = tenant?.slug ?? null
       this.persistWorkspaceState()
@@ -141,7 +147,7 @@ export const useTenantStore = defineStore('tenant', {
       this.persistWorkspaceState()
     },
 
-    hydrateSelectedTenantFromAuth(tenant: Pick<Tenant, 'id' | 'slug'> | null) {
+    hydrateSelectedTenantFromAuth(tenant: { id: number; slug: string } | null) {
       if (!tenant) {
         this.clearSelectedTenant()
         return
