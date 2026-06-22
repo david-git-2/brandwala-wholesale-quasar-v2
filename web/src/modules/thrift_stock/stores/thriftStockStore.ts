@@ -146,6 +146,22 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       }
     },
 
+    async attachStockImage(id: number, imageUrl: string, insertedBy: string) {
+      try {
+        await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, insertedBy);
+        const idx = this.stocks.findIndex(s => s.id === id);
+        if (idx !== -1) {
+          this.stocks[idx] = {
+            ...this.stocks[idx],
+            image_url: imageUrl,
+          };
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to attach stock image';
+        throw err;
+      }
+    },
+
     async updateStockStatus(id: number, status: string) {
       try {
         await thriftStockRepository.updateStockStatus(id, status);

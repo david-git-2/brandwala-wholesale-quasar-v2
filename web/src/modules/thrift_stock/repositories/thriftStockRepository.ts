@@ -77,6 +77,47 @@ export interface ThriftStockPricingInput {
   extra_expense_cost?: number;
 }
 
+async function upsertStockPricing(
+  stockId: number,
+  pricing: ThriftStockPricingInput,
+  insertedBy: string,
+) {
+  const { data: existing, error: fetchError } = await supabase
+    .from('thrift_pricings')
+    .select('id')
+    .eq('stock_id', stockId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+
+  const pricingRow = {
+    stock_id: stockId,
+    cost_of_goods_sold: pricing.cost_of_goods_sold,
+    target_price: pricing.target_price,
+    listed_price: pricing.listed_price,
+    extra_expense_cost: pricing.extra_expense_cost ?? 0,
+    inserted_by: insertedBy,
+  };
+
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from('thrift_pricings')
+      .update(pricingRow)
+      .eq('stock_id', stockId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from('thrift_pricings')
+    .insert(pricingRow)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 function escapeIlike(value: string): string {
   return value.replace(/[%_(),]/g, ' ').trim();
 }
@@ -278,19 +319,11 @@ export const thriftStockRepository = {
       .single();
     if (stockError) throw stockError;
 
-    const { data: pricingData, error: pricingError } = await supabase
-      .from('thrift_pricings')
-      .insert({
-        stock_id: stockData.id,
-        cost_of_goods_sold: pricing.cost_of_goods_sold,
-        target_price: pricing.target_price,
-        listed_price: pricing.listed_price,
-        extra_expense_cost: pricing.extra_expense_cost ?? 0,
-        inserted_by: stockData.inserted_by,
-      })
-      .select()
-      .single();
-    if (pricingError) throw pricingError;
+    const pricingData = await upsertStockPricing(
+      stockData.id,
+      pricing,
+      stockData.inserted_by,
+    );
 
     if (imageUrl) {
       const { error: imageError } = await supabase
@@ -317,27 +350,28 @@ export const thriftStockRepository = {
     pricing: ThriftStockPricingInput,
     imageUrl?: string | null,
   ): Promise<ThriftStock> {
-    const { data: stockData, error: stockError } = await supabase
-      .from('thrift_stocks')
-      .update(stock)
-      .eq('id', id)
-      .select()
-      .single();
-    if (stockError) throw stockError;
+    let stockData: ThriftStock;
 
-    const { data: pricingData, error: pricingError } = await supabase
-      .from('thrift_pricings')
-      .upsert({
-        stock_id: id,
-        cost_of_goods_sold: pricing.cost_of_goods_sold,
-        target_price: pricing.target_price,
-        listed_price: pricing.listed_price,
-        extra_expense_cost: pricing.extra_expense_cost ?? 0,
-        inserted_by: stockData.inserted_by,
-      })
-      .select()
-      .single();
-    if (pricingError) throw pricingError;
+    if (Object.keys(stock).length > 0) {
+      const { data, error: stockError } = await supabase
+        .from('thrift_stocks')
+        .update(stock)
+        .eq('id', id)
+        .select()
+        .single();
+      if (stockError) throw stockError;
+      stockData = data as ThriftStock;
+    } else {
+      const { data, error: stockError } = await supabase
+        .from('thrift_stocks')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (stockError) throw stockError;
+      stockData = data as ThriftStock;
+    }
+
+    const pricingData = await upsertStockPricing(id, pricing, stockData.inserted_by);
 
     let resolvedImageUrl: string | undefined;
     if (imageUrl !== undefined) {

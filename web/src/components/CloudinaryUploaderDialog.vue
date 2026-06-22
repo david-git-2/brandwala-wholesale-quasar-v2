@@ -7,20 +7,17 @@
     persistent
   >
     <q-card style="width: 480px; max-width: 95vw;" class="cloudinary-uploader-card floating-surface shadow-2 q-pa-md">
-      <!-- Header -->
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div class="text-h6 text-weight-bold row items-center">
           <q-icon name="cloud_upload" color="primary" class="q-mr-sm" size="sm" />
-          Upload Image
+          {{ deferUpload ? 'Select Image' : 'Upload Image' }}
         </div>
         <q-btn flat round dense icon="close" v-close-popup :disabled="uploading" />
       </q-card-section>
 
       <q-separator />
 
-      <!-- Drag & Drop Zone / Preview Zone -->
       <q-card-section class="q-pt-md">
-        <!-- Preview State -->
         <div v-if="previewUrl" class="preview-container text-center q-pa-sm relative-position">
           <q-img
             :src="previewUrl"
@@ -44,7 +41,6 @@
           </q-btn>
         </div>
 
-        <!-- Drag & Drop Zone -->
         <div
           v-else
           class="dropzone text-center q-pa-xl cursor-pointer"
@@ -71,7 +67,6 @@
           </div>
         </div>
 
-        <!-- Progress Bar -->
         <div v-if="uploading" class="q-mt-md">
           <div class="row justify-between text-caption text-grey-8 q-mb-xs">
             <div>Uploading to Cloudinary...</div>
@@ -81,7 +76,6 @@
         </div>
       </q-card-section>
 
-      <!-- Action Buttons -->
       <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
         <q-btn
           flat
@@ -94,11 +88,11 @@
           color="primary"
           no-caps
           class="pill-btn slim-btn px-md"
-          label="Upload Now"
+          :label="deferUpload ? 'Use Image' : 'Upload Now'"
           icon="cloud_upload"
           :loading="uploading"
           :disabled="!selectedFile"
-          @click="uploadToCloudinary"
+          @click="confirmSelection"
         />
       </q-card-section>
     </q-card>
@@ -109,6 +103,12 @@
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 
+export type CloudinarySelectedImage = {
+  blob: Blob;
+  previewUrl: string;
+  fileName: string;
+};
+
 const props = withDefaults(
   defineProps<{
     modelValue: boolean;
@@ -116,23 +116,25 @@ const props = withDefaults(
     maxWidth?: number;
     maxHeight?: number;
     quality?: number;
+    deferUpload?: boolean;
   }>(),
   {
     folder: '',
     maxWidth: 1200,
     maxHeight: 1200,
     quality: 0.8,
+    deferUpload: false,
   }
 );
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
   (e: 'uploaded', url: string, deleteToken?: string): void;
+  (e: 'selected', payload: CloudinarySelectedImage): void;
 }>();
 
 const $q = useQuasar();
 
-// State
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
@@ -145,7 +147,6 @@ const previewUrl = ref<string | null>(null);
 const uploading = ref(false);
 const uploadProgress = ref(0);
 
-// Methods
 function triggerFilePicker() {
   fileInput.value?.click();
 }
@@ -208,7 +209,6 @@ function resizeImage(file: File): Promise<Blob> {
         let width = img.width;
         let height = img.height;
 
-        // Calculate new dimensions matching max bounds and keeping ratio
         if (width > height) {
           if (width > props.maxWidth) {
             height = Math.round((height * props.maxWidth) / width);
@@ -255,6 +255,27 @@ function resizeImage(file: File): Promise<Blob> {
   });
 }
 
+function confirmSelection() {
+  if (!selectedFile.value || !previewUrl.value) return;
+
+  if (props.deferUpload) {
+    emit('selected', {
+      blob: selectedFile.value,
+      previewUrl: previewUrl.value,
+      fileName: selectedFile.value.name,
+    });
+    selectedFile.value = null;
+    previewUrl.value = null;
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
+    isOpen.value = false;
+    return;
+  }
+
+  void uploadToCloudinary();
+}
+
 async function uploadToCloudinary() {
   if (!selectedFile.value) return;
 
@@ -277,13 +298,9 @@ async function uploadToCloudinary() {
   uploading.value = true;
   uploadProgress.value = 0;
 
-  // Resize the image client-side before proceeding to upload
   let fileToUpload: File | Blob = selectedFile.value;
   try {
     fileToUpload = await resizeImage(selectedFile.value);
-    console.log(
-      `Original size: ${formatBytes(selectedFile.value.size)} -> Compressed size: ${formatBytes(fileToUpload.size)}`
-    );
   } catch (resizeErr) {
     console.warn('Client-side resize failed, proceeding with original file:', resizeErr);
   }
@@ -298,7 +315,7 @@ async function uploadToCloudinary() {
 
   try {
     const xhr = new XMLHttpRequest();
-    
+
     const promise = new Promise<{ secureUrl: string; deleteToken?: string }>((resolve, reject) => {
       xhr.open('POST', url, true);
 
@@ -314,7 +331,7 @@ async function uploadToCloudinary() {
             const response = JSON.parse(xhr.responseText);
             resolve({
               secureUrl: response.secure_url,
-              deleteToken: response.delete_token
+              deleteToken: response.delete_token,
             });
           } catch {
             reject(new Error('Failed to parse Cloudinary response'));

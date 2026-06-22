@@ -194,7 +194,7 @@
     </q-card>
 
     <!-- Register Stock Dialog -->
-    <q-dialog v-model="dialogOpen" persistent>
+    <q-dialog v-model="dialogOpen" persistent @hide="onEditDialogHide">
       <q-card style="width: 600px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Thrift Stock' : 'Register Thrift Stock' }}</div>
@@ -244,7 +244,7 @@
               >
                 <q-icon name="cloud_upload" size="40px" color="primary" />
                 <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">Upload Image</div>
-                <div class="text-caption text-grey-6">Click to open Cloudinary uploader</div>
+                <div class="text-caption text-grey-6">Click to select photo (uploads when you save)</div>
               </div>
             </div>
 
@@ -437,7 +437,7 @@
     </q-dialog>
 
     <!-- Quick Add / Image Upload Dialog -->
-    <q-dialog v-model="quickAddDialogOpen" persistent>
+    <q-dialog v-model="quickAddDialogOpen" persistent @hide="onQuickAddDialogHide">
       <q-card style="width: 450px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">Quick Register Stock</div>
@@ -478,14 +478,14 @@
 
             <!-- Upload Area -->
             <div class="text-center q-pa-md border-dashed rounded-borders bg-grey-1 cursor-pointer" @click="uploaderTarget = 'quick'; isUploaderOpen = true">
-              <div v-if="quickAddForm.imageUrl" class="text-center">
-                <q-img :src="quickAddForm.imageUrl" style="max-height: 180px; border-radius: 8px;" fit="contain" />
-                <div class="text-caption text-grey-8 q-mt-sm">Image Uploaded Successfully</div>
+              <div v-if="quickAddForm.imagePreviewUrl" class="text-center">
+                <q-img :src="quickAddForm.imagePreviewUrl" style="max-height: 180px; border-radius: 8px;" fit="contain" />
+                <div class="text-caption text-grey-8 q-mt-sm">Image selected (uploads on submit)</div>
               </div>
               <div v-else class="q-py-md">
                 <q-icon name="cloud_upload" size="40px" color="primary" />
-                <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">Upload Image *</div>
-                <div class="text-caption text-grey-6">Click to select and upload your item photo</div>
+                <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">Select Image *</div>
+                <div class="text-caption text-grey-6">Click to choose your item photo</div>
               </div>
             </div>
 
@@ -521,7 +521,7 @@
             class="pill-btn slim-btn px-md"
             label="Submit & Edit Details"
             :loading="quickSubmitting"
-            :disabled="!quickAddForm.imageUrl || !quickAddForm.shipment_id"
+            :disabled="!quickAddForm.pendingBlob || !quickAddForm.shipment_id"
             @click="submitQuickAdd"
           />
         </q-card-section>
@@ -530,7 +530,11 @@
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="deleteConfirmOpen" persistent>
-      <q-card style="width: 350px; max-width: 90vw;" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 350px; max-width: 90vw;" class="floating-surface shadow-2 q-pa-md relative-position">
+        <q-inner-loading :showing="deleteLoading" color="negative">
+          <q-spinner size="40px" color="negative" />
+          <div class="text-caption text-grey-8 q-mt-sm">Deleting stock and image...</div>
+        </q-inner-loading>
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Stock Item</span>
@@ -539,8 +543,14 @@
           Are you sure you want to delete stock item <strong>{{ selectedRow?.name }}</strong>? This action cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn color="negative" label="Delete" @click="deleteItem" />
+          <q-btn flat label="Cancel" v-close-popup :disable="deleteLoading" />
+          <q-btn
+            color="negative"
+            label="Delete"
+            :loading="deleteLoading"
+            :disable="deleteLoading"
+            @click="deleteItem"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -603,7 +613,8 @@
     <CloudinaryUploaderDialog
       v-model="isUploaderOpen"
       folder="thrift-stocks"
-      @uploaded="onImageUploaded"
+      defer-upload
+      @selected="onImageSelected"
     />
 
     <PageInitialLoader v-if="actionLoading" overlay />
@@ -627,6 +638,11 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import BarcodeRenderer from 'src/modules/thrift_barcode/components/BarcodeRenderer.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 import { resolveTypeIcon } from 'src/modules/thrift/utils/typeIcon';
+import type { CloudinarySelectedImage } from 'src/components/CloudinaryUploaderDialog.vue';
+import {
+  deleteCloudinaryImage,
+  uploadToCloudinary,
+} from 'src/utils/cloudinaryClient';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -652,6 +668,7 @@ const isUploaderOpen = ref(false);
 const uploaderTarget = ref<'quick' | 'edit'>('quick');
 const quickSubmitting = ref(false);
 const deleteConfirmOpen = ref(false);
+const deleteLoading = ref(false);
 const imageRemoveConfirmOpen = ref(false);
 const barcodePreviewOpen = ref(false);
 const previewBarcodeValue = ref('');
@@ -663,14 +680,15 @@ const quickAddForm = ref({
   shipment_id: null as number | null,
   box_id: null as number | null,
   barcode: '',
-  imageUrl: '',
-  deleteToken: '',
+  imagePreviewUrl: '',
+  pendingBlob: null as Blob | null,
 });
 
 const editImage = ref({
   url: '',
   originalUrl: '',
-  pendingDeleteToken: '',
+  pendingBlob: null as Blob | null,
+  pendingPreviewUrl: null as string | null,
   removed: false,
 });
 
@@ -912,7 +930,13 @@ async function generateBarcode() {
 
 
 async function openAddDialog() {
-  quickAddForm.value = { shipment_id: null, box_id: null, barcode: '', imageUrl: '', deleteToken: '' };
+  quickAddForm.value = {
+    shipment_id: null,
+    box_id: null,
+    barcode: '',
+    imagePreviewUrl: '',
+    pendingBlob: null,
+  };
   uploaderTarget.value = 'quick';
   if (authStore.tenantId) {
     await settingsStore.loadSettings(authStore.tenantId);
@@ -920,9 +944,35 @@ async function openAddDialog() {
   quickAddDialogOpen.value = true;
 }
 
-function onQuickImageUploaded(url: string, deleteToken?: string) {
-  quickAddForm.value.imageUrl = url;
-  quickAddForm.value.deleteToken = deleteToken || '';
+function stockImageFileName(stockId: number) {
+  return `stock-${stockId}-${Date.now()}.jpg`;
+}
+
+function revokeBlobPreview(url: string) {
+  if (url?.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function clearPendingEditImage() {
+  if (editImage.value.pendingPreviewUrl) {
+    revokeBlobPreview(editImage.value.pendingPreviewUrl);
+  }
+  editImage.value.pendingBlob = null;
+  editImage.value.pendingPreviewUrl = null;
+}
+
+async function uploadStockImage(stockId: number, blob: Blob): Promise<string> {
+  const result = await uploadToCloudinary(blob, stockImageFileName(stockId));
+  return result.secureUrl;
+}
+
+function onQuickImageSelected(payload: CloudinarySelectedImage) {
+  if (quickAddForm.value.imagePreviewUrl?.startsWith('blob:')) {
+    revokeBlobPreview(quickAddForm.value.imagePreviewUrl);
+  }
+  quickAddForm.value.imagePreviewUrl = payload.previewUrl;
+  quickAddForm.value.pendingBlob = payload.blob;
 }
 
 function openEditUploader() {
@@ -930,28 +980,24 @@ function openEditUploader() {
   isUploaderOpen.value = true;
 }
 
-function onEditImageUploaded(url: string, deleteToken?: string) {
-  if (editImage.value.pendingDeleteToken) {
-    void deleteCloudinaryImage(editImage.value.pendingDeleteToken);
-  }
-  editImage.value.url = url;
-  editImage.value.pendingDeleteToken = deleteToken || '';
+function onEditImageSelected(payload: CloudinarySelectedImage) {
+  clearPendingEditImage();
+  editImage.value.url = payload.previewUrl;
+  editImage.value.pendingBlob = payload.blob;
+  editImage.value.pendingPreviewUrl = payload.previewUrl;
   editImage.value.removed = false;
 }
 
-function onImageUploaded(url: string, deleteToken?: string) {
+function onImageSelected(payload: CloudinarySelectedImage) {
   if (uploaderTarget.value === 'edit') {
-    onEditImageUploaded(url, deleteToken);
+    onEditImageSelected(payload);
   } else {
-    onQuickImageUploaded(url, deleteToken);
+    onQuickImageSelected(payload);
   }
 }
 
 function removeEditImage() {
-  if (editImage.value.pendingDeleteToken) {
-    void deleteCloudinaryImage(editImage.value.pendingDeleteToken);
-    editImage.value.pendingDeleteToken = '';
-  }
+  clearPendingEditImage();
   editImage.value.url = '';
   editImage.value.removed = true;
   imageRemoveConfirmOpen.value = false;
@@ -979,41 +1025,42 @@ async function copyPreviewBarcode() {
 }
 
 function resetEditImage() {
+  clearPendingEditImage();
   editImage.value = {
     url: '',
     originalUrl: '',
-    pendingDeleteToken: '',
+    pendingBlob: null,
+    pendingPreviewUrl: null,
     removed: false,
   };
 }
 
-async function deleteCloudinaryImage(deleteToken: string) {
-  const cloudName =
-    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME ||
-    (process.env.VITE_CLOUDINARY_CLOUD_NAME as string);
-  if (!cloudName) return;
-  try {
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/delete_by_token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token: deleteToken }),
-    });
-    if (!response.ok) {
-      console.warn('Failed to delete image using delete token:', await response.text());
-    } else {
-      console.log('Successfully deleted orphaned image from Cloudinary.');
+function onQuickAddDialogHide() {
+  if (quickAddForm.value.imagePreviewUrl?.startsWith('blob:')) {
+    revokeBlobPreview(quickAddForm.value.imagePreviewUrl);
+  }
+  quickAddForm.value.imagePreviewUrl = '';
+  quickAddForm.value.pendingBlob = null;
+}
+
+function onEditDialogHide() {
+  if (editImage.value.pendingPreviewUrl) {
+    revokeBlobPreview(editImage.value.pendingPreviewUrl);
+    editImage.value.pendingBlob = null;
+    editImage.value.pendingPreviewUrl = null;
+    if (!editImage.value.removed) {
+      editImage.value.url = editImage.value.originalUrl;
     }
-  } catch (err) {
-    console.error('Error deleting Cloudinary image:', err);
   }
 }
 
 async function submitQuickAdd() {
-  if (!authStore.tenantId || !quickAddForm.value.shipment_id || !quickAddForm.value.imageUrl) return;
+  if (!authStore.tenantId || !quickAddForm.value.shipment_id || !quickAddForm.value.pendingBlob) return;
 
   quickSubmitting.value = true;
+  const pendingBlob = quickAddForm.value.pendingBlob;
+  let uploadedImageUrl = '';
+
   try {
     const barcode = quickAddForm.value.barcode;
 
@@ -1049,10 +1096,17 @@ async function submitQuickAdd() {
         listed_price: 0,
         extra_expense_cost: 0,
       },
-      quickAddForm.value.imageUrl,
+      undefined,
       shelves.value[0]?.id ?? null,
       settingsStore.defaultOriginPurchasePrice,
       0,
+    );
+
+    uploadedImageUrl = await uploadStockImage(draftStock.id, pendingBlob);
+    await store.attachStockImage(
+      draftStock.id,
+      uploadedImageUrl,
+      draftStock.inserted_by,
     );
 
     $q.notify({
@@ -1060,15 +1114,14 @@ async function submitQuickAdd() {
       message: 'Draft created. Please complete other details.',
     });
 
+    quickAddForm.value.imagePreviewUrl = '';
+    quickAddForm.value.pendingBlob = null;
     quickAddDialogOpen.value = false;
 
-    // Transition straight into the edit dialog populated with this draft details
-    openEditDialog(draftStock);
+    openEditDialog({ ...draftStock, image_url: uploadedImageUrl });
   } catch (err: unknown) {
-    if (quickAddForm.value.deleteToken) {
-      await deleteCloudinaryImage(quickAddForm.value.deleteToken);
-      quickAddForm.value.imageUrl = '';
-      quickAddForm.value.deleteToken = '';
+    if (uploadedImageUrl) {
+      await deleteCloudinaryImage(uploadedImageUrl);
     }
     $q.notify({
       type: 'negative',
@@ -1084,7 +1137,8 @@ function openEditDialog(row: ThriftStock) {
   editImage.value = {
     url: row.image_url || '',
     originalUrl: row.image_url || '',
-    pendingDeleteToken: '',
+    pendingBlob: null,
+    pendingPreviewUrl: null,
     removed: false,
   };
   form.value = {
@@ -1135,10 +1189,14 @@ function confirmDelete(row: ThriftStock) {
 }
 
 async function deleteItem() {
-  if (!selectedRow.value) return;
-  actionLoading.value = true;
+  if (!selectedRow.value || deleteLoading.value) return;
+  deleteLoading.value = true;
+  const imageUrl = selectedRow.value.image_url || '';
   try {
     await store.deleteStock(selectedRow.value.id);
+    if (imageUrl) {
+      await deleteCloudinaryImage(imageUrl);
+    }
     $q.notify({ type: 'positive', message: 'Stock item deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
@@ -1146,13 +1204,15 @@ async function deleteItem() {
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
-    actionLoading.value = false;
+    deleteLoading.value = false;
   }
 }
 
 async function onSubmit() {
   if (!authStore.tenantId) return;
   actionLoading.value = true;
+  let orphanImageUrl = '';
+
   try {
     const stockData = {
       shipment_id: form.value.shipment_id!,
@@ -1176,21 +1236,33 @@ async function onSubmit() {
     };
 
     if (editingId.value) {
-      const imageChanged =
-        editImage.value.removed || editImage.value.url !== editImage.value.originalUrl;
-      const imagePayload = imageChanged
-        ? (editImage.value.removed ? null : (editImage.value.url || null))
-        : undefined;
+      const imageChanged = editImage.value.removed || !!editImage.value.pendingBlob;
+      let imagePayload: string | null | undefined;
+      const previousImageUrl = editImage.value.originalUrl;
+
+      if (editImage.value.removed) {
+        imagePayload = null;
+      } else if (editImage.value.pendingBlob) {
+        const uploadedUrl = await uploadStockImage(editingId.value, editImage.value.pendingBlob);
+        orphanImageUrl = uploadedUrl;
+        imagePayload = uploadedUrl;
+      }
 
       await store.updateStock(
         editingId.value,
         stockData satisfies Partial<ThriftStock>,
         pricing.value,
-        imagePayload,
+        imageChanged ? imagePayload : undefined,
       );
+
+      if (imageChanged && previousImageUrl) {
+        await deleteCloudinaryImage(previousImageUrl);
+      }
+
+      orphanImageUrl = '';
       $q.notify({ type: 'positive', message: 'Thrift stock updated successfully' });
     } else {
-      await store.createStock(
+      const created = await store.createStock(
         authStore.tenantId,
         form.value.shipment_id!,
         form.value.name,
@@ -1210,17 +1282,28 @@ async function onSubmit() {
         form.value.note,
         authStore.user?.email || 'admin@brandwala.com',
         pricing.value,
-        editImage.value.url || undefined,
+        undefined,
         form.value.shelf_id,
         originPurchasePrice.value || undefined,
         extraOriginPurchaseExpense.value || undefined,
       );
+
+      if (editImage.value.pendingBlob && !editImage.value.removed) {
+        const uploadedUrl = await uploadStockImage(created.id, editImage.value.pendingBlob);
+        orphanImageUrl = uploadedUrl;
+        await store.attachStockImage(created.id, uploadedUrl, created.inserted_by);
+      }
+
+      orphanImageUrl = '';
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }
     resetEditImage();
     dialogOpen.value = false;
     await loadStockPage();
   } catch (err: unknown) {
+    if (orphanImageUrl) {
+      await deleteCloudinaryImage(orphanImageUrl);
+    }
     $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
   } finally {
     actionLoading.value = false;
