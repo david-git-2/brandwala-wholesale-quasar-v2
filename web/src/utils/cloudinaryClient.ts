@@ -1,16 +1,16 @@
 import { supabase } from 'src/boot/supabase'
 
-export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string }
+export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string | undefined }
 
 const THRIFT_FOLDER_PREFIXES = ['thrift_stocks/', 'thrift-stocks/']
 
 function getCloudinaryConfig() {
   const cloudName =
     import.meta.env.VITE_CLOUDINARY_CLOUD_NAME ||
-    (process.env.VITE_CLOUDINARY_CLOUD_NAME as string | undefined)
+    process.env.VITE_CLOUDINARY_CLOUD_NAME
   const uploadPreset =
     import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET ||
-    (process.env.VITE_CLOUDINARY_UPLOAD_PRESET as string | undefined)
+    process.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
   return { cloudName, uploadPreset }
 }

@@ -1,4 +1,5 @@
 import type { Enums, Tables } from 'src/types/supabase'
+import type { TenantPreferenceSchema } from './preferences'
 
 export type { TenantPreference, TenantPreferenceSchema, ThriftTenantPreference } from './preferences'
 export type { PreferenceFieldDefinition, PreferenceFieldType } from './preferenceFields'
@@ -6,7 +7,7 @@ export type { PreferenceFieldDefinition, PreferenceFieldType } from './preferenc
 export type Tenant = Tables<'tenants'> & { parent_id: number | null }
 export type TenantPreferenceUpdateInput = {
   tenantId: Tenant['id']
-  preference: import('./preferences').TenantPreferenceSchema
+  preference: TenantPreferenceSchema
 }
 export type TenantCreateInput = Pick<Tenant, 'name' | 'slug' | 'public_domain' | 'is_active' | 'parent_id'>
 export type TenantEntry = {

@@ -79,7 +79,7 @@ export const useTenantStore = defineStore('tenant', {
   }),
 
   getters: {
-    selectedTenant(state): Tenant | null {
+    selectedTenant(state: TenantStoreState): Tenant | null {
       const fromAvailableTenants =
         state.availableAdminTenants.find((tenant) => tenant.id === state.selectedTenantId) ?? null
 

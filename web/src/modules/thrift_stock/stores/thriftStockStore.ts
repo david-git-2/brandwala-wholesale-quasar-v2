@@ -133,10 +133,11 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         const updated = await thriftStockRepository.updateStock(id, stock, pricing, imageUrl);
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1) {
+          const currentStock = this.stocks[idx]!;
           this.stocks[idx] = {
-            ...this.stocks[idx],
+            ...currentStock,
             ...updated,
-            image_url: imageUrl !== undefined ? (imageUrl || undefined) : this.stocks[idx]?.image_url,
+            image_url: imageUrl !== undefined ? (imageUrl || undefined) : currentStock.image_url,
           };
         }
         return updated;
@@ -151,8 +152,9 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, insertedBy);
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1) {
+          const currentStock = this.stocks[idx]!;
           this.stocks[idx] = {
-            ...this.stocks[idx],
+            ...currentStock,
             image_url: imageUrl,
           };
         }

@@ -38,7 +38,7 @@
 
     <q-input
       v-else-if="field.type === 'number'"
-      :model-value="modelValue as number | null"
+      :model-value="numberValue"
       type="number"
       outlined
       dense
@@ -69,16 +69,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 
 import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore'
 import type { ThriftCurrency } from 'src/modules/thrift_currency/types'
 import type { PreferenceFieldDefinition } from '../types/preferenceFields'
 
-defineProps<{
+const props = defineProps<{
   field: PreferenceFieldDefinition
   modelValue: unknown
 }>()
+
+const numberValue = computed(() => props.modelValue as number | null)
 
 const emit = defineEmits<{
   'update:modelValue': [value: unknown]
