@@ -42,6 +42,32 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     moduleKey: 'global_shipment',
   },
   {
+    key: 'sales_invoice',
+    title: 'Sales & Invoice',
+    description: 'Desk invoices, billing/recipient profiles, returns, charges, and print — unified sales model.',
+    filename: 'doc/SALES_INVOICE.md',
+    scope: 'app',
+    moduleKey: 'global_invoice',
+  },
+  {
+    key: 'reporting_treasury',
+    title: 'Reports & Treasury',
+    description:
+      'Margin reports, shipment P&L, billing balances, and payments — reads procurement/sales tables; no shadow ledger.',
+    filename: 'doc/REPORTING_TREASURY.md',
+    scope: 'app',
+    moduleKey: 'accounting',
+  },
+  {
+    key: 'investor_capital',
+    title: 'Investor Capital',
+    description:
+      'Investor profiles, capital ledger, shipment cost-share, and read-only investor portal — admin App + investor scope.',
+    filename: 'doc/INVESTOR_CAPITAL.md',
+    scope: 'both',
+    moduleKey: 'investor',
+  },
+  {
     key: 'package_commands',
     title: 'Automation & Script Commands',
     description: 'Detailed walkthrough and descriptions of package.json automation commands, scrapers, and database sync scripts.',

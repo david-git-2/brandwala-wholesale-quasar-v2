@@ -2,13 +2,17 @@
 
 This document refines the high-level direction in the master plan and defines the intended access flow for implementation.
 
-For a scope-first overview (Platform, App, Shop, Investor — what each is for, URL redirects, and guard behavior), see [doc/APP_SCOPES_AND_ACCESS.md](doc/APP_SCOPES_AND_ACCESS.md).
+For a scope-first overview (Platform, App, Shop, Investor — what each is for, URL redirects, and guard behavior), see [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
-For tenant types (parent, child, standalone), hierarchy, slug/domain resolution, and module assignment per tenant, see [doc/TENANT_MODEL_AND_ACCESS.md](doc/TENANT_MODEL_AND_ACCESS.md).
+For tenant types (parent, child, standalone), hierarchy, slug/domain resolution, and module assignment per tenant, see [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md).
 
 ## Why This Is Separate
 
-Keep `MASTER_PLAN.md` as the product and architecture source of truth.
+**Documentation hierarchy:**
+
+- `MASTER_PLAN.md` — index: vision, feature matrix, permissions, phases, flows
+- Domain docs (`PROCUREMENT_STOCK`, `SALES_INVOICE`, `REPORTING_TREASURY`, `INVESTOR_CAPITAL`, …) — detailed design per area
+- **This file** — login, bootstrap, permission resolution, navigation implementation
 
 Use this file as the implementation context for:
 

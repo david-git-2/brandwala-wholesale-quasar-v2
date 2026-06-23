@@ -11,7 +11,7 @@ This document answers:
 - How should implementation start fresh (drop-and-recreate)?
 - How is the module designed to grow with new features?
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md).
 
 ---
 
@@ -41,7 +41,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [TENANT_MODEL_AND_ACC
 | **Tenant Stock** | Duplicate physical inventory per child — `global_stock_allocations` are virtual slices of parent `global_stocks` |
 | **Commerce inbound** | Commerce does **not** create shipments (locked decision **D2**) |
 | **Desk sales** | Invoice creation lives under `global_invoice`; this domain only supplies stock |
-| **Consolidated ledger** | P&L rollups live under `global_shipment_accounting` / `global_accounting_ledger` |
+| **Reports & treasury** | Shipment P&L and parent dashboards live under `reporting_treasury` — see [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | **Child procurement** | Orders and costing files are child inputs (`order_management`, `product_based_costing`) — not part of this parent module |
 | **Custom formula builder** | Cost math is **hardcoded** in `landedCost.ts` — admins edit inputs on the shipment UI, not the equation |
 
@@ -597,7 +597,7 @@ Commerce does not create inbound lines (**D2**).
 |--------|-------------|
 | `global_invoice` | Pick `global_stocks` from **`Ready Stock`** shipments only; join + `landedCost.ts` for display; **reduce** stock qty on sale, **increase** on return; snapshot `unit_cost_price` **at sale only** |
 | `commerce_shop` | Sell from parent **`Ready Stock`** pool; snapshot at line |
-| `global_shipment_accounting` | P&L via join + `landedCost.ts` |
+| `reporting_treasury` | Shipment P&L via join + `landedCost.ts` — see [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | `inventory` | Child allocations + joined **`Ready Stock`** rows via global search |
 
 ---

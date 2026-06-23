@@ -9,7 +9,7 @@ This document answers:
 - How do URL redirects work?
 - How is access granted or denied?
 
-For the full product architecture and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For step-by-step login and navigation implementation, see [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md). For backend actor tables and RPCs, see [document/core-backend-architecture.md](../document/core-backend-architecture.md).
+For the architecture index and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For domain detail, see linked docs in MASTER_PLAN §12. For login and navigation implementation, see [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md). For backend actor tables and RPCs, see [document/core-backend-architecture.md](../document/core-backend-architecture.md).
 
 ---
 
@@ -325,7 +325,7 @@ The sidebar/drawer is **not hardcoded per layout**. It is built from:
 
 Flow: load active keys → filter registry by scope → drop disabled modules → drop disallowed roles → render.
 
-Details: [LOGIN_NAV_PERMISSION_FLOW.md § Auto-Generated Navigation](../LOGIN_NAV_PERMISSION_FLOW.md).
+Details: [LOGIN_NAV_PERMISSION_FLOW.md § Auto-Generated Navigation](LOGIN_NAV_PERMISSION_FLOW.md).
 
 ---
 
@@ -353,7 +353,7 @@ Details: [LOGIN_NAV_PERMISSION_FLOW.md § Auto-Generated Navigation](../LOGIN_NA
 |----------|----------|
 | [MASTER_PLAN.md](MASTER_PLAN.md) | Architecture, tenant model, feature matrix, full permission table |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Parent/child tenants, slug resolution, module assignment, data ownership |
-| [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md) | Login, bootstrap, navigation generation implementation |
+| [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Login, bootstrap, navigation generation implementation |
 | [document/core-backend-architecture.md](../document/core-backend-architecture.md) | Actor types, RLS identity rules, RPC names |
 | [document/costing-backend-architecture.md](../document/costing-backend-architecture.md) | Costing-specific backend (App scope) |
 

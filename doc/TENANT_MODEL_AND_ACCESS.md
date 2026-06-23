@@ -9,7 +9,7 @@ This document answers:
 - How is a tenant resolved from URLs and hostnames?
 - How does tenant context drive access, modules, and data?
 
-For application scopes (Platform, App, Shop, Investor), see [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md). For full architecture and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For global reference catalogs (currency, market, payment methods, units), see [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md). For login implementation detail, see [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md).
+For application scopes (Platform, App, Shop, Investor), see [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md). For full architecture and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For global reference catalogs (currency, market, payment methods, units), see [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md). For login implementation detail, see [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md).
 
 ---
 
@@ -438,8 +438,9 @@ Same email may hold both `staff` and `investor` on one tenant; each scope login 
 | Document | Contents |
 |----------|----------|
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Platform / App / Shop / Investor scopes and redirects |
-| [MASTER_PLAN.md](MASTER_PLAN.md) | §3 tenant model, §15 module assignment, global entities |
-| [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap and navigation |
+| [MASTER_PLAN.md](MASTER_PLAN.md) | Index: tenant summary, §15 permissions, module assignment |
+| [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor membership, capital module, portal scope |
+| [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap and navigation |
 | [document/core-backend-architecture.md](../document/core-backend-architecture.md) | Membership and customer actor tables |
 | [web/src/modules/tenant/README.md](../web/src/modules/tenant/README.md) | Tenant module RPC and preference notes |
 

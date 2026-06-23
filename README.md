@@ -69,7 +69,7 @@ Use the root `package.json` scripts to run and build the app.
 
 For the **combined platform reference** (feature matrix, all module details, permissions, redesign entities), see **[MASTER_PLAN.md](MASTER_PLAN.md)** §14–§18.
 
-Other docs: `document/`, `LOGIN_NAV_PERMISSION_FLOW.md`, `doc/`.
+Other docs: `document/`, `doc/`.
 
 ## Database Optimization (Reclaiming Space)
 
