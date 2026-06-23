@@ -285,6 +285,35 @@ const deleteTenantModule = async (
   }
 }
 
+const listTenantModuleSubmodules = async (
+  tenantId: number,
+  parentModuleKey: string,
+) => {
+  const { data, error } = await supabase.rpc('list_tenant_module_submodules_for_superadmin', {
+    p_tenant_id: tenantId,
+    p_parent_module_key: parentModuleKey,
+  })
+
+  if (error) throw error
+  return (data ?? []) as import('../types').TenantModuleSubmodule[]
+}
+
+const setTenantModuleSubmodule = async (
+  payload: import('../types').TenantModuleSubmoduleSetInput,
+) => {
+  const { data, error } = await supabase.rpc('set_tenant_module_submodule_for_superadmin', {
+    p_tenant_id: payload.tenant_id,
+    p_parent_module_key: payload.parent_module_key,
+    p_submodule_key: payload.submodule_key,
+    p_is_enabled: payload.is_enabled,
+  })
+
+  if (error) throw error
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) throw new Error('Submodule override was not saved.')
+  return row as import('../types').TenantModuleSubmodule
+}
+
 export const tenantRepository = {
   deleteTenant,
   listTenants,
@@ -297,6 +326,8 @@ export const tenantRepository = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  listTenantModuleSubmodules,
+  setTenantModuleSubmodule,
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,

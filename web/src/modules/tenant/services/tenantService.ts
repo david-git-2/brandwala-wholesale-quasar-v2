@@ -265,6 +265,35 @@ const deleteTenantModule = async (
   }
 }
 
+const listTenantModuleSubmodules = async (
+  tenantId: number,
+  parentModuleKey: string,
+) => {
+  try {
+    const data = await tenantRepository.listTenantModuleSubmodules(tenantId, parentModuleKey)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to load submodule overrides.',
+    }
+  }
+}
+
+const setTenantModuleSubmodule = async (
+  payload: import('../types').TenantModuleSubmoduleSetInput,
+) => {
+  try {
+    const data = await tenantRepository.setTenantModuleSubmodule(payload)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to update submodule access.',
+    }
+  }
+}
+
 export const tenantService = {
   deleteTenant,
   listTenants,
@@ -277,6 +306,8 @@ export const tenantService = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  listTenantModuleSubmodules,
+  setTenantModuleSubmodule,
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,

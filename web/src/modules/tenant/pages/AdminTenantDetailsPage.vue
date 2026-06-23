@@ -83,6 +83,16 @@
                   <q-btn flat round dense icon="content_copy" aria-label="Copy customer login URL" @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')" />
                 </div>
               </q-card>
+
+              <q-card v-if="isCapitalHostTenant" flat class="q-pa-sm inner-card">
+                <div class="text-caption text-grey-7 q-mb-xs">Investor Login</div>
+                <div class="row items-center justify-between q-gutter-sm">
+                  <a :href="investorLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                    {{ investorLoginUrl }}
+                  </a>
+                  <q-btn flat round dense icon="content_copy" aria-label="Copy investor login URL" @click="copyLoginUrl(investorLoginUrl, 'Investor login URL copied.')" />
+                </div>
+              </q-card>
             </q-card-section>
           </q-card>
         </div>
@@ -101,6 +111,15 @@
             <q-card-section class="column q-gutter-sm">
               <q-btn color="primary" icon="o_groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
               <q-btn color="primary" icon="o_manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
+              <q-btn
+                v-if="isCapitalHostTenant"
+                color="primary"
+                icon="o_savings"
+                label="Investor Management"
+                no-caps
+                class="pill-btn slim-btn full-width"
+                @click="goToSection('investors')"
+              />
               <q-btn color="primary" icon="o_extension" :label="modulesButtonLabel" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
               <q-btn color="primary" icon="o_tune" label="Tenant Preferences" no-caps class="pill-btn slim-btn full-width" @click="goToSection('preferences')" />
             </q-card-section>
@@ -173,6 +192,12 @@ const customerLoginUrl = computed(() =>
   tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/shop/login` : `${baseUrl.value}/shop/login`,
 )
 
+const investorLoginUrl = computed(() =>
+  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/investor/login` : `${baseUrl.value}/investor/login`,
+)
+
+const isCapitalHostTenant = computed(() => tenant.value?.parent_id === null)
+
 const loadPageData = async () => {
   pageLoading.value = true
   pageError.value = ''
@@ -213,7 +238,7 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
   }
 }
 
-const goToSection = (section: 'customer-groups' | 'staff' | 'modules' | 'preferences') => {
+const goToSection = (section: 'customer-groups' | 'staff' | 'investors' | 'modules' | 'preferences') => {
   const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null
   const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
   void router.push(`${base}/${section}`)

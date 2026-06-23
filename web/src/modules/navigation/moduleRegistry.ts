@@ -29,7 +29,11 @@ export type ModuleKey =
   | 'thrift_category'
   | 'thrift_type'
   | 'thrift_settings'
-  | 'thrift_currency'
+  | 'global_reference'
+  | 'global_reference_currency'
+  | 'global_reference_market'
+  | 'global_reference_payment_method'
+  | 'global_reference_unit_of_measure'
   | 'global_shipment'
   | 'global_stock'
   | 'global_invoice'
@@ -57,6 +61,8 @@ export interface ModuleDefinition {
   key: ModuleKey
   name: string
   description: string
+  parentModuleKey?: ModuleKey
+  navIcon?: string
   routes: ModuleRouteDefinition[]
 }
 
@@ -673,16 +679,72 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
-    key: 'thrift_currency',
-    name: 'Thrift Currency',
-    description: 'View the global currency catalog used by shipments and stock pricing.',
+    key: 'global_reference',
+    name: 'Global Reference',
+    description: 'Platform-wide reference catalogs shared across tenants.',
+    navIcon: 'library_books',
+    routes: [],
+  },
+  {
+    key: 'global_reference_currency',
+    name: 'Currencies',
+    description: 'Global currency catalog for shipments, pricing, and money display.',
+    parentModuleKey: 'global_reference',
     routes: [
       {
         scope: 'app',
-        title: 'Thrift Currencies',
-        caption: 'Currency catalog (read-only)',
+        title: 'Currencies',
+        caption: 'Currency catalog',
         icon: 'payments',
-        routeSegment: 'thrift/currencies',
+        routeSegment: 'reference/currencies',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_reference_market',
+    name: 'Markets',
+    description: 'ISO-style market and country reference catalog.',
+    parentModuleKey: 'global_reference',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Markets',
+        caption: 'Market catalog',
+        icon: 'public',
+        routeSegment: 'reference/markets',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_reference_payment_method',
+    name: 'Payment Methods',
+    description: 'Bangladesh and international payment method reference catalog.',
+    parentModuleKey: 'global_reference',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Payment Methods',
+        caption: 'Payment method catalog',
+        icon: 'account_balance_wallet',
+        routeSegment: 'reference/payment-methods',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_reference_unit_of_measure',
+    name: 'Units of Measure',
+    description: 'Weight, count, length, volume, and packaging units.',
+    parentModuleKey: 'global_reference',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Units of Measure',
+        caption: 'Unit catalog',
+        icon: 'straighten',
+        routeSegment: 'reference/units',
         requiredAction: 'view',
       },
     ],

@@ -118,5 +118,19 @@ export const useTenantModuleStore = defineStore('tenantModule', {
         this.loading = false
       }
     },
+
+    async listSubmoduleOverrides(tenantId: number, parentModuleKey: string) {
+      return tenantService.listTenantModuleSubmodules(tenantId, parentModuleKey)
+    },
+
+    async setSubmoduleOverride(payload: import('../types').TenantModuleSubmoduleSetInput) {
+      this.error = null
+      const result = await tenantService.setTenantModuleSubmodule(payload)
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to update submodule access.'
+        handleApiFailure(result, this.error)
+      }
+      return result
+    },
   },
 })

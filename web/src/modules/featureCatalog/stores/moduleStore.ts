@@ -5,6 +5,11 @@ import {
   showSuccessNotification,
 } from 'src/utils/appFeedback'
 import { moduleService } from '../services/moduleService'
+import {
+  buildModuleTree,
+  getAssignableModules,
+  getSubmodulesForParent,
+} from '../utils/moduleHierarchy'
 import type {
   Module,
   ModuleCreateInput,
@@ -19,6 +24,12 @@ export const useModuleStore = defineStore('module', {
     loading: true,
     error: null,
   }),
+
+  getters: {
+    moduleTree: (state) => buildModuleTree(state.items),
+    assignableModules: (state) => getAssignableModules(state.items),
+    submodulesOf: (state) => (parentKey: string) => getSubmodulesForParent(state.items, parentKey),
+  },
 
   actions: {
     clearError() {

@@ -5,7 +5,7 @@ import tenantRoutes from 'src/modules/tenant/routes';
 import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
 import costingFileRoutes from 'src/modules/costingFile/routes';
 import membershipRoutes from 'src/modules/membership/routes';
-import marketRoutes from 'src/modules/market/routes';
+import globalReferenceRoutes from 'src/modules/global_reference/routes';
 import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
 import productRoutes from 'src/modules/products/routes';
 import cartRoutes from 'src/modules/cart/routes';
@@ -29,7 +29,6 @@ import thriftStockRoutes from 'src/modules/thrift_stock/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
 import thriftBarcodeRoutes from 'src/modules/thrift_barcode/routes';
 import thriftSettingsRoutes from 'src/modules/thrift_settings/routes';
-import thriftCurrencyRoutes from 'src/modules/thrift_currency/routes';
 import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
 
@@ -93,7 +92,7 @@ const routes: RouteRecordRaw[] = [
   ...tenantRoutes,
   ...authRoutes,
   ...featureCatalogRoutes,
-  ...marketRoutes,
+  ...globalReferenceRoutes,
   ...productBasedCostingRoutes,
   ...productRoutes,
   ...cartRoutes,
@@ -119,7 +118,6 @@ const routes: RouteRecordRaw[] = [
   ...thriftRoutes,
   ...thriftBarcodeRoutes,
   ...thriftSettingsRoutes,
-  ...thriftCurrencyRoutes,
   ...investorPortalRoutes,
   ...globalRoutes,
 

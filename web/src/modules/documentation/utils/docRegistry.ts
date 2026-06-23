@@ -12,11 +12,34 @@ export interface DocItem {
 export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   // General Platform & Technical Docs
   {
-    key: 'core_app_features',
-    title: 'Core App Features',
-    description: 'General walkthrough of the core application capabilities and modules.',
-    filename: 'doc/core-app-feature-documentation.md',
+    key: 'app_scopes_and_access',
+    title: 'Application Scopes and Access',
+    description: 'Platform, App, Shop, and Investor scopes — redirects, route guards, and access control.',
+    filename: 'doc/APP_SCOPES_AND_ACCESS.md',
     scope: 'both',
+  },
+  {
+    key: 'tenant_model_and_access',
+    title: 'Tenant Model and Access',
+    description: 'Parent, child, and standalone tenants — hierarchy, URL resolution, modules, and data ownership.',
+    filename: 'doc/TENANT_MODEL_AND_ACCESS.md',
+    scope: 'both',
+  },
+  {
+    key: 'global_reference_data',
+    title: 'Global Reference Data',
+    description: 'Platform-wide catalogs — currencies, markets, payment methods, units, and submodule assignment.',
+    filename: 'doc/GLOBAL_REFERENCE_DATA.md',
+    scope: 'both',
+    moduleKey: 'global_reference',
+  },
+  {
+    key: 'procurement_stock',
+    title: 'Procurement & Stock',
+    description: 'Inbound shipments, warehouse stock, tenant allocation, hardcoded landed-cost formulas, and drop-recreate schema.',
+    filename: 'doc/PROCUREMENT_STOCK.md',
+    scope: 'app',
+    moduleKey: 'global_shipment',
   },
   {
     key: 'package_commands',

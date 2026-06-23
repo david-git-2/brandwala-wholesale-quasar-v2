@@ -6,6 +6,8 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions'
+import { MODULE_REGISTRY } from './moduleRegistry'
+import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/utils/moduleHierarchy'
 
 /**
  * Sidebar nav grouping for the app scope.
@@ -59,12 +61,12 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/modules',
   },
   {
-    title: 'Markets',
-    caption: 'Manage ISO market catalog',
-    icon: 'public',
+    title: 'Global Reference',
+    caption: 'Currencies, markets, payment methods, units',
+    icon: 'library_books',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
-    route: () => '/platform/markets',
+    route: () => '/platform/reference',
   },
   {
     title: 'Super Admins',
@@ -255,6 +257,13 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       return [...baseLinks, ...moduleLinks]
     }
 
+    const { hierarchyLinks, remainingRoutes } = buildNavLinksFromModuleHierarchy(
+      scopedModuleRouteDefinitions,
+      MODULE_REGISTRY,
+    )
+
+    const appModuleRoutes = remainingRoutes
+
     const hasStoreModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'store',
@@ -292,8 +301,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'commerce_accounting',
     )
     const hasCommerceCartModuleAccess = scopedModuleRouteDefinitions.some(
-      (routeDefinition) =>
-        routeDefinition.moduleKey === 'commerce_cart',
+      (routeDefinition) => routeDefinition.moduleKey === 'commerce_cart',
     )
     const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
@@ -312,10 +320,16 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       !hasCommerceCartModuleAccess &&
       !hasKobaRetailModuleAccess
     ) {
-      return [...baseLinks, ...moduleLinks]
+      const flatLinks = appModuleRoutes.map((routeDefinition) => ({
+        title: routeDefinition.title,
+        caption: routeDefinition.caption,
+        icon: routeDefinition.icon,
+        to: routeDefinition.to,
+      }))
+      return [...baseLinks, ...flatLinks, ...hierarchyLinks]
     }
 
-    const moduleLinksWithoutGroupedModules = scopedModuleRouteDefinitions
+    const moduleLinksWithoutGroupedModules = appModuleRoutes
       .filter(
         (routeDefinition) =>
           routeDefinition.moduleKey !== 'store' &&
@@ -335,7 +349,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: routeDefinition.icon,
         to: routeDefinition.to,
       }))
-    const productsChildren = scopedModuleRouteDefinitions
+    const productsChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'products')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -343,7 +357,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const investorChildren = scopedModuleRouteDefinitions
+    const investorChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'investor')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -351,7 +365,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const invoiceChildren = scopedModuleRouteDefinitions
+    const invoiceChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'invoice')
       .map((routeDefinition) => ({
         title:
@@ -362,7 +376,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const accountingChildren = scopedModuleRouteDefinitions
+    const accountingChildren = appModuleRoutes
       .filter(
         (routeDefinition) =>
           routeDefinition.moduleKey === 'accounting' &&
@@ -374,7 +388,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const commerceShopChildren = scopedModuleRouteDefinitions
+    const commerceShopChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_shop')
       .map((routeDefinition) => ({
         title:
@@ -391,7 +405,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const commerceInvoiceChildren = scopedModuleRouteDefinitions
+    const commerceInvoiceChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_invoice')
       .map((routeDefinition) => ({
         title:
@@ -404,7 +418,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const commerceOrderChildren = scopedModuleRouteDefinitions
+    const commerceOrderChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_order')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -412,7 +426,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const commerceAccountingChildren = scopedModuleRouteDefinitions
+    const commerceAccountingChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'commerce_accounting')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
@@ -420,7 +434,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         icon: 'chevron_right',
         to: routeDefinition.to,
       }))
-    const kobaRetailChildren = scopedModuleRouteDefinitions
+    const kobaRetailChildren = appModuleRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
       .filter((routeDefinition) => {
         const role = authStore.matchedRole
@@ -560,6 +574,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             },
           ]
         : []),
+      ...hierarchyLinks,
     ]
 
     return [

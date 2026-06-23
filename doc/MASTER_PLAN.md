@@ -39,6 +39,8 @@ Business lines share the same **global entity model** (`global_stocks`, `global_
 | Shop | `/:tenantSlug/shop` | Customer group members |
 | Investor | `/:tenantSlug/investor` | Investor accounts (`investor_portal` module) |
 
+Redirect rules, route guards, and access-control layers: [doc/APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
+
 ---
 
 ## 3. Tenant model
@@ -52,6 +54,8 @@ Business lines share the same **global entity model** (`global_stocks`, `global_
 | **Standalone** | `NULL`, no children | Same global tables; `parent_tenant_id := tenant_id` |
 
 **Constraint:** Only one hierarchy level — a child cannot have children.
+
+Tenant types, resolution, modules, and data ownership: [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md).
 
 ### 3.2 Modules (feature flags)
 
@@ -379,8 +383,9 @@ Do **not** copy Thrift composable architecture into web — web keeps module/rep
 |-----|---------|
 | **§14–§18 below (this file)** | **Combined:** feature matrix, permissions, redesign entities, all module catalog |
 | [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | **Mandatory** UI pattern for all frontend work |
-| [doc/core-app-feature-documentation.md](doc/core-app-feature-documentation.md) | Scopes, membership, customer groups |
-| [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Auth and permission implementation |
+| [doc/APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Application scopes, redirects, and access control |
+| [doc/TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant types, hierarchy, resolution, modules, and data ownership |
+| [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md) | Auth and permission implementation |
 | [doc/accounting.md](doc/accounting.md) | Ledger math (unchanged formulas) |
 | [doc/shipment.md](doc/shipment.md) | Shipment accounting metrics |
 | [doc/investor.md](doc/investor.md) | Investor module notes |
@@ -1719,5 +1724,6 @@ Child: orders / product costing → Parent: shipment (local or international)
 |-----|---------|
 | **This file (MASTER_PLAN.md)** | **Single combined reference:** vision, matrix, permissions, redesign, all modules |
 | [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | Mandatory UI patterns |
-| [doc/core-app-feature-documentation.md](doc/core-app-feature-documentation.md) | Scopes and membership rules |
-| [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap implementation |
+| [doc/APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Application scopes, redirects, and access control |
+| [doc/TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant types, hierarchy, resolution, modules, and data ownership |
+| [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap implementation |

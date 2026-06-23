@@ -67,7 +67,9 @@ Use the root `package.json` scripts to run and build the app.
 - `npm run build`
 - `npm run lint`
 
-If you need the detailed backend architecture, Supabase role model, or migration guidance, check the docs in `document/`.
+For the **combined platform reference** (feature matrix, all module details, permissions, redesign entities), see **[MASTER_PLAN.md](MASTER_PLAN.md)** §14–§18.
+
+Other docs: `document/`, `LOGIN_NAV_PERMISSION_FLOW.md`, `doc/`.
 
 ## Database Optimization (Reclaiming Space)
 

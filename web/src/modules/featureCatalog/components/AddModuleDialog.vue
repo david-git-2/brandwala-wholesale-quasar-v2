@@ -58,6 +58,19 @@
           autogrow
         />
 
+        <q-select
+          v-model="form.parent_module_key"
+          :options="parentModuleOptions"
+          label="Parent module (optional)"
+          outlined
+          dense
+          clearable
+          emit-value
+          map-options
+          :readonly="isSeededSubmodule"
+          hint="Submodules are assigned through their parent on tenant feature screens."
+        />
+
         <div class="row items-center justify-between">
           <div class="text-subtitle2">Status</div>
 
@@ -95,6 +108,7 @@ type ModuleForm = {
   name: string
   description: string
   is_active: boolean
+  parent_module_key?: string | null
 }
 
 const props = defineProps<{
@@ -117,8 +131,19 @@ const getDefaultForm = (): ModuleForm => ({
   key: '',
   name: '',
   description: '',
-  is_active: true
+  is_active: true,
+  parent_module_key: null,
 })
+
+const parentModuleOptions = computed(() =>
+  (props.existingModules ?? [])
+    .filter((module) => !module.parent_module_key)
+    .map((module) => ({ label: `${module.name} (${module.key})`, value: module.key })),
+)
+
+const isSeededSubmodule = computed(
+  () => Boolean(isSeededModule.value && props.initialData?.parent_module_key),
+)
 
 const form = reactive<ModuleForm>(getDefaultForm())
 
@@ -235,6 +260,9 @@ const onSave = () => {
     name: definition && isSeededModule.value ? definition.name : form.name.trim(),
     description: form.description.trim(),
     is_active: form.is_active,
+    parent_module_key: isSeededSubmodule.value
+      ? (props.initialData?.parent_module_key ?? form.parent_module_key ?? null)
+      : (form.parent_module_key ?? null),
   }
 
   if (form.id !== undefined) {

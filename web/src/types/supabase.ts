@@ -1388,6 +1388,7 @@ export type Database = {
           created_at: string
           id: number
           is_active: boolean
+          is_system: boolean
           name: string
           symbol: string
           updated_at: string
@@ -1398,6 +1399,7 @@ export type Database = {
           created_at?: string
           id?: number
           is_active?: boolean
+          is_system?: boolean
           name: string
           symbol: string
           updated_at?: string
@@ -1408,6 +1410,7 @@ export type Database = {
           created_at?: string
           id?: number
           is_active?: boolean
+          is_system?: boolean
           name?: string
           symbol?: string
           updated_at?: string
@@ -3091,6 +3094,7 @@ export type Database = {
           is_active: boolean
           key: string
           name: string
+          parent_module_key: string | null
           updated_at: string
         }
         Insert: {
@@ -3100,6 +3104,7 @@ export type Database = {
           is_active?: boolean
           key: string
           name: string
+          parent_module_key?: string | null
           updated_at?: string
         }
         Update: {
@@ -3109,9 +3114,18 @@ export type Database = {
           is_active?: boolean
           key?: string
           name?: string
+          parent_module_key?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "modules_parent_module_key_fkey"
+            columns: ["parent_module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -3353,6 +3367,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_methods: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          scope: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          scope?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -4350,6 +4403,58 @@ export type Database = {
           },
         ]
       }
+      tenant_module_submodules: {
+        Row: {
+          created_at: string
+          id: number
+          is_enabled: boolean
+          parent_module_key: string
+          submodule_key: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_enabled?: boolean
+          parent_module_key: string
+          submodule_key: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_enabled?: boolean
+          parent_module_key?: string
+          submodule_key?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_module_submodules_parent_module_key_fkey"
+            columns: ["parent_module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "tenant_module_submodules_submodule_key_fkey"
+            columns: ["submodule_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "tenant_module_submodules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_modules: {
         Row: {
           created_at: string
@@ -5180,6 +5285,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      units_of_measure: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          name: string
+          sort_order: number
+          symbol: string | null
+          unit_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          sort_order?: number
+          symbol?: string | null
+          unit_type: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          sort_order?: number
+          symbol?: string | null
+          unit_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       vendors: {
         Row: {
@@ -6937,6 +7081,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_global_currencies: {
+        Args: never
+        Returns: {
+          code: string
+          country: string
+          id: number
+          name: string
+          symbol: string
+        }[]
+      }
       list_global_inventory_items_with_stock: {
         Args: {
           p_filters?: Json
@@ -7058,6 +7212,16 @@ export type Database = {
           public_domain: string
           slug: string
           updated_at: string
+        }[]
+      }
+      list_payment_methods: {
+        Args: never
+        Returns: {
+          category: string
+          code: string
+          name: string
+          scope: string
+          sort_order: number
         }[]
       }
       list_product_based_costing_files: {
@@ -7186,6 +7350,18 @@ export type Database = {
         }
         Returns: Json
       }
+      list_tenant_module_submodules_for_superadmin: {
+        Args: { p_parent_module_key: string; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_enabled: boolean
+          parent_module_key: string
+          submodule_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
       list_tenant_modules_by_tenant: {
         Args: { p_tenant_id?: number }
         Returns: {
@@ -7263,6 +7439,16 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      list_units_of_measure: {
+        Args: never
+        Returns: {
+          code: string
+          name: string
+          sort_order: number
+          symbol: string
+          unit_type: string
+        }[]
       }
       list_vendor_markets: {
         Args: never
@@ -7632,6 +7818,23 @@ export type Database = {
           sort_rank: number
           stolen_qty: number
           total_qty: number
+        }[]
+      }
+      set_tenant_module_submodule_for_superadmin: {
+        Args: {
+          p_is_enabled: boolean
+          p_parent_module_key: string
+          p_submodule_key: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_enabled: boolean
+          parent_module_key: string
+          submodule_key: string
+          tenant_id: number
+          updated_at: string
         }[]
       }
       show_limit: { Args: never; Returns: number }
@@ -8098,7 +8301,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "staff" | "viewer"
+      app_role: "superadmin" | "admin" | "staff" | "viewer" | "investor"
       commerce_order_status:
         | "placed"
         | "reviewing"
@@ -8290,7 +8493,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "staff", "viewer"],
+      app_role: ["superadmin", "admin", "staff", "viewer", "investor"],
       commerce_order_status: [
         "placed",
         "reviewing",

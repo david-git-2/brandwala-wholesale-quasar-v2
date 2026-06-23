@@ -16,3 +16,6 @@ export const isSeededModuleKey = (moduleKey: string | null | undefined) =>
   moduleKey !== null &&
   moduleKey !== undefined &&
   SEEDED_MODULE_KEYS.has(moduleKey as ModuleKey)
+
+export const getRegistryParentKey = (moduleKey: string | null | undefined) =>
+  getSeededModuleDefinition(moduleKey)?.parentModuleKey ?? null

@@ -50,6 +50,23 @@ export type TenantModuleUpdateInput = {
 }
 export type TenantModuleDeleteInput = Pick<TenantModule, 'id'>
 
+export type TenantModuleSubmodule = {
+  id: number
+  tenant_id: number
+  parent_module_key: string
+  submodule_key: string
+  is_enabled: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export type TenantModuleSubmoduleSetInput = {
+  tenant_id: number
+  parent_module_key: string
+  submodule_key: string
+  is_enabled: boolean
+}
+
 export type CustomerGroup = Tables<'customer_groups'>
 export type CustomerGroupCreateInput = Pick<
   CustomerGroup,

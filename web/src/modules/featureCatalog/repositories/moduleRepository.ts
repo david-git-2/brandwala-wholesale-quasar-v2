@@ -28,6 +28,7 @@ const createModule = async (module: ModuleCreateInput): Promise<Module> => {
         name: module.name.trim(),
         description: module.description.trim(),
         is_active: module.is_active,
+        parent_module_key: module.parent_module_key?.trim().toLowerCase() || null,
       },
     ])
     .select()
@@ -53,6 +54,7 @@ const updateModule = async (module: ModuleUpdateInput): Promise<Module> => {
       name: module.name.trim(),
       description: module.description.trim(),
       is_active: module.is_active,
+      parent_module_key: module.parent_module_key?.trim().toLowerCase() || null,
     })
     .eq('id', module.id)
     .select()

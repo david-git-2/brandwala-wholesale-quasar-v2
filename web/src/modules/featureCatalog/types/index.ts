@@ -4,6 +4,7 @@ export type Module = {
   name: string
   description: string
   is_active: boolean
+  parent_module_key?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -13,6 +14,7 @@ export type ModuleCreateInput = {
   name: string
   description: string
   is_active: boolean
+  parent_module_key?: string | null
 }
 
 export type ModuleUpdateInput = {
@@ -21,6 +23,7 @@ export type ModuleUpdateInput = {
   name: string
   description: string
   is_active: boolean
+  parent_module_key?: string | null
 }
 
 export type ModuleDeleteInput = {

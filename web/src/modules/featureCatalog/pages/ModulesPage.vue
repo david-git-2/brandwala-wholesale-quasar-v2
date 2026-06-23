@@ -33,25 +33,39 @@
 
         <q-card-section v-if="items.length">
           <div class="bw-entity-grid">
-            <q-card v-for="module in items" :key="module.id" flat bordered>
-              <q-card-section>
-                <div class="text-overline">{{ module.key }}</div>
-                <div class="text-subtitle1">{{ module.name }}</div>
-                <div class="text-body2 text-grey-7">{{ buildModuleMeta(module) }}</div>
-                <div class="text-body2 q-mt-sm">{{ module.description || 'No description provided yet.' }}</div>
-                <div class="row justify-end q-gutter-sm q-mt-md">
-                  <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(module)" />
-                  <q-btn
-                    flat
-                    round
-                    icon="o_delete"
-                    color="negative"
-                    :disable="isSeededModule(module.key)"
-                    @click.stop="onClickDeleteModule(module)"
-                  />
-                </div>
-              </q-card-section>
-            </q-card>
+            <template v-for="parent in topLevelModules" :key="parent.key">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-overline">{{ parent.key }}</div>
+                  <div class="text-subtitle1">{{ parent.name }}</div>
+                  <div class="text-body2 text-grey-7">{{ buildModuleMeta(parent) }}</div>
+                  <div class="text-body2 q-mt-sm">{{ parent.description || 'No description provided yet.' }}</div>
+                  <div class="row justify-end q-gutter-sm q-mt-md">
+                    <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(parent)" />
+                    <q-btn flat round icon="o_delete" color="negative" :disable="isSeededModule(parent.key)" @click.stop="onClickDeleteModule(parent)" />
+                  </div>
+                </q-card-section>
+              </q-card>
+              <q-card
+                v-for="child in moduleStore.submodulesOf(parent.key)"
+                :key="child.key"
+                flat
+                bordered
+                class="q-ml-lg"
+              >
+                <q-card-section>
+                  <div class="text-overline">{{ child.key }}</div>
+                  <q-badge color="primary" outline class="q-mb-xs">Submodule of {{ parent.name }}</q-badge>
+                  <div class="text-subtitle1">{{ child.name }}</div>
+                  <div class="text-body2 text-grey-7">{{ buildModuleMeta(child) }}</div>
+                  <div class="text-body2 q-mt-sm">{{ child.description || 'No description provided yet.' }}</div>
+                  <div class="row justify-end q-gutter-sm q-mt-md">
+                    <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(child)" />
+                    <q-btn flat round icon="o_delete" color="negative" :disable="isSeededModule(child.key)" @click.stop="onClickDeleteModule(child)" />
+                  </div>
+                </q-card-section>
+              </q-card>
+            </template>
           </div>
         </q-card-section>
 
@@ -112,10 +126,13 @@ type ModuleForm = {
   name: string
   description: string
   is_active: boolean
+  parent_module_key?: string | null
 }
 
 const moduleStore = useModuleStore()
 const { items, loading, error } = storeToRefs(moduleStore)
+
+const topLevelModules = computed(() => moduleStore.assignableModules)
 
 const openAddDialog = ref(false)
 const openDeleteDialog = ref(false)
@@ -134,7 +151,10 @@ const onClickAddModule = () => {
 }
 
 const onClickEditModule = (module: Module) => {
-  selectedModule.value = { ...module }
+  selectedModule.value = {
+    ...module,
+    parent_module_key: module.parent_module_key ?? null,
+  }
   openAddDialog.value = true
 }
 
@@ -173,6 +193,7 @@ const handleSaveModule = async (payload: ModuleForm) => {
       name: payload.name,
       description: payload.description,
       is_active: payload.is_active,
+      parent_module_key: payload.parent_module_key ?? null,
     }
 
     await moduleStore.updateModule(updatePayload)
@@ -182,6 +203,7 @@ const handleSaveModule = async (payload: ModuleForm) => {
       name: payload.name,
       description: payload.description,
       is_active: payload.is_active,
+      parent_module_key: payload.parent_module_key ?? null,
     }
 
     await moduleStore.createModule(createPayload)

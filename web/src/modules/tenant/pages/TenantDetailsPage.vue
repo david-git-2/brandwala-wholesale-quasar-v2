@@ -227,22 +227,29 @@
                 <div class="col-12 col-md-6">
                   <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Tenant Features</div>
                   <q-list bordered separator class="rounded-borders">
-                    <q-item v-for="feature in modules" :key="feature.id">
-                      <q-item-section>
-                        <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
-                        <q-item-label caption>{{ feature.is_active ? 'Active' : 'Inactive' }}</q-item-label>
-                      </q-item-section>
-                      <q-item-section side>
-                        <q-btn
-                          color="negative"
-                          dense
-                          flat
-                          no-caps
-                          label="Remove"
-                          @click="removeTenantFeature(feature.id)"
-                        />
-                      </q-item-section>
-                    </q-item>
+                    <template v-for="feature in modules" :key="feature.id">
+                      <q-item>
+                        <q-item-section>
+                          <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
+                          <q-item-label caption>{{ feature.is_active ? 'Active' : 'Inactive' }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                          <q-btn
+                            color="negative"
+                            dense
+                            flat
+                            no-caps
+                            label="Remove"
+                            @click="removeTenantFeature(feature.id)"
+                          />
+                        </q-item-section>
+                      </q-item>
+                      <SubmoduleAccessPanel
+                        v-if="tenant && moduleStore.submodulesOf(feature.module_key).length > 0"
+                        :tenant-id="tenant.id"
+                        :parent-module-key="feature.module_key"
+                      />
+                    </template>
                     <q-item v-if="modules.length === 0">
                       <q-item-section class="text-grey-7">No tenant features assigned.</q-item-section>
                     </q-item>
@@ -345,6 +352,7 @@ import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
 import type { Membership } from 'src/modules/membership/types'
 import AddTenantDialog from '../components/AddTenantDialog.vue'
+import SubmoduleAccessPanel from '../components/SubmoduleAccessPanel.vue'
 import type { Tenant, TenantUpdateInput } from '../types'
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
 
@@ -410,7 +418,9 @@ const tenantModuleKeys = computed(
 )
 
 const availableModules = computed(() =>
-  moduleStore.items.filter((item) => item.is_active && !tenantModuleKeys.value.has(item.key)),
+  moduleStore.assignableModules.filter(
+    (item) => item.is_active && !tenantModuleKeys.value.has(item.key),
+  ),
 )
 
 const activeStatusStyle = {

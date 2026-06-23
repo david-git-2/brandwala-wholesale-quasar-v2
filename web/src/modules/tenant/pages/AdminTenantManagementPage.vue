@@ -300,6 +300,81 @@
           </q-card-section>
         </q-card>
 
+        <q-card v-if="showInvestorManagement" flat class="q-mb-lg floating-surface shadow-1">
+          <q-card-section class="row items-center justify-between">
+            <div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Investor Members</div>
+              <div class="text-caption text-grey-7">
+                Manage portal access for external capital partners on this tenant.
+              </div>
+            </div>
+
+            <q-btn
+              color="primary"
+              class="pill-btn slim-btn"
+              no-caps
+              size="sm"
+              icon="person_add"
+              label="Add Investor"
+              @click="onClickAddMember('investor')"
+            />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section v-if="tenantMembersLoading" class="text-grey-7">
+            Loading investor members...
+          </q-card-section>
+
+          <q-card-section v-else-if="investorMembers.length === 0" class="text-grey-7">
+            No investor members found.
+          </q-card-section>
+
+          <q-card-section v-else>
+            <q-table
+              flat
+              row-key="id"
+              :rows="investorMembers"
+              :columns="internalMemberColumns"
+              :dense="$q.screen.lt.md"
+              hide-bottom
+              class="tenant-detail-card__table costing-list-table"
+            >
+              <template #body-cell-email="props">
+                <q-td :props="props">{{ props.row.email }}</q-td>
+              </template>
+
+              <template #body-cell-role="props">
+                <q-td :props="props">{{ props.row.role }}</q-td>
+              </template>
+
+              <template #body-cell-active="props">
+                <q-td :props="props">
+                  <q-toggle
+                    v-model="props.row.is_active"
+                    color="positive"
+                    keep-color
+                    @update:model-value="(value) => onToggleMemberActive(props.row, value)"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-delete="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="negative"
+                    flat
+                    round
+                    icon="o_delete"
+                    @click="onClickDeleteMember(props.row)"
+                  />
+                </q-td>
+              </template>
+            </q-table>
+          </q-card-section>
+        </q-card>
+
         <q-card v-if="showCustomerGroupManagement" flat class="q-mb-lg floating-surface shadow-1">
           <q-card-section class="row items-center justify-between">
             <div>
@@ -560,24 +635,32 @@
               <div :class="canManageModules ? 'col-12 col-md-6' : 'col-12'">
                 <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Tenant Features</div>
                 <q-list bordered separator class="rounded-borders">
-                  <q-item v-for="feature in modules" :key="feature.id">
-                    <q-item-section>
-                      <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
-                      <q-item-label caption>
-                        {{ feature.is_active ? 'Active' : 'Inactive' }}
-                      </q-item-label>
-                    </q-item-section>
-                    <q-item-section side v-if="canManageModules">
-                      <q-btn
-                        color="negative"
-                        dense
-                        flat
-                        no-caps
-                        label="Remove"
-                        @click="removeTenantFeature(feature.id)"
-                      />
-                    </q-item-section>
-                  </q-item>
+                  <template v-for="feature in modules" :key="feature.id">
+                    <q-item>
+                      <q-item-section>
+                        <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
+                        <q-item-label caption>
+                          {{ feature.is_active ? 'Active' : 'Inactive' }}
+                        </q-item-label>
+                      </q-item-section>
+                      <q-item-section side v-if="canManageModules">
+                        <q-btn
+                          color="negative"
+                          dense
+                          flat
+                          no-caps
+                          label="Remove"
+                          @click="removeTenantFeature(feature.id)"
+                        />
+                      </q-item-section>
+                    </q-item>
+                    <SubmoduleAccessPanel
+                      v-if="tenantId && moduleStore.submodulesOf(feature.module_key).length > 0"
+                      :tenant-id="tenantId"
+                      :parent-module-key="feature.module_key"
+                      :read-only="!canManageModules"
+                    />
+                  </template>
                   <q-item v-if="modules.length === 0">
                     <q-item-section class="text-grey-7">No tenant features assigned.</q-item-section>
                   </q-item>
@@ -591,7 +674,13 @@
       <q-card style="min-width: 420px; border-radius: 12px;">
         <q-card-section>
           <div class="text-h6 text-weight-bold">
-            {{ selectedMemberRole === 'viewer' ? 'Add Viewer' : 'Add Staff' }}
+            {{
+              selectedMemberRole === 'viewer'
+                ? 'Add Viewer'
+                : selectedMemberRole === 'investor'
+                  ? 'Add Investor'
+                  : 'Add Staff'
+            }}
           </div>
         </q-card-section>
 
@@ -953,7 +1042,7 @@ import { watch } from 'vue'
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
-import type { Membership } from 'src/modules/membership/types'
+import type { Membership, TenantMembershipRole } from 'src/modules/membership/types'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
 import type { CostingFileListEntry } from 'src/modules/costingFile/types'
@@ -961,6 +1050,7 @@ import { formatAppDateTime } from 'src/utils/dateTime'
 import { useCustomerGroupStore } from '../stores/customerGroupStore'
 import { useTenantModuleStore } from '../stores/tenantModuleStore'
 import { useTenantStore } from '../stores/tenantStore'
+import SubmoduleAccessPanel from '../components/SubmoduleAccessPanel.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import type {
   CustomerGroup,
@@ -985,7 +1075,7 @@ const inactiveStatusStyle = {
 
 const props = withDefaults(
   defineProps<{
-    view?: 'customer-groups' | 'staff' | 'modules'
+    view?: 'customer-groups' | 'staff' | 'investors' | 'modules'
   }>(),
   {
     view: 'customer-groups',
@@ -1039,7 +1129,7 @@ const customerGroupToDelete = ref<CustomerGroup | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
-const selectedMemberRole = ref<'staff' | 'viewer'>('staff')
+const selectedMemberRole = ref<TenantMembershipRole>('staff')
 
 const tenantMembers = ref<Membership[]>([])
 const tenantMembersLoading = ref(false)
@@ -1104,10 +1194,14 @@ const customerRoleOptions = [
 
 const showCustomerGroupManagement = computed(() => props.view === 'customer-groups')
 const showStaffManagement = computed(() => props.view === 'staff')
+const showInvestorManagement = computed(() => props.view === 'investors')
 const showModuleManagement = computed(() => props.view === 'modules')
 const pageTitle = computed(() => {
   if (props.view === 'staff') {
     return 'Staff Management'
+  }
+  if (props.view === 'investors') {
+    return 'Investor Management'
   }
   if (props.view === 'modules') {
     return 'Enable Modules'
@@ -1190,6 +1284,10 @@ const viewerMembers = computed(() =>
   tenantMembers.value.filter((member) => member.role === 'viewer'),
 )
 
+const investorMembers = computed(() =>
+  tenantMembers.value.filter((member) => member.role === 'investor'),
+)
+
 const internalMemberColumns = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
   { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
@@ -1216,7 +1314,7 @@ const tenantModuleKeys = computed(
 )
 
 const availableModules = computed(() =>
-  catalogModules.value.filter(
+  moduleStore.assignableModules.filter(
     (item) => item.is_active && !tenantModuleKeys.value.has(item.key),
   ),
 )
@@ -1559,7 +1657,7 @@ watch(
   { immediate: true },
 )
 
-const onClickAddMember = (role: 'staff' | 'viewer') => {
+const onClickAddMember = (role: TenantMembershipRole) => {
   selectedMemberRole.value = role
   memberEmail.value = ''
   memberIsActive.value = true

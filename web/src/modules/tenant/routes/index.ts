@@ -185,6 +185,48 @@ const tenantRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: ':id/investors',
+        name: 'admin-tenant-investors',
+        component: () => import('../pages/AdminTenantManagementPage.vue'),
+        props: () => ({ view: 'investors' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+          validateAccess: ({ authStore, to }) => {
+            const selectedTenantId = authStore.selectedTenant?.id
+            const routeTenantId = Number(to.params?.id)
+            const routeTenantSlug = getTenantSlugFromRoute(to)
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+
+            if (!selectedTenantId) {
+              return { name: 'admin-tenant-list' }
+            }
+
+            if (
+              Number.isFinite(routeTenantId) &&
+              routeTenantId === selectedTenantId &&
+              routeTenantSlug === selectedTenantSlug
+            ) {
+              return true
+            }
+
+            return getAppRouteLocation(
+              {
+                ...to,
+                name: 'admin-tenant-investors',
+                params: {
+                  ...(to.params ?? {}),
+                  id: selectedTenantId,
+                },
+              },
+              selectedTenantSlug,
+            )
+          },
+        }),
+      },
+      {
         path: ':id/modules',
         name: 'admin-tenant-modules',
         component: () => import('../pages/AdminTenantManagementPage.vue'),
