@@ -31,6 +31,8 @@ import thriftBarcodeRoutes from 'src/modules/thrift_barcode/routes';
 import thriftSettingsRoutes from 'src/modules/thrift_settings/routes';
 import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
+import procurementStockRoutes from 'src/modules/procurement_stock/routes';
+
 
 
 const routes: RouteRecordRaw[] = [
@@ -120,6 +122,7 @@ const routes: RouteRecordRaw[] = [
   ...thriftSettingsRoutes,
   ...investorPortalRoutes,
   ...globalRoutes,
+  ...procurementStockRoutes,
 
 
   // Always leave this as last one

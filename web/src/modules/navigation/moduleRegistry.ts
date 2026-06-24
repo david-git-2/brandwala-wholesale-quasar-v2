@@ -43,6 +43,8 @@ export type ModuleKey =
   | 'global_investor'
   | 'global_investor_shipment'
   | 'investor_portal'
+  | 'procurement_stock'
+  | 'global_stock_type'
 
 
 export type ModuleAction = 'view'
@@ -100,13 +102,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'inventory',
     name: 'Tenant Stock',
     description: 'Tenant allocated stock view and parent allocation manager. Separate from global_stock.',
+    parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Tenant Stock',
         caption: 'Your allocated stock slices (not the global pool)',
         icon: 'inventory_2',
-        routeSegment: 'stock',
+        routeSegment: 'procurement/tenant-stock',
         requiredAction: 'view',
       },
     ],
@@ -768,13 +771,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'global_shipment',
     name: 'Global Shipment',
     description: 'Parent-coordinated dispatch, logistics, and delivery.',
+    parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Shipment',
         caption: 'Track dispatch, handoff, and delivery progress',
         icon: 'local_shipping',
-        routeSegment: 'global/shipment',
+        routeSegment: 'procurement/shipment',
         requiredAction: 'view',
       },
     ],
@@ -783,13 +787,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'global_stock',
     name: 'Global Stock',
     description: 'Parent-owned stock with child allocation bridge.',
+    parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Global Stock',
         caption: 'Parent stock and child allocations',
         icon: 'inventory_2',
-        routeSegment: 'global/stock',
+        routeSegment: 'procurement/stock',
         requiredAction: 'view',
       },
       {
@@ -797,7 +802,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Allocate Stock',
         caption: 'Divide global stock quantities to child tenants',
         icon: 'call_split',
-        routeSegment: 'global/stock/allocate',
+        routeSegment: 'procurement/stock/allocate',
         requiredAction: 'view',
       },
     ],
@@ -912,6 +917,20 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'investor_portal',
     name: 'Investor Portal',
     description: 'External investor login and portfolio.',
+    routes: [],
+  },
+  {
+    key: 'procurement_stock',
+    name: 'Procurement & Stock',
+    description: 'Parent module for inbound procurement, warehouse pools, and tenant stock allocations.',
+    navIcon: 'local_shipping',
+    routes: [],
+  },
+  {
+    key: 'global_stock_type',
+    name: 'Stock Types',
+    description: 'Stock classification types config (e.g. Standard Sellable, Box Damage).',
+    parentModuleKey: 'procurement_stock',
     routes: [],
   },
 ] as const

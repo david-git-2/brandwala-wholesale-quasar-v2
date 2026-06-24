@@ -459,7 +459,6 @@ Rates on the shipment may still be edited after `Ready Stock`; displayed cost re
 |-------|------|-------|
 | `id` | bigint PK | |
 | `parent_tenant_id` | bigint FK → `tenants` | Owner |
-| `vendor_id` | bigint FK → `vendors` | Supplier |
 | `name` | text | Batch identifier |
 | `tenant_shipment_id` | int | Per-parent display sequence |
 | `type` | `global_shipment_type` | Drives cost branch — §5.0 |
@@ -481,6 +480,7 @@ Rates on the shipment may still be edited after `Ready Stock`; displayed cost re
 | `id` | bigint PK | |
 | `shipment_id` | bigint FK → `global_shipments` | |
 | `product_id` | bigint FK → `products` nullable | |
+| `vendor_id` | bigint FK → `vendors` nullable | Supplier |
 | `name` | text | Snapshot at purchase |
 | `ordered_quantity` | int | |
 | `image_url` | text | |
@@ -602,16 +602,36 @@ Commerce does not create inbound lines (**D2**).
 
 ---
 
-## 11. Implementation phases
+## 11. Implementation progress
+
+Master implementation plan: `.cursor/plans/procurement_stock_phases_181806ae.plan.md`
+
+Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a phase exits.
+
+### Done
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| **P0 — Documentation** | This file | Current |
-| **P1 — Module hierarchy** | `procurement_stock` seeder, registry, nav | Planned |
-| **P2 — Schema** | Drop-recreate tables, enums, RLS | Planned |
-| **P3 — Frontend data layer** | `landedCost.ts`, joins, direct client access | Planned |
-| **P4 — UI routes** | `/app/procurement/*` | Planned |
-| **P5 — Downstream** | Invoice, commerce, accounting retarget | Planned |
+| **1** | Schema (line `vendor_id`, no header vendor), module hierarchy, empty `/app/procurement/*` pages | Done |
+| **2** | Paginated list RPCs + shipment / warehouse / tenant stock list pages | Done |
+| **3** | Shipment CRUD, line items with `vendor_id`, stock types config | Done |
+| **4** | Shipment details page, `landedCost.ts` preview, status workflow | Done |
+| **5** | Receive workflow (Warehouse Received → Ready Stock), list cost joins, route cutover | Done |
+| **6** | Remove legacy header vendor (`shipments.vendor_*`), doc D-PS12 | Done |
+| **7** | `FilterSidebar` filters on all procurement list pages (costing-file state pattern) | Done |
+| **8** | Allocate Stock UI + backend (RPCs, reconciliation, parent-only page) | Done |
+| **9** | Parent vs child nav (4 links parent, Tenant Stock only for child) | Done |
+| **10** | Global stock network search (own tenant first, other tenants labeled) + this progress section | Done |
+
+### Remaining
+
+*(None)*
+
+### Out of scope (separate tracks)
+
+| Track | Deliverable | Status |
+|-------|-------------|--------|
+| Downstream | Invoice / commerce / accounting retarget to new `global_*` tables | Deferred |
 
 ---
 
@@ -647,3 +667,4 @@ Commerce does not create inbound lines (**D2**).
 | D-PS7 | Stock shape | Quantity + FKs only; no cost/display copies on `global_stocks` |
 | D-PS8 | Formula | **No** tenant formula builder — essential input UI on shipment only |
 | D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts` |
+| D-PS12 | Vendor scoping | **Vendor is line-level only**; `vendor_id` dropped from shipment headers and legacy table; added to `global_shipment_items` |

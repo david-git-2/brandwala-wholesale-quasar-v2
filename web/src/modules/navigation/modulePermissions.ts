@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import {
@@ -60,6 +61,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: ['view'],
     global_investor_shipment: ['view'],
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   admin: {
     order_management: ['view'],
@@ -104,6 +107,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: ['view'],
     global_investor_shipment: ['view'],
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   staff: {
     order_management: ['view'],
@@ -148,6 +153,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -192,6 +199,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -236,6 +245,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -280,6 +291,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -324,6 +337,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: NO_ACCESS,
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
   investor_portal: {
     order_management: NO_ACCESS,
@@ -368,6 +383,8 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_investor: NO_ACCESS,
     global_investor_shipment: NO_ACCESS,
     investor_portal: ['view'],
+    procurement_stock: NO_ACCESS,
+    global_stock_type: NO_ACCESS,
   },
 }
 
@@ -451,6 +468,17 @@ export const canAccessModule = ({
   const allowedActions = getAllowedModuleActions(role, moduleKey)
   const roleAllowed = allowedActions.includes(action)
 
+  if (moduleKey === 'global_shipment' || moduleKey === 'global_stock') {
+    const tenantStore = useTenantStore()
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null
+    if (current && current.parent_id !== null) {
+      return false
+    }
+  }
+
   return (
     hasScopeContext &&
     hasTenantContext &&
@@ -487,17 +515,30 @@ export const resolveModuleAccess = ({
   const moduleEnabled = activeModuleKeys.includes(moduleKey)
   const roleAllowed = allowedActions.includes(action)
 
+  let isBlockedByChildStatus = false
+  if (moduleKey === 'global_shipment' || moduleKey === 'global_stock') {
+    const tenantStore = useTenantStore()
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null
+    if (current && current.parent_id !== null) {
+      isBlockedByChildStatus = true
+    }
+  }
+
   return {
     allowed:
       hasScopeContext &&
       hasTenantContext &&
       hasCustomerGroupContext &&
       moduleEnabled &&
-      roleAllowed,
+      roleAllowed &&
+      !isBlockedByChildStatus,
     hasScopeContext,
     hasTenantContext,
     hasCustomerGroupContext,
-    moduleEnabled,
+    moduleEnabled: moduleEnabled && !isBlockedByChildStatus,
     roleAllowed,
     allowedActions,
   }

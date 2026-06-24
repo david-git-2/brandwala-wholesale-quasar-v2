@@ -2407,7 +2407,7 @@ const goToBatchCodePage = async () => {
 const resetProductSearchDialog = () => {
   productSearch.value = ''
   productSearchField.value = 'name'
-  productSearchVendorCode.value = shipmentStore.selectedShipment?.vendor_code ?? null
+  productSearchVendorCode.value = null
   productSearchCategory.value = null
   Object.keys(productQuantityById).forEach((key) => {
     delete productQuantityById[Number(key)]
@@ -2431,7 +2431,7 @@ const resetAddProductForm = () => {
   addProductForm.cost_bdt = null
   addProductForm.product_weight = null
   addProductForm.package_weight = null
-  addProductForm.vendor_code = shipmentStore.selectedShipment?.vendor_code ?? null
+  addProductForm.vendor_code = null
   addProductForm.category = null
   addProductForm.market_code = shipmentStore.selectedShipment?.market_code ?? null
   addProductForm.minimum_order_quantity = null
@@ -2472,7 +2472,7 @@ const openEditManualItemDialog = (item: ShipmentItem) => {
   editManualItemForm.cost_bdt = item.cost_bdt ?? null
   editManualItemForm.product_weight = item.product_weight ?? null
   editManualItemForm.package_weight = item.package_weight ?? null
-  editManualItemForm.vendor_code = matchedProduct?.vendor_code ?? shipmentStore.selectedShipment?.vendor_code ?? null
+  editManualItemForm.vendor_code = matchedProduct?.vendor_code ?? null
   editManualItemForm.market_code = matchedProduct?.market_code ?? shipmentStore.selectedShipment?.market_code ?? null
   showEditManualItemDialog.value = true
 }
@@ -2693,19 +2693,7 @@ const onAddProductVendorChange = async (value: string | null) => {
 }
 
 const onAddProductDefaultVendorChange = async (value: string | null) => {
-  const shipment = shipmentStore.selectedShipment
-  if (!shipment || !Number.isFinite(shipmentId.value) || shipmentId.value <= 0) {
-    return
-  }
-  if ((shipment.vendor_code ?? null) === (value ?? null)) {
-    return
-  }
-  await shipmentStore.updateShipment({
-    id: shipmentId.value,
-    patch: {
-      vendor_code: value ?? null,
-    },
-  })
+  // no-op: header-level vendor_code has been dropped
 }
 
 const onAddProductDefaultMarketChange = async (value: string | null) => {

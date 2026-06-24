@@ -68,8 +68,7 @@ export const createAccessGuard = ({
       (requiredScope !== undefined && currentScope !== requiredScope) ||
       (requireTenantContext === true && !hasTenantContext) ||
       !memberRole ||
-      (allowedRoles !== undefined && !allowedRoles.includes(memberRole)) ||
-      !hasRequiredModuleAccess
+      (allowedRoles !== undefined && !allowedRoles.includes(memberRole))
     ) {
       if (typeof loginRoute === 'function') {
         return loginRoute(to)
@@ -81,6 +80,17 @@ export const createAccessGuard = ({
           redirect: to.fullPath,
         },
       }
+    }
+
+    if (!hasRequiredModuleAccess) {
+      if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
+        const tenantSlug = authStore.tenantSlug
+        return tenantSlug
+          ? `/${tenantSlug}/app/procurement/tenant-stock`
+          : '/app/procurement/tenant-stock'
+      }
+      const tenantSlug = authStore.tenantSlug
+      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'
     }
 
     if (validateAccess) {

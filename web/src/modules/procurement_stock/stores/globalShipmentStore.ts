@@ -1,0 +1,206 @@
+import { defineStore } from 'pinia'
+import { globalShipmentRepository, type GlobalShipment, type GlobalShipmentItem } from '../repositories/globalShipmentRepository'
+
+export const useGlobalShipmentStore = defineStore('global_shipment', {
+  state: () => ({
+    rows: [] as GlobalShipment[],
+    loading: false,
+    error: null as string | null,
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 0,
+    search: '',
+    statusFilter: null as string | null,
+
+    // Single shipment states
+    currentShipment: null as GlobalShipment | null,
+    currentShipmentItems: [] as GlobalShipmentItem[],
+  }),
+
+  actions: {
+    async fetchShipments(
+      tenantId: number,
+      options?: {
+        page?: number
+        pageSize?: number
+        search?: string | null
+        status?: string | null
+      },
+    ) {
+      this.loading = true
+      this.error = null
+      try {
+        const page = options?.page ?? this.page
+        const pageSize = options?.pageSize ?? this.pageSize
+        const search = options?.search !== undefined ? options.search : this.search
+        const status = options?.status !== undefined ? options.status : this.statusFilter
+
+        const result = await globalShipmentRepository.listPaginated(
+          tenantId,
+          page,
+          pageSize,
+          search || undefined,
+          status || undefined,
+        )
+
+        this.rows = result.data
+        this.page = result.meta.page
+        this.pageSize = result.meta.pageSize
+        this.total = result.meta.total
+        this.totalPages = result.meta.totalPages
+        this.search = search || ''
+        this.statusFilter = status
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load shipments'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchShipmentDetails(shipmentId: number) {
+      this.loading = true
+      this.error = null
+      try {
+        const [shipment, items] = await Promise.all([
+          globalShipmentRepository.getById(shipmentId),
+          globalShipmentRepository.listShipmentItems(shipmentId),
+        ])
+        this.currentShipment = shipment
+        this.currentShipmentItems = items
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load shipment details'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createShipment(
+      tenantId: number,
+      payload: {
+        name: string
+        type: 'domestic' | 'international'
+        shipment_purchase_currency_id: number | null
+        shipment_cost_currency_id: number | null
+      },
+    ) {
+      this.loading = true
+      this.error = null
+      try {
+        const newShipment = await globalShipmentRepository.createShipment(tenantId, payload)
+        this.rows.unshift(newShipment)
+        return newShipment
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create shipment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateShipment(
+      id: number,
+      payload: Partial<Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'parent_tenant_id'>>,
+    ) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await globalShipmentRepository.updateShipment(id, payload)
+        if (this.currentShipment?.id === id) {
+          this.currentShipment = updated
+        }
+        const index = this.rows.findIndex((r) => r.id === id)
+        if (index !== -1) {
+          this.rows[index] = updated
+        }
+        return updated
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update shipment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteShipment(id: number) {
+      this.loading = true
+      this.error = null
+      try {
+        // Block delete if referenced in global_stocks
+        const isReferenced = await globalShipmentRepository.checkShipmentStockReferences(id)
+        if (isReferenced) {
+          throw new Error('Cannot delete shipment. One or more shipment items are currently referenced in Warehouse Stock.')
+        }
+
+        await globalShipmentRepository.deleteShipment(id)
+        this.rows = this.rows.filter((r) => r.id !== id)
+        if (this.currentShipment?.id === id) {
+          this.currentShipment = null
+          this.currentShipmentItems = []
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete shipment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async addShipmentItem(payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>) {
+      this.loading = true
+      this.error = null
+      try {
+        const newItem = await globalShipmentRepository.createShipmentItem(payload)
+        if (this.currentShipment?.id === payload.shipment_id) {
+          this.currentShipmentItems.push(newItem)
+        }
+        return newItem
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to add shipment item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateShipmentItem(
+      id: number,
+      payload: Partial<Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>>,
+    ) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await globalShipmentRepository.updateShipmentItem(id, payload)
+        const index = this.currentShipmentItems.findIndex((item) => item.id === id)
+        if (index !== -1) {
+          this.currentShipmentItems[index] = updated
+        }
+        return updated
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update shipment item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteShipmentItem(id: number) {
+      this.loading = true
+      this.error = null
+      try {
+        const isReferenced = await globalShipmentRepository.checkShipmentItemStockReferences(id)
+        if (isReferenced) {
+          throw new Error('Cannot delete item. This shipment item is referenced in Warehouse Stock.')
+        }
+
+        await globalShipmentRepository.deleteShipmentItem(id)
+        this.currentShipmentItems = this.currentShipmentItems.filter((item) => item.id !== id)
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete shipment item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+  },
+})
