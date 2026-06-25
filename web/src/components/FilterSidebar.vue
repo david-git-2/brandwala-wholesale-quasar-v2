@@ -3,6 +3,7 @@
     <div
       v-if="modelValue"
       class="filter-sidebar__backdrop"
+      :style="backdropStyle"
       @click="close"
     />
   </transition>
@@ -39,10 +40,11 @@ import { computed, onBeforeUnmount, onMounted } from 'vue'
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
-    title?: string
-    topOffset?: number
-    bottomOffset?: number
-    width?: string
+    title?: string | undefined
+    topOffset?: number | undefined
+    bottomOffset?: number | undefined
+    width?: string | undefined
+    zIndex?: number | undefined
   }>(),
   {
     title: 'Filters',
@@ -74,10 +76,15 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onWindowKeyDown)
 })
 
+const backdropStyle = computed(() => ({
+  zIndex: props.zIndex ? props.zIndex - 1 : undefined,
+}))
+
 const panelStyle = computed(() => ({
   top: `${props.topOffset}px`,
   bottom: `${props.bottomOffset}px`,
   width: props.width,
+  zIndex: props.zIndex ? props.zIndex : undefined,
 }))
 </script>
 

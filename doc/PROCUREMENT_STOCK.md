@@ -185,6 +185,7 @@ Follow **`global_reference`** as the template (one assignable parent, granular s
 | `global_batch_code` | `global_batch_codes` | Batch / barcode PC labels |
 | `global_warehouse_location` | `global_warehouse_locations`, `global_stock_locations` | Bin / shelf tracking |
 | `global_reorder_point` | `global_reorder_rules` | Low-stock alerts |
+| `global_shipment_box` | `global_shipment_boxes` | Physical box weight tracking (Implemented) |
 | `global_stock_return_inbound` | `global_stock_return_receipts` | Return goods back into stock |
 
 ### 4.3 Table design for growth
@@ -420,7 +421,7 @@ stateDiagram-v2
 
 ##### Receive: split quantity into stock by type
 
-Performed **only** when status is `Warehouse Received`. For each `global_shipment_item`, the user splits `ordered_quantity` across **`global_stock_types`** (e.g. Standard Sellable, Box Damage, Expired).
+Performed **only** when status is `Warehouse Received`. For each `global_shipment_item`, the user splits `ordered_quantity` across **`global_stock_types`** (e.g. Standard Sellable, Box Less, Box Damage, Expired).
 
 | Input | Output |
 |-------|--------|
@@ -452,6 +453,9 @@ Rates on the shipment may still be edited after `Ready Stock`; displayed cost re
 - Shipment list filters may include `Warehouse Received` for in-progress batches and `Ready Stock` for sellable batches
 
 > **Legacy mapping:** Old `shipments.status = 'Added to Inventory'` and `inventory_added = true` map to `Ready Stock` + `stock_ready` on `global_shipments`. Legacy `receiving_splits` on `shipment_items` maps to per-type qty on receive into `global_stocks`.
+
+##### Weight Balance Flow (Warehouse Received)
+At the warehouse, box counts and physical box weights (kg) can be logged in `global_shipment_boxes`. Upon applying the weight balance, the difference between actual box weight (converted to grams) and estimated item weight is distributed proportionally across all line items by adjusting `package_weight` only. The updated weights are synchronized with the `products` catalog and saved to `global_shipment_items`. `global_shipments.received_weight` is set to the sum of the box weights, and `transaction_rate` is recomputed if it is an international shipment.
 
 ### 5.2 `global_shipments`
 
@@ -504,7 +508,7 @@ No `calculated_landed_cost` column — §5.0.
 | `is_sellable` | boolean | Gates invoice/commerce pick |
 | `sort_order` | int | |
 
-**Default seed:** Standard Sellable (sellable), Box Damage, Expired, Stolen, Reserved (not sellable).
+**Default seed:** Standard Sellable, Box Less, Box Damage, Expired, Reserved (sellable); Stolen (not sellable).
 
 ### 5.5 `global_stocks`
 
@@ -531,6 +535,17 @@ One row = shipment line × stock type × usable flag.
 | `child_tenant_id` | bigint FK | |
 | `stock_id` | bigint FK → `global_stocks` | |
 | `quantity` | int | ≤ parent pool qty |
+| `created_at`, `updated_at` | timestamptz | |
+
+### 5.7 `global_shipment_boxes`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | bigint PK | |
+| `parent_tenant_id` | bigint FK → `tenants` | Denormalized for RLS |
+| `shipment_id` | bigint FK → `global_shipments` ON DELETE CASCADE | |
+| `box_number` | text | Unique per shipment |
+| `weight_kg` | numeric | ≥ 0 |
 | `created_at`, `updated_at` | timestamptz | |
 
 ---
@@ -668,3 +683,6 @@ Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a
 | D-PS8 | Formula | **No** tenant formula builder — essential input UI on shipment only |
 | D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts` |
 | D-PS12 | Vendor scoping | **Vendor is line-level only**; `vendor_id` dropped from shipment headers and legacy table; added to `global_shipment_items` |
+| D-PS13 | Weight balance | Package-weight-only distribution of weight delta; no audit trail v1 |
+| D-PS14 | Received weight | `received_weight` is set only via Weight Balance Apply (not manually in Edit Shipment form) |
+

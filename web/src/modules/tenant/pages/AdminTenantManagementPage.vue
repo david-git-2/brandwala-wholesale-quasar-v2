@@ -1098,7 +1098,6 @@ const canManageModules = computed(() => {
 })
 
 const { items } = storeToRefs(tenantStore)
-const { items: catalogModules } = storeToRefs(moduleStore)
 const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
 const {
   items: costingFiles,

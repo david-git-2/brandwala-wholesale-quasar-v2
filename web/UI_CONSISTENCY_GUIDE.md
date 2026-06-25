@@ -182,6 +182,17 @@ Use:
 
 Try to keep the same spacing and structure as the list pages.
 
+### If the page is a high-density operational detail view (e.g. Shipment Details, Costing File Details)
+
+Follow the Compact Design pattern to maximize screen space:
+
+- **Compact Padding**: Replace `bw-page` with class `q-pa-xs q-sm-pa-sm` on the `q-page` component. Replace `bw-page__stack` container with `q-gutter-y-sm` to tighten gap spacing.
+- **Unified Hero Card Header**: Replace separate title headers with a single card layout containing ID badges, titles, and type/weight/ready metadata on the left, and actions/status chips on the right.
+- **Compact Status Selector Chip**: Replace long stepper progress bars with a single interactive status `q-chip` next to the title (or on the right of the header card). Clicking the chip reveals a dropdown status list selector.
+- **Icon-only Actions**: Avoid heavy button rows in the header card. Transition secondary details operations (like Edit, Delete) to flat, round, icon-only buttons with tooltips.
+- **Collapsible Layout**: Place summaries, rates, or metrics panels in a collapsible left sidebar, allowing the primary data table on the right to expand to 100% width when collapsed.
+- **Internal Table Scroll**: Add `table-style="min-width: 1200px;"` to data tables to force them to scroll horizontally within their card boundary, preventing layout stretching.
+
 ## When To Create A New Shared Component
 
 Create a new shared UI component only if:

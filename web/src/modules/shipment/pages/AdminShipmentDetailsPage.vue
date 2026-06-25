@@ -2689,10 +2689,11 @@ const onAddProductVendorChange = async (value: string | null) => {
   addProductForm.vendor_code = value ?? null
   addProductForm.category = null
   await loadCategoryOptionsForVendor(addProductForm.vendor_code)
-  await onAddProductDefaultVendorChange(addProductForm.vendor_code)
+  onAddProductDefaultVendorChange(addProductForm.vendor_code)
 }
 
-const onAddProductDefaultVendorChange = async (value: string | null) => {
+const onAddProductDefaultVendorChange = (value: string | null) => {
+  void value
   // no-op: header-level vendor_code has been dropped
 }
 

@@ -206,7 +206,7 @@ const onSave = async () => {
       $q.notify({ type: 'positive', message: 'Stock type created successfully' })
     }
     resetForm()
-  } catch (err: any) {
+  } catch {
     // Error is set in store and rendered on screen
   }
 }
@@ -217,14 +217,17 @@ const onDelete = (id: number) => {
     message: 'Are you sure you want to delete this custom stock type? This action cannot be undone.',
     cancel: true,
     persistent: true,
-  }).onOk(async () => {
-    try {
-      await store.deleteStockType(id)
-      $q.notify({ type: 'positive', message: 'Stock type deleted successfully' })
-      resetForm()
-    } catch (err: any) {
-      $q.notify({ type: 'negative', message: err.message || 'Failed to delete stock type' })
-    }
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await store.deleteStockType(id)
+        $q.notify({ type: 'positive', message: 'Stock type deleted successfully' })
+        resetForm()
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        $q.notify({ type: 'negative', message: msg || 'Failed to delete stock type' })
+      }
+    })()
   })
 }
 </script>

@@ -137,20 +137,19 @@
 
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="form.received_weight"
-                  type="number"
-                  step="0.01"
-                  label="Received Weight (kg)"
-                  filled
-                  dense
-                  clearable
-                />
+                <div class="bg-grey-2 q-pa-sm rounded-borders text-caption text-grey-8" style="min-height: 40px; display: flex; align-items: center;">
+                  <span>
+                    Received Weight: <strong class="text-black">{{ form.received_weight !== null ? `${form.received_weight} kg` : '—' }}</strong>
+                    <br />
+                    <span class="text-grey-6 text-weight-light" style="font-size: 10px;">(Set automatically via Weight Balance)</span>
+                  </span>
+                </div>
               </div>
               <div class="col-12 col-sm-6 items-center flex">
                 <q-checkbox v-model="form.stock_ready" label="Stock Ready" />
               </div>
             </div>
+
           </div>
         </q-card-section>
 

@@ -12,6 +12,7 @@ import type {
   TenantModuleCreateInput,
   TenantModuleDeleteInput,
   TenantModuleUpdateInput,
+  TenantModuleSubmoduleSetInput,
 } from '../types'
 
 const listTenants = async (): Promise<TenantServiceResult<Tenant[]>> => {
@@ -281,7 +282,7 @@ const listTenantModuleSubmodules = async (
 }
 
 const setTenantModuleSubmodule = async (
-  payload: import('../types').TenantModuleSubmoduleSetInput,
+  payload: TenantModuleSubmoduleSetInput,
 ) => {
   try {
     const data = await tenantRepository.setTenantModuleSubmodule(payload)

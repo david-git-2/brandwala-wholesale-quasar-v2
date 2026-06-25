@@ -10,6 +10,7 @@ import type {
   TenantModuleCreateInput,
   TenantModuleDeleteInput,
   TenantModuleUpdateInput,
+  TenantModuleSubmoduleSetInput,
 } from '../types'
 
 export const useTenantModuleStore = defineStore('tenantModule', {
@@ -123,7 +124,7 @@ export const useTenantModuleStore = defineStore('tenantModule', {
       return tenantService.listTenantModuleSubmodules(tenantId, parentModuleKey)
     },
 
-    async setSubmoduleOverride(payload: import('../types').TenantModuleSubmoduleSetInput) {
+    async setSubmoduleOverride(payload: TenantModuleSubmoduleSetInput) {
       this.error = null
       const result = await tenantService.setTenantModuleSubmodule(payload)
       if (!result.success) {

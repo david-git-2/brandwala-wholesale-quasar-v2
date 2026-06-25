@@ -35,6 +35,9 @@ export default defineConfigWithVueTs(
    */
   pluginVue.configs['flat/essential'],
 
+  // https://github.com/vuejs/eslint-config-typescript
+  vueTsConfigs.recommendedTypeChecked,
+
   {
     files: ['**/*.ts', '**/*.vue'],
     rules: {
@@ -42,8 +45,6 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
-  // https://github.com/vuejs/eslint-config-typescript
-  vueTsConfigs.recommendedTypeChecked,
 
   {
     languageOptions: {

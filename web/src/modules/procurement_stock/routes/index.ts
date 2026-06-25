@@ -73,6 +73,12 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/InboundShipmentDetailsPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
+      {
+        path: ':id/add-catalog',
+        name: 'app-procurement-shipment-add-catalog',
+        component: () => import('../pages/ShipmentAddCatalogPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
     ],
   },
   {

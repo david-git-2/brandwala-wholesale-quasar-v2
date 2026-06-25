@@ -18,7 +18,7 @@ import type {
 type ListProductsParams = {
   page?: number
   pageSize?: number
-  search?: string
+  search?: string | null | undefined
   searchField?: 'name' | 'barcode' | 'product_code' | 'id'
   category?: string | null | undefined
   brand?: string | null | undefined

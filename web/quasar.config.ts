@@ -60,7 +60,11 @@ export default defineConfig((ctx) => {
       typescript: {
         strict: true,
         vueShim: true,
-        // extendTsConfig (tsConfig) {}
+        extendTsConfig (tsConfig) {
+          if (tsConfig.compilerOptions) {
+            tsConfig.compilerOptions.noImplicitAny = false
+          }
+        },
       },
 
       vueRouterMode: 'history', // available values: 'hash', 'history'

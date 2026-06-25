@@ -41,6 +41,7 @@
     "supabase": "^2.84.5",
     "typescript": "^5.9.3",
     "vite-plugin-checker": "^0.12.0",
+    "vitest": "^4.1.9",
     "vue-eslint-parser": "^10.4.0",
     "vue-tsc": "^3.2.6",
     "wrangler": "^4.88.0"

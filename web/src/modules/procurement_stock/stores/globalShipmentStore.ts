@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import { globalShipmentRepository, type GlobalShipment, type GlobalShipmentItem } from '../repositories/globalShipmentRepository'
+import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository'
+import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository'
+import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance'
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
   state: () => ({
@@ -16,6 +19,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     // Single shipment states
     currentShipment: null as GlobalShipment | null,
     currentShipmentItems: [] as GlobalShipmentItem[],
+    currentShipmentBoxes: [] as GlobalShipmentBox[],
   }),
 
   actions: {
@@ -58,18 +62,44 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async fetchShipmentBoxes(shipmentId: number) {
+      try {
+        const boxes = await globalShipmentBoxRepository.listByShipmentId(shipmentId)
+        this.currentShipmentBoxes = boxes
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load boxes'
+      }
+    },
+
     async fetchShipmentDetails(shipmentId: number) {
       this.loading = true
       this.error = null
       try {
-        const [shipment, items] = await Promise.all([
+        const [shipment, items, boxes] = await Promise.all([
           globalShipmentRepository.getById(shipmentId),
           globalShipmentRepository.listShipmentItems(shipmentId),
+          globalShipmentBoxRepository.listByShipmentId(shipmentId),
         ])
         this.currentShipment = shipment
         this.currentShipmentItems = items
+        this.currentShipmentBoxes = boxes
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async applyWeightBalance(shipmentId: number) {
+      this.loading = true
+      this.error = null
+      try {
+        const result = await applyShipmentWeightBalance(shipmentId)
+        await this.fetchShipmentDetails(shipmentId)
+        return result
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to apply weight balance'
+        throw err
       } finally {
         this.loading = false
       }

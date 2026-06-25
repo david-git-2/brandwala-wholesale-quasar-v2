@@ -198,7 +198,7 @@
                         <div class="col-4 text-body2 text-grey-9">{{ child.name }}</div>
                         <div class="col-4 row justify-center">
                           <q-input
-                            v-model.number="draftQuantities[props.row.id][child.id]"
+                            v-model.number="draftQuantities[props.row.id]![child.id]"
                             type="number"
                             dense
                             filled
@@ -237,8 +237,8 @@
                       <div class="row justify-between items-center q-mt-md q-pt-md border-top">
                         <div class="text-caption text-grey-8">
                           Pool Qty: <span class="text-weight-bold">{{ props.row.pool_quantity }}</span> &nbsp;|&nbsp;
-                          Allocated Total: <span class="text-weight-bold" :class="isOverAllocated(props.row.id) ? 'text-negative' : 'text-primary'">{{ draftTotals[props.row.id] }}</span> &nbsp;|&nbsp;
-                          Remaining: <span class="text-weight-bold">{{ props.row.pool_quantity - draftTotals[props.row.id] }}</span>
+                          Allocated Total: <span class="text-weight-bold" :class="isOverAllocated(props.row.id) ? 'text-negative' : 'text-primary'">{{ draftTotals[props.row.id] ?? 0 }}</span> &nbsp;|&nbsp;
+                          Remaining: <span class="text-weight-bold">{{ props.row.pool_quantity - (draftTotals[props.row.id] ?? 0) }}</span>
                         </div>
                         <div v-if="isOverAllocated(props.row.id)" class="text-caption text-negative text-weight-bold">
                           <q-icon name="warning" color="negative" /> Allocation exceeds pool capacity! Save disabled.
@@ -274,7 +274,7 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
 import { useGlobalStockTypeStore } from 'src/modules/procurement_stock/stores/globalStockTypeStore'
 import { useGlobalStockAllocationStore } from 'src/modules/procurement_stock/stores/globalStockAllocationStore'
-import { globalStockAllocationRepository, type ChildAllocationSummary } from '../repositories/globalStockAllocationRepository'
+import { globalStockAllocationRepository, type AllocatableStock } from '../repositories/globalStockAllocationRepository'
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 
@@ -373,7 +373,7 @@ const isExpanded = (id: number) => {
   return expandedRows.value.includes(id)
 }
 
-const toggleRowExpansion = async (row: any) => {
+const toggleRowExpansion = async (row: AllocatableStock) => {
   const index = expandedRows.value.indexOf(row.id)
   if (index > -1) {
     expandedRows.value.splice(index, 1)
@@ -390,20 +390,23 @@ const loadRowAllocations = async (stockId: number) => {
     const data = await globalStockAllocationRepository.listChildAllocationSummary(stockId)
     
     // Initialize maps
-    if (!savedQuantities.value[stockId]) savedQuantities.value[stockId] = {}
-    if (!draftQuantities.value[stockId]) draftQuantities.value[stockId] = {}
+    const saved = savedQuantities.value[stockId] ?? {}
+    const draft = draftQuantities.value[stockId] ?? {}
+    savedQuantities.value[stockId] = saved
+    draftQuantities.value[stockId] = draft
     
     // Pre-fill child concerns
     childTenants.value.forEach((child) => {
       const existing = data.find((d) => Number(d.child_tenant_id) === child.id)
       const qty = existing ? existing.allocated_qty : 0
-      savedQuantities.value[stockId][child.id] = qty
-      draftQuantities.value[stockId][child.id] = qty
+      saved[child.id] = qty
+      draft[child.id] = qty
     })
     
     recalculateDraftTotal(stockId)
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Failed to load allocations.' })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    $q.notify({ type: 'negative', message: msg || 'Failed to load allocations.' })
   } finally {
     rowLoadingState.value[stockId] = false
   }
@@ -417,7 +420,7 @@ const recalculateDraftTotal = (stockId: number) => {
   }, 0)
 }
 
-const onQtyChange = (row: any) => {
+const onQtyChange = (row: AllocatableStock) => {
   recalculateDraftTotal(row.id)
 }
 
@@ -438,7 +441,7 @@ const hasExistingAllocation = (stockId: number, childId: number) => {
   return saved > 0
 }
 
-const saveAllocation = async (row: any, childId: number) => {
+const saveAllocation = async (row: AllocatableStock, childId: number) => {
   const stockId = row.id
   const qty = Number(draftQuantities.value[stockId]?.[childId] || 0)
   const key = `${stockId}-${childId}`
@@ -454,14 +457,15 @@ const saveAllocation = async (row: any, childId: number) => {
     $q.notify({ type: 'positive', message: 'Allocation updated successfully.' })
     await loadRowAllocations(stockId)
     await fetchAllocatableData()
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: err.message || 'Failed to update allocation.' })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    $q.notify({ type: 'negative', message: msg || 'Failed to update allocation.' })
   } finally {
     submittingMap.value[key] = false
   }
 }
 
-const removeAllocation = async (row: any, childId: number) => {
+const removeAllocation = (row: AllocatableStock, childId: number) => {
   const stockId = row.id
   const key = `${stockId}-${childId}`
   
@@ -470,23 +474,26 @@ const removeAllocation = async (row: any, childId: number) => {
     message: 'Are you sure you want to remove this child concern allocation?',
     cancel: true,
     persistent: true,
-  }).onOk(async () => {
-    submittingMap.value[key] = true
-    try {
-      await globalStockAllocationRepository.upsertGlobalStockAllocation(
-        authStore.tenantId!,
-        childId,
-        stockId,
-        0
-      )
-      $q.notify({ type: 'positive', message: 'Allocation removed successfully.' })
-      await loadRowAllocations(stockId)
-      await fetchAllocatableData()
-    } catch (err: any) {
-      $q.notify({ type: 'negative', message: err.message || 'Failed to remove allocation.' })
-    } finally {
-      submittingMap.value[key] = false
-    }
+  }).onOk(() => {
+    void (async () => {
+      submittingMap.value[key] = true
+      try {
+        await globalStockAllocationRepository.upsertGlobalStockAllocation(
+          authStore.tenantId!,
+          childId,
+          stockId,
+          0
+        )
+        $q.notify({ type: 'positive', message: 'Allocation removed successfully.' })
+        await loadRowAllocations(stockId)
+        await fetchAllocatableData()
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        $q.notify({ type: 'negative', message: msg || 'Failed to remove allocation.' })
+      } finally {
+        submittingMap.value[key] = false
+      }
+    })()
   })
 }
 
@@ -505,7 +512,14 @@ const fetchAllocatableData = async () => {
   pagination.value.rowsNumber = allocationStore.allocatableTotal
 }
 
-const onRequest = (props: any) => {
+const onRequest = (props: {
+  pagination: {
+    page: number
+    rowsPerPage: number
+    sortBy: string
+    descending: boolean
+  }
+}) => {
   pagination.value.page = props.pagination.page
   pagination.value.rowsPerPage = props.pagination.rowsPerPage
   pagination.value.sortBy = props.pagination.sortBy
@@ -552,7 +566,7 @@ const loadChildren = async () => {
       .eq('parent_id', authStore.tenantId)
     if (err) throw err
     childTenants.value = data || []
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to load child concerns', err)
   }
 }

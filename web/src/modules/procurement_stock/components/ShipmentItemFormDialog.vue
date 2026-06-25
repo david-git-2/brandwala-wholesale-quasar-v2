@@ -1,56 +1,21 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 600px; max-width: 90vw;">
-      <q-form @submit="onSubmit">
+    <q-card style="width: 600px; max-width: 90vw;">
+      
+      <q-form @submit="onSubmitSingle">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-primary text-weight-bold">
-            {{ isEdit ? 'Edit Shipment Item' : 'Add Item to Shipment' }}
+            {{ isEdit ? 'Edit Shipment Item' : 'Add Manual Shipment Item' }}
           </div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-pa-md q-gutter-y-md">
+        <q-card-section class="q-pa-md q-gutter-y-sm">
           <q-banner v-if="error" class="bg-negative text-white rounded-borders q-py-sm">
             {{ error }}
           </q-banner>
 
-          <!-- Product Catalog Selection (Only in Create Mode) -->
-          <div v-if="!isEdit" class="q-mb-md">
-            <q-toggle
-              v-model="manualMode"
-              label="Manually type product details (Skip Catalog Search)"
-              color="primary"
-            />
-          </div>
-
-          <div v-if="!manualMode && !isEdit" class="q-mb-md">
-            <q-select
-              v-model="selectedProduct"
-              use-input
-              fill-input
-              hide-selected
-              input-debounce="300"
-              :options="productOptions"
-              label="Search Product Catalog (by Name, Barcode, Code)"
-              filled
-              dense
-              @filter="onFilterProducts"
-              @update:model-value="onSelectProduct"
-              clearable
-              :loading="searchingProducts"
-            >
-              <template #no-option>
-                <q-item>
-                  <q-item-section class="text-grey">
-                    No products found
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Product Core Fields -->
           <q-input
             v-model="form.name"
             label="Product Name *"
@@ -105,7 +70,7 @@
                 dense
                 :rules="[
                   val => val !== null && val !== undefined || 'Quantity is required',
-                  val => Number.isInteger(val) && val >= 0 || 'Must be a positive integer'
+                  val => Number.isInteger(val) && val >= 1 || 'Must be an integer >= 1'
                 ]"
               />
             </div>
@@ -173,6 +138,7 @@
           />
         </q-card-actions>
       </q-form>
+
     </q-card>
   </q-dialog>
 </template>
@@ -182,9 +148,9 @@ import { ref, onMounted, computed } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { productRepository } from 'src/modules/products/repositories/productRepository'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository'
+import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct'
 
 const props = defineProps<{
   shipmentId: number
@@ -202,7 +168,6 @@ const vendorStore = useVendorStore()
 const shipmentStore = useGlobalShipmentStore()
 
 const isEdit = computed(() => !!props.item)
-const manualMode = ref(false)
 const submitting = ref(false)
 const error = ref<string | null>(null)
 
@@ -211,7 +176,7 @@ const form = ref({
   product_id: null as number | null,
   vendor_id: null as number | null,
   name: '',
-  ordered_quantity: 0,
+  ordered_quantity: 1,
   purchase_price: 0,
   product_weight: 0,
   package_weight: 0,
@@ -223,21 +188,6 @@ const form = ref({
   source_type: null as string | null,
   source_id: null as number | null,
 })
-
-// Autocomplete product catalog states
-interface ProductItem {
-  id: number
-  name: string
-  product_code: string | null
-  barcode: string | null
-  price_gbp: number | null
-  product_weight: number | null
-  package_weight: number | null
-  image_url: string | null
-}
-const selectedProduct = ref<ProductItem | null>(null)
-const productOptions = ref<Array<{ label: string; value: ProductItem }>>([])
-const searchingProducts = ref(false)
 
 const vendorOptions = computed(() => {
   return vendorStore.items.map((v) => ({
@@ -272,77 +222,33 @@ onMounted(() => {
   }
 })
 
-const onFilterProducts = async (
-  val: string,
-  update: (callback: () => void) => void,
-) => {
-  if (val.trim().length < 2) {
-    update(() => {
-      productOptions.value = []
-    })
-    return
-  }
-
-  searchingProducts.value = true
-  try {
-    const res = await productRepository.listProducts({
-      page: 1,
-      pageSize: 30,
-      search: val,
-      searchField: 'name',
-      tenantId: authStore.tenantId,
-    })
-
-    update(() => {
-      productOptions.value = res.data.map((p) => ({
-        label: `${p.name} ${p.product_code ? `[Code: ${p.product_code}]` : ''} ${p.barcode ? `[Barcode: ${p.barcode}]` : ''}`,
-        value: p as ProductItem,
-      }))
-    })
-  } catch (err: unknown) {
-    console.error('Failed to search products', err)
-  } finally {
-    searchingProducts.value = false
-  }
-}
-
-const onSelectProduct = (option: { label: string; value: ProductItem } | null) => {
-  if (option) {
-    const prod = option.value
-    form.value.product_id = prod.id
-    form.value.name = prod.name
-    form.value.product_code = prod.product_code
-    form.value.barcode = prod.barcode
-    form.value.purchase_price = prod.price_gbp || 0
-    form.value.product_weight = prod.product_weight || 0
-    form.value.package_weight = prod.package_weight || 0
-    form.value.image_url = prod.image_url
-  } else {
-    form.value.product_id = null
-    form.value.name = ''
-    form.value.product_code = null
-    form.value.barcode = null
-    form.value.purchase_price = 0
-    form.value.product_weight = 0
-    form.value.package_weight = 0
-    form.value.image_url = null
-  }
-}
-
-const onSubmit = async () => {
-  submitting.value = ref(true).value
+const onSubmitSingle = async () => {
+  submitting.value = true
   error.value = null
 
   try {
-    if (isEdit.value && props.item) {
-      const updated = await shipmentStore.updateShipmentItem(props.item.id, form.value)
+    if (isEdit.value) {
+      const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value)
+      if (props.item!.product_id != null) {
+        const weightChanged = props.item!.product_weight !== form.value.product_weight ||
+                              props.item!.package_weight !== form.value.package_weight
+        if (weightChanged) {
+          await syncShipmentWeightToProduct(props.item!.product_id, 'product_weight', form.value.product_weight)
+          await syncShipmentWeightToProduct(props.item!.product_id, 'package_weight', form.value.package_weight)
+        }
+      }
       onDialogOK(updated)
     } else {
-      const created = await shipmentStore.addShipmentItem(form.value)
+      const payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'> = {
+        ...form.value,
+        add_method: 'manual',
+      }
+      const created = await shipmentStore.addShipmentItem(payload)
       onDialogOK(created)
     }
-  } catch (err: unknown) {
-    error.value = (err as Error).message || 'Failed to save item.'
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    error.value = msg || 'Failed to save item.'
   } finally {
     submitting.value = false
   }

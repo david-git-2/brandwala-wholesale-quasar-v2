@@ -240,7 +240,13 @@ const onCommit = async () => {
 
   try {
     // 1. Prepare global_stocks insert payload
-    const stockRows: any[] = []
+    const stockRows: {
+      parent_tenant_id: number
+      shipment_item_id: number
+      stock_type_id: number
+      quantity: number
+      is_usable: boolean
+    }[] = []
     for (const line of lines.value) {
       for (const split of line.splits) {
         if (split.quantity > 0) {

@@ -8,6 +8,8 @@ import type {
   TenantEntryResolveInput,
   TenantPreferenceUpdateInput,
   TenantUpdateInput,
+  TenantModuleSubmodule,
+  TenantModuleSubmoduleSetInput,
 } from '../types'
 
 export type TenantModule = {
@@ -295,11 +297,11 @@ const listTenantModuleSubmodules = async (
   })
 
   if (error) throw error
-  return (data ?? []) as import('../types').TenantModuleSubmodule[]
+  return (data ?? []) as TenantModuleSubmodule[]
 }
 
 const setTenantModuleSubmodule = async (
-  payload: import('../types').TenantModuleSubmoduleSetInput,
+  payload: TenantModuleSubmoduleSetInput,
 ) => {
   const { data, error } = await supabase.rpc('set_tenant_module_submodule_for_superadmin', {
     p_tenant_id: payload.tenant_id,
@@ -311,7 +313,7 @@ const setTenantModuleSubmodule = async (
   if (error) throw error
   const row = Array.isArray(data) ? data[0] : data
   if (!row) throw new Error('Submodule override was not saved.')
-  return row as import('../types').TenantModuleSubmodule
+  return row as TenantModuleSubmodule
 }
 
 export const tenantRepository = {
