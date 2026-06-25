@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card style="width: 600px; max-width: 90vw;">
+    <q-card style="width: 750px; max-width: 95vw;">
       
       <q-form @submit="onSubmitSingle">
         <q-card-section class="row items-center q-pb-none">
@@ -11,117 +11,125 @@
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-pa-md q-gutter-y-sm">
-          <q-banner v-if="error" class="bg-negative text-white rounded-borders q-py-sm">
+        <q-separator class="q-my-sm" />
+
+        <q-card-section class="q-pa-md">
+          <q-banner v-if="error" class="bg-negative text-white rounded-borders q-mb-md q-py-sm">
             {{ error }}
           </q-banner>
 
-          <q-input
-            v-model="form.name"
-            label="Product Name *"
-            filled
-            dense
-            :rules="[val => !!val || 'Product name is required', val => val.trim().length > 0 || 'Product name cannot be blank']"
-          />
-
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-select
-                v-model="form.vendor_id"
-                :options="vendorOptions"
-                label="Vendor"
+          <div class="row q-col-gutter-md">
+            <!-- Left Column: Image Preview & URL -->
+            <div class="col-12 col-sm-4 column items-center q-gutter-y-md">
+              <div class="image-preview-container flex flex-center bg-grey-1" style="width: 1.5in; height: 1.5in; border: 1px dashed #cfd8dc; border-radius: 8px; overflow: hidden;">
+                <SmartImage
+                  v-if="form.image_url"
+                  :src="form.image_url"
+                  style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                />
+                <div v-else class="column items-center text-grey-6">
+                  <q-icon name="image" size="32px" />
+                  <div class="text-caption">No Image</div>
+                </div>
+              </div>
+              <q-input
+                v-model="form.image_url"
+                label="Image URL"
                 filled
                 dense
-                emit-value
-                map-options
                 clearable
-                :loading="vendorStore.loading"
-              />
+                class="full-width"
+              >
+                <template #prepend>
+                  <q-icon name="link" />
+                </template>
+              </q-input>
             </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.product_code"
-                label="Product Code"
-                filled
-                dense
-              />
-            </div>
-          </div>
 
-          <div class="row q-col-gutter-sm">
-            <div class="col-12">
+            <!-- Right Column: Fields -->
+            <div class="col-12 col-sm-8 q-gutter-y-sm">
               <q-input
-                v-model="form.barcode"
-                label="Barcode"
+                v-model="form.name"
+                label="Product Name *"
                 filled
                 dense
+                :rules="[val => !!val || 'Product name is required', val => val.trim().length > 0 || 'Product name cannot be blank']"
               />
-            </div>
-          </div>
 
-          <!-- Quantity and Price -->
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model.number="form.ordered_quantity"
-                type="number"
-                label="Ordered Quantity *"
-                filled
-                dense
-                :rules="[
-                  val => val !== null && val !== undefined || 'Quantity is required',
-                  val => Number.isInteger(val) && val >= 1 || 'Must be an integer >= 1'
-                ]"
-              />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model.number="form.purchase_price"
-                type="number"
-                step="0.01"
-                label="Purchase Price *"
-                filled
-                dense
-                :rules="[
-                  val => val !== null && val !== undefined || 'Price is required',
-                  val => val >= 0 || 'Must be >= 0'
-                ]"
-              />
-            </div>
-          </div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model="form.product_code"
+                    label="Product Code"
+                    filled
+                    dense
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model="form.barcode"
+                    label="Barcode"
+                    filled
+                    dense
+                  />
+                </div>
+              </div>
 
-          <!-- Weights -->
-          <div class="text-subtitle2 text-grey-8 q-mt-md q-mb-xs">Weights (Grams)</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model.number="form.product_weight"
-                type="number"
-                label="Product Weight (g)"
-                filled
-                dense
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model.number="form.package_weight"
-                type="number"
-                label="Package Weight (g)"
-                filled
-                dense
-                :rules="[val => val >= 0 || 'Must be >= 0']"
-              />
-            </div>
-          </div>
+              <!-- Quantity and Price -->
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.ordered_quantity"
+                    type="number"
+                    label="Ordered Quantity *"
+                    filled
+                    dense
+                    :rules="[
+                      val => val !== null && val !== undefined || 'Quantity is required',
+                      val => Number.isInteger(val) && val >= 1 || 'Must be an integer >= 1'
+                    ]"
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.purchase_price"
+                    type="number"
+                    step="0.01"
+                    label="Purchase Price *"
+                    filled
+                    dense
+                    :rules="[
+                      val => val !== null && val !== undefined || 'Price is required',
+                      val => val >= 0 || 'Must be >= 0'
+                    ]"
+                  />
+                </div>
+              </div>
 
-          <!-- Image Preview -->
-          <div v-if="form.image_url" class="row items-center q-col-gutter-md q-mt-sm">
-            <div class="col-auto">
-              <q-img :src="form.image_url" spinner-color="white" style="height: 60px; max-width: 60px; border-radius: 4px;" />
-            </div>
-            <div class="col">
-              <span class="text-caption text-grey-7">Image URL configured from product catalog.</span>
+              <!-- Weights -->
+              <div class="text-subtitle2 text-grey-8 q-mt-sm q-mb-xs">Weights (Grams)</div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.product_weight"
+                    type="number"
+                    label="Product Weight (g)"
+                    filled
+                    dense
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.package_weight"
+                    type="number"
+                    label="Package Weight (g)"
+                    filled
+                    dense
+                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </q-card-section>
@@ -146,6 +154,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
+import SmartImage from 'src/components/SmartImage.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
@@ -187,13 +196,6 @@ const form = ref({
   source_child_tenant_id: null as number | null,
   source_type: null as string | null,
   source_id: null as number | null,
-})
-
-const vendorOptions = computed(() => {
-  return vendorStore.items.map((v) => ({
-    label: v.name,
-    value: v.id,
-  }))
 })
 
 onMounted(() => {

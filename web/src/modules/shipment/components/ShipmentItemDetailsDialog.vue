@@ -130,8 +130,8 @@ const displayNumber = (value: number | null | undefined) =>
 
 <style scoped>
 .shipment-item-preview {
-  width: 100%;
-  height: 180px;
+  width: 0.65in;
+  height: 0.65in;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;

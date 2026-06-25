@@ -2,9 +2,5 @@
   "extends": "./.quasar/tsconfig.json",
   "compilerOptions": {
     "noImplicitAny": false
-  },
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts"
-  ]
+  }
 }

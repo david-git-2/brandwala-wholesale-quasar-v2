@@ -12,8 +12,8 @@
             <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">Barcode</th>
             <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">Product Code</th>
             <th v-if="isColumnVisible('add_method')" class="text-left shipment-method-col">Method</th>
-            <th v-if="isColumnVisible('purchase_price')" class="text-right shipment-price-col">Price GBP</th>
-            <th v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">Cost BDT</th>
+            <th v-if="isColumnVisible('purchase_price')" class="text-right shipment-price-col">Price {{ purchaseCurrencySymbol }}</th>
+            <th v-if="isColumnVisible('cost_bdt')" class="text-right shipment-cost-col">Cost {{ costCurrencySymbol }}</th>
             <th v-if="isColumnVisible('ordered_quantity')" class="text-right shipment-qty-col shipment-qty-col--quantity">Quantity</th>
             <th v-if="isColumnVisible('product_weight')" class="text-right shipment-product-weight-col">Product Wt</th>
             <th v-if="isColumnVisible('package_weight')" class="text-right shipment-package-weight-col">Package Wt</th>
@@ -213,12 +213,20 @@ import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalS
 import { calculateLineLandedCostBdt } from '../utils/landedCost'
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct'
 
-const props = defineProps<{
-  items: GlobalShipmentItem[]
-  shipment: GlobalShipment | null
-  loading?: boolean
-  visibleColumns?: ColumnKey[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    items: GlobalShipmentItem[]
+    shipment: GlobalShipment | null
+    loading?: boolean
+    visibleColumns?: ColumnKey[]
+    purchaseCurrencySymbol?: string
+    costCurrencySymbol?: string
+  }>(),
+  {
+    purchaseCurrencySymbol: '£',
+    costCurrencySymbol: '৳',
+  },
+)
 
 const emit = defineEmits<{
   'edit-details': [item: GlobalShipmentItem]
@@ -263,12 +271,22 @@ const activeVisibleColumns = computed(() => props.visibleColumns ?? internalVisi
 const isInternational = computed(() => props.shipment?.type === 'international')
 
 const columnOptions = computed(() =>
-  baseColumnOptions.filter((opt) => {
-    if (!isInternational.value) {
-      return !['purchase_price', 'product_weight', 'package_weight'].includes(opt.value)
-    }
-    return true
-  }),
+  baseColumnOptions
+    .filter((opt) => {
+      if (!isInternational.value) {
+        return !['purchase_price', 'product_weight', 'package_weight'].includes(opt.value)
+      }
+      return true
+    })
+    .map((opt) => {
+      if (opt.value === 'purchase_price') {
+        return { label: `Price ${props.purchaseCurrencySymbol}`, value: 'purchase_price' as ColumnKey }
+      }
+      if (opt.value === 'cost_bdt') {
+        return { label: `Cost ${props.costCurrencySymbol}`, value: 'cost_bdt' as ColumnKey }
+      }
+      return opt
+    }),
 )
 
 const isEditable = computed(() => {
@@ -385,16 +403,16 @@ defineExpose({
 }
 
 .shipment-item-image-box {
-  width: 56px;
-  height: 56px;
+  width: 1in;
+  height: 1in;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .shipment-details-table :deep(.shipment-item-image) {
-  max-width: 56px;
-  max-height: 56px;
+  max-width: 1in;
+  max-height: 1in;
   object-fit: contain;
 }
 
@@ -411,9 +429,9 @@ defineExpose({
 }
 
 .shipment-image-col {
-  width: 88px;
-  min-width: 88px;
-  max-width: 88px;
+  width: 1.2in;
+  min-width: 1.2in;
+  max-width: 1.2in;
 }
 
 .shipment-name-col {
@@ -491,7 +509,7 @@ defineExpose({
 .shipment-details-table :deep(td:nth-child(3)),
 .shipment-details-table :deep(th:nth-child(3)) {
   position: sticky;
-  left: 148px;
+  left: calc(60px + 1.2in);
 }
 
 .shipment-details-table :deep(td:first-child) {
@@ -521,5 +539,15 @@ defineExpose({
   .shipment-details-table {
     height: clamp(320px, calc(100vh - 260px), 65vh);
   }
+}
+
+:deep(input[type="number"]::-webkit-outer-spin-button),
+:deep(input[type="number"]::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+:deep(input[type="number"]) {
+  -moz-appearance: textfield;
 }
 </style>
