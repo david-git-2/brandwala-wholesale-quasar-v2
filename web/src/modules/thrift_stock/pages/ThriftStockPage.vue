@@ -1528,7 +1528,12 @@ async function saveStockCell(
   const updated = await store.updateStock(row.id, stockPatch, pricing);
   Object.assign(row, stockPatch);
   if (pricingPatch) {
-    row.pricing = { ...(row.pricing || {}), ...pricingPatch };
+    row.pricing = {
+      cost_of_goods_sold: pricing.cost_of_goods_sold,
+      target_price: pricing.target_price,
+      listed_price: pricing.listed_price,
+      extra_expense_cost: pricing.extra_expense_cost ?? 0,
+    };
   }
   if (updated.pricing) {
     row.pricing = updated.pricing;
@@ -1944,9 +1949,13 @@ async function submitQuickAdd() {
     $q.notify({ type: 'negative', message: 'No available barcode to assign' });
     return;
   }
+  const pendingBlob = quickAddForm.value.pendingBlob;
+  if (!pendingBlob) {
+    $q.notify({ type: 'negative', message: 'Image is required' });
+    return;
+  }
 
   quickSubmitting.value = true;
-  const pendingBlob = quickAddForm.value.pendingBlob;
   const alsoUploadToDrive = quickAddForm.value.alsoUploadToDrive;
   let uploadedImage: StockImageUploadResult | null = null;
 
