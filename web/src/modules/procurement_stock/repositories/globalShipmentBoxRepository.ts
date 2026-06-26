@@ -3,7 +3,6 @@ import type { Tables } from 'src/types/supabase'
 
 export type GlobalShipmentBox = Tables<'global_shipment_boxes'>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
 const listByShipmentId = async (shipmentId: number): Promise<GlobalShipmentBox[]> => {

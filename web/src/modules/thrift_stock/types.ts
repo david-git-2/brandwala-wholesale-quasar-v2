@@ -34,6 +34,7 @@ export interface ThriftStock {
     extra_expense_cost?: number;
   };
   image_url?: string | undefined;
+  drive_file_id?: string | undefined;
   origin_purchase_price?: number | undefined;
   extra_origin_purchase_expense?: number | undefined;
 }

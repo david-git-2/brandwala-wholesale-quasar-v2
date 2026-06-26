@@ -20,6 +20,8 @@
     "python:sync:pc": "python3 python/scripts/uk/sync_pc_products_to_supabase.py --input web/public/uk/pc_data.json --vendor PC --market GB",
     "python:sync:wts": "python3 python/scripts/uk/sync_pc_products_to_supabase.py --input web/public/uk/wts_data.json --vendor WTS --market GB --tenant-id 10 --vendor-id 4 --images-dir python/images/uk/wts_images --skip-image-upload",
     "deploy:frontend": "bash scripts/deploy-frontend.sh",
+    "secrets:drive": "bash scripts/set-drive-secrets.sh",
+    "secrets:drive-oauth": "bash scripts/set-drive-oauth-secrets.sh",
     "backend:init": "npx supabase init",
     "backend:login": "npx supabase login",
     "backend:link": "npx supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",

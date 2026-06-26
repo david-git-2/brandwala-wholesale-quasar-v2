@@ -22,6 +22,12 @@ export interface ThriftStockListResult {
   meta: ThriftStockListMeta;
 }
 
+export interface ThriftStockDeleteTarget {
+  id: number;
+  imageUrl?: string | undefined;
+  driveFileId?: string | undefined;
+}
+
 interface ThriftStockDbRow {
   id: number;
   tenant_id: number;
@@ -54,6 +60,7 @@ interface ThriftStockDbRow {
   }>;
   thrift_stock_images?: Array<{
     image_url: string;
+    drive_file_id?: string | null;
     is_primary: boolean;
   }>;
   origin_purchase_price?: number;
@@ -68,6 +75,7 @@ interface ThriftStockPaginatedRow extends ThriftStockDbRow {
     extra_expense_cost?: number;
   };
   image_url?: string | null;
+  drive_file_id?: string | null;
 }
 
 export interface ThriftStockPricingInput {
@@ -171,6 +179,7 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
         extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
       },
       image_url: stock.image_url || primaryImage?.image_url || undefined,
+      drive_file_id: stock.drive_file_id || primaryImage?.drive_file_id || undefined,
     };
   }) as ThriftStock[];
 }
@@ -233,6 +242,7 @@ async function fetchStocksPaginatedDirect(
         ),
         thrift_stock_images (
           image_url,
+          drive_file_id,
           is_primary
         )
       `,
@@ -303,6 +313,7 @@ export const thriftStockRepository = {
         ...stock,
         pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
         image_url: primaryImage?.image_url || undefined,
+        drive_file_id: primaryImage?.drive_file_id || undefined,
       };
     }) as unknown as ThriftStock[];
   },
@@ -310,7 +321,8 @@ export const thriftStockRepository = {
   async createStock(
     stock: Partial<ThriftStock>,
     pricing: ThriftStockPricingInput,
-    imageUrl?: string
+    imageUrl?: string,
+    driveFileId?: string,
   ): Promise<ThriftStock> {
     const { data: stockData, error: stockError } = await supabase
       .from('thrift_stocks')
@@ -331,6 +343,7 @@ export const thriftStockRepository = {
         .insert({
           stock_id: stockData.id,
           image_url: imageUrl,
+          drive_file_id: driveFileId || null,
           is_primary: true,
           inserted_by: stockData.inserted_by,
         });
@@ -341,6 +354,7 @@ export const thriftStockRepository = {
       ...stockData,
       pricing: pricingData,
       image_url: imageUrl,
+      drive_file_id: driveFileId,
     } as ThriftStock;
   },
 
@@ -349,6 +363,7 @@ export const thriftStockRepository = {
     stock: Partial<ThriftStock>,
     pricing: ThriftStockPricingInput,
     imageUrl?: string | null,
+    driveFileId?: string | null,
   ): Promise<ThriftStock> {
     let stockData: ThriftStock;
 
@@ -374,13 +389,21 @@ export const thriftStockRepository = {
     const pricingData = await upsertStockPricing(id, pricing, stockData.inserted_by);
 
     let resolvedImageUrl: string | undefined;
+    let resolvedDriveFileId: string | undefined;
     if (imageUrl !== undefined) {
       if (imageUrl) {
-        await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, stockData.inserted_by);
+        await thriftStockRepository.upsertPrimaryStockImage(
+          id,
+          imageUrl,
+          stockData.inserted_by,
+          driveFileId,
+        );
         resolvedImageUrl = imageUrl;
+        resolvedDriveFileId = driveFileId || undefined;
       } else {
         await thriftStockRepository.deletePrimaryStockImage(id);
         resolvedImageUrl = undefined;
+        resolvedDriveFileId = undefined;
       }
     }
 
@@ -388,10 +411,16 @@ export const thriftStockRepository = {
       ...stockData,
       pricing: pricingData,
       ...(resolvedImageUrl !== undefined ? { image_url: resolvedImageUrl } : {}),
+      ...(resolvedDriveFileId !== undefined ? { drive_file_id: resolvedDriveFileId } : {}),
     } as ThriftStock;
   },
 
-  async upsertPrimaryStockImage(stockId: number, imageUrl: string, insertedBy: string): Promise<void> {
+  async upsertPrimaryStockImage(
+    stockId: number,
+    imageUrl: string,
+    insertedBy: string,
+    driveFileId?: string | null,
+  ): Promise<void> {
     const { data: existing, error: fetchError } = await supabase
       .from('thrift_stock_images')
       .select('id')
@@ -403,7 +432,11 @@ export const thriftStockRepository = {
     if (existing) {
       const { error } = await supabase
         .from('thrift_stock_images')
-        .update({ image_url: imageUrl, inserted_by: insertedBy })
+        .update({
+          image_url: imageUrl,
+          drive_file_id: driveFileId ?? null,
+          inserted_by: insertedBy,
+        })
         .eq('id', existing.id);
       if (error) throw error;
       return;
@@ -414,6 +447,7 @@ export const thriftStockRepository = {
       .insert({
         stock_id: stockId,
         image_url: imageUrl,
+        drive_file_id: driveFileId ?? null,
         is_primary: true,
         inserted_by: insertedBy,
       });
@@ -443,5 +477,47 @@ export const thriftStockRepository = {
       .delete()
       .eq('id', id);
     if (error) throw error;
+  },
+
+  async deleteStocks(ids: number[]): Promise<void> {
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('thrift_stocks')
+      .delete()
+      .in('id', ids);
+    if (error) throw error;
+  },
+
+  async fetchDeleteTargets(ids: number[]): Promise<ThriftStockDeleteTarget[]> {
+    if (!ids.length) return [];
+
+    const { data, error } = await supabase
+      .from('thrift_stocks')
+      .select(`
+        id,
+        thrift_stock_images (
+          image_url,
+          drive_file_id,
+          is_primary
+        )
+      `)
+      .in('id', ids);
+
+    if (error) throw error;
+
+    return (data || []).map((row) => {
+      const images = (row.thrift_stock_images as Array<{
+        image_url: string;
+        drive_file_id: string | null;
+        is_primary: boolean;
+      }>) || [];
+      const primary = images.find((img) => img.is_primary) || images[0];
+
+      return {
+        id: row.id as number,
+        imageUrl: primary?.image_url,
+        driveFileId: primary?.drive_file_id ?? undefined,
+      };
+    });
   },
 };

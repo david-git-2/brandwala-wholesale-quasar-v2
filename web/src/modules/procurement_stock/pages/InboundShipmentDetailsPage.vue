@@ -575,7 +575,7 @@ import ReceiveShipmentDialog from '../components/ReceiveShipmentDialog.vue'
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue'
 import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLineItemsTable.vue'
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue'
-import { calculateLineLandedCostBdt, calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost'
+import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost'
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 import type { GlobalCurrency } from 'src/modules/global_reference/types'
 

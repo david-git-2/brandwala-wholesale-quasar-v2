@@ -5185,6 +5185,7 @@ export type Database = {
       thrift_stock_images: {
         Row: {
           created_at: string
+          drive_file_id: string | null
           id: number
           image_url: string
           inserted_by: string
@@ -5194,6 +5195,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          drive_file_id?: string | null
           id?: number
           image_url: string
           inserted_by: string
@@ -5203,6 +5205,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          drive_file_id?: string | null
           id?: number
           image_url?: string
           inserted_by?: string

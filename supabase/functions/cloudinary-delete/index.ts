@@ -6,7 +6,17 @@ const CORS_HEADERS = {
   'access-control-allow-headers': '*',
 }
 
-const THRIFT_FOLDER_PREFIXES = ['thrift_stocks/', 'thrift-stocks/']
+const THRIFT_FOLDER_PREFIXES = [
+  'thrift-inventory-images/',
+  'thrift_stocks/',
+  'thrift-stocks/',
+]
+
+const THRIFT_ROOT_FOLDER_SEGMENTS = [
+  'thrift-inventory-images',
+  'thrift_stocks',
+  'thrift-stocks',
+]
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -42,7 +52,8 @@ export function parseCloudinaryPublicId(
     publicIdSegments = segments.slice(versionIdx + 1)
   } else {
     const folderIdx = segments.findIndex(
-      (segment) => segment.startsWith('thrift-stocks') || segment.startsWith('thrift_stocks'),
+      (segment) =>
+        THRIFT_ROOT_FOLDER_SEGMENTS.includes(segment) || /^shipment-\d+$/.test(segment),
     )
     publicIdSegments = folderIdx !== -1 ? segments.slice(folderIdx) : segments
   }
@@ -56,7 +67,10 @@ export function parseCloudinaryPublicId(
 }
 
 function isThriftPublicId(publicId: string): boolean {
-  return THRIFT_FOLDER_PREFIXES.some((prefix) => publicId.startsWith(prefix))
+  if (THRIFT_FOLDER_PREFIXES.some((prefix) => publicId.startsWith(prefix))) {
+    return true
+  }
+  return /^shipment-\d+\//.test(publicId)
 }
 
 type CloudinaryDestroyResult =
@@ -157,9 +171,25 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'imageUrl is required' }, 400)
   }
 
-  const publicId = parseCloudinaryPublicId(imageUrl, cloudName)
+  const publicId = parseCloudinaryPublicId(imageUrl)
   if (!publicId || !isThriftPublicId(publicId)) {
     return jsonResponse({ error: 'Invalid or disallowed Cloudinary image URL' }, 400)
+  }
+
+  const urlCloudName = (() => {
+    try {
+      const match = new URL(imageUrl).pathname.match(/^\/([^/]+)\/image\/upload\//)
+      return match?.[1] ?? null
+    } catch {
+      return null
+    }
+  })()
+
+  if (urlCloudName && urlCloudName !== cloudName) {
+    console.warn(
+      'Cloudinary URL cloud name differs from server config; using server cloud for destroy.',
+      { urlCloudName, serverCloudName: cloudName, publicId },
+    )
   }
 
   try {

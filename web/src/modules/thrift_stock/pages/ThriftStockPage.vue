@@ -8,13 +8,50 @@
             <div class="text-h6 text-weight-bold">Thrift Stock</div>
             <div class="text-caption text-grey-8">Manage bulk and single items, conditions, sizes, boxes, and shelves</div>
           </div>
-          <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
+          <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none q-gutter-sm">
+            <q-btn
+              color="primary"
+              outline
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              icon="view_column"
+              label="Columns"
+              aria-label="Select columns"
+            >
+              <q-menu>
+                <q-list style="min-width: 240px">
+                  <q-item>
+                    <q-item-section>
+                      <div class="text-subtitle2">Show Columns</div>
+                    </q-item-section>
+                  </q-item>
+                  <q-item>
+                    <q-item-section>
+                      <q-checkbox
+                        v-model="allSelectableColumnsSelected"
+                        label="Select / Deselect All"
+                      />
+                    </q-item-section>
+                  </q-item>
+                  <q-item>
+                    <q-item-section>
+                      <q-option-group
+                        v-model="selectedColumnNames"
+                        type="checkbox"
+                        :options="columnSelectorOptions"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
             <q-btn
               outline
               color="secondary"
               no-caps
               size="sm"
-              class="pill-btn slim-btn q-mr-sm"
+              class="pill-btn slim-btn"
               icon="settings"
               label="Settings"
               @click="goToSettings"
@@ -33,51 +70,83 @@
       </q-card-section>
     </q-card>
 
-    <!-- Filters -->
-    <q-card flat class="q-mb-md floating-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row q-col-gutter-sm items-end">
-          <div class="col-12 col-md-5">
-            <q-input
-              v-model="searchText"
-              outlined
-              dense
-              label="Search"
-              placeholder="Name, brand, or barcode"
-              debounce="400"
-              @update:model-value="onFiltersChanged"
-            >
-              <template #append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-6 col-md-3">
-            <q-select
-              v-model="statusFilter"
-              outlined
-              dense
-              label="Status"
-              :options="statusOptions"
-              emit-value
-              map-options
-              clearable
-              @update:model-value="onFiltersChanged"
-            />
-          </div>
-          <div class="col-6 col-md-3">
-            <q-select
-              v-model="conditionFilter"
-              outlined
-              dense
-              label="Condition"
-              :options="conditionOptions"
-              emit-value
-              map-options
-              clearable
-              @update:model-value="onFiltersChanged"
-            />
-          </div>
+    <!-- Search & Filters Toolbar -->
+    <div class="row items-center q-gutter-sm q-mb-md">
+      <q-input
+        v-model="searchText"
+        outlined
+        dense
+        clearable
+        class="col-grow"
+        placeholder="Search name, brand, or barcode..."
+        debounce="400"
+        @update:model-value="onFiltersChanged"
+      >
+        <template #prepend>
+          <q-icon name="search" />
+        </template>
+      </q-input>
+
+      <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+        <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+          {{ activeFilterCount }}
+        </q-badge>
+      </q-btn>
+    </div>
+
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <div class="q-gutter-y-md q-pa-sm">
+        <q-select
+          v-model="draftStatusFilter"
+          :options="statusOptions"
+          outlined
+          dense
+          label="Status"
+          emit-value
+          map-options
+          clearable
+        />
+        <q-select
+          v-model="draftConditionFilter"
+          :options="conditionOptions"
+          outlined
+          dense
+          label="Condition"
+          emit-value
+          map-options
+          clearable
+        />
+        <div class="row justify-end q-gutter-x-sm q-mt-md">
+          <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetDrawerFilters" />
+          <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyDrawerFilters" />
+        </div>
+      </div>
+    </FilterSidebar>
+
+    <q-card
+      v-if="selectedStockIds.length"
+      flat
+      class="q-mb-md floating-surface shadow-1 bulk-selection-bar"
+    >
+      <q-card-section class="row items-center q-col-gutter-sm q-py-sm">
+        <div class="col text-body2 text-weight-medium">
+          {{ selectedStockIds.length }} item{{ selectedStockIds.length === 1 ? '' : 's' }} selected
+        </div>
+        <div class="col-auto row q-gutter-sm">
+          <q-btn
+            flat
+            no-caps
+            color="grey-8"
+            label="Clear"
+            @click="clearStockSelection"
+          />
+          <q-btn
+            color="negative"
+            no-caps
+            icon="delete"
+            label="Delete selected"
+            @click="confirmBulkDelete"
+          />
         </div>
       </q-card-section>
     </q-card>
@@ -85,11 +154,13 @@
     <PageInitialLoader v-if="loading && !stocks.length" />
 
     <!-- Table -->
-    <q-card v-else flat class="floating-surface shadow-1">
+    <q-card v-else flat class="floating-surface shadow-1 thrift-table-card">
       <q-table
         flat
         :rows="stocks"
         :columns="columns"
+        :visible-columns="visibleColumns"
+        :table-style="{ maxHeight: '100%' }"
         row-key="id"
         v-model:pagination="tablePagination"
         :rows-per-page-options="[10, 20, 50]"
@@ -97,98 +168,436 @@
         class="thrift-table"
         @request="onTableRequest"
       >
+        <template #header-cell-select="props">
+          <q-th :props="props" class="col-sticky-select">
+            <q-checkbox
+              :model-value="allPageRowsSelected"
+              :indeterminate="somePageRowsSelected && !allPageRowsSelected"
+              dense
+              @update:model-value="toggleSelectAllPage"
+            />
+          </q-th>
+        </template>
+        <template #header-cell-sl="props">
+          <q-th :props="props" class="col-sticky-sl">{{ props.col.label }}</q-th>
+        </template>
+        <template #header-cell-image="props">
+          <q-th :props="props" class="col-sticky-image">{{ props.col.label }}</q-th>
+        </template>
         <template #loading>
           <PageInitialLoader compact />
         </template>
-        <template #body-cell-sl="props">
-          <q-td :props="props">
-            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
-          </q-td>
-        </template>
-        <template #body-cell-image="props">
-          <q-td :props="props">
-            <q-avatar square size="40px" class="rounded-borders shadow-1" style="background: #f7f9fc; overflow: hidden;">
-              <SmartImage
-                :src="props.value"
-                :alt="props.row.name || 'Stock image'"
-                style="width: 40px; height: 40px;"
-                imgClass="full-width full-height"
-                :enableEdit="false"
-              />
-            </q-avatar>
-          </q-td>
-        </template>
-        <template #body-cell-barcode="props">
-          <q-td :props="props">
-            <span
-              v-if="props.value"
-              class="text-primary cursor-pointer text-weight-medium"
-              @click.stop="openBarcodePreview(props.row)"
+        <template #body="props">
+          <q-tr :props="props">
+            <q-td
+              v-for="col in props.cols"
+              :key="col.name"
+              :props="{ ...props, col }"
+              :class="[tableCellClass(col.name), stickyCellClass(col.name)]"
             >
-              {{ props.value }}
-            </span>
-            <span v-else class="text-grey-5">—</span>
-          </q-td>
-        </template>
-        <template #body-cell-box="props">
-          <q-td :props="props">
-            {{ getBoxName(props.row.box_id) }}
-          </q-td>
-        </template>
-        <template #body-cell-product_weight="props">
-          <q-td :props="props">
-            {{ props.value ? `${props.value} g` : '—' }}
-          </q-td>
-        </template>
-        <template #body-cell-extra_weight="props">
-          <q-td :props="props">
-            {{ props.value ? `${props.value} g` : '—' }}
-          </q-td>
-        </template>
-        <template #body-cell-status="props">
-          <q-td :props="props">
-            <q-chip
-              dense
-              square
-              :style="statusChipStyle(props.value)"
-              class="thrift-status-chip"
-            >
-              <span class="status-dot" :style="{ backgroundColor: statusDotColor(props.value) }" />
-              {{ props.value ?? 'AVAILABLE' }}
-            </q-chip>
-          </q-td>
-        </template>
-        <template #body-cell-pricing="props">
-          <q-td :props="props">
-            <div v-if="props.value" class="text-caption text-black">
-              <span class="text-grey-7">Origin:</span> {{ formatThriftAmount(props.row.origin_purchase_price, shipmentPurchaseCurrency(props.row.shipment_id)) }}
-              &nbsp;|&nbsp;
-              <span class="text-grey-7">Extra origin:</span> {{ formatThriftAmount(props.row.extra_origin_purchase_expense, shipmentPurchaseCurrency(props.row.shipment_id)) }}
-              &nbsp;|&nbsp;
-              <span class="text-grey-7">Cost:</span> {{ formatThriftAmount(props.value.cost_of_goods_sold, shipmentCostCurrency(props.row.shipment_id)) }}
-              &nbsp;|&nbsp;
-              <span class="text-grey-7">Extra cost:</span> {{ formatThriftAmount(props.value.extra_expense_cost, shipmentCostCurrency(props.row.shipment_id)) }}
-              &nbsp;|&nbsp;
-              <span class="text-grey-7">Listed:</span> {{ formatThriftAmount(props.value.listed_price, shipmentCostCurrency(props.row.shipment_id)) }}
-            </div>
-            <div v-else class="text-grey-5">—</div>
-          </q-td>
-        </template>
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="text-right">
-            <q-btn flat round dense icon="o_edit" size="sm" color="primary" @click.stop="openEditDialog(props.row)">
-              <q-tooltip>Edit Details</q-tooltip>
-            </q-btn>
-            <q-btn flat round dense icon="delete" size="sm" color="negative" @click.stop="confirmDelete(props.row)">
-              <q-tooltip>Delete Stock</q-tooltip>
-            </q-btn>
-            <q-btn flat round dense icon="o_report_problem" size="sm" color="warning" @click.stop="updateStatus(props.row.id, 'DAMAGED')">
-              <q-tooltip>Mark Damaged</q-tooltip>
-            </q-btn>
-            <q-btn flat round dense icon="o_block" size="sm" color="negative" @click.stop="updateStatus(props.row.id, 'STOLEN')">
-              <q-tooltip>Mark Stolen</q-tooltip>
-            </q-btn>
-          </q-td>
+              <template v-if="col.name === 'select'">
+                <q-checkbox
+                  :model-value="selectedStockIds.includes(props.row.id)"
+                  dense
+                  @update:model-value="(checked) => toggleStockSelection(props.row.id, !!checked)"
+                />
+              </template>
+              <template v-else-if="col.name === 'sl'">
+                {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+              </template>
+              <template v-else-if="col.name === 'image'">
+                <div class="thrift-stock-image-wrap">
+                  <SmartImage
+                    :src="props.row.image_url"
+                    :alt="props.row.name || 'Stock image'"
+                    imgClass="thrift-stock-image__img"
+                    :enableEdit="false"
+                  />
+                </div>
+              </template>
+              <template v-else-if="col.name === 'barcode'">
+                <div class="editable-value row items-center no-wrap">
+                  <span class="col ellipsis">{{ props.row.barcode || '—' }}</span>
+                  <q-btn
+                    v-if="props.row.barcode"
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="qr_code"
+                    color="primary"
+                    class="col-auto"
+                    @click.stop="openBarcodePreview(props.row)"
+                  >
+                    <q-tooltip>Preview barcode</q-tooltip>
+                  </q-btn>
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.barcode"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onTextCellSave(props.row, 'barcode', String(value ?? ''))"
+                >
+                  <q-input v-model="scope.value" dense outlined autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'name'">
+                <div class="editable-value">{{ props.row.name || '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.name"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onTextCellSave(props.row, 'name', String(value ?? ''))"
+                >
+                  <q-input v-model="scope.value" dense outlined autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'brand_name'">
+                <div class="editable-value">{{ props.row.brand_name || '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.brand_name"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onTextCellSave(props.row, 'brand_name', String(value ?? ''))"
+                >
+                  <q-input v-model="scope.value" dense outlined autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'section'">
+                <div class="editable-value">{{ props.row.section || '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.section"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onSectionSave(props.row, value as ThriftSection | null)"
+                >
+                  <q-select
+                    v-model="scope.value"
+                    :options="[...sectionSelectOptions]"
+                    dense
+                    outlined
+                    clearable
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'size'">
+                <div class="editable-value">{{ props.row.size || '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.size"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onTextCellSave(props.row, 'size', String(value ?? ''))"
+                >
+                  <q-input v-model="scope.value" dense outlined autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'box'">
+                <div class="editable-value">{{ getBoxName(props.row.box_id) }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.box_id ?? null"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onBoxSave(props.row, value as number | null)"
+                >
+                  <q-select
+                    v-model="scope.value"
+                    :options="boxesForShipment(props.row.shipment_id)"
+                    option-value="id"
+                    option-label="name"
+                    emit-value
+                    map-options
+                    dense
+                    outlined
+                    clearable
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'product_weight'">
+                <div class="editable-value">
+                  {{ props.row.product_weight ? `${props.row.product_weight} g` : '—' }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.product_weight ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onNumberCellSave(props.row, 'product_weight', toNumber(value))"
+                >
+                  <q-input v-model.number="scope.value" type="number" min="0" step="1" dense outlined suffix="g" autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'extra_weight'">
+                <div class="editable-value">
+                  {{ props.row.extra_weight ? `${props.row.extra_weight} g` : '—' }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.extra_weight ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onNumberCellSave(props.row, 'extra_weight', toNumber(value))"
+                >
+                  <q-input v-model.number="scope.value" type="number" min="0" step="1" dense outlined suffix="g" autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'condition'">
+                <div class="editable-value">{{ props.row.condition || '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.condition"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onConditionSave(props.row, value as ThriftCondition | null)"
+                >
+                  <q-select
+                    v-model="scope.value"
+                    :options="[...conditionSelectOptions]"
+                    dense
+                    outlined
+                    clearable
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'quantity'">
+                <div class="editable-value">{{ props.row.quantity ?? '—' }}</div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.quantity"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onNumberCellSave(props.row, 'quantity', toNumber(value))"
+                >
+                  <q-input v-model.number="scope.value" type="number" min="0" step="1" dense outlined autofocus />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'origin_purchase_price'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.origin_purchase_price, shipmentPurchaseCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.origin_purchase_price ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onOriginPurchasePriceSave(props.row, toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentPurchaseCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'extra_origin_purchase_expense'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.extra_origin_purchase_expense, shipmentPurchaseCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.extra_origin_purchase_expense ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onExtraOriginExpenseSave(props.row, toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentPurchaseCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'cost_of_goods_sold'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.pricing?.cost_of_goods_sold, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.pricing?.cost_of_goods_sold ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onPricingCellSave(props.row, 'cost_of_goods_sold', toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'extra_expense_cost'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.pricing?.extra_expense_cost, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.pricing?.extra_expense_cost ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onPricingCellSave(props.row, 'extra_expense_cost', toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'target_price'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.pricing?.target_price, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.pricing?.target_price ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onPricingCellSave(props.row, 'target_price', toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'listed_price'">
+                <div class="editable-value">
+                  {{ formatStockPrice(props.row.pricing?.listed_price, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.pricing?.listed_price ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onPricingCellSave(props.row, 'listed_price', toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'status'">
+                <q-chip
+                  dense
+                  square
+                  :style="statusChipStyle(props.row.status)"
+                  class="thrift-status-chip editable-value"
+                >
+                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(props.row.status) }" />
+                  {{ props.row.status ?? 'AVAILABLE' }}
+                </q-chip>
+                <q-popup-edit
+                  v-slot="scope"
+                  :model-value="props.row.status"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onStatusCellSave(props.row, String(value ?? 'AVAILABLE'))"
+                >
+                  <q-select
+                    v-model="scope.value"
+                    :options="statusOptions"
+                    emit-value
+                    map-options
+                    dense
+                    outlined
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'actions'">
+                <q-btn flat round dense icon="o_edit" size="sm" color="primary" @click.stop="openEditDialog(props.row)">
+                  <q-tooltip>Edit Details</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense icon="delete" size="sm" color="negative" @click.stop="confirmDelete(props.row)">
+                  <q-tooltip>Delete Stock</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense icon="o_report_problem" size="sm" color="warning" @click.stop="updateStatus(props.row.id, 'DAMAGED')">
+                  <q-tooltip>Mark Damaged</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense icon="o_block" size="sm" color="negative" @click.stop="updateStatus(props.row.id, 'STOLEN')">
+                  <q-tooltip>Mark Stolen</q-tooltip>
+                </q-btn>
+              </template>
+              <template v-else>
+                {{ col.value }}
+              </template>
+            </q-td>
+          </q-tr>
         </template>
       </q-table>
     </q-card>
@@ -473,7 +882,38 @@
               map-options
               class="soft-input"
               clearable
-              @update:model-value="generateBarcode"
+            />
+
+            <q-input
+              v-model="quickAddForm.brand_name"
+              outlined
+              dense
+              label="Brand name *"
+              class="soft-input"
+              :rules="[(val) => !!String(val || '').trim() || 'Required']"
+            />
+
+            <q-select
+              v-model="quickAddForm.condition"
+              outlined
+              dense
+              label="Condition *"
+              :options="[...conditionSelectOptions]"
+              class="soft-input"
+              :rules="[(val) => !!val || 'Required']"
+            />
+
+            <q-input
+              v-model.number="quickAddForm.product_weight"
+              outlined
+              dense
+              type="number"
+              min="1"
+              step="1"
+              label="Product weight (g) *"
+              suffix="g"
+              class="soft-input"
+              :rules="[(val) => (val != null && Number(val) > 0) || 'Required']"
             />
 
             <!-- Upload Area -->
@@ -491,15 +931,21 @@
 
             <!-- Barcode -->
             <div>
-              <label class="text-caption text-weight-medium text-grey-8">Auto-Generated Barcode</label>
+              <label class="text-caption text-weight-medium text-grey-8">Barcode</label>
               <q-input
                 v-model="quickAddForm.barcode"
                 outlined
                 dense
                 readonly
                 class="soft-input q-mt-xs"
-                placeholder="Generating Barcode..."
+                placeholder="Select shipment to assign barcode..."
               />
+              <div v-if="quickAddBarcodeLoading" class="text-caption text-grey-7 q-mt-xs">
+                Loading first available barcode...
+              </div>
+              <div v-else-if="quickAddForm.shipment_id && !quickAddForm.barcode" class="text-caption text-negative q-mt-xs">
+                No available barcode found. Generate barcodes first.
+              </div>
             </div>
 
             <!-- Purchase default -->
@@ -521,7 +967,7 @@
             class="pill-btn slim-btn px-md"
             label="Submit & Edit Details"
             :loading="quickSubmitting"
-            :disabled="!quickAddForm.pendingBlob || !quickAddForm.shipment_id"
+            :disabled="!canSubmitQuickAdd"
             @click="submitQuickAdd"
           />
         </q-card-section>
@@ -540,7 +986,8 @@
           <span class="q-ml-sm text-weight-bold">Delete Stock Item</span>
         </q-card-section>
         <q-card-section>
-          Are you sure you want to delete stock item <strong>{{ selectedRow?.name }}</strong>? This action cannot be undone.
+          Are you sure you want to delete stock item <strong>{{ selectedRow?.name }}</strong>?
+          The Cloudinary image is deleted first; the stock row is only removed if that succeeds.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup :disable="deleteLoading" />
@@ -550,6 +997,34 @@
             :loading="deleteLoading"
             :disable="deleteLoading"
             @click="deleteItem"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Bulk Delete Confirmation Dialog -->
+    <q-dialog v-model="bulkDeleteConfirmOpen" persistent>
+      <q-card style="width: 400px; max-width: 90vw;" class="floating-surface shadow-2 q-pa-md relative-position">
+        <q-inner-loading :showing="bulkDeleteLoading" color="negative">
+          <q-spinner size="40px" color="negative" />
+          <div class="text-caption text-grey-8 q-mt-sm">Deleting selected stock and images...</div>
+        </q-inner-loading>
+        <q-card-section class="row items-center">
+          <q-avatar icon="warning" color="warning" text-color="white" />
+          <span class="q-ml-sm text-weight-bold">Delete Selected Stock</span>
+        </q-card-section>
+        <q-card-section>
+          Delete <strong>{{ selectedStockIds.length }}</strong> selected stock item(s)?
+          Cloudinary images are deleted first; stock rows are only removed if image delete succeeds.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup :disable="bulkDeleteLoading" />
+          <q-btn
+            color="negative"
+            label="Delete all"
+            :loading="bulkDeleteLoading"
+            :disable="bulkDeleteLoading"
+            @click="deleteSelectedItems"
           />
         </q-card-actions>
       </q-card>
@@ -612,7 +1087,8 @@
     <!-- Global Cloudinary Uploader Dialog -->
     <CloudinaryUploaderDialog
       v-model="isUploaderOpen"
-      folder="thrift-stocks"
+      :folder="uploaderCloudinaryFolder"
+      drive-folder-path="thrift"
       defer-upload
       @selected="onImageSelected"
     />
@@ -635,13 +1111,26 @@ import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BarcodeRenderer from 'src/modules/thrift_barcode/components/BarcodeRenderer.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 import { resolveTypeIcon } from 'src/modules/thrift/utils/typeIcon';
 import type { CloudinarySelectedImage } from 'src/components/CloudinaryUploaderDialog.vue';
 import {
-  deleteCloudinaryImage,
-  uploadToCloudinary,
+  cleanupStockImageAssets,
+  deleteStockCloudinaryImageStrict,
+  uploadStockImage as uploadStockImageAssets,
+  type StockImageUploadResult,
+} from 'src/utils/stockImageClient';
+import { deleteDriveFile } from 'src/utils/driveClient';
+import {
+  thriftStockRepository,
+  type ThriftStockDeleteTarget,
+  type ThriftStockPricingInput,
+} from '../repositories/thriftStockRepository';
+import {
+  DEFAULT_THRIFT_CLOUDINARY_FOLDER,
+  buildThriftShipmentCloudinaryFolder,
 } from 'src/utils/cloudinaryClient';
 
 const $q = useQuasar();
@@ -666,9 +1155,13 @@ const editingId = ref<number | null>(null);
 const quickAddDialogOpen = ref(false);
 const isUploaderOpen = ref(false);
 const uploaderTarget = ref<'quick' | 'edit'>('quick');
+
 const quickSubmitting = ref(false);
 const deleteConfirmOpen = ref(false);
 const deleteLoading = ref(false);
+const bulkDeleteConfirmOpen = ref(false);
+const bulkDeleteLoading = ref(false);
+const selectedStockIds = ref<number[]>([]);
 const imageRemoveConfirmOpen = ref(false);
 const barcodePreviewOpen = ref(false);
 const previewBarcodeValue = ref('');
@@ -680,16 +1173,37 @@ const quickAddForm = ref({
   shipment_id: null as number | null,
   box_id: null as number | null,
   barcode: '',
+  brand_name: '',
+  condition: 'EXCELLENT' as ThriftCondition,
+  product_weight: 250 as number | null,
   imagePreviewUrl: '',
   pendingBlob: null as Blob | null,
+  alsoUploadToDrive: false,
+});
+
+const quickAddBarcodeLoading = ref(false);
+
+const canSubmitQuickAdd = computed(() => {
+  const form = quickAddForm.value;
+  return !!(
+    form.pendingBlob
+    && form.shipment_id
+    && form.barcode.trim()
+    && form.brand_name.trim()
+    && form.condition
+    && form.product_weight != null
+    && Number(form.product_weight) > 0
+  );
 });
 
 const editImage = ref({
   url: '',
   originalUrl: '',
+  originalDriveFileId: '',
   pendingBlob: null as Blob | null,
   pendingPreviewUrl: null as string | null,
   removed: false,
+  alsoUploadToDrive: false,
 });
 
 const stocks = computed(() => store.stocks);
@@ -721,6 +1235,17 @@ const form = ref({
   product_weight: 250,
   extra_weight: 0,
   note: '',
+});
+
+const uploaderCloudinaryFolder = computed(() => {
+  const shipmentId =
+    uploaderTarget.value === 'quick'
+      ? quickAddForm.value.shipment_id
+      : form.value.shipment_id;
+  if (shipmentId && shipmentId > 0) {
+    return buildThriftShipmentCloudinaryFolder(shipmentId);
+  }
+  return DEFAULT_THRIFT_CLOUDINARY_FOLDER;
 });
 
 const originPurchasePrice = ref(0);
@@ -791,7 +1316,38 @@ function onShipmentChange() {
 
 function onQuickShipmentChange() {
   quickAddForm.value.box_id = null;
-  void generateBarcode();
+  void loadFirstAvailableBarcode();
+}
+
+async function loadFirstAvailableBarcode() {
+  if (!authStore.tenantId || !quickAddForm.value.shipment_id) {
+    quickAddForm.value.barcode = '';
+    return;
+  }
+
+  quickAddBarcodeLoading.value = true;
+  try {
+    const { data, error } = await supabase
+      .from('thrift_barcodes')
+      .select('barcode_id')
+      .eq('tenant_id', authStore.tenantId)
+      .eq('status', 'AVAILABLE')
+      .order('barcode_id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    quickAddForm.value.barcode = data?.barcode_id ?? '';
+  } catch (err) {
+    console.error('Failed to load available barcode:', err);
+    quickAddForm.value.barcode = '';
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Failed to load available barcode',
+    });
+  } finally {
+    quickAddBarcodeLoading.value = false;
+  }
 }
 
 function getBoxName(boxId: number | undefined | null) {
@@ -808,8 +1364,33 @@ const pricing = ref({
 });
 
 const searchText = ref('');
+const filterDrawerOpen = ref(false);
 const statusFilter = ref<string | null>(null);
 const conditionFilter = ref<string | null>(null);
+const draftStatusFilter = ref<string | null>(null);
+const draftConditionFilter = ref<string | null>(null);
+
+const activeFilterCount = computed(
+  () => (statusFilter.value ? 1 : 0) + (conditionFilter.value ? 1 : 0),
+);
+
+function openFilterDrawer() {
+  draftStatusFilter.value = statusFilter.value;
+  draftConditionFilter.value = conditionFilter.value;
+  filterDrawerOpen.value = true;
+}
+
+function onApplyDrawerFilters() {
+  statusFilter.value = draftStatusFilter.value;
+  conditionFilter.value = draftConditionFilter.value;
+  filterDrawerOpen.value = false;
+  onFiltersChanged();
+}
+
+function onResetDrawerFilters() {
+  draftStatusFilter.value = null;
+  draftConditionFilter.value = null;
+}
 
 const statusOptions = [
   { label: 'Available', value: 'AVAILABLE' },
@@ -825,10 +1406,50 @@ const conditionOptions = [
   { label: 'Fair', value: 'FAIR' },
 ];
 
+const alwaysVisibleColumns = ['select', 'sl', 'image', 'id', 'barcode', 'name', 'actions'] as const;
+
+const columnSelectorOptions = [
+  { label: 'Brand', value: 'brand_name' },
+  { label: 'Section', value: 'section' },
+  { label: 'Size', value: 'size' },
+  { label: 'Box', value: 'box' },
+  { label: 'Product Wt', value: 'product_weight' },
+  { label: 'Extra Wt', value: 'extra_weight' },
+  { label: 'Condition', value: 'condition' },
+  { label: 'Qty', value: 'quantity' },
+  { label: 'Origin', value: 'origin_purchase_price' },
+  { label: 'Extra Origin', value: 'extra_origin_purchase_expense' },
+  { label: 'COGS', value: 'cost_of_goods_sold' },
+  { label: 'Extra Cost', value: 'extra_expense_cost' },
+  { label: 'Target', value: 'target_price' },
+  { label: 'Listed', value: 'listed_price' },
+  { label: 'Status', value: 'status' },
+];
+
+const selectableColumnValues = columnSelectorOptions.map((option) => option.value);
+
+const selectedColumnNames = ref<string[]>([...selectableColumnValues]);
+
+const visibleColumns = computed<string[]>(() => {
+  const visible = new Set<string>([
+    ...alwaysVisibleColumns,
+    ...selectedColumnNames.value,
+  ]);
+  return columns.map((column) => column.name).filter((name) => visible.has(name));
+});
+
+const allSelectableColumnsSelected = computed({
+  get: () => selectableColumnValues.every((value) => selectedColumnNames.value.includes(value)),
+  set: (checked: boolean) => {
+    selectedColumnNames.value = checked ? [...selectableColumnValues] : [];
+  },
+});
+
 const columns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  { name: 'select', label: '', field: 'select', align: 'center', sortable: false, headerStyle: 'width: 44px', classes: 'col-sticky-select', headerClasses: 'col-sticky-select' },
+  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px', classes: 'col-sticky-sl', headerClasses: 'col-sticky-sl' },
+  { name: 'image', align: 'center', label: 'Image', field: 'image_url', headerStyle: 'width: 104px; min-width: 104px; max-width: 104px', classes: 'col-sticky-image', headerClasses: 'col-sticky-image' },
   { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
-  { name: 'image', align: 'center', label: 'Image', field: 'image_url' },
   { name: 'barcode', align: 'left', label: 'Barcode', field: 'barcode', sortable: true },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'brand_name', align: 'left', label: 'Brand', field: 'brand_name' },
@@ -839,10 +1460,208 @@ const columns: QTableColumn[] = [
   { name: 'extra_weight', align: 'right', label: 'Extra Wt', field: 'extra_weight' },
   { name: 'condition', align: 'left', label: 'Condition', field: 'condition' },
   { name: 'quantity', align: 'right', label: 'Qty', field: 'quantity', sortable: true },
-  { name: 'pricing', align: 'left', label: 'Pricing', field: 'pricing' },
+  { name: 'origin_purchase_price', align: 'right', label: 'Origin', field: 'origin_purchase_price' },
+  { name: 'extra_origin_purchase_expense', align: 'right', label: 'Extra Origin', field: 'extra_origin_purchase_expense' },
+  { name: 'cost_of_goods_sold', align: 'right', label: 'COGS', field: (row) => row.pricing?.cost_of_goods_sold },
+  { name: 'extra_expense_cost', align: 'right', label: 'Extra Cost', field: (row) => row.pricing?.extra_expense_cost },
+  { name: 'target_price', align: 'right', label: 'Target', field: (row) => row.pricing?.target_price },
+  { name: 'listed_price', align: 'right', label: 'Listed', field: (row) => row.pricing?.listed_price },
   { name: 'status', align: 'center', label: 'Status', field: 'status', sortable: true },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
+
+function formatStockPrice(
+  amount: number | null | undefined,
+  currency: ThriftCurrency | undefined,
+): string {
+  if (amount == null) return '—';
+  return formatThriftAmount(amount, currency);
+}
+
+const sectionSelectOptions = ['MALE', 'FEMALE', 'UNISEX', 'KIDS', 'HOME'] as const;
+const conditionSelectOptions = ['NEW_WITH_TAGS', 'EXCELLENT', 'GOOD', 'FAIR'] as const;
+
+const editableColumns = new Set([
+  'barcode',
+  'name',
+  'brand_name',
+  'section',
+  'size',
+  'box',
+  'product_weight',
+  'extra_weight',
+  'condition',
+  'quantity',
+  'origin_purchase_price',
+  'extra_origin_purchase_expense',
+  'cost_of_goods_sold',
+  'extra_expense_cost',
+  'target_price',
+  'listed_price',
+  'status',
+]);
+
+function toNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
+  return {
+    cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
+    target_price: Number(row.pricing?.target_price) || 0,
+    listed_price: Number(row.pricing?.listed_price) || 0,
+    extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
+  };
+}
+
+function boxesForShipment(shipmentId: number) {
+  return thriftStore.boxes.filter((box) => box.shipment_id === shipmentId);
+}
+
+async function saveStockCell(
+  row: ThriftStock,
+  stockPatch: Partial<ThriftStock> = {},
+  pricingPatch?: Partial<ThriftStockPricingInput>,
+) {
+  const pricing = { ...buildPricingFromRow(row), ...pricingPatch };
+  const updated = await store.updateStock(row.id, stockPatch, pricing);
+  Object.assign(row, stockPatch);
+  if (pricingPatch) {
+    row.pricing = { ...(row.pricing || {}), ...pricingPatch };
+  }
+  if (updated.pricing) {
+    row.pricing = updated.pricing;
+  }
+}
+
+async function onTextCellSave(row: ThriftStock, field: 'name' | 'brand_name' | 'size' | 'barcode', value: string) {
+  try {
+    row[field] = value;
+    await saveStockCell(row, { [field]: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onNumberCellSave(
+  row: ThriftStock,
+  field: 'product_weight' | 'extra_weight' | 'quantity',
+  value: number,
+) {
+  try {
+    row[field] = value;
+    await saveStockCell(row, { [field]: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onSectionSave(row: ThriftStock, value: ThriftSection | null) {
+  try {
+    row.section = value;
+    await saveStockCell(row, { section: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onConditionSave(row: ThriftStock, value: ThriftCondition | null) {
+  try {
+    row.condition = value;
+    await saveStockCell(row, { condition: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onBoxSave(row: ThriftStock, boxId: number | null) {
+  try {
+    row.box_id = boxId ?? undefined;
+    await saveStockCell(row, { box_id: boxId ?? undefined });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onOriginPurchasePriceSave(row: ThriftStock, value: number) {
+  try {
+    row.origin_purchase_price = value;
+    await saveStockCell(row, { origin_purchase_price: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onExtraOriginExpenseSave(row: ThriftStock, value: number) {
+  try {
+    row.extra_origin_purchase_expense = value;
+    await saveStockCell(row, { extra_origin_purchase_expense: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onPricingCellSave(
+  row: ThriftStock,
+  field: keyof ThriftStockPricingInput,
+  value: number,
+) {
+  try {
+    if (!row.pricing) {
+      row.pricing = buildPricingFromRow(row);
+    }
+    row.pricing[field] = value;
+    await saveStockCell(row, {}, { [field]: value });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+async function onStatusCellSave(row: ThriftStock, status: string) {
+  try {
+    await store.updateStockStatus(row.id, status);
+    row.status = status as ThriftStock['status'];
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
+function stickyCellClass(columnName: string): string {
+  if (columnName === 'select') return 'col-sticky-select';
+  if (columnName === 'sl') return 'col-sticky-sl';
+  if (columnName === 'image') return 'col-sticky-image';
+  return '';
+}
+
+function tableCellClass(columnName: string): string {
+  const classes: string[] = [];
+  if (columnName === 'actions') classes.push('text-right');
+  if (editableColumns.has(columnName)) classes.push('editable-cell');
+  if (
+    columnName === 'origin_purchase_price'
+    || columnName === 'extra_origin_purchase_expense'
+    || columnName === 'cost_of_goods_sold'
+    || columnName === 'extra_expense_cost'
+    || columnName === 'target_price'
+    || columnName === 'listed_price'
+    || columnName === 'product_weight'
+    || columnName === 'extra_weight'
+    || columnName === 'quantity'
+  ) {
+    classes.push('text-right');
+  }
+  return classes.join(' ');
+}
 
 onMounted(async () => {
   if (authStore.tenantId) {
@@ -875,7 +1694,63 @@ async function loadStockPage(nextPage = store.page) {
 }
 
 function onFiltersChanged() {
+  selectedStockIds.value = [];
   void loadStockPage(1);
+}
+
+const allPageRowsSelected = computed(() =>
+  stocks.value.length > 0 && stocks.value.every((stock) => selectedStockIds.value.includes(stock.id)),
+);
+
+const somePageRowsSelected = computed(() =>
+  stocks.value.some((stock) => selectedStockIds.value.includes(stock.id)),
+);
+
+function toggleStockSelection(id: number, checked: boolean) {
+  if (checked) {
+    if (!selectedStockIds.value.includes(id)) {
+      selectedStockIds.value = [...selectedStockIds.value, id];
+    }
+    return;
+  }
+  selectedStockIds.value = selectedStockIds.value.filter((stockId) => stockId !== id);
+}
+
+function toggleSelectAllPage(checked: boolean) {
+  if (checked) {
+    const pageIds = stocks.value.map((stock) => stock.id);
+    selectedStockIds.value = [...new Set([...selectedStockIds.value, ...pageIds])];
+    return;
+  }
+  const pageIdSet = new Set(stocks.value.map((stock) => stock.id));
+  selectedStockIds.value = selectedStockIds.value.filter((id) => !pageIdSet.has(id));
+}
+
+function clearStockSelection() {
+  selectedStockIds.value = [];
+}
+
+function confirmBulkDelete() {
+  if (!selectedStockIds.value.length) return;
+  bulkDeleteConfirmOpen.value = true;
+}
+
+async function deleteStockTarget(target: ThriftStockDeleteTarget): Promise<void> {
+  await deleteStockCloudinaryImageStrict(target.imageUrl);
+  await store.deleteStock(target.id);
+  if (target.driveFileId) {
+    try {
+      await deleteDriveFile(target.driveFileId);
+    } catch (err) {
+      console.warn('Drive cleanup failed after stock delete:', err);
+    }
+  }
+}
+
+async function cleanupAndDeleteStockTargets(targets: ThriftStockDeleteTarget[]) {
+  for (const target of targets) {
+    await deleteStockTarget(target);
+  }
 }
 
 async function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
@@ -889,53 +1764,17 @@ function goToSettings() {
   void router.push(tenantSlug ? `/${tenantSlug}/app/thrift/settings` : '/app/thrift/settings');
 }
 
-async function generateBarcode() {
-  if (!authStore.tenantId || !quickAddForm.value.shipment_id) return;
-
-  const tenantId = authStore.tenantId;
-  const shipmentId = quickAddForm.value.shipment_id;
-  const boxId = quickAddForm.value.box_id || 0;
-
-  try {
-    let query = supabase
-      .from('thrift_stocks')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
-      .eq('shipment_id', shipmentId);
-
-    if (quickAddForm.value.box_id) {
-      query = query.eq('box_id', quickAddForm.value.box_id);
-    } else {
-      query = query.is('box_id', null);
-    }
-
-    const { count, error } = await query;
-    if (error) throw error;
-
-    const seq = (count || 0) + 1;
-    const formattedSeq = String(seq).padStart(4, '0');
-
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let rand = '';
-    for (let i = 0; i < 3; i++) {
-      rand += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    quickAddForm.value.barcode = `${tenantId}-${shipmentId}-${boxId}-${formattedSeq}-${rand}`;
-  } catch (err) {
-    console.error('Failed to generate barcode:', err);
-    quickAddForm.value.barcode = `BC-FALLBACK-${Math.floor(Math.random() * 90000 + 10000)}`;
-  }
-}
-
-
 async function openAddDialog() {
   quickAddForm.value = {
     shipment_id: null,
     box_id: null,
     barcode: '',
+    brand_name: '',
+    condition: 'EXCELLENT',
+    product_weight: 250,
     imagePreviewUrl: '',
     pendingBlob: null,
+    alsoUploadToDrive: false,
   };
   uploaderTarget.value = 'quick';
   if (authStore.tenantId) {
@@ -944,8 +1783,36 @@ async function openAddDialog() {
   quickAddDialogOpen.value = true;
 }
 
-function stockImageFileName(stockId: number) {
-  return `stock-${stockId}-${Date.now()}.jpg`;
+async function uploadStockImageBlob(
+  barcode: string,
+  stockId: number,
+  blob: Blob,
+  alsoUploadToDrive = false,
+  shipmentId?: number | null,
+  replace?: { imageUrl?: string; driveFileId?: string | null },
+): Promise<StockImageUploadResult> {
+  if (!authStore.tenantId) {
+    throw new Error('Tenant is required to upload an image.');
+  }
+  if (!shipmentId || shipmentId <= 0) {
+    throw new Error('Shipment is required to upload an image.');
+  }
+
+  return uploadStockImageAssets(blob, {
+    barcode,
+    stockId,
+    tenantId: authStore.tenantId,
+    ...(shipmentId ? { shipmentId } : {}),
+    alsoUploadToDrive,
+    ...(replace?.imageUrl ? { replaceImageUrl: replace.imageUrl } : {}),
+    ...(replace?.driveFileId ? { replaceDriveFileId: replace.driveFileId } : {}),
+    onDriveUploadFailed: (error) => {
+      $q.notify({
+        type: 'warning',
+        message: error.message || 'Google Drive upload failed. Image saved to Cloudinary only.',
+      });
+    },
+  });
 }
 
 function revokeBlobPreview(url: string) {
@@ -962,17 +1829,13 @@ function clearPendingEditImage() {
   editImage.value.pendingPreviewUrl = null;
 }
 
-async function uploadStockImage(stockId: number, blob: Blob): Promise<string> {
-  const result = await uploadToCloudinary(blob, stockImageFileName(stockId));
-  return result.secureUrl;
-}
-
 function onQuickImageSelected(payload: CloudinarySelectedImage) {
   if (quickAddForm.value.imagePreviewUrl?.startsWith('blob:')) {
     revokeBlobPreview(quickAddForm.value.imagePreviewUrl);
   }
   quickAddForm.value.imagePreviewUrl = payload.previewUrl;
   quickAddForm.value.pendingBlob = payload.blob;
+  quickAddForm.value.alsoUploadToDrive = payload.alsoUploadToDrive ?? false;
 }
 
 function openEditUploader() {
@@ -986,6 +1849,7 @@ function onEditImageSelected(payload: CloudinarySelectedImage) {
   editImage.value.pendingBlob = payload.blob;
   editImage.value.pendingPreviewUrl = payload.previewUrl;
   editImage.value.removed = false;
+  editImage.value.alsoUploadToDrive = payload.alsoUploadToDrive ?? false;
 }
 
 function onImageSelected(payload: CloudinarySelectedImage) {
@@ -1029,9 +1893,11 @@ function resetEditImage() {
   editImage.value = {
     url: '',
     originalUrl: '',
+    originalDriveFileId: '',
     pendingBlob: null,
     pendingPreviewUrl: null,
     removed: false,
+    alsoUploadToDrive: false,
   };
 }
 
@@ -1041,6 +1907,7 @@ function onQuickAddDialogHide() {
   }
   quickAddForm.value.imagePreviewUrl = '';
   quickAddForm.value.pendingBlob = null;
+  quickAddForm.value.alsoUploadToDrive = false;
 }
 
 function onEditDialogHide() {
@@ -1055,11 +1922,33 @@ function onEditDialogHide() {
 }
 
 async function submitQuickAdd() {
-  if (!authStore.tenantId || !quickAddForm.value.shipment_id || !quickAddForm.value.pendingBlob) return;
+  if (!canSubmitQuickAdd.value || !authStore.tenantId) return;
+
+  const brandName = quickAddForm.value.brand_name.trim();
+  const condition = quickAddForm.value.condition;
+  const productWeight = Number(quickAddForm.value.product_weight);
+
+  if (!brandName) {
+    $q.notify({ type: 'negative', message: 'Brand name is required' });
+    return;
+  }
+  if (!condition) {
+    $q.notify({ type: 'negative', message: 'Condition is required' });
+    return;
+  }
+  if (!Number.isFinite(productWeight) || productWeight <= 0) {
+    $q.notify({ type: 'negative', message: 'Product weight is required' });
+    return;
+  }
+  if (!quickAddForm.value.barcode.trim()) {
+    $q.notify({ type: 'negative', message: 'No available barcode to assign' });
+    return;
+  }
 
   quickSubmitting.value = true;
   const pendingBlob = quickAddForm.value.pendingBlob;
-  let uploadedImageUrl = '';
+  const alsoUploadToDrive = quickAddForm.value.alsoUploadToDrive;
+  let uploadedImage: StockImageUploadResult | null = null;
 
   try {
     const barcode = quickAddForm.value.barcode;
@@ -1073,20 +1962,20 @@ async function submitQuickAdd() {
 
     const draftStock = await store.createStock(
       authStore.tenantId,
-      quickAddForm.value.shipment_id,
+      quickAddForm.value.shipment_id!,
       '',
-      '',
+      brandName,
       catId,
       typId,
       'UNISEX',
       '',
       '',
-      'EXCELLENT',
+      condition,
       barcode,
       'SINGLE',
       1,
       quickAddForm.value.box_id || undefined,
-      250,
+      productWeight,
       0,
       'Quick register draft entry',
       authStore.user?.email || 'admin@brandwala.com',
@@ -1102,11 +1991,28 @@ async function submitQuickAdd() {
       0,
     );
 
-    uploadedImageUrl = await uploadStockImage(draftStock.id, pendingBlob);
+    const { error: barcodeUpdateError } = await supabase
+      .from('thrift_barcodes')
+      .update({ status: 'USED' })
+      .eq('tenant_id', authStore.tenantId)
+      .eq('barcode_id', barcode);
+
+    if (barcodeUpdateError) {
+      throw barcodeUpdateError;
+    }
+
+    uploadedImage = await uploadStockImageBlob(
+      barcode,
+      draftStock.id,
+      pendingBlob,
+      alsoUploadToDrive,
+      quickAddForm.value.shipment_id,
+    );
     await store.attachStockImage(
       draftStock.id,
-      uploadedImageUrl,
+      uploadedImage.secureUrl,
       draftStock.inserted_by,
+      uploadedImage.driveFileId,
     );
 
     $q.notify({
@@ -1116,12 +2022,20 @@ async function submitQuickAdd() {
 
     quickAddForm.value.imagePreviewUrl = '';
     quickAddForm.value.pendingBlob = null;
+    quickAddForm.value.alsoUploadToDrive = false;
     quickAddDialogOpen.value = false;
 
-    openEditDialog({ ...draftStock, image_url: uploadedImageUrl });
+    openEditDialog({
+      ...draftStock,
+      image_url: uploadedImage.secureUrl,
+      drive_file_id: uploadedImage.driveFileId,
+    });
   } catch (err: unknown) {
-    if (uploadedImageUrl) {
-      await deleteCloudinaryImage(uploadedImageUrl);
+    if (uploadedImage) {
+      await cleanupStockImageAssets({
+        imageUrl: uploadedImage.secureUrl,
+        ...(uploadedImage.driveFileId ? { driveFileId: uploadedImage.driveFileId } : {}),
+      });
     }
     $q.notify({
       type: 'negative',
@@ -1137,9 +2051,11 @@ function openEditDialog(row: ThriftStock) {
   editImage.value = {
     url: row.image_url || '',
     originalUrl: row.image_url || '',
+    originalDriveFileId: row.drive_file_id || '',
     pendingBlob: null,
     pendingPreviewUrl: null,
     removed: false,
+    alsoUploadToDrive: false,
   };
   form.value = {
     category_id: row.category_id,
@@ -1191,15 +2107,17 @@ function confirmDelete(row: ThriftStock) {
 async function deleteItem() {
   if (!selectedRow.value || deleteLoading.value) return;
   deleteLoading.value = true;
-  const imageUrl = selectedRow.value.image_url || '';
   try {
-    await store.deleteStock(selectedRow.value.id);
-    if (imageUrl) {
-      await deleteCloudinaryImage(imageUrl);
-    }
-    $q.notify({ type: 'positive', message: 'Stock item deleted successfully' });
+    const targets = await thriftStockRepository.fetchDeleteTargets([selectedRow.value.id]);
+    await cleanupAndDeleteStockTargets(targets);
+    $q.notify({
+      type: 'positive',
+      message: 'Stock item deleted. Barcode is available again.',
+    });
     deleteConfirmOpen.value = false;
+    const deletedId = selectedRow.value.id;
     selectedRow.value = null;
+    selectedStockIds.value = selectedStockIds.value.filter((id) => id !== deletedId);
     await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
@@ -1208,10 +2126,62 @@ async function deleteItem() {
   }
 }
 
+async function deleteSelectedItems() {
+  if (!selectedStockIds.value.length || bulkDeleteLoading.value) return;
+  bulkDeleteLoading.value = true;
+  const ids = [...selectedStockIds.value];
+  try {
+    const targets = await thriftStockRepository.fetchDeleteTargets(ids);
+    let deletedCount = 0;
+    const failures: string[] = [];
+
+    for (const target of targets) {
+      try {
+        await deleteStockTarget(target);
+        deletedCount += 1;
+        selectedStockIds.value = selectedStockIds.value.filter((id) => id !== target.id);
+      } catch (err: unknown) {
+        failures.push(`#${target.id}: ${(err as Error).message || 'Delete failed'}`);
+      }
+    }
+
+    if (deletedCount > 0) {
+      await loadStockPage();
+    }
+
+    if (failures.length === 0) {
+      $q.notify({
+        type: 'positive',
+        message: `Deleted ${deletedCount} stock item(s). Barcodes are available again.`,
+      });
+      bulkDeleteConfirmOpen.value = false;
+      selectedStockIds.value = [];
+      return;
+    }
+
+    if (deletedCount > 0) {
+      $q.notify({
+        type: 'warning',
+        message: `Deleted ${deletedCount} item(s). ${failures.length} failed because Cloudinary image delete did not succeed.`,
+      });
+      return;
+    }
+
+    $q.notify({
+      type: 'negative',
+      message: failures[0] || 'Bulk delete failed',
+    });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Bulk delete failed' });
+  } finally {
+    bulkDeleteLoading.value = false;
+  }
+}
+
 async function onSubmit() {
   if (!authStore.tenantId) return;
   actionLoading.value = true;
-  let orphanImageUrl = '';
+  let orphanImage: StockImageUploadResult | null = null;
 
   try {
     const stockData = {
@@ -1238,14 +2208,28 @@ async function onSubmit() {
     if (editingId.value) {
       const imageChanged = editImage.value.removed || !!editImage.value.pendingBlob;
       let imagePayload: string | null | undefined;
+      let driveFilePayload: string | null | undefined;
       const previousImageUrl = editImage.value.originalUrl;
+      const previousDriveFileId = editImage.value.originalDriveFileId;
 
       if (editImage.value.removed) {
         imagePayload = null;
+        driveFilePayload = null;
       } else if (editImage.value.pendingBlob) {
-        const uploadedUrl = await uploadStockImage(editingId.value, editImage.value.pendingBlob);
-        orphanImageUrl = uploadedUrl;
-        imagePayload = uploadedUrl;
+        const uploaded = await uploadStockImageBlob(
+          form.value.barcode,
+          editingId.value,
+          editImage.value.pendingBlob,
+          editImage.value.alsoUploadToDrive,
+          form.value.shipment_id,
+          {
+            imageUrl: previousImageUrl,
+            driveFileId: previousDriveFileId,
+          },
+        );
+        orphanImage = uploaded;
+        imagePayload = uploaded.secureUrl;
+        driveFilePayload = uploaded.driveFileId ?? null;
       }
 
       await store.updateStock(
@@ -1253,13 +2237,17 @@ async function onSubmit() {
         stockData satisfies Partial<ThriftStock>,
         pricing.value,
         imageChanged ? imagePayload : undefined,
+        imageChanged ? driveFilePayload : undefined,
       );
 
-      if (imageChanged && previousImageUrl) {
-        await deleteCloudinaryImage(previousImageUrl);
+      if (imageChanged && (previousImageUrl || previousDriveFileId)) {
+        await cleanupStockImageAssets({
+          imageUrl: previousImageUrl,
+          driveFileId: previousDriveFileId,
+        });
       }
 
-      orphanImageUrl = '';
+      orphanImage = null;
       $q.notify({ type: 'positive', message: 'Thrift stock updated successfully' });
     } else {
       const created = await store.createStock(
@@ -1289,20 +2277,34 @@ async function onSubmit() {
       );
 
       if (editImage.value.pendingBlob && !editImage.value.removed) {
-        const uploadedUrl = await uploadStockImage(created.id, editImage.value.pendingBlob);
-        orphanImageUrl = uploadedUrl;
-        await store.attachStockImage(created.id, uploadedUrl, created.inserted_by);
+        const uploaded = await uploadStockImageBlob(
+          form.value.barcode,
+          created.id,
+          editImage.value.pendingBlob,
+          editImage.value.alsoUploadToDrive,
+          form.value.shipment_id,
+        );
+        orphanImage = uploaded;
+        await store.attachStockImage(
+          created.id,
+          uploaded.secureUrl,
+          created.inserted_by,
+          uploaded.driveFileId,
+        );
       }
 
-      orphanImageUrl = '';
+      orphanImage = null;
       $q.notify({ type: 'positive', message: 'Thrift stock registered successfully' });
     }
     resetEditImage();
     dialogOpen.value = false;
     await loadStockPage();
   } catch (err: unknown) {
-    if (orphanImageUrl) {
-      await deleteCloudinaryImage(orphanImageUrl);
+    if (orphanImage) {
+      await cleanupStockImageAssets({
+        imageUrl: orphanImage.secureUrl,
+        ...(orphanImage.driveFileId ? { driveFileId: orphanImage.driveFileId } : {}),
+      });
     }
     $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
   } finally {
@@ -1348,6 +2350,11 @@ const statusDotColor = (status: string | null | undefined) => {
   border-radius: 16px;
 }
 
+.bulk-selection-bar {
+  border-color: rgba(220, 38, 38, 0.18);
+  background: rgba(254, 242, 242, 0.92);
+}
+
 .pill-btn {
   border-radius: 999px;
 }
@@ -1361,6 +2368,147 @@ const statusDotColor = (status: string | null | undefined) => {
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.thrift-table-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.thrift-table {
+  max-width: 100%;
+  height: clamp(400px, calc(100vh - 280px), 82vh);
+  background: var(--bw-theme-base, #eef2f5);
+}
+
+.thrift-table :deep(.q-table__middle) {
+  height: 100%;
+  max-height: 100% !important;
+  overflow: auto;
+}
+
+.thrift-table :deep(.q-table) {
+  min-width: max-content;
+  width: max-content;
+}
+
+.thrift-table :deep(table) {
+  table-layout: fixed;
+  min-width: max-content;
+  width: max-content;
+}
+
+.thrift-table :deep(thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+}
+
+.thrift-table :deep(thead tr:first-child th) {
+  top: 0;
+  z-index: 3;
+}
+
+.thrift-table :deep(td.col-sticky-select),
+.thrift-table :deep(th.col-sticky-select),
+.thrift-table :deep(.col-sticky-select) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  padding-left: 4px;
+  padding-right: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.thrift-table :deep(td.col-sticky-sl),
+.thrift-table :deep(th.col-sticky-sl),
+.thrift-table :deep(.col-sticky-sl) {
+  position: sticky;
+  left: 44px;
+  z-index: 2;
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  padding-left: 4px;
+  padding-right: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.thrift-table :deep(td.col-sticky-image),
+.thrift-table :deep(th.col-sticky-image),
+.thrift-table :deep(.col-sticky-image) {
+  position: sticky;
+  left: 94px;
+  z-index: 3;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  vertical-align: middle;
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.thrift-table :deep(tr:first-child th.col-sticky-select) {
+  z-index: 6;
+}
+
+.thrift-table :deep(tr:first-child th.col-sticky-sl) {
+  z-index: 6;
+}
+
+.thrift-table :deep(tr:first-child th.col-sticky-image) {
+  z-index: 6;
+}
+
+.thrift-stock-image-wrap {
+  width: 96px;
+  height: 96px;
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7f9fc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.thrift-stock-image-wrap :deep(.smart-image-wrapper) {
+  width: 96px;
+  height: 96px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.thrift-stock-image-wrap :deep(.thrift-stock-image__img),
+.thrift-stock-image-wrap :deep(img) {
+  width: 96px;
+  height: 96px;
+  max-width: 100%;
+  object-fit: cover;
+}
+
+.editable-cell {
+  cursor: pointer;
+}
+
+.editable-value {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.editable-cell.text-right .editable-value {
+  justify-content: flex-end;
 }
 
 .thrift-table :deep(th) {

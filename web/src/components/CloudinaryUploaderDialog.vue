@@ -69,10 +69,22 @@
 
         <div v-if="uploading" class="q-mt-md">
           <div class="row justify-between text-caption text-grey-8 q-mb-xs">
-            <div>Uploading to Cloudinary...</div>
+            <div>{{ uploadStatusLabel }}</div>
             <div>{{ Math.round(uploadProgress) }}%</div>
           </div>
           <q-linear-progress :value="uploadProgress / 100" color="primary" class="q-mt-sm" />
+        </div>
+
+        <div
+          v-if="showDriveCheckbox"
+          class="q-mt-md"
+        >
+          <q-checkbox
+            v-model="alsoUploadToDrive"
+            dense
+            label="Also upload to Google Drive"
+            :disable="uploading"
+          />
         </div>
       </q-card-section>
 
@@ -100,13 +112,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import { isDriveUploadEnabled } from 'src/utils/driveClient';
+import { getThriftCloudinaryRootFolder } from 'src/utils/cloudinaryClient';
 
 export type CloudinarySelectedImage = {
   blob: Blob;
   previewUrl: string;
   fileName: string;
+  alsoUploadToDrive?: boolean;
 };
 
 const props = withDefaults(
@@ -117,6 +132,8 @@ const props = withDefaults(
     maxHeight?: number;
     quality?: number;
     deferUpload?: boolean;
+    showDriveOption?: boolean;
+    driveFolderPath?: string;
   }>(),
   {
     folder: '',
@@ -124,6 +141,8 @@ const props = withDefaults(
     maxHeight: 1200,
     quality: 0.8,
     deferUpload: false,
+    showDriveOption: false,
+    driveFolderPath: 'thrift',
   }
 );
 
@@ -146,6 +165,25 @@ const selectedFile = ref<File | null>(null);
 const previewUrl = ref<string | null>(null);
 const uploading = ref(false);
 const uploadProgress = ref(0);
+const alsoUploadToDrive = ref(true);
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) {
+      alsoUploadToDrive.value = true;
+    }
+  },
+);
+
+const showDriveCheckbox = computed(() => props.showDriveOption && isDriveUploadEnabled());
+const effectiveFolder = computed(() => props.folder?.trim() || getThriftCloudinaryRootFolder());
+const uploadStatusLabel = computed(() => {
+  if (alsoUploadToDrive.value && showDriveCheckbox.value) {
+    return 'Uploading image...';
+  }
+  return 'Uploading to Cloudinary...';
+});
 
 function triggerFilePicker() {
   fileInput.value?.click();
@@ -263,9 +301,11 @@ function confirmSelection() {
       blob: selectedFile.value,
       previewUrl: previewUrl.value,
       fileName: selectedFile.value.name,
+      alsoUploadToDrive: showDriveCheckbox.value ? alsoUploadToDrive.value : false,
     });
     selectedFile.value = null;
     previewUrl.value = null;
+    alsoUploadToDrive.value = true;
     if (fileInput.value) {
       fileInput.value.value = '';
     }
@@ -309,8 +349,10 @@ async function uploadToCloudinary() {
   const formData = new FormData();
   formData.append('file', fileToUpload, selectedFile.value.name);
   formData.append('upload_preset', uploadPreset);
-  if (props.folder) {
-    formData.append('folder', props.folder);
+  const targetFolder = effectiveFolder.value;
+  if (targetFolder) {
+    formData.append('folder', targetFolder);
+    formData.append('asset_folder', targetFolder);
   }
 
   try {

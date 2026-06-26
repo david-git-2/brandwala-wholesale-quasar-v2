@@ -48,6 +48,19 @@
         </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
+            <q-btn
+              flat
+              round
+              dense
+              icon="download"
+              color="secondary"
+              size="sm"
+              :loading="downloadingShipmentId === props.row.id"
+              :disable="downloadingShipmentId != null && downloadingShipmentId !== props.row.id"
+              @click.stop="downloadShipmentImages(props.row)"
+            >
+              <q-tooltip>Download shipment images from Cloudinary</q-tooltip>
+            </q-btn>
             <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
               <q-tooltip>Edit</q-tooltip>
             </q-btn>
@@ -134,6 +147,10 @@ import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferen
 import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
+import {
+  downloadShipmentImagesToDevice,
+  ShipmentDownloadCancelledError,
+} from 'src/utils/shipmentImageDownloadClient';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -146,6 +163,7 @@ const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
 const selectedRow = ref<Record<string, unknown> | null>(null);
+const downloadingShipmentId = ref<number | null>(null);
 
 const form = ref({
   name: '',
@@ -201,6 +219,36 @@ onMounted(async () => {
   await currencyStore.loadCurrencies();
   await loadShipments();
 });
+
+async function downloadShipmentImages(row: Record<string, unknown>) {
+  const shipmentId = row.id as number;
+  if (!authStore.tenantId || !shipmentId) return;
+
+  downloadingShipmentId.value = shipmentId;
+  try {
+    const result = await downloadShipmentImagesToDevice(authStore.tenantId, shipmentId);
+
+    if (result.total === 0) {
+      $q.notify({ type: 'info', message: result.message || 'No images found for this shipment' });
+      return;
+    }
+
+    $q.notify({
+      type: result.failed > 0 ? 'warning' : 'positive',
+      message: result.message || `Downloaded ${result.downloaded} of ${result.total} image(s)`,
+      timeout: result.failed > 0 ? 6000 : 3000,
+    });
+  } catch (err: unknown) {
+    if (err instanceof ShipmentDownloadCancelledError) return;
+
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Download failed',
+    });
+  } finally {
+    downloadingShipmentId.value = null;
+  }
+}
 
 function defaultPurchaseCurrencyId(): number | null {
   const activeIds = currencyStore.currencies.map((currency) => currency.id);

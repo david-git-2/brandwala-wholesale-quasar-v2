@@ -128,9 +128,16 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       stock: Partial<ThriftStock>,
       pricing: ThriftStockPricingInput,
       imageUrl?: string | null,
+      driveFileId?: string | null,
     ) {
       try {
-        const updated = await thriftStockRepository.updateStock(id, stock, pricing, imageUrl);
+        const updated = await thriftStockRepository.updateStock(
+          id,
+          stock,
+          pricing,
+          imageUrl,
+          driveFileId,
+        );
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1) {
           const currentStock = this.stocks[idx]!;
@@ -138,6 +145,9 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             ...currentStock,
             ...updated,
             image_url: imageUrl !== undefined ? (imageUrl || undefined) : currentStock.image_url,
+            drive_file_id: driveFileId !== undefined
+              ? (driveFileId || undefined)
+              : currentStock.drive_file_id,
           };
         }
         return updated;
@@ -147,15 +157,26 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       }
     },
 
-    async attachStockImage(id: number, imageUrl: string, insertedBy: string) {
+    async attachStockImage(
+      id: number,
+      imageUrl: string,
+      insertedBy: string,
+      driveFileId?: string,
+    ) {
       try {
-        await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, insertedBy);
+        await thriftStockRepository.upsertPrimaryStockImage(
+          id,
+          imageUrl,
+          insertedBy,
+          driveFileId,
+        );
         const idx = this.stocks.findIndex(s => s.id === id);
         if (idx !== -1) {
           const currentStock = this.stocks[idx]!;
           this.stocks[idx] = {
             ...currentStock,
             image_url: imageUrl,
+            drive_file_id: driveFileId,
           };
         }
       } catch (err: unknown) {
@@ -183,6 +204,20 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         await thriftStockRepository.deleteStock(id);
         this.stocks = this.stocks.filter(s => s.id !== id);
         this.total = Math.max(0, this.total - 1);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete stock';
+        throw err;
+      }
+    },
+
+    async deleteStocks(ids: number[]) {
+      if (!ids.length) return;
+      try {
+        await thriftStockRepository.deleteStocks(ids);
+        const idSet = new Set(ids);
+        const removedCount = this.stocks.filter((stock) => idSet.has(stock.id)).length;
+        this.stocks = this.stocks.filter((stock) => !idSet.has(stock.id));
+        this.total = Math.max(0, this.total - removedCount);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete stock';
         throw err;

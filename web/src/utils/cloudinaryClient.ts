@@ -2,7 +2,87 @@ import { supabase } from 'src/boot/supabase'
 
 export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string | undefined }
 
-const THRIFT_FOLDER_PREFIXES = ['thrift_stocks/', 'thrift-stocks/']
+const THRIFT_FOLDER_PREFIXES = [
+  'thrift-inventory-images/',
+  'thrift_stocks/',
+  'thrift-stocks/',
+]
+
+export function getThriftCloudinaryRootFolder(): string {
+  const configured =
+    import.meta.env.VITE_CLOUDINARY_THRIFT_FOLDER ||
+    process.env.VITE_CLOUDINARY_THRIFT_FOLDER
+  const root = (configured as string | undefined)?.trim() || 'thrift-inventory-images'
+  return root.replace(/^\/+|\/+$/g, '')
+}
+
+export const DEFAULT_THRIFT_CLOUDINARY_FOLDER = getThriftCloudinaryRootFolder()
+
+export function buildThriftShipmentCloudinaryFolder(
+  shipmentId: number,
+  baseFolder = getThriftCloudinaryRootFolder(),
+): string {
+  return `${baseFolder}/shipment-${shipmentId}`
+}
+
+export function resolveThriftCloudinaryFolder(options?: {
+  shipmentId?: number | null
+  folder?: string
+}): string {
+  const base = options?.folder?.trim() || getThriftCloudinaryRootFolder()
+  if (options?.shipmentId && options.shipmentId > 0) {
+    return buildThriftShipmentCloudinaryFolder(options.shipmentId, base)
+  }
+  return base
+}
+
+export function buildThriftStockImageFileName(barcode: string): string {
+  const safe = barcode.trim().replace(/[^\w.-]+/g, '_')
+  const base = safe || 'stock-image'
+  return base.toLowerCase().endsWith('.jpg') || base.toLowerCase().endsWith('.jpeg')
+    ? base
+    : `${base}.jpg`
+}
+
+export function buildThriftStockImagePublicId(barcode: string): string {
+  return buildThriftStockImageFileName(barcode).replace(/\.(jpe?g)$/i, '')
+}
+
+export function buildThriftShipmentCloudinarySubfolder(shipmentId: number): string {
+  return `shipment-${shipmentId}`
+}
+
+export function buildThriftStockCloudinaryPublicId(
+  barcode: string,
+  shipmentId: number,
+): string {
+  const imageId = buildThriftStockImagePublicId(barcode)
+  return `${buildThriftShipmentCloudinarySubfolder(shipmentId)}/${imageId}`
+}
+
+export function buildThriftShipmentCloudinaryUploadTarget(
+  shipmentId: number,
+  barcode: string,
+  baseFolder = getThriftCloudinaryRootFolder(),
+): {
+  publicId: string
+  shipmentFolder: string
+} {
+  const shipmentSegment = buildThriftShipmentCloudinarySubfolder(shipmentId)
+  const imageId = buildThriftStockImagePublicId(barcode)
+
+  return {
+    publicId: imageId,
+    shipmentFolder: `${baseFolder}/${shipmentSegment}`,
+  }
+}
+
+export type CloudinaryUploadOptions = {
+  publicId?: string
+  publicIdPrefix?: string
+  assetFolder?: string
+  shipmentFolder?: string
+}
 
 function getCloudinaryConfig() {
   const cloudName =
@@ -75,7 +155,10 @@ export function isCloudinaryThriftUrl(url: string): boolean {
     const parsed = new URL(trimmed)
     if (parsed.hostname !== 'res.cloudinary.com') return false
     const path = decodeURIComponent(parsed.pathname)
-    return THRIFT_FOLDER_PREFIXES.some((prefix) => path.includes(`/${prefix}`))
+    return (
+      THRIFT_FOLDER_PREFIXES.some((prefix) => path.includes(`/${prefix}`))
+      || /\/shipment-\d+\//.test(path)
+    )
   } catch {
     return false
   }
@@ -84,7 +167,8 @@ export function isCloudinaryThriftUrl(url: string): boolean {
 export async function uploadToCloudinary(
   blob: Blob,
   name: string,
-  folder = 'thrift-stocks',
+  folder = DEFAULT_THRIFT_CLOUDINARY_FOLDER,
+  options?: CloudinaryUploadOptions,
 ): Promise<CloudinaryUploadResult> {
   const { cloudName, uploadPreset } = getCloudinaryConfig()
 
@@ -103,8 +187,17 @@ export async function uploadToCloudinary(
   const formData = new FormData()
   formData.append('file', imageToUpload, name)
   formData.append('upload_preset', uploadPreset)
-  if (folder) {
-    formData.append('folder', folder)
+  const shipmentFolder =
+    options?.shipmentFolder?.trim() || options?.assetFolder?.trim() || folder?.trim()
+  if (shipmentFolder) {
+    formData.append('folder', shipmentFolder)
+    formData.append('asset_folder', shipmentFolder)
+  }
+  if (options?.publicIdPrefix?.trim()) {
+    formData.append('public_id_prefix', options.publicIdPrefix.trim())
+  }
+  if (options?.publicId?.trim()) {
+    formData.append('public_id', options.publicId.trim())
   }
 
   const response = await fetch(url, {
@@ -156,5 +249,28 @@ export async function deleteCloudinaryImage(imageUrl: string): Promise<void> {
     }
   } catch (err) {
     console.error('Error invoking cloudinary-delete function:', err)
+  }
+}
+
+export async function deleteCloudinaryImageStrict(imageUrl: string): Promise<void> {
+  const trimmed = imageUrl.trim()
+  if (!trimmed) return
+
+  if (!isCloudinaryThriftUrl(trimmed)) {
+    throw new Error('Cannot delete image: not a valid Cloudinary thrift image URL.')
+  }
+
+  const { data, error } = await supabase.functions.invoke('cloudinary-delete', {
+    body: { imageUrl: trimmed },
+  })
+
+  const payload = (data ?? {}) as { error?: string; details?: string; publicId?: string }
+  if (error || payload.error) {
+    const message =
+      payload.details?.trim()
+      || payload.error?.trim()
+      || error?.message
+      || 'Cloudinary image delete failed'
+    throw new Error(message)
   }
 }

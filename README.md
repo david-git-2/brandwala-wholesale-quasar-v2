@@ -58,6 +58,22 @@ Common environment variables:
 - `VITE_SUPABASE_URL`
 - `VITE_LOCAL_APP_URL`
 - `VITE_PRODUCTION_APP_URL`
+- `VITE_CLOUDINARY_CLOUD_NAME`
+- `VITE_CLOUDINARY_UPLOAD_PRESET`
+- `VITE_GOOGLE_DRIVE_UPLOAD_ENABLED` (thrift Drive sync — web only)
+- `VITE_GOOGLE_DRIVE_ADMIN_EMAIL` (who can see sync on Thrift Shipments)
+- `VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID` (My Drive folder ID)
+- `VITE_GOOGLE_DRIVE_THRIFT_FOLDER` (default `thrift`)
+
+## Thrift Google Drive backup (web)
+
+Personal Gmail backup from **Thrift → Shipments** using the admin’s **Google login** token. No Supabase Drive secrets.
+
+**Guide:** [doc/TRADEFLOWBD_DRIVE_UPLOADER.md](doc/TRADEFLOWBD_DRIVE_UPLOADER.md)
+
+1. Enable Drive API + add admin Gmail as OAuth **Test user** (if app is in Testing).
+2. Set in `web/.env` (and Cloudflare Pages): `VITE_GOOGLE_DRIVE_UPLOAD_ENABLED`, `VITE_GOOGLE_DRIVE_ADMIN_EMAIL`, `VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID`.
+3. Sign in on web with Google as that admin email → sync per shipment row.
 
 ## Local development
 

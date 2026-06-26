@@ -1,7 +1,6 @@
 import { supabase } from 'src/boot/supabase'
 import type { PaginatedResult } from './globalShipmentRepository'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
 export interface GlobalStockAllocation {
