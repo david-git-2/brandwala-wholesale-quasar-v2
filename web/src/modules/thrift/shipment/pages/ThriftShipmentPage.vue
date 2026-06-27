@@ -141,10 +141,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferenceUtils';
-import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
+import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import {

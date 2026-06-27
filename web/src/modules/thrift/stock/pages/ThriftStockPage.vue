@@ -1102,19 +1102,19 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStockStore } from '../stores/thriftStockStore';
-import { useThriftStore } from 'src/modules/thrift/stores/thriftStore';
-import { useThriftSettingsStore } from 'src/modules/thrift_settings/stores/thriftSettingsStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore';
-import { formatThriftAmount } from 'src/modules/thrift_currency/utils/formatMoney';
-import type { ThriftCurrency } from 'src/modules/thrift_currency/types';
+import { useThriftStore } from 'src/modules/thrift/shared/stores/thriftStore';
+import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
+import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import BarcodeRenderer from 'src/modules/thrift_barcode/components/BarcodeRenderer.vue';
+import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
-import { resolveTypeIcon } from 'src/modules/thrift/utils/typeIcon';
+import { resolveTypeIcon } from 'src/modules/thrift/type/utils/typeIcon';
 import type { CloudinarySelectedImage } from 'src/components/CloudinaryUploaderDialog.vue';
 import {
   cleanupStockImageAssets,

@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { resolveTypeIcon } from '../utils/typeIcon';
+import { resolveTypeIcon } from '../../type/utils/typeIcon';
 
 defineProps<{
   name: string;

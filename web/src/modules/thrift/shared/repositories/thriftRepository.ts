@@ -1,5 +1,8 @@
 import { supabase } from 'src/boot/supabase';
-import type { ThriftCategory, ThriftType, ThriftBox, ThriftShelf } from '../types';
+import type { ThriftCategory } from '../../category/types';
+import type { ThriftType } from '../../type/types';
+import type { ThriftBox } from '../../box/types';
+import type { ThriftShelf } from '../../shelf/types';
 
 export const thriftRepository = {
   async fetchCategories(tenantId: number): Promise<ThriftCategory[]> {

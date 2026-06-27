@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftStore } from '../stores/thriftStore';
+import { useThriftStore } from '../../shared/stores/thriftStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftType } from '../types';
 import { THRIFT_TYPE_ICON_OPTIONS, resolveTypeIcon } from '../utils/typeIcon';

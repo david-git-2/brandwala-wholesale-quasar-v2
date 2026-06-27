@@ -71,8 +71,8 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 
-import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore'
-import type { ThriftCurrency } from 'src/modules/thrift_currency/types'
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore'
+import type { ThriftCurrency } from 'src/modules/thrift/currency/types'
 import type { PreferenceFieldDefinition } from '../types/preferenceFields'
 
 const props = defineProps<{

@@ -48,6 +48,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-export default defineBoot(({ app }) => {
+export default defineBoot(async ({ app }) => {
+  try {
+    await supabase.auth.getSession()
+  } catch {
+    // Ignore session recovery errors so the app still mounts
+  }
   app.config.globalProperties.$supabase = supabase
 })

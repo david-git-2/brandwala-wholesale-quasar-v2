@@ -11,7 +11,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import type { QTableColumn } from 'quasar'
-import { useThriftCurrencyStore } from 'src/modules/thrift_currency/stores/thriftCurrencyStore'
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore'
 import AppReferenceReadOnlyPage from '../components/AppReferenceReadOnlyPage.vue'
 
 const currencyStore = useThriftCurrencyStore()

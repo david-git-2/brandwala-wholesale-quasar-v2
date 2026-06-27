@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import { thriftRepository } from '../repositories/thriftRepository';
-import type { ThriftCategory, ThriftType, ThriftBox, ThriftShelf } from '../types';
+import type { ThriftCategory } from '../../category/types';
+import type { ThriftType } from '../../type/types';
+import type { ThriftBox } from '../../box/types';
+import type { ThriftShelf } from '../../shelf/types';
 
 export const useThriftStore = defineStore('thrift', {
   state: () => ({
