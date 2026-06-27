@@ -17,6 +17,26 @@ export const showSuccessNotification = (message: string) => {
   })
 }
 
+export const showErrorNotification = (message: string) => {
+  Notify.create({
+    type: 'negative',
+    message,
+    position: 'top-right',
+    timeout: 3000,
+    progress: true,
+  })
+}
+
+export const showWarningNotification = (message: string) => {
+  Notify.create({
+    type: 'warning',
+    message,
+    position: 'top-right',
+    timeout: 2500,
+    progress: true,
+  })
+}
+
 export const showWarningDialog = (
   message: string,
   title = 'Warning',

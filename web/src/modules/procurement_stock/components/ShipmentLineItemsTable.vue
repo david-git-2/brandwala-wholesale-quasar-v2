@@ -386,7 +386,6 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
-import { useQuasar } from 'quasar'
 import SmartImage from 'src/components/SmartImage.vue'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository'
@@ -395,6 +394,7 @@ import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduc
 import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { supabase } from 'src/boot/supabase'
+import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback'
 
 const props = withDefaults(
   defineProps<{
@@ -416,7 +416,6 @@ const emit = defineEmits<{
   delete: [id: number]
 }>()
 
-const $q = useQuasar()
 const shipmentStore = useGlobalShipmentStore()
 
 const baseColumnOptions = [
@@ -563,7 +562,7 @@ const isItemSplitsCompleteLocal = (item: GlobalShipmentItem): boolean => {
 
 const saveItemSplits = async () => {
   const item = activeSplitItem.value
-  if (!item || !isItemSplitsComplete(item) || !authStore.tenantId) return
+  if (!item || !isItemSplitsCompleteLocal(item) || !authStore.tenantId) return
   
   savingSplits.value[item.id] = true
   try {
@@ -595,19 +594,12 @@ const saveItemSplits = async () => {
       if (insertError) throw insertError
     }
 
-    $q.notify({
-      type: 'positive',
-      message: `Stock splits saved successfully for ${item.name}.`,
-      timeout: 1000,
-    })
+    showSuccessNotification(`Stock splits saved successfully for ${item.name}.`)
 
     splitDialogActive.value = false
     await shipmentStore.fetchShipmentDetails(props.shipment!.id)
   } catch (error: any) {
-    $q.notify({
-      type: 'negative',
-      message: error.message || 'Failed to save splits.',
-    })
+    showErrorNotification(error.message || 'Failed to save splits.')
   } finally {
     savingSplits.value[item.id] = false
   }
@@ -655,7 +647,7 @@ const onNumericSave = async (
 ) => {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed < 0) {
-    $q.notify({ type: 'warning', message: 'Value must be 0 or greater.' })
+    showWarningNotification('Value must be 0 or greater.')
     return
   }
 
@@ -671,7 +663,7 @@ const onNumericSave = async (
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to update item.'
-    $q.notify({ type: 'negative', message: msg })
+    showErrorNotification(msg)
   }
 }
 
@@ -695,28 +687,18 @@ const moveItem = async (index: number, direction: 'up' | 'down') => {
   try {
     if (props.shipment) {
       await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder)
-      $q.notify({
-        type: 'positive',
-        message: 'Items reordered successfully.',
-        timeout: 1000,
-      })
+      showSuccessNotification('Items reordered successfully.')
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to reorder items.'
-    $q.notify({
-      type: 'negative',
-      message: msg,
-    })
+    showErrorNotification(msg)
   }
 }
 
 const moveItemToPosition = async (currentIndex: number, newPosition: string | number | null) => {
   const parsed = Number(newPosition)
   if (!Number.isFinite(parsed) || parsed < 1 || parsed > props.items.length) {
-    $q.notify({
-      type: 'warning',
-      message: `Position must be between 1 and ${props.items.length}.`,
-    })
+    showWarningNotification(`Position must be between 1 and ${props.items.length}.`)
     return
   }
 
@@ -737,18 +719,11 @@ const moveItemToPosition = async (currentIndex: number, newPosition: string | nu
   try {
     if (props.shipment) {
       await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder)
-      $q.notify({
-        type: 'positive',
-        message: `Item moved to position ${parsed} successfully.`,
-        timeout: 1000,
-      })
+      showSuccessNotification(`Item moved to position ${parsed} successfully.`)
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to move item.'
-    $q.notify({
-      type: 'negative',
-      message: msg,
-    })
+    showErrorNotification(msg)
   }
 }
 

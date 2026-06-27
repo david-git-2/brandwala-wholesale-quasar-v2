@@ -192,6 +192,11 @@ Follow the Compact Design pattern to maximize screen space:
 - **Icon-only Actions**: Avoid heavy button rows in the header card. Transition secondary details operations (like Edit, Delete) to flat, round, icon-only buttons with tooltips.
 - **Collapsible Layout**: Place summaries, rates, or metrics panels in a collapsible left sidebar, allowing the primary data table on the right to expand to 100% width when collapsed.
 - **Internal Table Scroll**: Add `table-style="min-width: 1200px;"` to data tables to force them to scroll horizontally within their card boundary, preventing layout stretching.
+- **Table Column Pastel Highlights**: Highlight key columns in high-density tables using pastels to increase visual scannability: Package Weight is Purple (`#e8d7f7`), Price is Green (`#daf3e4`), Cost is Orange (`#ffe8d1`), and Quantity is Blue (`#d0e6ff`). All other columns remain neutral/transparent.
+- **Footer Total Color Matching**: Ensure column background highlights extend all the way down to the table's total/summary footer row cells, keeping columns colored consistently.
+- **Stacked Unit and Total Cell Values**: Render unit values and total values stacked inline in table cells for columns like Price, Cost, Product Weight, and Package Weight (prefixed with `T: ` for the total value).
+- **Standardized Weights**: Keep unit weights and table totals in grams (`gm`) for operational clarity in high-density tables.
+- **Inline Quantity Split Workflow**: When in `Warehouse Received` status, add a Split Qty action column next to the Product ID. Showing Done/Pending badges (Done green, Pending orange) and clicking the button prompts a centered screen dialog featuring a product image, name, and input fields to allocate stock.
 
 ## When To Create A New Shared Component
 

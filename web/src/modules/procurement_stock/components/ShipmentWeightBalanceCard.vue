@@ -314,7 +314,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository'
 import { computePackageWeightAdjustments } from '../utils/weightBalance'
-import { useQuasar } from 'quasar'
+import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback'
 
 const props = defineProps<{
   shipmentId: number
@@ -361,7 +361,7 @@ watch(
 const saveCargoInvoiceWeight = async () => {
   const val = cargoInvoiceWeight.value
   if (val === null || val <= 0) {
-    $q.notify({ type: 'warning', message: 'Cargo Invoice Weight must be greater than 0.' })
+    showWarningNotification('Cargo Invoice Weight must be greater than 0.')
     return
   }
   const roundedKg = Math.round(val * 100) / 100
@@ -369,9 +369,9 @@ const saveCargoInvoiceWeight = async () => {
   try {
     await shipmentStore.updateShipment(props.shipmentId, { received_weight: roundedKg })
     cargoInvoiceWeight.value = roundedKg
-    $q.notify({ type: 'positive', message: 'Cargo Invoice Weight updated successfully.' })
+    showSuccessNotification('Cargo Invoice Weight updated successfully.')
   } catch (error: unknown) {
-    $q.notify({ type: 'negative', message: (error as Error).message || 'Failed to update Cargo Invoice Weight.' })
+    showErrorNotification((error as Error).message || 'Failed to update Cargo Invoice Weight.')
   } finally {
     savingCargoInvoiceWeight.value = false
   }
@@ -571,13 +571,13 @@ const addBox = async () => {
     })
 
     newBoxWeight.value = null
-    $q.notify({ type: 'positive', message: `Added box ${num} successfully.` })
+    showSuccessNotification(`Added box ${num} successfully.`)
     await shipmentStore.fetchShipmentBoxes(props.shipmentId)
     // Clear and autofill next box number
     newBoxNumber.value = ''
     autoFillNextBoxNumber()
   } catch (error: unknown) {
-    $q.notify({ type: 'negative', message: (error as Error).message || 'Failed to add box.' })
+    showErrorNotification((error as Error).message || 'Failed to add box.')
   }
 }
 
@@ -592,40 +592,40 @@ const updateBoxFromForm = async () => {
       box_number: num,
       weight_kg: wt,
     })
-    $q.notify({ type: 'positive', message: 'Box updated successfully.' })
+    showSuccessNotification('Box updated successfully.')
     await shipmentStore.fetchShipmentBoxes(props.shipmentId)
     cancelEditBox()
   } catch (error: unknown) {
-    $q.notify({ type: 'negative', message: (error as Error).message || 'Failed to update box.' })
+    showErrorNotification((error as Error).message || 'Failed to update box.')
   }
 }
 
 const updateBox = async (boxId: number, patch: { box_number?: string; weight_kg?: number }) => {
   if (patch.box_number !== undefined && !patch.box_number.trim()) {
-    $q.notify({ type: 'warning', message: 'Box number cannot be empty.' })
+    showWarningNotification('Box number cannot be empty.')
     return
   }
   if (patch.weight_kg !== undefined && (Number.isNaN(patch.weight_kg) || patch.weight_kg <= 0)) {
-    $q.notify({ type: 'warning', message: 'Weight must be greater than 0.' })
+    showWarningNotification('Weight must be greater than 0.')
     return
   }
 
   try {
     await globalShipmentBoxRepository.update(boxId, patch)
-    $q.notify({ type: 'positive', message: 'Box updated successfully.' })
+    showSuccessNotification('Box updated successfully.')
     await shipmentStore.fetchShipmentBoxes(props.shipmentId)
   } catch (error: unknown) {
-    $q.notify({ type: 'negative', message: (error as Error).message || 'Failed to update box.' })
+    showErrorNotification((error as Error).message || 'Failed to update box.')
   }
 }
 
 const deleteBox = async (boxId: number) => {
   try {
     await globalShipmentBoxRepository.delete(boxId)
-    $q.notify({ type: 'positive', message: 'Box removed.' })
+    showSuccessNotification('Box removed.')
     await shipmentStore.fetchShipmentBoxes(props.shipmentId)
   } catch (error: unknown) {
-    $q.notify({ type: 'negative', message: (error as Error).message || 'Failed to delete box.' })
+    showErrorNotification((error as Error).message || 'Failed to delete box.')
   }
 }
 
@@ -643,16 +643,10 @@ const confirmApply = () => {
       applying.value = true
       try {
         await shipmentStore.applyWeightBalance(props.shipmentId)
-        $q.notify({
-          type: 'positive',
-          message: 'Weight balance successfully distributed and applied across lines.',
-        })
+        showSuccessNotification('Weight balance successfully distributed and applied across lines.')
         emit('applied')
       } catch (error: unknown) {
-        $q.notify({
-          type: 'negative',
-          message: (error as Error).message || 'Failed to apply weight balance.',
-        })
+        showErrorNotification((error as Error).message || 'Failed to apply weight balance.')
       } finally {
         applying.value = false
       }

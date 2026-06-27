@@ -611,6 +611,7 @@ import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.v
 import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost'
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 import type { GlobalCurrency } from 'src/modules/global_reference/types'
+import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback'
 
 const route = useRoute()
 const router = useRouter()
@@ -849,10 +850,7 @@ const changeStatus = (newStatus: string) => {
 
   if (newStatus === 'Ready Stock') {
     if (!isSplitsComplete.value) {
-      $q.notify({
-        type: 'warning',
-        message: 'Please configure quantity splits for all line items first.',
-      })
+      showWarningNotification('Please configure quantity splits for all line items first.')
       return
     }
 
@@ -861,31 +859,27 @@ const changeStatus = (newStatus: string) => {
       message: 'All item splits are fully configured. Changing status to "Ready Stock" will lock the allocations and commit them to active inventory pools. Continue?',
       cancel: true,
       persistent: true,
-    }).onOk(async () => {
-      updatingStatus.value = true
-      try {
-        const txRate = totals.value.transactionRate
-        const updatePayload: any = {
-          status: 'Ready Stock',
-          stock_ready: true,
+    }).onOk(() => {
+      void (async () => {
+        updatingStatus.value = true
+        try {
+          const txRate = totals.value.transactionRate
+          const updatePayload: any = {
+            status: 'Ready Stock',
+            stock_ready: true,
+          }
+          if (txRate !== null) {
+            updatePayload.transaction_rate = txRate
+          }
+          await shipmentStore.updateShipment(shipmentId, updatePayload)
+          showSuccessNotification('Shipment promoted to Ready Stock successfully.')
+          loadShipmentDetails()
+        } catch (err: any) {
+          showErrorNotification(err.message || 'Failed to promote shipment.')
+        } finally {
+          updatingStatus.value = false
         }
-        if (txRate !== null) {
-          updatePayload.transaction_rate = txRate
-        }
-        await shipmentStore.updateShipment(shipmentId, updatePayload)
-        $q.notify({
-          type: 'positive',
-          message: 'Shipment promoted to Ready Stock successfully.',
-        })
-        loadShipmentDetails()
-      } catch (err: any) {
-        $q.notify({
-          type: 'negative',
-          message: err.message || 'Failed to promote shipment.',
-        })
-      } finally {
-        updatingStatus.value = false
-      }
+      })()
     })
     return
   }
@@ -906,11 +900,11 @@ const changeStatus = (newStatus: string) => {
         }
 
         await shipmentStore.updateShipment(shipmentId, updatePayload)
-        $q.notify({ type: 'positive', message: `Shipment status updated to: ${newStatus}` })
+        showSuccessNotification(`Shipment status updated to: ${newStatus}`)
         loadShipmentDetails()
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        $q.notify({ type: 'negative', message: message || 'Failed to update status' })
+        showErrorNotification(message || 'Failed to update status')
       } finally {
         updatingStatus.value = false
       }
@@ -940,11 +934,11 @@ const confirmDeleteShipment = () => {
     void (async () => {
       try {
         await shipmentStore.deleteShipment(shipmentId)
-        $q.notify({ type: 'positive', message: 'Shipment deleted successfully' })
+        showSuccessNotification('Shipment deleted successfully')
         goBack()
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        $q.notify({ type: 'negative', message: message || 'Failed to delete shipment' })
+        showErrorNotification(message || 'Failed to delete shipment')
       }
     })()
   })
@@ -981,11 +975,11 @@ const confirmDeleteItem = (itemId: number) => {
     void (async () => {
       try {
         await shipmentStore.deleteShipmentItem(itemId)
-        $q.notify({ type: 'positive', message: 'Item deleted successfully' })
+        showSuccessNotification('Item deleted successfully')
         loadShipmentDetails()
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        $q.notify({ type: 'negative', message: message || 'Failed to delete item' })
+        showErrorNotification(message || 'Failed to delete item')
       }
     })()
   })
@@ -1086,12 +1080,12 @@ const onSaveRates = async () => {
       transaction_rate: txRate,
     }
     await shipmentStore.updateShipment(shipmentId, updatePayload)
-    $q.notify({ type: 'positive', message: 'Conversion and cargo rates updated successfully.' })
+    showSuccessNotification('Conversion and cargo rates updated successfully.')
     showRatesDialog.value = false
     loadShipmentDetails()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    $q.notify({ type: 'negative', message: msg || 'Failed to update rates.' })
+    showErrorNotification(msg || 'Failed to update rates.')
   } finally {
     savingRates.value = false
   }

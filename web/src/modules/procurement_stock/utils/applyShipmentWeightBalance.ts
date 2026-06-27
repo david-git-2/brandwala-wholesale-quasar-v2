@@ -5,7 +5,6 @@ import {
 } from '../repositories/globalShipmentRepository'
 import {
   computePackageWeightAdjustments,
-  calculateEstimatedWeightKg,
 } from './weightBalance'
 import { calculateTransactionRate } from './landedCost'
 
@@ -41,8 +40,6 @@ export async function applyShipmentWeightBalance(
     throw new Error('Cargo Invoice Weight must be saved before applying weight balance.')
   }
 
-  const estimatedKg = calculateEstimatedWeightKg(items)
-  const deltaKg = actualKg - estimatedKg
   const adjustments = computePackageWeightAdjustments(items, actualKg)
 
   const updatedItems = items.map((item) => {

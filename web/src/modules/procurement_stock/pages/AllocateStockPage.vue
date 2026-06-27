@@ -1,26 +1,20 @@
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack">
-      <!-- Page Header -->
-      <div class="row items-center justify-between q-col-gutter-sm">
-        <div class="col">
-          <AppPageHeader
-            eyebrow="Procurement & Stock"
-            title="Allocate Stock"
-            subtitle="Distribute physical stock pools to sister concerns (child tenants)"
-          />
+  <q-page class="q-pa-xs q-sm-pa-sm">
+    <div class="q-gutter-y-sm">
+      <!-- Compact Header Card -->
+      <q-card flat bordered class="q-py-sm q-px-md bg-white">
+        <div class="row items-center justify-between no-wrap">
+          <div class="column">
+            <span class="text-caption text-weight-bold text-primary text-uppercase tracking-wider" style="font-size: 10px;">Procurement & Stock</span>
+            <div class="text-h6 text-weight-bold text-grey-9 q-mt-xs" style="line-height: 1.1;">
+              Allocate Stock
+            </div>
+            <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 11px;">
+              Distribute physical stock pools to sister concerns (child tenants)
+            </div>
+          </div>
         </div>
-        <div class="col-auto">
-          <q-btn
-            flat
-            color="primary"
-            icon="arrow_back"
-            label="Back to Stock"
-            no-caps
-            @click="goBack"
-          />
-        </div>
-      </div>
+      </q-card>
 
       <!-- Parent Context Validation Banner -->
       <q-banner v-if="!isParentContext" class="bg-orange-1 text-orange-10 rounded-borders q-mb-md bw-status-banner">
@@ -99,70 +93,48 @@
             v-model:pagination="pagination"
             @request="onRequest"
             binary-state-sort
+            class="allocation-sticky-header-table"
           >
-            <!-- Product Column -->
-            <template #body-cell-product="props">
-              <q-td :props="props">
-                <div class="row items-center q-gutter-x-sm no-wrap">
-                  <q-avatar rounded size="40px" class="bg-grey-2">
-                    <img v-if="props.row.image_url" :src="props.row.image_url" alt="Product" style="object-fit: cover;" />
-                    <q-icon v-else name="inventory_2" color="grey-6" size="24px" />
-                  </q-avatar>
-                  <div>
-                    <div class="text-weight-bold text-grey-9">{{ props.row.item_name }}</div>
-                    <div class="text-caption text-grey-6 row q-gutter-x-sm">
-                      <span v-if="props.row.product_code">Code: {{ props.row.product_code }}</span>
-                      <span v-if="props.row.barcode">Barcode: {{ props.row.barcode }}</span>
-                    </div>
-                  </div>
-                </div>
-              </q-td>
-            </template>
-
-            <!-- Actions Column -->
-            <template #body-cell-actions="props">
-              <q-td :props="props" align="center">
-                <q-btn
-                  flat
-                  no-caps
-                  dense
-                  color="primary"
-                  :icon="isExpanded(props.row.id) ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
-                  :label="isExpanded(props.row.id) ? 'Collapse' : 'Manage Allocations'"
-                  @click="toggleRowExpansion(props.row)"
-                />
-              </q-td>
+            <!-- Header Slot with leading auto-width for Collapse actions -->
+            <template #header="props">
+              <q-tr :props="props">
+                <q-th auto-width />
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                  {{ col.label }}
+                </q-th>
+              </q-tr>
             </template>
 
             <!-- Expanded Row Slot -->
             <template #body="props">
               <q-tr :props="props">
+                <q-td auto-width>
+                  <q-btn
+                    size="sm"
+                    color="primary"
+                    round
+                    dense
+                    @click="props.expand = !props.expand; props.expand ? loadRowAllocations(props.row.id) : null"
+                    :icon="props.expand ? 'remove' : 'add'"
+                  />
+                </q-td>
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
                   <template v-if="col.name === 'product'">
-                    <div class="row items-center q-gutter-x-sm no-wrap">
-                      <q-avatar rounded size="40px" class="bg-grey-2">
-                        <img v-if="props.row.image_url" :src="props.row.image_url" alt="Product" style="object-fit: cover;" />
-                        <q-icon v-else name="inventory_2" color="grey-6" size="24px" />
+                    <div class="row items-center q-gutter-x-md no-wrap q-py-xs">
+                      <q-avatar rounded size="1in" class="bg-grey-2 flex-shrink-0">
+                        <img v-if="props.row.image_url" :src="props.row.image_url" alt="Product" style="object-fit: cover; width: 100%; height: 100%;" />
+                        <q-icon v-else name="inventory_2" color="grey-6" size="36px" />
                       </q-avatar>
                       <div>
-                        <div class="text-weight-bold text-grey-9">{{ props.row.item_name }}</div>
-                        <div class="text-caption text-grey-6 row q-gutter-x-sm">
+                        <div class="text-weight-bold text-grey-9 text-wrap" style="line-height: 1.2; word-break: break-word;">
+                          {{ props.row.item_name }}
+                        </div>
+                        <div class="text-caption text-grey-6 row q-gutter-x-sm q-mt-xs">
                           <span v-if="props.row.product_code">Code: {{ props.row.product_code }}</span>
                           <span v-if="props.row.barcode">Barcode: {{ props.row.barcode }}</span>
                         </div>
                       </div>
                     </div>
-                  </template>
-                  <template v-else-if="col.name === 'actions'">
-                    <q-btn
-                      flat
-                      no-caps
-                      dense
-                      color="primary"
-                      :icon="isExpanded(props.row.id) ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
-                      :label="isExpanded(props.row.id) ? 'Collapse' : 'Manage Allocations'"
-                      @click="toggleRowExpansion(props.row)"
-                    />
                   </template>
                   <template v-else>
                     {{ col.value }}
@@ -171,9 +143,9 @@
               </q-tr>
               
               <!-- Expanded content details -->
-              <q-tr v-if="isExpanded(props.row.id)" :props="props" class="bg-grey-1">
+              <q-tr v-if="props.expand" :props="props" class="bg-grey-1">
                 <q-td colspan="100%">
-                  <div class="q-pa-md">
+                  <div class="q-pa-md q-mx-auto" style="max-width: 800px; width: 100%;">
                     <div class="text-subtitle2 text-weight-bold text-primary q-mb-sm">
                       Child Tenant Allocations for {{ props.row.item_name }}
                     </div>
@@ -182,7 +154,7 @@
                       <q-spinner color="primary" size="24px" />
                     </div>
 
-                    <div v-else class="column q-gutter-y-sm">
+                    <div v-else-if="rowAllocations[props.row.id]" class="column q-gutter-y-sm">
                       <!-- Active allocations per child tenant -->
                       <div class="row q-col-gutter-sm items-center q-pb-xs border-bottom text-caption text-weight-bold text-grey-7">
                         <div class="col-4">Sister Concern</div>
@@ -191,14 +163,14 @@
                       </div>
 
                       <div
-                        v-for="child in childTenants"
-                        :key="child.id"
+                        v-for="child in rowAllocations[props.row.id]"
+                        :key="child.child_tenant_id"
                         class="row q-col-gutter-sm items-center q-py-sm"
                       >
-                        <div class="col-4 text-body2 text-grey-9">{{ child.name }}</div>
+                        <div class="col-4 text-body2 text-grey-9">{{ child.child_tenant_name }}</div>
                         <div class="col-4 row justify-center">
                           <q-input
-                            v-model.number="draftQuantities[props.row.id]![child.id]"
+                            v-model.number="draftQuantities[props.row.id]![child.child_tenant_id]"
                             type="number"
                             dense
                             filled
@@ -216,9 +188,9 @@
                             color="primary"
                             label="Save"
                             no-caps
-                            :loading="submittingMap[`${props.row.id}-${child.id}`]"
-                            :disable="isOverAllocated(props.row.id) || !hasQtyChanged(props.row.id, child.id)"
-                            @click="saveAllocation(props.row, child.id)"
+                            :loading="submittingMap[`${props.row.id}-${child.child_tenant_id}`]"
+                            :disable="isOverAllocated(props.row.id) || !hasQtyChanged(props.row.id, child.child_tenant_id)"
+                            @click="saveAllocation(props.row, child.child_tenant_id)"
                           />
                           <q-btn
                             outline
@@ -226,11 +198,15 @@
                             color="negative"
                             label="Remove"
                             no-caps
-                            :loading="submittingMap[`${props.row.id}-${child.id}`]"
-                            :disable="!hasExistingAllocation(props.row.id, child.id)"
-                            @click="removeAllocation(props.row, child.id)"
+                            :loading="submittingMap[`${props.row.id}-${child.child_tenant_id}`]"
+                            :disable="!hasExistingAllocation(props.row.id, child.child_tenant_id)"
+                            @click="removeAllocation(props.row, child.child_tenant_id)"
                           />
                         </div>
+                      </div>
+
+                      <div v-if="rowAllocations[props.row.id].length === 0" class="text-caption text-grey-6 text-center q-py-md">
+                        No sister concerns (child tenants) found under this parent tenant.
                       </div>
 
                       <!-- Reconciliation and totals summary -->
@@ -266,19 +242,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQuasar, type QTableColumn } from 'quasar'
-import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
 import { useGlobalStockTypeStore } from 'src/modules/procurement_stock/stores/globalStockTypeStore'
 import { useGlobalStockAllocationStore } from 'src/modules/procurement_stock/stores/globalStockAllocationStore'
 import { globalStockAllocationRepository, type AllocatableStock } from '../repositories/globalStockAllocationRepository'
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback'
 
-const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
@@ -288,7 +261,6 @@ const allocationStore = useGlobalStockAllocationStore()
 
 // State
 const searchText = ref('')
-const expandedRows = ref<number[]>([])
 
 // Filter State
 const filterDrawerOpen = ref(false)
@@ -298,7 +270,7 @@ const draftShipmentFilter = ref<number | null>(null)
 const draftStockTypeFilter = ref<number | null>(null)
 
 // Allocation editing states
-const childTenants = ref<{ id: number; name: string }[]>([])
+const rowAllocations = ref<Record<number, any[]>>({})
 const rowLoadingState = ref<Record<number, boolean>>({})
 const savedQuantities = ref<Record<number, Record<number, number>>>({}) // Map of stockId -> childTenantId -> qty
 const draftQuantities = ref<Record<number, Record<number, number>>>({}) // Map of stockId -> childTenantId -> qty
@@ -322,7 +294,6 @@ const columns: QTableColumn[] = [
   { name: 'pool_quantity', label: 'Pool Qty', field: 'pool_quantity', align: 'center', sortable: true },
   { name: 'allocated_qty', label: 'Allocated', field: 'allocated_qty', align: 'center', sortable: true },
   { name: 'unallocated_qty', label: 'Unallocated', field: 'unallocated_qty', align: 'center', sortable: true },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
 
 // Computed properties for Context Verification
@@ -365,29 +336,14 @@ const stockTypeOptions = computed(() => {
 })
 
 // Handlers
-const goBack = () => {
-  router.back()
-}
 
-const isExpanded = (id: number) => {
-  return expandedRows.value.includes(id)
-}
-
-const toggleRowExpansion = async (row: AllocatableStock) => {
-  const index = expandedRows.value.indexOf(row.id)
-  if (index > -1) {
-    expandedRows.value.splice(index, 1)
-  } else {
-    expandedRows.value.push(row.id)
-    await loadRowAllocations(row.id)
-  }
-}
 
 // Loads allocations for child tenants of a specific stock pool
 const loadRowAllocations = async (stockId: number) => {
   rowLoadingState.value[stockId] = true
   try {
     const data = await globalStockAllocationRepository.listChildAllocationSummary(stockId)
+    rowAllocations.value[stockId] = data
     
     // Initialize maps
     const saved = savedQuantities.value[stockId] ?? {}
@@ -396,17 +352,15 @@ const loadRowAllocations = async (stockId: number) => {
     draftQuantities.value[stockId] = draft
     
     // Pre-fill child concerns
-    childTenants.value.forEach((child) => {
-      const existing = data.find((d) => Number(d.child_tenant_id) === child.id)
-      const qty = existing ? existing.allocated_qty : 0
-      saved[child.id] = qty
-      draft[child.id] = qty
+    data.forEach((item) => {
+      saved[item.child_tenant_id] = item.allocated_qty
+      draft[item.child_tenant_id] = item.allocated_qty
     })
     
     recalculateDraftTotal(stockId)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    $q.notify({ type: 'negative', message: msg || 'Failed to load allocations.' })
+    showErrorNotification(msg || 'Failed to load allocations.')
   } finally {
     rowLoadingState.value[stockId] = false
   }
@@ -414,8 +368,9 @@ const loadRowAllocations = async (stockId: number) => {
 
 const recalculateDraftTotal = (stockId: number) => {
   const stockDrafts = draftQuantities.value[stockId] || {}
-  draftTotals.value[stockId] = childTenants.value.reduce((sum, child) => {
-    const val = Number(stockDrafts[child.id])
+  const allocs = rowAllocations.value[stockId] || []
+  draftTotals.value[stockId] = allocs.reduce((sum, item) => {
+    const val = Number(stockDrafts[item.child_tenant_id])
     return sum + (Number.isFinite(val) ? Math.max(0, val) : 0)
   }, 0)
 }
@@ -433,33 +388,39 @@ const isOverAllocated = (stockId: number) => {
 const hasQtyChanged = (stockId: number, childId: number) => {
   const saved = savedQuantities.value[stockId]?.[childId] ?? 0
   const draft = draftQuantities.value[stockId]?.[childId] ?? 0
-  return saved !== draft
+  return Number(saved) !== Number(draft)
 }
 
 const hasExistingAllocation = (stockId: number, childId: number) => {
   const saved = savedQuantities.value[stockId]?.[childId] ?? 0
-  return saved > 0
+  return Number(saved) > 0
 }
 
 const saveAllocation = async (row: AllocatableStock, childId: number) => {
   const stockId = row.id
   const qty = Number(draftQuantities.value[stockId]?.[childId] || 0)
   const key = `${stockId}-${childId}`
+  const currentTenantId = contextTenantId.value
+  
+  if (!currentTenantId) {
+    showErrorNotification('Parent tenant context is missing.')
+    return
+  }
   
   submittingMap.value[key] = true
   try {
     await globalStockAllocationRepository.upsertGlobalStockAllocation(
-      authStore.tenantId!,
+      currentTenantId,
       childId,
       stockId,
       qty
     )
-    $q.notify({ type: 'positive', message: 'Allocation updated successfully.' })
+    showSuccessNotification('Allocation updated successfully.')
     await loadRowAllocations(stockId)
     await fetchAllocatableData()
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    $q.notify({ type: 'negative', message: msg || 'Failed to update allocation.' })
+    showErrorNotification(msg || 'Failed to update allocation.')
   } finally {
     submittingMap.value[key] = false
   }
@@ -468,6 +429,12 @@ const saveAllocation = async (row: AllocatableStock, childId: number) => {
 const removeAllocation = (row: AllocatableStock, childId: number) => {
   const stockId = row.id
   const key = `${stockId}-${childId}`
+  const currentTenantId = contextTenantId.value
+  
+  if (!currentTenantId) {
+    showErrorNotification('Parent tenant context is missing.')
+    return
+  }
   
   $q.dialog({
     title: 'Confirm Removal',
@@ -479,17 +446,17 @@ const removeAllocation = (row: AllocatableStock, childId: number) => {
       submittingMap.value[key] = true
       try {
         await globalStockAllocationRepository.upsertGlobalStockAllocation(
-          authStore.tenantId!,
+          currentTenantId,
           childId,
           stockId,
           0
         )
-        $q.notify({ type: 'positive', message: 'Allocation removed successfully.' })
+        showSuccessNotification('Allocation removed successfully.')
         await loadRowAllocations(stockId)
         await fetchAllocatableData()
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
-        $q.notify({ type: 'negative', message: msg || 'Failed to remove allocation.' })
+        showErrorNotification(msg || 'Failed to remove allocation.')
       } finally {
         submittingMap.value[key] = false
       }
@@ -557,27 +524,13 @@ const onResetFilters = () => {
   void fetchAllocatableData()
 }
 
-const loadChildren = async () => {
-  if (!authStore.tenantId) return
-  try {
-    const { data, error: err } = await supabase
-      .from('tenants')
-      .select('id, name')
-      .eq('parent_id', authStore.tenantId)
-    if (err) throw err
-    childTenants.value = data || []
-  } catch (err: unknown) {
-    console.error('Failed to load child concerns', err)
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
-  if (isParentContext.value && authStore.tenantId) {
+  const currentTenantId = contextTenantId.value
+  if (isParentContext.value && currentTenantId) {
     await Promise.all([
-      loadChildren(),
-      shipmentStore.fetchShipments(authStore.tenantId),
-      stockTypeStore.fetchStockTypes(authStore.tenantId),
+      shipmentStore.fetchShipments(currentTenantId),
+      stockTypeStore.fetchStockTypes(currentTenantId),
       fetchAllocatableData(),
     ])
   }
@@ -589,7 +542,6 @@ watch(
   async ([newTenantId, parentCtx]) => {
     if (parentCtx && newTenantId) {
       await Promise.all([
-        loadChildren(),
         shipmentStore.fetchShipments(newTenantId),
         stockTypeStore.fetchStockTypes(newTenantId),
         fetchAllocatableData(),
@@ -605,5 +557,33 @@ watch(
 }
 .border-top {
   border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.allocation-sticky-header-table {
+  height: clamp(400px, calc(100vh - 250px), 70vh);
+  max-width: 100%;
+}
+
+.allocation-sticky-header-table :deep(.q-table__container) {
+  max-height: 100%;
+}
+
+.allocation-sticky-header-table :deep(.q-table__middle) {
+  max-height: 100%;
+  overflow: auto;
+}
+
+.allocation-sticky-header-table :deep(table) {
+  min-width: 1200px;
+}
+
+.allocation-sticky-header-table :deep(thead tr th) {
+  position: sticky;
+  z-index: 1;
+  background-color: #fff;
+}
+
+.allocation-sticky-header-table :deep(thead tr:first-child th) {
+  top: 0;
 }
 </style>
