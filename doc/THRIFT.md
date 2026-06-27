@@ -2,17 +2,18 @@
 
 BrandWala / TradeFlow BD includes a **standalone Thrift vertical** for second-hand retail: inbound shipments, box tracking, stock registration with barcodes, and a shared category/type catalog. Thrift is **tenant-scoped** and **not integrated** with the global entity model in phase 1 (locked decision **D12** in [MASTER_PLAN.md](MASTER_PLAN.md)).
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§14 row 32, §17, D12), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) (currencies), Thrift-app [AI_ARCHITECTURE.md](../../Thrift-app/AI_ARCHITECTURE.md) (mobile registration flows).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), Thrift-app [AI_ARCHITECTURE.md](../../Thrift-app/AI_ARCHITECTURE.md).
 
 ---
 
 This document answers:
 
-- What is the Thrift vertical and how do shipment, box, stock, barcode, category, and type relate?
-- Which module keys, routes, tables, and RPCs are used today?
-- What is the barcode lifecycle and how does stock registration work (web + mobile)?
-- What is implemented vs still backend-only?
-- How is the web code organized today, and what refactor is planned?
+- Who uses each Thrift module and why (user stories)?
+- What is stored in each table, and what is each table for?
+- How are permissions and RLS enforced?
+- What is the API surface (RPCs, direct access, routes)?
+- What are the end-to-end flow sequences (web + mobile)?
+- How does the cost engine work, and what is planned vs implemented?
 
 ---
 
@@ -22,358 +23,641 @@ This document answers:
 |----------|-----------------|
 | Scope | Per-tenant; isolated from `global_stocks` / `global_invoices` |
 | `tenant_id` | Owning tenant on every row |
-| Auth surface | App (`memberships`) |
-| Module gating | Individual `thrift_*` keys via `tenant_modules` |
+| Auth surface | App (`memberships`) — `admin` / `staff` roles |
+| Module gating | Individual `thrift_*` keys via `tenant_modules` (D13) |
 | Primary UI | `/:slug/app/thrift/*` |
-| Mobile client | Separate **Thrift-app** repo (Capacitor/Android) |
-| Status | **STABLE** — catalog/inventory pipeline complete on web + DB |
+| Mobile client | **Thrift-app** (Capacitor/Android) |
+| Status | Catalog/inventory **STABLE**; costing engine + shipment detail **planned** |
 
 ### Domain flow
 
 ```
-thrift_shipment → box → stock  (+ barcode assigned at registration)
-                              → invoice (DB only — no web UI yet)
+settings + tenant prefs → shipment → box → stock (+ barcode at register)
+                              ↓
+                    shipment detail (pricing) → invoice (DB only)
 ```
+
+### Costing design principles (target)
+
+| # | Decision |
+|---|----------|
+| D-T1 | Stock stores **3 cost inputs only:** `origin_unit_price`, `extra_origin_unit_price`, `additional_charges_cost` |
+| D-T2 | Shipment stores rates, cargo weight, labour/transport totals, markup |
+| D-T3 | Settings store default origin + hand-tag / sticker unit costs |
+| D-T4 | `U` = `SUM(quantity)` per shipment — divisor for cargo and ops |
+| D-T5 | Cargo allocated: `shipment_cargo_cost / U` per unit |
+| D-T6 | Sell price = `landed_unit_cost × (1 + default_markup_rate)` unless manual override |
+| D-T7 | Deprecate stored `cost_of_goods_sold`, `extra_expense_cost`, `target_price` |
+| D-T8 | **Scope lock** — barcode, images, catalog, registration flows **unchanged**; only shipment + cost fields change |
+
+---
+
+## 2. User stories
+
+### 2.1 Shipment — `thrift_shipment`
+
+**As a** thrift admin,  
+**I want to** create a shipment with purchase/cost currencies and conversion rates,  
+**So that** all stock in that batch shares one financial context.
+
+**As a** thrift admin,  
+**I want to** record cargo weight, cargo rate, labour total, and transportation total on a shipment,  
+**So that** freight and ops costs split across units automatically when rates change.
+
+**As a** thrift admin,  
+**I want to** open a **shipment detail** page with every item and a markup rate,  
+**So that** I can review landed cost and adjust sell prices in one place.
+
+**As a** thrift admin,  
+**I want to** download shipment images from Cloudinary,  
+**So that** I can archive media for an inbound batch.
+
+### 2.2 Box — `thrift_box`
+
+**As a** warehouse user,  
+**I want to** label physical boxes within a shipment,  
+**So that** I can trace which stock came from which container (text name only — no box barcode).
+
+### 2.3 Stock — `thrift_stock`
+
+**As a** desk user,  
+**I want** a paginated stock catalog with inline edit, filters, and images,  
+**So that** I can manage inventory without leaving the list.
+
+**As a** desk user,  
+**I want** origin price to default from settings but stay editable per item,  
+**So that** costing inputs are fast yet accurate for outliers.
+
+**As a** desk user,  
+**I want** product cost, cargo share, ops share, and landed cost to **recalculate in the UI**,  
+**So that** I never maintain stale COGS in the database.
+
+**As a** desk user,  
+**I want** suggested sell price from markup with per-row manual override,  
+**So that** formula pricing stays flexible.
+
+### 2.4 Barcode — `thrift_barcode`
+
+**As a** thrift admin,  
+**I want to** bulk-generate and print barcodes,  
+**So that** labels are ready before mobile registration.
+
+**As a** mobile operator,  
+**I want to** scan a barcode and register stock against it,  
+**So that** each physical item maps to one catalog row.
+
+### 2.5 Category & type — `thrift_category`, `thrift_type`
+
+**As a** thrift admin,  
+**I want** a global read-only catalog plus tenant-specific types,  
+**So that** registration pickers are consistent but extensible.
+
+### 2.6 Shelf — `thrift_shelf`
+
+**As a** warehouse user,  
+**I want to** assign shelf codes to stock,  
+**So that** I can find items on the shop floor.
+
+### 2.7 Settings — `thrift_settings`
+
+**As a** thrift admin,  
+**I want** default origin unit price and hand-tag / sticker unit costs in settings,  
+**So that** registration and ops cost totals stay consistent.
+
+**As a** tenant admin,  
+**I want** default shipment currencies in tenant preferences,  
+**So that** new shipments pre-fill purchase and cost currency.
+
+### 2.8 Mobile — Thrift-app
+
+**As a** floor operator,  
+**I want to** select shipment/box, scan barcode, photograph item, and register stock,  
+**So that** intake is fast at the warehouse (costing UI deferred to web).
+
+### 2.9 Invoice — `thrift_invoices` (DB only today)
+
+**As a** future desk user,  
+**I want to** sell stock and record profit,  
+**So that** revenue and COGS flow to `thrift_accounting_ledger` (no web UI yet).
+
+---
+
+## 3. Data model
+
+Legend: **Today** = in production DB | **Target** = planned costing work | **Stored** vs **Computed**
+
+### 3.0 Table index
+
+| Table | Use case | Module key |
+|-------|----------|------------|
+| `thrift_shipments` | Inbound batch; rates; shared cost allocation | `thrift_shipment` |
+| `thrift_boxes` | Physical containers within a shipment | `thrift_box` |
+| `thrift_stocks` | Sellable inventory item | `thrift_stock` |
+| `thrift_pricings` | Sell price persistence (1:1 stock) | `thrift_stock` |
+| `thrift_stock_images` | Product photos | `thrift_stock` |
+| `thrift_barcodes` | Pre-printed label catalog | `thrift_barcode` |
+| `thrift_categories` | High-level classification | `thrift_category` |
+| `thrift_types` | Style within category | `thrift_type` |
+| `thrift_shelves` | Physical shelf location | `thrift_shelf` |
+| `thrift_settings` | Tenant defaults (origin, label unit costs) | `thrift_settings` |
+| `thrift_invoices` | Sales header | *(no UI)* |
+| `thrift_invoice_items` | Sales lines | *(no UI)* |
+| `thrift_accounting_ledger` | Revenue/expense/loss entries | *(no UI)* |
 
 ```mermaid
-flowchart TD
-  shipment[thrift_shipments]
-  box[thrift_boxes]
-  stock[thrift_stocks]
-  barcode[thrift_barcodes]
-  category[thrift_categories]
-  type[thrift_types]
-
-  shipment --> box
-  shipment --> stock
-  box --> stock
-  category --> stock
-  type --> stock
-  barcode -->|"consumed on register"| stock
+erDiagram
+  thrift_shipments ||--o{ thrift_boxes : contains
+  thrift_shipments ||--o{ thrift_stocks : contains
+  thrift_boxes ||--o{ thrift_stocks : optional
+  thrift_categories ||--o{ thrift_stocks : classifies
+  thrift_types ||--o{ thrift_stocks : styles
+  thrift_shelves ||--o{ thrift_stocks : locates
+  thrift_stocks ||--|| thrift_pricings : prices
+  thrift_stocks ||--o{ thrift_stock_images : images
+  thrift_barcodes ||--o| thrift_stocks : assigned_via_barcode_string
+  thrift_settings ||--|| tenants : one_per_tenant
+  thrift_invoices ||--o{ thrift_invoice_items : lines
+  thrift_stocks ||--o{ thrift_invoice_items : sold
 ```
 
-### What this domain is not
+---
 
-| Topic | Is not |
-|-------|--------|
-| **Wholesale / global stock** | Does not use `global_stocks` or procurement flows |
-| **Box barcodes** | Boxes are identified by text `name` only — no scannable box barcode |
-| **Phase 1 global integration** | No parent/child stock sharing across tenants (D12) |
-| **Invoice UI** | `thrift_invoices` and accounting ledger exist in DB only |
+### 3.1 `thrift_shipments`
+
+**Use case:** Groups an inbound purchase batch. Owns conversion rates, cargo inputs, labour/transport totals, and default markup. All stock in the shipment inherits these for cost allocation.
+
+| Column | Today | Target | Stored |
+|--------|-------|--------|--------|
+| `id` | PK | | Yes |
+| `tenant_id` | FK → `tenants` | | Yes |
+| `name` | text | | Yes |
+| `purchase_currency_id` | FK → `global_currencies` | | Yes |
+| `cost_currency_id` | FK → `global_currencies` | | Yes |
+| `product_conversion_rate` | numeric | | Yes |
+| `cargo_conversion_rate` | numeric | | Yes |
+| `cargo_rate` | numeric | | Yes |
+| `total_cargo_weight_kg` | — | numeric | Yes |
+| `labor_total_cost` | — | numeric | Yes |
+| `transportation_total_cost` | — | numeric | Yes |
+| `default_markup_rate` | — | numeric | Yes |
+| `inserted_by`, timestamps | | | Yes |
+
+**Computed (never stored):** `U`, `shipment_cargo_cost`, `shipment_ops_cost`.
+
+**Access:** Direct Supabase CRUD from `ThriftShipmentPage.vue`. Detail page **planned**.
 
 ---
 
-## 2. Entity reference
+### 3.2 `thrift_boxes`
 
-Each subsection: **purpose**, **table**, **key columns**, **module key**, **route**, **UI**, **scope rules**.
-
-### 2.1 Shipment
-
-| | |
-|--|--|
-| **Purpose** | Top-level inbound batch — groups boxes and stock from one purchase/shipment |
-| **Table** | `thrift_shipments` |
-| **Module key** | `thrift_shipment` |
-| **Route** | `/app/thrift/shipments` |
-| **Page** | `web/src/modules/thrift/pages/ThriftShipmentPage.vue` |
-| **TypeScript** | `ThriftShipment` in `web/src/modules/thrift/types.ts` |
+**Use case:** Track physical packing boxes inside a shipment. Stock optionally references `box_id` for provenance. **No box barcode.**
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | bigserial PK | |
-| `tenant_id` | bigint FK → `tenants` | |
-| `name` | text | Display name |
-| `purchase_currency_id` | bigint FK → `global_currencies` | Origin purchase currency |
-| `cost_currency_id` | bigint FK → `global_currencies` | Local cost currency |
-| `cargo_conversion_rate` | numeric(12,4) nullable | |
-| `cargo_rate` | numeric(12,4) nullable | |
-| `product_conversion_rate` | numeric(12,4) nullable | |
-| `inserted_by`, `created_at`, `updated_at` | | |
-
-Parent of `thrift_boxes` and `thrift_stocks`. Originally referenced wholesale `shipments`; migrated to dedicated `thrift_shipments` (`20260630000300_create_thrift_shipments.sql`).
-
----
-
-### 2.2 Box
-
-| | |
-|--|--|
-| **Purpose** | Physical container within a shipment; stock optionally links back to a box |
-| **Table** | `thrift_boxes` |
-| **Module key** | `thrift_box` |
-| **Route** | `/app/thrift/boxes` |
-| **Page** | `web/src/modules/thrift/pages/ThriftBoxPage.vue` |
-| **TypeScript** | `ThriftBox` in `web/src/modules/thrift/types.ts` |
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | bigserial PK | |
-| `tenant_id` | bigint FK | |
-| `shipment_id` | bigint FK → `thrift_shipments` | Required parent |
-| `name` | text | **Box identifier (text only — not a barcode)** |
-| `weight` | numeric(12,3) nullable | Shown as kg in UI |
-| `received_weight` | numeric(12,3) nullable | Shown as kg in UI |
+| `tenant_id` | FK | |
+| `shipment_id` | FK → `thrift_shipments` | Required |
+| `name` | text | Box label (text only) |
+| `weight`, `received_weight` | numeric | kg in UI |
 | `inserted_by`, timestamps | | |
 
-**Box barcode:** does not exist. There is no barcode column, table, or scan flow for boxes. Stock items carry barcodes; `box_id` on stock is an optional FK for provenance.
+**Access:** `thriftRepository` + `ThriftBoxPage.vue`.
 
 ---
 
-### 2.3 Stock
+### 3.3 `thrift_stocks`
 
-| | |
-|--|--|
-| **Purpose** | Sellable inventory item — one row per registered piece (or bulk quantity) |
-| **Table** | `thrift_stocks` (+ `thrift_pricings`, `thrift_stock_images`) |
-| **Module key** | `thrift_stock` |
-| **Route** | `/app/thrift/stocks` |
-| **Page** | `web/src/modules/thrift_stock/pages/ThriftStockPage.vue` |
-| **TypeScript** | `ThriftStock` in `web/src/modules/thrift_stock/types.ts` |
+**Use case:** One sellable item (or bulk quantity). Links to shipment, optional box, catalog FKs, barcode string, and cost **inputs**. Catalog/registration attrs unchanged by costing work (D-T8).
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | bigserial PK | |
-| `tenant_id` | bigint FK | |
-| `shipment_id` | bigint FK → `thrift_shipments` | Required |
-| `box_id` | bigint FK → `thrift_boxes` nullable | Optional box link |
-| `category_id` | bigint FK → `thrift_categories` nullable | |
-| `type_id` | bigint FK → `thrift_types` nullable | |
-| `shelf_id` | bigint FK → `thrift_shelves` nullable | |
-| `barcode` | text nullable | Unique per `(tenant_id, barcode)`; was `sku` until Jul 2026 |
-| `name` | text nullable | Optional since mobile registration |
-| `brand_name`, `color`, `size`, `note` | text nullable | |
-| `section` | enum `thrift_section` nullable | `MALE`, `FEMALE`, `UNISEX`, `KIDS`, `HOME` |
-| `condition` | enum `thrift_condition` nullable | `NEW_WITH_TAGS`, `EXCELLENT`, `GOOD`, `FAIR` |
-| `stock_type` | enum `thrift_stock_type` | `SINGLE`, `BULK` |
-| `status` | enum `thrift_stock_status` | `AVAILABLE`, `OUT_OF_STOCK`, `DAMAGED`, `STOLEN` |
-| `quantity` | integer | Default 1 |
-| `product_weight`, `extra_weight` | numeric nullable | Stored in **grams** (UI converts from kg) |
-| `origin_purchase_price` | numeric nullable | |
-| `extra_origin_purchase_expense` | numeric nullable | |
-| `inserted_by`, timestamps | | |
+| Column | Today | Target | Stored | Notes |
+|--------|-------|--------|--------|-------|
+| `id`, `tenant_id` | | | Yes | |
+| `shipment_id` | FK | | Yes | Required |
+| `box_id` | FK nullable | | Yes | |
+| `category_id`, `type_id` | FK nullable | | Yes | |
+| `shelf_id` | FK nullable | | Yes | |
+| `barcode` | text | | Yes | Unique per tenant; from `thrift_barcodes` |
+| `name`, `brand_name`, `color`, `size`, `note` | text | | Yes | |
+| `section` | enum | | Yes | MALE, FEMALE, … |
+| `condition` | enum | | Yes | |
+| `stock_type` | enum | | Yes | SINGLE, BULK |
+| `status` | enum | | Yes | AVAILABLE, OUT_OF_STOCK, … |
+| `quantity` | integer | | Yes | Contributes to `U` |
+| `product_weight`, `extra_weight` | numeric | | Yes | Grams in DB |
+| `origin_unit_price` | `origin_purchase_price` | rename | Yes | Purchase ccy |
+| `extra_origin_unit_price` | `extra_origin_purchase_expense` | rename | Yes | Purchase ccy |
+| `additional_charges_cost` | — | new | Yes | Cost ccy |
+| `inserted_by`, timestamps | | | Yes | |
 
-**Related tables:**
-
-| Table | Purpose |
-|-------|---------|
-| `thrift_pricings` | 1:1 — `cost_of_goods_sold`, `target_price`, `listed_price`, `extra_expense_cost` (edited inline on stock page) |
-| `thrift_stock_images` | `image_url`, `drive_file_id`, `is_primary` |
-
-**List RPC:** `list_thrift_stocks_paginated` — paginated stock with pricing and images.
+**Computed per row:** `product_unit_cost`, `cargo_share_per_unit`, `ops_share_per_unit`, `landed_unit_cost`, `suggested_sell_unit_price`.
 
 ---
 
-### 2.4 Barcode (stock-level)
+### 3.4 `thrift_pricings`
 
-| | |
-|--|--|
-| **Purpose** | Pre-printed label catalog for stock items — not box labels |
-| **Table** | `thrift_barcodes` |
-| **Module key** | `thrift_barcode` |
-| **Routes** | `/app/thrift/barcodes`, `/app/thrift/barcodes/print-preview` |
-| **Pages** | `ThriftBarcodePage.vue`, `ThriftBarcodePrintPreviewPage.vue` |
-| **TypeScript** | `ThriftBarcode` in `web/src/modules/thrift_barcode/types.ts` |
+**Use case:** 1:1 sell-price row per stock. Target: persist only customer-facing price + manual flag; stop storing computed costs.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | bigserial PK | |
-| `tenant_id` | bigint FK | |
-| `barcode_id` | text | Unique per tenant; e.g. `AA-26-000001` |
-| `status` | text | `AVAILABLE` or `USED` |
-| `is_printed` | smallint | `0` or `1` |
-| `inserted_by`, timestamps | | |
-
-**Format:** `{prefix}-{year}-{6-digit-seq}` where `prefix` is 2 characters and `year` is 2 digits (e.g. `AA-26-000001`). Generated in bulk via `generate_thrift_barcodes(p_tenant_id, p_prefix, p_year, p_quantity, p_inserted_by)` — quantities: 50, 100, 150, 200, 300, 400, 500.
-
-**Lifecycle:**
-
-1. Bulk-generated in web → status `AVAILABLE`, `is_printed = 0`
-2. Assigned to stock on registration → status `USED`; value copied to `thrift_stocks.barcode`
-3. On stock delete → trigger `release_thrift_barcode_on_stock_delete` returns barcode to `AVAILABLE`
-
-**Scan RPC:** `resolve_thrift_barcode` — normalizes scanned input to canonical `barcode_id` (used by Thrift-app).
+| Column | Today | Target |
+|--------|-------|--------|
+| `stock_id` | FK unique | Keep |
+| `listed_price` | numeric | → `listed_unit_price` |
+| `is_listed_price_manual` | — | **New** |
+| `cost_of_goods_sold` | numeric | **Deprecate** (compute) |
+| `extra_expense_cost` | numeric | **Deprecate** (compute) |
+| `target_price` | numeric | **Deprecate** (→ suggested sell) |
 
 ---
 
-### 2.5 Category
+### 3.5 `thrift_stock_images`
 
-| | |
-|--|--|
-| **Purpose** | High-level classification (e.g. "Women Clothing") |
-| **Table** | `thrift_categories` |
-| **Module key** | `thrift_category` |
-| **Route** | `/app/thrift/categories` |
-| **Page** | `web/src/modules/thrift/pages/ThriftCategoryPage.vue` |
-| **TypeScript** | `ThriftCategory` in `web/src/modules/thrift/types.ts` |
+**Use case:** Product photos (Cloudinary URL + optional Google Drive `drive_file_id`). Primary flag for list thumbnail. **Unchanged by costing work.**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | bigserial PK | |
-| `tenant_id` | bigint nullable | `NULL` when global |
-| `is_global` | boolean | Global rows: `tenant_id IS NULL` |
-| `name` | text | Unique globally or per tenant |
-| `description` | text nullable | |
-| `inserted_by`, timestamps | | |
-
-**Scope rules:**
-
-| Scope | `is_global` | `tenant_id` | UI |
-|-------|-------------|-------------|-----|
-| Global | `true` | `NULL` | Read-only (seeded catalog) |
-| Tenant | `false` | tenant FK | CRUD for admin/staff |
-
-**Seeded global:** "Women Clothing" (+ description) in `20260721000000_thrift_global_category_type_catalog.sql`.
+| Column | Notes |
+|--------|-------|
+| `stock_id` | FK → `thrift_stocks` |
+| `image_url` | Cloudinary URL |
+| `drive_file_id` | Optional Drive sync |
+| `is_primary` | boolean |
 
 ---
 
-### 2.6 Type
+### 3.6 `thrift_barcodes`
 
-| | |
-|--|--|
-| **Purpose** | Product style within a category (e.g. "Midi Dress", "Wrap Dress") |
-| **Table** | `thrift_types` |
-| **Module key** | `thrift_type` |
-| **Route** | `/app/thrift/types` |
-| **Page** | `web/src/modules/thrift/pages/ThriftTypePage.vue` |
-| **TypeScript** | `ThriftType` in `web/src/modules/thrift/types.ts` |
+**Use case:** Pre-generated label pool. Bulk-created on web; consumed on stock registration; released on stock delete. **Unchanged by costing work.**
 
-Same shape as category, plus:
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `icon` | text nullable | Rendered via `ThriftTypeLabel` component |
-
-**Seeded globals:** 24 dress types under Women Clothing (Mini Dress, Midi Dress, Maxi Dress, …) in the same migration.
+| Column | Notes |
+|--------|-------|
+| `barcode_id` | e.g. `AA-26-000001` |
+| `status` | `AVAILABLE` / `USED` |
+| `is_printed` | 0 / 1 |
 
 ---
 
-## 3. Relationships and registration flow
+### 3.7 `thrift_categories` / `thrift_types`
 
-### Web (desk)
+**Use case:** Classification catalog. Global rows (`is_global = true`, `tenant_id IS NULL`) are read-only; tenant rows are CRUD. Types may have `icon`. **Unchanged by costing work.**
 
-1. Create a **shipment** (optionally set purchase/cost currencies and conversion rates).
-2. Create **boxes** under the shipment (text `name` + optional weights).
-3. Bulk-generate **barcodes** on the barcode page; print labels.
-4. Register or edit **stock** on the stock page — assign shipment, box, category, type, shelf, pricing, image.
+| Column | Categories | Types |
+|--------|------------|-------|
+| `name`, `description` | Yes | Yes |
+| `is_global`, `tenant_id` | Yes | Yes |
+| `icon` | — | Yes |
 
-### Mobile (Thrift-app)
+---
 
-1. Select shipment (and optionally box) in app session state.
-2. Scan barcode → `resolve_thrift_barcode`.
-3. Register via `register_thrift_stock_from_app` — consumes barcode, writes stock + pricing + image.
+### 3.8 `thrift_shelves`
 
-Key mobile composable: `Thrift-app/src/composables/useThriftStockRegister.ts`.
+**Use case:** Physical shelf codes for stock location. **Unchanged by costing work.**
+
+| Column | Notes |
+|--------|-------|
+| `name`, `shelf_code`, `location_bay` | Unique `shelf_code` per tenant |
+
+---
+
+### 3.9 `thrift_settings`
+
+**Use case:** Per-tenant defaults for registration and ops cost inputs (one row per `tenant_id`).
+
+| Column | Today | Target |
+|--------|-------|--------|
+| `tenant_id` | PK/FK | Keep |
+| `default_origin_unit_price` | `default_origin_purchase_price` | rename |
+| `hand_tag_unit_cost` | — | **New** |
+| `hand_tag_unit_currency_id` | — | FK |
+| `sticker_unit_cost` | — | **New** |
+| `sticker_unit_currency_id` | — | FK |
+
+**Tenant preference (not this table):** `thrift.default_purchase_currency`, `thrift.default_cost_currency` on `tenants.preference`.
+
+---
+
+### 3.10 `thrift_invoices` / `thrift_invoice_items` (DB only)
+
+**Use case:** Record sales, compute line profit, deduct stock. Web UI not built.
+
+| Table | Use case |
+|-------|----------|
+| `thrift_invoices` | Header: recipient, charges, payment/delivery status |
+| `thrift_invoice_items` | Line: `stock_id`, `sold_price`, fees, `net_profit` (trigger) |
+
+**RPC:** `mark_thrift_items_as_sold` — creates invoice, items, updates stock, writes ledger.
+
+---
+
+### 3.11 `thrift_accounting_ledger` (DB only)
+
+**Use case:** Auto-logged revenue, expense, refund, loss from invoices and stock status changes (DAMAGED/STOLEN).
+
+---
+
+## 4. Permissions and access control
+
+### 4.1 Module keys
+
+| Key | Route | Guard |
+|-----|-------|-------|
+| `thrift_shipment` | `/app/thrift/shipments` | `createAccessGuard` |
+| `thrift_box` | `/app/thrift/boxes` | same pattern |
+| `thrift_stock` | `/app/thrift/stocks` | |
+| `thrift_barcode` | `/app/thrift/barcodes` | |
+| `thrift_category` | `/app/thrift/categories` | |
+| `thrift_type` | `/app/thrift/types` | |
+| `thrift_shelf` | `/app/thrift/shelves` | |
+| `thrift_settings` | `/app/thrift/settings` | |
+
+All routes: `requiredScope: 'app'`, `allowedRoles: ['admin', 'staff']`, `requireTenantContext: true`.
+
+### 4.2 Role matrix (`modulePermissions.ts`)
+
+| Role | thrift_* modules |
+|------|------------------|
+| `admin` | `view` on all 8 keys |
+| `staff` | `view` on all 8 keys |
+| `superadmin` | `view` on all 8 keys |
+| `customer`, `investor`, `vendor`, `guest` | **NO_ACCESS** |
+
+Today only the **`view`** ability exists in code — CRUD is not split by ability; route access implies full page CRUD for admin/staff.
+
+### 4.3 Tenant enablement
+
+- Modules assigned per tenant via `tenant_modules` (D13 — no parent/child inheritance).
+- Disabled module → route guard blocks navigation.
+- Global categories/types: `SELECT` for all authenticated members; `WRITE` only tenant-scoped rows (`is_global = false`).
+
+### 4.4 Row Level Security (RLS)
+
+Standard pattern on all `thrift_*` tables:
+
+| Operation | Policy |
+|-----------|--------|
+| **SELECT** | Active `memberships` row for `tenant_id` + `current_user_email()` |
+| **INSERT/UPDATE/DELETE** | Same + `role IN ('admin', 'staff')` |
+| **Global catalog** | `is_global = true` → SELECT all authenticated; WRITE tenant rows only |
+
+Child tables (`thrift_pricings`, `thrift_stock_images`) join through `thrift_stocks.tenant_id`.
+
+### 4.5 Special cases
+
+| Case | Rule |
+|------|------|
+| Tenant preferences (`thrift.default_*_currency`) | Tenant admin via `update_tenant_preference_for_admin` |
+| `global_currencies` read | All authenticated (for currency pickers) |
+| Mobile RPCs | `security definer` — enforce `tenant_id` + membership inside function |
+
+---
+
+## 5. API surface
+
+### 5.1 RPCs (Postgres)
+
+| RPC | Caller | Purpose | Status |
+|-----|--------|---------|--------|
+| `generate_thrift_barcodes(tenant_id, prefix, year, quantity, inserted_by)` | Web | Bulk create labels | Today |
+| `list_thrift_barcodes_paginated(...)` | Web | Barcode list + stats | Today |
+| `list_thrift_stocks_paginated(...)` | Web | Stock list + pricing + images | Today |
+| `resolve_thrift_barcode(tenant_id, scanned)` | Mobile | Normalize scan → `barcode_id` | Today |
+| `resolve_thrift_barcode_id_internal(...)` | Internal | Canonical barcode lookup | Today |
+| `register_thrift_stock_from_app(...)` | Mobile | Create/update stock + pricing + image | Today |
+| `mark_thrift_items_as_sold(...)` | *(none — DB only)* | Invoice + stock deduction + ledger | Today |
+| `compute_thrift_landed_unit_cost(stock_id)` | Invoice trigger / RPC | SQL cost engine mirror | **Planned** |
+
+### 5.2 Direct Supabase table access (web)
+
+| Entity | Repository / page | Operations |
+|--------|-------------------|------------|
+| Shipments | `ThriftShipmentPage` — direct `supabase.from('thrift_shipments')` | CRUD |
+| Boxes, categories, types, shelves | `thriftRepository` | CRUD |
+| Stock | `thriftStockRepository` | CRUD + pricing + images |
+| Settings | `thriftSettingsRepository` | fetch + upsert |
+| Barcodes | `thriftBarcodeRepository` | list RPC + generate RPC + update `is_printed` |
+| Currencies | `thriftCurrencyRepository` | read `global_currencies` |
+
+### 5.3 Web routes
+
+| Route | Page | Module |
+|-------|------|--------|
+| `/:slug/app/thrift/shipments` | `ThriftShipmentPage` | `thrift_shipment` |
+| `/:slug/app/thrift/shipments/:id` | `ThriftShipmentDetailsPage` | `thrift_shipment` — **planned** |
+| `/:slug/app/thrift/boxes` | `ThriftBoxPage` | `thrift_box` |
+| `/:slug/app/thrift/stocks` | `ThriftStockPage` | `thrift_stock` |
+| `/:slug/app/thrift/barcodes` | `ThriftBarcodePage` | `thrift_barcode` |
+| `/:slug/app/thrift/barcodes/print-preview` | `ThriftBarcodePrintPreviewPage` | `thrift_barcode` |
+| `/:slug/app/thrift/categories` | `ThriftCategoryPage` | `thrift_category` |
+| `/:slug/app/thrift/types` | `ThriftTypePage` | `thrift_type` |
+| `/:slug/app/thrift/shelves` | `ThriftShelfPage` | `thrift_shelf` |
+| `/:slug/app/thrift/settings` | `ThriftSettingsPage` | `thrift_settings` |
+
+### 5.4 Mobile API (Thrift-app)
+
+| Step | API |
+|------|-----|
+| Login | Supabase auth + tenant bootstrap |
+| Load catalog | Direct `SELECT` on categories, types, boxes, shelves |
+| Scan | `resolve_thrift_barcode` |
+| Register | `register_thrift_stock_from_app` |
+| Images | Cloudinary upload → URL in RPC |
+
+---
+
+## 6. Flow sequences
+
+### 6.1 Inbound catalog setup (web)
 
 ```mermaid
 sequenceDiagram
+  participant Admin
   participant Web
-  participant Mobile
   participant DB
 
-  Web->>DB: create shipment + boxes
-  Web->>DB: generate_thrift_barcodes
-  Web->>DB: print labels (is_printed)
-  Mobile->>DB: resolve_thrift_barcode
-  Mobile->>DB: register_thrift_stock_from_app
-  Note over DB: barcode status USED, stock.barcode set
+  Admin->>Web: Open settings
+  Web->>DB: upsert thrift_settings
+  Admin->>Web: Create shipment
+  Web->>DB: insert thrift_shipments
+  Admin->>Web: Create boxes
+  Web->>DB: insert thrift_boxes
+  Admin->>Web: Generate barcodes
+  Web->>DB: RPC generate_thrift_barcodes
+  Admin->>Web: Print labels
+  Web->>DB: update is_printed
+```
+
+### 6.2 Mobile stock registration (today — unchanged)
+
+```mermaid
+sequenceDiagram
+  participant Operator
+  participant App
+  participant DB
+
+  Operator->>App: Select shipment + optional box
+  Operator->>App: Scan barcode
+  App->>DB: resolve_thrift_barcode
+  Operator->>App: Photo + catalog fields
+  App->>DB: register_thrift_stock_from_app
+  Note over DB: barcode USED, stock row + pricing + image
+```
+
+### 6.3 Shipment costing and pricing (planned)
+
+```mermaid
+sequenceDiagram
+  participant Admin
+  participant Web
+  participant CostEngine
+  participant DB
+
+  Admin->>Web: Open shipment detail
+  Web->>DB: load shipment + stocks + settings
+  Web->>CostEngine: computeThriftUnitCosts per row
+  CostEngine-->>Web: product/cargo/ops/landed/suggested
+  Admin->>Web: Edit markup or origin on row
+  Web->>CostEngine: recalculate all rows
+  Admin->>Web: Override listed sell + manual flag
+  Web->>DB: update thrift_pricings only
+  Note over DB: no persisted COGS or landed cost
+```
+
+### 6.4 Barcode lifecycle (unchanged)
+
+```mermaid
+stateDiagram-v2
+  [*] --> AVAILABLE: generate_thrift_barcodes
+  AVAILABLE --> USED: stock registration
+  USED --> AVAILABLE: stock delete trigger
+```
+
+### 6.5 Sale (DB only today)
+
+```mermaid
+sequenceDiagram
+  participant System
+  participant DB
+
+  System->>DB: mark_thrift_items_as_sold
+  DB->>DB: insert invoice + items
+  DB->>DB: update stock quantity/status
+  DB->>DB: insert accounting_ledger
+  Note over DB: net_profit trigger uses COGS today, compute_thrift_landed_unit_cost planned
 ```
 
 ---
 
-## 4. RPCs and data access
+## 7. Current state summary
 
-| RPC / access | Used for |
-|--------------|----------|
-| `generate_thrift_barcodes` | Web — bulk barcode create |
-| `list_thrift_barcodes_paginated` | Web — barcode list + stats |
-| `list_thrift_stocks_paginated` | Web — stock list with pricing/images |
-| `resolve_thrift_barcode` | Mobile — scan lookup |
-| `resolve_thrift_barcode_id_internal` | Internal normalization |
-| `register_thrift_stock_from_app` | Mobile — stock create/update |
-| `mark_thrift_items_as_sold` | DB only — invoice + stock deduction + ledger |
-| Direct Supabase CRUD | Shipments, boxes, categories, types, shelves via `thriftRepository.ts` |
-
----
-
-## 5. Current state summary
-
-| Area | Web UI | Mobile (Thrift-app) | DB |
-|------|--------|---------------------|-----|
-| Shipment | Yes | Select in session | Yes |
-| Box | Yes | Select in session | Yes |
-| Stock | Yes | Register + list + detail | Yes |
-| Barcode | Yes + print preview | Scan | Yes |
-| Category | Yes | Catalog picker | Yes |
-| Type | Yes | Catalog picker | Yes |
-| Shelf | Yes | Optional on register | Yes |
-| Settings | Yes | — | Yes |
-| Invoices / accounting | **No** | **No** | Yes |
-| Box barcode | **Does not exist** | — | — |
-| Global platform integration | Excluded (D12) | — | — |
-
-**Currency note:** `thrift_currency` module key is deactivated. Currencies live in `global_currencies`; thrift reads them via `thrift_currency` store/repository (also used by tenant preferences and `AppCurrenciesPage`).
+| Area | Web | Mobile | DB |
+|------|-----|--------|-----|
+| Shipment list | Yes | Select | Yes |
+| Shipment detail + costing grid | **Planned** | — | Partial |
+| Computed costing engine | **Planned** | — | Stores COGS today |
+| Stock catalog | Yes | Yes | Yes |
+| Barcode generate/print/scan | Yes | Yes | Yes |
+| Images / Drive sync | Yes | Yes | Yes |
+| Settings (hand tag / sticker) | **Planned** | — | Partial |
+| Box, shelf, category, type | Yes | Partial | Yes |
+| Invoice UI | No | No | Yes |
 
 ---
 
-## 6. Permissions
+## 8. Web module layout
 
-Module keys (from `modulePermissions.ts`): `thrift_stock`, `thrift_shipment`, `thrift_box`, `thrift_shelf`, `thrift_barcode`, `thrift_category`, `thrift_type`, `thrift_settings`.
+Unified under `web/src/modules/thrift/` — folder refactor **completed**.
 
-| Role | Ability |
-|------|---------|
-| admin, staff | `view` on all thrift module keys |
-| Enabled per tenant | via `tenant_modules` — no parent/child inheritance (D13) |
-
-Each route guard uses its **own** submodule key (e.g. stock page requires `thrift_stock`, not a parent key).
-
----
-
-## 7. Web module layout — Refactored Structure
-
-Thrift web code has been unified into a single `thrift` module under `web/src/modules/thrift/`:
-
-| Folder | Contents | Module keys |
-|--------|----------|-------------|
-| `thrift/routes/` | Route definitions for all submodules and single `index.ts` aggregator | `thrift_shipment`, `thrift_box`, `thrift_shelf`, `thrift_category`, `thrift_type`, `thrift_stock`, `thrift_barcode`, `thrift_settings` |
-| `thrift/shared/` | Shared components (`ThriftTypeLabel.vue`), stores (`thriftStore.ts`), and repositories (`thriftRepository.ts`) | Shared across all submodules |
-| `thrift/shipment/` | Inbound shipments page and type definitions | `thrift_shipment` |
-| `thrift/box/` | Box page and type definitions | `thrift_box` |
-| `thrift/shelf/` | Shelf page and type definitions | `thrift_shelf` |
-| `thrift/category/` | Category page and type definitions | `thrift_category` |
-| `thrift/type/` | Type page, typeIcon utils, and type definitions | `thrift_type` |
-| `thrift/stock/` | Stock page, stock store, and stock repository | `thrift_stock` |
-| `thrift/barcode/` | Barcode management pages, store, repo, and renderer | `thrift_barcode` |
-| `thrift/settings/` | Settings page, store, and repository | `thrift_settings` |
-| `thrift/currency/` | Currency store, repo, and format utils (reused globally) | Legacy `thrift_currency` |
+| Folder | Contents |
+|--------|----------|
+| `routes/` | Aggregated route definitions |
+| `shared/` | `thriftStore`, `thriftRepository`, `computeThriftUnitCosts.ts` (**planned**) |
+| `shipment/`, `box/`, `shelf/`, `category/`, `type/` | Entity pages |
+| `stock/`, `barcode/`, `settings/`, `currency/` | Stock, barcodes, settings, currency reader |
 
 ---
 
-## 8. Refactor Status — COMPLETED
+## 9. Planned work — UI columns (costing only, D-T8)
 
-The folder refactoring has been successfully completed. 
+Legend: **S** stored | **C** computed | **F** display | **A** action
 
-### Goal Achieved
-One parent module folder with submodule subfolders aligned with the domain scope, simplifying imports, cleaning up `web/src/router/routes.ts` down to a single imported thrift route module, and organizing page, component, and type concerns by domain entity.
+### 9.1 Shipment list
 
-### Verification Performed
-1. Verified that the `web` build passes successfully (`npm run build`).
-2. Confirmed that there are no remaining references to the old `modules/thrift_` paths in `web/src`.
-3. Validated that all route guards, component UI, and Pinia stores remain fully functioning without altering behavior or IDs.
+| # | Column | Field | Type |
+|---|--------|-------|------|
+| 1–3 | SL, ID, Shipment | `name` | S link |
+| 4 | Units | `U` | C |
+| 5–6 | Purchase/Cost ccy | FKs | F |
+| 7–10 | Product conv., cargo rate/conv., cargo kg | shipment cols | S |
+| 11 | Cargo total | `shipment_cargo_cost` | C |
+| 12–13 | Labour, Transport | shipment cols | S |
+| 14 | Ops total | `shipment_ops_cost` | C |
+| 15 | Markup % | `default_markup_rate` | S |
+| 16 | Actions | — | A |
+
+### 9.2 Shipment detail — items table
+
+Catalog cols (barcode, image, category, type) **unchanged**. Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C), suggested sell (C), listed sell, manual flag.
+
+### 9.3 Stock catalog
+
+Cols 1–15 (image, barcode, catalog, weights) **unchanged**. Cols 16–25 are cost block per §3.3 / plan rev 2.
+
+### 9.4 Implementation phases
+
+1. Migration — cost columns only  
+2. `computeThriftUnitCosts.ts` + SQL function  
+3. Settings — hand tag / sticker  
+4. Shipment list + detail  
+5. Stock page — replace cost columns only  
+6. Mobile RPC — cost param renames only  
+7. Invoice trigger — computed landed cost  
 
 ---
 
-## 9. Key source files
+## 10. Cost engine reference
+
+`U` = `SUM(quantity)` per shipment (min 1 in UI).
+
+```
+product_unit_cost = (origin_unit_price + extra_origin_unit_price) × product_conversion_rate
+
+shipment_cargo_cost = (total_cargo_weight_kg × cargo_rate) × cargo_conversion_rate
+
+shipment_ops_cost = (hand_tag_unit_cost × U) + (sticker_unit_cost × U) + labor_total_cost + transportation_total_cost
+
+cargo_share_per_unit = shipment_cargo_cost / U
+ops_share_per_unit   = shipment_ops_cost / U
+
+landed_unit_cost = product_unit_cost + cargo_share_per_unit + ops_share_per_unit + additional_charges_cost
+
+suggested_sell_unit_price = landed_unit_cost × (1 + default_markup_rate)
+listed_unit_price = is_listed_price_manual ? stored : suggested_sell_unit_price
+```
+
+**Code (planned):** `web/src/modules/thrift/shared/utils/computeThriftUnitCosts.ts`
+
+---
+
+## 11. Migration and scope
+
+### In scope
+
+Cost column renames, shipment columns, settings unit costs, deprecate stored COGS/extra_expense/target, `is_listed_price_manual`, compute function for invoice profit.
+
+### Explicitly unchanged (D-T8)
+
+`thrift_barcodes`, `thrift_stock_images`, barcode RPCs, scan/register flow, catalog FKs and attrs, box/shelf/category/type/barcode modules.
+
+### Out of scope
+
+Thrift-app costing UI, invoice web UI, laundry/wash costs, moving shipment currencies from tenant preference.
+
+---
+
+## 12. Key source files
 
 | Purpose | Path |
 |---------|------|
-| Core schema + enums | `supabase/migrations/20260628000000_create_thrift_module.sql` |
-| Boxes + weight fields | `supabase/migrations/20260629000000_thrift_boxes_and_weight_fields.sql` |
-| Dedicated shipments | `supabase/migrations/20260630000300_create_thrift_shipments.sql` |
-| Barcode module | `supabase/migrations/20260701000000_thrift_barcodes_module.sql` |
-| sku → barcode | `supabase/migrations/20260704000000_replace_sku_with_barcode.sql` |
-| Mobile registration RPC | `supabase/migrations/20260706000000_register_thrift_stock_from_app.sql` |
-| Global category/type seed | `supabase/migrations/20260721000000_thrift_global_category_type_catalog.sql` |
-| Barcode release on delete | `supabase/migrations/20260810000000_release_thrift_barcode_on_stock_delete.sql` |
-| Generated DB types | `web/src/types/supabase.ts` |
-| Nav registry | `web/src/modules/navigation/moduleRegistry.ts` |
-| Route aggregation (today) | `web/src/router/routes.ts` |
+| Core schema | `supabase/migrations/20260628000000_create_thrift_module.sql` |
+| Shipments | `supabase/migrations/20260630000300_create_thrift_shipments.sql` |
+| Barcodes | `supabase/migrations/20260701000000_thrift_barcodes_module.sql` |
+| Mobile register | `supabase/migrations/20260706000000_register_thrift_stock_from_app.sql` |
+| Permissions | `web/src/modules/navigation/modulePermissions.ts` |
+| Routes | `web/src/modules/thrift/routes/` |
+| Landed-cost reference | `web/src/modules/procurement_stock/utils/landedCost.ts` |
