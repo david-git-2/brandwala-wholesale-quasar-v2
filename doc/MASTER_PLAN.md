@@ -14,7 +14,8 @@ One system manages:
 
 - **Procurement** — child orders and product-based costing feed **parent shipments** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Stock** — parent-owned inventory with optional **child display allocations** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
-- **Sales** — parent or child invoices; commerce sells from **parent stock** → [SALES_INVOICE.md](SALES_INVOICE.md)
+- **Sales** — parent or child invoices; desk sales from parent stock → [SALES_INVOICE.md](SALES_INVOICE.md)
+- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md)
 - **Reports & treasury** — margin reports and payment settlement (read-side P&L) → [REPORTING_TREASURY.md](REPORTING_TREASURY.md)
 - **Capital** — investors, cost-share per shipment, investor portal → [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md)
 
@@ -168,7 +169,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **F1 — Shared UI** | `floating-surface`, `AppPageHeader`, tokens | Style guides |
 | **F2 — Parent shipment** | Procurement lines → parent shipment UI | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | **F3 — Global stock** | Stock list, allocation manager, network search | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| **F4 — Sales invoice** | Wholesale / retail / dropship; billing profiles | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| **F4 — Sales invoice** | Wholesale / retail (account + direct) / dropship; billing profiles; draft-post-void lifecycle | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | **F7 — Commerce retarget** | Commerce sells `global_stock_id` | §14 row 24–27 |
@@ -185,7 +186,8 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 |---------------|--------|-------|--------|
 | `procurement_stock` (shipment, stock) | Yes | Allocated view | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | `order_management`, `product_based_costing` | No | Yes | §17 |
-| `commerce_*` | No | Yes | §17 |
+| `shop_order` | No | Yes | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| `commerce_*`, `store`, `cart` (legacy) | No | Yes | Retire → `shop_order` |
 | `sales_invoice` | Optional | Yes | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | `reporting_treasury` | Varies | Child: payments + invoice reports | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | `investor_capital` | Yes | No | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
@@ -205,7 +207,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Login → bootstrap → nav implementation |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies, markets, payment methods, units |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
-| [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices, billing/recipient profiles, dropship |
+| [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
+| [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
 | [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | Mandatory UI patterns for new pages |
@@ -248,25 +251,26 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 12 | Procurement & Stock | Tenant Stock | inventory | STABLE | app | Child | Child allocation slices | — |
 | 13 | Profile & CRM | Billing Profile | billing_profile | STABLE | app | Child | Buyer / middle-man account | P1 |
 | 14 | Profile & CRM | Recipient Profile | recipient_profile | REDESIGN | app | Child | Delivery endpoint (dropship) | P0 |
-| 15 | Sales & Invoice | Sales Invoice (Desk) | global_invoice | CURRENT | app | Child | Wholesale, retail, dropship | P0 |
+| 15 | Sales & Invoice | Sales Invoice (Desk) | global_invoice | CURRENT | app | Child | Wholesale, retail account/direct, dropship | P0 |
 | 16 | Sales & Invoice | Shop Invoice | commerce_invoice | STABLE | app | Child | Commerce-generated invoices | — |
 | 17 | Sales & Invoice | Legacy Invoice | invoice | LEGACY | app | Child | Deprecated — use global_invoice | P1 |
 | 18 | Ledger & Treasury | Payments | payments | CURRENT | app | Child+Parent | Cash collection + allocation | P0 |
 | 19 | Ledger & Treasury | Accounting (Legacy UI) | accounting | STABLE | app | Child | Legacy tenant accounting views | — |
 | 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | CURRENT | app | Varies | Margin reports, balances, dashboard | P0 |
 | 21 | Ledger & Treasury | Legacy ledger keys | global_accounting_ledger, global_*_accounting | LEGACY | app | Parent | Being retired — use reporting_treasury | P1 |
-| 22 | Shop & B2B | Store | store | STABLE | app+shop | Child | Storefront config | — |
-| 23 | Shop & B2B | Cart | cart | STABLE | shop | Child | B2B shop cart | — |
-| 24 | Commerce | Commerce Shop | commerce_shop | STABLE | app+shop | Child | Commerce storefront | — |
-| 25 | Commerce | Commerce Order | commerce_order | STABLE | app+shop | Child | Commerce orders | — |
-| 26 | Commerce | Commerce Cart | commerce_cart | STABLE | shop | Child | Commerce cart | — |
-| 27 | Commerce | Commerce Accounting | commerce_accounting | STABLE | app | Child | Commerce ledger (isolated) | — |
-| 28 | Capital | Investor (Legacy UI) | investor | LEGACY | app | Parent | Legacy — use investor_capital | — |
-| 29 | Capital | Investor Capital | investor_capital | CURRENT | app+investor | Parent | Profiles, ledger, allocations, portal | P0 |
-| 30 | Capital | Legacy capital keys | global_investor, global_investor_shipment, investor_portal | LEGACY | — | Parent | Subsumed by investor_capital parent module | — |
-| 31 | Verticals | Thrift | thrift_* (9 keys) | STABLE | app | Per tenant | Isolated thrift vertical | — |
-| 32 | Verticals | Koba | koba_retail, koba_wholesale | STABLE | app+shop | Per tenant | Scraped catalog orders | — |
-| 33 | Verticals | Tasks | tasks | STABLE | app | Per tenant | Internal task hierarchy | — |
+| 22 | Shop & Order | Shop & Order (target) | shop_order | CURRENT | app+shop | Child | Unified shops, cart, orders | P0 |
+| 23 | Shop & B2B | Store | store | LEGACY | app+shop | Child | Superseded by shop_order | — |
+| 24 | Shop & B2B | Cart | cart | LEGACY | shop | Child | Superseded by shop_order | — |
+| 25 | Commerce | Commerce Shop | commerce_shop | LEGACY | app+shop | Child | Superseded by shop_order | — |
+| 26 | Commerce | Commerce Order | commerce_order | LEGACY | app+shop | Child | Superseded by shop_order | — |
+| 27 | Commerce | Commerce Cart | commerce_cart | LEGACY | shop | Child | Superseded by shop_order | — |
+| 28 | Commerce | Commerce Accounting | commerce_accounting | LEGACY | app | Child | Retired — use reporting_treasury | — |
+| 29 | Capital | Investor (Legacy UI) | investor | LEGACY | app | Parent | Legacy — use investor_capital | — |
+| 30 | Capital | Investor Capital | investor_capital | CURRENT | app+investor | Parent | Profiles, ledger, allocations, portal | P0 |
+| 31 | Capital | Legacy capital keys | global_investor, global_investor_shipment, investor_portal | LEGACY | — | Parent | Subsumed by investor_capital parent module | — |
+| 32 | Verticals | Thrift | thrift_* (9 keys) | STABLE | app | Per tenant | Isolated thrift vertical | — |
+| 33 | Verticals | Koba | koba_retail, koba_wholesale | STABLE | app+shop | Per tenant | Scraped catalog orders | — |
+| 34 | Verticals | Tasks | tasks | STABLE | app | Per tenant | Internal task hierarchy | — |
 
 ### 14.2 Domain bundle summary
 
@@ -278,10 +282,11 @@ Per-tenant assignment table: §15.5 and domain docs.
 | Procurement Inputs | 06–08 | §17 |
 | Procurement & Stock | 09–12 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | Profile & CRM | 13–14 | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| Sales & Invoice | 15–17 | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Sales & Invoice | 15, 17 | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Ledger & Treasury | 18–21 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| Shop & B2B | 22–23 | §17 |
-| Commerce | 24–27 | §17 |
+| Shop & Order | 22 | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| Shop & B2B (legacy) | 23–24 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
+| Commerce (legacy) | 25–28 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | Capital | 28–30 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Verticals | 31–33 | §17 |
 
@@ -388,7 +393,8 @@ Legend: **view** = access granted | **—** = no access
 | global_shipment, global_stock, global_stock_type | Yes | — | Yes | Parent owns stock |
 | inventory (Tenant Stock) | Yes | Yes | Yes | Child allocation view |
 | global_invoice, billing_profile, recipient_profile | Optional | Yes | Yes | Child issues desk sales |
-| commerce_* | — | Yes | Yes | Child commerce |
+| `shop_order` | — | Yes | Yes | Child shops, cart, orders — see SHOP_ORDER |
+| `commerce_*`, `store`, `cart` | — | Yes (legacy) | Yes (legacy) | Retire → `shop_order` |
 | reporting_treasury submodules | Varies | Varies | Yes | See REPORTING_TREASURY §2 |
 | investor_capital | Yes | — | Yes | Capital |
 | thrift_*, koba_*, tasks | Per tenant | Per tenant | Per tenant | Verticals |
@@ -422,7 +428,9 @@ Legend: **view** = access granted | **—** = no access
 | `payments` | `global_payments` | `unallocated_amount` |
 | `payment_allocations` | `invoice_payments` | Rename + `allocated_at` |
 | `global_accounting_ledger` | Read-side margin queries | Retire writes |
-| `orders`, `commerce_*`, `thrift_*`, `koba_*` | No change | STABLE |
+| `orders` (legacy) | Retire → `shop_order` vendor path | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| `commerce_*`, `store`, `cart` | Retire → `shop_order` | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| `thrift_*`, `koba_*` | No change | STABLE |
 
 ---
 
@@ -442,14 +450,16 @@ Legend: **view** = access granted | **—** = no access
 | 8 | product_based_costing | STABLE | *(no domain doc)* |
 | 9–12 | global_shipment, global_stock, global_stock_type, inventory | CURRENT | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | 13–14 | billing_profile, recipient_profile | STABLE / REDESIGN | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| 15–17 | global_invoice, commerce_invoice, invoice | CURRENT / LEGACY | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| 15, 17 | global_invoice, invoice (legacy) | CURRENT / LEGACY | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| 16 | commerce_invoice | STABLE | *(out of scope for desk sales — see MASTER_PLAN §17 #24–27)* |
 | 18–21 | payments, accounting, reporting_treasury, global_*_accounting | CURRENT / LEGACY | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| 22–23 | store, cart | STABLE | *(no domain doc — B2B shop)* |
-| 24–27 | commerce_* | STABLE | *(no domain doc — isolated commerce)* |
-| 28–30 | investor, investor_capital, global_investor* | LEGACY / CURRENT | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| 31 | thrift_* | STABLE | *(no domain doc — isolated vertical)* |
-| 32 | koba_* | STABLE | *(no domain doc)* |
-| 33 | tasks | STABLE | *(no domain doc)* |
+| 22 | shop_order | CURRENT | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| 23–24 | store, cart | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
+| 25–28 | commerce_* | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
+| 29–31 | investor, investor_capital, global_investor* | LEGACY / CURRENT | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
+| 32 | thrift_* | STABLE | *(no domain doc — isolated vertical)* |
+| 33 | koba_* | STABLE | *(no domain doc)* |
+| 34 | tasks | STABLE | *(no domain doc)* |
 
 ---
 
@@ -470,7 +480,8 @@ Child: orders / product costing → Parent: shipment (local or international)
 | Desk sale | global_stock → global_invoice → payment allocation | CURRENT | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Margin report | invoice lines + shipment batch P&L (read) | CURRENT | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | Investor capital | cost-share → profit refresh → portal | PLANNED | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| Commerce | commerce_cart → order → invoice | STABLE | §17 #24–27 |
+| Shop order | shop_cart → shop_order → invoice or procurement pull | CURRENT | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
 | Thrift | thrift_shipment → stock → invoice | STABLE | Isolated |
 
 ---
@@ -486,6 +497,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Reference catalogs |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |
+| [SHOP_ORDER.md](SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Reports and treasury |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor capital and portal |
 | [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | UI patterns |

@@ -14,6 +14,74 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_ST
 
 ---
 
+## User stories
+
+### Parent — `reporting_treasury` (Reports & Treasury)
+
+**As a** child-tenant admin or parent company overseer,  
+**I want** margin reports and cash settlement in one finance nav group,  
+**So that** I can see profit from real transactions and record collections without a separate accounting ledger.
+
+---
+
+### Submodule — `payments` (Payments & Collection)
+
+**As a** finance user,  
+**I want to** record cash received and allocate it to invoice balances,  
+**So that** wholesale and retail-account AR, retail-direct collections, and dropship COD stay accurate.
+
+| Collection path | User story |
+|-----------------|------------|
+| **Billing profile** | **As a** finance user, **I want to** post a payment against a buyer account and slice it across open invoices, **so that** credit customers and resellers show correct balances. |
+| **Recipient (COD / cash)** | **As a** finance user, **I want to** record cash collected from the end customer on retail-direct and dropship invoices, **so that** invoice `due_amount` reflects real collections without a billing profile. |
+| **Middle-man payout** | **As a** finance user, **I want to** pay dropship middle men their margin, **so that** spread and payout status are tracked separately from COD. |
+
+---
+
+### Submodule — `invoice_reports` (Invoice Reports)
+
+**As a** manager,  
+**I want to** see gross profit per invoice and by type (wholesale, retail account/direct, dropship),  
+**So that** I know desk sales performance from posted invoices only — no shadow ledger.
+
+---
+
+### Submodule — `shipment_reports` (Shipment P&L)
+
+**As a** parent company user,  
+**I want to** see landed cost vs realized margin per shipment batch,  
+**So that** I know which import batches are profitable and how much stock remains unsold.
+
+---
+
+### Submodule — `billing_balances` (Customer Balances)
+
+**As a** finance user,  
+**I want to** see total amount due per billing profile,  
+**So that** I can chase wholesale buyers, retail accounts, and dropship middle men with open AR.
+
+**Note:** Retail-direct invoices have no billing profile — use **invoice outstanding** (same module or `invoice_reports` filter) for those balances.
+
+---
+
+### Submodule — `parent_dashboard` (Consolidated Dashboard)
+
+**As a** parent company admin,  
+**I want to** roll up sales and margin across sister concerns,  
+**So that** I can compare child performance without issuing desk invoices myself.
+
+---
+
+This document answers:
+
+- What reports and settlement flows does a wholesale parent/child business need?
+- Which module keys, routes, and tables are used?
+- How is margin computed without duplicate accounting tables?
+- How do payments, balances, and dropship settlement work?
+- What is reused from legacy ledger modules vs the target design?
+
+---
+
 ## 1. Overview
 
 | Property | Reports & Treasury | Operational modules |
@@ -43,7 +111,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_ST
 | **Full accounting** | No chart of accounts, journal vouchers, trial balance, or statutory books |
 | **Shadow ledger** | No `global_accounting_ledger` or rollup tables as source of truth (target) |
 | **Inbound / sales ops** | Does not create shipments, stock, or invoices — reads them |
-| **Commerce channel** | Shop invoices until convergence; then same `global_invoices` read path |
+| **Online shop / cart** | Out of scope — desk `global_invoices` only |
 | **Duplicate margin store** | Margin is **computed on read** from invoice line snapshots |
 
 ### Design principle
@@ -139,17 +207,20 @@ Operational questions this domain answers — not statutory accounting.
 |--------|----------|
 | Invoice line margin | Profit per line on one invoice |
 | Invoice gross profit | Total margin after discount, charges, returns |
-| Sales by type | Wholesale vs retail vs dropship breakdown |
-| Sales by period | Filter `invoice_date` |
+| Sales by type | Wholesale vs retail account vs retail direct vs dropship |
+| Sales by period | Filter `invoice_date` on **posted** invoices only |
+| Overdue invoices | `due_date < today` and `due_amount > 0` (wholesale + retail account) |
 
 ### 3.3 Cash / settlement — `payments`, `billing_balances`
 
 | Report | Question |
 |--------|----------|
-| Invoice balance | Paid / partial / due per invoice |
-| Billing profile balance | Total AR for one buyer / middle man |
+| Invoice balance | Paid / partial / due per **posted** invoice |
+| Invoice outstanding | All invoices with `due_amount > 0` — includes **retail direct** (no billing profile) |
+| Billing profile balance | Total AR for one buyer / middle man (`billing_profile_id` not null) |
 | Unallocated cash | Payment received but not yet sliced to invoices |
-| Dropship COD | Recipient collection recorded? |
+| Recipient collection | COD / cash recorded on retail direct + dropship |
+| Courier variance | `courier_collected_amount` vs sum of collections (reconciliation) |
 | Middle-man payout | Margin owed to billing profile (dropship) |
 
 ### 3.4 Parent oversight — `parent_dashboard`
@@ -180,8 +251,9 @@ From [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) — `landedCost.ts` on `global
 line_margin = (sell_price_amount - unit_cost_price) × quantity - line_discount_amount
 ```
 
-- `unit_cost_price` — **immutable snapshot** at sale (locked decision **D7**).
+- `unit_cost_price` — **immutable snapshot** at post (locked decision **D7**).
 - Dropship **accounting** margin uses `sell_price_amount` / `accounting_subtotal_amount`, not recipient face prices.
+- **Report filter:** `invoice_status = 'posted'` only — drafts and voided invoices excluded.
 
 ### 4.3 Invoice gross profit
 
@@ -192,11 +264,13 @@ invoice_gross_profit = Σ line_margin
                      - return_margin_total
 ```
 
-| Invoice type | Charges in margin |
-|--------------|-------------------|
-| Wholesale | No header charges |
-| Retail | Charges are revenue to parent — include in report per product policy |
+| Invoice type | Charges in margin (`charge_effect`) |
+|--------------|-------------------------------------|
+| Wholesale | Optional `shipping_charge` only |
+| Retail (account + direct) | Delivery, COD, print, wrapping — revenue to parent |
 | Dropship | Accounting margin from sell prices; face/COD totals for collection reports only |
+
+`fulfillment_status` is **never** included in margin formulas.
 
 ### 4.4 Batch / shipment P&L
 
@@ -215,10 +289,21 @@ Join path: `global_shipment_items.id` ← `global_invoice_items.shipment_item_id
 ```
 profile_balance_due = Σ global_invoices.due_amount
                     WHERE billing_profile_id = :id
+                    AND invoice_status = 'posted'
                     AND payment_status IN ('due', 'partially_paid')
 ```
 
 Maintained on invoice header by payment RPCs — reports read `due_amount`, do not recompute from ledger.
+
+### 4.6 Invoice-level outstanding (retail direct + any type)
+
+```
+invoice_outstanding = global_invoices.due_amount
+                    WHERE invoice_status = 'posted'
+                    AND due_amount > 0
+```
+
+Used when `billing_profile_id` is null (retail direct) or for per-invoice collection follow-up. No separate ledger table.
 
 ---
 
@@ -238,7 +323,7 @@ Maintained on invoice header by payment RPCs — reports read `due_amount`, do n
 
 | Table | Purpose |
 |-------|---------|
-| `global_payments` | Cash-in event (amount, method, reference, payer profile optional) |
+| `global_payments` | Cash-in event (amount, `payment_method_id`, reference, `billing_profile_id` optional) |
 | `invoice_payments` | Allocation slice: `payment_id` → `global_invoice_id` + amount |
 
 Target shape per MASTER_PLAN §16.10–16.11. `unallocated_amount` on payment until manually allocated.
@@ -265,20 +350,22 @@ Target shape per MASTER_PLAN §16.10–16.11. `unallocated_amount` on payment un
 
 ## 6. Payments and settlement
 
-Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §7.
+Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §8.
 
 | Flow | RPC (target) | Submodule | Applies to |
 |------|--------------|-----------|------------|
-| Billing profile payment + allocation | `create_billing_profile_payment_with_allocations` | `payments` | Wholesale, retail |
-| Recipient COD collection | `record_recipient_invoice_collection` | `payments` | Dropship |
+| Billing profile payment + allocation | `create_billing_profile_payment_with_allocations` | `payments` | Wholesale, retail account |
+| Recipient collection (COD / cash) | `record_recipient_invoice_collection` | `payments` | Retail direct, dropship |
 | Middle-man payout | `create_middle_man_payout` | `payments` | Dropship |
-| Status recompute | `recompute_global_invoice_payment_status` | `payments` | All |
+| Status recompute | `recompute_global_invoice_payment_status` | `payments` | All posted invoices |
 
 **Rules:**
 
-- Dropship with `collection_source = recipient` — reject billing-profile payment allocation; use COD collection RPC.
-- Wholesale/retail — payments attach to `billing_profile_id` and allocate to invoices.
+- `collection_source = recipient` — reject billing-profile payment allocation; use recipient collection RPC.
+- `collection_source = billing_profile` — payments attach to `billing_profile_id` and allocate to invoices.
+- Only **posted** invoices accept payments or collections; drafts have no `due_amount`.
 - Every payment RPC updates `global_invoices.paid_amount`, `due_amount`, `payment_status` in the same transaction.
+- `courier_collected_amount` is a reconciliation fact on the invoice — does not change line margin.
 
 ---
 
@@ -292,6 +379,7 @@ Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §7.
 | Shipment P&L report | `/:slug/app/finance/shipments` | `shipment_reports` |
 | Shipment P&L detail | `/:slug/app/finance/shipments/:id` | `shipment_reports` |
 | Billing profile balances | `/:slug/app/finance/balances` | `billing_balances` |
+| Invoice outstanding | `/:slug/app/finance/invoices?due_only=true` or balances tab | `invoice_reports` / `billing_balances` |
 | Parent dashboard | `/:slug/app/finance/dashboard` | `parent_dashboard` |
 | Investor shipment profit | `/:slug/app/finance/investors` | `investor_reports` |
 
@@ -323,7 +411,7 @@ Target: extend `modulePermissions.ts` when submodules are seeded. Payment **crea
 | Module | Provides |
 |--------|----------|
 | `procurement_stock` | Shipments, items, landed cost inputs, stock pools |
-| `sales_invoice` | Invoices, lines with `unit_cost_price` + `shipment_item_id`, returns, charges |
+| `sales_invoice` | Posted invoices, lines with `unit_cost_price` + `shipment_item_id`, returns, charges, lifecycle status |
 | `global_reference` | Currency codes for display (read) |
 
 Without procurement + sales data, reports show empty — this module does not bootstrap transactions.
@@ -359,7 +447,7 @@ During transition, legacy rollup pages may read old tables; new work targets rea
 | **P0 — Documentation** | This file | Current |
 | **P1 — Module hierarchy** | `reporting_treasury` seeder, registry, nav, `/app/finance/*` routes + redirects | Planned |
 | **P2 — margin.ts** | Shared line / invoice / batch formulas; unit tests | Planned |
-| **P3 — Read RPCs / views** | `list_invoice_margin_report`, `get_shipment_pnl`, `list_billing_balances` | Planned |
+| **P3 — Read RPCs / views** | `list_invoice_margin_report`, `get_shipment_pnl`, `list_billing_balances`, `list_invoice_outstanding` | Planned |
 | **P4 — Payments** | Fresh `global_payments` + `invoice_payments`; allocation UI | Planned |
 | **P5 — Dashboards** | Parent consolidated + shipment P&L pages | Planned |
 | **P6 — Ledger drop** | Stop writing `global_accounting_ledger`; deprecate rollup tables | Planned |
@@ -393,3 +481,7 @@ During transition, legacy rollup pages may read old tables; new work targets rea
 | D-RT8 | Performance | Views or materialized views OK; never dual-write margin |
 | D-RT9 | Not GAAP | Operational P&L and AR only — out of scope for statutory books |
 | D-RT10 | Inline margin | Invoice detail may show margin under `sales_invoice` using same `margin.ts` |
+| D-RT11 | Posted only | Margin and AR reports filter `invoice_status = 'posted'`; voided excluded |
+| D-RT12 | Retail direct AR | No billing profile balance — use invoice-level `due_amount` |
+| D-RT13 | Recipient collection | Same RPC for retail direct and dropship COD; margin still from `sell_price` |
+| D-RT14 | Courier variance | `courier_collected_amount` is reconciliation only — not revenue adjustment |
