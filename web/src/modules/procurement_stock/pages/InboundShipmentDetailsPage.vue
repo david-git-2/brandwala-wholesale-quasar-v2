@@ -40,7 +40,7 @@
                 <div class="text-caption text-grey-7 q-mt-xs q-pl-xs row items-center q-gutter-x-sm wrap">
                   <span>Type: <strong class="text-capitalize">{{ shipmentStore.currentShipment.type }}</strong></span>
                   <span>|</span>
-                  <span>Weight: <strong>{{ shipmentStore.currentShipment.received_weight !== null ? `${shipmentStore.currentShipment.received_weight} kg` : '-' }}</strong></span>
+                  <span>Weight: <strong>{{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}</strong></span>
                   <span>|</span>
                   <q-chip
                     dense
@@ -75,9 +75,23 @@
                         :key="status"
                         clickable
                         v-close-popup
+                        :disable="status === 'Ready Stock' && !isSplitsComplete"
                         @click="changeStatus(status)"
                       >
-                        <q-item-section>{{ status }}</q-item-section>
+                        <q-item-section>
+                          <div class="row items-center justify-between no-wrap">
+                            <span>{{ status }}</span>
+                            <q-icon
+                              v-if="status === 'Ready Stock' && !isSplitsComplete"
+                              name="lock"
+                              color="grey-6"
+                              size="14px"
+                              class="q-ml-xs"
+                            >
+                              <q-tooltip>Configure splits for all items in 'Warehouse Received' first</q-tooltip>
+                            </q-icon>
+                          </div>
+                        </q-item-section>
                       </q-item>
                     </q-list>
                   </q-menu>
@@ -214,7 +228,7 @@
                   <q-item-section>
                     <q-item-label class="text-grey-7 text-caption">Received Weight</q-item-label>
                     <q-item-label class="text-weight-bold">
-                      {{ shipmentStore.currentShipment.received_weight !== null ? `${shipmentStore.currentShipment.received_weight} kg` : '-' }}
+                      {{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}
                     </q-item-label>
                   </q-item-section>
                 </q-item>
@@ -337,10 +351,13 @@
                   <span class="text-caption text-grey-7">Packaging Weight:</span>
                   <span class="text-subtitle2 text-weight-bold">{{ totals.packagingWeightKg.toFixed(2) }} kg</span>
                 </div>
-                <!-- Received weight confirmation -->
-                <div class="row justify-between q-py-xs" v-if="shipmentStore.currentShipment?.received_weight !== null">
-                  <span class="text-caption text-grey-7">Received Weight:</span>
-                  <span class="text-subtitle2 text-weight-bold">{{ shipmentStore.currentShipment.received_weight.toFixed(2) }} kg</span>
+                <div class="row justify-between q-py-xs" v-if="hasCargoInvoiceWeight">
+                  <span class="text-caption text-grey-7">Invoice Weight:</span>
+                  <span class="text-subtitle2 text-weight-bold text-primary">{{ totals.cargoWeightKg.toFixed(2) }} kg</span>
+                </div>
+                <div class="row justify-between q-py-xs">
+                  <span class="text-caption text-grey-7">Box Weight Sum:</span>
+                  <span class="text-subtitle2 text-weight-bold">{{ currentShipmentBoxesTotal.toFixed(2) }} kg</span>
                 </div>
               </div>
 
@@ -362,7 +379,7 @@
                       {{ currentPurchaseCurrencySymbol }}{{ totals.cargoPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                     </div>
                     <div class="text-caption text-grey-5" style="font-size: 10px;">
-                      Based on {{ totals.packagingWeightKg.toFixed(2) }} kg estimated packaging weight
+                      {{ cargoCostWeightLabel }}
                     </div>
                   </div>
                 </div>
@@ -407,7 +424,7 @@
                     style="font-size: 11px; line-height: 1.2;"
                   >
                     <q-icon name="warning" class="q-mr-xs" size="14px" />
-                    <span>Landed cost total ({{ currentCostCurrencySymbol }}{{ totals.lineLandedCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}) differs from total cost due to cargo weight / packaging weight distribution.</span>
+                    <span>Landed cost total ({{ currentCostCurrencySymbol }}{{ totals.lineLandedCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}) differs from total cost by {{ currentCostCurrencySymbol }}{{ Math.abs(totals.lineLandedCostTotal - totals.totalCost).toFixed(2) }} due to rounding.</span>
                   </div>
                 </div>
 
@@ -420,18 +437,18 @@
                     {{ totals.transactionRate !== null ? `${currentCostCurrencySymbol}${totals.transactionRate.toFixed(4)}` : '-' }}
                   </div>
                   <div class="text-caption text-blue-8" style="font-size: 10px; line-height: 1.2;">
-                    {{ totals.transactionRate !== null ? 'Based on estimated packaging weight · used for per-unit cost conversion' : 'Add line items with prices to calculate' }}
+                    {{ transactionRateWeightLabel }}
                   </div>
 
                   <!-- Weight balance status -->
-                  <div v-if="shipmentStore.currentShipment?.received_weight !== null" class="q-mt-xs">
+                  <div v-if="hasCargoInvoiceWeight" class="q-mt-xs">
                     <div
-                      v-if="Math.abs(totals.packagingWeightKg - (shipmentStore.currentShipment?.received_weight || 0)) > 0.01"
+                      v-if="Math.abs(totals.packagingWeightKg - totals.cargoWeightKg) > 0.01"
                       class="row items-center justify-center text-amber-9 text-caption text-weight-medium"
                       style="font-size: 11px;"
                     >
                       <q-icon name="warning" class="q-mr-xs" size="14px" />
-                      <span>Estimated differs from Received ({{ shipmentStore.currentShipment.received_weight.toFixed(2) }} kg)</span>
+                      <span>Line estimate ({{ totals.packagingWeightKg.toFixed(2) }} kg) differs from invoice ({{ totals.cargoWeightKg.toFixed(2) }} kg) — apply weight balance</span>
                     </div>
                     <div
                       v-else
@@ -439,10 +456,27 @@
                       style="font-size: 11px;"
                     >
                       <q-icon name="check_circle" class="q-mr-xs" size="14px" />
-                      <span>Estimated matches actual</span>
+                      <span>Line estimate matches invoice weight</span>
                     </div>
                   </div>
                 </div>
+
+                <!-- Promoted Receive to Stock button (only for Warehouse Received status) -->
+                <q-btn
+                  v-if="shipmentStore.currentShipment?.status === 'Warehouse Received'"
+                  :color="isSplitsComplete ? 'green-7' : 'grey-5'"
+                  :disable="!isSplitsComplete"
+                  unelevated
+                  class="full-width q-mt-md text-weight-bold text-white"
+                  icon="check_circle"
+                  label="Receive to Stock"
+                  no-caps
+                  @click="changeStatus('Ready Stock')"
+                >
+                  <q-tooltip v-if="!isSplitsComplete">
+                    Configure quantity splits for all items in the table first
+                  </q-tooltip>
+                </q-btn>
               </template>
             </q-card>
           </div>
@@ -514,7 +548,7 @@
                   </div>
                   <q-separator class="q-my-xs" />
                   <div class="row justify-between">
-                    <span>Cargo Weight:</span>
+                    <span>{{ hasCargoInvoiceWeight ? 'Cargo Invoice Weight:' : 'Cargo Weight:' }}</span>
                     <span class="text-weight-bold">{{ ratesPreview.cargoWeightKg.toFixed(2) }} kg</span>
                   </div>
                   <div class="row justify-between">
@@ -571,7 +605,6 @@ import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository'
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue'
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue'
-import ReceiveShipmentDialog from '../components/ReceiveShipmentDialog.vue'
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue'
 import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLineItemsTable.vue'
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue'
@@ -603,6 +636,17 @@ const statuses = [
   'Ready Stock',
 ]
 
+const isSplitsComplete = computed(() => {
+  const items = shipmentStore.currentShipmentItems
+  const stocks = shipmentStore.currentShipmentStocks || []
+  if (!items.length) return false
+  return items.every((item) => {
+    const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id)
+    const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0)
+    return sum === item.ordered_quantity
+  })
+})
+
 const baseColumnOptions = [
   { label: 'Name', value: 'name' as ColumnKey },
   { label: 'Product ID', value: 'product_id' as ColumnKey },
@@ -619,12 +663,36 @@ const baseColumnOptions = [
 
 const availableColumnOptions = computed(() => {
   const isIntl = shipmentStore.currentShipment?.type === 'international'
-  return baseColumnOptions.filter((col) => {
-    if (!isIntl) {
-      return !['purchase_price', 'product_weight', 'package_weight'].includes(col.value)
-    }
-    return true
-  })
+  return baseColumnOptions
+    .filter((col) => {
+      if (!isIntl) {
+        return !['purchase_price', 'product_weight', 'package_weight'].includes(col.value)
+      }
+      return true
+    })
+    .map((col) => {
+      if (col.value === 'purchase_price') {
+        return { ...col, label: `Price ${currentPurchaseCurrencySymbol.value}` }
+      }
+      if (col.value === 'cost_bdt') {
+        return { ...col, label: `Cost ${currentCostCurrencySymbol.value}` }
+      }
+      return col
+    })
+})
+
+const currentShipmentBoxesTotal = computed(() => {
+  return shipmentStore.currentShipmentBoxes.reduce((sum, box) => sum + (box.weight_kg || 0), 0)
+})
+
+const formatWeightKg = (weight: number | null | undefined): string => {
+  if (weight == null || weight <= 0) return '-'
+  return `${weight.toFixed(2)} kg`
+}
+
+const hasCargoInvoiceWeight = computed(() => {
+  const rw = shipmentStore.currentShipment?.received_weight
+  return rw != null && rw > 0
 })
 
 const visibleColumns = ref<ColumnKey[]>([
@@ -669,6 +737,23 @@ const totals = computed(() => {
     }
   }
   return calculateShipmentCostSummary(shipment, items)
+})
+
+const cargoCostWeightLabel = computed(() => {
+  if (hasCargoInvoiceWeight.value) {
+    return `Based on ${totals.value.cargoWeightKg.toFixed(2)} kg cargo invoice weight`
+  }
+  return `Based on ${totals.value.packagingWeightKg.toFixed(2)} kg estimated packaging weight`
+})
+
+const transactionRateWeightLabel = computed(() => {
+  if (totals.value.transactionRate === null) {
+    return 'Add line items with prices to calculate'
+  }
+  if (hasCargoInvoiceWeight.value) {
+    return `Based on ${totals.value.cargoWeightKg.toFixed(2)} kg cargo invoice weight · used for per-unit cost conversion`
+  }
+  return 'Based on estimated packaging weight · used for per-unit cost conversion'
 })
 
 const shipmentForLiveCosting = computed(() => {
@@ -763,13 +848,44 @@ const changeStatus = (newStatus: string) => {
   if (shipmentStore.currentShipment.status === newStatus) return
 
   if (newStatus === 'Ready Stock') {
+    if (!isSplitsComplete.value) {
+      $q.notify({
+        type: 'warning',
+        message: 'Please configure quantity splits for all line items first.',
+      })
+      return
+    }
+
     $q.dialog({
-      component: ReceiveShipmentDialog,
-      componentProps: {
-        shipmentId,
-      },
-    }).onOk(() => {
-      loadShipmentDetails()
+      title: 'Commit Shipment to Stock',
+      message: 'All item splits are fully configured. Changing status to "Ready Stock" will lock the allocations and commit them to active inventory pools. Continue?',
+      cancel: true,
+      persistent: true,
+    }).onOk(async () => {
+      updatingStatus.value = true
+      try {
+        const txRate = totals.value.transactionRate
+        const updatePayload: any = {
+          status: 'Ready Stock',
+          stock_ready: true,
+        }
+        if (txRate !== null) {
+          updatePayload.transaction_rate = txRate
+        }
+        await shipmentStore.updateShipment(shipmentId, updatePayload)
+        $q.notify({
+          type: 'positive',
+          message: 'Shipment promoted to Ready Stock successfully.',
+        })
+        loadShipmentDetails()
+      } catch (err: any) {
+        $q.notify({
+          type: 'negative',
+          message: err.message || 'Failed to promote shipment.',
+        })
+      } finally {
+        updatingStatus.value = false
+      }
     })
     return
   }

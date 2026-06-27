@@ -1841,6 +1841,7 @@ export type Database = {
           product_weight: number
           purchase_price: number
           shipment_id: number
+          sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
@@ -1861,6 +1862,7 @@ export type Database = {
           product_weight?: number
           purchase_price?: number
           shipment_id: number
+          sort_order?: number
           source_child_tenant_id?: number | null
           source_id?: number | null
           source_type?: string | null
@@ -1881,6 +1883,7 @@ export type Database = {
           product_weight?: number
           purchase_price?: number
           shipment_id?: number
+          sort_order?: number
           source_child_tenant_id?: number | null
           source_id?: number | null
           source_type?: string | null
@@ -4157,6 +4160,7 @@ export type Database = {
           quantity: number
           receiving_splits: Json | null
           shipment_id: number
+          sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
@@ -4181,6 +4185,7 @@ export type Database = {
           quantity?: number
           receiving_splits?: Json | null
           shipment_id: number
+          sort_order?: number
           source_child_tenant_id?: number | null
           source_id?: number | null
           source_type?: string | null
@@ -4205,6 +4210,7 @@ export type Database = {
           quantity?: number
           receiving_splits?: Json | null
           shipment_id?: number
+          sort_order?: number
           source_child_tenant_id?: number | null
           source_id?: number | null
           source_type?: string | null
@@ -5530,6 +5536,7 @@ export type Database = {
           quantity: number
           receiving_splits: Json | null
           shipment_id: number
+          sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
@@ -5754,6 +5761,7 @@ export type Database = {
           quantity: number
           receiving_splits: Json | null
           shipment_id: number
+          sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
@@ -5802,6 +5810,7 @@ export type Database = {
               quantity: number
               receiving_splits: Json | null
               shipment_id: number
+              sort_order: number
               source_child_tenant_id: number | null
               source_id: number | null
               source_type: string | null
@@ -5848,6 +5857,7 @@ export type Database = {
               quantity: number
               receiving_splits: Json | null
               shipment_id: number
+              sort_order: number
               source_child_tenant_id: number | null
               source_id: number | null
               source_type: string | null
@@ -5863,6 +5873,14 @@ export type Database = {
       adjust_inventory_reserved_for_product: {
         Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
         Returns: undefined
+      }
+      apply_global_shipment_weight_balance: {
+        Args: {
+          p_adjustments: Json
+          p_shipment_id: number
+          p_transaction_rate?: number
+        }
+        Returns: Json
       }
       apply_invoice_item_return: {
         Args: {
@@ -5907,6 +5925,7 @@ export type Database = {
           quantity: number
           receiving_splits: Json | null
           shipment_id: number
+          sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
@@ -8160,6 +8179,10 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_global_shipment_items_order: {
+        Args: { p_items: Json }
+        Returns: undefined
       }
       update_invoice_item_transactional: {
         Args: {

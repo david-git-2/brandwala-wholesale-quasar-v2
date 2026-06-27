@@ -210,6 +210,7 @@ const listShipmentItems = async (shipmentId: number): Promise<ShipmentItem[]> =>
     .from('shipment_items')
     .select('*')
     .eq('shipment_id', shipmentId)
+    .order('sort_order', { ascending: true })
     .order('id', { ascending: true })
 
   if (error) {

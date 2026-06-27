@@ -38,6 +38,7 @@ export interface GlobalShipmentItem {
   source_child_tenant_id: number | null
   source_type: string | null
   source_id: number | null
+  sort_order?: number
   created_at: string
   updated_at: string
 }
@@ -160,10 +161,45 @@ const listShipmentItems = async (shipmentId: number): Promise<GlobalShipmentItem
     .from('global_shipment_items')
     .select('*')
     .eq('shipment_id', shipmentId)
+    .order('sort_order', { ascending: true })
     .order('id', { ascending: true })
 
   if (error) throw error
   return (data as GlobalShipmentItem[] | null) ?? []
+}
+
+const updateShipmentItemsOrder = async (items: { id: number; sort_order: number }[]): Promise<void> => {
+  const { error } = await db.rpc('update_global_shipment_items_order', {
+    p_items: items,
+  })
+
+  if (error) throw error
+}
+
+export interface ApplyWeightBalanceAdjustment {
+  item_id: number
+  package_weight: number
+}
+
+export interface ApplyWeightBalanceRpcResult {
+  estimated_kg: number
+  actual_kg: number
+  delta_kg: number
+}
+
+const applyWeightBalance = async (
+  shipmentId: number,
+  adjustments: ApplyWeightBalanceAdjustment[],
+  transactionRate: number | null,
+): Promise<ApplyWeightBalanceRpcResult> => {
+  const { data, error } = await db.rpc('apply_global_shipment_weight_balance', {
+    p_shipment_id: shipmentId,
+    p_adjustments: adjustments,
+    p_transaction_rate: transactionRate,
+  })
+
+  if (error) throw error
+  return data as ApplyWeightBalanceRpcResult
 }
 
 const createShipmentItem = async (
@@ -238,4 +274,6 @@ export const globalShipmentRepository = {
   deleteShipmentItem,
   checkShipmentStockReferences,
   checkShipmentItemStockReferences,
+  updateShipmentItemsOrder,
+  applyWeightBalance,
 }

@@ -1,10 +1,11 @@
-import { globalShipmentRepository } from '../repositories/globalShipmentRepository'
-import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository'
-import { syncShipmentWeightToProduct } from './syncShipmentWeightToProduct'
+import {
+  globalShipmentRepository,
+  type GlobalShipment,
+  type GlobalShipmentItem,
+} from '../repositories/globalShipmentRepository'
 import {
   computePackageWeightAdjustments,
   calculateEstimatedWeightKg,
-  calculateActualWeightKg,
 } from './weightBalance'
 import { calculateTransactionRate } from './landedCost'
 
@@ -19,78 +20,69 @@ export interface ApplyWeightBalanceResult {
   }[]
 }
 
-/**
- * Orchestrates the weight balance application process.
- * Updates items, syncs matching products, and saves header received_weight and transaction_rate.
- */
-export async function applyShipmentWeightBalance(shipmentId: number): Promise<ApplyWeightBalanceResult> {
-  // 1. Fetch shipment details, items and boxes
-  const shipment = await globalShipmentRepository.getById(shipmentId)
-  const items = await globalShipmentRepository.listShipmentItems(shipmentId)
-  const boxes = await globalShipmentBoxRepository.listByShipmentId(shipmentId)
+export interface ApplyWeightBalancePreload {
+  shipment: GlobalShipment
+  items: GlobalShipmentItem[]
+}
 
-  // 2. Compute actual weight
-  const actualKg = calculateActualWeightKg(boxes)
+/**
+ * Distributes saved cargo invoice weight across line package_weight values.
+ * Does not modify received_weight — that is set only via explicit save on the UI.
+ */
+export async function applyShipmentWeightBalance(
+  shipmentId: number,
+  preload?: ApplyWeightBalancePreload,
+): Promise<ApplyWeightBalanceResult> {
+  const shipment = preload?.shipment ?? await globalShipmentRepository.getById(shipmentId)
+  const items = preload?.items ?? await globalShipmentRepository.listShipmentItems(shipmentId)
+
+  const actualKg = Math.round((shipment.received_weight || 0) * 100) / 100
+  if (actualKg <= 0) {
+    throw new Error('Cargo Invoice Weight must be saved before applying weight balance.')
+  }
+
   const estimatedKg = calculateEstimatedWeightKg(items)
   const deltaKg = actualKg - estimatedKg
-
-  // 3. Compute adjustments
   const adjustments = computePackageWeightAdjustments(items, actualKg)
 
-  // 4. Sequentially update each item and sync its product
-  const updatedItems = [...items]
-  for (const adj of adjustments) {
-    // Update shipment item
-    const updatedItem = await globalShipmentRepository.updateShipmentItem(adj.itemId, {
-      package_weight: adj.newPackageWeight,
-    })
+  const updatedItems = items.map((item) => {
+    const adj = adjustments.find((a) => a.itemId === item.id)
+    return adj ? { ...item, package_weight: adj.newPackageWeight } : item
+  })
 
-    // Find and update item in our local copy to use for transaction rate calculation
-    const idx = updatedItems.findIndex((item) => item.id === adj.itemId)
-    if (idx !== -1) {
-      updatedItems[idx] = updatedItem
-    }
-
-    // Sync product if linked
-    if (updatedItem.product_id) {
-      await syncShipmentWeightToProduct(updatedItem.product_id, 'package_weight', adj.newPackageWeight)
-    }
-  }
-
-  // 5. Build shipment patch
-  const patch: Parameters<typeof globalShipmentRepository.updateShipment>[1] = {
-    received_weight: actualKg,
-  }
-
-  // 6. If international, calculate and set transaction_rate
+  let transactionRate: number | null = null
   if (shipment.type === 'international') {
-    const shipmentInputForRate = {
-      type: shipment.type,
-      product_conversion_rate: shipment.product_conversion_rate,
-      cargo_conversion_rate: shipment.cargo_conversion_rate,
-      cargo_rate: shipment.cargo_rate,
-      received_weight: actualKg,
-      transaction_rate: shipment.transaction_rate,
-    }
-
-    const itemsInputForRate = updatedItems.map((item) => ({
-      purchase_price: item.purchase_price,
-      product_weight: item.product_weight,
-      package_weight: item.package_weight,
-      ordered_quantity: item.ordered_quantity,
-    }))
-
-    const newTxRate = calculateTransactionRate(shipmentInputForRate, itemsInputForRate)
-    patch.transaction_rate = newTxRate
+    transactionRate = calculateTransactionRate(
+      {
+        type: shipment.type,
+        product_conversion_rate: shipment.product_conversion_rate,
+        cargo_conversion_rate: shipment.cargo_conversion_rate,
+        cargo_rate: shipment.cargo_rate,
+        received_weight: actualKg,
+        transaction_rate: shipment.transaction_rate,
+      },
+      updatedItems.map((item) => ({
+        purchase_price: item.purchase_price,
+        product_weight: item.product_weight,
+        package_weight: item.package_weight,
+        ordered_quantity: item.ordered_quantity,
+      })),
+    )
   }
 
-  // 7. Update shipment header
-  await globalShipmentRepository.updateShipment(shipmentId, patch)
+  const rpcResult = await globalShipmentRepository.applyWeightBalance(
+    shipmentId,
+    adjustments.map((adj) => ({
+      item_id: adj.itemId,
+      package_weight: adj.newPackageWeight,
+    })),
+    transactionRate,
+  )
 
   return {
-    estimatedKg,
-    actualKg,
-    deltaKg,
+    estimatedKg: rpcResult.estimated_kg,
+    actualKg: rpcResult.actual_kg,
+    deltaKg: rpcResult.delta_kg,
     adjustments,
   }
 }

@@ -455,7 +455,9 @@ Rates on the shipment may still be edited after `Ready Stock`; displayed cost re
 > **Legacy mapping:** Old `shipments.status = 'Added to Inventory'` and `inventory_added = true` map to `Ready Stock` + `stock_ready` on `global_shipments`. Legacy `receiving_splits` on `shipment_items` maps to per-type qty on receive into `global_stocks`.
 
 ##### Weight Balance Flow (Warehouse Received)
-At the warehouse, box counts and physical box weights (kg) can be logged in `global_shipment_boxes`. Upon applying the weight balance, the difference between actual box weight (converted to grams) and estimated item weight is distributed proportionally across all line items by adjusting `package_weight` only. The updated weights are synchronized with the `products` catalog and saved to `global_shipment_items`. `global_shipments.received_weight` is set to the sum of the box weights, and `transaction_rate` is recomputed if it is an international shipment.
+At the warehouse, the **Cargo Invoice Weight** (saved to `global_shipments.received_weight`) is the actual weight billed by the cargo company and drives weight balance and cargo costing. Physical box weights can be logged in `global_shipment_boxes` for verification only — they do not drive balance or cost.
+
+Upon applying weight balance, the difference between the saved cargo invoice weight and estimated item weight is distributed proportionally across all line items by adjusting `package_weight` only. The updated weights are synchronized with the `products` catalog and saved to `global_shipment_items`. `transaction_rate` is recomputed for international shipments. **`received_weight` is not modified by apply** — it is set only via explicit save on the Weight Balance card. Cargo purchase and transaction rate use `received_weight` when set; otherwise estimated packaging weight from line items is used.
 
 ### 5.2 `global_shipments`
 
@@ -472,7 +474,7 @@ At the warehouse, box counts and physical box weights (kg) can be logged in `glo
 | `product_conversion_rate` | numeric | Forced `1.0` when domestic (**D6**) |
 | `cargo_conversion_rate` | numeric | Forced `1.0` when domestic |
 | `cargo_rate` | numeric | Freight per kg — **both** domestic and international |
-| `received_weight` | numeric | Warehouse weight; used for `transaction_rate` (intl) |
+| `received_weight` | numeric | Cargo invoice weight (kg); drives weight balance and cargo costing |
 | `transaction_rate` | numeric nullable | International only; frontend-computed cache |
 | `stock_ready` | boolean | `true` when status is `Ready Stock` — parent pool is sellable |
 | `created_at`, `updated_at` | timestamptz | |
@@ -684,5 +686,5 @@ Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a
 | D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts` |
 | D-PS12 | Vendor scoping | **Vendor is line-level only**; `vendor_id` dropped from shipment headers and legacy table; added to `global_shipment_items` |
 | D-PS13 | Weight balance | Package-weight-only distribution of weight delta; no audit trail v1 |
-| D-PS14 | Received weight | `received_weight` is set only via Weight Balance Apply (not manually in Edit Shipment form) |
+| D-PS14 | Received weight | `received_weight` is the cargo invoice weight; set only via explicit save on the Weight Balance card (never overwritten by apply); box weights are verification-only |
 

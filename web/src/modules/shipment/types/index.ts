@@ -63,6 +63,7 @@ export type ShipmentItem = {
   marker_tag: 'price_reviewed' | 'issue' | 'done' | null
   inspected: boolean
   receiving_splits: ShipmentItemReceivingSplits | null
+  sort_order?: number
   created_at: string
   updated_at: string
 }

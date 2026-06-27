@@ -3,6 +3,7 @@ import { globalShipmentRepository, type GlobalShipment, type GlobalShipmentItem 
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository'
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository'
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance'
+import { supabase } from 'src/boot/supabase'
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
   state: () => ({
@@ -20,6 +21,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipment: null as GlobalShipment | null,
     currentShipmentItems: [] as GlobalShipmentItem[],
     currentShipmentBoxes: [] as GlobalShipmentBox[],
+    currentShipmentStocks: [] as any[],
   }),
 
   actions: {
@@ -83,6 +85,19 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipment = shipment
         this.currentShipmentItems = items
         this.currentShipmentBoxes = boxes
+
+        let stocks: any[] = []
+        if (items.length > 0) {
+          const itemIds = items.map((i) => i.id)
+          const { data, error } = await supabase
+            .from('global_stocks')
+            .select('*')
+            .in('shipment_item_id', itemIds)
+          if (!error && data) {
+            stocks = data
+          }
+        }
+        this.currentShipmentStocks = stocks
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details'
       } finally {
@@ -94,7 +109,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.loading = true
       this.error = null
       try {
-        const result = await applyShipmentWeightBalance(shipmentId)
+        const preload =
+          this.currentShipment && this.currentShipment.id === shipmentId
+            ? { shipment: this.currentShipment, items: this.currentShipmentItems }
+            : undefined
+        const result = await applyShipmentWeightBalance(shipmentId, preload)
         await this.fetchShipmentDetails(shipmentId)
         return result
       } catch (err: unknown) {
@@ -176,11 +195,19 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async addShipmentItem(payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>) {
+    async addShipmentItem(payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>) {
       this.loading = true
       this.error = null
       try {
-        const newItem = await globalShipmentRepository.createShipmentItem(payload)
+        const maxSortOrder = this.currentShipmentItems.length > 0
+          ? Math.max(...this.currentShipmentItems.map((item) => item.sort_order ?? 0))
+          : 0
+        const sort_order = maxSortOrder + 10
+
+        const newItem = await globalShipmentRepository.createShipmentItem({
+          ...payload,
+          sort_order,
+        })
         if (this.currentShipment?.id === payload.shipment_id) {
           this.currentShipmentItems.push(newItem)
         }
@@ -227,6 +254,20 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipmentItems = this.currentShipmentItems.filter((item) => item.id !== id)
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete shipment item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async reorderShipmentItems(shipmentId: number, itemsOrder: { id: number; sort_order: number }[]) {
+      this.loading = true
+      this.error = null
+      try {
+        await globalShipmentRepository.updateShipmentItemsOrder(itemsOrder)
+        await this.fetchShipmentDetails(shipmentId)
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to reorder shipment items'
         throw err
       } finally {
         this.loading = false
