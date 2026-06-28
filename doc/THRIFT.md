@@ -461,7 +461,7 @@ Child tables (`thrift_pricings`, `thrift_stock_images`, `thrift_stock_measuremen
 | `resolve_thrift_barcode_id_internal(...)` | Internal | Canonical barcode lookup | Today |
 | `register_thrift_stock_from_app(...)` | Mobile | Create/update stock + pricing + image | Today |
 | `mark_thrift_items_as_sold(...)` | *(none — DB only)* | Invoice + stock deduction + ledger | Today |
-| `compute_thrift_landed_unit_cost(stock_id)` | Invoice trigger / RPC | SQL cost engine mirror | **Planned** |
+| `compute_thrift_landed_unit_cost(stock_id)` | Invoice trigger / RPC | SQL cost engine mirror | Today |
 
 ### 5.2 Direct Supabase table access (web)
 
@@ -625,8 +625,8 @@ Legend (UI columns): **S** stored | **C** computed | **F** display | **A** actio
 
 | Phase | Deliverable | Touches live data? | Status |
 |-------|-------------|-------------------|--------|
-| **P1 — Migration + measurements** | Backups → costing alters → RPC renames → `thrift_stock_measurements` → stock UI cell + dialog → `supabase.ts` regen | **Yes** | Planned |
-| **P2 — Cost engine** | `computeThriftUnitCosts.ts` + `compute_thrift_landed_unit_cost` SQL | No | Planned |
+| **P1 — Migration + measurements** | Backups → costing alters → RPC renames → `thrift_stock_measurements` → stock UI cell + dialog → `supabase.ts` regen | **Yes** | Done |
+| **P2 — Cost engine** | `computeThriftUnitCosts.ts` + `compute_thrift_landed_unit_cost` SQL | No | Done |
 | **P3 — Settings UI** | Hand-tag / sticker on `ThriftSettingsPage` | No | Planned |
 | **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Planned |
 | **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Planned |

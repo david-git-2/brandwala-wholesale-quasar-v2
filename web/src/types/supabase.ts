@@ -6502,6 +6502,10 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
+      compute_thrift_landed_unit_cost: {
+        Args: { p_stock_id: number }
+        Returns: number
+      }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
