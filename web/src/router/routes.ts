@@ -25,10 +25,7 @@ import commerceCartRoutes from 'src/modules/commerce_cart/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
-import thriftStockRoutes from 'src/modules/thrift_stock/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
-import thriftBarcodeRoutes from 'src/modules/thrift_barcode/routes';
-import thriftSettingsRoutes from 'src/modules/thrift_settings/routes';
 import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
@@ -116,10 +113,7 @@ const routes: RouteRecordRaw[] = [
   ...documentationRoutes,
   ...kobaRoutes,
   ...tasksRoutes,
-  ...thriftStockRoutes,
   ...thriftRoutes,
-  ...thriftBarcodeRoutes,
-  ...thriftSettingsRoutes,
   ...investorPortalRoutes,
   ...globalRoutes,
   ...procurementStockRoutes,

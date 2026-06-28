@@ -205,7 +205,7 @@
                         </div>
                       </div>
 
-                      <div v-if="rowAllocations[props.row.id].length === 0" class="text-caption text-grey-6 text-center q-py-md">
+                      <div v-if="!rowAllocations[props.row.id] || rowAllocations[props.row.id]!.length === 0" class="text-caption text-grey-6 text-center q-py-md">
                         No sister concerns (child tenants) found under this parent tenant.
                       </div>
 

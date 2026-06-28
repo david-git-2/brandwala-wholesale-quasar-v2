@@ -342,7 +342,7 @@
               </span>
             </div>
             <q-input
-              v-model.number="localSplits[activeSplitItem.id][t.id]"
+              v-model.number="localSplits[activeSplitItem!.id]![t.id]"
               type="number"
               dense
               outlined
@@ -516,19 +516,20 @@ const initLocalSplits = () => {
   const newSplits: Record<number, Record<number, number>> = {}
   for (const item of items) {
     const itemStocks = stocks.filter(s => s.shipment_item_id === item.id)
-    newSplits[item.id] = {}
+    const splits: Record<number, number> = {}
+    newSplits[item.id] = splits
     
     for (const t of stockTypeStore.items) {
-      newSplits[item.id][t.id] = 0
+      splits[t.id] = 0
     }
 
     if (itemStocks.length > 0) {
       for (const s of itemStocks) {
-        newSplits[item.id][s.stock_type_id] = s.quantity || 0
+        splits[s.stock_type_id] = s.quantity || 0
       }
     } else {
       if (defaultTypeId > 0) {
-        newSplits[item.id][defaultTypeId] = item.ordered_quantity
+        splits[defaultTypeId] = item.ordered_quantity
       }
     }
   }

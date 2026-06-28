@@ -4873,6 +4873,7 @@ export type Database = {
           id: number
           invoice_id: number
           item_status: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale: number
           net_profit: number
           platform_fees: number
           quantity: number
@@ -4892,6 +4893,7 @@ export type Database = {
           id?: number
           invoice_id: number
           item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale?: number
           net_profit?: number
           platform_fees?: number
           quantity: number
@@ -4911,6 +4913,7 @@ export type Database = {
           id?: number
           invoice_id?: number
           item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale?: number
           net_profit?: number
           platform_fees?: number
           quantity?: number
@@ -5017,7 +5020,8 @@ export type Database = {
           extra_expense_cost: number
           id: number
           inserted_by: string
-          listed_price: number
+          is_listed_price_manual: boolean | null
+          listed_unit_price: number
           stock_id: number
           target_price: number
           updated_at: string
@@ -5028,7 +5032,8 @@ export type Database = {
           extra_expense_cost?: number
           id?: number
           inserted_by: string
-          listed_price?: number
+          is_listed_price_manual?: boolean | null
+          listed_unit_price?: number
           stock_id: number
           target_price?: number
           updated_at?: string
@@ -5039,7 +5044,8 @@ export type Database = {
           extra_expense_cost?: number
           id?: number
           inserted_by?: string
-          listed_price?: number
+          is_listed_price_manual?: boolean | null
+          listed_unit_price?: number
           stock_id?: number
           target_price?: number
           updated_at?: string
@@ -5057,23 +5063,49 @@ export type Database = {
       thrift_settings: {
         Row: {
           created_at: string
-          default_origin_purchase_price: number
+          default_origin_unit_price: number
+          hand_tag_unit_cost: number | null
+          hand_tag_unit_currency_id: number | null
+          sticker_unit_cost: number | null
+          sticker_unit_currency_id: number | null
           tenant_id: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          default_origin_purchase_price?: number
+          default_origin_unit_price?: number
+          hand_tag_unit_cost?: number | null
+          hand_tag_unit_currency_id?: number | null
+          sticker_unit_cost?: number | null
+          sticker_unit_currency_id?: number | null
           tenant_id: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          default_origin_purchase_price?: number
+          default_origin_unit_price?: number
+          hand_tag_unit_cost?: number | null
+          hand_tag_unit_currency_id?: number | null
+          sticker_unit_cost?: number | null
+          sticker_unit_currency_id?: number | null
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thrift_settings_hand_tag_unit_currency_id_fkey"
+            columns: ["hand_tag_unit_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_settings_sticker_unit_currency_id_fkey"
+            columns: ["sticker_unit_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thrift_settings_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -5130,12 +5162,16 @@ export type Database = {
           cargo_rate: number | null
           cost_currency_id: number
           created_at: string
+          default_markup_rate: number | null
           id: number
           inserted_by: string
+          labor_total_cost: number | null
           name: string
           product_conversion_rate: number | null
           purchase_currency_id: number
           tenant_id: number
+          total_cargo_weight_kg: number | null
+          transportation_total_cost: number | null
           updated_at: string
         }
         Insert: {
@@ -5143,12 +5179,16 @@ export type Database = {
           cargo_rate?: number | null
           cost_currency_id: number
           created_at?: string
+          default_markup_rate?: number | null
           id?: number
           inserted_by: string
+          labor_total_cost?: number | null
           name: string
           product_conversion_rate?: number | null
           purchase_currency_id: number
           tenant_id: number
+          total_cargo_weight_kg?: number | null
+          transportation_total_cost?: number | null
           updated_at?: string
         }
         Update: {
@@ -5156,12 +5196,16 @@ export type Database = {
           cargo_rate?: number | null
           cost_currency_id?: number
           created_at?: string
+          default_markup_rate?: number | null
           id?: number
           inserted_by?: string
+          labor_total_cost?: number | null
           name?: string
           product_conversion_rate?: number | null
           purchase_currency_id?: number
           tenant_id?: number
+          total_cargo_weight_kg?: number | null
+          transportation_total_cost?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -5229,8 +5273,89 @@ export type Database = {
           },
         ]
       }
+      thrift_stock_measurements: {
+        Row: {
+          arm_circumference_in: number | null
+          bust_in: number | null
+          closure_type: string | null
+          created_at: string
+          dress_style: string | null
+          fabric_stretch: string | null
+          hem_width_in: number | null
+          hips_in: number | null
+          inserted_by: string
+          length_in: number | null
+          lining: boolean | null
+          measurement_notes: string | null
+          neck_opening_in: number | null
+          neckline: string | null
+          shoulder_width_in: number | null
+          sleeve_length_in: number | null
+          sleeve_type: string | null
+          stock_id: number
+          tenant_id: number
+          updated_at: string
+          waist_in: number | null
+        }
+        Insert: {
+          arm_circumference_in?: number | null
+          bust_in?: number | null
+          closure_type?: string | null
+          created_at?: string
+          dress_style?: string | null
+          fabric_stretch?: string | null
+          hem_width_in?: number | null
+          hips_in?: number | null
+          inserted_by?: string
+          length_in?: number | null
+          lining?: boolean | null
+          measurement_notes?: string | null
+          neck_opening_in?: number | null
+          neckline?: string | null
+          shoulder_width_in?: number | null
+          sleeve_length_in?: number | null
+          sleeve_type?: string | null
+          stock_id: number
+          tenant_id: number
+          updated_at?: string
+          waist_in?: number | null
+        }
+        Update: {
+          arm_circumference_in?: number | null
+          bust_in?: number | null
+          closure_type?: string | null
+          created_at?: string
+          dress_style?: string | null
+          fabric_stretch?: string | null
+          hem_width_in?: number | null
+          hips_in?: number | null
+          inserted_by?: string
+          length_in?: number | null
+          lining?: boolean | null
+          measurement_notes?: string | null
+          neck_opening_in?: number | null
+          neckline?: string | null
+          shoulder_width_in?: number | null
+          sleeve_length_in?: number | null
+          sleeve_type?: string | null
+          stock_id?: number
+          tenant_id?: number
+          updated_at?: string
+          waist_in?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_stock_measurements_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_stocks: {
         Row: {
+          additional_charges_cost: number | null
           barcode: string | null
           box_id: number | null
           brand_name: string | null
@@ -5238,13 +5363,13 @@ export type Database = {
           color: string | null
           condition: Database["public"]["Enums"]["thrift_condition"] | null
           created_at: string
-          extra_origin_purchase_expense: number | null
+          extra_origin_unit_price: number | null
           extra_weight: number | null
           id: number
           inserted_by: string
           name: string | null
           note: string | null
-          origin_purchase_price: number | null
+          origin_unit_price: number | null
           product_weight: number | null
           quantity: number
           section: Database["public"]["Enums"]["thrift_section"] | null
@@ -5258,6 +5383,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          additional_charges_cost?: number | null
           barcode?: string | null
           box_id?: number | null
           brand_name?: string | null
@@ -5265,13 +5391,13 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
-          extra_origin_purchase_expense?: number | null
+          extra_origin_unit_price?: number | null
           extra_weight?: number | null
           id?: number
           inserted_by: string
           name?: string | null
           note?: string | null
-          origin_purchase_price?: number | null
+          origin_unit_price?: number | null
           product_weight?: number | null
           quantity?: number
           section?: Database["public"]["Enums"]["thrift_section"] | null
@@ -5285,6 +5411,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          additional_charges_cost?: number | null
           barcode?: string | null
           box_id?: number | null
           brand_name?: string | null
@@ -5292,13 +5419,13 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
-          extra_origin_purchase_expense?: number | null
+          extra_origin_unit_price?: number | null
           extra_weight?: number | null
           id?: number
           inserted_by?: string
           name?: string | null
           note?: string | null
-          origin_purchase_price?: number | null
+          origin_unit_price?: number | null
           product_weight?: number | null
           quantity?: number
           section?: Database["public"]["Enums"]["thrift_section"] | null
@@ -6161,6 +6288,10 @@ export type Database = {
       check_store_price_access: {
         Args: { p_store_id: number }
         Returns: boolean
+      }
+      compute_thrift_landed_unit_cost: {
+        Args: { p_stock_id: number }
+        Returns: number
       }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
@@ -7836,34 +7967,65 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: Json
       }
-      register_thrift_stock_from_app: {
-        Args: {
-          p_barcode: string
-          p_box_id?: number
-          p_brand_name?: string
-          p_category_id?: number
-          p_color?: string
-          p_condition?: string
-          p_cost_of_goods_sold?: number
-          p_extra_expense_cost?: number
-          p_extra_origin_purchase_expense?: number
-          p_extra_weight?: number
-          p_image_url: string
-          p_inserted_by?: string
-          p_listed_price?: number
-          p_note?: string
-          p_origin_purchase_price?: number
-          p_product_weight?: number
-          p_section?: string
-          p_shelf_id?: number
-          p_shipment_id: number
-          p_size?: string
-          p_target_price?: number
-          p_tenant_id: number
-          p_type_id?: number
-        }
-        Returns: number
-      }
+      register_thrift_stock_from_app:
+        | {
+            Args: {
+              p_barcode: string
+              p_box_id?: number
+              p_brand_name?: string
+              p_category_id?: number
+              p_color?: string
+              p_condition?: string
+              p_cost_of_goods_sold?: number
+              p_extra_expense_cost?: number
+              p_extra_origin_purchase_expense?: number
+              p_extra_weight?: number
+              p_image_url: string
+              p_inserted_by?: string
+              p_listed_price?: number
+              p_note?: string
+              p_origin_purchase_price?: number
+              p_product_weight?: number
+              p_section?: string
+              p_shelf_id?: number
+              p_shipment_id: number
+              p_size?: string
+              p_target_price?: number
+              p_tenant_id: number
+              p_type_id?: number
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_barcode: string
+              p_box_id?: number
+              p_brand_name: string
+              p_category_id: number
+              p_color: string
+              p_condition: string
+              p_cost_of_goods_sold?: number
+              p_extra_origin_purchase_expense?: number
+              p_extra_origin_unit_price?: number
+              p_extra_weight?: number
+              p_image_url: string
+              p_inserted_by?: string
+              p_listed_price?: number
+              p_listed_unit_price?: number
+              p_note?: string
+              p_origin_purchase_price?: number
+              p_origin_unit_price?: number
+              p_product_weight?: number
+              p_section: string
+              p_shelf_id: number
+              p_shipment_id: number
+              p_size: string
+              p_target_price?: number
+              p_tenant_id: number
+              p_type_id: number
+            }
+            Returns: number
+          }
       remove_commerce_invoice_item_transactional: {
         Args: { p_invoice_id: number; p_order_item_id: number }
         Returns: undefined

@@ -457,7 +457,7 @@ Legend: **view** = access granted | **—** = no access
 | 23–24 | store, cart | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | 25–28 | commerce_* | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | 29–31 | investor, investor_capital, global_investor* | LEGACY / CURRENT | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| 32 | thrift_* | STABLE | *(no domain doc — isolated vertical)* |
+| 32 | thrift_* | STABLE | [THRIFT.md](THRIFT.md) |
 | 33 | koba_* | STABLE | *(no domain doc)* |
 | 34 | tasks | STABLE | *(no domain doc)* |
 
@@ -482,7 +482,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | Investor capital | cost-share → profit refresh → portal | PLANNED | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Shop order | shop_cart → shop_order → invoice or procurement pull | CURRENT | [SHOP_ORDER.md](SHOP_ORDER.md) |
 | Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
-| Thrift | thrift_shipment → stock → invoice | STABLE | Isolated |
+| Thrift | thrift_shipment → stock → invoice | STABLE | [THRIFT.md](THRIFT.md) |
 
 ---
 
