@@ -108,7 +108,7 @@ async function listShipmentImages(
 }
 
 async function fetchImageBlob(imageUrl: string, signal?: AbortSignal): Promise<Blob> {
-  const response = await fetch(imageUrl, { signal })
+  const response = await fetch(imageUrl, { signal: signal as any })
   if (!response.ok) {
     throw new Error(`Failed to download image (${response.status})`)
   }
@@ -215,9 +215,9 @@ export async function downloadShipmentImagesToDevice(
 
   options?.onProgress?.({ phase: 'downloading', current: 0, total: images.length })
 
-  for (let i = 0; i < images.length; i++) {
+  let i = 0
+  for (const row of images) {
     if (signal?.aborted) throw new ShipmentDownloadCancelledError()
-    const row = images[i]
     options?.onProgress?.({
       phase: 'downloading',
       current: i,
@@ -231,6 +231,7 @@ export async function downloadShipmentImagesToDevice(
         barcode: row.barcode,
         message: 'Image URL is not a Cloudinary URL',
       })
+      i++
       continue
     }
 
@@ -255,6 +256,7 @@ export async function downloadShipmentImagesToDevice(
         message: err instanceof Error ? err.message : 'Download failed',
       })
     }
+    i++
   }
 
   if (signal?.aborted) throw new ShipmentDownloadCancelledError()

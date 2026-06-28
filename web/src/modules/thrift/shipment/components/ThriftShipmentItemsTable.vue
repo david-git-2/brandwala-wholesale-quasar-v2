@@ -193,8 +193,8 @@ const props = defineProps<{
   stocks: ThriftStock[];
   visibleColumns: Set<string>;
   costingBreakdowns: Record<number, ThriftUnitCostBreakdown>;
-  purchaseCurrency?: ThriftCurrency;
-  costCurrency?: ThriftCurrency;
+  purchaseCurrency: ThriftCurrency | undefined;
+  costCurrency: ThriftCurrency | undefined;
   loading?: boolean;
 }>();
 

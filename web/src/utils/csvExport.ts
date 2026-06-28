@@ -1,6 +1,6 @@
 function escapeCsvCell(value: unknown): string {
   if (value == null) return '';
-  const s = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  const s = typeof value === 'object' ? JSON.stringify(value) : String(value as any);
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

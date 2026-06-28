@@ -118,7 +118,7 @@ const HIGHLIGHT_LABELS: Record<MeasurementHighlight, string> = {
 
 const highlightLabel = computed(() => {
   if (!props.highlight) return '';
-  return HIGHLIGHT_LABELS[props.highlight as MeasurementHighlight] || '';
+  return HIGHLIGHT_LABELS[props.highlight] || '';
 });
 
 function lineClass(key: MeasurementHighlight): string {

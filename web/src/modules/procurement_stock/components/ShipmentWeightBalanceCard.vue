@@ -309,6 +309,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useQuasar } from 'quasar'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'

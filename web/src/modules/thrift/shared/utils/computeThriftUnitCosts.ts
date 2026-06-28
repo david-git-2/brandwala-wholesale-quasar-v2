@@ -1,29 +1,29 @@
 export interface ThriftShipmentCostInput {
-  product_conversion_rate?: number | null;
-  cargo_conversion_rate?: number | null;
-  cargo_rate?: number | null;
-  total_cargo_weight_kg?: number | null;
-  labor_total_cost?: number | null;
-  transportation_total_cost?: number | null;
-  default_markup_rate?: number | null;
+  product_conversion_rate?: number | null | undefined;
+  cargo_conversion_rate?: number | null | undefined;
+  cargo_rate?: number | null | undefined;
+  total_cargo_weight_kg?: number | null | undefined;
+  labor_total_cost?: number | null | undefined;
+  transportation_total_cost?: number | null | undefined;
+  default_markup_rate?: number | null | undefined;
 }
 
 export interface ThriftSettingsCostInput {
-  hand_tag_unit_cost?: number | null;
-  sticker_unit_cost?: number | null;
+  hand_tag_unit_cost?: number | null | undefined;
+  sticker_unit_cost?: number | null | undefined;
 }
 
 export interface ThriftStockCostInput {
   id?: number;
   quantity: number;
-  origin_unit_price?: number | null;
-  extra_origin_unit_price?: number | null;
-  additional_charges_cost?: number | null;
+  origin_unit_price?: number | null | undefined;
+  extra_origin_unit_price?: number | null | undefined;
+  additional_charges_cost?: number | null | undefined;
 }
 
 export interface ThriftStockPricingInput {
   listed_unit_price: number;
-  is_listed_price_manual?: boolean;
+  is_listed_price_manual?: boolean | null | undefined;
 }
 
 export interface ThriftUnitCostBreakdown {

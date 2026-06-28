@@ -58,6 +58,8 @@ export interface ThriftStock {
     is_listed_price_manual?: boolean;
     extra_expense_cost?: number;
   };
+  category_name?: string;
+  type_name?: string;
   image_url?: string | undefined;
   drive_file_id?: string | undefined;
   origin_unit_price?: number | undefined;

@@ -87,8 +87,8 @@ export interface ThriftStockPricingInput {
   cost_of_goods_sold: number;
   target_price: number;
   listed_unit_price: number;
-  is_listed_price_manual?: boolean;
-  extra_expense_cost?: number;
+  is_listed_price_manual?: boolean | null | undefined;
+  extra_expense_cost?: number | null | undefined;
 }
 
 async function upsertStockPricing(

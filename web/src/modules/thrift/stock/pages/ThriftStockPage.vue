@@ -1685,10 +1685,10 @@ async function onExtraOriginUnitPriceSave(row: ThriftStock, value: number) {
 async function onListedUnitPriceSave(row: ThriftStock, value: number) {
   try {
     if (!row.pricing) {
-      row.pricing = buildPricingFromRow(row);
+      row.pricing = buildPricingFromRow(row) as any;
     }
-    row.pricing.listed_unit_price = value;
-    row.pricing.is_listed_price_manual = true;
+    row.pricing!.listed_unit_price = value;
+    row.pricing!.is_listed_price_manual = true;
     await saveStockCell(row, {}, { listed_unit_price: value, is_listed_price_manual: true });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
@@ -1703,9 +1703,9 @@ async function onPricingCellSave(
 ) {
   try {
     if (!row.pricing) {
-      row.pricing = buildPricingFromRow(row);
+      row.pricing = buildPricingFromRow(row) as any;
     }
-    row.pricing.is_listed_price_manual = value;
+    row.pricing!.is_listed_price_manual = value;
     await saveStockCell(row, {}, { is_listed_price_manual: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });

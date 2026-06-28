@@ -618,7 +618,7 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     };
 
     const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
-    row.pricing = updated.pricing;
+    row.pricing = updated.pricing as any;
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
