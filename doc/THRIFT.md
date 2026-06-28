@@ -14,6 +14,7 @@ This document answers:
 - What is the API surface (RPCs, direct access, routes)?
 - What are the end-to-end flow sequences (web + mobile)?
 - How does the cost engine work, and what is planned vs implemented?
+- What is the implementation phase order (migration, costing, measurements)?
 
 ---
 
@@ -27,7 +28,7 @@ This document answers:
 | Module gating | Individual `thrift_*` keys via `tenant_modules` (D13) |
 | Primary UI | `/:slug/app/thrift/*` |
 | Mobile client | **Thrift-app** (Capacitor/Android) |
-| Status | Catalog/inventory **STABLE**; costing engine + shipment detail **planned** |
+| Status | Catalog/inventory **STABLE**; P1 migration + measurements **planned**; costing engine + shipment detail **planned** |
 
 ### Domain flow
 
@@ -49,6 +50,7 @@ settings + tenant prefs → shipment → box → stock (+ barcode at register)
 | D-T6 | Sell price = `landed_unit_cost × (1 + default_markup_rate)` unless manual override |
 | D-T7 | Deprecate stored `cost_of_goods_sold`, `extra_expense_cost`, `target_price` |
 | D-T8 | **Scope lock** — barcode, images, catalog, registration flows **unchanged**; only shipment + cost fields change |
+| D-T9 | Garment fit — `size` + `brand_name` on `thrift_stocks`; actual measurements in `thrift_stock_measurements` (inches, all optional); **no** `thrift_brand_size_charts` |
 
 ---
 
@@ -95,6 +97,14 @@ settings + tenant prefs → shipment → box → stock (+ barcode at register)
 **As a** desk user,  
 **I want** suggested sell price from markup with per-row manual override,  
 **So that** formula pricing stays flexible.
+
+**As a** desk user,  
+**I want to** record garment measurements (bust, waist, hips, length, and optional extras) per stock item,  
+**So that** end customers can judge fit when brands and tag sizes differ.
+
+**As a** desk user,  
+**I want** measurements shown as one labeled summary in the stock and shipment item tables,  
+**So that** the grid stays readable without a column per measurement.
 
 ### 2.4 Barcode — `thrift_barcode`
 
@@ -155,6 +165,7 @@ Legend: **Today** = in production DB | **Target** = planned costing work | **Sto
 | `thrift_stocks` | Sellable inventory item | `thrift_stock` |
 | `thrift_pricings` | Sell price persistence (1:1 stock) | `thrift_stock` |
 | `thrift_stock_images` | Product photos | `thrift_stock` |
+| `thrift_stock_measurements` | Garment fit (inches, 1:1 stock) | `thrift_stock` |
 | `thrift_barcodes` | Pre-printed label catalog | `thrift_barcode` |
 | `thrift_categories` | High-level classification | `thrift_category` |
 | `thrift_types` | Style within category | `thrift_type` |
@@ -173,6 +184,7 @@ erDiagram
   thrift_types ||--o{ thrift_stocks : styles
   thrift_shelves ||--o{ thrift_stocks : locates
   thrift_stocks ||--|| thrift_pricings : prices
+  thrift_stocks ||--o| thrift_stock_measurements : fit
   thrift_stocks ||--o{ thrift_stock_images : images
   thrift_barcodes ||--o| thrift_stocks : assigned_via_barcode_string
   thrift_settings ||--|| tenants : one_per_tenant
@@ -351,6 +363,35 @@ erDiagram
 
 ---
 
+### 3.12 `thrift_stock_measurements` (planned — P1)
+
+**Use case:** Store **actual garment measurements** for end-customer fit (second-hand items vary by brand). **1:1** with `thrift_stocks` (`stock_id` UNIQUE, ON DELETE CASCADE). **Inches only** (`numeric(5,1)`). **No JSONB.** All measurement fields **nullable** — nothing mandatory at intake.
+
+**Stays on `thrift_stocks`:** `size` (tag label, e.g. M / 10 / 38), `brand_name`.
+
+**Explicitly out of scope:** `thrift_brand_size_charts` (no separate brand size-chart table).
+
+| Column | Stored | Notes |
+|--------|--------|-------|
+| `stock_id` | Yes | FK unique → `thrift_stocks` |
+| `tenant_id` | Yes | Denormalized for RLS |
+| `bust_in`, `waist_in`, `hips_in`, `length_in` | Yes | Core fit |
+| `shoulder_width_in`, `sleeve_length_in`, `arm_circumference_in` | Yes | Sleeves / structure |
+| `hem_width_in`, `neck_opening_in` | Yes | Style-dependent |
+| `sleeve_type`, `neckline`, `dress_style` | Yes | text |
+| `fabric_stretch` | Yes | `none` / `low` / `medium` / `high` |
+| `lining` | Yes | boolean |
+| `closure_type`, `measurement_notes` | Yes | text |
+| `inserted_by`, timestamps | Yes | audit |
+
+**Indexes (future shop filters):** `(tenant_id, bust_in)`, `(tenant_id, waist_in)`, `(tenant_id, hips_in)`.
+
+**Access:** Web — `thriftStockRepository` upsert/delete; `list_thrift_stocks_paginated` returns nested `measurements` object. Mobile measurement inputs **deferred** (P1 web only).
+
+**UI display:** Single table cell with labeled summary, e.g. `Size: M · Bust: 34" · Waist: 28"` — not separate columns per measurement. Edit via actions-column button → `ThriftStockMeasurementsDialog`.
+
+---
+
 ## 4. Permissions and access control
 
 ### 4.1 Module keys
@@ -395,7 +436,7 @@ Standard pattern on all `thrift_*` tables:
 | **INSERT/UPDATE/DELETE** | Same + `role IN ('admin', 'staff')` |
 | **Global catalog** | `is_global = true` → SELECT all authenticated; WRITE tenant rows only |
 
-Child tables (`thrift_pricings`, `thrift_stock_images`) join through `thrift_stocks.tenant_id`.
+Child tables (`thrift_pricings`, `thrift_stock_images`, `thrift_stock_measurements`) join through `thrift_stocks.tenant_id`.
 
 ### 4.5 Special cases
 
@@ -415,7 +456,7 @@ Child tables (`thrift_pricings`, `thrift_stock_images`) join through `thrift_sto
 |-----|--------|---------|--------|
 | `generate_thrift_barcodes(tenant_id, prefix, year, quantity, inserted_by)` | Web | Bulk create labels | Today |
 | `list_thrift_barcodes_paginated(...)` | Web | Barcode list + stats | Today |
-| `list_thrift_stocks_paginated(...)` | Web | Stock list + pricing + images | Today |
+| `list_thrift_stocks_paginated(...)` | Web | Stock list + pricing + images + measurements | Today → P1 extends |
 | `resolve_thrift_barcode(tenant_id, scanned)` | Mobile | Normalize scan → `barcode_id` | Today |
 | `resolve_thrift_barcode_id_internal(...)` | Internal | Canonical barcode lookup | Today |
 | `register_thrift_stock_from_app(...)` | Mobile | Create/update stock + pricing + image | Today |
@@ -428,7 +469,7 @@ Child tables (`thrift_pricings`, `thrift_stock_images`) join through `thrift_sto
 |--------|-------------------|------------|
 | Shipments | `ThriftShipmentPage` — direct `supabase.from('thrift_shipments')` | CRUD |
 | Boxes, categories, types, shelves | `thriftRepository` | CRUD |
-| Stock | `thriftStockRepository` | CRUD + pricing + images |
+| Stock | `thriftStockRepository` | CRUD + pricing + images + measurements |
 | Settings | `thriftSettingsRepository` | fetch + upsert |
 | Barcodes | `thriftBarcodeRepository` | list RPC + generate RPC + update `is_printed` |
 | Currencies | `thriftCurrencyRepository` | read `global_currencies` |
@@ -551,6 +592,7 @@ sequenceDiagram
 | Shipment detail + costing grid | **Planned** | — | Partial |
 | Computed costing engine | **Planned** | — | Stores COGS today |
 | Stock catalog | Yes | Yes | Yes |
+| Garment measurements (web) | **Planned P1** | — | **Planned P1** |
 | Barcode generate/print/scan | Yes | Yes | Yes |
 | Images / Drive sync | Yes | Yes | Yes |
 | Settings (hand tag / sticker) | **Planned** | — | Partial |
@@ -566,17 +608,141 @@ Unified under `web/src/modules/thrift/` — folder refactor **completed**.
 | Folder | Contents |
 |--------|----------|
 | `routes/` | Aggregated route definitions |
-| `shared/` | `thriftStore`, `thriftRepository`, `computeThriftUnitCosts.ts` (**planned**) |
+| `shared/` | `thriftStore`, `thriftRepository`, `computeThriftUnitCosts.ts` (**planned**), `formatThriftStockMeasurements.ts` (**planned P1**) |
 | `shipment/`, `box/`, `shelf/`, `category/`, `type/` | Entity pages |
-| `stock/`, `barcode/`, `settings/`, `currency/` | Stock, barcodes, settings, currency reader |
+| `stock/` | Stock pages, `ThriftStockMeasurementsDialog.vue` (**planned P1**), repository |
+| `barcode/`, `settings/`, `currency/` | Barcodes, settings, currency reader |
 
 ---
 
-## 9. Planned work — UI columns (costing only, D-T8)
+## 9. Planned work — implementation phases
 
-Legend: **S** stored | **C** computed | **F** display | **A** action
+**Implementation starts at P1** because costing schema changes and the new measurements table affect **live production data**. P1 must run backup copies before any `ALTER`. Column renames break web/RPCs until P1 migration and coordinated app deploy (see deploy note below).
 
-### 9.1 Shipment list
+Legend (UI columns): **S** stored | **C** computed | **F** display | **A** action
+
+### 9.1 Phase overview
+
+| Phase | Deliverable | Touches live data? | Status |
+|-------|-------------|-------------------|--------|
+| **P1 — Migration + measurements** | Backups → costing alters → RPC renames → `thrift_stock_measurements` → stock UI cell + dialog → `supabase.ts` regen | **Yes** | Planned |
+| **P2 — Cost engine** | `computeThriftUnitCosts.ts` + `compute_thrift_landed_unit_cost` SQL | No | Planned |
+| **P3 — Settings UI** | Hand-tag / sticker on `ThriftSettingsPage` | No | Planned |
+| **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Planned |
+| **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Planned |
+| **P6 — Mobile RPC** | `register_thrift_stock_from_app` param renames in Thrift-app | Reads/writes migrated cols | Planned |
+| **P7 — Invoice trigger** | `mark_thrift_items_as_sold` uses computed landed cost | No | Planned |
+| **P8 — Cleanup** | `DROP` `_bak_*` backup tables after production sign-off | Deletes backups only | Planned |
+
+```mermaid
+flowchart TD
+  P1[P1 Migration and measurements]
+  P2[P2 Cost engine]
+  P3[P3 Settings UI]
+  P4[P4 Shipment UI]
+  P5[P5 Stock costing UI]
+  P6[P6 Mobile RPC]
+  P7[P7 Invoice trigger]
+  P8[P8 Drop backups]
+  P1 --> P2
+  P2 --> P3
+  P2 --> P4
+  P2 --> P5
+  P1 --> P6
+  P2 --> P7
+  P5 --> P8
+  P6 --> P8
+```
+
+**Deploy note:** P1 migration must recreate `list_thrift_stocks_paginated` and `register_thrift_stock_from_app` in the **same migration file**. P5/P6 web + mobile should ship in the **same deploy window** as `backend:push`, or column-not-found errors occur.
+
+### 9.2 P1 — Part A: Costing migration (live data safe)
+
+#### Backup tables (before any `ALTER`)
+
+`CREATE TABLE … AS SELECT * FROM …` — no FKs, no RLS:
+
+| Backup table | Source | Why |
+|--------------|--------|-----|
+| `_bak_thrift_shipments` | `thrift_shipments` | New cargo/ops/markup columns |
+| `_bak_thrift_stocks` | `thrift_stocks` | Column renames + `additional_charges_cost` |
+| `_bak_thrift_pricings` | `thrift_pricings` | `listed_price` rename, `is_listed_price_manual` |
+| `_bak_thrift_settings` | `thrift_settings` | Rename + hand-tag/sticker cols |
+| `_bak_thrift_stock_images` | `thrift_stock_images` | D-T8 unchanged; FK safety for rollback |
+
+**Not backed up** (D-T8 frozen): `thrift_barcodes`, `thrift_boxes`, `thrift_categories`, `thrift_types`, `thrift_shelves`.
+
+#### Schema changes (after backups)
+
+Align with §3.1–3.4:
+
+| Table | Change |
+|-------|--------|
+| `thrift_shipments` | Add `total_cargo_weight_kg`, `labor_total_cost`, `transportation_total_cost`, `default_markup_rate` |
+| `thrift_stocks` | Rename `origin_purchase_price` → `origin_unit_price`, `extra_origin_purchase_expense` → `extra_origin_unit_price`; add `additional_charges_cost` |
+| `thrift_pricings` | Rename `listed_price` → `listed_unit_price`; add `is_listed_price_manual` (keep deprecated COGS cols) |
+| `thrift_settings` | Rename `default_origin_purchase_price` → `default_origin_unit_price`; add hand-tag/sticker unit cost + currency FKs |
+
+#### RPC updates (same migration)
+
+- `list_thrift_stocks_paginated` — JSON keys use new costing names **and** nested `measurements` (Part B)
+- `register_thrift_stock_from_app` — `p_origin_unit_price`, `p_extra_origin_unit_price`, `p_listed_unit_price` (deprecated COGS params no-op until P7)
+
+#### Verification (after `npm run deploy:backend`)
+
+- Row counts: each live table = matching `_bak_*` count
+- List RPC returns `image_url` and `measurements`
+- Mobile register still creates stock + image
+- Measurements dialog save/load on web
+
+#### Rollback (if verification fails before app deploy)
+
+`TRUNCATE` live → `INSERT INTO live SELECT * FROM _bak_*` (FK order: shipments → stocks → pricings/images), or Supabase point-in-time restore.
+
+#### P8 cleanup (separate migration — manual gate)
+
+After P5 + P6 tested in production:
+
+```sql
+drop table if exists public._bak_thrift_stock_images;
+drop table if exists public._bak_thrift_pricings;
+drop table if exists public._bak_thrift_stocks;
+drop table if exists public._bak_thrift_shipments;
+drop table if exists public._bak_thrift_settings;
+```
+
+Do **not** run P8 until sign-off.
+
+#### P1 migration file (skeleton)
+
+`supabase/migrations/20260813000000_thrift_p1_costing_and_measurements.sql`:
+
+```sql
+begin;
+-- 1) Backups (_bak_*)
+-- 2) Costing alters
+-- 3) Create thrift_stock_measurements + RLS
+-- 4) Recreate list_thrift_stocks_paginated
+-- 5) Recreate register_thrift_stock_from_app
+commit;
+```
+
+### 9.3 P1 — Part B: Garment measurements (web)
+
+See §3.12 for table shape. **P1 web deliverables:**
+
+| Item | Detail |
+|------|--------|
+| Stock table column | Replace standalone **Size** with **Measurements** — one cell, labeled inline text (only values present), e.g. `Size: M · Bust: 34" · Waist: 28"` |
+| Actions | `straighten` icon opens `ThriftStockMeasurementsDialog` |
+| Dialog | Shows **Size** (saves to `thrift_stocks.size`); numeric/select inputs for all measurement fields; **no required fields** |
+| Save | Upsert `thrift_stock_measurements`; delete row if all measurement fields empty |
+
+**Code (P1):** `formatThriftStockMeasurements.ts`, `ThriftStockMeasurementsDialog.vue`, `thriftStockRepository` upsert/delete.
+
+**Not in P1:** Thrift-app measurement inputs, customer shop filters, `thrift_brand_size_charts`.
+
+### 9.4 UI columns — shipment list (P4)
 
 | # | Column | Field | Type |
 |---|--------|-------|------|
@@ -590,23 +756,28 @@ Legend: **S** stored | **C** computed | **F** display | **A** action
 | 15 | Markup % | `default_markup_rate` | S |
 | 16 | Actions | — | A |
 
-### 9.2 Shipment detail — items table
+### 9.5 UI columns — shipment detail items (P4)
 
-Catalog cols (barcode, image, category, type) **unchanged**. Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C), suggested sell (C), listed sell, manual flag.
+Catalog cols (barcode, image, category, type) **unchanged**. **Measurements:** single **F** cell (same formatter + dialog as stock table) — **not** separate bust/waist/hips columns.
 
-### 9.3 Stock catalog
+Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C), suggested sell (C), listed sell, manual flag.
 
-Cols 1–15 (image, barcode, catalog, weights) **unchanged**. Cols 16–25 are cost block per §3.3 / plan rev 2.
+### 9.6 UI columns — stock catalog
 
-### 9.4 Implementation phases
+Cols 1–14 (image, barcode, catalog, weights) **unchanged**. **Measurements** column replaces standalone Size (§9.3). Cols 16–25 are cost block per §3.3 (P5).
 
-1. Migration — cost columns only  
-2. `computeThriftUnitCosts.ts` + SQL function  
-3. Settings — hand tag / sticker  
-4. Shipment list + detail  
-5. Stock page — replace cost columns only  
-6. Mobile RPC — cost param renames only  
-7. Invoice trigger — computed landed cost  
+### 9.7 Code files by phase
+
+| Phase | Paths |
+|-------|-------|
+| P1 | `supabase/migrations/20260813000000_thrift_p1_costing_and_measurements.sql`; `ThriftStockPage.vue`; `ThriftStockMeasurementsDialog.vue`; `formatThriftStockMeasurements.ts`; `thriftStockRepository.ts`; `supabase.ts` regen |
+| P2 | `web/src/modules/thrift/shared/utils/computeThriftUnitCosts.ts` |
+| P3 | `thriftSettingsRepository.ts`, `ThriftSettingsPage.vue` |
+| P4 | `ThriftShipmentDetailsPage.vue` (reuses measurements dialog) |
+| P5 | `ThriftStockPage.vue` — costing column renames |
+| P6 | `Thrift-app` `RegisterStock.vue` |
+| P7 | `mark_thrift_items_as_sold` trigger / `compute_thrift_landed_unit_cost` |
+| P8 | `drop_thrift_cost_migration_backups.sql` |
 
 ---
 
@@ -638,7 +809,11 @@ listed_unit_price = is_listed_price_manual ? stored : suggested_sell_unit_price
 
 ### In scope
 
-Cost column renames, shipment columns, settings unit costs, deprecate stored COGS/extra_expense/target, `is_listed_price_manual`, compute function for invoice profit.
+**P1 — Costing:** Backup tables (`_bak_thrift_*`), column renames on shipments/stocks/pricings/settings, deprecate stored COGS/extra_expense/target (columns kept), `is_listed_price_manual`, RPC renames in same migration, P8 backup drop after sign-off.
+
+**P1 — Measurements:** `thrift_stock_measurements` (§3.12), inches only, all optional, web list cell + edit dialog. **No** `thrift_brand_size_charts`.
+
+**P2–P7:** Cost engine, settings/shipment/stock UI, mobile RPC, invoice computed landed cost (see §9.1).
 
 ### Explicitly unchanged (D-T8)
 
@@ -646,7 +821,7 @@ Cost column renames, shipment columns, settings unit costs, deprecate stored COG
 
 ### Out of scope
 
-Thrift-app costing UI, invoice web UI, laundry/wash costs, moving shipment currencies from tenant preference.
+`thrift_brand_size_charts`, Thrift-app measurement UI (P1), customer storefront measurement filters, Thrift-app costing UI, invoice web UI, laundry/wash costs, moving shipment currencies from tenant preference.
 
 ---
 
@@ -658,6 +833,10 @@ Thrift-app costing UI, invoice web UI, laundry/wash costs, moving shipment curre
 | Shipments | `supabase/migrations/20260630000300_create_thrift_shipments.sql` |
 | Barcodes | `supabase/migrations/20260701000000_thrift_barcodes_module.sql` |
 | Mobile register | `supabase/migrations/20260706000000_register_thrift_stock_from_app.sql` |
+| List stocks RPC | `supabase/migrations/20260809000000_thrift_stock_images_drive_file_id.sql` |
+| **P1 migration (planned)** | `supabase/migrations/20260813000000_thrift_p1_costing_and_measurements.sql` |
+| Measurements dialog (planned P1) | `web/src/modules/thrift/stock/components/ThriftStockMeasurementsDialog.vue` |
+| Measurements formatter (planned P1) | `web/src/modules/thrift/shared/utils/formatThriftStockMeasurements.ts` |
 | Permissions | `web/src/modules/navigation/modulePermissions.ts` |
 | Routes | `web/src/modules/thrift/routes/` |
 | Landed-cost reference | `web/src/modules/procurement_stock/utils/landedCost.ts` |

@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { ThriftStock } from '../types';
+import type { ThriftStock, ThriftStockMeasurements } from '../types';
 
 export interface ThriftStockListMeta {
   total: number;
@@ -55,7 +55,8 @@ interface ThriftStockDbRow {
   thrift_pricings?: Array<{
     cost_of_goods_sold: number;
     target_price: number;
-    listed_price: number;
+    listed_unit_price: number;
+    is_listed_price_manual?: boolean;
     extra_expense_cost?: number;
   }>;
   thrift_stock_images?: Array<{
@@ -63,25 +64,30 @@ interface ThriftStockDbRow {
     drive_file_id?: string | null;
     is_primary: boolean;
   }>;
-  origin_purchase_price?: number;
-  extra_origin_purchase_expense?: number;
+  thrift_stock_measurements?: ThriftStockMeasurements[] | ThriftStockMeasurements | null;
+  origin_unit_price?: number;
+  extra_origin_unit_price?: number;
+  additional_charges_cost?: number;
 }
 
 interface ThriftStockPaginatedRow extends ThriftStockDbRow {
   pricing?: {
     cost_of_goods_sold: number;
     target_price: number;
-    listed_price: number;
+    listed_unit_price: number;
+    is_listed_price_manual?: boolean;
     extra_expense_cost?: number;
   };
   image_url?: string | null;
   drive_file_id?: string | null;
+  measurements?: ThriftStockMeasurements | null;
 }
 
 export interface ThriftStockPricingInput {
   cost_of_goods_sold: number;
   target_price: number;
-  listed_price: number;
+  listed_unit_price: number;
+  is_listed_price_manual?: boolean;
   extra_expense_cost?: number;
 }
 
@@ -101,7 +107,8 @@ async function upsertStockPricing(
     stock_id: stockId,
     cost_of_goods_sold: pricing.cost_of_goods_sold,
     target_price: pricing.target_price,
-    listed_price: pricing.listed_price,
+    listed_unit_price: pricing.listed_unit_price,
+    is_listed_price_manual: pricing.is_listed_price_manual ?? false,
     extra_expense_cost: pricing.extra_expense_cost ?? 0,
     inserted_by: insertedBy,
   };
@@ -163,23 +170,32 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
     const pricing = stock.pricing ?? stock.thrift_pricings?.[0] ?? {
       cost_of_goods_sold: 0,
       target_price: 0,
-      listed_price: 0,
+      listed_unit_price: 0,
+      is_listed_price_manual: false,
       extra_expense_cost: 0,
     };
     const primaryImage =
       stock.thrift_stock_images?.find((img) => img.is_primary) ||
       stock.thrift_stock_images?.[0];
 
+    const measurements = stock.measurements ??
+      (Array.isArray(stock.thrift_stock_measurements)
+        ? stock.thrift_stock_measurements[0]
+        : stock.thrift_stock_measurements) ??
+      null;
+
     return {
       ...(stock as unknown as ThriftStock),
       pricing: {
         cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
         target_price: Number(pricing.target_price) || 0,
-        listed_price: Number(pricing.listed_price) || 0,
+        listed_unit_price: Number(pricing.listed_unit_price) || 0,
+        is_listed_price_manual: !!pricing.is_listed_price_manual,
         extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
       },
       image_url: stock.image_url || primaryImage?.image_url || undefined,
       drive_file_id: stock.drive_file_id || primaryImage?.drive_file_id || undefined,
+      measurements,
     };
   }) as ThriftStock[];
 }
@@ -237,13 +253,17 @@ async function fetchStocksPaginatedDirect(
         thrift_pricings (
           cost_of_goods_sold,
           target_price,
-          listed_price,
+          listed_unit_price,
+          is_listed_price_manual,
           extra_expense_cost
         ),
         thrift_stock_images (
           image_url,
           drive_file_id,
           is_primary
+        ),
+        thrift_stock_measurements (
+          *
         )
       `,
       { count: 'exact' },
@@ -302,18 +322,23 @@ export const thriftStockRepository = {
   async fetchStocks(tenantId: number): Promise<ThriftStock[]> {
     const { data, error } = await supabase
       .from('thrift_stocks')
-      .select('*, thrift_pricings(*), thrift_stock_images(*)')
+      .select('*, thrift_pricings(*), thrift_stock_images(*), thrift_stock_measurements(*)')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    
+
     return ((data || []) as unknown as ThriftStockDbRow[]).map((stock) => {
       const primaryImage = stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
+      const measurements = Array.isArray(stock.thrift_stock_measurements)
+        ? stock.thrift_stock_measurements[0]
+        : stock.thrift_stock_measurements;
+
       return {
         ...stock,
         pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
         image_url: primaryImage?.image_url || undefined,
         drive_file_id: primaryImage?.drive_file_id || undefined,
+        measurements: measurements || null,
       };
     }) as unknown as ThriftStock[];
   },
@@ -355,6 +380,7 @@ export const thriftStockRepository = {
       pricing: pricingData,
       image_url: imageUrl,
       drive_file_id: driveFileId,
+      measurements: null,
     } as ThriftStock;
   },
 
@@ -519,5 +545,46 @@ export const thriftStockRepository = {
         driveFileId: primary?.drive_file_id ?? undefined,
       };
     });
+  },
+
+  async upsertStockMeasurements(
+    stockId: number,
+    measurements: Partial<ThriftStockMeasurements>,
+    tenantId: number,
+  ): Promise<ThriftStockMeasurements> {
+    const { data, error } = await supabase
+      .from('thrift_stock_measurements')
+      .upsert({
+        stock_id: stockId,
+        tenant_id: tenantId,
+        bust_in: measurements.bust_in ?? null,
+        waist_in: measurements.waist_in ?? null,
+        hips_in: measurements.hips_in ?? null,
+        length_in: measurements.length_in ?? null,
+        shoulder_width_in: measurements.shoulder_width_in ?? null,
+        sleeve_length_in: measurements.sleeve_length_in ?? null,
+        arm_circumference_in: measurements.arm_circumference_in ?? null,
+        hem_width_in: measurements.hem_width_in ?? null,
+        neck_opening_in: measurements.neck_opening_in ?? null,
+        sleeve_type: measurements.sleeve_type ?? null,
+        neckline: measurements.neckline ?? null,
+        dress_style: measurements.dress_style ?? null,
+        fabric_stretch: measurements.fabric_stretch ?? null,
+        lining: measurements.lining ?? null,
+        closure_type: measurements.closure_type ?? null,
+        measurement_notes: measurements.measurement_notes ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as ThriftStockMeasurements;
+  },
+
+  async deleteStockMeasurements(stockId: number): Promise<void> {
+    const { error } = await supabase
+      .from('thrift_stock_measurements')
+      .delete()
+      .eq('stock_id', stockId);
+    if (error) throw error;
   },
 };

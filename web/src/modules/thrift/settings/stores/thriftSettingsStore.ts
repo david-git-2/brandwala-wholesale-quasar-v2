@@ -10,8 +10,8 @@ export const useThriftSettingsStore = defineStore('thriftSettings', {
   }),
 
   getters: {
-    defaultOriginPurchasePrice: (state): number =>
-      state.settings?.default_origin_purchase_price ?? 0,
+    defaultOriginUnitPrice: (state): number =>
+      state.settings?.default_origin_unit_price ?? 0,
   },
 
   actions: {

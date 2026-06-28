@@ -82,8 +82,9 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       pricing: ThriftStockPricingInput,
       imageUrl?: string,
       shelfId?: number | null,
-      originPurchasePrice?: number,
-      extraOriginPurchaseExpense?: number,
+      originUnitPrice?: number,
+      extraOriginUnitPrice?: number,
+      additionalChargesCost?: number,
     ) {
       try {
         const stock = await thriftStockRepository.createStock(
@@ -105,8 +106,9 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             box_id: boxId || undefined,
             product_weight: productWeight || undefined,
             extra_weight: extraWeight || undefined,
-            origin_purchase_price: originPurchasePrice ?? undefined,
-            extra_origin_purchase_expense: extraOriginPurchaseExpense ?? undefined,
+            origin_unit_price: originUnitPrice ?? undefined,
+            extra_origin_unit_price: extraOriginUnitPrice ?? undefined,
+            additional_charges_cost: additionalChargesCost ?? undefined,
             status: 'AVAILABLE' as ThriftStockStatus,
             note: note || '',
             inserted_by: userEmail,
