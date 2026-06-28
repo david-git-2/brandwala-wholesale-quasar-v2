@@ -8218,6 +8218,7 @@ export type Database = {
               p_color: string
               p_condition: string
               p_cost_of_goods_sold?: number
+              p_extra_origin_purchase_expense?: number
               p_extra_origin_unit_price?: number
               p_extra_weight?: number
               p_image_url: string
