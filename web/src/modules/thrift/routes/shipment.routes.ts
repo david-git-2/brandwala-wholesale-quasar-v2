@@ -26,6 +26,15 @@ const routes: RouteRecordRaw[] = [
           headerTitle: 'Thrift Shipments',
         },
       },
+      {
+        path: ':id',
+        name: 'thrift-shipment-details',
+        component: () => import('../shipment/pages/ThriftShipmentDetailsPage.vue'),
+        meta: {
+          title: 'Shipment Details',
+          headerTitle: 'Shipment Details',
+        },
+      },
     ],
   },
 ];

@@ -6,7 +6,7 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Thrift Shipments</div>
-            <div class="text-caption text-grey-8">Manage thrift catalog shipments</div>
+            <div class="text-caption text-grey-8">Manage cargo weights, ops costs, markup rates and default currencies</div>
           </div>
           <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
@@ -27,7 +27,7 @@
     <q-card flat class="floating-surface shadow-1">
       <q-table
         flat
-        :rows="shipments"
+        :rows="shipmentRows"
         :columns="columns"
         row-key="id"
         v-model:pagination="tablePagination"
@@ -40,11 +40,40 @@
             {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
           </q-td>
         </template>
+        <template #body-cell-name="props">
+          <q-td :props="props">
+            <router-link
+              :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/shipments/${props.row.id}`"
+              class="text-primary text-weight-bold"
+              style="text-decoration: none;"
+            >
+              {{ props.row.name }}
+            </router-link>
+          </q-td>
+        </template>
+        <template #body-cell-unit_count="props">
+          <q-td :props="props" class="text-right">{{ props.row.unit_count }}</q-td>
+        </template>
         <template #body-cell-purchase_currency="props">
           <q-td :props="props">{{ currencyCode(props.row.purchase_currency_id) }}</q-td>
         </template>
         <template #body-cell-cost_currency="props">
           <q-td :props="props">{{ currencyCode(props.row.cost_currency_id) }}</q-td>
+        </template>
+        <template #body-cell-cargo_cost="props">
+          <q-td :props="props" class="text-right">
+            {{ formatCost(props.row.cargo_cost, props.row.cost_currency_id) }}
+          </q-td>
+        </template>
+        <template #body-cell-ops_cost="props">
+          <q-td :props="props" class="text-right">
+            {{ formatCost(props.row.ops_cost, props.row.cost_currency_id) }}
+          </q-td>
+        </template>
+        <template #body-cell-default_markup_rate="props">
+          <q-td :props="props" class="text-right">
+            {{ props.row.default_markup_rate != null ? `${(props.row.default_markup_rate * 100).toFixed(0)}%` : '—' }}
+          </q-td>
         </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
@@ -59,7 +88,7 @@
               :disable="downloadingShipmentId != null && downloadingShipmentId !== props.row.id"
               @click.stop="downloadShipmentImages(props.row)"
             >
-              <q-tooltip>Download shipment images from Cloudinary</q-tooltip>
+              <q-tooltip>Download images from Cloudinary</q-tooltip>
             </q-btn>
             <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
               <q-tooltip>Edit</q-tooltip>
@@ -74,43 +103,76 @@
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 420px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 500px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Shipment' : 'New Shipment' }}</div>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-separator />
-        <q-card-section class="q-pt-md q-gutter-md">
+        <q-card-section class="q-pt-md q-gutter-md scroll" style="max-height: 65vh;">
           <q-input v-model="form.name" outlined dense label="Shipment Name *" class="soft-input" :rules="[val => !!val || 'Required']" />
-          <q-input v-model.number="form.cargo_conversion_rate" type="number" step="0.0001" outlined dense label="Cargo Conversion Rate" class="soft-input" />
-          <q-input v-model.number="form.cargo_rate" type="number" step="0.01" outlined dense label="Cargo Rate" class="soft-input" />
-          <q-input v-model.number="form.product_conversion_rate" type="number" step="0.0001" outlined dense label="Product Conversion Rate" class="soft-input" />
-          <q-select
-            v-model="form.purchase_currency_id"
-            outlined
-            dense
-            label="Purchase currency *"
-            :options="currencyStore.currencies"
-            option-value="id"
-            :option-label="currencyOptionLabel"
-            emit-value
-            map-options
-            class="soft-input"
-            :rules="[val => !!val || 'Required']"
-          />
-          <q-select
-            v-model="form.cost_currency_id"
-            outlined
-            dense
-            label="Cost currency *"
-            :options="currencyStore.currencies"
-            option-value="id"
-            :option-label="currencyOptionLabel"
-            emit-value
-            map-options
-            class="soft-input"
-            :rules="[val => !!val || 'Required']"
-          />
+          
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="form.purchase_currency_id"
+                outlined
+                dense
+                label="Purchase currency *"
+                :options="currencyStore.currencies"
+                option-value="id"
+                :option-label="currencyOptionLabel"
+                emit-value
+                map-options
+                class="soft-input"
+                :rules="[val => !!val || 'Required']"
+              />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="form.cost_currency_id"
+                outlined
+                dense
+                label="Cost currency *"
+                :options="currencyStore.currencies"
+                option-value="id"
+                :option-label="currencyOptionLabel"
+                emit-value
+                map-options
+                class="soft-input"
+                :rules="[val => !!val || 'Required']"
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.product_conversion_rate" type="number" step="0.0001" outlined dense label="Product Conversion Rate" class="soft-input" />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.cargo_conversion_rate" type="number" step="0.0001" outlined dense label="Cargo Conversion Rate" class="soft-input" />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.cargo_rate" type="number" step="0.01" outlined dense label="Cargo Rate" class="soft-input" />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.total_cargo_weight_kg" type="number" step="0.1" outlined dense label="Total Cargo Weight (kg)" class="soft-input" />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.labor_total_cost" type="number" step="0.01" outlined dense label="Labor Total Cost" class="soft-input" />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.transportation_total_cost" type="number" step="0.01" outlined dense label="Transportation Total Cost" class="soft-input" />
+            </div>
+          </div>
+
+          <q-input v-model.number="markupPercentage" type="number" step="1" min="0" outlined dense label="Default Markup (%)" class="soft-input" suffix="%" />
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
@@ -139,14 +201,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
+import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
 import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferenceUtils';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
+import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import { useQuasar, type QTableColumn } from 'quasar';
-import { supabase } from 'src/boot/supabase';
+import { thriftShipmentRepository } from '../repositories/thriftShipmentRepository';
+import type { ThriftShipment, ThriftShipmentWithStats } from '../types';
+import {
+  computeShipmentCargoCost,
+  computeShipmentOpsCost,
+} from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
 import {
   downloadShipmentImagesToDevice,
   ShipmentDownloadCancelledError,
@@ -156,13 +225,15 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const currencyStore = useThriftCurrencyStore();
 const preferenceStore = useTenantPreferenceStore();
+const settingsStore = useThriftSettingsStore();
 
-const shipments = ref<Array<Record<string, unknown>>>([]);
+const shipments = ref<ThriftShipment[]>([]);
+const unitCounts = ref<Map<number, number>>(new Map());
 const loading = ref(false);
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
-const selectedRow = ref<Record<string, unknown> | null>(null);
+const selectedRow = ref<ThriftShipment | null>(null);
 const downloadingShipmentId = ref<number | null>(null);
 
 const form = ref({
@@ -170,8 +241,33 @@ const form = ref({
   cargo_conversion_rate: null as number | null,
   cargo_rate: null as number | null,
   product_conversion_rate: null as number | null,
+  total_cargo_weight_kg: null as number | null,
+  labor_total_cost: null as number | null,
+  transportation_total_cost: null as number | null,
+  default_markup_rate: null as number | null,
   purchase_currency_id: null as number | null,
   cost_currency_id: null as number | null,
+});
+
+const markupPercentage = computed({
+  get: () => form.value.default_markup_rate != null ? Math.round(form.value.default_markup_rate * 100) : null,
+  set: (val: number | null) => {
+    form.value.default_markup_rate = val != null ? val / 100 : null;
+  },
+});
+
+const shipmentRows = computed<ThriftShipmentWithStats[]>(() => {
+  return shipments.value.map((s) => {
+    const unit_count = unitCounts.value.get(s.id) || 0;
+    const cargo_cost = computeShipmentCargoCost(s);
+    const ops_cost = computeShipmentOpsCost(s, settingsStore.settings || {}, Math.max(unit_count, 1));
+    return {
+      ...s,
+      unit_count,
+      cargo_cost,
+      ops_cost,
+    };
+  });
 });
 
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
@@ -180,11 +276,17 @@ const columns: QTableColumn[] = [
   { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
   { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true, headerStyle: 'width: 70px' },
   { name: 'name', align: 'left', label: 'Shipment Name', field: 'name', sortable: true },
-  { name: 'cargo_conversion_rate', align: 'right', label: 'Cargo Conv. Rate', field: 'cargo_conversion_rate', sortable: true },
-  { name: 'cargo_rate', align: 'right', label: 'Cargo Rate', field: 'cargo_rate', sortable: true },
-  { name: 'product_conversion_rate', align: 'right', label: 'Product Conv. Rate', field: 'product_conversion_rate', sortable: true },
-  { name: 'purchase_currency', align: 'left', label: 'Purchase', field: 'purchase_currency_id', sortable: true },
-  { name: 'cost_currency', align: 'left', label: 'Cost', field: 'cost_currency_id', sortable: true },
+  { name: 'unit_count', align: 'right', label: 'Units', field: 'unit_count', sortable: true },
+  { name: 'purchase_currency', align: 'left', label: 'Purchase Ccy', field: 'purchase_currency_id', sortable: true },
+  { name: 'cost_currency', align: 'left', label: 'Cost Ccy', field: 'cost_currency_id', sortable: true },
+  { name: 'cargo_conversion_rate', align: 'right', label: 'Cargo Conv. Rate', field: 'cargo_conversion_rate' },
+  { name: 'cargo_rate', align: 'right', label: 'Cargo Rate', field: 'cargo_rate' },
+  { name: 'total_cargo_weight_kg', align: 'right', label: 'Cargo (kg)', field: 'total_cargo_weight_kg' },
+  { name: 'cargo_cost', align: 'right', label: 'Cargo Total', field: 'cargo_cost' },
+  { name: 'labor_total_cost', align: 'right', label: 'Labor', field: 'labor_total_cost' },
+  { name: 'transportation_total_cost', align: 'right', label: 'Transport', field: 'transportation_total_cost' },
+  { name: 'ops_cost', align: 'right', label: 'Ops Total', field: 'ops_cost' },
+  { name: 'default_markup_rate', align: 'right', label: 'Markup', field: 'default_markup_rate' },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
 
@@ -197,17 +299,21 @@ function currencyCode(id: unknown): string {
   return currency?.code ?? '—';
 }
 
+function formatCost(amount: number, ccyId: number): string {
+  const currency = currencyStore.currencyById(ccyId);
+  return formatThriftAmount(amount, currency);
+}
+
 async function loadShipments() {
   if (!authStore.tenantId) return;
   loading.value = true;
   try {
-    const { data, error } = await supabase
-      .from('thrift_shipments')
-      .select('*')
-      .eq('tenant_id', authStore.tenantId)
-      .order('name', { ascending: true });
-    if (error) throw error;
-    shipments.value = (data || []) as Array<Record<string, unknown>>;
+    const [list, counts] = await Promise.all([
+      thriftShipmentRepository.fetchShipments(authStore.tenantId),
+      thriftShipmentRepository.fetchUnitCountsByShipment(authStore.tenantId),
+    ]);
+    shipments.value = list;
+    unitCounts.value = counts;
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load shipments' });
   } finally {
@@ -216,17 +322,20 @@ async function loadShipments() {
 }
 
 onMounted(async () => {
-  await currencyStore.loadCurrencies();
-  await loadShipments();
+  if (!authStore.tenantId) return;
+  await Promise.all([
+    currencyStore.loadCurrencies(),
+    settingsStore.loadSettings(authStore.tenantId),
+    loadShipments(),
+  ]);
 });
 
-async function downloadShipmentImages(row: Record<string, unknown>) {
-  const shipmentId = row.id as number;
-  if (!authStore.tenantId || !shipmentId) return;
+async function downloadShipmentImages(row: ThriftShipment) {
+  if (!authStore.tenantId || !row.id) return;
 
-  downloadingShipmentId.value = shipmentId;
+  downloadingShipmentId.value = row.id;
   try {
-    const result = await downloadShipmentImagesToDevice(authStore.tenantId, shipmentId);
+    const result = await downloadShipmentImagesToDevice(authStore.tenantId, row.id);
 
     if (result.total === 0) {
       $q.notify({ type: 'info', message: result.message || 'No images found for this shipment' });
@@ -266,16 +375,20 @@ function defaultCostCurrencyId(): number | null {
   );
 }
 
-function openDialog(row?: Record<string, unknown>) {
+function openDialog(row?: ThriftShipment) {
   if (row) {
-    editingId.value = row.id as number;
+    editingId.value = row.id;
     form.value = {
-      name: row.name as string,
-      cargo_conversion_rate: (row.cargo_conversion_rate as number) || null,
-      cargo_rate: (row.cargo_rate as number) || null,
-      product_conversion_rate: (row.product_conversion_rate as number) || null,
-      purchase_currency_id: row.purchase_currency_id as number,
-      cost_currency_id: row.cost_currency_id as number,
+      name: row.name,
+      cargo_conversion_rate: row.cargo_conversion_rate ?? null,
+      cargo_rate: row.cargo_rate ?? null,
+      product_conversion_rate: row.product_conversion_rate ?? null,
+      total_cargo_weight_kg: row.total_cargo_weight_kg ?? null,
+      labor_total_cost: row.labor_total_cost ?? null,
+      transportation_total_cost: row.transportation_total_cost ?? null,
+      default_markup_rate: row.default_markup_rate ?? null,
+      purchase_currency_id: row.purchase_currency_id,
+      cost_currency_id: row.cost_currency_id,
     };
   } else {
     editingId.value = null;
@@ -284,6 +397,10 @@ function openDialog(row?: Record<string, unknown>) {
       cargo_conversion_rate: null,
       cargo_rate: null,
       product_conversion_rate: null,
+      total_cargo_weight_kg: null,
+      labor_total_cost: null,
+      transportation_total_cost: null,
+      default_markup_rate: null,
       purchase_currency_id: defaultPurchaseCurrencyId(),
       cost_currency_id: defaultCostCurrencyId(),
     };
@@ -299,28 +416,25 @@ async function save() {
     const payload = {
       tenant_id: authStore.tenantId,
       name: form.value.name,
-      cargo_conversion_rate: form.value.cargo_conversion_rate || null,
-      cargo_rate: form.value.cargo_rate || null,
-      product_conversion_rate: form.value.product_conversion_rate || null,
+      cargo_conversion_rate: form.value.cargo_conversion_rate,
+      cargo_rate: form.value.cargo_rate,
+      product_conversion_rate: form.value.product_conversion_rate,
+      total_cargo_weight_kg: form.value.total_cargo_weight_kg,
+      labor_total_cost: form.value.labor_total_cost,
+      transportation_total_cost: form.value.transportation_total_cost,
+      default_markup_rate: form.value.default_markup_rate,
       purchase_currency_id: form.value.purchase_currency_id,
       cost_currency_id: form.value.cost_currency_id,
     };
 
     if (editingId.value) {
-      const { error } = await supabase
-        .from('thrift_shipments')
-        .update(payload)
-        .eq('id', editingId.value);
-      if (error) throw error;
+      await thriftShipmentRepository.updateShipment(editingId.value, payload);
       $q.notify({ type: 'positive', message: 'Shipment updated successfully' });
     } else {
-      const { error } = await supabase
-        .from('thrift_shipments')
-        .insert({
-          ...payload,
-          inserted_by: authStore.user?.email || '',
-        });
-      if (error) throw error;
+      await thriftShipmentRepository.createShipment({
+        ...payload,
+        inserted_by: authStore.user?.email || '',
+      });
       $q.notify({ type: 'positive', message: 'Shipment created successfully' });
     }
     dialogOpen.value = false;
@@ -332,7 +446,7 @@ async function save() {
   }
 }
 
-function confirmDelete(row: Record<string, unknown>) {
+function confirmDelete(row: ThriftShipment) {
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
@@ -341,11 +455,7 @@ async function deleteItem() {
   if (!selectedRow.value) return;
   $q.loading.show();
   try {
-    const { error } = await supabase
-      .from('thrift_shipments')
-      .delete()
-      .eq('id', selectedRow.value.id as number);
-    if (error) throw error;
+    await thriftShipmentRepository.deleteShipment(selectedRow.value.id);
     $q.notify({ type: 'positive', message: 'Shipment deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;

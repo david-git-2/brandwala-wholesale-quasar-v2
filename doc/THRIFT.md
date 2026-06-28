@@ -589,8 +589,8 @@ sequenceDiagram
 | Area | Web | Mobile | DB |
 |------|-----|--------|-----|
 | Shipment list | Yes | Select | Yes |
-| Shipment detail + costing grid | **Planned** | — | Partial |
-| Computed costing engine | **Planned** | — | Stores COGS today |
+| Shipment detail + costing grid | Yes | — | Yes |
+| Computed costing engine | Yes | — | Yes |
 | Stock catalog | Yes | Yes | Yes |
 | Garment measurements (web) | Yes | — | Yes |
 | Barcode generate/print/scan | Yes | Yes | Yes |
@@ -628,7 +628,7 @@ Legend (UI columns): **S** stored | **C** computed | **F** display | **A** actio
 | **P1 — Migration + measurements** | Backups → costing alters → RPC renames → `thrift_stock_measurements` → stock UI cell + dialog → `supabase.ts` regen | **Yes** | Done |
 | **P2 — Cost engine** | `computeThriftUnitCosts.ts` + `compute_thrift_landed_unit_cost` SQL | No | Done |
 | **P3 — Settings UI** | Hand-tag / sticker on `ThriftSettingsPage` | No | Done |
-| **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Planned |
+| **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Done |
 | **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Planned |
 | **P6 — Mobile RPC** | `register_thrift_stock_from_app` param renames in Thrift-app | Reads/writes migrated cols | Planned |
 | **P7 — Invoice trigger** | `mark_thrift_items_as_sold` uses computed landed cost | No | Planned |

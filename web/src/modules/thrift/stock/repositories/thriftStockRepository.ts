@@ -587,4 +587,29 @@ export const thriftStockRepository = {
       .eq('stock_id', stockId);
     if (error) throw error;
   },
+
+  async fetchStocksByShipment(tenantId: number, shipmentId: number): Promise<ThriftStock[]> {
+    const { data, error } = await supabase
+      .from('thrift_stocks')
+      .select('*, thrift_pricings(*), thrift_stock_images(*), thrift_stock_measurements(*)')
+      .eq('tenant_id', tenantId)
+      .eq('shipment_id', shipmentId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    return ((data || []) as unknown as ThriftStockDbRow[]).map((stock) => {
+      const primaryImage = stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
+      const measurements = Array.isArray(stock.thrift_stock_measurements)
+        ? stock.thrift_stock_measurements[0]
+        : stock.thrift_stock_measurements;
+
+      return {
+        ...stock,
+        pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
+        image_url: primaryImage?.image_url || undefined,
+        drive_file_id: primaryImage?.drive_file_id || undefined,
+        measurements: measurements || null,
+      };
+    }) as unknown as ThriftStock[];
+  },
 };
