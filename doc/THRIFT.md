@@ -351,7 +351,9 @@ erDiagram
 | Table | Use case |
 |-------|----------|
 | `thrift_invoices` | Header: recipient, charges, payment/delivery status |
-| `thrift_invoice_items` | Line: `stock_id`, `sold_price`, fees, `net_profit` (trigger) |
+| `thrift_invoice_items` | Line: `stock_id`, `sold_price`, fees, `net_profit` (trigger), `landed_unit_cost_at_sale` |
+
+**Profit trigger details:** In `thrift_invoice_items`, the trigger `calculate_thrift_item_net_profit()` computes the landed cost using `compute_thrift_landed_unit_cost(stock_id)` at sale time, stores it in `landed_unit_cost_at_sale`, and calculates `net_profit := (sold_price - landed_unit_cost_at_sale) * quantity - platform_fees - shipping_cost_paid_by_shop`.
 
 **RPC:** `mark_thrift_items_as_sold` — creates invoice, items, updates stock, writes ledger.
 
@@ -388,7 +390,7 @@ erDiagram
 
 **Access:** Web — `thriftStockRepository` upsert/delete; `list_thrift_stocks_paginated` returns nested `measurements` object. Mobile measurement inputs **deferred** (P1 web only).
 
-**UI display:** Single table cell with labeled summary, e.g. `Size: M · Bust: 34" · Waist: 28"` — not separate columns per measurement. Edit via actions-column button → `ThriftStockMeasurementsDialog`.
+**UI display:** Single table cell with labeled summary, e.g. `Size: M · Bust: 34" · Waist: 28"` — not separate columns per measurement. Edit via actions-column button → `ThriftStockMeasurementsDialog`. The measurements dialog includes a header **info** button that opens `ThriftMeasurementGuideDialog` — a read-only in-app guide with plain-language definitions, how-to-measure copy, and inline SVG flat-lay diagrams per field (shared from stock and shipment item tables).
 
 ---
 
@@ -579,7 +581,7 @@ sequenceDiagram
   DB->>DB: insert invoice + items
   DB->>DB: update stock quantity/status
   DB->>DB: insert accounting_ledger
-  Note over DB: net_profit trigger uses COGS today, compute_thrift_landed_unit_cost planned
+  Note over DB: net_profit trigger uses compute_thrift_landed_unit_cost
 ```
 
 ---
@@ -631,8 +633,8 @@ Legend (UI columns): **S** stored | **C** computed | **F** display | **A** actio
 | **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Done |
 | **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Done |
 | **P6 — Mobile RPC** | `register_thrift_stock_from_app` param renames in Thrift-app | Reads/writes migrated cols | Done |
-| **P7 — Invoice trigger** | `mark_thrift_items_as_sold` uses computed landed cost | No | Planned |
-| **P8 — Cleanup** | `DROP` `_bak_*` backup tables after production sign-off | Deletes backups only | Planned |
+| **P7 — Invoice trigger** | `mark_thrift_items_as_sold` uses computed landed cost | No | Done |
+| **P8 — Cleanup + shipment detail UX** | Collapsible two-column layout + sticky table component on `ThriftShipmentDetailsPage`; `DROP` `_bak_*` backup tables | Yes | Done |
 
 ```mermaid
 flowchart TD
@@ -735,32 +737,31 @@ See §3.12 for table shape. **P1 web deliverables:**
 |------|--------|
 | Stock table column | Replace standalone **Size** with **Measurements** — one cell, labeled inline text (only values present), e.g. `Size: M · Bust: 34" · Waist: 28"` |
 | Actions | `straighten` icon opens `ThriftStockMeasurementsDialog` |
-| Dialog | Shows **Size** (saves to `thrift_stocks.size`); numeric/select inputs for all measurement fields; **no required fields** |
+| Dialog | Shows **Size** (saves to `thrift_stocks.size`); numeric/select inputs for all measurement fields; **no required fields**; header **info** button opens in-app measurement guide with SVG diagrams |
 | Save | Upsert `thrift_stock_measurements`; delete row if all measurement fields empty |
 
-**Code (P1):** `formatThriftStockMeasurements.ts`, `ThriftStockMeasurementsDialog.vue`, `thriftStockRepository` upsert/delete.
+**Code (P1):** `formatThriftStockMeasurements.ts`, `ThriftStockMeasurementsDialog.vue`, `ThriftMeasurementGuideDialog.vue`, `thriftMeasurementGuide.ts`, `MeasurementDiagramFlat.vue`, `thriftStockRepository` upsert/delete.
 
 **Not in P1:** Thrift-app measurement inputs, customer shop filters, `thrift_brand_size_charts`.
 
-### 9.4 UI columns — shipment list (P4)
+Simplified to only: **SL**, **Shipment Name** (linking to detail page), and **Actions** (Download Cloudinary images with progress dialogue, edit settings metadata, and delete). Costing inputs and detail columns live entirely within the detail page layout.
 
-| # | Column | Field | Type |
-|---|--------|-------|------|
-| 1–3 | SL, ID, Shipment | `name` | S link |
-| 4 | Units | `U` | C |
-| 5–6 | Purchase/Cost ccy | FKs | F |
-| 7–10 | Product conv., cargo rate/conv., cargo kg | shipment cols | S |
-| 11 | Cargo total | `shipment_cargo_cost` | C |
-| 12–13 | Labour, Transport | shipment cols | S |
-| 14 | Ops total | `shipment_ops_cost` | C |
-| 15 | Markup % | `default_markup_rate` | S |
-| 16 | Actions | — | A |
-
-### 9.5 UI columns — shipment detail items (P4)
+### 9.5 UI columns — shipment detail items (P4, P8-A)
 
 Catalog cols (barcode, image, category, type) **unchanged**. **Measurements:** single **F** cell (same formatter + dialog as stock table) — **not** separate bust/waist/hips columns.
 
 Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C), suggested sell (C), listed sell, manual flag.
+
+**Two-Column Layout Redesign (P8-A):**
+- **Left Sidebar:** Collapsible panel containing the shipment info summary and the cargo / operational costing inputs (e.g. weight, cargo rate, labor, transport costs, conversion rates, and markup).
+- **Right Panel:** Search filter (client-side matching barcode/brand/name), column dropdown group picker, and the sticky table `ThriftShipmentItemsTable.vue` displaying items.
+- **Sticky Column Scrolling:** Left-most columns (`SL`, `Image` as a 1in thumbnail, and `Barcode`) remain sticky during horizontal scroll.
+- **Bottom Summary Row:** Structured **Shipment cost overview** panel divided into four clean panels:
+  - **HOW COSTS ARE SPLIT**: Unit Count (U) explaining division of bills.
+  - **SHIPMENT TOTALS**: Cargo total, labor, transport, hand tags, stickers, and Ops totals.
+  - **PER-UNIT SHARE**: Direct calculation metrics for Cargo Share and Ops Share.
+  - **PER-ITEM LANDED COST**: Mathematical formula layout representing `Product + Cargo Share + Ops Share + Additional Charges`.
+
 
 ### 9.6 UI columns — stock catalog
 
@@ -776,8 +777,8 @@ Cols 1–14 (image, barcode, catalog, weights) **unchanged**. **Measurements** c
 | P4 | `ThriftShipmentDetailsPage.vue` (reuses measurements dialog) |
 | P5 | `ThriftStockPage.vue` — costing column renames |
 | P6 | `Thrift-app` `RegisterStock.vue` |
-| P7 | `mark_thrift_items_as_sold` trigger / `compute_thrift_landed_unit_cost` |
-| P8 | `drop_thrift_cost_migration_backups.sql` |
+| P7 | `supabase/migrations/20260815000000_thrift_p7_invoice_landed_cost.sql` trigger updates |
+| P8 | `ThriftShipmentItemsTable.vue`, `ThriftShipmentDetailsPage.vue` layout updates; `supabase/migrations/20260816000000_thrift_p8_drop_migration_backups.sql` |
 
 ---
 

@@ -35,6 +35,18 @@ export class ShipmentDownloadCancelledError extends Error {
   }
 }
 
+export type ShipmentDownloadProgress = {
+  phase: 'listing' | 'downloading' | 'zipping' | 'done'
+  current: number
+  total: number
+  currentBarcode?: string
+}
+
+export type ShipmentDownloadOptions = {
+  onProgress?: (p: ShipmentDownloadProgress) => void
+  signal?: AbortSignal
+}
+
 function buildImageFileName(barcode: string, stockId: number): string {
   const safe = barcode.trim().replace(/[^\w.-]+/g, '_')
   const base = safe || `stock-${stockId}`
@@ -95,8 +107,8 @@ async function listShipmentImages(
   return rows
 }
 
-async function fetchImageBlob(imageUrl: string): Promise<Blob> {
-  const response = await fetch(imageUrl)
+async function fetchImageBlob(imageUrl: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(imageUrl, { signal })
   if (!response.ok) {
     throw new Error(`Failed to download image (${response.status})`)
   }
@@ -150,6 +162,8 @@ function triggerBrowserDownload(blob: Blob, fileName: string): void {
 async function downloadAsZipFolder(
   folderName: string,
   files: Array<{ fileName: string; blob: Blob }>,
+  onProgress?: (p: ShipmentDownloadProgress) => void,
+  totalCount: number = 0,
 ): Promise<void> {
   const zip = new JSZip()
   const folder = zip.folder(folderName)
@@ -161,6 +175,7 @@ async function downloadAsZipFolder(
     folder.file(file.fileName, file.blob)
   }
 
+  onProgress?.({ phase: 'zipping', current: totalCount, total: totalCount })
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   triggerBrowserDownload(zipBlob, `${folderName}.zip`)
 }
@@ -168,11 +183,17 @@ async function downloadAsZipFolder(
 export async function downloadShipmentImagesToDevice(
   tenantId: number,
   shipmentId: number,
+  options?: ShipmentDownloadOptions,
 ): Promise<ShipmentImageDownloadResult> {
+  const signal = options?.signal
+  if (signal?.aborted) throw new ShipmentDownloadCancelledError()
+
+  options?.onProgress?.({ phase: 'listing', current: 0, total: 0 })
   const images = await listShipmentImages(tenantId, shipmentId)
   const folderName = buildShipmentFolderName(shipmentId)
 
   if (images.length === 0) {
+    options?.onProgress?.({ phase: 'done', current: 0, total: 0 })
     return {
       downloaded: 0,
       failed: 0,
@@ -183,6 +204,8 @@ export async function downloadShipmentImagesToDevice(
     }
   }
 
+  if (signal?.aborted) throw new ShipmentDownloadCancelledError()
+
   const useDirectoryPicker = supportsDirectoryPicker()
   const rootDir = useDirectoryPicker ? await pickDownloadDirectory() : null
 
@@ -190,7 +213,18 @@ export async function downloadShipmentImagesToDevice(
   const errors: ShipmentImageDownloadResult['errors'] = []
   const zipFiles: Array<{ fileName: string; blob: Blob }> = []
 
-  for (const row of images) {
+  options?.onProgress?.({ phase: 'downloading', current: 0, total: images.length })
+
+  for (let i = 0; i < images.length; i++) {
+    if (signal?.aborted) throw new ShipmentDownloadCancelledError()
+    const row = images[i]
+    options?.onProgress?.({
+      phase: 'downloading',
+      current: i,
+      total: images.length,
+      currentBarcode: row.barcode || `ID: ${row.stockId}`,
+    })
+
     if (!isAllowedCloudinaryUrl(row.imageUrl)) {
       errors.push({
         stockId: row.stockId,
@@ -201,7 +235,7 @@ export async function downloadShipmentImagesToDevice(
     }
 
     try {
-      const blob = await fetchImageBlob(row.imageUrl)
+      const blob = await fetchImageBlob(row.imageUrl, signal)
       const fileName = buildImageFileName(row.barcode, row.stockId)
 
       if (rootDir) {
@@ -212,6 +246,9 @@ export async function downloadShipmentImagesToDevice(
 
       downloaded += 1
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ShipmentDownloadCancelledError()
+      }
       errors.push({
         stockId: row.stockId,
         barcode: row.barcode,
@@ -220,9 +257,13 @@ export async function downloadShipmentImagesToDevice(
     }
   }
 
+  if (signal?.aborted) throw new ShipmentDownloadCancelledError()
+
   if (!rootDir && zipFiles.length > 0) {
-    await downloadAsZipFolder(folderName, zipFiles)
+    await downloadAsZipFolder(folderName, zipFiles, options?.onProgress, images.length)
   }
+
+  options?.onProgress?.({ phase: 'done', current: downloaded, total: images.length })
 
   return {
     downloaded,

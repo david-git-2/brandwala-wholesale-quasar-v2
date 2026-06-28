@@ -6,7 +6,12 @@
           <div class="text-h6 text-weight-bold">Garment Measurements</div>
           <div class="text-caption text-grey-8">{{ stock.name || 'Thrift Item' }} ({{ stock.barcode }})</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <div class="row items-center q-gutter-xs">
+          <q-btn flat round dense icon="info" color="primary" @click="openGuide">
+            <q-tooltip>What do these measurements mean?</q-tooltip>
+          </q-btn>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </div>
       </q-card-section>
       <q-separator />
 
@@ -125,6 +130,7 @@ import type { PropType } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import type { ThriftStock, ThriftStockMeasurements } from '../types';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
+import ThriftMeasurementGuideDialog from './ThriftMeasurementGuideDialog.vue';
 
 export default defineComponent({
   name: 'ThriftStockMeasurementsDialog',
@@ -186,6 +192,10 @@ export default defineComponent({
         f.lining
       );
     });
+
+    function openGuide() {
+      $q.dialog({ component: ThriftMeasurementGuideDialog });
+    }
 
     async function onSubmit() {
       saving.value = true;
@@ -257,6 +267,7 @@ export default defineComponent({
       form,
       saving,
       onSubmit,
+      openGuide,
     };
   },
 });

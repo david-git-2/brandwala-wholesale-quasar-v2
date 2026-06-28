@@ -6,7 +6,7 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Thrift Shipments</div>
-            <div class="text-caption text-grey-8">Manage cargo weights, ops costs, markup rates and default currencies</div>
+            <div class="text-caption text-grey-8">Open a shipment to set cargo, ops, and item-level landed costs</div>
           </div>
           <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
@@ -51,30 +51,6 @@
             </router-link>
           </q-td>
         </template>
-        <template #body-cell-unit_count="props">
-          <q-td :props="props" class="text-right">{{ props.row.unit_count }}</q-td>
-        </template>
-        <template #body-cell-purchase_currency="props">
-          <q-td :props="props">{{ currencyCode(props.row.purchase_currency_id) }}</q-td>
-        </template>
-        <template #body-cell-cost_currency="props">
-          <q-td :props="props">{{ currencyCode(props.row.cost_currency_id) }}</q-td>
-        </template>
-        <template #body-cell-cargo_cost="props">
-          <q-td :props="props" class="text-right">
-            {{ formatCost(props.row.cargo_cost, props.row.cost_currency_id) }}
-          </q-td>
-        </template>
-        <template #body-cell-ops_cost="props">
-          <q-td :props="props" class="text-right">
-            {{ formatCost(props.row.ops_cost, props.row.cost_currency_id) }}
-          </q-td>
-        </template>
-        <template #body-cell-default_markup_rate="props">
-          <q-td :props="props" class="text-right">
-            {{ props.row.default_markup_rate != null ? `${(props.row.default_markup_rate * 100).toFixed(0)}%` : '—' }}
-          </q-td>
-        </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
             <q-btn
@@ -84,8 +60,6 @@
               icon="download"
               color="secondary"
               size="sm"
-              :loading="downloadingShipmentId === props.row.id"
-              :disable="downloadingShipmentId != null && downloadingShipmentId !== props.row.id"
               @click.stop="downloadShipmentImages(props.row)"
             >
               <q-tooltip>Download images from Cloudinary</q-tooltip>
@@ -208,18 +182,10 @@ import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPrefer
 import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
 import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferenceUtils';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
-import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { thriftShipmentRepository } from '../repositories/thriftShipmentRepository';
-import type { ThriftShipment, ThriftShipmentWithStats } from '../types';
-import {
-  computeShipmentCargoCost,
-  computeShipmentOpsCost,
-} from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
-import {
-  downloadShipmentImagesToDevice,
-  ShipmentDownloadCancelledError,
-} from 'src/utils/shipmentImageDownloadClient';
+import type { ThriftShipment } from '../types';
+import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -228,13 +194,11 @@ const preferenceStore = useTenantPreferenceStore();
 const settingsStore = useThriftSettingsStore();
 
 const shipments = ref<ThriftShipment[]>([]);
-const unitCounts = ref<Map<number, number>>(new Map());
 const loading = ref(false);
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
 const selectedRow = ref<ThriftShipment | null>(null);
-const downloadingShipmentId = ref<number | null>(null);
 
 const form = ref({
   name: '',
@@ -256,37 +220,15 @@ const markupPercentage = computed({
   },
 });
 
-const shipmentRows = computed<ThriftShipmentWithStats[]>(() => {
-  return shipments.value.map((s) => {
-    const unit_count = unitCounts.value.get(s.id) || 0;
-    const cargo_cost = computeShipmentCargoCost(s);
-    const ops_cost = computeShipmentOpsCost(s, settingsStore.settings || {}, Math.max(unit_count, 1));
-    return {
-      ...s,
-      unit_count,
-      cargo_cost,
-      ops_cost,
-    };
-  });
+const shipmentRows = computed(() => {
+  return shipments.value;
 });
 
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
   { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
-  { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true, headerStyle: 'width: 70px' },
   { name: 'name', align: 'left', label: 'Shipment Name', field: 'name', sortable: true },
-  { name: 'unit_count', align: 'right', label: 'Units', field: 'unit_count', sortable: true },
-  { name: 'purchase_currency', align: 'left', label: 'Purchase Ccy', field: 'purchase_currency_id', sortable: true },
-  { name: 'cost_currency', align: 'left', label: 'Cost Ccy', field: 'cost_currency_id', sortable: true },
-  { name: 'cargo_conversion_rate', align: 'right', label: 'Cargo Conv. Rate', field: 'cargo_conversion_rate' },
-  { name: 'cargo_rate', align: 'right', label: 'Cargo Rate', field: 'cargo_rate' },
-  { name: 'total_cargo_weight_kg', align: 'right', label: 'Cargo (kg)', field: 'total_cargo_weight_kg' },
-  { name: 'cargo_cost', align: 'right', label: 'Cargo Total', field: 'cargo_cost' },
-  { name: 'labor_total_cost', align: 'right', label: 'Labor', field: 'labor_total_cost' },
-  { name: 'transportation_total_cost', align: 'right', label: 'Transport', field: 'transportation_total_cost' },
-  { name: 'ops_cost', align: 'right', label: 'Ops Total', field: 'ops_cost' },
-  { name: 'default_markup_rate', align: 'right', label: 'Markup', field: 'default_markup_rate' },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
 
@@ -294,26 +236,12 @@ function currencyOptionLabel(option: ThriftCurrency) {
   return `${option.code} (${option.symbol}) — ${option.name}`;
 }
 
-function currencyCode(id: unknown): string {
-  const currency = currencyStore.currencyById(id as number);
-  return currency?.code ?? '—';
-}
-
-function formatCost(amount: number, ccyId: number): string {
-  const currency = currencyStore.currencyById(ccyId);
-  return formatThriftAmount(amount, currency);
-}
-
 async function loadShipments() {
   if (!authStore.tenantId) return;
   loading.value = true;
   try {
-    const [list, counts] = await Promise.all([
-      thriftShipmentRepository.fetchShipments(authStore.tenantId),
-      thriftShipmentRepository.fetchUnitCountsByShipment(authStore.tenantId),
-    ]);
+    const list = await thriftShipmentRepository.fetchShipments(authStore.tenantId);
     shipments.value = list;
-    unitCounts.value = counts;
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load shipments' });
   } finally {
@@ -330,33 +258,11 @@ onMounted(async () => {
   ]);
 });
 
-async function downloadShipmentImages(row: ThriftShipment) {
-  if (!authStore.tenantId || !row.id) return;
-
-  downloadingShipmentId.value = row.id;
-  try {
-    const result = await downloadShipmentImagesToDevice(authStore.tenantId, row.id);
-
-    if (result.total === 0) {
-      $q.notify({ type: 'info', message: result.message || 'No images found for this shipment' });
-      return;
-    }
-
-    $q.notify({
-      type: result.failed > 0 ? 'warning' : 'positive',
-      message: result.message || `Downloaded ${result.downloaded} of ${result.total} image(s)`,
-      timeout: result.failed > 0 ? 6000 : 3000,
-    });
-  } catch (err: unknown) {
-    if (err instanceof ShipmentDownloadCancelledError) return;
-
-    $q.notify({
-      type: 'negative',
-      message: (err as Error).message || 'Download failed',
-    });
-  } finally {
-    downloadingShipmentId.value = null;
-  }
+function downloadShipmentImages(row: ThriftShipment) {
+  $q.dialog({
+    component: ShipmentImageDownloadDialog,
+    componentProps: { shipmentId: row.id, shipmentName: row.name },
+  });
 }
 
 function defaultPurchaseCurrencyId(): number | null {
@@ -375,6 +281,7 @@ function defaultCostCurrencyId(): number | null {
   );
 }
 
+// Dialog open & edit setups
 function openDialog(row?: ThriftShipment) {
   if (row) {
     editingId.value = row.id;

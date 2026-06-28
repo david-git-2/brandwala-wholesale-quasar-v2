@@ -14,222 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _bak_thrift_pricings: {
-        Row: {
-          cost_of_goods_sold: number | null
-          created_at: string | null
-          extra_expense_cost: number | null
-          id: number | null
-          inserted_by: string | null
-          listed_price: number | null
-          stock_id: number | null
-          target_price: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          cost_of_goods_sold?: number | null
-          created_at?: string | null
-          extra_expense_cost?: number | null
-          id?: number | null
-          inserted_by?: string | null
-          listed_price?: number | null
-          stock_id?: number | null
-          target_price?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          cost_of_goods_sold?: number | null
-          created_at?: string | null
-          extra_expense_cost?: number | null
-          id?: number | null
-          inserted_by?: string | null
-          listed_price?: number | null
-          stock_id?: number | null
-          target_price?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      _bak_thrift_settings: {
-        Row: {
-          created_at: string | null
-          default_origin_purchase_price: number | null
-          tenant_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          default_origin_purchase_price?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          default_origin_purchase_price?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      _bak_thrift_shipments: {
-        Row: {
-          cargo_conversion_rate: number | null
-          cargo_rate: number | null
-          cost_currency_id: number | null
-          created_at: string | null
-          id: number | null
-          inserted_by: string | null
-          name: string | null
-          product_conversion_rate: number | null
-          purchase_currency_id: number | null
-          tenant_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          cargo_conversion_rate?: number | null
-          cargo_rate?: number | null
-          cost_currency_id?: number | null
-          created_at?: string | null
-          id?: number | null
-          inserted_by?: string | null
-          name?: string | null
-          product_conversion_rate?: number | null
-          purchase_currency_id?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          cargo_conversion_rate?: number | null
-          cargo_rate?: number | null
-          cost_currency_id?: number | null
-          created_at?: string | null
-          id?: number | null
-          inserted_by?: string | null
-          name?: string | null
-          product_conversion_rate?: number | null
-          purchase_currency_id?: number | null
-          tenant_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      _bak_thrift_stock_images: {
-        Row: {
-          created_at: string | null
-          drive_file_id: string | null
-          id: number | null
-          image_url: string | null
-          inserted_by: string | null
-          is_primary: boolean | null
-          stock_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          drive_file_id?: string | null
-          id?: number | null
-          image_url?: string | null
-          inserted_by?: string | null
-          is_primary?: boolean | null
-          stock_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          drive_file_id?: string | null
-          id?: number | null
-          image_url?: string | null
-          inserted_by?: string | null
-          is_primary?: boolean | null
-          stock_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      _bak_thrift_stocks: {
-        Row: {
-          barcode: string | null
-          box_id: number | null
-          brand_name: string | null
-          category_id: number | null
-          color: string | null
-          condition: Database["public"]["Enums"]["thrift_condition"] | null
-          created_at: string | null
-          extra_origin_purchase_expense: number | null
-          extra_weight: number | null
-          id: number | null
-          inserted_by: string | null
-          name: string | null
-          note: string | null
-          origin_purchase_price: number | null
-          product_weight: number | null
-          quantity: number | null
-          section: Database["public"]["Enums"]["thrift_section"] | null
-          shelf_id: number | null
-          shipment_id: number | null
-          size: string | null
-          status: Database["public"]["Enums"]["thrift_stock_status"] | null
-          stock_type: Database["public"]["Enums"]["thrift_stock_type"] | null
-          tenant_id: number | null
-          type_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          barcode?: string | null
-          box_id?: number | null
-          brand_name?: string | null
-          category_id?: number | null
-          color?: string | null
-          condition?: Database["public"]["Enums"]["thrift_condition"] | null
-          created_at?: string | null
-          extra_origin_purchase_expense?: number | null
-          extra_weight?: number | null
-          id?: number | null
-          inserted_by?: string | null
-          name?: string | null
-          note?: string | null
-          origin_purchase_price?: number | null
-          product_weight?: number | null
-          quantity?: number | null
-          section?: Database["public"]["Enums"]["thrift_section"] | null
-          shelf_id?: number | null
-          shipment_id?: number | null
-          size?: string | null
-          status?: Database["public"]["Enums"]["thrift_stock_status"] | null
-          stock_type?: Database["public"]["Enums"]["thrift_stock_type"] | null
-          tenant_id?: number | null
-          type_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          barcode?: string | null
-          box_id?: number | null
-          brand_name?: string | null
-          category_id?: number | null
-          color?: string | null
-          condition?: Database["public"]["Enums"]["thrift_condition"] | null
-          created_at?: string | null
-          extra_origin_purchase_expense?: number | null
-          extra_weight?: number | null
-          id?: number | null
-          inserted_by?: string | null
-          name?: string | null
-          note?: string | null
-          origin_purchase_price?: number | null
-          product_weight?: number | null
-          quantity?: number | null
-          section?: Database["public"]["Enums"]["thrift_section"] | null
-          shelf_id?: number | null
-          shipment_id?: number | null
-          size?: string | null
-          status?: Database["public"]["Enums"]["thrift_stock_status"] | null
-          stock_type?: Database["public"]["Enums"]["thrift_stock_type"] | null
-          tenant_id?: number | null
-          type_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       activity_logs: {
         Row: {
           action: string
@@ -5089,6 +4873,7 @@ export type Database = {
           id: number
           invoice_id: number
           item_status: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale: number
           net_profit: number
           platform_fees: number
           quantity: number
@@ -5108,6 +4893,7 @@ export type Database = {
           id?: number
           invoice_id: number
           item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale?: number
           net_profit?: number
           platform_fees?: number
           quantity: number
@@ -5127,6 +4913,7 @@ export type Database = {
           id?: number
           invoice_id?: number
           item_status?: Database["public"]["Enums"]["thrift_item_status"]
+          landed_unit_cost_at_sale?: number
           net_profit?: number
           platform_fees?: number
           quantity?: number

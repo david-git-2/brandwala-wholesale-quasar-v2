@@ -402,7 +402,7 @@
                   <q-input v-model.number="scope.value" type="number" min="0" step="1" dense outlined autofocus />
                 </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'origin_purchase_price'">
+              <template v-else-if="col.name === 'origin_unit_price'">
                 <div class="editable-value">
                   {{ formatStockPrice(props.row.origin_unit_price, shipmentPurchaseCurrency(props.row.shipment_id)) }}
                 </div>
@@ -427,7 +427,7 @@
                   />
                 </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'extra_origin_purchase_expense'">
+              <template v-else-if="col.name === 'extra_origin_unit_price'">
                 <div class="editable-value">
                   {{ formatStockPrice(props.row.extra_origin_unit_price, shipmentPurchaseCurrency(props.row.shipment_id)) }}
                 </div>
@@ -453,17 +453,17 @@
                 </q-popup-edit>
               </template>
               <template v-else-if="col.name === 'product_unit_cost'">
-                <div class="text-grey-8">
+                <div class="text-grey-8 thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.product_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
               </template>
               <template v-else-if="col.name === 'cargo_share_per_unit'">
-                <div class="text-grey-8">
+                <div class="text-grey-8 thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.cargo_share_per_unit || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
               </template>
               <template v-else-if="col.name === 'ops_share_per_unit'">
-                <div class="text-grey-8">
+                <div class="text-grey-8 thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.ops_share_per_unit || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
               </template>
@@ -493,18 +493,23 @@
                 </q-popup-edit>
               </template>
               <template v-else-if="col.name === 'landed_unit_cost'">
-                <div class="text-weight-bold text-teal">
+                <div class="text-weight-bold text-teal thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.landed_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
               </template>
               <template v-else-if="col.name === 'suggested_sell_unit_price'">
-                <div class="text-grey-8">
+                <div class="text-grey-8 thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.suggested_sell_unit_price || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
               </template>
               <template v-else-if="col.name === 'listed_unit_price'">
                 <div class="editable-value text-weight-bold">
-                  {{ formatStockPrice(props.row.pricing?.listed_unit_price || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                  {{ formatStockPrice(
+                    costBreakdownByStockId[props.row.id]?.display_listed_unit_price
+                      ?? props.row.pricing?.listed_unit_price
+                      ?? 0,
+                    shipmentCostCurrency(props.row.shipment_id),
+                  ) }}
                 </div>
                 <q-popup-edit
                   v-slot="scope"
@@ -513,7 +518,7 @@
                   persistent
                   label-set="Save"
                   label-cancel="Cancel"
-                  @save="(value) => onPricingCellSave(props.row, 'listed_unit_price', toNumber(value))"
+                  @save="(value) => onListedUnitPriceSave(props.row, toNumber(value))"
                 >
                   <q-input
                     v-model.number="scope.value"
@@ -1112,6 +1117,7 @@ import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/f
 import ThriftStockMeasurementsDialog from '../components/ThriftStockMeasurementsDialog.vue';
 import {
   computeThriftUnitCosts,
+  type ThriftStockCostInput,
   type ThriftUnitCostBreakdown,
 } from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
 
@@ -1142,24 +1148,19 @@ const costBreakdownByStockId = computed<Record<number, ThriftUnitCostBreakdown>>
 
   const breakdowns: Record<number, ThriftUnitCostBreakdown> = {};
   for (const stock of stocks.value) {
-    const shipment = thriftStore.shipments.find((s) => s.id === stock.shipment_id);
+    const shipment = shipmentById.value.get(stock.shipment_id);
     if (!shipment) continue;
 
     const U = shipmentUnitCounts.value.get(stock.shipment_id) || 1;
     const pricing = stock.pricing
       ? {
           listed_unit_price: stock.pricing.listed_unit_price,
-          is_listed_price_manual: stock.pricing.is_listed_price_manual,
+          is_listed_price_manual: !!stock.pricing.is_listed_price_manual,
         }
       : undefined;
 
     breakdowns[stock.id] = computeThriftUnitCosts(
-      {
-        quantity: stock.quantity || 0,
-        origin_unit_price: stock.origin_unit_price,
-        extra_origin_unit_price: stock.extra_origin_unit_price,
-        additional_charges_cost: stock.additional_charges_cost,
-      },
+      buildStockCostInput(stock),
       shipment,
       settings,
       U,
@@ -1186,6 +1187,13 @@ interface ShipmentOption {
   name: string;
   purchase_currency_id: number;
   cost_currency_id: number;
+  cargo_conversion_rate?: number | null;
+  cargo_rate?: number | null;
+  product_conversion_rate?: number | null;
+  total_cargo_weight_kg?: number | null;
+  labor_total_cost?: number | null;
+  transportation_total_cost?: number | null;
+  default_markup_rate?: number | null;
 }
 
 // Dialogs state
@@ -1335,7 +1343,7 @@ async function loadShipments() {
   if (!authStore.tenantId) return;
   const { data } = await supabase
     .from('thrift_shipments')
-    .select('id, name, purchase_currency_id, cost_currency_id')
+    .select('*')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
   shipments.value = (data || []) as ShipmentOption[];
@@ -1397,9 +1405,12 @@ function getBoxName(boxId: number | undefined | null) {
   return bx ? bx.name : `#${boxId}`;
 }
 
-const pricing = ref({
+const pricing = ref<ThriftStockPricingInput>({
+  cost_of_goods_sold: 0,
+  target_price: 0,
   listed_unit_price: 0,
   is_listed_price_manual: false,
+  extra_expense_cost: 0,
 });
 
 const searchText = ref('');
@@ -1552,10 +1563,22 @@ function toNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function buildStockCostInput(stock: ThriftStock): ThriftStockCostInput {
+  return {
+    quantity: stock.quantity || 0,
+    origin_unit_price: stock.origin_unit_price ?? null,
+    extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
+    additional_charges_cost: stock.additional_charges_cost ?? null,
+  };
+}
+
 function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
   return {
+    cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
+    target_price: Number(row.pricing?.target_price) || 0,
     listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
     is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
+    extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
   };
 }
 
@@ -1576,7 +1599,7 @@ async function saveStockCell(
       cost_of_goods_sold: pricing.cost_of_goods_sold,
       target_price: pricing.target_price,
       listed_unit_price: pricing.listed_unit_price,
-      is_listed_price_manual: pricing.is_listed_price_manual,
+      is_listed_price_manual: !!pricing.is_listed_price_manual,
       extra_expense_cost: pricing.extra_expense_cost ?? 0,
     };
   }
@@ -1659,17 +1682,31 @@ async function onExtraOriginUnitPriceSave(row: ThriftStock, value: number) {
   }
 }
 
+async function onListedUnitPriceSave(row: ThriftStock, value: number) {
+  try {
+    if (!row.pricing) {
+      row.pricing = buildPricingFromRow(row);
+    }
+    row.pricing.listed_unit_price = value;
+    row.pricing.is_listed_price_manual = true;
+    await saveStockCell(row, {}, { listed_unit_price: value, is_listed_price_manual: true });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
 async function onPricingCellSave(
   row: ThriftStock,
-  field: keyof ThriftStockPricingInput,
-  value: number,
+  field: 'is_listed_price_manual',
+  value: boolean,
 ) {
   try {
     if (!row.pricing) {
       row.pricing = buildPricingFromRow(row);
     }
-    row.pricing[field] = value;
-    await saveStockCell(row, {}, { [field]: value });
+    row.pricing.is_listed_price_manual = value;
+    await saveStockCell(row, {}, { is_listed_price_manual: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
     await loadStockPage();
@@ -1698,14 +1735,14 @@ function tableCellClass(columnName: string): string {
   if (columnName === 'actions') classes.push('text-right');
   if (editableColumns.has(columnName)) classes.push('editable-cell');
   if (
-    columnName === 'origin_purchase_price'
-    || columnName === 'extra_origin_purchase_expense'
-    || columnName === 'origin_unit_price'
+    columnName === 'origin_unit_price'
     || columnName === 'extra_origin_unit_price'
-    || columnName === 'cost_of_goods_sold'
-    || columnName === 'extra_expense_cost'
-    || columnName === 'target_price'
-    || columnName === 'listed_price'
+    || columnName === 'additional_charges_cost'
+    || columnName === 'product_unit_cost'
+    || columnName === 'cargo_share_per_unit'
+    || columnName === 'ops_share_per_unit'
+    || columnName === 'landed_unit_cost'
+    || columnName === 'suggested_sell_unit_price'
     || columnName === 'listed_unit_price'
     || columnName === 'product_weight'
     || columnName === 'extra_weight'
@@ -1869,23 +1906,18 @@ async function downloadStockCsv() {
     ]);
 
     const rows = stocks.map((s) => {
-      const shipment = thriftStore.shipments.find((sh) => sh.id === s.shipment_id);
+      const shipment = shipmentById.value.get(s.shipment_id);
       const U = unitCountsMap.get(s.shipment_id) || 1;
       const pricing = s.pricing
         ? {
             listed_unit_price: s.pricing.listed_unit_price,
-            is_listed_price_manual: s.pricing.is_listed_price_manual,
+            is_listed_price_manual: !!s.pricing.is_listed_price_manual,
           }
         : undefined;
 
       const breakdown = settings && shipment
         ? computeThriftUnitCosts(
-            {
-              quantity: s.quantity || 0,
-              origin_unit_price: s.origin_unit_price,
-              extra_origin_unit_price: s.extra_origin_unit_price,
-              additional_charges_cost: s.additional_charges_cost,
-            },
+            buildStockCostInput(s),
             shipment,
             settings,
             U,
@@ -2167,8 +2199,8 @@ async function submitQuickAdd() {
         listed_unit_price: 0,
         extra_expense_cost: 0,
       },
-      form.value.image_url || undefined,
-      form.value.shelf_id,
+      undefined,
+      null,
       settingsStore.defaultOriginUnitPrice,
       0,
     );
@@ -2260,13 +2292,7 @@ function openEditDialog(row: ThriftStock) {
   originUnitPrice.value = row.origin_unit_price ?? settingsStore.defaultOriginUnitPrice;
   extraOriginUnitPrice.value = row.extra_origin_unit_price ?? 0;
   additionalChargesCost.value = row.additional_charges_cost ?? 0;
-  pricing.value = {
-    cost_of_goods_sold: row.pricing?.cost_of_goods_sold || 0,
-    target_price: row.pricing?.target_price || 0,
-    listed_unit_price: row.pricing?.listed_unit_price || 0,
-    is_listed_price_manual: row.pricing?.is_listed_price_manual,
-    extra_expense_cost: row.pricing?.extra_expense_cost || 0,
-  };
+  pricing.value = buildPricingFromRow(row);
   dialogOpen.value = true;
 }
 

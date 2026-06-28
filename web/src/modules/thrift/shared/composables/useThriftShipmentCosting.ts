@@ -33,6 +33,26 @@ export function useThriftShipmentCosting(
     return computeShipmentOpsCost(shipment, settings, U.value);
   });
 
+  const cargoSharePerUnit = computed(() => {
+    return cargoCost.value / Math.max(U.value, 1);
+  });
+
+  const opsSharePerUnit = computed(() => {
+    return opsCost.value / Math.max(U.value, 1);
+  });
+
+  const handTagTotal = computed(() => {
+    const settings = settingsRef.value;
+    if (!settings) return 0;
+    return (Number(settings.hand_tag_unit_cost) || 0) * U.value;
+  });
+
+  const stickerTotal = computed(() => {
+    const settings = settingsRef.value;
+    if (!settings) return 0;
+    return (Number(settings.sticker_unit_cost) || 0) * U.value;
+  });
+
   const costingBreakdowns = computed(() => {
     const shipment = shipmentRef.value;
     const settings = settingsRef.value;
@@ -60,6 +80,10 @@ export function useThriftShipmentCosting(
     U,
     cargoCost,
     opsCost,
+    cargoSharePerUnit,
+    opsSharePerUnit,
+    handTagTotal,
+    stickerTotal,
     costingBreakdowns,
   };
 }
