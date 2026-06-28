@@ -629,7 +629,7 @@ Legend (UI columns): **S** stored | **C** computed | **F** display | **A** actio
 | **P2 — Cost engine** | `computeThriftUnitCosts.ts` + `compute_thrift_landed_unit_cost` SQL | No | Done |
 | **P3 — Settings UI** | Hand-tag / sticker on `ThriftSettingsPage` | No | Done |
 | **P4 — Shipment UI** | List cost columns + `ThriftShipmentDetailsPage` (reuses measurements cell/dialog) | No | Done |
-| **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Planned |
+| **P5 — Stock costing UI** | Replace cost columns only on `ThriftStockPage` (§9.4) | No | Done |
 | **P6 — Mobile RPC** | `register_thrift_stock_from_app` param renames in Thrift-app | Reads/writes migrated cols | Planned |
 | **P7 — Invoice trigger** | `mark_thrift_items_as_sold` uses computed landed cost | No | Planned |
 | **P8 — Cleanup** | `DROP` `_bak_*` backup tables after production sign-off | Deletes backups only | Planned |

@@ -452,18 +452,33 @@
                   />
                 </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'cost_of_goods_sold'">
+              <template v-else-if="col.name === 'product_unit_cost'">
+                <div class="text-grey-8">
+                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.product_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+              </template>
+              <template v-else-if="col.name === 'cargo_share_per_unit'">
+                <div class="text-grey-8">
+                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.cargo_share_per_unit || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+              </template>
+              <template v-else-if="col.name === 'ops_share_per_unit'">
+                <div class="text-grey-8">
+                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.ops_share_per_unit || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+              </template>
+              <template v-else-if="col.name === 'additional_charges_cost'">
                 <div class="editable-value">
-                  {{ formatStockPrice(props.row.pricing?.cost_of_goods_sold, shipmentCostCurrency(props.row.shipment_id)) }}
+                  {{ formatStockPrice(props.row.additional_charges_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
                 <q-popup-edit
                   v-slot="scope"
-                  :model-value="props.row.pricing?.cost_of_goods_sold ?? 0"
+                  :model-value="props.row.additional_charges_cost ?? 0"
                   buttons
                   persistent
                   label-set="Save"
                   label-cancel="Cancel"
-                  @save="(value) => onPricingCellSave(props.row, 'cost_of_goods_sold', toNumber(value))"
+                  @save="(value) => saveStockCell(props.row, { additional_charges_cost: toNumber(value) })"
                 >
                   <q-input
                     v-model.number="scope.value"
@@ -477,59 +492,19 @@
                   />
                 </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'extra_expense_cost'">
-                <div class="editable-value">
-                  {{ formatStockPrice(props.row.pricing?.extra_expense_cost, shipmentCostCurrency(props.row.shipment_id)) }}
+              <template v-else-if="col.name === 'landed_unit_cost'">
+                <div class="text-weight-bold text-teal">
+                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.landed_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
-                <q-popup-edit
-                  v-slot="scope"
-                  :model-value="props.row.pricing?.extra_expense_cost ?? 0"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  @save="(value) => onPricingCellSave(props.row, 'extra_expense_cost', toNumber(value))"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    dense
-                    outlined
-                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
-                    autofocus
-                  />
-                </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'target_price'">
-                <div class="editable-value">
-                  {{ formatStockPrice(props.row.pricing?.target_price, shipmentCostCurrency(props.row.shipment_id)) }}
+              <template v-else-if="col.name === 'suggested_sell_unit_price'">
+                <div class="text-grey-8">
+                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.suggested_sell_unit_price || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
-                <q-popup-edit
-                  v-slot="scope"
-                  :model-value="props.row.pricing?.target_price ?? 0"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  @save="(value) => onPricingCellSave(props.row, 'target_price', toNumber(value))"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    dense
-                    outlined
-                    :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
-                    autofocus
-                  />
-                </q-popup-edit>
               </template>
-              <template v-else-if="col.name === 'listed_price'">
-                <div class="editable-value">
-                  {{ formatStockPrice(props.row.pricing?.listed_unit_price, shipmentCostCurrency(props.row.shipment_id)) }}
+              <template v-else-if="col.name === 'listed_unit_price'">
+                <div class="editable-value text-weight-bold">
+                  {{ formatStockPrice(props.row.pricing?.listed_unit_price || 0, shipmentCostCurrency(props.row.shipment_id)) }}
                 </div>
                 <q-popup-edit
                   v-slot="scope"
@@ -544,13 +519,21 @@
                     v-model.number="scope.value"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
                     dense
                     outlined
                     :prefix="shipmentCostCurrency(props.row.shipment_id)?.symbol"
                     autofocus
                   />
                 </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'is_listed_price_manual'">
+                <q-toggle
+                  :model-value="!!props.row.pricing?.is_listed_price_manual"
+                  color="primary"
+                  dense
+                  @update:model-value="(val) => onPricingCellSave(props.row, 'is_listed_price_manual', !!val)"
+                />
               </template>
               <template v-else-if="col.name === 'status'">
                 <q-chip
@@ -805,54 +788,25 @@
             </div>
 
             <q-separator class="q-my-xs" />
-            <div class="text-caption text-grey-8 q-mb-xs">Cost / pricing ({{ costCurrency?.code ?? '—' }})</div>
+            <div class="text-caption text-grey-8 q-mb-xs">Pricing ({{ costCurrency?.code ?? '—' }})</div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="pricing.cost_of_goods_sold"
-                  type="number"
-                  step="0.01"
-                  outlined
-                  dense
-                  label="COGS Cost"
-                  :prefix="costCurrencySymbol"
-                  class="soft-input"
-                />
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="pricing.extra_expense_cost"
-                  type="number"
-                  step="0.01"
-                  outlined
-                  dense
-                  label="Extra expense cost"
-                  :prefix="costCurrencySymbol"
-                  class="soft-input"
-                />
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="pricing.target_price"
-                  type="number"
-                  step="0.01"
-                  outlined
-                  dense
-                  label="Target Price"
-                  :prefix="costCurrencySymbol"
-                  class="soft-input"
-                />
-              </div>
               <div class="col-12 col-sm-6">
                 <q-input
                   v-model.number="pricing.listed_unit_price"
                   type="number"
-                  step="0.01"
+                  step="1"
                   outlined
                   dense
                   label="Listed Price"
                   :prefix="costCurrencySymbol"
                   class="soft-input"
+                />
+              </div>
+              <div class="col-12 col-sm-6 row items-center">
+                <q-toggle
+                  v-model="pricing.is_listed_price_manual"
+                  color="primary"
+                  label="Manual Price Override"
                 />
               </div>
             </div>
@@ -1156,6 +1110,10 @@ import {
 import { downloadCsv, rowsToCsv } from 'src/utils/csvExport';
 import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/formatThriftStockMeasurements';
 import ThriftStockMeasurementsDialog from '../components/ThriftStockMeasurementsDialog.vue';
+import {
+  computeThriftUnitCosts,
+  type ThriftUnitCostBreakdown,
+} from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -1165,6 +1123,51 @@ const store = useThriftStockStore();
 const thriftStore = useThriftStore();
 const settingsStore = useThriftSettingsStore();
 const currencyStore = useThriftCurrencyStore();
+
+const shipmentUnitCounts = ref<Map<number, number>>(new Map());
+
+async function loadShipmentUnitCounts() {
+  if (!authStore.tenantId) return;
+  try {
+    const map = await thriftStockRepository.fetchQuantityByShipment(authStore.tenantId);
+    shipmentUnitCounts.value = map;
+  } catch (err: unknown) {
+    console.error('Failed to load shipment unit counts:', err);
+  }
+}
+
+const costBreakdownByStockId = computed<Record<number, ThriftUnitCostBreakdown>>(() => {
+  const settings = settingsStore.settings;
+  if (!settings) return {};
+
+  const breakdowns: Record<number, ThriftUnitCostBreakdown> = {};
+  for (const stock of stocks.value) {
+    const shipment = thriftStore.shipments.find((s) => s.id === stock.shipment_id);
+    if (!shipment) continue;
+
+    const U = shipmentUnitCounts.value.get(stock.shipment_id) || 1;
+    const pricing = stock.pricing
+      ? {
+          listed_unit_price: stock.pricing.listed_unit_price,
+          is_listed_price_manual: stock.pricing.is_listed_price_manual,
+        }
+      : undefined;
+
+    breakdowns[stock.id] = computeThriftUnitCosts(
+      {
+        quantity: stock.quantity || 0,
+        origin_unit_price: stock.origin_unit_price,
+        extra_origin_unit_price: stock.extra_origin_unit_price,
+        additional_charges_cost: stock.additional_charges_cost,
+      },
+      shipment,
+      settings,
+      U,
+      pricing,
+    );
+  }
+  return breakdowns;
+});
 
 function openMeasurementsDialog(row: ThriftStock) {
   $q.dialog({
@@ -1395,11 +1398,8 @@ function getBoxName(boxId: number | undefined | null) {
 }
 
 const pricing = ref({
-  cost_of_goods_sold: 0,
-  target_price: 0,
   listed_unit_price: 0,
   is_listed_price_manual: false,
-  extra_expense_cost: 0,
 });
 
 const searchText = ref('');
@@ -1456,12 +1456,16 @@ const columnSelectorOptions = [
   { label: 'Extra Wt', value: 'extra_weight' },
   { label: 'Condition', value: 'condition' },
   { label: 'Qty', value: 'quantity' },
-  { label: 'Origin', value: 'origin_purchase_price' },
-  { label: 'Extra Origin', value: 'extra_origin_purchase_expense' },
-  { label: 'COGS', value: 'cost_of_goods_sold' },
-  { label: 'Extra Cost', value: 'extra_expense_cost' },
-  { label: 'Target', value: 'target_price' },
-  { label: 'Listed', value: 'listed_price' },
+  { label: 'Origin', value: 'origin_unit_price' },
+  { label: 'Extra Origin', value: 'extra_origin_unit_price' },
+  { label: 'Product Cost', value: 'product_unit_cost' },
+  { label: 'Cargo/Unit', value: 'cargo_share_per_unit' },
+  { label: 'Ops/Unit', value: 'ops_share_per_unit' },
+  { label: 'Add\'l Charges', value: 'additional_charges_cost' },
+  { label: 'Landed', value: 'landed_unit_cost' },
+  { label: 'Suggested Sell', value: 'suggested_sell_unit_price' },
+  { label: 'Listed Sell', value: 'listed_unit_price' },
+  { label: 'Manual Price', value: 'is_listed_price_manual' },
   { label: 'Status', value: 'status' },
 ];
 
@@ -1499,12 +1503,16 @@ const columns: QTableColumn[] = [
   { name: 'extra_weight', align: 'right', label: 'Extra Wt', field: 'extra_weight' },
   { name: 'condition', align: 'left', label: 'Condition', field: 'condition' },
   { name: 'quantity', align: 'right', label: 'Qty', field: 'quantity', sortable: true },
-  { name: 'origin_purchase_price', align: 'right', label: 'Origin', field: 'origin_unit_price' },
-  { name: 'extra_origin_purchase_expense', align: 'right', label: 'Extra Origin', field: 'extra_origin_unit_price' },
-  { name: 'cost_of_goods_sold', align: 'right', label: 'COGS', field: (row) => row.pricing?.cost_of_goods_sold },
-  { name: 'extra_expense_cost', align: 'right', label: 'Extra Cost', field: (row) => row.pricing?.extra_expense_cost },
-  { name: 'target_price', align: 'right', label: 'Target', field: (row) => row.pricing?.target_price },
-  { name: 'listed_price', align: 'right', label: 'Listed', field: (row) => row.pricing?.listed_unit_price },
+  { name: 'origin_unit_price', align: 'right', label: 'Origin', field: 'origin_unit_price' },
+  { name: 'extra_origin_unit_price', align: 'right', label: 'Extra Origin', field: 'extra_origin_unit_price' },
+  { name: 'product_unit_cost', align: 'right', label: 'Product Cost', field: 'product_unit_cost' },
+  { name: 'cargo_share_per_unit', align: 'right', label: 'Cargo/Unit', field: 'cargo_share_per_unit' },
+  { name: 'ops_share_per_unit', align: 'right', label: 'Ops/Unit', field: 'ops_share_per_unit' },
+  { name: 'additional_charges_cost', align: 'right', label: 'Add\'l Charges', field: 'additional_charges_cost' },
+  { name: 'landed_unit_cost', align: 'right', label: 'Landed', field: 'landed_unit_cost' },
+  { name: 'suggested_sell_unit_price', align: 'right', label: 'Suggested Sell', field: 'suggested_sell_unit_price' },
+  { name: 'listed_unit_price', align: 'right', label: 'Listed Sell', field: (row) => row.pricing?.listed_unit_price },
+  { name: 'is_listed_price_manual', align: 'center', label: 'Manual', field: (row) => row.pricing?.is_listed_price_manual },
   { name: 'status', align: 'center', label: 'Status', field: 'status', sortable: true },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
@@ -1531,12 +1539,11 @@ const editableColumns = new Set([
   'extra_weight',
   'condition',
   'quantity',
-  'origin_purchase_price',
-  'extra_origin_purchase_expense',
-  'cost_of_goods_sold',
-  'extra_expense_cost',
-  'target_price',
-  'listed_price',
+  'origin_unit_price',
+  'extra_origin_unit_price',
+  'additional_charges_cost',
+  'listed_unit_price',
+  'is_listed_price_manual',
   'status',
 ]);
 
@@ -1547,11 +1554,8 @@ function toNumber(value: unknown, fallback = 0): number {
 
 function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
   return {
-    cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
-    target_price: Number(row.pricing?.target_price) || 0,
     listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
     is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
-    extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
   };
 }
 
@@ -1720,6 +1724,7 @@ onMounted(async () => {
       loadShipments(),
       settingsStore.loadSettings(authStore.tenantId),
       currencyStore.loadCurrencies(),
+      loadShipmentUnitCounts(),
     ]);
   }
 });
@@ -1732,13 +1737,16 @@ function syncTablePagination() {
 
 async function loadStockPage(nextPage = store.page) {
   if (!authStore.tenantId) return;
-  await store.loadStocks(authStore.tenantId, {
-    page: nextPage,
-    pageSize: tablePagination.value.rowsPerPage,
-    search: searchText.value,
-    status: statusFilter.value,
-    condition: conditionFilter.value,
-  });
+  await Promise.all([
+    store.loadStocks(authStore.tenantId, {
+      page: nextPage,
+      pageSize: tablePagination.value.rowsPerPage,
+      search: searchText.value,
+      status: statusFilter.value,
+      condition: conditionFilter.value,
+    }),
+    loadShipmentUnitCounts(),
+  ]);
   syncTablePagination();
 }
 
@@ -1833,12 +1841,16 @@ const STOCK_CSV_HEADERS = [
   'quantity',
   'product_weight',
   'extra_weight',
-  'origin_purchase_price',
-  'extra_origin_purchase_expense',
-  'cost_of_goods_sold',
-  'target_price',
-  'listed_price',
-  'extra_expense_cost',
+  'origin_unit_price',
+  'extra_origin_unit_price',
+  'product_unit_cost',
+  'cargo_share_per_unit',
+  'ops_share_per_unit',
+  'additional_charges_cost',
+  'landed_unit_cost',
+  'suggested_sell_unit_price',
+  'listed_unit_price',
+  'is_listed_price_manual',
   'image_url',
   'drive_file_id',
   'inserted_by',
@@ -1850,39 +1862,74 @@ async function downloadStockCsv() {
   if (!authStore.tenantId) return;
   csvExportLoading.value = true;
   try {
-    const stocks = await thriftStockRepository.fetchStocks(authStore.tenantId);
-    const rows = stocks.map((s) => ({
-      id: s.id,
-      barcode: s.barcode,
-      shipment_id: s.shipment_id,
-      name: s.name,
-      brand_name: s.brand_name ?? '',
-      color: s.color,
-      size: s.size,
-      note: s.note ?? '',
-      category_id: s.category_id ?? '',
-      type_id: s.type_id ?? '',
-      shelf_id: s.shelf_id ?? '',
-      box_id: s.box_id ?? '',
-      section: s.section ?? '',
-      condition: s.condition ?? '',
-      stock_type: s.stock_type,
-      status: s.status,
-      quantity: s.quantity,
-      product_weight: s.product_weight ?? '',
-      extra_weight: s.extra_weight ?? '',
-      origin_purchase_price: s.origin_unit_price ?? '',
-      extra_origin_purchase_expense: s.extra_origin_unit_price ?? '',
-      cost_of_goods_sold: s.pricing?.cost_of_goods_sold ?? '',
-      target_price: s.pricing?.target_price ?? '',
-      listed_price: s.pricing?.listed_unit_price ?? '',
-      extra_expense_cost: s.pricing?.extra_expense_cost ?? '',
-      image_url: s.image_url ?? '',
-      drive_file_id: s.drive_file_id ?? '',
-      inserted_by: s.inserted_by,
-      created_at: s.created_at,
-      updated_at: s.updated_at,
-    }));
+    const [stocks, settings, unitCountsMap] = await Promise.all([
+      thriftStockRepository.fetchStocks(authStore.tenantId),
+      settingsStore.settings ? Promise.resolve(settingsStore.settings) : settingsStore.loadSettings(authStore.tenantId).then(() => settingsStore.settings),
+      thriftStockRepository.fetchQuantityByShipment(authStore.tenantId),
+    ]);
+
+    const rows = stocks.map((s) => {
+      const shipment = thriftStore.shipments.find((sh) => sh.id === s.shipment_id);
+      const U = unitCountsMap.get(s.shipment_id) || 1;
+      const pricing = s.pricing
+        ? {
+            listed_unit_price: s.pricing.listed_unit_price,
+            is_listed_price_manual: s.pricing.is_listed_price_manual,
+          }
+        : undefined;
+
+      const breakdown = settings && shipment
+        ? computeThriftUnitCosts(
+            {
+              quantity: s.quantity || 0,
+              origin_unit_price: s.origin_unit_price,
+              extra_origin_unit_price: s.extra_origin_unit_price,
+              additional_charges_cost: s.additional_charges_cost,
+            },
+            shipment,
+            settings,
+            U,
+            pricing,
+          )
+        : null;
+
+      return {
+        id: s.id,
+        barcode: s.barcode,
+        shipment_id: s.shipment_id,
+        name: s.name,
+        brand_name: s.brand_name ?? '',
+        color: s.color,
+        size: s.size,
+        note: s.note ?? '',
+        category_id: s.category_id ?? '',
+        type_id: s.type_id ?? '',
+        shelf_id: s.shelf_id ?? '',
+        box_id: s.box_id ?? '',
+        section: s.section ?? '',
+        condition: s.condition ?? '',
+        stock_type: s.stock_type,
+        status: s.status,
+        quantity: s.quantity,
+        product_weight: s.product_weight ?? '',
+        extra_weight: s.extra_weight ?? '',
+        origin_unit_price: s.origin_unit_price ?? '',
+        extra_origin_unit_price: s.extra_origin_unit_price ?? '',
+        product_unit_cost: breakdown?.product_unit_cost ?? '',
+        cargo_share_per_unit: breakdown?.cargo_share_per_unit ?? '',
+        ops_share_per_unit: breakdown?.ops_share_per_unit ?? '',
+        additional_charges_cost: s.additional_charges_cost ?? '',
+        landed_unit_cost: breakdown?.landed_unit_cost ?? '',
+        suggested_sell_unit_price: breakdown?.suggested_sell_unit_price ?? '',
+        listed_unit_price: s.pricing?.listed_unit_price ?? '',
+        is_listed_price_manual: !!s.pricing?.is_listed_price_manual,
+        image_url: s.image_url ?? '',
+        drive_file_id: s.drive_file_id ?? '',
+        inserted_by: s.inserted_by,
+        created_at: s.created_at,
+        updated_at: s.updated_at,
+      };
+    });
     const csv = rowsToCsv([...STOCK_CSV_HEADERS], rows);
     const slug = authStore.tenantSlug || 'tenant';
     const date = new Date().toISOString().slice(0, 10);

@@ -612,4 +612,20 @@ export const thriftStockRepository = {
       };
     }) as unknown as ThriftStock[];
   },
+
+  async fetchQuantityByShipment(tenantId: number): Promise<Map<number, number>> {
+    const { data, error } = await supabase
+      .from('thrift_stocks')
+      .select('shipment_id, quantity')
+      .eq('tenant_id', tenantId);
+    if (error) throw error;
+
+    const map = new Map<number, number>();
+    for (const row of data || []) {
+      const shId = row.shipment_id;
+      const qty = row.quantity || 0;
+      map.set(shId, (map.get(shId) || 0) + qty);
+    }
+    return map;
+  },
 };
