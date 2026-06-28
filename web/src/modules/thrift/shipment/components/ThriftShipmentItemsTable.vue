@@ -10,7 +10,7 @@
           <th v-if="isVisible('brand_name')" class="text-left">Brand</th>
           <th v-if="isVisible('category_name')" class="text-left">Category</th>
           <th v-if="isVisible('type_name')" class="text-left">Type</th>
-          <th v-if="isVisible('measurements')" class="text-left" style="min-width: 160px;">Measurements</th>
+          <th v-if="isVisible('measurements')" class="text-left measurements-col">Measurements</th>
           <th v-if="isVisible('origin_unit_price')" class="text-right">Origin Price</th>
           <th v-if="isVisible('extra_origin_unit_price')" class="text-right">Extra Origin</th>
           <th v-if="isVisible('product_unit_cost')" class="text-right">Product Cost</th>
@@ -18,6 +18,8 @@
           <th v-if="isVisible('ops_share_per_unit')" class="text-right">Ops/Unit</th>
           <th v-if="isVisible('additional_charges_cost')" class="text-right">Add'l Charges</th>
           <th v-if="isVisible('landed_unit_cost')" class="text-right">Landed Cost</th>
+          <th v-if="isVisible('item_markup_pct')" class="text-right">Item Markup %</th>
+          <th v-if="isVisible('effective_markup_pct')" class="text-right">Effective Markup %</th>
           <th v-if="isVisible('suggested_sell_unit_price')" class="text-right">Suggested Sell</th>
           <th v-if="isVisible('listed_unit_price')" class="text-right">Listed Sell</th>
           <th v-if="isVisible('is_listed_price_manual')" class="text-center">Manual</th>
@@ -64,9 +66,9 @@
           </td>
 
           <!-- Measurements -->
-          <td v-if="isVisible('measurements')" class="text-left">
-            <div class="row items-center justify-between no-wrap">
-              <span class="text-caption text-grey-8 ellipsis" style="max-width: 140px;">
+          <td v-if="isVisible('measurements')" class="text-left measurements-col">
+            <div class="row items-center no-wrap measurements-cell">
+              <span class="measurements-cell__text col text-caption text-grey-8">
                 {{ getFormattedMeasurements(row) }}
               </span>
               <q-btn
@@ -76,10 +78,14 @@
                 size="xs"
                 icon="straighten"
                 color="secondary"
+                class="col-auto"
                 @click="emit('edit-measurements', row)"
               >
                 <q-tooltip>Edit Measurements</q-tooltip>
               </q-btn>
+              <q-tooltip v-if="getFormattedMeasurements(row) !== '—'" max-width="320px">
+                {{ getFormattedMeasurements(row) }}
+              </q-tooltip>
             </div>
           </td>
 
@@ -139,7 +145,43 @@
 
           <!-- Landed unit cost -->
           <td v-if="isVisible('landed_unit_cost')" class="text-right text-weight-bold text-teal">
-            {{ formatCost(costingBreakdowns[row.id]?.landed_unit_cost || 0) }}
+            <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+              <span>{{ formatCost(costingBreakdowns[row.id]?.landed_unit_cost || 0) }}</span>
+              <q-btn
+                flat
+                round
+                dense
+                size="xs"
+                icon="info"
+                color="primary"
+                @click="emit('open-landed-breakdown', row)"
+              >
+                <q-tooltip>Landed cost breakdown</q-tooltip>
+              </q-btn>
+            </div>
+          </td>
+
+          <!-- Item markup % -->
+          <td v-if="isVisible('item_markup_pct')" class="text-right">
+            <span v-if="row.pricing?.is_listed_price_manual" class="text-grey-6">—</span>
+            <template v-else>
+              <span class="text-underline-dashed cursor-pointer">
+                {{ itemMarkupLabel(row) }}
+              </span>
+              <q-popup-edit
+                :model-value="itemMarkupPct(row) ?? 0"
+                v-slot="scope"
+                buttons
+                @save="val => emit('save-pricing-value', row, 'markup_rate_override', Number(val) / 100)"
+              >
+                <q-input v-model.number="scope.value" type="number" min="0" step="1" suffix="%" dense autofocus />
+              </q-popup-edit>
+            </template>
+          </td>
+
+          <!-- Effective markup % -->
+          <td v-if="isVisible('effective_markup_pct')" class="text-right text-grey-7">
+            {{ effectiveMarkupLabel(row) }}
           </td>
 
           <!-- Suggested sell price -->
@@ -149,7 +191,7 @@
 
           <!-- Listed unit price -->
           <td v-if="isVisible('listed_unit_price')" class="cursor-pointer text-right text-weight-bold text-underline-dashed">
-            {{ formatCost(row.pricing?.listed_unit_price || 0) }}
+            {{ formatCost(costingBreakdowns[row.id]?.display_listed_unit_price ?? row.pricing?.listed_unit_price ?? 0) }}
             <q-popup-edit
               :model-value="row.pricing?.listed_unit_price || 0"
               v-slot="scope"
@@ -200,6 +242,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'edit-measurements', row: ThriftStock): void;
+  (e: 'open-landed-breakdown', row: ThriftStock): void;
   (e: 'save-stock-value', row: ThriftStock, field: string, val: number): void;
   (e: 'save-pricing-value', row: ThriftStock, field: string, val: any): void;
 }>();
@@ -224,6 +267,27 @@ function openImage(url: string | null | undefined) {
   if (url) {
     window.open(url, '_blank');
   }
+}
+
+function itemMarkupPct(row: ThriftStock): number | null {
+  if (row.pricing?.is_listed_price_manual) return null;
+  if (row.pricing?.markup_rate_override != null) {
+    return Math.round(row.pricing.markup_rate_override * 1000) / 10;
+  }
+  const breakdown = props.costingBreakdowns[row.id];
+  if (!breakdown) return null;
+  return Math.round(breakdown.applied_markup_rate * 1000) / 10;
+}
+
+function itemMarkupLabel(row: ThriftStock): string {
+  const pct = itemMarkupPct(row);
+  return pct != null ? `${pct}%` : '—';
+}
+
+function effectiveMarkupLabel(row: ThriftStock): string {
+  const breakdown = props.costingBreakdowns[row.id];
+  if (!breakdown || breakdown.effective_markup_pct == null) return '—';
+  return `${Math.round(breakdown.effective_markup_pct * 10) / 10}%`;
 }
 </script>
 
@@ -315,5 +379,22 @@ function openImage(url: string | null | undefined) {
 
 .text-underline-dashed {
   text-decoration: underline dashed rgba(0, 0, 0, 0.3);
+}
+
+.measurements-col {
+  max-width: 180px;
+  min-width: 120px;
+}
+
+.measurements-cell {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.measurements-cell__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

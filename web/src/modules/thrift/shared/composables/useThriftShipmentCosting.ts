@@ -7,6 +7,7 @@ import {
   computeShipmentUnitCount,
   computeShipmentCargoCost,
   computeShipmentOpsCost,
+  computeShipmentTotalWeightKg,
   computeThriftUnitCostsForShipment,
   type ThriftStockPricingInput,
 } from '../utils/computeThriftUnitCosts';
@@ -34,8 +35,32 @@ export function useThriftShipmentCosting(
   });
 
   const cargoSharePerUnit = computed(() => {
+    const breakdowns = costingBreakdowns.value;
+    let weightedCargo = 0;
+    let qty = 0;
+    for (const stock of stocksRef.value) {
+      const breakdown = breakdowns[stock.id];
+      if (!breakdown) continue;
+      const stockQty = stock.quantity || 0;
+      weightedCargo += breakdown.cargo_share_per_unit * stockQty;
+      qty += stockQty;
+    }
+    if (qty > 0) return weightedCargo / qty;
     return cargoCost.value / Math.max(U.value, 1);
   });
+
+  const shipmentTotalWeightKg = computed(() => {
+    return computeShipmentTotalWeightKg(
+      stocksRef.value.map((stock) => ({
+        id: stock.id,
+        quantity: stock.quantity || 0,
+        product_weight: stock.product_weight ?? null,
+        extra_weight: stock.extra_weight ?? null,
+      })),
+    );
+  });
+
+  const usesWeightBasedCargo = computed(() => shipmentTotalWeightKg.value > 0);
 
   const opsSharePerUnit = computed(() => {
     return opsCost.value / Math.max(U.value, 1);
@@ -64,12 +89,21 @@ export function useThriftShipmentCosting(
         pricingMap[stock.id] = {
           listed_unit_price: stock.pricing.listed_unit_price,
           is_listed_price_manual: stock.pricing.is_listed_price_manual,
+          markup_rate_override: stock.pricing.markup_rate_override ?? null,
         };
       }
     }
 
     return computeThriftUnitCostsForShipment(
-      stocksRef.value,
+      stocksRef.value.map((stock) => ({
+        id: stock.id,
+        quantity: stock.quantity || 0,
+        product_weight: stock.product_weight ?? null,
+        extra_weight: stock.extra_weight ?? null,
+        origin_unit_price: stock.origin_unit_price ?? null,
+        extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
+        additional_charges_cost: stock.additional_charges_cost ?? null,
+      })),
       shipment,
       settings,
       pricingMap,
@@ -84,6 +118,8 @@ export function useThriftShipmentCosting(
     opsSharePerUnit,
     handTagTotal,
     stickerTotal,
+    shipmentTotalWeightKg,
+    usesWeightBasedCargo,
     costingBreakdowns,
   };
 }

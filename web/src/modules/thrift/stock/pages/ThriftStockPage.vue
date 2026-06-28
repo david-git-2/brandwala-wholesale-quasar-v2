@@ -305,9 +305,16 @@
                 </q-popup-edit>
               </template>
               <template v-else-if="col.name === 'size'">
-                <div class="cursor-pointer text-grey-9 text-weight-medium" @click="openMeasurementsDialog(props.row)">
-                  {{ formatThriftStockMeasurements(props.row) }}
-                  <q-tooltip>Click to edit measurements</q-tooltip>
+                <div
+                  class="measurements-cell cursor-pointer text-grey-9 text-weight-medium"
+                  @click="openMeasurementsDialog(props.row)"
+                >
+                  <span class="measurements-cell__text">
+                    {{ formatThriftStockMeasurements(props.row) }}
+                  </span>
+                  <q-tooltip max-width="320px">
+                    {{ formatThriftStockMeasurements(props.row) }}
+                  </q-tooltip>
                 </div>
               </template>
               <template v-else-if="col.name === 'box'">
@@ -493,13 +500,58 @@
                 </q-popup-edit>
               </template>
               <template v-else-if="col.name === 'landed_unit_cost'">
-                <div class="text-weight-bold text-teal thrift-cost-computed">
-                  {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.landed_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                  <div class="text-weight-bold text-teal thrift-cost-computed">
+                    {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.landed_unit_cost || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                  </div>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="info"
+                    color="primary"
+                    @click.stop="openLandedBreakdownDialog(props.row)"
+                  >
+                    <q-tooltip>Landed cost breakdown</q-tooltip>
+                  </q-btn>
                 </div>
               </template>
               <template v-else-if="col.name === 'suggested_sell_unit_price'">
                 <div class="text-grey-8 thrift-cost-computed">
                   {{ formatStockPrice(costBreakdownByStockId[props.row.id]?.suggested_sell_unit_price || 0, shipmentCostCurrency(props.row.shipment_id)) }}
+                </div>
+              </template>
+              <template v-else-if="col.name === 'item_markup_pct'">
+                <div v-if="props.row.pricing?.is_listed_price_manual" class="text-grey-6">—</div>
+                <div v-else class="editable-value text-grey-8">
+                  {{ itemMarkupPctForRow(props.row) != null ? `${itemMarkupPctForRow(props.row)}%` : '—' }}
+                </div>
+                <q-popup-edit
+                  v-if="!props.row.pricing?.is_listed_price_manual"
+                  v-slot="scope"
+                  :model-value="itemMarkupPctForRow(props.row) ?? 0"
+                  buttons
+                  persistent
+                  label-set="Save"
+                  label-cancel="Cancel"
+                  @save="(value) => onItemMarkupSave(props.row, toNumber(value))"
+                >
+                  <q-input
+                    v-model.number="scope.value"
+                    type="number"
+                    min="0"
+                    step="1"
+                    dense
+                    outlined
+                    suffix="%"
+                    autofocus
+                  />
+                </q-popup-edit>
+              </template>
+              <template v-else-if="col.name === 'effective_markup_pct'">
+                <div class="text-grey-8 thrift-cost-computed">
+                  {{ effectiveMarkupLabel(props.row) }}
                 </div>
               </template>
               <template v-else-if="col.name === 'listed_unit_price'">
@@ -1115,8 +1167,10 @@ import {
 import { downloadCsv, rowsToCsv } from 'src/utils/csvExport';
 import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/formatThriftStockMeasurements';
 import ThriftStockMeasurementsDialog from '../components/ThriftStockMeasurementsDialog.vue';
+import ThriftLandedCostBreakdownDialog from '../components/ThriftLandedCostBreakdownDialog.vue';
 import {
   computeThriftUnitCosts,
+  computeThriftUnitCostsForShipment,
   type ThriftStockCostInput,
   type ThriftUnitCostBreakdown,
 } from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
@@ -1146,26 +1200,36 @@ const costBreakdownByStockId = computed<Record<number, ThriftUnitCostBreakdown>>
   const settings = settingsStore.settings;
   if (!settings) return {};
 
-  const breakdowns: Record<number, ThriftUnitCostBreakdown> = {};
+  const byShipment = new Map<number, ThriftStock[]>();
   for (const stock of stocks.value) {
-    const shipment = shipmentById.value.get(stock.shipment_id);
+    const list = byShipment.get(stock.shipment_id) ?? [];
+    list.push(stock);
+    byShipment.set(stock.shipment_id, list);
+  }
+
+  const breakdowns: Record<number, ThriftUnitCostBreakdown> = {};
+  for (const [shipmentId, shipmentStocks] of byShipment) {
+    const shipment = shipmentById.value.get(shipmentId);
     if (!shipment) continue;
 
-    const U = shipmentUnitCounts.value.get(stock.shipment_id) || 1;
-    const pricing = stock.pricing
-      ? {
+    const pricingMap: Record<number, { listed_unit_price: number; is_listed_price_manual: boolean; markup_rate_override?: number | null }> = {};
+    for (const stock of shipmentStocks) {
+      if (stock.pricing) {
+        pricingMap[stock.id] = {
           listed_unit_price: stock.pricing.listed_unit_price,
           is_listed_price_manual: !!stock.pricing.is_listed_price_manual,
-        }
-      : undefined;
+          markup_rate_override: stock.pricing.markup_rate_override ?? null,
+        };
+      }
+    }
 
-    breakdowns[stock.id] = computeThriftUnitCosts(
-      buildStockCostInput(stock),
+    const shipmentBreakdowns = computeThriftUnitCostsForShipment(
+      shipmentStocks.map(buildStockCostInput),
       shipment,
       settings,
-      U,
-      pricing,
+      pricingMap,
     );
+    Object.assign(breakdowns, shipmentBreakdowns);
   }
   return breakdowns;
 });
@@ -1182,6 +1246,37 @@ function openMeasurementsDialog(row: ThriftStock) {
   });
 }
 
+function openLandedBreakdownDialog(row: ThriftStock) {
+  const breakdown = costBreakdownByStockId.value[row.id];
+  if (!breakdown) return;
+  const shipment = shipmentById.value.get(row.shipment_id);
+  $q.dialog({
+    component: ThriftLandedCostBreakdownDialog,
+    componentProps: {
+      stock: row,
+      breakdown,
+      shipmentName: shipment?.name || '',
+      formatCost: (amount: number) => formatStockPrice(amount, shipmentCostCurrency(row.shipment_id)),
+    },
+  });
+}
+
+function itemMarkupPctForRow(row: ThriftStock): number | null {
+  if (row.pricing?.is_listed_price_manual) return null;
+  if (row.pricing?.markup_rate_override != null) {
+    return Math.round(row.pricing.markup_rate_override * 1000) / 10;
+  }
+  const breakdown = costBreakdownByStockId.value[row.id];
+  if (!breakdown) return null;
+  return Math.round(breakdown.applied_markup_rate * 1000) / 10;
+}
+
+function effectiveMarkupLabel(row: ThriftStock): string {
+  const breakdown = costBreakdownByStockId.value[row.id];
+  if (!breakdown || breakdown.effective_markup_pct == null) return '—';
+  return `${Math.round(breakdown.effective_markup_pct * 10) / 10}%`;
+}
+
 interface ShipmentOption {
   id: number;
   name: string;
@@ -1193,6 +1288,7 @@ interface ShipmentOption {
   total_cargo_weight_kg?: number | null;
   labor_total_cost?: number | null;
   transportation_total_cost?: number | null;
+  washing_total_cost?: number | null;
   default_markup_rate?: number | null;
 }
 
@@ -1474,6 +1570,8 @@ const columnSelectorOptions = [
   { label: 'Ops/Unit', value: 'ops_share_per_unit' },
   { label: 'Add\'l Charges', value: 'additional_charges_cost' },
   { label: 'Landed', value: 'landed_unit_cost' },
+  { label: 'Item Markup %', value: 'item_markup_pct' },
+  { label: 'Effective Markup %', value: 'effective_markup_pct' },
   { label: 'Suggested Sell', value: 'suggested_sell_unit_price' },
   { label: 'Listed Sell', value: 'listed_unit_price' },
   { label: 'Manual Price', value: 'is_listed_price_manual' },
@@ -1508,7 +1606,7 @@ const columns: QTableColumn[] = [
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'brand_name', align: 'left', label: 'Brand', field: 'brand_name' },
   { name: 'section', align: 'left', label: 'Section', field: 'section' },
-  { name: 'size', align: 'left', label: 'Measurements', field: (row) => formatThriftStockMeasurements(row) },
+  { name: 'size', align: 'left', label: 'Measurements', field: (row) => formatThriftStockMeasurements(row), classes: 'measurements-col', headerClasses: 'measurements-col' },
   { name: 'box', align: 'left', label: 'Box', field: 'box' },
   { name: 'product_weight', align: 'right', label: 'Product Wt', field: 'product_weight' },
   { name: 'extra_weight', align: 'right', label: 'Extra Wt', field: 'extra_weight' },
@@ -1521,6 +1619,8 @@ const columns: QTableColumn[] = [
   { name: 'ops_share_per_unit', align: 'right', label: 'Ops/Unit', field: 'ops_share_per_unit' },
   { name: 'additional_charges_cost', align: 'right', label: 'Add\'l Charges', field: 'additional_charges_cost' },
   { name: 'landed_unit_cost', align: 'right', label: 'Landed', field: 'landed_unit_cost' },
+  { name: 'item_markup_pct', align: 'right', label: 'Item Markup %', field: 'item_markup_pct' },
+  { name: 'effective_markup_pct', align: 'right', label: 'Effective Markup %', field: 'effective_markup_pct' },
   { name: 'suggested_sell_unit_price', align: 'right', label: 'Suggested Sell', field: 'suggested_sell_unit_price' },
   { name: 'listed_unit_price', align: 'right', label: 'Listed Sell', field: (row) => row.pricing?.listed_unit_price },
   { name: 'is_listed_price_manual', align: 'center', label: 'Manual', field: (row) => row.pricing?.is_listed_price_manual },
@@ -1565,7 +1665,10 @@ function toNumber(value: unknown, fallback = 0): number {
 
 function buildStockCostInput(stock: ThriftStock): ThriftStockCostInput {
   return {
+    id: stock.id,
     quantity: stock.quantity || 0,
+    product_weight: stock.product_weight ?? null,
+    extra_weight: stock.extra_weight ?? null,
     origin_unit_price: stock.origin_unit_price ?? null,
     extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
     additional_charges_cost: stock.additional_charges_cost ?? null,
@@ -1578,6 +1681,7 @@ function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
     target_price: Number(row.pricing?.target_price) || 0,
     listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
     is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
+    markup_rate_override: row.pricing?.markup_rate_override ?? null,
     extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
   };
 }
@@ -1600,6 +1704,7 @@ async function saveStockCell(
       target_price: pricing.target_price,
       listed_unit_price: pricing.listed_unit_price,
       is_listed_price_manual: !!pricing.is_listed_price_manual,
+      markup_rate_override: pricing.markup_rate_override ?? null,
       extra_expense_cost: pricing.extra_expense_cost ?? 0,
     };
   }
@@ -1696,6 +1801,24 @@ async function onListedUnitPriceSave(row: ThriftStock, value: number) {
   }
 }
 
+async function onItemMarkupSave(row: ThriftStock, markupPct: number) {
+  try {
+    if (!row.pricing) {
+      row.pricing = buildPricingFromRow(row) as any;
+    }
+    const override = markupPct / 100;
+    row.pricing!.markup_rate_override = override;
+    row.pricing!.is_listed_price_manual = false;
+    await saveStockCell(row, {}, {
+      markup_rate_override: override,
+      is_listed_price_manual: false,
+    });
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
+    await loadStockPage();
+  }
+}
+
 async function onPricingCellSave(
   row: ThriftStock,
   field: 'is_listed_price_manual',
@@ -1706,7 +1829,15 @@ async function onPricingCellSave(
       row.pricing = buildPricingFromRow(row) as any;
     }
     row.pricing!.is_listed_price_manual = value;
-    await saveStockCell(row, {}, { is_listed_price_manual: value });
+    const patch: Partial<ThriftStockPricingInput> = { is_listed_price_manual: value };
+    if (!value) {
+      const breakdown = costBreakdownByStockId.value[row.id];
+      if (breakdown) {
+        patch.listed_unit_price = breakdown.suggested_sell_unit_price;
+        row.pricing!.listed_unit_price = breakdown.suggested_sell_unit_price;
+      }
+    }
+    await saveStockCell(row, {}, patch);
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
     await loadStockPage();
@@ -1899,31 +2030,46 @@ async function downloadStockCsv() {
   if (!authStore.tenantId) return;
   csvExportLoading.value = true;
   try {
-    const [stocks, settings, unitCountsMap] = await Promise.all([
+    const [stocks, settings] = await Promise.all([
       thriftStockRepository.fetchStocks(authStore.tenantId),
       settingsStore.settings ? Promise.resolve(settingsStore.settings) : settingsStore.loadSettings(authStore.tenantId).then(() => settingsStore.settings),
-      thriftStockRepository.fetchQuantityByShipment(authStore.tenantId),
     ]);
 
-    const rows = stocks.map((s) => {
-      const shipment = shipmentById.value.get(s.shipment_id);
-      const U = unitCountsMap.get(s.shipment_id) || 1;
-      const pricing = s.pricing
-        ? {
-            listed_unit_price: s.pricing.listed_unit_price,
-            is_listed_price_manual: !!s.pricing.is_listed_price_manual,
+    const breakdownByStockId: Record<number, ThriftUnitCostBreakdown> = {};
+    if (settings) {
+      const byShipment = new Map<number, ThriftStock[]>();
+      for (const stock of stocks) {
+        const list = byShipment.get(stock.shipment_id) ?? [];
+        list.push(stock);
+        byShipment.set(stock.shipment_id, list);
+      }
+      for (const [shipmentId, shipmentStocks] of byShipment) {
+        const shipment = shipmentById.value.get(shipmentId);
+        if (!shipment) continue;
+        const pricingMap: Record<number, { listed_unit_price: number; is_listed_price_manual: boolean; markup_rate_override?: number | null }> = {};
+        for (const stock of shipmentStocks) {
+          if (stock.pricing) {
+            pricingMap[stock.id] = {
+              listed_unit_price: stock.pricing.listed_unit_price,
+              is_listed_price_manual: !!stock.pricing.is_listed_price_manual,
+              markup_rate_override: stock.pricing.markup_rate_override ?? null,
+            };
           }
-        : undefined;
-
-      const breakdown = settings && shipment
-        ? computeThriftUnitCosts(
-            buildStockCostInput(s),
+        }
+        Object.assign(
+          breakdownByStockId,
+          computeThriftUnitCostsForShipment(
+            shipmentStocks.map(buildStockCostInput),
             shipment,
             settings,
-            U,
-            pricing,
-          )
-        : null;
+            pricingMap,
+          ),
+        );
+      }
+    }
+
+    const rows = stocks.map((s) => {
+      const breakdown = breakdownByStockId[s.id] ?? null;
 
       return {
         id: s.id,
@@ -2769,5 +2915,23 @@ const statusDotColor = (status: string | null | undefined) => {
   padding: 12px;
   border-radius: 8px;
   background: #fff;
+}
+
+:deep(th.measurements-col),
+:deep(td.measurements-col) {
+  max-width: 180px;
+  min-width: 120px;
+}
+
+.measurements-cell {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.measurements-cell__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

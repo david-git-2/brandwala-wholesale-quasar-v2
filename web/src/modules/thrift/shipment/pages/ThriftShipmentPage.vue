@@ -144,6 +144,9 @@
             <div class="col-12 col-sm-6">
               <q-input v-model.number="form.transportation_total_cost" type="number" step="0.01" outlined dense label="Transportation Total Cost" class="soft-input" />
             </div>
+            <div class="col-12 col-sm-6">
+              <q-input v-model.number="form.washing_total_cost" type="number" step="0.01" outlined dense label="Washing Total Cost" class="soft-input" />
+            </div>
           </div>
 
           <q-input v-model.number="markupPercentage" type="number" step="1" min="0" outlined dense label="Default Markup (%)" class="soft-input" suffix="%" />
@@ -208,6 +211,7 @@ const form = ref({
   total_cargo_weight_kg: null as number | null,
   labor_total_cost: null as number | null,
   transportation_total_cost: null as number | null,
+  washing_total_cost: null as number | null,
   default_markup_rate: null as number | null,
   purchase_currency_id: null as number | null,
   cost_currency_id: null as number | null,
@@ -293,6 +297,7 @@ function openDialog(row?: ThriftShipment) {
       total_cargo_weight_kg: row.total_cargo_weight_kg ?? null,
       labor_total_cost: row.labor_total_cost ?? null,
       transportation_total_cost: row.transportation_total_cost ?? null,
+      washing_total_cost: row.washing_total_cost ?? null,
       default_markup_rate: row.default_markup_rate ?? null,
       purchase_currency_id: row.purchase_currency_id,
       cost_currency_id: row.cost_currency_id,
@@ -307,6 +312,7 @@ function openDialog(row?: ThriftShipment) {
       total_cargo_weight_kg: null,
       labor_total_cost: null,
       transportation_total_cost: null,
+      washing_total_cost: null,
       default_markup_rate: null,
       purchase_currency_id: defaultPurchaseCurrencyId(),
       cost_currency_id: defaultCostCurrencyId(),
@@ -329,6 +335,7 @@ async function save() {
       total_cargo_weight_kg: form.value.total_cargo_weight_kg,
       labor_total_cost: form.value.labor_total_cost,
       transportation_total_cost: form.value.transportation_total_cost,
+      washing_total_cost: form.value.washing_total_cost,
       default_markup_rate: form.value.default_markup_rate,
       purchase_currency_id: form.value.purchase_currency_id,
       cost_currency_id: form.value.cost_currency_id,

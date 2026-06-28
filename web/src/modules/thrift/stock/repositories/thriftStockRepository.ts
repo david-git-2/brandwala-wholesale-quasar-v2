@@ -57,6 +57,7 @@ interface ThriftStockDbRow {
     target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
+    markup_rate_override?: number | null;
     extra_expense_cost?: number;
   }>;
   thrift_stock_images?: Array<{
@@ -76,6 +77,7 @@ interface ThriftStockPaginatedRow extends ThriftStockDbRow {
     target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
+    markup_rate_override?: number | null;
     extra_expense_cost?: number;
   };
   image_url?: string | null;
@@ -88,6 +90,7 @@ export interface ThriftStockPricingInput {
   target_price: number;
   listed_unit_price: number;
   is_listed_price_manual?: boolean | null | undefined;
+  markup_rate_override?: number | null | undefined;
   extra_expense_cost?: number | null | undefined;
 }
 
@@ -109,6 +112,7 @@ async function upsertStockPricing(
     target_price: pricing.target_price,
     listed_unit_price: pricing.listed_unit_price,
     is_listed_price_manual: pricing.is_listed_price_manual ?? false,
+    markup_rate_override: pricing.markup_rate_override ?? null,
     extra_expense_cost: pricing.extra_expense_cost ?? 0,
     inserted_by: insertedBy,
   };
@@ -172,6 +176,7 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
       target_price: 0,
       listed_unit_price: 0,
       is_listed_price_manual: false,
+      markup_rate_override: null,
       extra_expense_cost: 0,
     };
     const primaryImage =
@@ -191,6 +196,7 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
         target_price: Number(pricing.target_price) || 0,
         listed_unit_price: Number(pricing.listed_unit_price) || 0,
         is_listed_price_manual: !!pricing.is_listed_price_manual,
+        markup_rate_override: pricing.markup_rate_override ?? null,
         extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
       },
       image_url: stock.image_url || primaryImage?.image_url || undefined,
@@ -255,6 +261,7 @@ async function fetchStocksPaginatedDirect(
           target_price,
           listed_unit_price,
           is_listed_price_manual,
+          markup_rate_override,
           extra_expense_cost
         ),
         thrift_stock_images (

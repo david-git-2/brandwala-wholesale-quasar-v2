@@ -5022,6 +5022,7 @@ export type Database = {
           inserted_by: string
           is_listed_price_manual: boolean | null
           listed_unit_price: number
+          markup_rate_override: number | null
           stock_id: number
           target_price: number
           updated_at: string
@@ -5034,6 +5035,7 @@ export type Database = {
           inserted_by: string
           is_listed_price_manual?: boolean | null
           listed_unit_price?: number
+          markup_rate_override?: number | null
           stock_id: number
           target_price?: number
           updated_at?: string
@@ -5046,6 +5048,7 @@ export type Database = {
           inserted_by?: string
           is_listed_price_manual?: boolean | null
           listed_unit_price?: number
+          markup_rate_override?: number | null
           stock_id?: number
           target_price?: number
           updated_at?: string
@@ -5173,6 +5176,7 @@ export type Database = {
           total_cargo_weight_kg: number | null
           transportation_total_cost: number | null
           updated_at: string
+          washing_total_cost: number | null
         }
         Insert: {
           cargo_conversion_rate?: number | null
@@ -5190,6 +5194,7 @@ export type Database = {
           total_cargo_weight_kg?: number | null
           transportation_total_cost?: number | null
           updated_at?: string
+          washing_total_cost?: number | null
         }
         Update: {
           cargo_conversion_rate?: number | null
@@ -5207,6 +5212,7 @@ export type Database = {
           total_cargo_weight_kg?: number | null
           transportation_total_cost?: number | null
           updated_at?: string
+          washing_total_cost?: number | null
         }
         Relationships: [
           {

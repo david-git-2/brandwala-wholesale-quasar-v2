@@ -45,9 +45,9 @@ settings + tenant prefs → shipment → box → stock (+ barcode at register)
 | D-T1 | Stock stores **3 cost inputs only:** `origin_unit_price`, `extra_origin_unit_price`, `additional_charges_cost` |
 | D-T2 | Shipment stores rates, cargo weight, labour/transport totals, markup |
 | D-T3 | Settings store default origin + hand-tag / sticker unit costs |
-| D-T4 | `U` = `SUM(quantity)` per shipment — divisor for cargo and ops |
-| D-T5 | Cargo allocated: `shipment_cargo_cost / U` per unit |
-| D-T6 | Sell price = `landed_unit_cost × (1 + default_markup_rate)` unless manual override |
+| D-T4 | `U` = `SUM(quantity)` per shipment — divisor for **ops** allocation |
+| D-T5 | Cargo allocated **by weight** `(product_weight + extra_weight) × quantity`; falls back to `shipment_cargo_cost / U` when no weights |
+| D-T6 | Sell price = `landed_unit_cost × (1 + markup_rate_override ?? default_markup_rate)` unless `is_listed_price_manual` |
 | D-T7 | Deprecate stored `cost_of_goods_sold`, `extra_expense_cost`, `target_price` |
 | D-T8 | **Scope lock** — barcode, images, catalog, registration flows **unchanged**; only shipment + cost fields change |
 | D-T9 | Garment fit — `size` + `brand_name` on `thrift_stocks`; actual measurements in `thrift_stock_measurements` (inches, all optional); **no** `thrift_brand_size_charts` |
@@ -211,6 +211,7 @@ erDiagram
 | `total_cargo_weight_kg` | — | numeric | Yes |
 | `labor_total_cost` | — | numeric | Yes |
 | `transportation_total_cost` | — | numeric | Yes |
+| `washing_total_cost` | — | numeric | Yes |
 | `default_markup_rate` | — | numeric | Yes |
 | `inserted_by`, timestamps | | | Yes |
 
@@ -274,6 +275,8 @@ erDiagram
 | `stock_id` | FK unique | Keep |
 | `listed_price` | numeric | → `listed_unit_price` |
 | `is_listed_price_manual` | — | **New** |
+| `markup_rate_override` | — | **New** — per-item markup decimal; null = use shipment default |
+| `markup_rate_override` | — | **New** — per-item markup decimal; null = use shipment default |
 | `cost_of_goods_sold` | numeric | **Deprecate** (compute) |
 | `extra_expense_cost` | numeric | **Deprecate** (compute) |
 | `target_price` | numeric | **Deprecate** (→ suggested sell) |
@@ -750,7 +753,7 @@ Simplified to only: **SL**, **Shipment Name** (linking to detail page), and **Ac
 
 Catalog cols (barcode, image, category, type) **unchanged**. **Measurements:** single **F** cell (same formatter + dialog as stock table) — **not** separate bust/waist/hips columns.
 
-Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C), suggested sell (C), listed sell, manual flag.
+Cost block: origin, extra origin, product cost (C), cargo/unit (C), ops/unit (C), add'l charges, landed (C) + info breakdown dialog, item markup %, effective markup %, suggested sell (C), listed sell, manual flag.
 
 **Two-Column Layout Redesign (P8-A):**
 - **Left Sidebar:** Collapsible panel containing the shipment info summary and the cargo / operational costing inputs (e.g. weight, cargo rate, labor, transport costs, conversion rates, and markup).
@@ -791,15 +794,24 @@ product_unit_cost = (origin_unit_price + extra_origin_unit_price) × product_con
 
 shipment_cargo_cost = (total_cargo_weight_kg × cargo_rate) × cargo_conversion_rate
 
-shipment_ops_cost = (hand_tag_unit_cost × U) + (sticker_unit_cost × U) + labor_total_cost + transportation_total_cost
+shipment_ops_cost = (hand_tag_unit_cost × U) + (sticker_unit_cost × U) + labor_total_cost + transportation_total_cost + washing_total_cost
 
-cargo_share_per_unit = shipment_cargo_cost / U
+line_weight_kg = ((product_weight + extra_weight) / 1000) × quantity
+total_weight_kg = SUM(line_weight_kg) per shipment
+
+cargo_share_per_unit = if total_weight_kg > 0:
+                         (line_weight_kg / total_weight_kg) × shipment_cargo_cost / quantity
+                       else:
+                         shipment_cargo_cost / U
 ops_share_per_unit   = shipment_ops_cost / U
 
 landed_unit_cost = product_unit_cost + cargo_share_per_unit + ops_share_per_unit + additional_charges_cost
 
-suggested_sell_unit_price = landed_unit_cost × (1 + default_markup_rate)
+suggested_sell_unit_price = landed_unit_cost × (1 + (markup_rate_override ?? default_markup_rate))
 listed_unit_price = is_listed_price_manual ? stored : suggested_sell_unit_price
+effective_markup_pct = is_listed_price_manual && landed > 0
+  ? ((listed_unit_price - landed) / landed) × 100
+  : (markup_rate_override ?? default_markup_rate) × 100
 ```
 
 **Code (planned):** `web/src/modules/thrift/shared/utils/computeThriftUnitCosts.ts`
@@ -822,7 +834,7 @@ listed_unit_price = is_listed_price_manual ? stored : suggested_sell_unit_price
 
 ### Out of scope
 
-`thrift_brand_size_charts`, Thrift-app measurement UI (P1), customer storefront measurement filters, Thrift-app costing UI, invoice web UI, laundry/wash costs, moving shipment currencies from tenant preference.
+`thrift_brand_size_charts`, Thrift-app measurement UI (P1), customer storefront measurement filters, Thrift-app costing UI, invoice web UI, moving shipment currencies from tenant preference.
 
 ---
 

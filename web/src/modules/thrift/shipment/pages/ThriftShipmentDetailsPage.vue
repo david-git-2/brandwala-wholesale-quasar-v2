@@ -120,6 +120,17 @@
                 class="soft-input"
                 @change="saveShipmentCosts"
               />
+              <q-input
+                v-model.number="costForm.washing_total_cost"
+                type="number"
+                step="0.01"
+                min="0"
+                outlined
+                dense
+                label="Washing Total Cost"
+                class="soft-input"
+                @change="saveShipmentCosts"
+              />
 
               <q-separator class="q-my-xs" />
               <div class="text-caption text-weight-bold text-grey-7 q-mb-none">RATES & MARKUP</div>
@@ -221,6 +232,7 @@
             :costCurrency="costCurrency"
             :loading="loading"
             @edit-measurements="openMeasurementsDialog"
+            @open-landed-breakdown="openLandedBreakdownDialog"
             @save-stock-value="saveStockValue"
             @save-pricing-value="saveStockPricingValue"
           />
@@ -245,7 +257,7 @@
                     <span class="text-subtitle1 text-weight-bold text-grey-9">{{ U }}</span>
                   </div>
                   <div class="text-caption text-grey-6 q-mt-xs">
-                    Cargo and ops bills are divided by this number.
+                    Cargo splits by item weight when set; ops bills divide by U.
                   </div>
                 </div>
               </div>
@@ -265,6 +277,10 @@
                   <div class="row justify-between text-body2">
                     <span class="text-grey-8">Transport:</span>
                     <span>{{ formatCost(costForm.transportation_total_cost || 0) }}</span>
+                  </div>
+                  <div class="row justify-between text-body2">
+                    <span class="text-grey-8">Washing:</span>
+                    <span>{{ formatCost(costForm.washing_total_cost || 0) }}</span>
                   </div>
                   <div class="row justify-between text-body2">
                     <span class="text-grey-8">Hand tags (total):</span>
@@ -292,7 +308,7 @@
                       <span class="text-subtitle2 text-weight-bold text-blue-10">{{ formatCost(cargoSharePerUnit) }}</span>
                     </div>
                     <div class="text-caption text-grey-6" style="font-size: 10px;">
-                      Cargo Total ÷ U
+                      {{ usesWeightBasedCargo ? 'By weight (avg shown)' : 'Cargo Total ÷ U' }}
                     </div>
                   </div>
                   <div class="q-pa-sm bg-orange-1 rounded-borders" style="border: 1px solid rgba(255, 152, 0, 0.12);">
@@ -319,7 +335,7 @@
                     <code>Add'l Charges</code>
                   </div>
                   <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 10px;">
-                    This is stored per-item in the database as the cost-basis.
+                    Computed per item from origin, weight-based cargo share, ops share, and add'l charges.
                   </div>
                 </div>
               </div>
@@ -352,6 +368,7 @@ import type { ThriftStock } from '../../stock/types';
 import type { ThriftCurrency } from '../../currency/types';
 import { useThriftShipmentCosting } from '../../shared/composables/useThriftShipmentCosting';
 import ThriftStockMeasurementsDialog from '../../stock/components/ThriftStockMeasurementsDialog.vue';
+import ThriftLandedCostBreakdownDialog from '../../stock/components/ThriftLandedCostBreakdownDialog.vue';
 import ThriftShipmentItemsTable from '../components/ThriftShipmentItemsTable.vue';
 import { useQuasar } from 'quasar';
 
@@ -378,6 +395,7 @@ const costForm = ref({
   cargo_conversion_rate: null as number | null,
   labor_total_cost: null as number | null,
   transportation_total_cost: null as number | null,
+  washing_total_cost: null as number | null,
   default_markup_rate: null as number | null,
   product_conversion_rate: null as number | null,
 });
@@ -418,6 +436,7 @@ const {
   opsSharePerUnit,
   handTagTotal,
   stickerTotal,
+  usesWeightBasedCargo,
   costingBreakdowns,
 } = useThriftShipmentCosting(
   shipment,
@@ -453,6 +472,8 @@ const columnsList = [
   { name: 'ops_share_per_unit', label: 'Ops/Unit' },
   { name: 'additional_charges_cost', label: 'Add\'l Charges' },
   { name: 'landed_unit_cost', label: 'Landed Cost' },
+  { name: 'item_markup_pct', label: 'Item Markup %' },
+  { name: 'effective_markup_pct', label: 'Effective Markup %' },
   { name: 'suggested_sell_unit_price', label: 'Suggested Sell' },
   { name: 'listed_unit_price', label: 'Listed Sell' },
   { name: 'is_listed_price_manual', label: 'Manual' },
@@ -464,6 +485,8 @@ const visibleColumns = ref<Set<string>>(new Set([
   'measurements',
   'origin_unit_price',
   'landed_unit_cost',
+  'item_markup_pct',
+  'effective_markup_pct',
   'suggested_sell_unit_price',
   'listed_unit_price',
   'is_listed_price_manual',
@@ -547,6 +570,7 @@ async function loadData() {
       cargo_conversion_rate: shipmentRow.cargo_conversion_rate ?? null,
       labor_total_cost: shipmentRow.labor_total_cost ?? null,
       transportation_total_cost: shipmentRow.transportation_total_cost ?? null,
+      washing_total_cost: shipmentRow.washing_total_cost ?? null,
       default_markup_rate: shipmentRow.default_markup_rate ?? null,
       product_conversion_rate: shipmentRow.product_conversion_rate ?? null,
     };
@@ -576,6 +600,7 @@ async function saveShipmentCosts() {
       cargo_conversion_rate: costForm.value.cargo_conversion_rate,
       labor_total_cost: costForm.value.labor_total_cost,
       transportation_total_cost: costForm.value.transportation_total_cost,
+      washing_total_cost: costForm.value.washing_total_cost,
       default_markup_rate: costForm.value.default_markup_rate,
       product_conversion_rate: costForm.value.product_conversion_rate,
     };
@@ -607,18 +632,31 @@ async function saveStockValue(row: ThriftStock, field: string, value: number) {
 
 async function saveStockPricingValue(row: ThriftStock, field: string, value: unknown) {
   try {
-    const pricingPatch = { [field]: value };
+    const pricingPatch: Record<string, unknown> = { [field]: value };
+    if (field === 'listed_unit_price') {
+      pricingPatch.is_listed_price_manual = true;
+    }
+    if (field === 'markup_rate_override') {
+      pricingPatch.is_listed_price_manual = false;
+    }
+    if (field === 'is_listed_price_manual' && value === false) {
+      const breakdown = costingBreakdowns.value[row.id];
+      if (breakdown) {
+        pricingPatch.listed_unit_price = breakdown.suggested_sell_unit_price;
+      }
+    }
     const pricing = {
       cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
       target_price: Number(row.pricing?.target_price) || 0,
       listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
       is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
+      markup_rate_override: row.pricing?.markup_rate_override ?? null,
       extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
       ...pricingPatch,
     };
 
     const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
-    row.pricing = updated.pricing as any;
+    row.pricing = updated.pricing as ThriftStock['pricing'];
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
@@ -628,6 +666,20 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
 function openMeasurementsDialog(row: ThriftStock) {
   selectedStock.value = row;
   measurementsDialogOpen.value = true;
+}
+
+function openLandedBreakdownDialog(row: ThriftStock) {
+  const breakdown = costingBreakdowns.value[row.id];
+  if (!breakdown) return;
+  $q.dialog({
+    component: ThriftLandedCostBreakdownDialog,
+    componentProps: {
+      stock: row,
+      breakdown,
+      shipmentName: shipment.value?.name || '',
+      formatCost: (amount: number) => formatCost(amount),
+    },
+  });
 }
 
 function onMeasurementsUpdated(updatedMeasurements: unknown) {

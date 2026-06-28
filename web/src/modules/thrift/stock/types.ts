@@ -56,6 +56,7 @@ export interface ThriftStock {
     target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
+    markup_rate_override?: number | null;
     extra_expense_cost?: number;
   };
   category_name?: string;

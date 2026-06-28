@@ -3,6 +3,7 @@ import {
   computeShipmentUnitCount,
   computeShipmentCargoCost,
   computeShipmentOpsCost,
+  computeCargoSharePerUnit,
   computeThriftUnitCosts,
   computeThriftUnitCostsForShipment,
 } from './computeThriftUnitCosts';
@@ -58,7 +59,7 @@ describe('Thrift P2 Cost Engine', () => {
     // landed_unit_cost = 144 + 6 + 8.5 + 15 = 173.5
     // suggested_sell_unit_price = 173.5 * 1.5 = 260.25
 
-    const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, U);
+    const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, U, undefined, [stock]);
 
     expect(result.product_unit_cost).toBe(144.0);
     expect(result.cargo_share_per_unit).toBe(6.0);
@@ -116,6 +117,55 @@ describe('Thrift P2 Cost Engine', () => {
     expect(result.product_unit_cost).toBe(0);
     expect(result.landed_unit_cost).toBe(0);
     expect(result.suggested_sell_unit_price).toBe(0);
+  });
+
+  test('computeCargoSharePerUnit allocates cargo by weight when weights are set', () => {
+    const stocks = [
+      { id: 1, quantity: 1, product_weight: 500, origin_unit_price: 10 },
+      { id: 2, quantity: 1, product_weight: 1500, origin_unit_price: 20 },
+    ];
+    const U = 2;
+    const cargoTotal = computeShipmentCargoCost(mockShipment); // 300
+
+    const lightShare = computeCargoSharePerUnit(stocks[0]!, mockShipment, stocks, U);
+    const heavyShare = computeCargoSharePerUnit(stocks[1]!, mockShipment, stocks, U);
+
+    expect(lightShare).toBe(75);
+    expect(heavyShare).toBe(225);
+    expect(lightShare + heavyShare).toBe(cargoTotal);
+  });
+
+  test('item markup_rate_override beats shipment default', () => {
+    const stock = {
+      quantity: 1,
+      origin_unit_price: 100.0,
+    };
+    const pricing = {
+      listed_unit_price: 0,
+      is_listed_price_manual: false,
+      markup_rate_override: 0.8,
+    };
+
+    const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
+    expect(result.markup_source).toBe('item_override');
+    expect(result.applied_markup_rate).toBe(0.8);
+    expect(result.suggested_sell_unit_price).toBe(result.landed_unit_cost * 1.8);
+  });
+
+  test('effective markup pct reflects manual listed price', () => {
+    const stock = {
+      quantity: 1,
+      origin_unit_price: 100.0,
+    };
+    const pricing = {
+      listed_unit_price: 300.0,
+      is_listed_price_manual: true,
+    };
+
+    const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
+    expect(result.display_listed_unit_price).toBe(300.0);
+    expect(result.effective_markup_pct).not.toBeNull();
+    expect(result.suggested_sell_unit_price).toBe(result.landed_unit_cost * 1.5);
   });
 
   test('computeThriftUnitCostsForShipment batches calculation correctly', () => {
