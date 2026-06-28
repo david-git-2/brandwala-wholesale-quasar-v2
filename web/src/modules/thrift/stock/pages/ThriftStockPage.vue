@@ -972,8 +972,8 @@
             <!-- Purchase default -->
             <div class="q-pa-sm rounded-borders bg-grey-2 text-caption text-grey-8">
               <div class="row justify-between">
-                <span>Default origin purchase:</span>
-                <span class="text-weight-bold">{{ formatThriftAmount(settingsStore.defaultOriginPurchasePrice, quickAddPurchaseCurrency) }}</span>
+                <span>Default origin unit price:</span>
+                <span class="text-weight-bold">{{ formatThriftAmount(settingsStore.defaultOriginUnitPrice, quickAddPurchaseCurrency) }}</span>
               </div>
             </div>
           </div>

@@ -12,6 +12,18 @@ export const useThriftSettingsStore = defineStore('thriftSettings', {
   getters: {
     defaultOriginUnitPrice: (state): number =>
       state.settings?.default_origin_unit_price ?? 0,
+    handTagUnitCost: (state): number =>
+      state.settings?.hand_tag_unit_cost ?? 0,
+    handTagUnitCurrencyId: (state): number | null =>
+      state.settings?.hand_tag_unit_currency_id ?? null,
+    stickerUnitCost: (state): number =>
+      state.settings?.sticker_unit_cost ?? 0,
+    stickerUnitCurrencyId: (state): number | null =>
+      state.settings?.sticker_unit_currency_id ?? null,
+    opsCostSettingsForEngine: (state) => ({
+      hand_tag_unit_cost: state.settings?.hand_tag_unit_cost ?? 0,
+      sticker_unit_cost: state.settings?.sticker_unit_cost ?? 0,
+    }),
   },
 
   actions: {
