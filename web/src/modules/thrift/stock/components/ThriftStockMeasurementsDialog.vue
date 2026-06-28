@@ -45,61 +45,66 @@
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Core Fit (inches)</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-3">
-              <q-input v-model.number="form.bust_in" type="number" step="0.1" min="0" outlined dense label="Bust (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.bust_in)" type="number" step="0.1" min="0" outlined dense label="Bust (in)" class="soft-input" @update:model-value="form.bust_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input v-model.number="form.waist_in" type="number" step="0.1" min="0" outlined dense label="Waist (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.waist_in)" type="number" step="0.1" min="0" outlined dense label="Waist (in)" class="soft-input" @update:model-value="form.waist_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input v-model.number="form.hips_in" type="number" step="0.1" min="0" outlined dense label="Hips (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.hips_in)" type="number" step="0.1" min="0" outlined dense label="Hips (in)" class="soft-input" @update:model-value="form.hips_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input v-model.number="form.length_in" type="number" step="0.1" min="0" outlined dense label="Length (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.length_in)" type="number" step="0.1" min="0" outlined dense label="Length (in)" class="soft-input" @update:model-value="form.length_in = parseNullableNumber($event)" />
             </div>
           </div>
 
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Sleeves & Structure (inches)</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-4">
-              <q-input v-model.number="form.shoulder_width_in" type="number" step="0.1" min="0" outlined dense label="Shoulder Width (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.shoulder_width_in)" type="number" step="0.1" min="0" outlined dense label="Shoulder Width (in)" class="soft-input" @update:model-value="form.shoulder_width_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-4">
-              <q-input v-model.number="form.sleeve_length_in" type="number" step="0.1" min="0" outlined dense label="Sleeve Length (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.sleeve_length_in)" type="number" step="0.1" min="0" outlined dense label="Sleeve Length (in)" class="soft-input" @update:model-value="form.sleeve_length_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-4">
-              <q-input v-model.number="form.arm_circumference_in" type="number" step="0.1" min="0" outlined dense label="Arm Circum. (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.arm_circumference_in)" type="number" step="0.1" min="0" outlined dense label="Arm Circum. (in)" class="soft-input" @update:model-value="form.arm_circumference_in = parseNullableNumber($event)" />
             </div>
           </div>
 
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Style-dependent Dimensions (inches)</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-6">
-              <q-input v-model.number="form.hem_width_in" type="number" step="0.1" min="0" outlined dense label="Hem Width (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.hem_width_in)" type="number" step="0.1" min="0" outlined dense label="Hem Width (in)" class="soft-input" @update:model-value="form.hem_width_in = parseNullableNumber($event)" />
             </div>
             <div class="col-6 col-sm-6">
-              <q-input v-model.number="form.neck_opening_in" type="number" step="0.1" min="0" outlined dense label="Neck Opening (in)" class="soft-input" />
+              <q-input :model-value="numberFieldDisplay(form.neck_opening_in)" type="number" step="0.1" min="0" outlined dense label="Neck Opening (in)" class="soft-input" @update:model-value="form.neck_opening_in = parseNullableNumber($event)" />
             </div>
           </div>
 
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Style & Details</div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.sleeve_type" outlined dense label="Sleeve Type" class="soft-input" placeholder="e.g. Raglan, Sleeveless" />
+              <q-input v-model="form.sleeve_type" outlined dense label="Sleeve Type" class="soft-input" placeholder="e.g. Raglan, Sleeveless" clearable />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.neckline" outlined dense label="Neckline" class="soft-input" placeholder="e.g. V-neck, Crew" />
+              <q-input v-model="form.neckline" outlined dense label="Neckline" class="soft-input" placeholder="e.g. V-neck, Crew" clearable />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.dress_style" outlined dense label="Dress/Garment Style" class="soft-input" placeholder="e.g. A-line, Bodycon" />
+              <q-input v-model="form.dress_style" outlined dense label="Dress/Garment Style" class="soft-input" placeholder="e.g. A-line, Bodycon" clearable />
             </div>
           </div>
 
           <div class="row q-col-gutter-sm items-center q-mt-xs">
             <div class="col-12 col-sm-6">
-              <q-input v-model="form.closure_type" outlined dense label="Closure Type" class="soft-input" placeholder="e.g. Zipper, Button-down" />
+              <q-input v-model="form.closure_type" outlined dense label="Closure Type" class="soft-input" placeholder="e.g. Zipper, Button-down" clearable />
             </div>
             <div class="col-12 col-sm-6">
-              <q-checkbox v-model="form.lining" label="Has Lining" class="q-ml-sm" />
+              <q-checkbox
+                v-model="form.lining"
+                label="Has Lining"
+                class="q-ml-sm"
+                toggle-indeterminate
+              />
             </div>
           </div>
 
@@ -132,6 +137,21 @@ import type { ThriftStock, ThriftStockMeasurements } from '../types';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
 import ThriftMeasurementGuideDialog from './ThriftMeasurementGuideDialog.vue';
 
+function parseNullableNumber(value: string | number | null | undefined): number | null {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function numberFieldDisplay(value: number | null | undefined): string | number {
+  return value === null || value === undefined ? '' : value;
+}
+
+function nullableText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 export default defineComponent({
   name: 'ThriftStockMeasurementsDialog',
   props: {
@@ -149,47 +169,50 @@ export default defineComponent({
 
     const saving = ref(false);
 
-    const initialMeasurements = props.stock.measurements || {} as ThriftStockMeasurements;
+    const initialMeasurements = props.stock.measurements;
 
     const form = ref({
       size: props.stock.size || '',
-      bust_in: initialMeasurements.bust_in ?? null,
-      waist_in: initialMeasurements.waist_in ?? null,
-      hips_in: initialMeasurements.hips_in ?? null,
-      length_in: initialMeasurements.length_in ?? null,
-      shoulder_width_in: initialMeasurements.shoulder_width_in ?? null,
-      sleeve_length_in: initialMeasurements.sleeve_length_in ?? null,
-      arm_circumference_in: initialMeasurements.arm_circumference_in ?? null,
-      hem_width_in: initialMeasurements.hem_width_in ?? null,
-      neck_opening_in: initialMeasurements.neck_opening_in ?? null,
-      sleeve_type: initialMeasurements.sleeve_type || null,
-      neckline: initialMeasurements.neckline || null,
-      dress_style: initialMeasurements.dress_style || null,
-      fabric_stretch: initialMeasurements.fabric_stretch || null,
-      lining: initialMeasurements.lining ?? false,
-      closure_type: initialMeasurements.closure_type || null,
-      measurement_notes: initialMeasurements.measurement_notes || null,
+      bust_in: initialMeasurements?.bust_in ?? null,
+      waist_in: initialMeasurements?.waist_in ?? null,
+      hips_in: initialMeasurements?.hips_in ?? null,
+      length_in: initialMeasurements?.length_in ?? null,
+      shoulder_width_in: initialMeasurements?.shoulder_width_in ?? null,
+      sleeve_length_in: initialMeasurements?.sleeve_length_in ?? null,
+      arm_circumference_in: initialMeasurements?.arm_circumference_in ?? null,
+      hem_width_in: initialMeasurements?.hem_width_in ?? null,
+      neck_opening_in: initialMeasurements?.neck_opening_in ?? null,
+      sleeve_type: initialMeasurements?.sleeve_type ?? '',
+      neckline: initialMeasurements?.neckline ?? '',
+      dress_style: initialMeasurements?.dress_style ?? '',
+      fabric_stretch: initialMeasurements?.fabric_stretch ?? null,
+      lining: initialMeasurements?.lining ?? null,
+      closure_type: initialMeasurements?.closure_type ?? '',
+      measurement_notes: initialMeasurements?.measurement_notes ?? '',
     });
 
     const hasAnyMeasurement = computed(() => {
       const f = form.value;
+      const numericFields = [
+        f.bust_in,
+        f.waist_in,
+        f.hips_in,
+        f.length_in,
+        f.shoulder_width_in,
+        f.sleeve_length_in,
+        f.arm_circumference_in,
+        f.hem_width_in,
+        f.neck_opening_in,
+      ];
       return (
-        f.bust_in !== null ||
-        f.waist_in !== null ||
-        f.hips_in !== null ||
-        f.length_in !== null ||
-        f.shoulder_width_in !== null ||
-        f.sleeve_length_in !== null ||
-        f.arm_circumference_in !== null ||
-        f.hem_width_in !== null ||
-        f.neck_opening_in !== null ||
-        f.sleeve_type !== null ||
-        f.neckline !== null ||
-        f.dress_style !== null ||
+        numericFields.some((val) => val !== null && val !== undefined) ||
+        nullableText(f.sleeve_type) !== null ||
+        nullableText(f.neckline) !== null ||
+        nullableText(f.dress_style) !== null ||
         f.fabric_stretch !== null ||
-        f.closure_type !== null ||
-        f.measurement_notes !== null ||
-        f.lining
+        nullableText(f.closure_type) !== null ||
+        nullableText(f.measurement_notes) !== null ||
+        f.lining !== null && f.lining !== undefined
       );
     });
 
@@ -226,13 +249,13 @@ export default defineComponent({
               arm_circumference_in: form.value.arm_circumference_in,
               hem_width_in: form.value.hem_width_in,
               neck_opening_in: form.value.neck_opening_in,
-              sleeve_type: form.value.sleeve_type,
-              neckline: form.value.neckline,
-              dress_style: form.value.dress_style,
+              sleeve_type: nullableText(form.value.sleeve_type),
+              neckline: nullableText(form.value.neckline),
+              dress_style: nullableText(form.value.dress_style),
               fabric_stretch: form.value.fabric_stretch,
               lining: form.value.lining,
-              closure_type: form.value.closure_type,
-              measurement_notes: form.value.measurement_notes,
+              closure_type: nullableText(form.value.closure_type),
+              measurement_notes: nullableText(form.value.measurement_notes),
             },
             props.stock.tenant_id
           );
@@ -268,6 +291,8 @@ export default defineComponent({
       saving,
       onSubmit,
       openGuide,
+      parseNullableNumber,
+      numberFieldDisplay,
     };
   },
 });
