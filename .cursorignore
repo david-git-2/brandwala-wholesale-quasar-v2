@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+web/node_modules/
+
+# Python virtualenv (python/ source stays indexed)
+.venv/
+python/.venv/
+
+# Quasar / Vite build output
+web/.quasar/
+web/dist/
+**/.cache/
+**/*.tsbuildinfo
+**/.eslintcache
+web/quasar.config.*.temporary.compiled*
+
+# Supabase local cache
+supabase/.temp/
+
+# Python caches and large dirs
+python/__pycache__/
+python/.ipynb_checkpoints/
+python/images/
+python/credentials/
+
+# Logs and backups
+**/*.log
+backups/
+**/*.ndjson
+**/*.json.gz
+
+# OS
+.DS_Store

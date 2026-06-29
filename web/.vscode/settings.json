@@ -23,5 +23,19 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
-  "js/ts.tsdk.path": "node_modules/typescript/lib"
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.quasar/**": true,
+    "**/dist/**": true,
+    "../.venv/**": true,
+    "../supabase/.temp/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.quasar": true,
+    "**/dist": true,
+    "../.venv": true,
+    "../supabase/.temp": true
+  }
 }
