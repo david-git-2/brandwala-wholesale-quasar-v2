@@ -130,7 +130,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from 'vue';
+import { defineComponent, ref, computed, watch } from 'vue';
 import type { PropType } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import type { ThriftStock, ThriftStockMeasurements } from '../types';
@@ -152,6 +152,29 @@ function nullableText(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+function buildFormFromStock(stock: ThriftStock) {
+  const m = stock.measurements;
+  return {
+    size: stock.size || '',
+    bust_in: m?.bust_in ?? null,
+    waist_in: m?.waist_in ?? null,
+    hips_in: m?.hips_in ?? null,
+    length_in: m?.length_in ?? null,
+    shoulder_width_in: m?.shoulder_width_in ?? null,
+    sleeve_length_in: m?.sleeve_length_in ?? null,
+    arm_circumference_in: m?.arm_circumference_in ?? null,
+    hem_width_in: m?.hem_width_in ?? null,
+    neck_opening_in: m?.neck_opening_in ?? null,
+    sleeve_type: m?.sleeve_type ?? '',
+    neckline: m?.neckline ?? '',
+    dress_style: m?.dress_style ?? '',
+    fabric_stretch: m?.fabric_stretch ?? null,
+    lining: m?.lining ?? null,
+    closure_type: m?.closure_type ?? '',
+    measurement_notes: m?.measurement_notes ?? '',
+  };
+}
+
 export default defineComponent({
   name: 'ThriftStockMeasurementsDialog',
   props: {
@@ -169,27 +192,14 @@ export default defineComponent({
 
     const saving = ref(false);
 
-    const initialMeasurements = props.stock.measurements;
+    const form = ref(buildFormFromStock(props.stock));
 
-    const form = ref({
-      size: props.stock.size || '',
-      bust_in: initialMeasurements?.bust_in ?? null,
-      waist_in: initialMeasurements?.waist_in ?? null,
-      hips_in: initialMeasurements?.hips_in ?? null,
-      length_in: initialMeasurements?.length_in ?? null,
-      shoulder_width_in: initialMeasurements?.shoulder_width_in ?? null,
-      sleeve_length_in: initialMeasurements?.sleeve_length_in ?? null,
-      arm_circumference_in: initialMeasurements?.arm_circumference_in ?? null,
-      hem_width_in: initialMeasurements?.hem_width_in ?? null,
-      neck_opening_in: initialMeasurements?.neck_opening_in ?? null,
-      sleeve_type: initialMeasurements?.sleeve_type ?? '',
-      neckline: initialMeasurements?.neckline ?? '',
-      dress_style: initialMeasurements?.dress_style ?? '',
-      fabric_stretch: initialMeasurements?.fabric_stretch ?? null,
-      lining: initialMeasurements?.lining ?? null,
-      closure_type: initialMeasurements?.closure_type ?? '',
-      measurement_notes: initialMeasurements?.measurement_notes ?? '',
-    });
+    watch(
+      () => props.stock.id,
+      () => {
+        form.value = buildFormFromStock(props.stock);
+      },
+    );
 
     const hasAnyMeasurement = computed(() => {
       const f = form.value;

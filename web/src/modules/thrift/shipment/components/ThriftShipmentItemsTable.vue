@@ -70,6 +70,9 @@
             <div class="row items-center no-wrap measurements-cell">
               <span class="measurements-cell__text col text-caption text-grey-8">
                 {{ getFormattedMeasurements(row) }}
+                <q-tooltip v-if="getFormattedMeasurements(row) !== '—'" max-width="320px">
+                  {{ getFormattedMeasurements(row) }}
+                </q-tooltip>
               </span>
               <q-btn
                 flat
@@ -83,9 +86,6 @@
               >
                 <q-tooltip>Edit Measurements</q-tooltip>
               </q-btn>
-              <q-tooltip v-if="getFormattedMeasurements(row) !== '—'" max-width="320px">
-                {{ getFormattedMeasurements(row) }}
-              </q-tooltip>
             </div>
           </td>
 

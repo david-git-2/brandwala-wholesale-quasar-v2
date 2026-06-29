@@ -1169,7 +1169,6 @@ import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/f
 import ThriftStockMeasurementsDialog from '../components/ThriftStockMeasurementsDialog.vue';
 import ThriftLandedCostBreakdownDialog from '../components/ThriftLandedCostBreakdownDialog.vue';
 import {
-  computeThriftUnitCosts,
   computeThriftUnitCostsForShipment,
   type ThriftStockCostInput,
   type ThriftUnitCostBreakdown,

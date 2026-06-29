@@ -347,9 +347,10 @@
 
     <!-- Measurements dialog -->
     <thrift-stock-measurements-dialog
+      v-if="selectedStock"
+      :key="selectedStock.id"
       v-model="measurementsDialogOpen"
       :stock="selectedStock"
-      v-if="selectedStock"
       @ok="onMeasurementsUpdated"
     />
   </q-page>
@@ -364,7 +365,7 @@ import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thrif
 import { thriftShipmentRepository } from '../repositories/thriftShipmentRepository';
 import { thriftStockRepository } from '../../stock/repositories/thriftStockRepository';
 import type { ThriftShipment } from '../types';
-import type { ThriftStock } from '../../stock/types';
+import type { ThriftStock, ThriftStockMeasurements } from '../../stock/types';
 import type { ThriftCurrency } from '../../currency/types';
 import { useThriftShipmentCosting } from '../../shared/composables/useThriftShipmentCosting';
 import ThriftStockMeasurementsDialog from '../../stock/components/ThriftStockMeasurementsDialog.vue';
@@ -656,7 +657,9 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     };
 
     const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
-    row.pricing = updated.pricing as ThriftStock['pricing'];
+    if (updated.pricing) {
+      row.pricing = updated.pricing;
+    }
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
@@ -682,9 +685,10 @@ function openLandedBreakdownDialog(row: ThriftStock) {
   });
 }
 
-function onMeasurementsUpdated(updatedMeasurements: unknown) {
+function onMeasurementsUpdated(payload: { size: string; measurements: ThriftStockMeasurements | null }) {
   if (selectedStock.value) {
-    selectedStock.value.measurements = updatedMeasurements as any;
+    selectedStock.value.size = payload.size;
+    selectedStock.value.measurements = payload.measurements;
   }
 }
 watch(
