@@ -1,9 +1,12 @@
+import type { ThriftMarketingTagConfig } from './types/marketingTag';
+
 export interface ThriftShipment {
   id: number;
   tenant_id: number;
   name: string;
   purchase_currency_id: number;
   cost_currency_id: number;
+  marketing_tag_config?: ThriftMarketingTagConfig | null;
   cargo_conversion_rate?: number | null;
   cargo_rate?: number | null;
   product_conversion_rate?: number | null;

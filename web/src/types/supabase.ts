@@ -5069,6 +5069,7 @@ export type Database = {
           default_origin_unit_price: number
           hand_tag_unit_cost: number | null
           hand_tag_unit_currency_id: number | null
+          marketing_tag_config: Json
           sticker_unit_cost: number | null
           sticker_unit_currency_id: number | null
           tenant_id: number
@@ -5079,6 +5080,7 @@ export type Database = {
           default_origin_unit_price?: number
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
+          marketing_tag_config?: Json
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id: number
@@ -5089,6 +5091,7 @@ export type Database = {
           default_origin_unit_price?: number
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
+          marketing_tag_config?: Json
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id?: number
@@ -5169,6 +5172,7 @@ export type Database = {
           id: number
           inserted_by: string
           labor_total_cost: number | null
+          marketing_tag_config: Json
           name: string
           product_conversion_rate: number | null
           purchase_currency_id: number
@@ -5187,6 +5191,7 @@ export type Database = {
           id?: number
           inserted_by: string
           labor_total_cost?: number | null
+          marketing_tag_config?: Json
           name: string
           product_conversion_rate?: number | null
           purchase_currency_id: number
@@ -5205,6 +5210,7 @@ export type Database = {
           id?: number
           inserted_by?: string
           labor_total_cost?: number | null
+          marketing_tag_config?: Json
           name?: string
           product_conversion_rate?: number | null
           purchase_currency_id?: number

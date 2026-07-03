@@ -12,10 +12,15 @@
         :src="currentImageSrc"
         :alt="alt"
         class="smart-image__img"
+        :class="{ 'smart-image__img--loading': loadingImage }"
         loading="lazy"
         referrerpolicy="no-referrer"
         @error="handleImageError"
+        @load="onImageLoad"
       >
+      <q-inner-loading :showing="loadingImage" color="primary" class="smart-image-loading-overlay">
+        <q-spinner-oval size="20px" />
+      </q-inner-loading>
     </template>
 
     <template v-else>
@@ -146,6 +151,7 @@ const fallbackImage =
 
 const imageAttempt = ref(0)
 const imageHidden = ref(false)
+const loadingImage = ref(true)
 
 const getDriveFileId = (url: string) => {
   const m1 = url.match(/[?&]id=([^&]+)/)
@@ -209,6 +215,7 @@ watch(
   () => {
     imageAttempt.value = 0
     imageHidden.value = false
+    loadingImage.value = true
   },
   { immediate: true }
 )
@@ -218,6 +225,10 @@ watch(newUrl, () => {
   previewError.value = false
 })
 
+const onImageLoad = () => {
+  loadingImage.value = false
+}
+
 const handleImageError = () => {
   if (imageAttempt.value < imageCandidates.value.length - 1) {
     imageAttempt.value += 1
@@ -225,6 +236,7 @@ const handleImageError = () => {
   }
 
   imageHidden.value = true
+  loadingImage.value = false
 }
 
 const handlePreviewError = () => {
@@ -319,5 +331,14 @@ const onUpdate = async () => {
 
 .border-grey {
   border: 1px dashed #cfd8dc;
+}
+
+.smart-image__img--loading {
+  filter: blur(4px);
+  opacity: 0.5;
+}
+
+.smart-image-loading-overlay {
+  background: rgba(255, 255, 255, 0.7) !important;
 }
 </style>

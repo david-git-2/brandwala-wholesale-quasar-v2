@@ -1,5 +1,6 @@
 import { supabase } from 'src/boot/supabase';
 import type { ThriftStock, ThriftStockMeasurements } from '../types';
+import type { PrintableTagCounts } from '../types/marketingTag';
 
 export interface ThriftStockListMeta {
   total: number;
@@ -169,6 +170,24 @@ function shouldFallbackToDirectQuery(error: {
   return /gateway timeout|bad gateway|504|502/i.test(message);
 }
 
+function mapPricingRow(pricing: {
+  cost_of_goods_sold?: number | null;
+  target_price?: number | null;
+  listed_unit_price?: number | null;
+  is_listed_price_manual?: boolean | null;
+  markup_rate_override?: number | null;
+  extra_expense_cost?: number | null;
+}) {
+  return {
+    cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
+    target_price: Number(pricing.target_price) || 0,
+    listed_unit_price: Number(pricing.listed_unit_price) || 0,
+    is_listed_price_manual: !!pricing.is_listed_price_manual,
+    markup_rate_override: pricing.markup_rate_override ?? null,
+    extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
+  };
+}
+
 function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
   return rows.map((stock) => {
     const pricing = stock.pricing ?? stock.thrift_pricings?.[0] ?? {
@@ -191,14 +210,7 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
 
     return {
       ...(stock as unknown as ThriftStock),
-      pricing: {
-        cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
-        target_price: Number(pricing.target_price) || 0,
-        listed_unit_price: Number(pricing.listed_unit_price) || 0,
-        is_listed_price_manual: !!pricing.is_listed_price_manual,
-        markup_rate_override: pricing.markup_rate_override ?? null,
-        extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
-      },
+      pricing: mapPricingRow(pricing),
       image_url: stock.image_url || primaryImage?.image_url || undefined,
       drive_file_id: stock.drive_file_id || primaryImage?.drive_file_id || undefined,
       measurements,
@@ -384,7 +396,7 @@ export const thriftStockRepository = {
 
     return {
       ...stockData,
-      pricing: pricingData,
+      pricing: mapPricingRow(pricingData),
       image_url: imageUrl,
       drive_file_id: driveFileId,
       measurements: null,
@@ -442,7 +454,7 @@ export const thriftStockRepository = {
 
     return {
       ...stockData,
-      pricing: pricingData,
+      pricing: mapPricingRow(pricingData),
       ...(resolvedImageUrl !== undefined ? { image_url: resolvedImageUrl } : {}),
       ...(resolvedDriveFileId !== undefined ? { drive_file_id: resolvedDriveFileId } : {}),
     } as ThriftStock;
@@ -632,6 +644,30 @@ export const thriftStockRepository = {
       const shId = row.shipment_id;
       const qty = row.quantity || 0;
       map.set(shId, (map.get(shId) || 0) + qty);
+    }
+    return map;
+  },
+
+  async fetchPrintableTagCountsByShipment(
+    tenantId: number,
+  ): Promise<Map<number, PrintableTagCounts>> {
+    const { data, error } = await supabase
+      .from('thrift_stocks')
+      .select('shipment_id, quantity, barcode')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'AVAILABLE');
+    if (error) throw error;
+
+    const map = new Map<number, PrintableTagCounts>();
+    for (const row of data || []) {
+      if (!row.barcode?.trim()) continue;
+      const shId = row.shipment_id;
+      const qty = Math.max(row.quantity || 1, 1);
+      const prev = map.get(shId) ?? { itemCount: 0, stickerCount: 0 };
+      map.set(shId, {
+        itemCount: prev.itemCount + 1,
+        stickerCount: prev.stickerCount + qty,
+      });
     }
     return map;
   },

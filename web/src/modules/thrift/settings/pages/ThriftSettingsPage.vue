@@ -8,7 +8,6 @@
     </q-card>
 
     <div class="row q-col-gutter-md">
-      <!-- Section A: Registration Defaults -->
       <div class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 h-100">
           <q-card-section>
@@ -33,12 +32,11 @@
         </q-card>
       </div>
 
-      <!-- Section B: Ops Unit Costs -->
       <div class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 h-100">
           <q-card-section class="q-gutter-md">
             <div class="text-subtitle1 text-weight-bold text-primary">Ops Unit Costs</div>
-            
+
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
                 <q-input
@@ -98,7 +96,7 @@
                 />
               </div>
             </div>
-            
+
             <div class="text-caption text-grey-7">
               These values populate the ops cost portion of the landed unit cost formula.
             </div>
@@ -107,7 +105,6 @@
       </div>
     </div>
 
-    <!-- Actions -->
     <div class="row justify-end q-mt-md q-mr-sm">
       <q-btn
         color="primary"
@@ -147,7 +144,7 @@ const form = ref({
 
 onMounted(async () => {
   if (!authStore.tenantId) return;
-  
+
   await Promise.all([
     settingsStore.loadSettings(authStore.tenantId),
     currencyStore.loadCurrencies(),
@@ -171,7 +168,7 @@ async function save() {
     $q.notify({ type: 'negative', message: 'Default origin unit price cannot be negative' });
     return;
   }
-  
+
   try {
     await settingsStore.saveSettings(authStore.tenantId, {
       defaultOriginUnitPrice: form.value.defaultOriginUnitPrice,

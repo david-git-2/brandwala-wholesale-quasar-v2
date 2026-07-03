@@ -8,8 +8,7 @@ import {
   computeShipmentCargoCost,
   computeShipmentOpsCost,
   computeShipmentTotalWeightKg,
-  computeThriftUnitCostsForShipment,
-  type ThriftStockPricingInput,
+  buildThriftCostBreakdownByStockId,
 } from '../utils/computeThriftUnitCosts';
 
 export function useThriftShipmentCosting(
@@ -83,31 +82,24 @@ export function useThriftShipmentCosting(
     const settings = settingsRef.value;
     if (!shipment || !settings) return {};
 
-    const pricingMap: Record<number, ThriftStockPricingInput> = {};
-    for (const stock of stocksRef.value) {
-      if (stock.pricing) {
-        pricingMap[stock.id] = {
-          listed_unit_price: stock.pricing.listed_unit_price,
-          is_listed_price_manual: stock.pricing.is_listed_price_manual,
-          markup_rate_override: stock.pricing.markup_rate_override ?? null,
-        };
-      }
-    }
+    const shipmentById = new Map<number, ThriftShipment>([[shipment.id, shipment]]);
+    const stocksInput = stocksRef.value.map((stock) => ({
+      id: stock.id,
+      shipment_id: shipment.id,
+      quantity: stock.quantity || 0,
+      product_weight: stock.product_weight ?? null,
+      extra_weight: stock.extra_weight ?? null,
+      origin_unit_price: stock.origin_unit_price ?? null,
+      extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
+      additional_charges_cost: stock.additional_charges_cost ?? null,
+      pricing: stock.pricing ? {
+        listed_unit_price: stock.pricing.listed_unit_price,
+        is_listed_price_manual: stock.pricing.is_listed_price_manual,
+        markup_rate_override: stock.pricing.markup_rate_override ?? null,
+      } : null,
+    }));
 
-    return computeThriftUnitCostsForShipment(
-      stocksRef.value.map((stock) => ({
-        id: stock.id,
-        quantity: stock.quantity || 0,
-        product_weight: stock.product_weight ?? null,
-        extra_weight: stock.extra_weight ?? null,
-        origin_unit_price: stock.origin_unit_price ?? null,
-        extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
-        additional_charges_cost: stock.additional_charges_cost ?? null,
-      })),
-      shipment,
-      settings,
-      pricingMap,
-    );
+    return buildThriftCostBreakdownByStockId(stocksInput, shipmentById, settings);
   });
 
   return {

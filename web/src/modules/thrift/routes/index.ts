@@ -6,6 +6,7 @@ import typeRoutes from './type.routes';
 import stockRoutes from './stock.routes';
 import barcodeRoutes from './barcode.routes';
 import settingsRoutes from './settings.routes';
+import stockTagRoutes from './stock-tag.routes';
 
 export default [
   ...shipmentRoutes,
@@ -16,4 +17,5 @@ export default [
   ...stockRoutes,
   ...barcodeRoutes,
   ...settingsRoutes,
+  ...stockTagRoutes,
 ];

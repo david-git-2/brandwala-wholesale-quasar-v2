@@ -6,7 +6,9 @@ import {
   computeCargoSharePerUnit,
   computeThriftUnitCosts,
   computeThriftUnitCostsForShipment,
+  buildThriftCostBreakdownByStockId,
 } from './computeThriftUnitCosts';
+import { ceilThriftRetailPrice } from './ceilThriftRetailPrice';
 
 describe('Thrift P2 Cost Engine', () => {
   const mockShipment = {
@@ -65,7 +67,7 @@ describe('Thrift P2 Cost Engine', () => {
     expect(result.cargo_share_per_unit).toBe(6.0);
     expect(result.ops_share_per_unit).toBe(8.5);
     expect(result.landed_unit_cost).toBe(173.5);
-    expect(result.suggested_sell_unit_price).toBe(260.25);
+    expect(result.suggested_sell_unit_price).toBe(290.0); // rounded from 260.25
   });
 
   test('manual listed price overrides suggested price', () => {
@@ -116,7 +118,7 @@ describe('Thrift P2 Cost Engine', () => {
     const result = computeThriftUnitCosts(stock, shipmentNulls, settingsNulls, 1);
     expect(result.product_unit_cost).toBe(0);
     expect(result.landed_unit_cost).toBe(0);
-    expect(result.suggested_sell_unit_price).toBe(0);
+    expect(result.suggested_sell_unit_price).toBe(50); // min price for <= 0 is 50
   });
 
   test('computeCargoSharePerUnit allocates cargo by weight when weights are set', () => {
@@ -149,7 +151,7 @@ describe('Thrift P2 Cost Engine', () => {
     const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
     expect(result.markup_source).toBe('item_override');
     expect(result.applied_markup_rate).toBe(0.8);
-    expect(result.suggested_sell_unit_price).toBe(result.landed_unit_cost * 1.8);
+    expect(result.suggested_sell_unit_price).toBe(ceilThriftRetailPrice(result.landed_unit_cost * 1.8));
   });
 
   test('effective markup pct reflects manual listed price', () => {
@@ -165,7 +167,7 @@ describe('Thrift P2 Cost Engine', () => {
     const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
     expect(result.display_listed_unit_price).toBe(300.0);
     expect(result.effective_markup_pct).not.toBeNull();
-    expect(result.suggested_sell_unit_price).toBe(result.landed_unit_cost * 1.5);
+    expect(result.suggested_sell_unit_price).toBe(ceilThriftRetailPrice(result.landed_unit_cost * 1.5));
   });
 
   test('computeThriftUnitCostsForShipment batches calculation correctly', () => {
@@ -181,4 +183,22 @@ describe('Thrift P2 Cost Engine', () => {
     expect(results[102]).toBeDefined();
     expect(results[101]!.shipment_unit_count).toBe(50);
   });
+
+  test('buildThriftCostBreakdownByStockId groups and builds breakdowns', () => {
+    const stocks = [
+      { id: 101, shipment_id: 1, quantity: 20, origin_unit_price: 10 },
+      { id: 102, shipment_id: 1, quantity: 30, origin_unit_price: 20 },
+      { id: 103, shipment_id: 2, quantity: 10, origin_unit_price: 15 },
+    ];
+    const shipmentMap = new Map([
+      [1, mockShipment],
+      [2, { ...mockShipment, labor_total_cost: 0, transportation_total_cost: 0 }],
+    ]);
+
+    const results = buildThriftCostBreakdownByStockId(stocks, shipmentMap, mockSettings);
+    expect(Object.keys(results).length).toBe(3);
+    expect(results[101]!.shipment_unit_count).toBe(50); // shipment 1 total qty
+    expect(results[103]!.shipment_unit_count).toBe(10); // shipment 2 total qty
+  });
 });
+

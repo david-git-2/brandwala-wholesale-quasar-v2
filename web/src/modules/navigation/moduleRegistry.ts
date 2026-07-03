@@ -589,6 +589,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'thrift/stocks',
         requiredAction: 'view',
       },
+      {
+        scope: 'app',
+        title: 'Marketing Tags',
+        caption: 'Print live sale stickers',
+        icon: 'local_offer',
+        routeSegment: 'thrift/stock-tags',
+        requiredAction: 'view',
+      },
     ],
   },
   {

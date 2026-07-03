@@ -1,6 +1,7 @@
 <template>
   <div class="thrift-shipment-items-table-wrap">
-    <q-markup-table flat class="thrift-shipment-details-table">
+    <!-- Skeleton loader for initial load -->
+    <q-markup-table flat class="thrift-shipment-details-table" v-if="loading && !stocks.length">
       <thead>
         <tr>
           <th class="text-center col-sticky-sl">SL</th>
@@ -22,7 +23,60 @@
           <th v-if="isVisible('effective_markup_pct')" class="text-right">Effective Markup %</th>
           <th v-if="isVisible('suggested_sell_unit_price')" class="text-right">Suggested Sell</th>
           <th v-if="isVisible('listed_unit_price')" class="text-right">Listed Sell</th>
-          <th v-if="isVisible('is_listed_price_manual')" class="text-center">Manual</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="i in 8" :key="i">
+          <td class="text-center col-sticky-sl"><q-skeleton type="text" width="20px" class="inline-block" /></td>
+          <td class="text-center col-sticky-image">
+            <div class="shipment-item-image-box">
+              <q-skeleton type="rect" style="width: 100%; height: 100%;" />
+            </div>
+          </td>
+          <td v-if="isVisible('barcode')" class="text-left col-sticky-barcode"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('name')" class="text-left"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('brand_name')" class="text-left"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('category_name')" class="text-left"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('type_name')" class="text-left"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('measurements')" class="text-left measurements-col"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('origin_unit_price')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('extra_origin_unit_price')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('product_unit_cost')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('cargo_share_per_unit')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('ops_share_per_unit')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('additional_charges_cost')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('landed_unit_cost')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('item_markup_pct')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('effective_markup_pct')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('suggested_sell_unit_price')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('listed_unit_price')" class="text-right"><q-skeleton type="text" /></td>
+        </tr>
+      </tbody>
+    </q-markup-table>
+
+    <!-- Actual table -->
+    <q-markup-table flat class="thrift-shipment-details-table" v-else :class="{ 'thrift-table-stale': loading }">
+      <thead>
+        <tr>
+          <th class="text-center col-sticky-sl">SL</th>
+          <th class="text-center col-sticky-image">Image</th>
+          <th v-if="isVisible('barcode')" class="text-left col-sticky-barcode">Barcode</th>
+          <th v-if="isVisible('name')" class="text-left">Name</th>
+          <th v-if="isVisible('brand_name')" class="text-left">Brand</th>
+          <th v-if="isVisible('category_name')" class="text-left">Category</th>
+          <th v-if="isVisible('type_name')" class="text-left">Type</th>
+          <th v-if="isVisible('measurements')" class="text-left measurements-col">Measurements</th>
+          <th v-if="isVisible('origin_unit_price')" class="text-right">Origin Price</th>
+          <th v-if="isVisible('extra_origin_unit_price')" class="text-right">Extra Origin</th>
+          <th v-if="isVisible('product_unit_cost')" class="text-right">Product Cost</th>
+          <th v-if="isVisible('cargo_share_per_unit')" class="text-right">Cargo/Unit</th>
+          <th v-if="isVisible('ops_share_per_unit')" class="text-right">Ops/Unit</th>
+          <th v-if="isVisible('additional_charges_cost')" class="text-right">Add'l Charges</th>
+          <th v-if="isVisible('landed_unit_cost')" class="text-right">Landed Cost</th>
+          <th v-if="isVisible('item_markup_pct')" class="text-right">Item Markup %</th>
+          <th v-if="isVisible('effective_markup_pct')" class="text-right">Effective Markup %</th>
+          <th v-if="isVisible('suggested_sell_unit_price')" class="text-right">Suggested Sell</th>
+          <th v-if="isVisible('listed_unit_price')" class="text-right">Listed Sell</th>
         </tr>
       </thead>
       <tbody>
@@ -34,9 +88,15 @@
 
           <!-- Image -->
           <td class="text-center col-sticky-image">
-            <div class="shipment-item-image-box cursor-pointer" @click="openImage(row.image_url)">
-              <img :src="row.image_url" v-if="row.image_url" class="shipment-item-image" />
-              <q-icon name="image" color="grey" size="24px" v-else />
+            <div class="shipment-item-image-box">
+              <SmartImage
+                :key="row.id"
+                :src="row.image_url"
+                :alt="row.name || 'Stock image'"
+                imgClass="shipment-item-image"
+                :enableEdit="false"
+                style="width: 100%; height: 100%;"
+              />
             </div>
           </td>
 
@@ -163,11 +223,39 @@
 
           <!-- Item markup % -->
           <td v-if="isVisible('item_markup_pct')" class="text-right">
-            <span v-if="row.pricing?.is_listed_price_manual" class="text-grey-6">—</span>
+            <div
+              v-if="isListedPriceLocked(row.pricing)"
+              class="text-grey-7"
+            >
+              {{ effectiveMarkupLabel(row) }}
+              <q-tooltip>Listed price locked — effective margin</q-tooltip>
+            </div>
             <template v-else>
-              <span class="text-underline-dashed cursor-pointer">
-                {{ itemMarkupLabel(row) }}
-              </span>
+              <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                <q-icon
+                  v-if="isItemMarkupLocked(row.pricing)"
+                  name="lock"
+                  color="amber-8"
+                  size="16px"
+                >
+                  <q-tooltip>Item markup locked — won't follow shipment markup</q-tooltip>
+                </q-icon>
+                <span class="text-underline-dashed cursor-pointer">
+                  {{ itemMarkupLabel(row) }}
+                </span>
+                <q-btn
+                  v-if="isItemMarkupLocked(row.pricing)"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="refresh"
+                  color="grey-7"
+                  @click.stop="emit('reset-item-markup', row)"
+                >
+                  <q-tooltip>Reset to shipment markup</q-tooltip>
+                </q-btn>
+              </div>
               <q-popup-edit
                 :model-value="itemMarkupPct(row) ?? 0"
                 v-slot="scope"
@@ -190,26 +278,42 @@
           </td>
 
           <!-- Listed unit price -->
-          <td v-if="isVisible('listed_unit_price')" class="cursor-pointer text-right text-weight-bold text-underline-dashed">
-            {{ formatCost(costingBreakdowns[row.id]?.display_listed_unit_price ?? row.pricing?.listed_unit_price ?? 0) }}
+          <td v-if="isVisible('listed_unit_price')" class="text-right">
+            <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+              <q-icon
+                v-if="isListedPriceLocked(row.pricing)"
+                name="lock"
+                color="amber-8"
+                size="16px"
+              >
+                <q-tooltip>Listed price locked — won't follow markup changes</q-tooltip>
+              </q-icon>
+
+              <span class="text-weight-bold text-underline-dashed cursor-pointer">
+                {{ formatCost(resolvedListedPrice(row)) }}
+              </span>
+
+              <q-btn
+                v-if="isListedPriceLocked(row.pricing)"
+                flat
+                round
+                dense
+                size="xs"
+                icon="refresh"
+                color="grey-7"
+                @click.stop="emit('reset-listed-price', row)"
+              >
+                <q-tooltip>Reset to auto price</q-tooltip>
+              </q-btn>
+            </div>
             <q-popup-edit
-              :model-value="row.pricing?.listed_unit_price || 0"
+              :model-value="resolvedListedPrice(row)"
               v-slot="scope"
               buttons
               @save="val => emit('save-pricing-value', row, 'listed_unit_price', val)"
             >
               <q-input v-model.number="scope.value" type="number" step="1" dense autofocus />
             </q-popup-edit>
-          </td>
-
-          <!-- Manual flag toggle -->
-          <td v-if="isVisible('is_listed_price_manual')" class="text-center">
-            <q-toggle
-              :model-value="!!row.pricing?.is_listed_price_manual"
-              color="primary"
-              dense
-              @update:model-value="val => emit('save-pricing-value', row, 'is_listed_price_manual', val)"
-            />
           </td>
         </tr>
 
@@ -220,16 +324,19 @@
         </tr>
       </tbody>
     </q-markup-table>
-    <q-inner-loading :showing="loading" />
+    <q-linear-progress v-if="loading && stocks.length > 0" indeterminate color="primary" class="absolute-top" style="z-index: 10" />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { ThriftStock } from '../../stock/types';
+import SmartImage from 'src/components/SmartImage.vue';
 import type { ThriftUnitCostBreakdown } from '../../shared/utils/computeThriftUnitCosts';
 import type { ThriftCurrency } from '../../currency/types';
 import { formatThriftStockMeasurements } from '../../shared/utils/formatThriftStockMeasurements';
 import { formatThriftAmount } from '../../currency/utils/formatMoney';
+import { resolveListedSellPrice } from '../../shared/utils/resolveListedSellPrice';
+import { isListedPriceLocked, isItemMarkupLocked } from '../../shared/utils/thriftPricingLock';
 
 const props = defineProps<{
   stocks: ThriftStock[];
@@ -245,6 +352,8 @@ const emit = defineEmits<{
   (e: 'open-landed-breakdown', row: ThriftStock): void;
   (e: 'save-stock-value', row: ThriftStock, field: string, val: number): void;
   (e: 'save-pricing-value', row: ThriftStock, field: string, val: any): void;
+  (e: 'reset-listed-price', row: ThriftStock): void;
+  (e: 'reset-item-markup', row: ThriftStock): void;
 }>();
 
 function isVisible(col: string): boolean {
@@ -263,14 +372,10 @@ function getFormattedMeasurements(row: ThriftStock): string {
   return formatThriftStockMeasurements(row);
 }
 
-function openImage(url: string | null | undefined) {
-  if (url) {
-    window.open(url, '_blank');
-  }
-}
+
 
 function itemMarkupPct(row: ThriftStock): number | null {
-  if (row.pricing?.is_listed_price_manual) return null;
+  if (isListedPriceLocked(row.pricing)) return null;
   if (row.pricing?.markup_rate_override != null) {
     return Math.round(row.pricing.markup_rate_override * 1000) / 10;
   }
@@ -288,6 +393,10 @@ function effectiveMarkupLabel(row: ThriftStock): string {
   const breakdown = props.costingBreakdowns[row.id];
   if (!breakdown || breakdown.effective_markup_pct == null) return '—';
   return `${Math.round(breakdown.effective_markup_pct * 10) / 10}%`;
+}
+
+function resolvedListedPrice(row: ThriftStock): number {
+  return resolveListedSellPrice(row.pricing, props.costingBreakdowns[row.id]);
 }
 </script>
 
@@ -396,5 +505,11 @@ function effectiveMarkupLabel(row: ThriftStock): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.thrift-table-stale :deep(tbody) {
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 </style>

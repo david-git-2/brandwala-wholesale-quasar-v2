@@ -1,3 +1,5 @@
+import { ceilThriftRetailPrice } from './ceilThriftRetailPrice';
+
 export interface ThriftShipmentCostInput {
   product_conversion_rate?: number | null | undefined;
   cargo_conversion_rate?: number | null | undefined;
@@ -122,14 +124,9 @@ export function resolveAppliedMarkupRate(
 export function computeEffectiveMarkupPct(
   landed: number,
   listedPrice: number,
-  isManual: boolean,
-  appliedRate: number,
 ): number | null {
   if (landed <= 0) return null;
-  if (isManual) {
-    return ((listedPrice - landed) / landed) * 100;
-  }
-  return appliedRate * 100;
+  return ((listedPrice - landed) / landed) * 100;
 }
 
 export function computeCargoSharePerUnit(
@@ -195,16 +192,11 @@ export function computeThriftUnitCosts(
   const landed_unit_cost = product_unit_cost + cargo_share_per_unit + ops_share_per_unit + additionalCharges;
 
   const { rate: applied_markup_rate, source: markup_source } = resolveAppliedMarkupRate(pricing, shipment);
-  const suggested_sell_unit_price = landed_unit_cost * (1 + applied_markup_rate);
+  const suggested_sell_unit_price = ceilThriftRetailPrice(landed_unit_cost * (1 + applied_markup_rate));
 
   const isManual = !!pricing?.is_listed_price_manual;
-  const listedPrice = pricing?.listed_unit_price ?? suggested_sell_unit_price;
-  const effective_markup_pct = computeEffectiveMarkupPct(
-    landed_unit_cost,
-    listedPrice,
-    isManual,
-    applied_markup_rate,
-  );
+  const listedPrice = isManual && pricing ? pricing.listed_unit_price : suggested_sell_unit_price;
+  const effective_markup_pct = computeEffectiveMarkupPct(landed_unit_cost, listedPrice);
 
   const breakdown: ThriftUnitCostBreakdown = {
     shipment_unit_count: U,
@@ -272,3 +264,43 @@ export function computeThriftUnitCostsForShipment(
 
   return results;
 }
+
+export function buildThriftCostBreakdownByStockId(
+  stocks: (ThriftStockCostInput & { id: number; shipment_id: number; pricing?: ThriftStockPricingInput | null })[],
+  shipmentById: Map<number, ThriftShipmentCostInput>,
+  settings: ThriftSettingsCostInput,
+): Record<number, ThriftUnitCostBreakdown> {
+  const byShipment = new Map<number, (ThriftStockCostInput & { id: number; pricing?: ThriftStockPricingInput | null })[]>();
+  for (const stock of stocks) {
+    const list = byShipment.get(stock.shipment_id) ?? [];
+    list.push(stock);
+    byShipment.set(stock.shipment_id, list);
+  }
+
+  const breakdowns: Record<number, ThriftUnitCostBreakdown> = {};
+  for (const [shipmentId, shipmentStocks] of byShipment) {
+    const shipment = shipmentById.get(shipmentId);
+    if (!shipment) continue;
+
+    const pricingMap: Record<number, ThriftStockPricingInput> = {};
+    for (const stock of shipmentStocks) {
+      if (stock.pricing) {
+        pricingMap[stock.id] = {
+          listed_unit_price: stock.pricing.listed_unit_price,
+          is_listed_price_manual: stock.pricing.is_listed_price_manual,
+          markup_rate_override: stock.pricing.markup_rate_override ?? null,
+        };
+      }
+    }
+
+    const shipmentBreakdowns = computeThriftUnitCostsForShipment(
+      shipmentStocks,
+      shipment,
+      settings,
+      pricingMap,
+    );
+    Object.assign(breakdowns, shipmentBreakdowns);
+  }
+  return breakdowns;
+}
+

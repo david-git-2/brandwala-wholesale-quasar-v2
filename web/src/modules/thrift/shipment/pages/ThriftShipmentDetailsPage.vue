@@ -36,7 +36,52 @@
       <div class="text-caption">Register items in the mobile app or catalog page to populate this shipment.</div>
     </q-banner>
 
-    <div class="row q-col-gutter-md">
+    <!-- Skeleton loader for the entire page body when first loading -->
+    <div class="row q-col-gutter-md" v-if="loading && !shipment">
+      <!-- Left sidebar skeleton -->
+      <div class="col-12 col-md-3">
+        <q-card flat class="floating-surface shadow-1 q-mb-md">
+          <q-card-section>
+            <q-skeleton type="text" width="60%" class="q-mb-sm" />
+            <q-separator class="q-my-sm" />
+            <div v-for="n in 2" :key="n" class="row justify-between q-py-xs">
+              <q-skeleton type="text" width="40%" />
+              <q-skeleton type="text" width="20%" />
+            </div>
+          </q-card-section>
+        </q-card>
+        <q-card flat class="floating-surface shadow-1">
+          <q-card-section class="q-gutter-y-sm">
+            <q-skeleton type="text" width="50%" />
+            <q-skeleton v-for="n in 6" :key="n" type="QInput" height="40px" />
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Main table area skeleton -->
+      <div class="col-12 col-md-9">
+        <q-card flat class="floating-surface shadow-1">
+          <q-card-section class="row items-center justify-between q-py-sm">
+            <q-skeleton type="text" width="120px" height="32px" />
+            <div class="row q-gutter-sm">
+              <q-skeleton type="QInput" width="200px" height="32px" />
+              <q-skeleton type="QBtn" width="100px" height="32px" />
+            </div>
+          </q-card-section>
+          
+          <thrift-shipment-items-table
+            :stocks="[]"
+            :visibleColumns="visibleColumns"
+            :costingBreakdowns="{}"
+            :purchaseCurrency="undefined"
+            :costCurrency="undefined"
+            :loading="true"
+          />
+        </q-card>
+      </div>
+    </div>
+
+    <div class="row q-col-gutter-md" v-else>
       <!-- Collapsible Left Sidebar (col-3) -->
       <div v-show="isLeftColumnVisible" class="col-12 col-md-3 transition-sidebar">
         <!-- Summary card -->
@@ -235,6 +280,8 @@
             @open-landed-breakdown="openLandedBreakdownDialog"
             @save-stock-value="saveStockValue"
             @save-pricing-value="saveStockPricingValue"
+            @reset-listed-price="resetListedPriceToSuggested"
+            @reset-item-markup="resetItemMarkupToShipment"
           />
         </q-card>
       </div>
@@ -357,7 +404,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
@@ -371,6 +418,8 @@ import { useThriftShipmentCosting } from '../../shared/composables/useThriftShip
 import ThriftStockMeasurementsDialog from '../../stock/components/ThriftStockMeasurementsDialog.vue';
 import ThriftLandedCostBreakdownDialog from '../../stock/components/ThriftLandedCostBreakdownDialog.vue';
 import ThriftShipmentItemsTable from '../components/ThriftShipmentItemsTable.vue';
+import { computeThriftUnitCosts } from '../../shared/utils/computeThriftUnitCosts';
+import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedPricingPatch';
 import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
@@ -477,7 +526,6 @@ const columnsList = [
   { name: 'effective_markup_pct', label: 'Effective Markup %' },
   { name: 'suggested_sell_unit_price', label: 'Suggested Sell' },
   { name: 'listed_unit_price', label: 'Listed Sell' },
-  { name: 'is_listed_price_manual', label: 'Manual' },
 ];
 
 const visibleColumns = ref<Set<string>>(new Set([
@@ -488,9 +536,7 @@ const visibleColumns = ref<Set<string>>(new Set([
   'landed_unit_cost',
   'item_markup_pct',
   'effective_markup_pct',
-  'suggested_sell_unit_price',
   'listed_unit_price',
-  'is_listed_price_manual',
 ]));
 
 // Persist visible columns in localStorage
@@ -607,7 +653,28 @@ async function saveShipmentCosts() {
     };
     const updated = await thriftShipmentRepository.updateShipment(shipment.value.id, payload);
     shipment.value = updated;
-    $q.notify({ type: 'positive', message: 'Shipment costs saved successfully' });
+    
+    // Wait for the cost calculations to propagate
+    await nextTick();
+    
+    // Batch update all non-locked stock prices
+    const autoStocks = stocks.value.filter(s => !s.pricing?.is_listed_price_manual);
+    if (autoStocks.length > 0) {
+      await Promise.all(
+        autoStocks.map(async (stock) => {
+          const breakdown = costingBreakdowns.value[stock.id];
+          if (!breakdown) return;
+          const pricing = buildAutoListedPricingPatch(stock, breakdown);
+          const updatedStock = await thriftStockRepository.updateStock(stock.id, {}, pricing);
+          if (updatedStock.pricing) {
+            stock.pricing = updatedStock.pricing;
+          }
+        })
+      );
+      stocks.value = [...stocks.value];
+    }
+    
+    $q.notify({ type: 'positive', message: 'Shipment costs and auto-prices saved successfully' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to update shipment costs' });
   }
@@ -636,16 +703,38 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     const pricingPatch: Record<string, unknown> = { [field]: value };
     if (field === 'listed_unit_price') {
       pricingPatch.is_listed_price_manual = true;
+      pricingPatch.markup_rate_override = null;
     }
     if (field === 'markup_rate_override') {
       pricingPatch.is_listed_price_manual = false;
     }
     if (field === 'is_listed_price_manual' && value === false) {
-      const breakdown = costingBreakdowns.value[row.id];
-      if (breakdown) {
-        pricingPatch.listed_unit_price = breakdown.suggested_sell_unit_price;
-      }
+      pricingPatch.is_listed_price_manual = false;
     }
+
+    const isManual = pricingPatch.is_listed_price_manual !== undefined
+      ? !!pricingPatch.is_listed_price_manual
+      : !!row.pricing?.is_listed_price_manual;
+
+    if (!isManual && shipment.value) {
+      const currentPricing = {
+        cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
+        target_price: Number(row.pricing?.target_price) || 0,
+        listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
+        is_listed_price_manual: false,
+        markup_rate_override: row.pricing?.markup_rate_override ?? null,
+        extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
+        ...pricingPatch,
+      };
+      
+      const settings = settingsStore.opsCostSettingsForEngine;
+      const mergedStocks = stocks.value.map(item => item.id === row.id ? { ...item, pricing: currentPricing } : item);
+      const U = mergedStocks.reduce((acc, s) => acc + (s.quantity || 0), 0);
+      const breakdown = computeThriftUnitCosts(row, shipment.value, settings, Math.max(U, 1), currentPricing, mergedStocks);
+      
+      pricingPatch.listed_unit_price = breakdown.suggested_sell_unit_price;
+    }
+
     const pricing = {
       cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
       target_price: Number(row.pricing?.target_price) || 0,
@@ -659,10 +748,31 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
     if (updated.pricing) {
       row.pricing = updated.pricing;
+      const idx = stocks.value.findIndex(s => s.id === row.id);
+      if (idx !== -1) {
+        stocks.value[idx]!.pricing = updated.pricing;
+        stocks.value = [...stocks.value];
+      }
     }
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
+  }
+}
+
+async function resetListedPriceToSuggested(row: ThriftStock) {
+  try {
+    await saveStockPricingValue(row, 'is_listed_price_manual', false);
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Reset failed' });
+  }
+}
+
+async function resetItemMarkupToShipment(row: ThriftStock) {
+  try {
+    await saveStockPricingValue(row, 'markup_rate_override', null);
+  } catch (err: unknown) {
+    $q.notify({ type: 'negative', message: (err as Error).message || 'Reset failed' });
   }
 }
 
