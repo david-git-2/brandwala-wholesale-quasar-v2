@@ -4,7 +4,7 @@
     subtitle="Manage capital collections, analyze unallocated funds, and link payments to sales invoices."
     :error="error"
   >
-    <template #header-left>
+    <template #action>
       <q-btn
         color="primary"
         icon="add"
@@ -169,7 +169,7 @@
                   <template #append>
                     <q-icon name="event" class="cursor-pointer">
                       <q-popup-proxy ref="qDateProxy" cover transition-show="scale" transition-hide="scale">
-                        <q-date v-model="newPayment.payment_date" mask="YYYY-MM-DD" @update:model-value="() => qDateProxy?.hide()" />
+                        <q-date v-model="newPayment.payment_date" mask="YYYY-MM-DD" @update:model-value="closeDatePopup" />
                       </q-popup-proxy>
                     </q-icon>
                   </template>
@@ -227,7 +227,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useBillingProfileStore } from 'src/modules/invoice/stores/billingProfileStore'
@@ -245,6 +246,13 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const payments = ref<any[]>([])
+const qDateProxy = ref<any>(null)
+
+const closeDatePopup = () => {
+  if (qDateProxy.value) {
+    qDateProxy.value.hide()
+  }
+}
 
 // Filters
 const search = ref('')

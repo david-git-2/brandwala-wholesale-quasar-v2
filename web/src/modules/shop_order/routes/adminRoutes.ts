@@ -123,14 +123,14 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/commerce/shop',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${to.params.tenantSlug}` : ''
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
       return `${tenantSlug}/app/shop/shops`
     },
   },
   {
     path: '/:tenantSlug?/app/commerce/orders',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${to.params.tenantSlug}` : ''
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
       return `${tenantSlug}/app/shop/orders`
     },
   },

@@ -335,7 +335,7 @@ const load = async () => {
 
 const onSave = async () => {
   // Clear currency if amount is null to satisfy constraint
-  if (editForm.value.credit_limit_amount === null || editForm.value.credit_limit_amount === undefined || editForm.value.credit_limit_amount === '') {
+  if (editForm.value.credit_limit_amount === null || editForm.value.credit_limit_amount === undefined || String(editForm.value.credit_limit_amount) === '') {
     editForm.value.credit_limit_amount = null
     editForm.value.credit_limit_currency_id = null
   }

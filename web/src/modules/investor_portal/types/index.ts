@@ -4,6 +4,9 @@ export type InvestorPortfolioBalances = {
   deployed: number
   available: number
   payouts: number
+  realized_profit: number
+  unrealized_profit: number
+  withdrawable_balance: number
 }
 
 export type InvestorShipmentInvestment = {

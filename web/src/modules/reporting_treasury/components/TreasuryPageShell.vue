@@ -3,7 +3,11 @@
     <div class="bw-page__stack">
       <!-- Title & Subtitle Card -->
       <q-card flat bordered class="q-pa-md">
-        <AppPageHeader :title="title" :subtitle="subtitle" />
+        <AppPageHeader :title="title" :subtitle="subtitle || ''">
+          <template v-if="$slots.action" #action>
+            <slot name="action" />
+          </template>
+        </AppPageHeader>
       </q-card>
 
       <!-- Status Banner / Error Slot -->
@@ -27,3 +31,4 @@ defineProps<{
   error?: string | null
 }>()
 </script>
+

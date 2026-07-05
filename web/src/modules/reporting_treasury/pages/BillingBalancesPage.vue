@@ -127,7 +127,7 @@
 
               <template #body-cell-invoice_date="props">
                 <q-td :props="props">
-                  {{ formatDate(props.row.invoice_date) }}
+                  {{ props.row.invoice_date || '-' }}
                 </q-td>
               </template>
 
@@ -171,7 +171,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
@@ -239,13 +240,6 @@ const totalInvoiced = computed(() => {
   return profiles.value.reduce((sum, p) => sum + p.total_invoiced, 0)
 })
 
-const averageCollectionRate = computed(() => {
-  if (totalInvoiced.value <= 0) return '0.0%'
-  const paid = totalInvoiced.value - totalOutstandingDue.value
-  const pct = (paid / totalInvoiced.value) * 100
-  return `${pct.toFixed(1)}%`
-})
-
 const statCards = computed(() => [
   {
     label: 'Total Outstanding AR',
@@ -266,15 +260,6 @@ const statCards = computed(() => [
     valueClass: 'text-primary',
   },
 ])
-
-const formatDate = (val: string | null | undefined) => {
-  if (!val) return '—'
-  try {
-    return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  } catch {
-    return val
-  }
-}
 
 onMounted(() => {
   void loadData()

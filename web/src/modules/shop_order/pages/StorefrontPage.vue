@@ -330,7 +330,6 @@ import { useShopStorefrontStore } from '../stores/shopStorefrontStore'
 import { useProductStore } from 'src/modules/products/stores/productStore'
 import { useShopCartStore } from '../stores/shopCartStore'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
-import { showSuccessNotification } from 'src/utils/appFeedback'
 import type { QInfiniteScroll } from 'quasar'
 
 const route = useRoute()
@@ -481,7 +480,7 @@ const onLoadMore = async (index: number, done: (stop?: boolean) => void) => {
     append: index > 1,
   })
 
-  if (result.success) {
+  if (result.success && 'data' in result) {
     const loadedCount = result.data?.data?.length ?? 0
     const total = shopStorefrontStore.totalItems
     const currentTotal = shopStorefrontStore.catalogItems.length
@@ -523,7 +522,7 @@ const onAddToCart = async (item: any) => {
 }
 
 const goToCart = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   void router.push(`${tenantSlug}/shop/cart`)
 }
 

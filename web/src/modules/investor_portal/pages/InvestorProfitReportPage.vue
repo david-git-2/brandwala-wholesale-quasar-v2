@@ -100,7 +100,7 @@ const startDate = ref(getFirstDayOfMonth())
 const endDate = ref(getToday())
 const loading = ref(false)
 const error = ref<string | null>(null)
-const report = ref<any | null>(null)
+const report = ref<any>(null)
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(

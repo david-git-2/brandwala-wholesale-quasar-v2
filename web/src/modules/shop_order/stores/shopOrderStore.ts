@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 import { shopOrderService } from '../services/shopOrderService'
-import type { ShopOrder, ShopOrderItem } from '../types'
+import type { Shop, ShopOrder, ShopOrderItem } from '../types'
 
 export interface ShopOrderState {
   orders: ShopOrder[]
@@ -10,6 +10,8 @@ export interface ShopOrderState {
   loading: boolean
   saving: boolean
   error: string | null
+  shops: Shop[]
+  loadingShops: boolean
 }
 
 export const useShopOrderStore = defineStore('shopOrder', {
@@ -20,6 +22,8 @@ export const useShopOrderStore = defineStore('shopOrder', {
     loading: false,
     saving: false,
     error: null,
+    shops: [],
+    loadingShops: false,
   }),
 
   actions: {
@@ -228,6 +232,63 @@ export const useShopOrderStore = defineStore('shopOrder', {
       } finally {
         this.saving = false
       }
+    },
+
+    async fetchShopsByTenant(tenantId: number, opts: { active?: boolean | null; search?: string | null } = {}) {
+      this.loadingShops = true
+      this.error = null
+      try {
+        const { shopOrderRepository } = await import('../repositories/shopOrderRepository')
+        const data = await shopOrderRepository.listShops(tenantId, opts)
+        this.shops = data
+        return { success: true, data }
+      } catch (err: any) {
+        this.error = err.message
+        return { success: false, error: err.message }
+      } finally {
+        this.loadingShops = false
+      }
+    },
+
+    async createShop(payload: any) {
+      this.saving = true
+      this.error = null
+      try {
+        const { shopOrderRepository } = await import('../repositories/shopOrderRepository')
+        const data = await shopOrderRepository.upsertShop(payload)
+        this.shops.push(data)
+        showSuccessNotification('Shop created successfully.')
+        return { success: true, data }
+      } catch (err: any) {
+        this.error = err.message
+        return { success: false, error: err.message }
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateShop(payload: any) {
+      this.saving = true
+      this.error = null
+      try {
+        const { shopOrderRepository } = await import('../repositories/shopOrderRepository')
+        const data = await shopOrderRepository.upsertShop(payload)
+        const idx = this.shops.findIndex((s) => s.id === data.id)
+        if (idx !== -1) {
+          this.shops[idx] = data
+        }
+        showSuccessNotification('Shop updated successfully.')
+        return { success: true, data }
+      } catch (err: any) {
+        this.error = err.message
+        return { success: false, error: err.message }
+      } finally {
+        this.saving = false
+      }
+    },
+
+    clearError() {
+      this.error = null
     },
   },
 })

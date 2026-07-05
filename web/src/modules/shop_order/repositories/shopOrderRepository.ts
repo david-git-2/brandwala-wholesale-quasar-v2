@@ -21,6 +21,7 @@ const listShops = async (
 }
 
 const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promise<Shop> => {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   const isEdit = 'id' in payload && typeof (payload as UpdateShopPayload).id === 'number'
 
   const { data, error } = await supabase.rpc('upsert_shop', {
@@ -35,6 +36,7 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_shop_type:           isEdit ? null : (payload as CreateShopPayload).shop_type,
     p_vendor_code:         isEdit ? null : ((payload as CreateShopPayload).vendor_code?.trim() || null),
     // optional
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     p_id:                  isEdit ? (payload as UpdateShopPayload).id : null,
     p_default_currency_id: payload.default_currency_id ?? null,
     p_global_stock_type_id: payload.global_stock_type_id ?? null,

@@ -65,6 +65,9 @@ export type ModuleKey =
   | 'shop_cart'
   | 'shop_order_mgmt'
   | 'shop_fulfillment'
+  | 'sales_invoice'
+  | 'billing_profile'
+  | 'recipient_profile'
 
 
 export type ModuleAction = 'view'

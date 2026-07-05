@@ -4,7 +4,7 @@
     subtitle="Analyze itemized landed costs, sales revenue conversion, gross profit margin, and current unsold inventory value."
     :error="error"
   >
-    <template #header-left>
+    <template #action>
       <q-btn flat dense no-caps icon="arrow_back" label="Back to Shipments" @click="goBack" />
     </template>
 
@@ -105,7 +105,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'

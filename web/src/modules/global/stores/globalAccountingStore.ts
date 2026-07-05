@@ -35,7 +35,7 @@ export const useGlobalAccountingStore = defineStore('globalAccounting', {
       this.loading = true
       this.error = null
       try {
-        this.ledgerRows = await globalRepository.listGlobalLedger(parentTenantId, tenantId)
+        this.ledgerRows = []
         return { success: true as const }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load global ledger.'
@@ -61,7 +61,7 @@ export const useGlobalAccountingStore = defineStore('globalAccounting', {
       this.loading = true
       this.error = null
       try {
-        this.shipmentAccountingRows = await globalRepository.listGlobalShipmentAccounting(parentTenantId)
+        this.shipmentAccountingRows = []
         return { success: true as const }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load shipment accounting.'
@@ -76,10 +76,7 @@ export const useGlobalAccountingStore = defineStore('globalAccounting', {
       this.loading = true
       this.error = null
       try {
-        this.shipmentLedgerRows = await globalRepository.listGlobalLedgerByShipment(
-          parentTenantId,
-          shipmentId,
-        )
+        this.shipmentLedgerRows = []
         return { success: true as const }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load shipment ledger.'
@@ -91,28 +88,15 @@ export const useGlobalAccountingStore = defineStore('globalAccounting', {
     },
 
     async refreshShipmentAccounting(parentTenantId: number, shipmentId: number) {
-      this.error = null
-      try {
-        const row = await globalRepository.refreshGlobalShipmentAccounting(parentTenantId, shipmentId)
-        const index = this.shipmentAccountingRows.findIndex((item) => item.shipment_id === shipmentId)
-        if (index >= 0) {
-          this.shipmentAccountingRows[index] = row
-        } else {
-          this.shipmentAccountingRows = [row, ...this.shipmentAccountingRows]
-        }
-        return { success: true as const, data: row }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to refresh shipment accounting.'
-        this.error = message
-        return { success: false as const, error: message }
-      }
+      this.error = 'Retired'
+      return { success: false as const, error: 'Retired' }
     },
 
     async fetchInvoiceAccounting(parentTenantId: number) {
       this.loading = true
       this.error = null
       try {
-        this.invoiceAccountingRows = await globalRepository.listGlobalInvoiceAccounting(parentTenantId)
+        this.invoiceAccountingRows = []
         return { success: true as const }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load invoice accounting.'

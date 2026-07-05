@@ -259,8 +259,8 @@ const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
   const isEdit = 'id' in payload
 
   const result = isEdit
-    ? await store.updateShop(payload as UpdateShopPayload)
-    : await store.createShop(payload as CreateShopPayload)
+    ? await store.updateShop(payload)
+    : await store.createShop(payload)
 
   if (!result) return
 

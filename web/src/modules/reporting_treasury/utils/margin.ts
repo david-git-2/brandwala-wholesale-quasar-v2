@@ -159,7 +159,11 @@ export const batchPnl = (
     let landedUnitCost = item.landed_unit_cost
     if (landedUnitCost === undefined) {
       const costingItem = costingItems[index]
-      landedUnitCost = calculateLineLandedCostBdt(costingItem, shipment, costingItems)
+      if (costingItem) {
+        landedUnitCost = calculateLineLandedCostBdt(costingItem, shipment, costingItems)
+      } else {
+        landedUnitCost = 0
+      }
     }
 
     totalLandedCost += landedUnitCost * receivedQty

@@ -20,7 +20,7 @@
               dense
               :error="!!errors.name"
               :error-message="errors.name"
-              @update:model-value="syncSlug"
+              @update:model-value="(val) => syncSlug(String(val ?? ''))"
             />
           </div>
           <div class="col-5">

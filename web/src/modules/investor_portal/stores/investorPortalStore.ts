@@ -8,7 +8,7 @@ export const useInvestorPortalStore = defineStore('investorPortal', {
     loading: false,
     error: null as string | null,
     portfolio: null as InvestorPortfolioSummary | null,
-    dashboardSummary: null as any | null,
+    dashboardSummary: null,
     allocations: [] as any[],
     transactions: [] as any[],
     investorId: null as number | null,

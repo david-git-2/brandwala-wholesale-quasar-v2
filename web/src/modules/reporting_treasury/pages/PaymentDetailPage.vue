@@ -4,11 +4,8 @@
     subtitle="Verify allocations, trace settlement records, and clear customer outstanding balances."
     :error="error"
   >
-    <template #header-left>
-      <q-btn flat dense no-caps icon="arrow_back" label="Back to Payments" @click="goBack" />
-    </template>
-
-    <template #header-right>
+    <template #action>
+      <q-btn flat dense no-caps icon="arrow_back" label="Back to Payments" @click="goBack" class="q-mr-sm" />
       <q-btn
         v-if="payment && payment.unallocated_amount > 0"
         color="warning"

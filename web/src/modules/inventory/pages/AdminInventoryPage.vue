@@ -456,7 +456,7 @@ const onSaveItem = async (
     image_url: itemPayload.image_url,
     barcode: itemPayload.barcode ?? null,
     product_code: itemPayload.product_code ?? null,
-    price_gbp: null,
+    list_price_amount: null,
     country_of_origin: null,
     brand: null,
     category: null,

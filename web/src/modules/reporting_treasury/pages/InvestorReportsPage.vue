@@ -160,7 +160,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
@@ -337,7 +338,7 @@ const exportCapitalReport = async () => {
 
     if (err) throw err
 
-    const reportData = data as any
+    const reportData = data
     const investorName = partners.value.find((p) => p.id === selectedExportInvestorId.value)?.name ?? 'Investor'
 
     const csvContent = [

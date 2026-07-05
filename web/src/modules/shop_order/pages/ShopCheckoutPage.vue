@@ -150,7 +150,7 @@ const billingOptions = ref([
 ])
 
 const goBack = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   void router.push(`${tenantSlug}/shop/cart`)
 }
 
@@ -165,7 +165,7 @@ const submitOrder = async () => {
   )
   if (res.success) {
     cartStore.clearCart()
-    const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
     void router.push(`${tenantSlug}/shop/orders`)
   }
 }

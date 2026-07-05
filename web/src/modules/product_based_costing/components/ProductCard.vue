@@ -23,7 +23,7 @@
       </div>
 
       <div class="text-h6 q-mt-sm">
-        £{{ formatPrice(product.price_gbp) }}
+        £{{ formatPrice(product.price_gbp ?? null) }}
       </div>
 
       <div class="q-mt-md text-body2">
@@ -70,6 +70,7 @@ const route = useRoute()
 type ProductCardProduct = Product & {
   product_weight?: number | null
   package_weight?: number | null
+  price_gbp?: number | null
 }
 
 const props = defineProps<{

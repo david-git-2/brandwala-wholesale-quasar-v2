@@ -42,7 +42,7 @@
           </template>
 
           <template #body-cell-remainder="props">
-            <q-td :props="props" class="text-right text-weight-bold" :class="getRemainder(props.row.id) > 0 ? 'text-warning' : 'text-grey-6'">
+            <q-td :props="props" class="text-right text-weight-bold" :class="Number(getRemainder(props.row.id)) > 0 ? 'text-warning' : 'text-grey-6'">
               {{ getRemainder(props.row.id) }}%
             </q-td>
           </template>
@@ -59,9 +59,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { QTableColumn } from 'quasar'
+import type { QTableColumn } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'

@@ -20,13 +20,6 @@
 
     <div class="marketing-tag-card__body">
       <div
-        v-if="tagConfig.show_listed_sell"
-        class="marketing-tag-card__price"
-      >
-        {{ listedSellFormatted }}
-      </div>
-
-      <div
         v-if="tagConfig.show_core_sizes && coreSizesLine"
         class="marketing-tag-card__size-line"
       >
@@ -40,6 +33,13 @@
       >
         <span class="marketing-tag-card__label">Add</span>
         <span class="marketing-tag-card__additional-value">{{ additionalSizesLine }}</span>
+      </div>
+
+      <div
+        v-if="tagConfig.show_listed_sell"
+        class="marketing-tag-card__price"
+      >
+        {{ listedSellFormatted }}
       </div>
     </div>
 
@@ -91,9 +91,9 @@ const showHeader = computed(() => {
   background: #fff;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 1.5mm;
+  gap: 1mm;
   box-sizing: border-box;
-  height: 36mm;
+  height: 42mm;
   width: 100%;
   border-radius: 4px;
   overflow: hidden;
@@ -103,7 +103,7 @@ const showHeader = computed(() => {
 
 .marketing-tag-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 2mm;
   min-height: 0;
   flex-shrink: 0;
@@ -129,9 +129,7 @@ const showHeader = computed(() => {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #111;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .marketing-tag-card__body {

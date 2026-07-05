@@ -79,7 +79,8 @@ export function useMembershipColumnPreference(options: {
     let timeoutId: ReturnType<typeof setTimeout> | null = null
     return () => {
       if (timeoutId) clearTimeout(timeoutId)
-      timeoutId = setTimeout(async () => {
+      timeoutId = setTimeout(() => {
+        void (async () => {
         const membershipId = authStore.membershipId
         if (!membershipId) {
           return
@@ -99,6 +100,7 @@ export function useMembershipColumnPreference(options: {
         } finally {
           isSaving = false
         }
+        })()
       }, 500)
     }
   })()

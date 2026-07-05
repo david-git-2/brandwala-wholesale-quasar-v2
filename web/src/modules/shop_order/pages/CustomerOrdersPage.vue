@@ -105,14 +105,14 @@ onMounted(async () => {
 
 const goToStorefront = () => {
   const slug = storefrontStore.shopDetails?.slug ?? localStorage.getItem('last_visited_shop_slug')
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   if (slug) {
     void router.push(`${tenantSlug}/shop/browse/${slug}`)
   }
 }
 
 const goToOrderDetails = (orderId: number) => {
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   void router.push(`${tenantSlug}/shop/orders/${orderId}`)
 }
 

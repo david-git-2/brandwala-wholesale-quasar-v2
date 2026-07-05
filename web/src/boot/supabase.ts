@@ -5,58 +5,95 @@ import { beginGlobalRequest, endGlobalRequest } from 'src/composables/useGlobalN
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis)
+const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry'
+
+const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {
+  const storageKey = 'brandwala.tenant.workspace.v1'
+  const storageValue = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
+  let selectedTenantId: string | null = null
+
+  if (storageValue) {
+    try {
+      const parsed = JSON.parse(storageValue)
+      if (parsed && parsed.selectedTenantId) {
+        selectedTenantId = parsed.selectedTenantId.toString()
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  if (!selectedTenantId) {
+    return init
+  }
+
+  const nextInit = { ...init }
+  const headers = new Headers(nextInit.headers)
+  headers.set('x-selected-tenant-id', selectedTenantId)
+  nextInit.headers = headers
+  return nextInit
+}
+
+const isMonitoredSupabase401 = (urlStr: string): boolean => {
+  if (!urlStr.startsWith(supabaseUrl)) {
+    return false
+  }
+
+  try {
+    const path = new URL(urlStr).pathname
+    const isMonitored =
+      path.startsWith('/rest/v1/') ||
+      path.startsWith('/functions/v1/') ||
+      path.startsWith('/storage/v1/')
+    const isExcluded =
+      path.startsWith('/auth/v1/token') || path.startsWith('/auth/v1/authorize')
+
+    return isMonitored && !isExcluded
+  } catch {
+    return false
+  }
+}
 
 const trackedFetch: typeof fetch = async (input, init) => {
   beginGlobalRequest()
   try {
-    const storageKey = 'brandwala.tenant.workspace.v1'
-    const storageValue = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
-    let selectedTenantId: string | null = null
+    const modifiedInit = withSelectedTenantHeader(init)
+    let response = await defaultFetch(input, modifiedInit)
 
-    if (storageValue) {
-      try {
-        const parsed = JSON.parse(storageValue)
-        if (parsed && parsed.selectedTenantId) {
-          selectedTenantId = parsed.selectedTenantId.toString()
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
+    const urlStr = typeof input === 'string' ? input : input instanceof Request ? input.url : ''
+    if (response.status === 401 && isMonitoredSupabase401(urlStr)) {
+      const headers = new Headers(modifiedInit?.headers)
+      const alreadyRetried = headers.get(AUTH_RETRY_HEADER) === '1'
+      const { tryRefreshSession, handleUnauthorizedResponse } = await import(
+        'src/modules/auth/utils/forceAuthLogout'
+      )
 
-    let modifiedInit = init
-    if (selectedTenantId) {
-      modifiedInit = { ...init }
-      const headers = new Headers(modifiedInit.headers)
-      headers.set('x-selected-tenant-id', selectedTenantId)
-      modifiedInit.headers = headers
-    }
+      if (alreadyRetried) {
+        void handleUnauthorizedResponse()
+      } else {
+        const refreshed = await tryRefreshSession()
+        if (!refreshed) {
+          void handleUnauthorizedResponse()
+        } else {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            const retryInit = { ...modifiedInit }
+            const retryHeaders = new Headers(retryInit.headers)
+            retryHeaders.set('Authorization', `Bearer ${session.access_token}`)
+            retryHeaders.set(AUTH_RETRY_HEADER, '1')
+            retryInit.headers = retryHeaders
+            response = await defaultFetch(input, retryInit)
+          }
 
-    const response = await defaultFetch(input, modifiedInit)
-
-    const urlStr = typeof input === 'string' ? input : (input instanceof Request ? input.url : '')
-    if (urlStr && urlStr.startsWith(supabaseUrl)) {
-      try {
-        const urlObj = new URL(urlStr)
-        const path = urlObj.pathname
-
-        const isMonitored = path.startsWith('/rest/v1/') || path.startsWith('/functions/v1/') || path.startsWith('/storage/v1/')
-        const isExcluded = path.startsWith('/auth/v1/token') || path.startsWith('/auth/v1/authorize')
-
-        if (isMonitored && !isExcluded) {
           if (response.status === 401) {
-            import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
-              void handleUnauthorizedResponse()
-            })
-          } else if (response.status === 403) {
-            import('src/modules/auth/utils/handleForbiddenResponse').then(({ handleForbiddenResponse }) => {
-              void handleForbiddenResponse(response)
-            })
+            void handleUnauthorizedResponse()
           }
         }
-      } catch {
-        // Fail silent if URL parsing fails
       }
+    } else if (response.status === 403 && isMonitoredSupabase401(urlStr)) {
+      void import('src/modules/auth/utils/handleForbiddenResponse').then(({ handleForbiddenResponse }) => {
+        void handleForbiddenResponse(response)
+      })
     }
 
     return response
@@ -82,8 +119,13 @@ export default defineBoot(async ({ app }) => {
     const authStore = useAuthStore()
 
     if (authStore.hasAccess && !session) {
-      const { handleUnauthorizedResponse } = await import('src/modules/auth/utils/forceAuthLogout')
-      await handleUnauthorizedResponse()
+      const { tryRefreshSession, handleUnauthorizedResponse } = await import(
+        'src/modules/auth/utils/forceAuthLogout'
+      )
+      const refreshed = await tryRefreshSession()
+      if (!refreshed) {
+        await handleUnauthorizedResponse()
+      }
       return
     }
   } catch (error) {
@@ -92,10 +134,10 @@ export default defineBoot(async ({ app }) => {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-      import('src/modules/auth/stores/authStore').then(({ useAuthStore }) => {
+      void import('src/modules/auth/stores/authStore').then(({ useAuthStore }) => {
         const authStore = useAuthStore()
         if (authStore.isAuthenticated) {
-          import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
+          void import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
             void handleUnauthorizedResponse()
           })
         }

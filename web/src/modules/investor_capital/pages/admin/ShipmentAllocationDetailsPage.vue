@@ -21,8 +21,10 @@
     </div>
 
     <!-- Parent Remainder Banner -->
-    <q-banner v-slot:avatar v-if="parentRemainderPct > 0" class="bg-amber-1 text-amber-9 q-mb-md rounded-borders">
-      <q-icon name="warning" color="warning" size="md" class="q-mr-sm" />
+    <q-banner v-if="parentRemainderPct > 0" class="bg-amber-1 text-amber-9 q-mb-md rounded-borders">
+      <template #avatar>
+        <q-icon name="warning" color="warning" size="md" class="q-mr-sm" />
+      </template>
       Parent company retains <strong>{{ parentRemainderPct.toFixed(2) }}%</strong> remainder cost share of this shipment batch.
     </q-banner>
 
@@ -141,7 +143,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
-import type { ShipmentInvestment, InvestorBalance } from 'src/modules/investor_capital/types'
+import type { ShipmentInvestment } from 'src/modules/investor_capital/types'
 import { formatAmountBdt } from 'src/utils/currency'
 import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue'
 
@@ -199,8 +201,8 @@ const investorNameById = (investorId: number) =>
 const hasExistingInvestment = (investorId: number) =>
   capitalStore.shipmentInvestments.some((item) => item.investor_id === investorId)
 
-const openAddDialog = (investor: InvestorBalance) => {
-  editingInvestment.value = null
+const openAddDialog = (investor?: any) => {
+  editingInvestment.value = investor ? { investor_id: investor.investor_id } as any : null
   openDialog.value = true
 }
 

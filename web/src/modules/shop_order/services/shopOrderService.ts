@@ -148,6 +148,27 @@ const fulfillOrderToInvoice = async (orderId: number): Promise<ShopServiceResult
   }
 }
 
+const browseShopCatalog = async (
+  shopSlug: string,
+  opts?: {
+    search?: string | null
+    category?: string | null
+    brand?: string | null
+    limit?: number
+    offset?: number
+  },
+): Promise<ShopServiceResult<any>> => {
+  try {
+    const data = await shopOrderRepository.browseShopCatalog(shopSlug, opts)
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch catalog.',
+    }
+  }
+}
+
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
@@ -159,4 +180,5 @@ export const shopOrderService = {
   fetchStaffOrders,
   placeOrderForProcurement,
   fulfillOrderToInvoice,
+  browseShopCatalog,
 }

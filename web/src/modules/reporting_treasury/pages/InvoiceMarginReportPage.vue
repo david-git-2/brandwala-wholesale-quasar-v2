@@ -163,7 +163,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
@@ -236,7 +237,7 @@ const fetchReport = async () => {
       invoiceType: typeFilter.value === '__all__' ? undefined : typeFilter.value,
       startDate: startDate.value || undefined,
       endDate: endDate.value || undefined,
-    })
+    } as any)
 
     invoices.value = res.data || []
     totalCount.value = res.meta.total
@@ -264,14 +265,6 @@ const formatPercent = (profit: number, total: number) => {
   return `${pct.toFixed(1)}%`
 }
 
-const formatDate = (val: string | null | undefined) => {
-  if (!val) return '—'
-  try {
-    return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  } catch {
-    return val
-  }
-}
 
 onMounted(() => {
   void fetchReport()

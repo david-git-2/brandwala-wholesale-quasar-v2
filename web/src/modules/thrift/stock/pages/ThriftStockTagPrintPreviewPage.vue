@@ -42,21 +42,39 @@
       </div>
 
       <template v-else>
-        <div v-if="stickers.length > 0" class="tag-grid">
-          <div
-            v-for="(sticker, idx) in stickers"
-            :key="idx"
-            class="tag-cell"
-          >
-            <StockMarketingTag
-              :stock="sticker.stock"
-              :tag-config="sticker.tagConfig"
-              :listed-sell-formatted="sticker.listedSellFormatted"
+        <div
+          v-for="(pageStickers, pageIdx) in tagPages"
+          v-show="pageStickers.length > 0"
+          :key="pageIdx"
+          class="tag-sheet"
+          :class="{ 'tag-sheet--break': pageIdx < tagPages.length - 1 }"
+        >
+          <div class="tag-cut-guides" aria-hidden="true">
+            <span class="tag-cut-line tag-cut-line--v tag-cut-line--v-1" />
+            <span class="tag-cut-line tag-cut-line--v tag-cut-line--v-2" />
+            <span
+              v-for="row in horizontalCutRowsForPage(pageStickers.length)"
+              :key="`cut-h-${pageIdx}-${row}`"
+              class="tag-cut-line tag-cut-line--h"
+              :style="{ top: `calc(${row} * (${TAG_HEIGHT} + ${TAG_GAP}) - calc(${TAG_GAP} / 2))` }"
             />
+          </div>
+          <div class="tag-grid">
+            <div
+              v-for="(sticker, idx) in pageStickers"
+              :key="`${pageIdx}-${idx}`"
+              class="tag-cell"
+            >
+              <StockMarketingTag
+                :stock="sticker.stock"
+                :tag-config="sticker.tagConfig"
+                :listed-sell-formatted="sticker.listedSellFormatted"
+              />
+            </div>
           </div>
         </div>
 
-        <div v-else class="text-center q-pa-xl text-grey-6 no-print">
+        <div v-if="stickers.length === 0" class="text-center q-pa-xl text-grey-6 no-print">
           No available stock items with barcodes found in this shipment.
         </div>
       </template>
@@ -135,6 +153,13 @@ function formatPrice(amount: number): string {
   return formatThriftAmount(amount, costCurrency.value);
 }
 
+const TAG_COLS = 3;
+const TAG_HEIGHT = '42mm';
+const TAG_GAP = '3mm';
+// A4 printable height ~267mm (297 − 15mm top/bottom @page margins)
+const TAG_ROWS_PER_PAGE = 6;
+const TAGS_PER_PAGE = TAG_COLS * TAG_ROWS_PER_PAGE;
+
 const stickers = computed<StockTagPrintSticker[]>(() => {
   const expanded = expandStocksForTagPrint(stocks.value);
   const config = tagConfig.value;
@@ -148,6 +173,20 @@ const stickers = computed<StockTagPrintSticker[]>(() => {
     };
   });
 });
+
+const tagPages = computed(() => {
+  const pages: StockTagPrintSticker[][] = [];
+  const all = stickers.value;
+  for (let i = 0; i < all.length; i += TAGS_PER_PAGE) {
+    pages.push(all.slice(i, i + TAGS_PER_PAGE));
+  }
+  return pages;
+});
+
+function horizontalCutRowsForPage(stickerCount: number): number[] {
+  const rows = Math.ceil(stickerCount / TAG_COLS);
+  return Array.from({ length: Math.max(0, rows - 1) }, (_, i) => i + 1);
+}
 
 function goBack() {
   void router.push({ name: 'thrift-stock-tags-picker' });
@@ -202,6 +241,7 @@ onMounted(() => {
 .preview-canvas {
   background: #eef1f6;
   min-height: 100vh;
+  overflow: visible;
 }
 
 .a4-sheet {
@@ -212,6 +252,7 @@ onMounted(() => {
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
   border: 1px solid #d9dce3;
   border-radius: 8px;
+  overflow: visible;
 }
 
 .preview-page__actions {
@@ -223,16 +264,70 @@ onMounted(() => {
   border-radius: 999px;
 }
 
+.tag-sheet {
+  position: relative;
+  --tag-height: 42mm;
+  --tag-gap: 3mm;
+}
+
+.tag-sheet--break {
+  page-break-after: always;
+  break-after: page;
+}
+
+.tag-cut-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+.tag-cut-line--v {
+  position: absolute;
+  top: -15mm;
+  bottom: -15mm;
+  height: auto;
+  width: 0;
+  border-left: 1px dotted #999;
+  transform: translateX(-50%);
+}
+
+.tag-cut-line--v-1 {
+  left: calc((100% - (2 * var(--tag-gap))) / 3 + calc(var(--tag-gap) / 2));
+}
+
+.tag-cut-line--v-2 {
+  left: calc((100% - (2 * var(--tag-gap))) / 3 * 2 + calc(var(--tag-gap) * 1.5));
+}
+
+.tag-cut-line--h {
+  position: absolute;
+  left: -15mm;
+  width: calc(100% + 30mm);
+  height: 0;
+  border-top: 1px dotted #999;
+  transform: translateY(-50%);
+}
+
 .tag-grid {
+  position: relative;
+  z-index: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8mm;
+  grid-auto-rows: var(--tag-height);
+  gap: var(--tag-gap);
 }
 
 .tag-cell {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
+  height: var(--tag-height);
+  min-height: 0;
+  overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 @media print {
@@ -253,6 +348,8 @@ onMounted(() => {
   .preview-canvas {
     background: transparent !important;
     padding: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
   .a4-sheet {
@@ -261,17 +358,38 @@ onMounted(() => {
     padding: 0 !important;
     width: auto !important;
     max-width: none !important;
+    overflow: visible !important;
   }
 
   .no-print {
     display: none !important;
   }
 
-  .tag-grid {
-    gap: 10mm;
+  .tag-sheet {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
-  .marketing-tag-card {
+  .tag-grid {
+    gap: var(--tag-gap);
+  }
+
+  .tag-cut-line--v {
+    top: -15mm;
+    bottom: -15mm;
+    height: auto;
+    border-left-color: #000;
+  }
+
+  .tag-cut-line--h {
+    left: -10mm;
+    width: calc(100% + 20mm);
+    border-top-color: #000;
+  }
+
+  :deep(.marketing-tag-card) {
+    height: 42mm !important;
+    max-height: 42mm !important;
     border: 1.5px solid #000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

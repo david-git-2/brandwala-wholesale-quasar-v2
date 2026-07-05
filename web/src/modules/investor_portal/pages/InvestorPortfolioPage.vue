@@ -45,7 +45,7 @@
           </thead>
           <tbody>
             <tr v-for="item in portfolio.active_investments" :key="item.id">
-              <td class="text-left">#{{ item.global_shipment_id }}</td>
+              <td class="text-left">#{{ item.shipment_id }}</td>
               <td class="text-right">{{ formatCurrency(item.invested_amount) }}</td>
               <td class="text-right">{{ item.cost_share_pct ?? '0.00' }}%</td>
               <td class="text-right">{{ formatCurrency(item.allocated_cost) }}</td>

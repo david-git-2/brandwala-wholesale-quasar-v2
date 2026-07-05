@@ -1718,7 +1718,7 @@ const handleSaveMember = async () => {
 watch(
   () => [route.query.investor_id, props.view, capitalStore.investors],
   ([investorId, view, investors]) => {
-    if (investorId && view === 'investors' && investors.length > 0 && !openAddMemberDialog.value) {
+    if (investorId && view === 'investors' && investors && investors.length > 0 && !openAddMemberDialog.value) {
       onClickAddMember('investor')
     }
   },

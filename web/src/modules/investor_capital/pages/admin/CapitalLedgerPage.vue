@@ -141,7 +141,7 @@
     <InvestorTransactionDialog
       v-model="openDialog"
       :tenant-id="resolvedTenantId"
-      :investors="legacyInvestors"
+      :investors="(legacyInvestors as any)"
       @save="handleSaveTransaction"
     />
   </q-page>

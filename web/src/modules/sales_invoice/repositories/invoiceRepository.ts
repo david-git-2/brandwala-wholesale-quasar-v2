@@ -1,109 +1,13 @@
 import { supabase } from 'src/boot/supabase'
-
 import type {
   BusinessPartyRow,
   CreateGlobalInvoiceInput,
-  GlobalInvoiceAccountingRow,
   GlobalInvoiceCreated,
   GlobalInvoiceDetail,
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
-  GlobalLedgerRow,
-  GlobalShipmentLedgerEntry,
-  GlobalShipmentAccountingRow,
-  GlobalShipmentInvestmentRow,
-  GlobalStockListPage,
-  GlobalStockListQuery,
   InvoiceChargeLineRow,
-  ParentCashCirculation,
-  StockNetworkPage,
-  StockNetworkQuery,
-  StockNetworkRow,
-  AllocationReconciliationRow,
-  ChildStockAllocationRow,
-} from '../types'
-import { mapStockNetworkToGlobalStockRow } from '../utils/mapStockNetworkRow'
-
-const sanitizePage = (value: number | undefined, fallback: number) => {
-  const parsed = typeof value === 'number' ? value : fallback
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback
-}
-
-const searchStockNetwork = async (payload: StockNetworkQuery): Promise<StockNetworkPage> => {
-  const pageSize = sanitizePage(payload.page_size, 20)
-  const page = sanitizePage(payload.page, 1)
-  const offset = (page - 1) * pageSize
-  const search = payload.search?.trim() || null
-  const mode = payload.mode ?? 'search'
-
-  const [listResult, countResult] = await Promise.all([
-    supabase.rpc('search_stock_network', {
-      p_context_tenant_id: payload.context_tenant_id,
-      p_mode: mode,
-      p_search: search,
-      p_search_field: payload.search_field ?? null,
-      p_product_id: payload.product_id ?? null,
-      p_status: payload.status ?? 'excellent',
-      p_shipment_id: payload.shipment_id ?? null,
-      p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
-      p_limit: pageSize,
-      p_offset: offset,
-    }),
-    supabase.rpc('count_search_stock_network', {
-      p_context_tenant_id: payload.context_tenant_id,
-      p_mode: mode,
-      p_search: search,
-      p_search_field: payload.search_field ?? null,
-      p_product_id: payload.product_id ?? null,
-      p_status: payload.status ?? 'excellent',
-      p_shipment_id: payload.shipment_id ?? null,
-      p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
-    }),
-  ])
-
-  if (listResult.error) throw listResult.error
-  if (countResult.error) throw countResult.error
-
-  const total = Number(countResult.data ?? 0)
-  const rows = (listResult.data as StockNetworkRow[] | null) ?? []
-
-  return {
-    data: rows,
-    meta: {
-      total,
-      page,
-      page_size: pageSize,
-      total_pages: Math.max(1, Math.ceil(total / pageSize)),
-    },
-  }
-}
-
-const listGlobalStockPage = async (
-  payload: GlobalStockListQuery,
-): Promise<GlobalStockListPage> => {
-  const networkQuery: StockNetworkQuery = {
-    context_tenant_id: payload.tenant_id,
-    mode: 'page',
-    search: payload.search ?? null,
-    exclude_zero_qty: payload.exclude_zero_qty ?? true,
-  }
-  if (payload.search_field) networkQuery.search_field = payload.search_field
-  if (payload.shipment_id != null) networkQuery.shipment_id = payload.shipment_id
-  if (payload.page) networkQuery.page = payload.page
-  if (payload.page_size) networkQuery.page_size = payload.page_size
-
-  const result = await searchStockNetwork(networkQuery)
-
-  return {
-    data: result.data.map(mapStockNetworkToGlobalStockRow),
-    meta: result.meta,
-  }
-}
-
-const deleteGlobalStock = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('global_stocks').delete().eq('id', id)
-  if (error) throw error
-}
+} from 'src/modules/global/types'
 
 const listGlobalInvoices = async (parentTenantId: number): Promise<GlobalInvoiceRow[]> => {
   const { data, error } = await supabase
@@ -150,7 +54,6 @@ const createGlobalInvoice = async (
     p_note: payload.note?.trim() || null,
   })
 
-
   if (error) throw error
   if (!data) throw new Error('Global invoice was not created.')
 
@@ -190,7 +93,6 @@ const listInvoiceChargeLines = async (invoiceId: number): Promise<InvoiceChargeL
   if (error) throw error
   return (data as InvoiceChargeLineRow[] | null) ?? []
 }
-
 
 const addGlobalInvoiceItem = async (payload: {
   invoice_id: number
@@ -285,55 +187,6 @@ const addGlobalReturnItem = async (payload: {
   return data
 }
 
-const listBusinessParties = async (
-  parentTenantId: number,
-  tenantId?: number | null,
-): Promise<BusinessPartyRow[]> => {
-  let query = supabase
-    .from('business_parties')
-    .select('id, tenant_id, parent_tenant_id, name, party_type, phone, email, address, is_active')
-    .eq('parent_tenant_id', parentTenantId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
-  }
-
-  const { data, error } = await query
-  if (error) throw error
-  return (data as BusinessPartyRow[] | null) ?? []
-}
-
-
-const getParentCashCirculation = async (
-  parentTenantId: number,
-): Promise<ParentCashCirculation> => {
-  const { data, error } = await supabase.rpc('get_parent_cash_circulation', {
-    p_parent_tenant_id: parentTenantId,
-  })
-
-  if (error) throw error
-  return data as ParentCashCirculation
-}
-
-const listGlobalShipmentInvestments = async (
-  parentTenantId: number,
-): Promise<GlobalShipmentInvestmentRow[]> => {
-  const { data, error } = await supabase
-    .from('shipment_investments')
-    .select(
-      'id, shipment_id, investor_id, invested_amount, cost_share_pct, allocated_cost, computed_profit, profit_status, status',
-    )
-    .eq('tenant_id', parentTenantId)
-    .order('id', { ascending: false })
-    .limit(200)
-
-  if (error) throw error
-  return (data as GlobalShipmentInvestmentRow[] | null) ?? []
-}
-
-
 const getGlobalInvoicesPaidAmounts = async (
   invoiceIds: number[],
 ): Promise<Record<string, number>> => {
@@ -351,65 +204,6 @@ const getGlobalInvoicesPaidAmounts = async (
     paidAmounts[`normal_${invoice.id}`] = Number(invoice.paid_amount ?? 0)
   }
   return paidAmounts
-}
-
-const listChildStockAllocations = async (
-  parentTenantId: number,
-  status: StockNetworkQuery['status'] = 'excellent',
-): Promise<ChildStockAllocationRow[]> => {
-  const { data, error } = await supabase
-    .from('child_tenant_stock_allocations')
-    .select('id, parent_tenant_id, child_tenant_id, stock_id, status, quantity, is_display_only, created_at, updated_at')
-    .eq('parent_tenant_id', parentTenantId)
-    .eq('status', status ?? 'excellent')
-
-  if (error) throw error
-  return (data as ChildStockAllocationRow[] | null) ?? []
-}
-
-const getAllocationReconciliation = async (
-  stockId: number,
-  status: StockNetworkQuery['status'] = 'excellent',
-): Promise<AllocationReconciliationRow> => {
-  const { data, error } = await supabase.rpc('get_allocation_reconciliation', {
-    p_stock_id: stockId,
-    p_status: status ?? 'excellent',
-  })
-
-  if (error) throw error
-  const rows = (data as AllocationReconciliationRow[] | null) ?? []
-  if (!rows.length) {
-    return {
-      stock_id: stockId,
-      status: status ?? 'excellent',
-      global_qty: 0,
-      allocated_qty: 0,
-      unallocated_qty: 0,
-      is_reconciled: true,
-    }
-  }
-  return rows[0]!
-}
-
-const upsertChildStockAllocation = async (payload: {
-  parent_tenant_id: number
-  child_tenant_id: number
-  stock_id: number
-  quantity: number
-  status?: StockNetworkQuery['status']
-  is_display_only?: boolean
-}): Promise<ChildStockAllocationRow> => {
-  const { data, error } = await supabase.rpc('upsert_child_stock_allocation', {
-    p_parent_tenant_id: payload.parent_tenant_id,
-    p_child_tenant_id: payload.child_tenant_id,
-    p_stock_id: payload.stock_id,
-    p_quantity: payload.quantity,
-    p_status: payload.status ?? 'excellent',
-    p_is_display_only: payload.is_display_only ?? true,
-  })
-
-  if (error) throw error
-  return data as ChildStockAllocationRow
 }
 
 const removeGlobalInvoiceItem = async (invoiceItemId: number): Promise<void> => {
@@ -465,13 +259,70 @@ const deleteGlobalInvoice = async (invoiceId: number): Promise<void> => {
   if (error) throw error
 }
 
-export const globalRepository = {
-  searchStockNetwork,
-  listGlobalStockPage,
-  deleteGlobalStock,
-  getAllocationReconciliation,
-  listChildStockAllocations,
-  upsertChildStockAllocation,
+const listBusinessParties = async (
+  parentTenantId: number,
+  tenantId?: number | null,
+): Promise<BusinessPartyRow[]> => {
+  let query = supabase
+    .from('business_parties')
+    .select('id, tenant_id, parent_tenant_id, name, party_type, phone, email, address, is_active')
+    .eq('parent_tenant_id', parentTenantId)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data as BusinessPartyRow[] | null) ?? []
+}
+
+export type InvoiceBrand = {
+  id: number
+  tenant_id: number
+  name: string
+  address: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type CreateInvoiceBrandInput = Omit<InvoiceBrand, 'id' | 'created_at' | 'updated_at'>
+
+const listInvoiceBrands = async (payload: { tenant_id?: number } = {}): Promise<(InvoiceBrand & { tenants?: { name: string } })[]> => {
+  let query = supabase.from('invoice_brands').select('*, tenants(name)')
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id)
+  }
+  const { data, error } = await query.order('name', { ascending: true })
+  if (error) throw error
+  return (data as unknown as (InvoiceBrand & { tenants?: { name: string } })[]) || []
+}
+
+const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<InvoiceBrand> => {
+  const { data, error } = await supabase.from('invoice_brands').insert([payload]).select('*').single()
+  if (error) throw error
+  return data as InvoiceBrand
+}
+
+const updateInvoiceBrand = async (payload: { id: number; patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>> }): Promise<InvoiceBrand> => {
+  const { data, error } = await supabase
+    .from('invoice_brands')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as InvoiceBrand
+}
+
+const deleteInvoiceBrand = async (payload: { id: number }): Promise<void> => {
+  const { error } = await supabase.from('invoice_brands').delete().eq('id', payload.id)
+  if (error) throw error
+}
+
+export const invoiceRepository = {
   listGlobalInvoices,
   createGlobalInvoice,
   getGlobalInvoiceById,
@@ -482,13 +333,16 @@ export const globalRepository = {
   recordRecipientInvoiceCollection,
   createMiddleManPayout,
   addGlobalReturnItem,
-  listBusinessParties,
   getGlobalInvoicesPaidAmounts,
-  getParentCashCirculation,
-  listGlobalShipmentInvestments,
   removeGlobalInvoiceItem,
   updateGlobalInvoiceHeader,
   postGlobalInvoice,
   voidGlobalInvoice,
   deleteGlobalInvoice,
+  listBusinessParties,
+  listInvoiceBrands,
+  createInvoiceBrand,
+  updateInvoiceBrand,
+  deleteInvoiceBrand,
 }
+

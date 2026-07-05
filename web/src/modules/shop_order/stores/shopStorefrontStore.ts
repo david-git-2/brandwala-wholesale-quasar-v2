@@ -35,16 +35,16 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
 
       try {
         const result = await shopOrderService.browseShopCatalog(shopSlug, {
-          search: opts.search,
-          category: opts.category,
-          brand: opts.brand,
+          search: opts.search ?? null,
+          category: opts.category ?? null,
+          brand: opts.brand ?? null,
           limit: opts.limit ?? this.pageSize,
           offset: opts.offset ?? 0,
         })
 
         if (!result.success) {
           this.error = result.error
-          handleApiFailure(result, this.error)
+          handleApiFailure(result, this.error ?? undefined)
           return result
         }
 

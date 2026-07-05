@@ -720,7 +720,7 @@
                 <td class="shipment-item-name-cell">{{ product.name ?? '-' }}</td>
                 <td>{{ product.barcode ?? '-' }}</td>
                 <td>{{ product.product_code ?? '-' }}</td>
-                <td class="text-right">{{ formatFixed2(product.price_gbp) }}</td>
+                <td class="text-right">{{ formatFixed2(product.list_price_amount) }}</td>
                 <td class="text-right">{{ product.minimum_order_quantity ?? '-' }}</td>
                 <td class="text-right" style="width: 130px">
                   <q-input
@@ -2627,7 +2627,7 @@ const onCreateProductAndAddToShipment = async () => {
     image_url: addProductForm.image_url.trim() || null,
     barcode: addProductForm.barcode.trim() || null,
     product_code: addProductForm.product_code.trim() || null,
-    price_gbp: priceGbp,
+    list_price_amount: priceGbp,
     country_of_origin: null,
     brand: null,
     category: addProductForm.category,
@@ -2775,7 +2775,7 @@ const onSaveManualItemEdit = async () => {
       barcode: editManualItemForm.barcode.trim() || null,
       product_code: editManualItemForm.product_code.trim() || null,
       image_url: editManualItemForm.image_url.trim() || null,
-      price_gbp: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
+      list_price_amount: editManualItemForm.price_gbp == null ? null : Number(editManualItemForm.price_gbp),
       product_weight: editManualItemForm.product_weight == null ? null : Number(editManualItemForm.product_weight),
       package_weight: editManualItemForm.package_weight == null ? null : Number(editManualItemForm.package_weight),
       vendor_code: editManualItemForm.vendor_code ?? null,

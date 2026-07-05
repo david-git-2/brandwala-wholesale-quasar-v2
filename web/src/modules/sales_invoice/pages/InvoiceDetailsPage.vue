@@ -455,9 +455,9 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 
-import { globalRepository } from '../repositories/globalRepository'
-import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, StockNetworkRow } from '../types'
+import { invoiceRepository } from '../repositories/invoiceRepository'
+import NetworkStockSearchPanel from 'src/modules/global/components/NetworkStockSearchPanel.vue'
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, StockNetworkRow } from 'src/modules/global/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -529,8 +529,8 @@ const loadInvoice = async () => {
   error.value = null
   try {
     const [inv, invItems] = await Promise.all([
-      globalRepository.getGlobalInvoiceById(invoiceId.value),
-      globalRepository.listGlobalInvoiceItems(invoiceId.value),
+      invoiceRepository.getGlobalInvoiceById(invoiceId.value),
+      invoiceRepository.listGlobalInvoiceItems(invoiceId.value),
     ])
     invoice.value = inv
     items.value = invItems
@@ -577,12 +577,12 @@ const onAddItem = async () => {
       sell_price_amount: addSellPrice.value || selectedStock.value.cost,
     }
     if (isDropship.value) {
-      await globalRepository.addGlobalInvoiceItem({
+      await invoiceRepository.addGlobalInvoiceItem({
         ...payload,
         recipient_price_amount: addRecipientPrice.value,
       })
     } else {
-      await globalRepository.addGlobalInvoiceItem(payload)
+      await invoiceRepository.addGlobalInvoiceItem(payload)
     }
     stockDialog.value = false
     selectedStock.value = null
@@ -598,7 +598,7 @@ const onAddItem = async () => {
 const onRemoveItem = async (itemId: number) => {
   if (!invoice.value) return
   try {
-    await globalRepository.removeGlobalInvoiceItem(itemId)
+    await invoiceRepository.removeGlobalInvoiceItem(itemId)
     await loadInvoice()
     showSuccessNotification('Item removed from invoice.')
   } catch (e) {
@@ -609,7 +609,7 @@ const onRemoveItem = async (itemId: number) => {
 const onHeaderUpdate = async () => {
   if (!invoice.value) return
   try {
-    await globalRepository.updateGlobalInvoiceHeader({
+    await invoiceRepository.updateGlobalInvoiceHeader({
       id: invoice.value.id,
       discount_amount: form.discount_amount,
       shipping_charge: form.shipping_charge,
@@ -631,7 +631,7 @@ const onPostInvoice = async () => {
   if (!invoice.value) return
   postingInvoice.value = true
   try {
-    await globalRepository.postGlobalInvoice(invoice.value.id)
+    await invoiceRepository.postGlobalInvoice(invoice.value.id)
     await loadInvoice()
     showSuccessNotification('Invoice posted successfully.')
   } catch (e) {
@@ -645,7 +645,7 @@ const onVoidInvoice = async () => {
   if (!invoice.value) return
   voidingInvoice.value = true
   try {
-    await globalRepository.voidGlobalInvoice(invoice.value.id)
+    await invoiceRepository.voidGlobalInvoice(invoice.value.id)
     await loadInvoice()
     showSuccessNotification('Invoice voided successfully.')
   } catch (e) {
@@ -659,10 +659,10 @@ const onDeleteInvoice = async () => {
   if (!invoice.value) return
   deletingInvoice.value = true
   try {
-    await globalRepository.deleteGlobalInvoice(invoice.value.id)
+    await invoiceRepository.deleteGlobalInvoice(invoice.value.id)
     showSuccessNotification('Draft invoice deleted successfully.')
     void router.push({
-      name: 'app-global-invoices',
+      name: 'app-global-invoices-page',
       params: { tenantSlug: authStore.tenantSlug }
     })
   } catch (e) {
@@ -683,7 +683,7 @@ const onRecordPayment = async () => {
   if (!invoice.value?.billing_profile_id) return
   paymentSaving.value = true
   try {
-    await globalRepository.recordBillingProfilePayment({
+    await invoiceRepository.recordBillingProfilePayment({
       tenant_id: invoice.value.tenant_id,
       billing_profile_id: invoice.value.billing_profile_id,
       amount: paymentAmount.value,
@@ -703,7 +703,7 @@ const onRecordCod = async () => {
   if (!invoice.value) return
   paymentSaving.value = true
   try {
-    await globalRepository.recordRecipientInvoiceCollection(invoice.value.id, codAmount.value)
+    await invoiceRepository.recordRecipientInvoiceCollection(invoice.value.id, codAmount.value)
     codDialog.value = false
     await loadInvoice()
     showSuccessNotification('COD recorded.')
@@ -718,7 +718,7 @@ const onRecordPayout = async () => {
   if (!invoice.value?.billing_profile_id) return
   paymentSaving.value = true
   try {
-    await globalRepository.createMiddleManPayout({
+    await invoiceRepository.createMiddleManPayout({
       tenant_id: invoice.value.tenant_id,
       billing_profile_id: invoice.value.billing_profile_id,
       global_invoice_id: invoice.value.id,
@@ -738,7 +738,7 @@ const onAddReturn = async () => {
   if (!invoice.value || !returnItemId.value) return
   returnSaving.value = true
   try {
-    await globalRepository.addGlobalReturnItem({
+    await invoiceRepository.addGlobalReturnItem({
       invoice_id: invoice.value.id,
       invoice_item_id: returnItemId.value,
       quantity: returnQty.value,

@@ -12,7 +12,7 @@ import {
 } from './moduleRegistry'
 
 type ModulePermissionMatrix = Readonly<
-  Record<AccessRole, Readonly<Record<ModuleKey, readonly ModuleAction[]>>>
+  Record<AccessRole, Readonly<Partial<Record<ModuleKey, readonly ModuleAction[]>>>>
 >
 
 const NO_ACCESS: readonly ModuleAction[] = []
@@ -55,9 +55,9 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_shipment: ['view'],
     global_stock: ['view'],
     global_invoice: ['view'],
-    global_accounting_ledger: ['view'],
-    global_shipment_accounting: ['view'],
-    global_invoice_accounting: ['view'],
+    global_accounting_ledger: NO_ACCESS,
+    global_shipment_accounting: NO_ACCESS,
+    global_invoice_accounting: NO_ACCESS,
     global_investor: ['view'],
     global_investor_shipment: ['view'],
     investor_portal: NO_ACCESS,
@@ -124,9 +124,9 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     global_shipment: ['view'],
     global_stock: ['view'],
     global_invoice: ['view'],
-    global_accounting_ledger: ['view'],
-    global_shipment_accounting: ['view'],
-    global_invoice_accounting: ['view'],
+    global_accounting_ledger: NO_ACCESS,
+    global_shipment_accounting: NO_ACCESS,
+    global_invoice_accounting: NO_ACCESS,
     global_investor: ['view'],
     global_investor_shipment: ['view'],
     investor_portal: NO_ACCESS,
@@ -498,6 +498,9 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
   },
   investor_portal: {
     order_management: NO_ACCESS,
+    shipment: NO_ACCESS,
+    inventory: NO_ACCESS,
+    commerce_shop: NO_ACCESS,
     commerce_order: NO_ACCESS,
     commerce_invoice: NO_ACCESS,
     commerce_accounting: NO_ACCESS,

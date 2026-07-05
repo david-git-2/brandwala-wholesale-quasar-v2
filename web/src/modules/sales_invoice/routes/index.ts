@@ -19,14 +19,14 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-global-invoices-page',
-        component: () => import('src/modules/global/pages/GlobalInvoicesPage.vue'),
+        component: () => import('../pages/InvoicesListPage.vue'),
         beforeEnter: guard('global_invoice'),
       },
       {
         path: 'billing-profiles',
         name: 'app-global-billing-profiles',
         component: () =>
-          import('src/modules/commerce_invoice/pages/CommerceBillingProfilesPage.vue'),
+          import('../pages/BillingProfilesPage.vue'),
         beforeEnter: guard('billing_profile'),
       },
       {
@@ -38,13 +38,13 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       {
         path: 'brands',
         name: 'app-global-invoice-brands',
-        component: () => import('src/modules/invoice/pages/AdminInvoiceBrandsPage.vue'),
+        component: () => import('../pages/InvoiceBrandsPage.vue'),
         beforeEnter: guard('invoice_brand'),
       },
       {
         path: ':id',
         name: 'app-global-invoice-details-page',
-        component: () => import('src/modules/global/pages/GlobalInvoiceDetailsPage.vue'),
+        component: () => import('../pages/InvoiceDetailsPage.vue'),
         beforeEnter: guard('global_invoice'),
       },
     ],
@@ -57,7 +57,7 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-global-invoice-preview',
-        component: () => import('src/modules/global/pages/GlobalInvoicePreviewPage.vue'),
+        component: () => import('../pages/InvoicePreviewPage.vue'),
       },
     ],
   },

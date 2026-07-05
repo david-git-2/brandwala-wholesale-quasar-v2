@@ -114,7 +114,7 @@ const { investors, loadingInvestors, error } = storeToRefs(capitalStore)
 const openDialog = ref(false)
 const openDeleteDialog = ref(false)
 const selectedInvestor = ref<Investor | null>(null)
-const investorToDelete = ref<any | null>(null)
+const investorToDelete = ref<any>(null)
 
 const resolvedTenantId = computed(() => authStore.tenantId ?? 0)
 

@@ -114,7 +114,7 @@ const shopRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/shop/commerce/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${to.params.tenantSlug}` : ''
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : ''

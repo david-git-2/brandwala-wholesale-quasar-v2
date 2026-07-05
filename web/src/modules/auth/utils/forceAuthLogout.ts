@@ -9,9 +9,25 @@ import {
 
 let appRouter: Router | null = null
 let isLoggingOut = false
+let sessionRefreshInFlight: Promise<boolean> | null = null
 
 export function setAuthSessionRouter(router: Router) {
   appRouter = router
+}
+
+export async function tryRefreshSession(): Promise<boolean> {
+  if (sessionRefreshInFlight) {
+    return sessionRefreshInFlight
+  }
+
+  sessionRefreshInFlight = (async () => {
+    const { data: { session }, error } = await supabase.auth.refreshSession()
+    return Boolean(session) && !error
+  })().finally(() => {
+    sessionRefreshInFlight = null
+  })
+
+  return sessionRefreshInFlight
 }
 
 export async function handleUnauthorizedResponse() {

@@ -202,7 +202,7 @@ const shopId = computed(() => {
 
 const goBack = () => {
   const lastSlug = localStorage.getItem('last_visited_shop_slug')
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   if (lastSlug) {
     void router.push(`${tenantSlug}/shop/browse/${lastSlug}`)
   } else {
@@ -211,7 +211,7 @@ const goBack = () => {
 }
 
 const goToCheckout = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${route.params.tenantSlug}` : ''
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
   void router.push({
     path: `${tenantSlug}/shop/checkout`,
     query: { shopId: shopId.value }

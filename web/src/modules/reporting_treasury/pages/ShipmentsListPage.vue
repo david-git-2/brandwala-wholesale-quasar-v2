@@ -104,7 +104,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
@@ -203,15 +204,6 @@ const statusColor = (status: string | null | undefined) => {
   if (s === 'pending') return { bg: 'amber-1', text: 'amber-9', icon: 'pending' }
   if (s === 'cancelled') return { bg: 'red-1', text: 'red-9', icon: 'cancel' }
   return { bg: 'grey-2', text: 'grey-8', icon: 'inventory_2' }
-}
-
-const formatDate = (val: string | null | undefined) => {
-  if (!val) return '—'
-  try {
-    return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  } catch {
-    return val
-  }
 }
 
 onMounted(() => {
