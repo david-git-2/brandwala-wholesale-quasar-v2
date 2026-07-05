@@ -10,6 +10,17 @@
         <q-input v-model="form.phone" label="Phone" outlined dense />
         <q-input v-model="form.email" label="Email" outlined dense />
         <q-input v-model="form.address" label="Address" type="textarea" autogrow outlined />
+
+        <div class="row q-col-gutter-md">
+          <div class="col-6">
+            <q-input v-model="form.currency_code" label="Currency Code" outlined dense placeholder="BDT" />
+          </div>
+          <div class="col-6 justify-center items-center row">
+            <q-toggle v-model="form.is_active" label="Profile Active" color="primary" />
+          </div>
+        </div>
+
+        <q-input v-model="form.notes" label="Notes" type="textarea" autogrow outlined />
       </q-card-section>
 
       <q-card-actions align="right">
@@ -22,8 +33,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-
-import type { Investor } from 'src/modules/investor/types'
+import type { Investor } from 'src/modules/investor_capital/types'
 
 type InvestorForm = {
   id?: number
@@ -32,6 +42,9 @@ type InvestorForm = {
   phone: string | null
   email: string | null
   address: string | null
+  is_active: boolean
+  currency_code: string
+  notes: string | null
 }
 
 const props = defineProps<{
@@ -56,6 +69,9 @@ const getDefaultForm = (): InvestorForm => ({
   phone: null,
   email: null,
   address: null,
+  is_active: true,
+  currency_code: 'BDT',
+  notes: null,
 })
 
 const form = reactive<InvestorForm>(getDefaultForm())
@@ -65,9 +81,7 @@ const isEdit = computed(() => typeof form.id === 'number')
 watch(
   [() => props.modelValue, () => props.initialData, () => props.tenantId],
   ([opened, initialData, tenantId]) => {
-    if (!opened) {
-      return
-    }
+    if (!opened) return
 
     const next = initialData
       ? {
@@ -77,6 +91,9 @@ watch(
           phone: initialData.phone,
           email: initialData.email,
           address: initialData.address,
+          is_active: initialData.is_active ?? true,
+          currency_code: initialData.currency_code || 'BDT',
+          notes: initialData.notes || null,
         }
       : {
           ...getDefaultForm(),
@@ -89,9 +106,7 @@ watch(
 )
 
 const onSave = () => {
-  if (!form.name.trim()) {
-    return
-  }
+  if (!form.name.trim()) return
 
   const payload: InvestorForm = {
     tenant_id: form.tenant_id,
@@ -99,6 +114,9 @@ const onSave = () => {
     phone: form.phone?.trim() || null,
     email: form.email?.trim() || null,
     address: form.address?.trim() || null,
+    is_active: form.is_active,
+    currency_code: form.currency_code.trim() || 'BDT',
+    notes: form.notes?.trim() || null,
   }
 
   if (typeof form.id === 'number') {

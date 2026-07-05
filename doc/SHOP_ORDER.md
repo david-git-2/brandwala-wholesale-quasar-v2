@@ -344,7 +344,11 @@ display_qty =
 
 ## 5. Customer group permissions (two-layer model)
 
+> **Unified permission design:** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). Shop uses **shop-scoped `tenant_roles`** on `customer_group_members` for module actions, plus **Subsystem B** resource flags below. Shop P3 may implement resource tables early; role unification is **B8 last stage**.
+
 Portable pattern: **tenant-wide defaults** + **per-shop overrides** with `COALESCE(override, default, safe_fallback)`.
+
+**Member role assignment:** `customer_group_members.tenant_role_id` → shop-scoped `tenant_roles` → `tenant_role_grants`. Optional `customer_group_member_grants` for individual overrides. Enum `customer_group_members.role` remains login gate until future cleanup.
 
 ### 5.1 Layer A — `customer_group_shop_profiles`
 
@@ -642,6 +646,8 @@ stateDiagram-v2
 ---
 
 ## 11. Implementation phases
+
+> **Agent execution:** phase status and per-phase deliverables → [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md). Agent index → [.cursor/plans/shop_order_phased_build_0010b204.plan.md](../.cursor/plans/shop_order_phased_build_0010b204.plan.md).
 
 ### Backend
 

@@ -187,18 +187,49 @@
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
-                    v-model.number="form.price_gbp"
-                    label="Price GBP"
+                    v-model.number="form.list_price_amount"
+                    label="List Price"
                     type="number"
                     step="0.01"
                     outlined
                     dense
                     class="soft-input"
-                  >
-                    <template #prepend>
-                      <q-icon name="currency_pound" />
-                    </template>
-                  </q-input>
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="form.list_price_currency_id"
+                    :options="currencies"
+                    label="List Price Currency"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    class="soft-input"
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.reference_cost_amount"
+                    label="Reference Cost"
+                    type="number"
+                    step="0.01"
+                    outlined
+                    dense
+                    class="soft-input"
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="form.reference_cost_currency_id"
+                    :options="currencies"
+                    label="Reference Cost Currency"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    class="soft-input"
+                  />
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
@@ -385,6 +416,7 @@ import { vendorService } from 'src/modules/vendor/services/vendorService'
 import type { Vendor } from 'src/modules/vendor/types'
 import type { QForm } from 'quasar'
 import { showSuccessNotification } from 'src/utils/appFeedback'
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 
 const route = useRoute()
 const router = useRouter()
@@ -406,6 +438,7 @@ const vendorsList = ref<Vendor[]>([])
 const brandOptions = ref<string[]>([])
 const categoryOptions = ref<string[]>([])
 const vendorOptions = ref<{ label: string; value: string }[]>([])
+const currencies = ref<{ label: string; value: number }[]>([])
 
 const form = reactive({
   name: '',
@@ -414,7 +447,10 @@ const form = reactive({
   barcode: '',
   brand: '',
   category: '',
-  price_gbp: null as number | null,
+  list_price_amount: null as number | null,
+  list_price_currency_id: null as number | null,
+  reference_cost_amount: null as number | null,
+  reference_cost_currency_id: null as number | null,
   available_units: null as number | null,
   minimum_order_quantity: null as number | null,
   country_of_origin: '',
@@ -433,12 +469,27 @@ const detailRows = computed(() => {
   const item = product.value
   if (!item) return []
 
+  const getCurrencySymbol = (id: number | null) => {
+    if (!id) return ''
+    const match = currencies.value.find(c => c.value === id)
+    if (!match) return ''
+    const parts = match.label.match(/\(([^)]+)\)/)
+    return parts ? parts[1] : ''
+  }
+
+  const formatMoney = (amount: number | null, currencyId: number | null) => {
+    if (amount == null) return '-'
+    const symbol = getCurrencySymbol(currencyId)
+    return `${symbol}${Number(amount).toFixed(2)}`
+  }
+
   return [
     { label: 'Product Code', value: item.product_code ?? '-' },
     { label: 'Barcode', value: item.barcode ?? '-' },
     { label: 'Brand', value: item.brand ?? '-' },
     { label: 'Category', value: item.category ?? '-' },
-    { label: 'Price GBP', value: item.price_gbp == null ? '-' : `£${Number(item.price_gbp).toFixed(2)}` },
+    { label: 'List Price', value: formatMoney(item.list_price_amount, item.list_price_currency_id) },
+    { label: 'Reference Cost', value: formatMoney(item.reference_cost_amount, item.reference_cost_currency_id) },
     { label: 'Original Stock', value: item.available_units ?? '-' },
     { label: 'Minimum Order Quantity', value: item.minimum_order_quantity ?? '-' },
     { label: 'Country Of Origin', value: item.country_of_origin ?? '-' },
@@ -530,7 +581,10 @@ const startEdit = () => {
   form.barcode = product.value.barcode ?? ''
   form.brand = product.value.brand ?? ''
   form.category = product.value.category ?? ''
-  form.price_gbp = product.value.price_gbp
+  form.list_price_amount = product.value.list_price_amount
+  form.list_price_currency_id = product.value.list_price_currency_id
+  form.reference_cost_amount = product.value.reference_cost_amount
+  form.reference_cost_currency_id = product.value.reference_cost_currency_id
   form.available_units = product.value.available_units
   form.minimum_order_quantity = product.value.minimum_order_quantity
   form.country_of_origin = product.value.country_of_origin ?? ''
@@ -615,7 +669,10 @@ const onSave = async () => {
       barcode: form.barcode.trim() || null,
       brand: form.brand.trim() || null,
       category: form.category.trim() || null,
-      price_gbp: cleanNumber(form.price_gbp),
+      list_price_amount: cleanNumber(form.list_price_amount),
+      list_price_currency_id: form.list_price_currency_id,
+      reference_cost_amount: cleanNumber(form.reference_cost_amount),
+      reference_cost_currency_id: form.reference_cost_currency_id,
       available_units: cleanNumber(form.available_units),
       minimum_order_quantity: cleanNumber(form.minimum_order_quantity),
       country_of_origin: form.country_of_origin.trim() || null,
@@ -653,6 +710,15 @@ onMounted(async () => {
   error.value = null
 
   try {
+    try {
+      const currencyData = await globalReferenceRepository.listCurrencies()
+      currencies.value = currencyData
+        .filter(c => c.is_active)
+        .map(c => ({ label: `${c.code} (${c.symbol})`, value: c.id }))
+    } catch (e) {
+      console.error('Error fetching currencies:', e)
+    }
+
     const result = await productService.getProductById(id, authStore.tenantId)
     if (!result.success) {
       error.value = result.error ?? 'Failed to load product.'

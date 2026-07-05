@@ -59,6 +59,11 @@
     </q-banner>
 
     <template v-if="report">
+      <div class="row items-center justify-between q-mb-md">
+        <div class="text-subtitle1 text-weight-bold">Report Summary</div>
+        <q-btn outline color="primary" label="Export CSV" icon="download" no-caps @click="exportCSV" />
+      </div>
+
       <div class="row q-col-gutter-md">
         <div class="col-12 col-sm-6 col-md-4" v-for="card in reportCards" :key="card.label">
           <q-card flat class="floating-surface shadow-1 q-pa-md" :class="card.class">
@@ -141,5 +146,30 @@ const generateReport = async () => {
     report.value = result.data
   }
   loading.value = false
+}
+
+const exportCSV = () => {
+  if (!report.value) return
+  const data = report.value
+  const csvContent = [
+    ['Period Capital Summary Report'],
+    ['Start Date', startDate.value],
+    ['End Date', endDate.value],
+    [],
+    ['Metric', 'Amount (BDT)'],
+    ['Starting Balance', data.starting_balance],
+    ['Deposits in Period', data.deposits_sum],
+    ['Profit Earned in Period', data.profit_earned_sum],
+    ['Withdrawals in Period', data.withdrawals_sum],
+    ['Ending Balance', data.ending_balance],
+  ].map(e => e.join(',')).join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.setAttribute('download', `Capital_Summary_${startDate.value}_to_${endDate.value}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 </script>

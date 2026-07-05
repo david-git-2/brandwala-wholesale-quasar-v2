@@ -82,6 +82,14 @@ export const useInvestorPortalStore = defineStore('investorPortal', {
       return result
     },
 
+    async fetchAllocationDetail(tenantId: number, investorId: number, globalShipmentId: number) {
+      this.loading = true
+      this.error = null
+      const result = await investorPortalService.getAllocationDetail(tenantId, investorId, globalShipmentId)
+      this.loading = false
+      return result
+    },
+
     clear() {
       this.loading = false
       this.error = null

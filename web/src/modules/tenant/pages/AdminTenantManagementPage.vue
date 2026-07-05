@@ -345,7 +345,12 @@
               </template>
 
               <template #body-cell-role="props">
-                <q-td :props="props">{{ props.row.role }}</q-td>
+                <q-td :props="props">
+                  {{ props.row.role }}
+                  <span v-if="props.row.investor_id" class="text-caption text-grey-6">
+                    ({{ investorNameById(props.row.investor_id) }})
+                  </span>
+                </q-td>
               </template>
 
               <template #body-cell-active="props">
@@ -687,6 +692,17 @@
         <q-card-section class="q-gutter-md">
           <q-input v-model="memberEmail" label="Email" type="email" outlined dense class="soft-input" />
           <q-input :model-value="selectedMemberRole" label="Role" outlined dense class="soft-input" readonly />
+          <q-select
+            v-if="selectedMemberRole === 'investor'"
+            v-model="selectedInvestorId"
+            outlined
+            dense
+            label="Link Investor Profile"
+            emit-value
+            map-options
+            :options="tenantInvestorsOptions"
+            class="soft-input"
+          />
           <div class="row items-center justify-between">
             <div class="text-subtitle2 text-grey-8">Status</div>
             <q-toggle
@@ -1042,6 +1058,7 @@ import { watch } from 'vue'
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue'
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
+import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
 import type { Membership, TenantMembershipRole } from 'src/modules/membership/types'
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
@@ -1092,6 +1109,7 @@ const moduleStore = useModuleStore()
 const membershipStore = useMembershipStore()
 const customerGroupStore = useCustomerGroupStore()
 const costingFileStore = useCostingFileStore()
+const capitalStore = useInvestorCapitalStore()
 
 const canManageModules = computed(() => {
   return authStore.matchedRole === 'superadmin' && authStore.scope === 'platform'
@@ -1128,6 +1146,18 @@ const customerGroupToDelete = ref<CustomerGroup | null>(null)
 
 const memberEmail = ref('')
 const memberIsActive = ref(true)
+const selectedInvestorId = ref<number | null>(null)
+
+const tenantInvestorsOptions = computed(() =>
+  capitalStore.investors.map((item) => ({
+    label: item.name,
+    value: item.investor_id,
+  }))
+)
+
+const investorNameById = (id: number) => {
+  return capitalStore.investors.find((item) => item.investor_id === id)?.name ?? `#${id}`
+}
 const selectedMemberRole = ref<TenantMembershipRole>('staff')
 
 const tenantMembers = ref<Membership[]>([])
@@ -1630,6 +1660,7 @@ const loadPageData = async () => {
       loadTenantMembers(),
       loadTenantModules(),
       loadCustomerGroups(),
+      capitalStore.fetchInvestorsByTenant(tenantId.value),
     ])
 
     await loadCostingFiles()
@@ -1660,6 +1691,7 @@ const onClickAddMember = (role: TenantMembershipRole) => {
   selectedMemberRole.value = role
   memberEmail.value = ''
   memberIsActive.value = true
+  selectedInvestorId.value = route.query.investor_id ? Number(route.query.investor_id) : (capitalStore.investors[0]?.investor_id || null)
   openAddMemberDialog.value = true
 }
 
@@ -1671,6 +1703,7 @@ const handleSaveMember = async () => {
     email: memberEmail.value,
     role: selectedMemberRole.value,
     is_active: memberIsActive.value,
+    investor_id: selectedMemberRole.value === 'investor' ? selectedInvestorId.value : null,
   })
 
   if (!result.success) {
@@ -1681,6 +1714,16 @@ const handleSaveMember = async () => {
   openAddMemberDialog.value = false
   await loadTenantMembers()
 }
+
+watch(
+  () => [route.query.investor_id, props.view, capitalStore.investors],
+  ([investorId, view, investors]) => {
+    if (investorId && view === 'investors' && investors.length > 0 && !openAddMemberDialog.value) {
+      onClickAddMember('investor')
+    }
+  },
+  { immediate: true }
+)
 
 const onToggleMemberActive = async (member: Membership, value: boolean) => {
   const previousValue = !value

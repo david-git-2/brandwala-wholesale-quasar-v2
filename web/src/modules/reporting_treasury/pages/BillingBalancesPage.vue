@@ -1,223 +1,219 @@
 <template>
-  <q-page class="q-pa-lg bg-slate-900 text-white">
-    <!-- Header Block -->
-    <div class="row items-center justify-between q-mb-xl">
-      <div>
-        <div class="text-h4 text-weight-bolder tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">
-          Customer Balances &amp; Outstanding AR
-        </div>
-        <div class="text-subtitle2 text-slate-400 q-mt-xs">
-          Analyze real-time Accounts Receivable (AR) rollups, active credit balances, and age-of-invoices tracking.
-        </div>
-      </div>
-    </div>
+  <TreasuryPageShell
+    title="Customer Balances &amp; Outstanding AR"
+    subtitle="Analyze real-time Accounts Receivable (AR) rollups, active credit balances, and age-of-invoices tracking."
+    :error="error"
+  >
+    <div class="q-gutter-y-lg">
+      <!-- Metrics Grid -->
+      <TreasuryStatGrid :items="statCards" />
 
-    <!-- Metrics Grid -->
-    <div class="row q-col-gutter-lg q-mb-xl">
-      <div class="col-12 col-md-4">
-        <div class="glass-card q-pa-lg">
-          <div class="text-caption text-slate-400 text-uppercase tracking-wider">Total Outstanding AR</div>
-          <div class="text-h3 text-weight-black q-mt-sm text-red-400">
-            {{ formatAmountBdt(totalOutstandingDue) }}
+      <!-- Filter Control Card -->
+      <TreasuryFilterBar>
+        <div class="row q-col-gutter-md items-center justify-between">
+          <div class="col-12 col-md-5">
+            <q-input
+              v-model="search"
+              placeholder="Search by profile name, invoice no, email..."
+              dense
+              outlined
+              @update:model-value="loadData"
+            >
+              <template #append>
+                <q-icon name="search" />
+              </template>
+            </q-input>
           </div>
-          <div class="text-caption text-slate-500 q-mt-xs">Active unpaid balance sheet</div>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="glass-card q-pa-lg">
-          <div class="text-caption text-slate-400 text-uppercase tracking-wider">Total Paid Collections</div>
-          <div class="text-h3 text-weight-black q-mt-sm text-emerald-400">
-            {{ formatAmountBdt(totalInvoiced - totalOutstandingDue) }}
+
+          <div class="col-auto">
+            <q-tabs
+              v-model="activeTab"
+              dense
+              no-caps
+              active-color="primary"
+              indicator-color="primary"
+            >
+              <q-tab name="profiles" label="Billing Profiles" icon="people" />
+              <q-tab name="outstanding" label="Outstanding Invoices" icon="description" />
+            </q-tabs>
           </div>
-          <div class="text-caption text-slate-500 q-mt-xs">Cleared cash receipts</div>
         </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="glass-card q-pa-lg">
-          <div class="text-caption text-slate-400 text-uppercase tracking-wider">Average Collection Rate</div>
-          <div class="text-h3 text-weight-black q-mt-sm text-teal-300">
-            {{ averageCollectionRate }}
-          </div>
-          <div class="text-caption text-slate-500 q-mt-xs">Invoiced to cash conversion percentage</div>
-        </div>
-      </div>
-    </div>
+      </TreasuryFilterBar>
 
-    <!-- Filter Control Card -->
-    <div class="glass-card q-pa-md q-mb-lg row items-center justify-between q-col-gutter-sm">
-      <div class="col-12 col-md-5">
-        <q-input
-          v-model="search"
-          placeholder="Search by profile name, invoice no, email..."
-          dark
-          dense
-          outlined
-          class="glass-input"
-          @update:model-value="loadData"
-        >
-          <template #append>
-            <q-icon name="search" class="text-slate-400" />
-          </template>
-        </q-input>
-      </div>
-
-      <div class="col-auto">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          dark
-          no-caps
-          class="text-slate-400"
-          active-color="teal"
-          indicator-color="teal"
-        >
-          <q-tab name="profiles" label="Billing Profiles" icon="people" />
-          <q-tab name="outstanding" label="Outstanding Invoices" icon="description" />
-        </q-tabs>
-      </div>
-    </div>
-
-    <!-- Tab Panels Card -->
-    <div class="glass-card overflow-hidden">
-      <q-tab-panels v-model="activeTab" animated class="bg-transparent text-white">
-        <!-- Billing Profiles Panel -->
-        <q-tab-panel name="profiles" class="q-pa-none">
-          <q-markup-table flat dark class="bg-transparent text-white" wrap-cells>
-            <thead>
-              <tr class="text-slate-400 border-b border-slate-800">
-                <th class="text-left font-semibold py-4">Customer Profile</th>
-                <th class="text-right font-semibold">Total Invoiced</th>
-                <th class="text-right font-semibold">Total Paid</th>
-                <th class="text-right font-semibold">Balance Due</th>
-                <th class="text-center font-semibold">Collection %</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading" class="border-b border-slate-800/50">
-                <td colspan="5" class="text-center py-8 text-slate-400">
-                  <q-spinner-dots size="40px" color="teal" />
-                </td>
-              </tr>
-              <tr v-else-if="!profiles.length" class="border-b border-slate-800/50">
-                <td colspan="5" class="text-center py-8 text-slate-500">
-                  No billing profiles found.
-                </td>
-              </tr>
-              <tr
-                v-for="prof in profiles"
-                :key="prof.id"
-                class="hover:bg-slate-800/40 transition-colors duration-200 border-b border-slate-800/50"
-              >
-                <td class="py-3">
+      <!-- Tab Panels Card -->
+      <q-card flat bordered class="bg-white overflow-hidden">
+        <q-tab-panels v-model="activeTab" animated class="bg-transparent text-black">
+          <!-- Billing Profiles Panel -->
+          <q-tab-panel name="profiles" class="q-pa-none">
+            <q-table
+              flat
+              row-key="id"
+              :rows="profiles"
+              :columns="profileColumns"
+              :loading="loading"
+              :pagination="{ rowsPerPage: 50 }"
+              :dense="$q.screen.lt.md"
+            >
+              <template #body-cell-name="props">
+                <q-td :props="props">
                   <div class="row items-center no-wrap">
                     <q-avatar
                       size="32px"
-                      class="q-mr-sm text-weight-bold shadow-1 text-slate-900"
-                      :style="{ backgroundColor: prof.color || '#14b8a6' }"
+                      class="q-mr-sm text-weight-bold text-white"
+                      :style="{ backgroundColor: props.row.color || '#1976D2' }"
                     >
-                      {{ prof.name.charAt(0) }}
+                      {{ props.row.name.charAt(0) }}
                     </q-avatar>
                     <div>
-                      <div class="text-weight-bold text-slate-200">{{ prof.name }}</div>
-                      <div class="text-caption text-slate-400">{{ prof.email || '-' }}</div>
+                      <div class="text-weight-bold">{{ props.row.name }}</div>
+                      <div class="text-caption text-grey-6">{{ props.row.email || '-' }}</div>
                     </div>
                   </div>
-                </td>
-                <td class="text-right text-slate-300">{{ formatAmountBdt(prof.total_invoiced) }}</td>
-                <td class="text-right text-emerald-400">{{ formatAmountBdt(prof.total_paid) }}</td>
-                <td class="text-right text-weight-bold" :class="prof.balance_due > 0 ? 'text-red-400' : 'text-slate-500'">
-                  {{ formatAmountBdt(prof.balance_due) }}
-                </td>
-                <td>
+                </q-td>
+              </template>
+
+              <template #body-cell-total_invoiced="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatAmountBdt(props.row.total_invoiced) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-total_paid="props">
+                <q-td :props="props" class="text-right text-positive">
+                  {{ formatAmountBdt(props.row.total_paid) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-balance_due="props">
+                <q-td :props="props" class="text-right text-weight-bold" :class="props.row.balance_due > 0 ? 'text-negative' : 'text-grey-6'">
+                  {{ formatAmountBdt(props.row.balance_due) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-collection_pct="props">
+                <q-td :props="props" class="text-center">
                   <div class="row items-center justify-center no-wrap">
                     <q-linear-progress
-                      :value="prof.total_invoiced > 0 ? (prof.total_paid / prof.total_invoiced) : 0"
-                      color="teal"
+                      :value="props.row.total_invoiced > 0 ? (props.row.total_paid / props.row.total_invoiced) : 0"
+                      color="primary"
                       class="q-mr-sm rounded-borders"
                       style="width: 60px; height: 6px;"
                     />
-                    <span class="text-caption text-slate-300 text-weight-bold">
-                      {{ prof.total_invoiced > 0 ? ((prof.total_paid / prof.total_invoiced) * 100).toFixed(0) : '0' }}%
+                    <span class="text-caption text-grey-8 text-weight-bold">
+                      {{ props.row.total_invoiced > 0 ? ((props.row.total_paid / props.row.total_invoiced) * 100).toFixed(0) : '0' }}%
                     </span>
                   </div>
-                </td>
-              </tr>
-            </tbody>
-          </q-markup-table>
-        </q-tab-panel>
+                </q-td>
+              </template>
+            </q-table>
+          </q-tab-panel>
 
-        <!-- Outstanding Invoices Panel -->
-        <q-tab-panel name="outstanding" class="q-pa-none">
-          <q-markup-table flat dark class="bg-transparent text-white" wrap-cells>
-            <thead>
-              <tr class="text-slate-400 border-b border-slate-800">
-                <th class="text-left font-semibold py-4">Invoice No</th>
-                <th class="text-left font-semibold">Invoice Date</th>
-                <th class="text-left font-semibold">Billing Profile</th>
-                <th class="text-left font-semibold">Recipient / Phone</th>
-                <th class="text-right font-semibold">Total Amount</th>
-                <th class="text-right font-semibold">Paid Amount</th>
-                <th class="text-right font-semibold">Due Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading" class="border-b border-slate-800/50">
-                <td colspan="7" class="text-center py-8 text-slate-400">
-                  <q-spinner-dots size="40px" color="teal" />
-                </td>
-              </tr>
-              <tr v-else-if="!outstandingInvoices.length" class="border-b border-slate-800/50">
-                <td colspan="7" class="text-center py-8 text-slate-500">
-                  No outstanding invoices found.
-                </td>
-              </tr>
-              <tr
-                v-for="inv in outstandingInvoices"
-                :key="inv.id"
-                class="hover:bg-slate-800/40 transition-colors duration-200 border-b border-slate-800/50"
-              >
-                <td class="py-4 text-weight-bold text-teal-400">
-                  {{ inv.invoice_no }}
-                </td>
-                <td>{{ formatDate(inv.invoice_date) }}</td>
-                <td>{{ inv.billing_profile_name || 'Walk-in / Direct' }}</td>
-                <td>
-                  <div class="text-weight-medium">{{ inv.recipient_name || '-' }}</div>
-                  <div v-if="inv.recipient_phone" class="text-caption text-slate-400">{{ inv.recipient_phone }}</div>
-                </td>
-                <td class="text-right text-slate-300">{{ formatAmountBdt(inv.total_amount) }}</td>
-                <td class="text-right text-emerald-400">{{ formatAmountBdt(inv.paid_amount) }}</td>
-                <td class="text-right text-weight-bold text-red-400">{{ formatAmountBdt(inv.due_amount) }}</td>
-              </tr>
-            </tbody>
-          </q-markup-table>
-        </q-tab-panel>
-      </q-tab-panels>
+          <!-- Outstanding Invoices Panel -->
+          <q-tab-panel name="outstanding" class="q-pa-none">
+            <q-table
+              flat
+              row-key="id"
+              :rows="outstandingInvoices"
+              :columns="invoiceColumns"
+              :loading="loading"
+              :pagination="{ rowsPerPage: 50 }"
+              :dense="$q.screen.lt.md"
+            >
+              <template #body-cell-invoice_no="props">
+                <q-td :props="props" class="text-weight-bold text-primary">
+                  {{ props.row.invoice_no }}
+                </q-td>
+              </template>
+
+              <template #body-cell-invoice_date="props">
+                <q-td :props="props">
+                  {{ formatDate(props.row.invoice_date) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-billing_profile_name="props">
+                <q-td :props="props">
+                  {{ props.row.billing_profile_name || 'Walk-in / Direct' }}
+                </q-td>
+              </template>
+
+              <template #body-cell-recipient="props">
+                <q-td :props="props">
+                  <div class="text-weight-medium">{{ props.row.recipient_name || '-' }}</div>
+                  <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
+                </q-td>
+              </template>
+
+              <template #body-cell-total_amount="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatAmountBdt(props.row.total_amount) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-paid_amount="props">
+                <q-td :props="props" class="text-right text-positive">
+                  {{ formatAmountBdt(props.row.paid_amount) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-due_amount="props">
+                <q-td :props="props" class="text-right text-weight-bold text-negative">
+                  {{ formatAmountBdt(props.row.due_amount) }}
+                </q-td>
+              </template>
+            </q-table>
+          </q-tab-panel>
+        </q-tab-panels>
+      </q-card>
     </div>
-  </q-page>
+  </TreasuryPageShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
+import { useQuasar, QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
+import TreasuryPageShell from '../components/TreasuryPageShell.vue'
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
+import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
 
 const loading = ref(false)
+const error = ref<string | null>(null)
 const activeTab = ref('profiles')
 const search = ref('')
 
 const profiles = ref<any[]>([])
 const outstandingInvoices = ref<any[]>([])
 
+const profileColumns: QTableColumn[] = [
+  { name: 'name', label: 'Customer Profile', field: 'name', align: 'left', sortable: true },
+  { name: 'total_invoiced', label: 'Total Invoiced', field: 'total_invoiced', align: 'right', sortable: true },
+  { name: 'total_paid', label: 'Total Paid', field: 'total_paid', align: 'right', sortable: true },
+  { name: 'balance_due', label: 'Balance Due', field: 'balance_due', align: 'right', sortable: true },
+  { name: 'collection_pct', label: 'Collection %', field: 'total_paid', align: 'center' },
+]
+
+const invoiceColumns: QTableColumn[] = [
+  { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', sortable: true },
+  { name: 'invoice_date', label: 'Invoice Date', field: 'invoice_date', align: 'left', sortable: true },
+  { name: 'billing_profile_name', label: 'Billing Profile', field: 'billing_profile_name', align: 'left', sortable: true },
+  { name: 'recipient', label: 'Recipient / Phone', field: 'recipient_name', align: 'left', sortable: true },
+  { name: 'total_amount', label: 'Total Amount', field: 'total_amount', align: 'right', sortable: true },
+  { name: 'paid_amount', label: 'Paid Amount', field: 'paid_amount', align: 'right', sortable: true },
+  { name: 'due_amount', label: 'Due Balance', field: 'due_amount', align: 'right', sortable: true },
+]
+
 const loadData = async () => {
   const tenantId = authStore.tenantId
   if (!tenantId) return
 
   loading.value = true
+  error.value = null
   try {
     const [profRes, outRes] = await Promise.all([
       treasuryRepository.listBillingBalances(tenantId, search.value || undefined),
@@ -227,6 +223,7 @@ const loadData = async () => {
     profiles.value = profRes || []
     outstandingInvoices.value = outRes || []
   } catch (err: any) {
+    error.value = err.message
     $q.notify({ type: 'negative', message: `Failed to load balances: ${err.message}` })
   } finally {
     loading.value = false
@@ -249,12 +246,26 @@ const averageCollectionRate = computed(() => {
   return `${pct.toFixed(1)}%`
 })
 
-const formatAmountBdt = (val: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'BDT',
-  }).format(val)
-}
+const statCards = computed(() => [
+  {
+    label: 'Total Outstanding AR',
+    value: totalOutstandingDue.value,
+    caption: 'Active unpaid balance sheet',
+    valueClass: 'text-negative',
+  },
+  {
+    label: 'Total Paid Collections',
+    value: totalInvoiced.value - totalOutstandingDue.value,
+    caption: 'Cleared cash receipts',
+    valueClass: 'text-positive',
+  },
+  {
+    label: 'Average Collection Rate',
+    value: totalInvoiced.value > 0 ? (totalInvoiced.value - totalOutstandingDue.value) : 0,
+    caption: 'Invoiced to cash conversion percentage',
+    valueClass: 'text-primary',
+  },
+])
 
 const formatDate = (val: string | null | undefined) => {
   if (!val) return '—'
@@ -269,45 +280,3 @@ onMounted(() => {
   void loadData()
 })
 </script>
-
-<style scoped>
-.bg-slate-900 {
-  background-color: #0f172a;
-}
-.text-slate-400 {
-  color: #94a3b8;
-}
-.text-slate-500 {
-  color: #64748b;
-}
-.text-slate-200 {
-  color: #e2e8f0;
-}
-.text-slate-300 {
-  color: #cbd5e1;
-}
-.border-slate-800 {
-  border-color: #1e293b;
-}
-.border-slate-800\/50 {
-  border-color: rgba(30, 41, 59, 0.5);
-}
-.hover\:bg-slate-800\/40:hover {
-  background-color: rgba(30, 41, 59, 0.4);
-}
-
-/* Glassmorphism Classes */
-.glass-card {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px border-solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-}
-
-.glass-input :deep(.q-field__control) {
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px border-solid rgba(255, 255, 255, 0.08);
-}
-</style>

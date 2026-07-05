@@ -34,15 +34,21 @@
       <q-table
         v-else
         flat
-        row-key="id"
+        row-key="investor_id"
         :rows="investors"
         :columns="columns"
-        :pagination="{ rowsPerPage: 0 }"
+        :pagination="{ rowsPerPage: 20 }"
         :dense="$q.screen.lt.md"
       >
+        <template #body-cell-id="props">
+          <q-td :props="props">
+            #{{ props.row.investor_id }}
+          </q-td>
+        </template>
+
         <template #body-cell-available_balance="props">
           <q-td :props="props" class="text-right">
-            {{ formatAmount(getAvailableBalance(props.row.id)) }}
+            {{ formatAmount(props.row.available_balance) }}
           </q-td>
         </template>
 
@@ -97,36 +103,33 @@ import type { QTableColumn } from 'quasar'
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import InvestorProfileDialog from 'src/modules/investor_capital/components/InvestorProfileDialog.vue'
-import { useInvestorStore } from 'src/modules/investor/stores/investorStore'
-import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from 'src/modules/investor/types'
+import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
+import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from 'src/modules/investor_capital/types'
 import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()
-const investorStore = useInvestorStore()
-const { investors, balancesByInvestorId, loadingInvestors, error } = storeToRefs(investorStore)
+const capitalStore = useInvestorCapitalStore()
+const { investors, loadingInvestors, error } = storeToRefs(capitalStore)
 
 const openDialog = ref(false)
 const openDeleteDialog = ref(false)
 const selectedInvestor = ref<Investor | null>(null)
-const investorToDelete = ref<Investor | null>(null)
+const investorToDelete = ref<any | null>(null)
 
 const resolvedTenantId = computed(() => authStore.tenantId ?? 0)
 
 const columns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
+  { name: 'id', label: 'ID', field: 'investor_id', align: 'left', sortable: true },
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
-  { name: 'available_balance', label: 'Available Balance', field: 'id', align: 'right' },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
+  { name: 'available_balance', label: 'Available Balance', field: 'available_balance', align: 'right', sortable: true },
+  { name: 'actions', label: 'Actions', field: 'investor_id', align: 'right' },
 ]
 
 const refresh = async () => {
   if (!resolvedTenantId.value) return
-  await Promise.all([
-    investorStore.fetchInvestorsByTenant(resolvedTenantId.value),
-    investorStore.fetchInvestorBalancesByTenant(resolvedTenantId.value),
-  ])
+  await capitalStore.fetchInvestorsByTenant(resolvedTenantId.value)
 }
 
 const onClickAddInvestor = () => {
@@ -134,18 +137,27 @@ const onClickAddInvestor = () => {
   openDialog.value = true
 }
 
-const onClickEditInvestor = (investor: Investor) => {
-  selectedInvestor.value = { ...investor }
+const onClickEditInvestor = (row: any) => {
+  selectedInvestor.value = {
+    id: row.investor_id,
+    tenant_id: resolvedTenantId.value,
+    name: row.name,
+    phone: row.phone,
+    email: row.email,
+    address: row.address,
+    is_active: row.is_active,
+    currency_code: row.currency_code || 'BDT',
+    notes: row.notes,
+    created_at: '',
+    updated_at: '',
+  }
   openDialog.value = true
 }
 
-const onClickDeleteInvestor = (investor: Investor) => {
-  investorToDelete.value = investor
+const onClickDeleteInvestor = (row: any) => {
+  investorToDelete.value = row
   openDeleteDialog.value = true
 }
-
-const getAvailableBalance = (investorId: number) =>
-  Number(balancesByInvestorId.value[investorId]?.available_balance ?? 0)
 
 const formatAmount = (value: number) => formatAmountBdt(value)
 
@@ -158,8 +170,11 @@ const handleSaveInvestor = async (payload: InvestorCreateInput & { id?: number }
       phone: payload.phone ?? null,
       email: payload.email ?? null,
       address: payload.address ?? null,
+      is_active: payload.is_active ?? true,
+      currency_code: payload.currency_code || 'BDT',
+      notes: payload.notes ?? null,
     }
-    await investorStore.updateInvestor(updatePayload)
+    await capitalStore.updateInvestor(updatePayload)
     return
   }
 
@@ -169,19 +184,22 @@ const handleSaveInvestor = async (payload: InvestorCreateInput & { id?: number }
     phone: payload.phone ?? null,
     email: payload.email ?? null,
     address: payload.address ?? null,
+    is_active: payload.is_active ?? true,
+    currency_code: payload.currency_code || 'BDT',
+    notes: payload.notes ?? null,
   }
-  await investorStore.createInvestor(createPayload)
+  await capitalStore.createInvestor(createPayload)
 }
 
 const confirmDeleteInvestor = async () => {
   if (!investorToDelete.value) return
 
   const payload: InvestorDeleteInput = {
-    id: investorToDelete.value.id,
+    id: investorToDelete.value.investor_id,
     tenant_id: resolvedTenantId.value,
   }
 
-  await investorStore.deleteInvestor(payload)
+  await capitalStore.deleteInvestor(payload)
   investorToDelete.value = null
   openDeleteDialog.value = false
 }

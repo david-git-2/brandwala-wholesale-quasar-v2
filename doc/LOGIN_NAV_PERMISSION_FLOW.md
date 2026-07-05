@@ -6,6 +6,8 @@ For a scope-first overview (Platform, App, Shop, Investor — what each is for, 
 
 For tenant types (parent, child, standalone), hierarchy, slug/domain resolution, and module assignment per tenant, see [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md).
 
+**Target permission system (DB grants, last stage B8/F8):** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md).
+
 ## Why This Is Separate
 
 **Documentation hierarchy:**
@@ -28,7 +30,9 @@ This separation is better because the master plan stays stable and readable, whi
 Use this model:
 
 - database controls which modules exist for a tenant
-- code controls what each role can do inside those modules
+- **today:** code controls what each role can do inside those modules (`modulePermissions.ts`)
+- **target (B8/F8):** `tenant_roles` (custom roles per tenant) + grant tables + `has_module_action()` — see [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md)
+- **dual login model:** keep `memberships.role` / `customer_group_members.role` for scope admission; `tenant_role_id` drives permissions (safe migration)
 
 In practice:
 

@@ -1,0 +1,213 @@
+<template>
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline">Shop &amp; Order</div>
+          <h1 class="text-h5 q-my-none">Shop Orders Desk</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Price, negotiate, confirm, and manage customer orders across all tenant shops.
+          </p>
+        </div>
+      </section>
+
+      <!-- Filters Toolbar -->
+      <section class="row items-center q-col-gutter-md">
+        <div class="col-12 col-sm-5">
+          <q-input
+            v-model="search"
+            clearable
+            debounce="350"
+            dense
+            outlined
+            placeholder="Search by order no, shop, customer..."
+            @update:model-value="onFilterChange"
+          >
+            <template #prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </div>
+        <div class="col-auto">
+          <q-select
+            v-model="statusFilter"
+            dense
+            outlined
+            emit-value
+            map-options
+            label="Filter by Status"
+            :options="statusOptions"
+            style="min-width: 150px"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+      </section>
+
+      <!-- Main Content -->
+      <div v-if="orderStore.loading" class="column items-center justify-center q-pa-xl">
+        <q-spinner color="primary" size="40px" />
+        <div class="text-grey-6 q-mt-sm">Loading orders...</div>
+      </div>
+
+      <div v-else-if="orderStore.orders.length === 0" class="column items-center justify-center empty-state q-pa-xl text-center">
+        <q-icon name="receipt_long" size="80px" color="grey-3" class="q-mb-md" />
+        <div class="text-h6 text-grey-6">No Orders Found</div>
+        <p class="text-body2 text-grey-5 q-mt-sm">
+          No orders match the current search or status filter.
+        </p>
+      </div>
+
+      <div v-else class="column q-gutter-md">
+        <q-card flat bordered class="order-table-card">
+          <q-list separator>
+            <q-item v-for="order in orderStore.orders" :key="order.id" class="q-py-md">
+              <q-item-section>
+                <div class="row items-center justify-between q-col-gutter-sm">
+                  <!-- Order Identifiers -->
+                  <div class="col-xs-12 col-sm-3 column">
+                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ order.order_no }}</span>
+                    <span class="text-caption text-grey-6">
+                      {{ formatDate(order.created_at) }}
+                    </span>
+                  </div>
+
+                  <!-- Shop & Group Context -->
+                  <div class="col-xs-12 col-sm-3 column">
+                    <span class="text-body2 text-weight-medium text-grey-9">Shop: {{ order.shop_name }}</span>
+                    <span class="text-caption text-grey-6">
+                      Group: {{ order.customer_group_name }}
+                    </span>
+                  </div>
+
+                  <!-- Item Stats -->
+                  <div class="col-xs-12 col-sm-3 row items-center q-gutter-x-lg">
+                    <div class="column">
+                      <span class="text-caption text-grey-6">Items</span>
+                      <span class="text-body2 text-weight-bold text-grey-8">{{ order.item_count }}</span>
+                    </div>
+                    <div class="column">
+                      <span class="text-caption text-grey-6">Total Value</span>
+                      <span class="text-body2 text-weight-bold text-primary">
+                        £{{ Number(order.total_amount || 0).toFixed(2) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Status badge & Actions -->
+                  <div class="col-xs-12 col-sm-3 row items-center justify-end q-gutter-x-md">
+                    <q-badge :color="getStatusColor(order.status)" text-color="white" class="status-badge text-weight-bold q-py-xs q-px-sm">
+                      {{ order.status.toUpperCase() }}
+                    </q-badge>
+                    <q-btn
+                      unelevated
+                      color="primary"
+                      no-caps
+                      dense
+                      label="Manage"
+                      class="q-px-md pill-btn"
+                      @click="goToOrderDetails(order.id)"
+                    />
+                  </div>
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
+      </div>
+    </section>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useShopOrderStore } from '../stores/shopOrderStore'
+import { date } from 'quasar'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const orderStore = useShopOrderStore()
+
+const search = ref('')
+const statusFilter = ref(null)
+
+const tenantId = computed(() => authStore.tenantId as number)
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+
+const statusOptions = [
+  { label: 'All Statuses', value: null },
+  { label: 'Submitted', value: 'submitted' },
+  { label: 'Negotiating', value: 'negotiating' },
+  { label: 'Priced', value: 'priced' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'Placed', value: 'placed' },
+  { label: 'Fulfilled', value: 'fulfilled' },
+  { label: 'Cancelled', value: 'cancelled' },
+]
+
+const loadOrders = async () => {
+  if (tenantId.value) {
+    await orderStore.fetchStaffOrders(tenantId.value, {
+      search: search.value || null,
+      status: statusFilter.value || null,
+    })
+  }
+}
+
+onMounted(loadOrders)
+
+const onFilterChange = () => {
+  void loadOrders()
+}
+
+const goToOrderDetails = (orderId: number) => {
+  const slug = tenantSlug.value ? `/${tenantSlug.value}` : ''
+  void router.push(`${slug}/app/shop/orders/${orderId}`)
+}
+
+const formatDate = (dateStr: string) => {
+  return date.formatDate(dateStr, 'D MMM YYYY, HH:mm')
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'draft': return 'grey-7'
+    case 'submitted': return 'blue-7'
+    case 'negotiating': return 'amber-9'
+    case 'priced': return 'cyan-8'
+    case 'confirmed': return 'green-7'
+    case 'placed': return 'indigo-7'
+    case 'fulfilled': return 'teal-7'
+    case 'cancelled': return 'red-7'
+    default: return 'grey-7'
+  }
+}
+</script>
+
+<script lang="ts">
+export default {
+  name: 'ShopOrdersPage'
+}
+</script>
+
+<style scoped>
+.order-table-card {
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
+}
+
+.pill-btn {
+  border-radius: 30px;
+}
+
+.status-badge {
+  border-radius: 8px;
+}
+
+.empty-state {
+  min-height: 350px;
+}
+</style>

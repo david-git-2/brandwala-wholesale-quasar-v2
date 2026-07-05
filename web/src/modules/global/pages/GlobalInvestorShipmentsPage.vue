@@ -112,7 +112,7 @@ import type { QTableColumn } from 'quasar'
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvestorStore } from 'src/modules/investor/stores/investorStore'
+import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { formatAmountBdt } from 'src/utils/currency'
 
@@ -120,7 +120,7 @@ import { globalRepository } from '../repositories/globalRepository'
 import type { GlobalShipmentInvestmentRow } from '../types'
 
 const authStore = useAuthStore()
-const investorStore = useInvestorStore()
+const capitalStore = useInvestorCapitalStore()
 const shipmentStore = useShipmentStore()
 const router = useRouter()
 const route = useRoute()
@@ -144,7 +144,7 @@ const columns: QTableColumn[] = [
 const formatAmount = (value: number) => formatAmountBdt(value)
 
 const investorName = (investorId: number) => {
-  const investor = investorStore.investors.find((item) => item.id === investorId)
+  const investor = capitalStore.investors.find((item) => item.investor_id === investorId)
   return investor?.name ?? `Investor #${investorId}`
 }
 
@@ -188,7 +188,7 @@ const load = async () => {
   try {
     const [investments] = await Promise.all([
       globalRepository.listGlobalShipmentInvestments(tenantId),
-      investorStore.fetchInvestorsByTenant(tenantId),
+      capitalStore.fetchInvestorsByTenant(tenantId),
       shipmentStore.fetchShipments(tenantId),
     ])
     rows.value = investments

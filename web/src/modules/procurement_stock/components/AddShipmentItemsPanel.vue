@@ -71,8 +71,8 @@
               <q-item-label caption>
                 {{ [product.product_code, product.barcode].filter(Boolean).join(' · ') || 'No code' }}
               </q-item-label>
-              <q-item-label v-if="product.price_gbp != null" caption class="text-secondary">
-                £{{ product.price_gbp.toFixed(2) }}
+              <q-item-label v-if="product.list_price_amount != null" caption class="text-secondary">
+                £{{ product.list_price_amount.toFixed(2) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
@@ -280,6 +280,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import { productRepository } from 'src/modules/products/repositories/productRepository'
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 import { productService } from 'src/modules/products/services/productService'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
 import SmartImage from 'src/components/SmartImage.vue'
@@ -307,7 +308,7 @@ interface ProductItem {
   name: string
   product_code: string | null
   barcode: string | null
-  price_gbp: number | null
+  list_price_amount: number | null
   product_weight: number | null
   package_weight: number | null
   image_url: string | null
@@ -440,7 +441,7 @@ const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartIt
   vendor_id: getDefaultVendorId(),
   name: product.name,
   ordered_quantity: qty,
-  purchase_price: product.price_gbp || 0,
+  purchase_price: product.list_price_amount || 0,
   product_weight: product.product_weight ?? 0,
   package_weight: product.package_weight ?? 0,
   barcode: product.barcode,
@@ -670,7 +671,8 @@ const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
     name: item.name,
     product_code: item.product_code,
     barcode: item.barcode,
-    price_gbp: item.purchase_price,
+    list_price_amount: item.purchase_price,
+    list_price_currency_id: gbpCurrencyId.value,
     product_weight: item.product_weight,
     package_weight: item.package_weight,
     image_url: item.image_url,
@@ -763,10 +765,18 @@ const onCancel = () => {
   })
 }
 
-onMounted(() => {
+const gbpCurrencyId = ref<number | null>(null)
+
+onMounted(async () => {
   loadCartFromStorage()
   if (authStore.tenantId) void vendorStore.fetchVendors(authStore.tenantId)
   void loadBrowse()
+  try {
+    const currencyData = await globalReferenceRepository.listCurrencies()
+    gbpCurrencyId.value = currencyData.find(c => c.code === 'GBP')?.id ?? null
+  } catch (e) {
+    console.error('Error fetching currencies:', e)
+  }
 })
 </script>
 

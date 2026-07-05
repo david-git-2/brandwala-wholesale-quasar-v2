@@ -57,6 +57,7 @@ const createMembership = async (
         email: membership.email,
         role: membership.role,
         is_active: membership.is_active,
+        investor_id: membership.investor_id || null,
       },
     ])
     .select()
@@ -78,7 +79,7 @@ const updateMembership = async (
   membership: MembershipUpdateInput
 ): Promise<Membership> => {
   const updatePayload: Partial<
-    Pick<MembershipUpdateInput, 'tenant_id' | 'email' | 'role' | 'is_active'>
+    Pick<MembershipUpdateInput, 'tenant_id' | 'email' | 'role' | 'is_active' | 'investor_id'>
   > = {}
 
   if (membership.tenant_id !== undefined) {
@@ -95,6 +96,10 @@ const updateMembership = async (
 
   if (membership.is_active !== undefined) {
     updatePayload.is_active = membership.is_active
+  }
+
+  if (membership.investor_id !== undefined) {
+    updatePayload.investor_id = membership.investor_id
   }
 
   const { data, error } = await supabase

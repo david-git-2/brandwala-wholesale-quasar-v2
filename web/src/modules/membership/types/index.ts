@@ -6,6 +6,7 @@ export type Membership = {
   tenant_id: number | null
   role: string
   is_active: boolean
+  investor_id?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -15,6 +16,7 @@ export type MembershipCreateInput = {
   email: string
   role: string
   is_active: boolean
+  investor_id?: number | null
 }
 
 export type MembershipUpdateInput = {
@@ -23,6 +25,7 @@ export type MembershipUpdateInput = {
   email?: string
   role?: string
   is_active?: boolean
+  investor_id?: number | null
 }
 
 export type MembershipDeleteInput = {

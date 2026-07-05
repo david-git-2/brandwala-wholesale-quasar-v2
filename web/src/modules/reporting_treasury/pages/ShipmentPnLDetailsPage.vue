@@ -1,141 +1,116 @@
 <template>
-  <q-page class="q-pa-lg bg-slate-900 text-white">
-    <!-- Header Block -->
-    <div class="row items-center justify-between q-mb-xl">
-      <div>
-        <div class="row items-center q-gutter-sm text-slate-400 q-mb-xs">
-          <q-btn flat dense no-caps icon="arrow_back" label="Back to Shipments" @click="goBack" color="slate-400" />
-        </div>
-        <div class="text-h4 text-weight-bolder tracking-tight">
-          Shipment P&amp;L: <span class="text-teal-400">{{ shipment?.name || `#${id}` }}</span>
-        </div>
-        <div class="text-subtitle2 text-slate-400 q-mt-xs">
-          Analyze itemized landed costs, sales revenue conversion, gross profit margin, and current unsold inventory value.
-        </div>
-      </div>
-    </div>
+  <TreasuryPageShell
+    :title="`Shipment P&amp;L: ${shipment?.name || '#' + id}`"
+    subtitle="Analyze itemized landed costs, sales revenue conversion, gross profit margin, and current unsold inventory value."
+    :error="error"
+  >
+    <template #header-left>
+      <q-btn flat dense no-caps icon="arrow_back" label="Back to Shipments" @click="goBack" />
+    </template>
 
     <!-- Loading spinner -->
     <div v-if="loading" class="row justify-center py-12">
-      <q-spinner-dots size="50px" color="teal" />
+      <q-spinner-dots size="50px" color="primary" />
     </div>
 
-    <div v-else-if="shipment" class="q-gutter-y-xl">
+    <div v-else-if="shipment" class="q-gutter-y-lg">
       <!-- Stats Row -->
-      <div class="row q-col-gutter-lg">
-        <div class="col-12 col-sm-6 col-md-2.4 col-lg-2.4" style="flex: 1">
-          <div class="glass-card q-pa-md">
-            <div class="text-caption text-slate-400 text-uppercase tracking-wider">Landed Cost BDT</div>
-            <div class="text-h5 text-weight-bold q-mt-sm text-slate-300">
-              {{ formatAmountBdt(totals.landed_cost) }}
-            </div>
-            <div class="text-caption text-slate-500 q-mt-xs">Total import asset cost</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-2.4 col-lg-2.4" style="flex: 1">
-          <div class="glass-card q-pa-md">
-            <div class="text-caption text-slate-400 text-uppercase tracking-wider">Sold Cost BDT</div>
-            <div class="text-h5 text-weight-bold q-mt-sm text-indigo-300">
-              {{ formatAmountBdt(totals.sold_cost) }}
-            </div>
-            <div class="text-caption text-slate-500 q-mt-xs">Landed cost of sold items</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-2.4 col-lg-2.4" style="flex: 1">
-          <div class="glass-card q-pa-md">
-            <div class="text-caption text-slate-400 text-uppercase tracking-wider">Gross Revenue BDT</div>
-            <div class="text-h5 text-weight-bold q-mt-sm text-emerald-400">
-              {{ formatAmountBdt(totals.revenue) }}
-            </div>
-            <div class="text-caption text-slate-500 q-mt-xs">Sales subtotal less returns</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-2.4 col-lg-2.4" style="flex: 1">
-          <div class="glass-card q-pa-md">
-            <div class="text-caption text-slate-400 text-uppercase tracking-wider">Gross Profit BDT</div>
-            <div class="text-h5 text-weight-bold q-mt-sm text-teal-300">
-              {{ formatAmountBdt(totals.gross_profit) }}
-            </div>
-            <div class="text-caption text-slate-500 q-mt-xs">Derived profit rollup</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-2.4 col-lg-2.4" style="flex: 1">
-          <div class="glass-card q-pa-md">
-            <div class="text-caption text-slate-400 text-uppercase tracking-wider">Unsold Stock Value</div>
-            <div class="text-h5 text-weight-bold q-mt-sm text-amber-400">
-              {{ formatAmountBdt(totals.unsold_value) }}
-            </div>
-            <div class="text-caption text-slate-500 q-mt-xs">Dead stock asset estimate</div>
-          </div>
-        </div>
-      </div>
+      <TreasuryStatGrid :items="statCards" />
 
       <!-- Itemized Table Card -->
-      <div class="glass-card q-pa-lg">
-        <div class="text-subtitle1 text-weight-bold q-mb-md text-teal-300">
+      <q-card flat bordered class="q-pa-md bg-white">
+        <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">
           Itemized Cost &amp; Profit Allocations
         </div>
 
-        <q-markup-table flat dark class="bg-transparent text-white" wrap-cells>
-          <thead>
-            <tr class="text-slate-400 border-b border-slate-800">
-              <th class="text-left font-semibold py-4">Item ID</th>
-              <th class="text-left font-semibold">Name</th>
-              <th class="text-right font-semibold">Received Qty</th>
-              <th class="text-right font-semibold">Landed Unit Cost</th>
-              <th class="text-right font-semibold">Total Landed Cost</th>
-              <th class="text-right font-semibold">Sold Qty</th>
-              <th class="text-right font-semibold">Sold Cost</th>
-              <th class="text-right font-semibold">Revenue</th>
-              <th class="text-right font-semibold">Gross Profit</th>
-              <th class="text-right font-semibold">Unsold Qty</th>
-              <th class="text-right font-semibold">Unsold Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="!items.length" class="border-b border-slate-800/50">
-              <td colspan="11" class="text-center py-8 text-slate-500">
-                No items found for this shipment.
-              </td>
-            </tr>
-            <tr
-              v-for="row in items"
-              :key="row.id"
-              class="hover:bg-slate-800/20 border-b border-slate-800/40"
-            >
-              <td class="py-3 font-mono text-slate-400 text-sm">#{{ row.id }}</td>
-              <td class="text-weight-bold text-slate-200">{{ row.name }}</td>
-              <td class="text-right">{{ row.ordered_quantity }}</td>
-              <td class="text-right">{{ formatAmountBdt(row.landed_unit_cost) }}</td>
-              <td class="text-right text-slate-300">
-                {{ formatAmountBdt(row.landed_unit_cost * row.ordered_quantity) }}
-              </td>
-              <td class="text-right text-teal-300">{{ row.sold_qty }}</td>
-              <td class="text-right text-indigo-300">{{ formatAmountBdt(row.sold_cost) }}</td>
-              <td class="text-right text-emerald-400">{{ formatAmountBdt(row.revenue) }}</td>
-              <td class="text-right text-weight-bold text-teal-300">
-                {{ formatAmountBdt(row.revenue - row.sold_cost) }}
-              </td>
-              <td class="text-right text-amber-400">
-                {{ row.ordered_quantity - row.sold_qty }}
-              </td>
-              <td class="text-right text-weight-bold text-amber-400">
-                {{ formatAmountBdt((row.ordered_quantity - row.sold_qty) * row.landed_unit_cost) }}
-              </td>
-            </tr>
-          </tbody>
-        </q-markup-table>
-      </div>
+        <q-table
+          flat
+          row-key="id"
+          :rows="items"
+          :columns="columns"
+          :pagination="{ rowsPerPage: 50 }"
+          :dense="$q.screen.lt.md"
+        >
+          <template #body-cell-id="props">
+            <q-td :props="props" class="font-mono text-grey-6 text-sm">
+              #{{ props.row.id }}
+            </q-td>
+          </template>
+
+          <template #body-cell-name="props">
+            <q-td :props="props" class="text-weight-bold">
+              {{ props.row.name }}
+            </q-td>
+          </template>
+
+          <template #body-cell-ordered_quantity="props">
+            <q-td :props="props" class="text-right">
+              {{ props.row.ordered_quantity }}
+            </q-td>
+          </template>
+
+          <template #body-cell-landed_unit_cost="props">
+            <q-td :props="props" class="text-right">
+              {{ formatAmountBdt(props.row.landed_unit_cost) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-total_landed_cost="props">
+            <q-td :props="props" class="text-right">
+              {{ formatAmountBdt(props.row.landed_unit_cost * props.row.ordered_quantity) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-sold_qty="props">
+            <q-td :props="props" class="text-right text-primary text-weight-bold">
+              {{ props.row.sold_qty }}
+            </q-td>
+          </template>
+
+          <template #body-cell-sold_cost="props">
+            <q-td :props="props" class="text-right text-grey-8">
+              {{ formatAmountBdt(props.row.sold_cost) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-revenue="props">
+            <q-td :props="props" class="text-right text-positive">
+              {{ formatAmountBdt(props.row.revenue) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-gross_profit="props">
+            <q-td :props="props" class="text-right text-weight-bold text-primary">
+              {{ formatAmountBdt(props.row.revenue - props.row.sold_cost) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-unsold_qty="props">
+            <q-td :props="props" class="text-right text-warning text-weight-bold">
+              {{ props.row.ordered_quantity - props.row.sold_qty }}
+            </q-td>
+          </template>
+
+          <template #body-cell-unsold_value="props">
+            <q-td :props="props" class="text-right text-warning text-weight-bold">
+              {{ formatAmountBdt((props.row.ordered_quantity - props.row.sold_qty) * props.row.landed_unit_cost) }}
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
     </div>
-  </q-page>
+  </TreasuryPageShell>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+import { useQuasar, QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
+import TreasuryPageShell from '../components/TreasuryPageShell.vue'
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,6 +119,7 @@ const authStore = useAuthStore()
 
 const id = Number(route.params.id)
 const loading = ref(false)
+const error = ref<string | null>(null)
 
 const shipment = ref<any>(null)
 const items = ref<any[]>([])
@@ -155,17 +131,64 @@ const totals = ref({
   unsold_value: 0,
 })
 
+const columns: QTableColumn[] = [
+  { name: 'id', label: 'Item ID', field: 'id', align: 'left', sortable: true },
+  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
+  { name: 'ordered_quantity', label: 'Received Qty', field: 'ordered_quantity', align: 'right', sortable: true },
+  { name: 'landed_unit_cost', label: 'Landed Unit Cost', field: 'landed_unit_cost', align: 'right', sortable: true },
+  { name: 'total_landed_cost', label: 'Total Landed Cost', field: 'id', align: 'right' },
+  { name: 'sold_qty', label: 'Sold Qty', field: 'sold_qty', align: 'right', sortable: true },
+  { name: 'sold_cost', label: 'Sold Cost', field: 'sold_cost', align: 'right', sortable: true },
+  { name: 'revenue', label: 'Revenue', field: 'revenue', align: 'right', sortable: true },
+  { name: 'gross_profit', label: 'Gross Profit', field: 'id', align: 'right' },
+  { name: 'unsold_qty', label: 'Unsold Qty', field: 'id', align: 'right' },
+  { name: 'unsold_value', label: 'Unsold Value', field: 'id', align: 'right' },
+]
+
+const statCards = computed(() => [
+  {
+    label: 'Landed Cost BDT',
+    value: totals.value.landed_cost,
+    caption: 'Total import asset cost',
+  },
+  {
+    label: 'Sold Cost BDT',
+    value: totals.value.sold_cost,
+    caption: 'Landed cost of sold items',
+  },
+  {
+    label: 'Gross Revenue BDT',
+    value: totals.value.revenue,
+    caption: 'Sales subtotal less returns',
+    valueClass: 'text-positive',
+  },
+  {
+    label: 'Gross Profit BDT',
+    value: totals.value.gross_profit,
+    caption: 'Derived profit rollup',
+    valueClass: 'text-primary',
+  },
+  {
+    label: 'Unsold Stock Value',
+    value: totals.value.unsold_value,
+    caption: 'Dead stock asset estimate',
+    valueClass: 'text-warning',
+  },
+])
+
 const loadPnL = async () => {
   const tenantId = authStore.tenantId
   if (!tenantId) return
 
   loading.value = true
+  error.value = null
   try {
     const res = await treasuryRepository.getShipmentPnL(tenantId, id)
     shipment.value = res.shipment
     items.value = res.items || []
     totals.value = res.totals
   } catch (err: any) {
+    error.value = err.message
     $q.notify({ type: 'negative', message: `Failed to load shipment details: ${err.message}` })
   } finally {
     loading.value = false
@@ -179,47 +202,7 @@ const goBack = () => {
   })
 }
 
-const formatAmountBdt = (val: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'BDT',
-  }).format(val)
-}
-
 onMounted(() => {
   void loadPnL()
 })
 </script>
-
-<style scoped>
-.bg-slate-900 {
-  background-color: #0f172a;
-}
-.text-slate-400 {
-  color: #94a3b8;
-}
-.text-slate-500 {
-  color: #64748b;
-}
-.text-slate-200 {
-  color: #e2e8f0;
-}
-.text-slate-300 {
-  color: #cbd5e1;
-}
-.border-slate-800 {
-  border-color: #1e293b;
-}
-.border-slate-800\/40 {
-  border-color: rgba(30, 41, 59, 0.4);
-}
-
-/* Glassmorphism Classes */
-.glass-card {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px border-solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-}
-</style>

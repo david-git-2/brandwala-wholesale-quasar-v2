@@ -98,6 +98,24 @@ const getInvestorCapitalReport = async (
   return data
 }
 
+const getAllocationDetail = async (
+  tenantId: number,
+  investorId: number,
+  globalShipmentId: number
+) => {
+  const { data, error } = await supabase.rpc('get_investor_allocation_detail', {
+    p_tenant_id: tenantId,
+    p_investor_id: investorId,
+    p_global_shipment_id: globalShipmentId,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
 export const investorPortalRepository = {
   getInvestorBootstrapContext,
   getInvestorPortfolioSummary,
@@ -105,4 +123,5 @@ export const investorPortalRepository = {
   listInvestorAllocations,
   listInvestorTransactions,
   getInvestorCapitalReport,
+  getAllocationDetail,
 }

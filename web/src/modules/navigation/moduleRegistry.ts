@@ -57,6 +57,14 @@ export type ModuleKey =
   | 'investor_profiles'
   | 'investor_capital_ledger'
   | 'investor_shipment_share'
+  | 'shop_order'
+  | 'shop_config'
+  | 'shop_permissions'
+  | 'shop_pricing'
+  | 'shop_storefront'
+  | 'shop_cart'
+  | 'shop_order_mgmt'
+  | 'shop_fulfillment'
 
 
 export type ModuleAction = 'view'
@@ -1140,6 +1148,136 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Track shipment allocations and cost share',
         icon: 'local_shipping',
         routeSegment: 'capital/shipments',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  // -----------------------------------------------------------
+  // shop_order parent + submodules
+  // -----------------------------------------------------------
+  {
+    key: 'shop_order',
+    name: 'Shop & Order',
+    description: 'Parent module for shop configuration, customer group permissions, product listings, storefront, carts, orders, and fulfillment.',
+    navIcon: 'storefront',
+    routes: [],
+  },
+  {
+    key: 'shop_config',
+    name: 'Shops',
+    description: 'Create and manage shops — type, order mode, stock display defaults, and vendor link.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shops',
+        caption: 'Manage shop configuration and settings',
+        icon: 'store',
+        routeSegment: 'shop/shops',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_permissions',
+    name: 'Customer Access',
+    description: 'Define default shop capabilities per customer group and override them per shop.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Customer Access',
+        caption: 'Manage customer group permissions for shops',
+        icon: 'group',
+        routeSegment: 'shop/customer-groups',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_pricing',
+    name: 'Shop Pricing',
+    description: 'Manage product listings per shop, sell prices, minimum sell prices, and display quantity overrides.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shop Pricing',
+        caption: 'Manage listings and pricing per shop',
+        icon: 'sell',
+        routeSegment: 'shop/pricing',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_storefront',
+    name: 'Storefront',
+    description: 'Customer-facing browse surface — shows shops, products, and prices per group permission.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'shop',
+        title: 'Browse',
+        caption: 'Browse available shops and products',
+        icon: 'shopping_bag',
+        routeSegment: 'shop/browse',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_cart',
+    name: 'Cart',
+    description: 'Per-shop cart with soft stock reservation against global_stock_allocations.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'shop',
+        title: 'Cart',
+        caption: 'Build and manage your shop cart',
+        icon: 'shopping_cart',
+        routeSegment: 'shop/cart',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_order_mgmt',
+    name: 'Orders',
+    description: 'Place, negotiate, approve, price, confirm, and cancel shop orders.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Orders',
+        caption: 'Review and manage shop orders',
+        icon: 'receipt_long',
+        routeSegment: 'shop/orders',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'shop',
+        title: 'My Orders',
+        caption: 'Track your placed and pending orders',
+        icon: 'receipt_long',
+        routeSegment: 'shop/orders',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_fulfillment',
+    name: 'Fulfillment',
+    description: 'Convert placed vendor-catalog orders to procurement lines or stock-backed orders to global invoices.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Fulfillment',
+        caption: 'Fulfill orders via procurement or invoice',
+        icon: 'local_shipping',
+        routeSegment: 'shop/fulfillment',
         requiredAction: 'view',
       },
     ],

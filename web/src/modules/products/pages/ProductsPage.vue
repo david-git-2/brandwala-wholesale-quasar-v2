@@ -390,20 +390,54 @@
                 </div>
 
                 <div class="row q-col-gutter-sm">
-                  <div class="col-12">
+                  <div class="col-12 col-sm-6">
                     <q-input
-                      v-model.number="createForm.price_gbp"
-                      label="Price GBP"
+                      v-model.number="createForm.list_price_amount"
+                      label="List Price"
                       type="number"
                       step="0.01"
                       outlined
                       dense
                       class="soft-input"
-                    >
-                      <template #prepend>
-                        <q-icon name="currency_pound" />
-                      </template>
-                    </q-input>
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="createForm.list_price_currency_id"
+                      :options="currencies"
+                      label="List Price Currency"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      class="soft-input"
+                    />
+                  </div>
+                </div>
+
+                <div class="row q-col-gutter-sm q-mt-xs">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="createForm.reference_cost_amount"
+                      label="Reference Cost"
+                      type="number"
+                      step="0.01"
+                      outlined
+                      dense
+                      class="soft-input"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="createForm.reference_cost_currency_id"
+                      :options="currencies"
+                      label="Reference Cost Currency"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      class="soft-input"
+                    />
                   </div>
                 </div>
 
@@ -475,6 +509,7 @@ import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
 import { productService } from '../services/productService'
 import { useProductStore } from '../stores/productStore'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -495,6 +530,7 @@ const marketCode = ref<string | null>(null)
 const availability = ref<'all' | 'available' | 'unavailable'>('all')
 const brands = ref<string[]>([])
 const categories = ref<string[]>([])
+const currencies = ref<{ label: string; value: number }[]>([])
 
 const searchFieldOptions = [
   { label: 'Name', value: 'name' },
@@ -590,7 +626,10 @@ const createForm = reactive({
   barcode: '',
   brand: null as string | null,
   category: null as string | null,
-  price_gbp: null as number | null,
+  list_price_amount: null as number | null,
+  list_price_currency_id: null as number | null,
+  reference_cost_amount: null as number | null,
+  reference_cost_currency_id: null as number | null,
   image_url: '',
   vendor_code: null as string | null,
   market_code: 'GB',
@@ -821,7 +860,10 @@ const openCreateDialog = () => {
   createForm.barcode = ''
   createForm.brand = null
   createForm.category = null
-  createForm.price_gbp = null
+  createForm.list_price_amount = null
+  createForm.list_price_currency_id = currencies.value.find(c => c.label.startsWith('GBP'))?.value ?? null
+  createForm.reference_cost_amount = null
+  createForm.reference_cost_currency_id = currencies.value.find(c => c.label.startsWith('GBP'))?.value ?? null
   createForm.image_url = ''
   createForm.vendor_code = null
   createForm.market_code = 'GB'
@@ -863,7 +905,10 @@ const onCreateProduct = async () => {
       barcode: createForm.barcode.trim() || null,
       brand: createForm.brand?.trim() || null,
       category: createForm.category?.trim() || null,
-      price_gbp: cleanNumber(createForm.price_gbp),
+      list_price_amount: cleanNumber(createForm.list_price_amount),
+      list_price_currency_id: createForm.list_price_currency_id,
+      reference_cost_amount: cleanNumber(createForm.reference_cost_amount),
+      reference_cost_currency_id: createForm.reference_cost_currency_id,
       image_url: createForm.image_url.trim() || null,
       vendor_code: createForm.vendor_code?.trim() || null,
       market_code: createForm.market_code?.trim() || null,
@@ -887,6 +932,15 @@ const onCreateProduct = async () => {
 }
 
 onMounted(async () => {
+  try {
+    const currencyData = await globalReferenceRepository.listCurrencies()
+    currencies.value = currencyData
+      .filter(c => c.is_active)
+      .map(c => ({ label: `${c.code} (${c.symbol})`, value: c.id }))
+  } catch (e) {
+    console.error('Error fetching currencies:', e)
+  }
+
   const [brandResult, categoryResult] = await Promise.all([
     productService.listBrands({ tenantId: authStore.tenantId ?? null }),
     productService.listCategories({ tenantId: authStore.tenantId ?? null }),

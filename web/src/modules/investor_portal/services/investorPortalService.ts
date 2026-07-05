@@ -88,6 +88,22 @@ const getCapitalReport = async (
   }
 }
 
+const getAllocationDetail = async (
+  tenantId: number,
+  investorId: number,
+  globalShipmentId: number
+) => {
+  try {
+    const data = await investorPortalRepository.getAllocationDetail(tenantId, investorId, globalShipmentId)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to retrieve allocation detail.',
+    }
+  }
+}
+
 export const investorPortalService = {
   getBootstrapContext,
   getPortfolioSummary,
@@ -95,6 +111,7 @@ export const investorPortalService = {
   listAllocations,
   listTransactions,
   getCapitalReport,
+  getAllocationDetail,
 }
 
 export type { InvestorBootstrapContext, InvestorPortfolioSummary }

@@ -2,7 +2,7 @@
   <q-dialog v-model="localModelValue" persistent>
     <q-card style="min-width: 560px; max-width: 95vw;">
       <q-card-section>
-        <div class="text-h6">Add Investor Transaction</div>
+        <div class="text-h6">Record Capital Ledger Entry</div>
       </q-card-section>
 
       <q-card-section class="q-gutter-md">
@@ -80,7 +80,7 @@ import type {
   Investor,
   InvestorTransactionCreateInput,
   InvestorTransactionMethod,
-} from 'src/modules/investor/types'
+} from 'src/modules/investor_capital/types'
 
 const props = defineProps<{
   modelValue: boolean

@@ -4,7 +4,7 @@ Platform for **parent company + sister-concern** multi-tenant operations across 
 
 **This document is the index and cross-cutting reference** — vision, locked decisions, implementation phases, feature matrix, permissions, and module catalog. **Domain detail** (schemas, routes, RPCs, UI) lives in linked domain docs; read those when implementing a specific area.
 
-**Quick navigation:** §1–§5 vision & flow | §6–§7 entity summary | §8–§11 decisions & phases | **§12** doc map | **§14** feature matrix | **§15** permissions | **§16** schema index | **§17** module index | **§18** flows
+**Quick navigation:** §1–§5 vision & flow | §6–§7 entity summary | §8–§11 decisions & phases | **§10.1** status & next step | **§12** doc map | **§14** feature matrix | **§15** permissions | **§16** schema index | **§17** module index | **§18** flows
 
 ---
 
@@ -40,7 +40,7 @@ Business lines share the same **global entity model** (`global_stocks`, `global_
 | Platform | `/platform` | Superadmin |
 | App | `/:tenantSlug/app` | Internal membership (admin, staff, viewer) |
 | Shop | `/:tenantSlug/shop` | Customer group members |
-| Investor | `/:tenantSlug/investor` | Investor (`investor_portal` module) |
+| Investor | `/:tenantSlug/investor` | Investor (`investor_portal` submodule; auth migrating to `role = investor`) |
 
 Full scope rules, guards, and redirects: [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
@@ -150,33 +150,76 @@ Full decision log: §14.3.
 
 ### Backend stages
 
-| Stage | Deliverables | Domain doc |
-|-------|--------------|------------|
-| **B1 — Foundation** | Hierarchy constraint; `seed_global_modules.sql`; registry + permissions stubs | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) |
-| **B2 — Stock** | `global_stocks`, quantities, allocations; receive → stock; RLS | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| **B3 — Procurement** | Child line pull; `add_child_line_to_parent_shipment` | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| **B4 — Invoice & charges** | `global_invoices`, items, returns, charges; fresh-insert RPCs | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| **B5 — Reports & treasury** | Payment tables; margin report RPCs; retire ledger writes | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| **B6 — Capital** | `investor_capital` module; shipment investments; portal bootstrap | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| **B7 — Cleanup** | Drop legacy tables; regenerate `supabase.ts` | — |
+| Stage | Deliverables | Domain doc | Status |
+|-------|--------------|------------|--------|
+| **B1 — Foundation** | Hierarchy constraint; `seed_global_modules.sql`; registry + permissions stubs | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Done |
+| **B2 — Stock** | `global_stocks`, quantities, allocations; receive → stock; RLS | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
+| **B3 — Procurement** | Child line pull; `add_child_line_to_parent_shipment` | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
+| **B4 — Invoice & charges** | `global_invoices`, items, returns, charges; fresh-insert RPCs | [SALES_INVOICE.md](SALES_INVOICE.md) | **Not started** (provisional RPCs only; see SALES_INVOICE §17) |
+| **B5 — Reports & treasury** | Payment tables; margin report RPCs; retire ledger writes | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | **In progress** (pages exist; P1–P6 backend consolidation open) |
+| **B6 — Capital** | `investor_capital` module; shipment investments; portal bootstrap | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | **In progress** (migrations written; apply + wire remaining admin/portal) |
+| **B7 — Cleanup** | Drop legacy tables; regenerate `supabase.ts` | — | Blocked (after B4–B6 cutover) |
+| **B8 — Access grants** | `tenant_roles`, grant tables, `has_module_action`, bootstrap grants, shop permission tables; strangler RLS migration | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (after B7 + shop_order P8) |
 
 ### Frontend stages
 
 All new/updated pages **must** follow [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) and [UI_CONSISTENCY_GUIDE.md](../web/UI_CONSISTENCY_GUIDE.md).
 
-| Stage | Deliverables | Domain doc |
-|-------|--------------|------------|
-| **F1 — Shared UI** | `floating-surface`, `AppPageHeader`, tokens | Style guides |
-| **F2 — Parent shipment** | Procurement lines → parent shipment UI | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| **F3 — Global stock** | Stock list, allocation manager, network search | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| **F4 — Sales invoice** | Wholesale / retail (account + direct) / dropship; billing profiles; draft-post-void lifecycle | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| **F7 — Commerce retarget** | Commerce sells `global_stock_id` | §14 row 24–27 |
+| Stage | Deliverables | Domain doc | Status |
+|-------|--------------|------------|--------|
+| **F1 — Shared UI** | `floating-surface`, `AppPageHeader`, tokens | Style guides | Done |
+| **F2 — Parent shipment** | Procurement lines → parent shipment UI | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
+| **F3 — Global stock** | Stock list, allocation manager, network search | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
+| **F4 — Sales invoice** | Wholesale / retail (account + direct) / dropship; billing profiles; draft-post-void lifecycle | [SALES_INVOICE.md](SALES_INVOICE.md) | **Not started** (recipient profiles page only; desk UI still in `global/` + `invoice/`) |
+| **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | **In progress** (8 pages under `/app/finance/*`; restyle to `bw-page` + backend phases open) |
+| **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | **In progress** (profiles done; ledger + shipments + auth cutover remain) |
+| **F7 — Commerce retarget** | Commerce sells `global_stock_id` | §14 row 23–28 | Blocked (after `shop_order`) |
+| **F8 — Access grants UI** | Role CRUD, grant matrix, member role assignment, overrides, shop permission admin; bootstrap `effectiveGrants` | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (with B8) |
 
 **Investor portal:** See [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) — admin capital management + read-only investor reports at `/:slug/investor/*`.
 
 **Thrift borrowings (optional):** `AppPageHeader`, `PageInitialLoader`, mobile card rows. Do **not** copy Thrift composable architecture — web keeps module/repository/store pattern.
+
+### 10.1 Implementation status & next step
+
+**Last updated:** 2026-07-05
+
+#### Next step (active work)
+
+1. **Apply B6 migrations** — `supabase/migrations/20260831*` (module hierarchy, schema/auth, admin + profit RPCs, balance trigger, legacy retirement).
+2. **Capital Ledger** — finish `investor_capital_ledger` at `/app/capital/ledger` (RPC list, filters, v1 transaction types). Profiles submodule is done.
+3. **reporting_treasury UI** — restyle all 8 `/app/finance/*` pages from hardcoded dark slate (`bg-slate-900`) to App UI (`bw-page`, `AppPageHeader`, standard `q-card` / `q-table`).
+
+#### Completed (P0 redesign)
+
+| Area | Detail |
+|------|--------|
+| **procurement_stock** | Phases 1–10 done — see [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) §11 |
+| **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
+| **F1–F3** | Shared UI tokens + procurement/stock admin pages |
+| **shop_order** | P0–P9 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
+
+#### In progress
+
+| Area | Done | Remaining |
+|------|------|-----------|
+| **investor_capital** (B6, F6) | Profiles CRUD, routes, registry, portal page scaffolds, `investorProfit.ts` | Capital ledger, shipment cost-share editor, `investor_id` membership auth, portal drill-down, optional export |
+| **reporting_treasury** (B5, F5) | `/app/finance/*` pages wired to data | App-theme restyle; RPC consolidation (P3); payments hardening (P4); retire ledger writes (P6) |
+
+#### Not started (P0 queue after capital + treasury UI)
+
+| Area | Stage | Notes |
+|------|-------|-------|
+| **sales_invoice** | B4, F4 | Parent module, fresh invoice lifecycle, desk UI migration off `global/` + `invoice/` — see [SALES_INVOICE.md](SALES_INVOICE.md) §17 |
+| **B7 — Cleanup** | — | Drop legacy tables (§9); regenerate `supabase.ts` |
+
+#### Recommended order (after next step)
+
+```
+investor_capital (finish)  →  sales_invoice  →  reporting_treasury (backend)  →  shop_order  →  B7 cleanup
+```
+
+Sales invoice unblocks correct margin/P&L for treasury and investor profit refresh. `shop_order` is the largest remaining greenfield module.
 
 ---
 
@@ -205,6 +248,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Platform / App / Shop / Investor scopes, guards, redirects |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant types, hierarchy, modules, data ownership, investor membership |
 | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Login → bootstrap → nav implementation |
+| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Target DB grant model, tables, data flows, B8/F8 (last stage) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies, markets, payment methods, units |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
@@ -231,7 +275,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 
 ## 14. High-Level Feature & Decision Matrix
 
-> **How to read:** Scan §14.1 for all modules at a glance. Open the **Detail doc** from §17 for implementation. Permissions: §15. Target schemas: domain docs (§16 index).
+> **How to read:** Scan §14.1 for all modules at a glance. Open the **Detail doc** from §17 for implementation. Permissions: §15. Target schemas: domain docs (§16 index). **Status:** `DONE` = shipped per domain doc | `IN PROGRESS` = partial | `NOT STARTED` = design only or legacy still active | `STABLE` / `LEGACY` = unchanged or retiring.
 
 ### 14.1 Module scan matrix
 
@@ -245,20 +289,20 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 6 | Procurement Inputs | Order Management | order_management | STABLE | app+shop | Child | B2B purchase intent | P1 |
 | 7 | Procurement Inputs | Costing File | costing_file | STABLE | app+shop | Child | Pre-order costing references | — |
 | 8 | Procurement Inputs | Product Based Costing | product_based_costing | STABLE | app | Child | Batch costing → shipment lines | — |
-| 9 | Procurement & Stock | Global Shipment | global_shipment | CURRENT | app | Parent | Inbound shipment batches | P0 |
-| 10 | Procurement & Stock | Global Stock | global_stock | CURRENT | app | Parent | Parent-owned inventory | P0 |
-| 11 | Procurement & Stock | Global Stock Type | global_stock_type | REDESIGN | app | Parent | Stock behaviour classes | P0 |
+| 9 | Procurement & Stock | Global Shipment | global_shipment | DONE | app | Parent | Inbound shipment batches | P0 |
+| 10 | Procurement & Stock | Global Stock | global_stock | DONE | app | Parent | Parent-owned inventory | P0 |
+| 11 | Procurement & Stock | Global Stock Type | global_stock_type | DONE | app | Parent | Stock behaviour classes | P0 |
 | 12 | Procurement & Stock | Tenant Stock | inventory | STABLE | app | Child | Child allocation slices | — |
 | 13 | Profile & CRM | Billing Profile | billing_profile | STABLE | app | Child | Buyer / middle-man account | P1 |
-| 14 | Profile & CRM | Recipient Profile | recipient_profile | REDESIGN | app | Child | Delivery endpoint (dropship) | P0 |
-| 15 | Sales & Invoice | Sales Invoice (Desk) | global_invoice | CURRENT | app | Child | Wholesale, retail account/direct, dropship | P0 |
+| 14 | Profile & CRM | Recipient Profile | recipient_profile | IN PROGRESS | app | Child | Delivery endpoint (dropship) | P0 |
+| 15 | Sales & Invoice | Sales Invoice (Desk) | global_invoice | IN PROGRESS | app | Child | Wholesale, retail account/direct, dropship | P0 |
 | 16 | Sales & Invoice | Shop Invoice | commerce_invoice | STABLE | app | Child | Commerce-generated invoices | — |
 | 17 | Sales & Invoice | Legacy Invoice | invoice | LEGACY | app | Child | Deprecated — use global_invoice | P1 |
 | 18 | Ledger & Treasury | Payments | payments | CURRENT | app | Child+Parent | Cash collection + allocation | P0 |
 | 19 | Ledger & Treasury | Accounting (Legacy UI) | accounting | STABLE | app | Child | Legacy tenant accounting views | — |
-| 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | CURRENT | app | Varies | Margin reports, balances, dashboard | P0 |
+| 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | IN PROGRESS | app | Varies | Margin reports, balances, dashboard | P0 |
 | 21 | Ledger & Treasury | Legacy ledger keys | global_accounting_ledger, global_*_accounting | LEGACY | app | Parent | Being retired — use reporting_treasury | P1 |
-| 22 | Shop & Order | Shop & Order (target) | shop_order | CURRENT | app+shop | Child | Unified shops, cart, orders | P0 |
+| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Unified shops, cart, orders | P0 |
 | 23 | Shop & B2B | Store | store | LEGACY | app+shop | Child | Superseded by shop_order | — |
 | 24 | Shop & B2B | Cart | cart | LEGACY | shop | Child | Superseded by shop_order | — |
 | 25 | Commerce | Commerce Shop | commerce_shop | LEGACY | app+shop | Child | Superseded by shop_order | — |
@@ -266,9 +310,9 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 27 | Commerce | Commerce Cart | commerce_cart | LEGACY | shop | Child | Superseded by shop_order | — |
 | 28 | Commerce | Commerce Accounting | commerce_accounting | LEGACY | app | Child | Retired — use reporting_treasury | — |
 | 29 | Capital | Investor (Legacy UI) | investor | LEGACY | app | Parent | Legacy — use investor_capital | — |
-| 30 | Capital | Investor Capital | investor_capital | CURRENT | app+investor | Parent | Profiles, ledger, allocations, portal | P0 |
+| 30 | Capital | Investor Capital | investor_capital | IN PROGRESS | app+investor | Parent | Profiles, ledger, allocations, portal | P0 |
 | 31 | Capital | Legacy capital keys | global_investor, global_investor_shipment, investor_portal | LEGACY | — | Parent | Subsumed by investor_capital parent module | — |
-| 32 | Verticals | Thrift | thrift_* (9 keys) | STABLE | app | Per tenant | Isolated thrift vertical | — |
+| 32 | Verticals | Thrift | thrift_* (9 keys) | DONE | app | Per tenant | Isolated thrift vertical | — |
 | 33 | Verticals | Koba | koba_retail, koba_wholesale | STABLE | app+shop | Per tenant | Scraped catalog orders | — |
 | 34 | Verticals | Tasks | tasks | STABLE | app | Per tenant | Internal task hierarchy | — |
 
@@ -287,7 +331,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | Shop & Order | 22 | [SHOP_ORDER.md](SHOP_ORDER.md) |
 | Shop & B2B (legacy) | 23–24 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | Commerce (legacy) | 25–28 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
-| Capital | 28–30 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
+| Capital | 29–31 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Verticals | 31–33 | §17 |
 
 ### 14.3 Decision log (locked)
@@ -307,23 +351,26 @@ Per-tenant assignment table: §15.5 and domain docs.
 | D11 | Costing → order | Not required; optional later |
 | D12 | Thrift | No phase 1 global integration |
 | D13 | Module enablement | `tenant_modules` per tenant; no inheritance |
-| D14 | Role abilities | Code matrix in `modulePermissions.ts`; today only `view` |
+| D14 | Role abilities | **Today:** code matrix in `modulePermissions.ts` (view only). **Target:** tenant-scoped custom roles + DB grants per [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) — Administrator auto-access on enabled modules; B8/F8 last |
 | D15 | Margin / P&L | Read-side from transactions — no shadow ledger |
 
 ---
 
 ## 15. Permission schema & role matrix
 
-### 15.1 Four-layer model
+> **Target design (DB-backed grants, per-user overrides, shop flags):** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) — implement **B8/F8 last** after domain cutover. §15.3 below is **today’s** code matrix.
 
-| Layer | Source | Controls |
-|-------|--------|----------|
-| 1 — Scope | Route prefix | Actor table (memberships / customer_group_members) |
-| 2 — Tenant modules | `tenant_modules` + bootstrap RPC | Feature on/off per tenant |
-| 3 — Role matrix | `modulePermissions.ts` | Role × `module_key` × `ModuleAction` |
-| 4 — Row access | RLS + security-definer RPCs | Tenant / parent isolation |
+### 15.1 Access model
 
-**Implementation:** [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md). **Scope detail:** [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
+| Layer | Source (today) | Source (target) | Controls |
+|-------|----------------|-----------------|----------|
+| 1 — Scope | Route prefix | Same | Actor table (memberships / customer_group_members) |
+| 2 — Tenant modules | `tenant_modules` | Same | Feature on/off per tenant |
+| 3 — Grants | `modulePermissions.ts` | `tenant_roles` + `tenant_role_grants` + member overrides (+ shop profile/access) | Custom + system roles × module × action |
+| 4 — Action catalog | — (view only) | `module_actions` | Valid actions per module |
+| 5 — Row access | RLS + RPCs | Same + `has_module_action()` | Tenant / parent isolation |
+
+**Implementation today:** [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md). **Scope detail:** [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
 ### 15.2 Actor roles
 
@@ -379,7 +426,7 @@ Legend: **view** = access granted | **—** = no access
 | `global_investor_shipment` | view | view | — | — | — | — | — | — |
 | `investor_portal` | — | — | — | — | — | — | — | view |
 
-> **Note:** `investor_capital` parent module permissions will be added when seeded. Target submodules: `investor_profiles`, `investor_capital_ledger`, `investor_shipment_share`, `investor_portal` — see [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) §12.
+> **Note:** `investor_capital` parent + submodules (`investor_profiles`, `investor_capital_ledger`, `investor_shipment_share`, `investor_portal`) are seeded in B6 migrations; permissions in `modulePermissions.ts`. See [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) §12.
 
 ### 15.4 Target actions (redesign — not yet in code)
 
@@ -448,16 +495,16 @@ Legend: **view** = access granted | **—** = no access
 | 6 | order_management | STABLE | *(no domain doc — B2B orders)* |
 | 7 | costing_file | STABLE | *(no domain doc)* |
 | 8 | product_based_costing | STABLE | *(no domain doc)* |
-| 9–12 | global_shipment, global_stock, global_stock_type, inventory | CURRENT | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| 13–14 | billing_profile, recipient_profile | STABLE / REDESIGN | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| 15, 17 | global_invoice, invoice (legacy) | CURRENT / LEGACY | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| 9–12 | global_shipment, global_stock, global_stock_type, inventory | DONE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
+| 13–14 | billing_profile, recipient_profile | STABLE / IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| 15, 17 | global_invoice, invoice (legacy) | IN PROGRESS / LEGACY | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | 16 | commerce_invoice | STABLE | *(out of scope for desk sales — see MASTER_PLAN §17 #24–27)* |
-| 18–21 | payments, accounting, reporting_treasury, global_*_accounting | CURRENT / LEGACY | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| 22 | shop_order | CURRENT | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| 18–21 | payments, accounting, reporting_treasury, global_*_accounting | IN PROGRESS / LEGACY | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
+| 22 | shop_order | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |
 | 23–24 | store, cart | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | 25–28 | commerce_* | LEGACY | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
-| 29–31 | investor, investor_capital, global_investor* | LEGACY / CURRENT | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| 32 | thrift_* | STABLE | [THRIFT.md](THRIFT.md) |
+| 29–31 | investor, investor_capital, global_investor* | LEGACY / IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
+| 32 | thrift_* | DONE | [THRIFT.md](THRIFT.md) |
 | 33 | koba_* | STABLE | *(no domain doc)* |
 | 34 | tasks | STABLE | *(no domain doc)* |
 
@@ -476,13 +523,13 @@ Child: orders / product costing → Parent: shipment (local or international)
 |------|------|--------|--------|
 | B2B order | cart → order → negotiate → shipment pull | STABLE | §17 #6 |
 | Costing | product_based_costing → shipment line | STABLE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| Receive stock | shipment receive → global_stocks | CURRENT | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| Desk sale | global_stock → global_invoice → payment allocation | CURRENT | [SALES_INVOICE.md](SALES_INVOICE.md) |
-| Margin report | invoice lines + shipment batch P&L (read) | CURRENT | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| Investor capital | cost-share → profit refresh → portal | PLANNED | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
-| Shop order | shop_cart → shop_order → invoice or procurement pull | CURRENT | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| Receive stock | shipment receive → global_stocks | DONE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
+| Desk sale | global_stock → global_invoice → payment allocation | IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Margin report | invoice lines + shipment batch P&L (read) | IN PROGRESS | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
+| Investor capital | cost-share → profit refresh → portal | IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
+| Shop order | shop_cart → shop_order → invoice or procurement pull | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |
 | Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
-| Thrift | thrift_shipment → stock → invoice | STABLE | [THRIFT.md](THRIFT.md) |
+| Thrift | thrift_shipment → stock → invoice | DONE | [THRIFT.md](THRIFT.md) |
 
 ---
 
@@ -494,6 +541,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Scopes, guards, redirects |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant model and access |
 | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap implementation |
+| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Unified grant design (B8/F8 last stage) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Reference catalogs |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |

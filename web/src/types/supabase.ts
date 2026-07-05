@@ -1116,6 +1116,69 @@ export type Database = {
           },
         ]
       }
+      customer_group_shop_profiles: {
+        Row: {
+          created_at: string
+          customer_group_id: number
+          default_can_add_to_cart: boolean
+          default_can_browse: boolean
+          default_can_negotiate: boolean
+          default_can_place_order: boolean
+          default_can_set_dropship_price: boolean
+          default_can_view_quantity: boolean
+          default_see_price: boolean
+          id: number
+          is_active: boolean
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id: number
+          default_can_add_to_cart?: boolean
+          default_can_browse?: boolean
+          default_can_negotiate?: boolean
+          default_can_place_order?: boolean
+          default_can_set_dropship_price?: boolean
+          default_can_view_quantity?: boolean
+          default_see_price?: boolean
+          id?: never
+          is_active?: boolean
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: number
+          default_can_add_to_cart?: boolean
+          default_can_browse?: boolean
+          default_can_negotiate?: boolean
+          default_can_place_order?: boolean
+          default_can_set_dropship_price?: boolean
+          default_can_view_quantity?: boolean
+          default_see_price?: boolean
+          id?: never
+          is_active?: boolean
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_group_shop_profiles_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_group_shop_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_groups: {
         Row: {
           accent_color: string | null
@@ -3903,14 +3966,17 @@ export type Database = {
           image_url: string | null
           is_available: boolean | null
           languages: string | null
+          list_price_amount: number | null
+          list_price_currency_id: number | null
           market_code: string | null
           minimum_order_quantity: number | null
           name: string | null
           package_weight: number | null
           parent_tenant_id: number | null
-          price_gbp: number | null
           product_code: string | null
           product_weight: number | null
+          reference_cost_amount: number | null
+          reference_cost_currency_id: number | null
           source: string | null
           tariff_code: string | null
           tenant_id: number | null
@@ -3932,14 +3998,17 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean | null
           languages?: string | null
+          list_price_amount?: number | null
+          list_price_currency_id?: number | null
           market_code?: string | null
           minimum_order_quantity?: number | null
           name?: string | null
           package_weight?: number | null
           parent_tenant_id?: number | null
-          price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
+          reference_cost_amount?: number | null
+          reference_cost_currency_id?: number | null
           source?: string | null
           tariff_code?: string | null
           tenant_id?: number | null
@@ -3961,14 +4030,17 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean | null
           languages?: string | null
+          list_price_amount?: number | null
+          list_price_currency_id?: number | null
           market_code?: string | null
           minimum_order_quantity?: number | null
           name?: string | null
           package_weight?: number | null
           parent_tenant_id?: number | null
-          price_gbp?: number | null
           product_code?: string | null
           product_weight?: number | null
+          reference_cost_amount?: number | null
+          reference_cost_currency_id?: number | null
           source?: string | null
           tariff_code?: string | null
           tenant_id?: number | null
@@ -3977,6 +4049,13 @@ export type Database = {
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_list_price_currency_id_fkey"
+            columns: ["list_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_market_code_fkey"
             columns: ["market_code"]
@@ -3989,6 +4068,13 @@ export type Database = {
             columns: ["parent_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_reference_cost_currency_id_fkey"
+            columns: ["reference_cost_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
             referencedColumns: ["id"]
           },
           {
@@ -4294,6 +4380,770 @@ export type Database = {
           },
           {
             foreignKeyName: "shipments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_cart_items: {
+        Row: {
+          cart_id: number
+          created_at: string
+          customer_sell_price_amount: number | null
+          customer_sell_price_currency_id: number | null
+          global_stock_allocation_id: number | null
+          global_stock_id: number | null
+          id: number
+          image_url: string | null
+          minimum_quantity: number
+          name: string
+          product_id: number
+          quantity: number
+          unit_list_price_amount: number | null
+          unit_list_price_currency_id: number | null
+          unit_minimum_sell_price_amount: number | null
+          unit_minimum_sell_price_currency_id: number | null
+          unit_sell_price_amount: number | null
+          unit_sell_price_currency_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          cart_id: number
+          created_at?: string
+          customer_sell_price_amount?: number | null
+          customer_sell_price_currency_id?: number | null
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
+          id?: never
+          image_url?: string | null
+          minimum_quantity?: number
+          name: string
+          product_id: number
+          quantity: number
+          unit_list_price_amount?: number | null
+          unit_list_price_currency_id?: number | null
+          unit_minimum_sell_price_amount?: number | null
+          unit_minimum_sell_price_currency_id?: number | null
+          unit_sell_price_amount?: number | null
+          unit_sell_price_currency_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cart_id?: number
+          created_at?: string
+          customer_sell_price_amount?: number | null
+          customer_sell_price_currency_id?: number | null
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
+          id?: never
+          image_url?: string | null
+          minimum_quantity?: number
+          name?: string
+          product_id?: number
+          quantity?: number
+          unit_list_price_amount?: number | null
+          unit_list_price_currency_id?: number | null
+          unit_minimum_sell_price_amount?: number | null
+          unit_minimum_sell_price_currency_id?: number | null
+          unit_sell_price_amount?: number | null
+          unit_sell_price_currency_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "shop_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_customer_sell_price_currency_id_fkey"
+            columns: ["customer_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_global_stock_allocation_id_fkey"
+            columns: ["global_stock_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "global_stock_allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_unit_list_price_currency_id_fkey"
+            columns: ["unit_list_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_unit_minimum_sell_price_currency_id_fkey"
+            columns: ["unit_minimum_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_cart_items_unit_sell_price_currency_id_fkey"
+            columns: ["unit_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_carts: {
+        Row: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          see_price_snapshot: boolean
+          shop_id: number
+          status: Database["public"]["Enums"]["shop_cart_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id: number
+          id?: never
+          see_price_snapshot?: boolean
+          shop_id: number
+          status?: Database["public"]["Enums"]["shop_cart_status"]
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: number
+          id?: never
+          see_price_snapshot?: boolean
+          shop_id?: number
+          status?: Database["public"]["Enums"]["shop_cart_status"]
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_carts_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_carts_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_carts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_customer_group_access: {
+        Row: {
+          can_add_to_cart: boolean | null
+          can_browse: boolean | null
+          can_negotiate: boolean | null
+          can_place_order: boolean | null
+          can_set_dropship_price: boolean | null
+          can_view_quantity: boolean | null
+          created_at: string
+          credit_limit_amount: number | null
+          credit_limit_currency_id: number | null
+          customer_group_id: number
+          id: number
+          price_tier_code: string | null
+          see_price: boolean | null
+          shop_id: number
+          status: boolean
+          updated_at: string
+        }
+        Insert: {
+          can_add_to_cart?: boolean | null
+          can_browse?: boolean | null
+          can_negotiate?: boolean | null
+          can_place_order?: boolean | null
+          can_set_dropship_price?: boolean | null
+          can_view_quantity?: boolean | null
+          created_at?: string
+          credit_limit_amount?: number | null
+          credit_limit_currency_id?: number | null
+          customer_group_id: number
+          id?: never
+          price_tier_code?: string | null
+          see_price?: boolean | null
+          shop_id: number
+          status?: boolean
+          updated_at?: string
+        }
+        Update: {
+          can_add_to_cart?: boolean | null
+          can_browse?: boolean | null
+          can_negotiate?: boolean | null
+          can_place_order?: boolean | null
+          can_set_dropship_price?: boolean | null
+          can_view_quantity?: boolean | null
+          created_at?: string
+          credit_limit_amount?: number | null
+          credit_limit_currency_id?: number | null
+          customer_group_id?: number
+          id?: never
+          price_tier_code?: string | null
+          see_price?: boolean | null
+          shop_id?: number
+          status?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_customer_group_access_credit_limit_currency_id_fkey"
+            columns: ["credit_limit_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_group_access_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_group_access_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_order_items: {
+        Row: {
+          created_at: string
+          customer_offer_amount: number | null
+          customer_offer_currency_id: number | null
+          customer_sell_price_amount: number | null
+          customer_sell_price_currency_id: number | null
+          delivered_quantity: number
+          final_price_amount: number | null
+          final_price_currency_id: number | null
+          global_stock_allocation_id: number | null
+          global_stock_id: number | null
+          id: number
+          image_url: string | null
+          name: string
+          order_id: number
+          ordered_quantity: number
+          procurement_pulled: boolean
+          product_id: number
+          quantity: number
+          returned_quantity: number
+          staff_offer_amount: number | null
+          staff_offer_currency_id: number | null
+          unit_list_price_amount: number | null
+          unit_list_price_currency_id: number | null
+          unit_minimum_sell_price_amount: number | null
+          unit_minimum_sell_price_currency_id: number | null
+          unit_sell_price_amount: number | null
+          unit_sell_price_currency_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_offer_amount?: number | null
+          customer_offer_currency_id?: number | null
+          customer_sell_price_amount?: number | null
+          customer_sell_price_currency_id?: number | null
+          delivered_quantity?: number
+          final_price_amount?: number | null
+          final_price_currency_id?: number | null
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
+          id?: never
+          image_url?: string | null
+          name: string
+          order_id: number
+          ordered_quantity: number
+          procurement_pulled?: boolean
+          product_id: number
+          quantity: number
+          returned_quantity?: number
+          staff_offer_amount?: number | null
+          staff_offer_currency_id?: number | null
+          unit_list_price_amount?: number | null
+          unit_list_price_currency_id?: number | null
+          unit_minimum_sell_price_amount?: number | null
+          unit_minimum_sell_price_currency_id?: number | null
+          unit_sell_price_amount?: number | null
+          unit_sell_price_currency_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_offer_amount?: number | null
+          customer_offer_currency_id?: number | null
+          customer_sell_price_amount?: number | null
+          customer_sell_price_currency_id?: number | null
+          delivered_quantity?: number
+          final_price_amount?: number | null
+          final_price_currency_id?: number | null
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
+          id?: never
+          image_url?: string | null
+          name?: string
+          order_id?: number
+          ordered_quantity?: number
+          procurement_pulled?: boolean
+          product_id?: number
+          quantity?: number
+          returned_quantity?: number
+          staff_offer_amount?: number | null
+          staff_offer_currency_id?: number | null
+          unit_list_price_amount?: number | null
+          unit_list_price_currency_id?: number | null
+          unit_minimum_sell_price_amount?: number | null
+          unit_minimum_sell_price_currency_id?: number | null
+          unit_sell_price_amount?: number | null
+          unit_sell_price_currency_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_order_items_customer_offer_currency_id_fkey"
+            columns: ["customer_offer_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_customer_sell_price_currency_id_fkey"
+            columns: ["customer_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_final_price_currency_id_fkey"
+            columns: ["final_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_global_stock_allocation_id_fkey"
+            columns: ["global_stock_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "global_stock_allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_staff_offer_currency_id_fkey"
+            columns: ["staff_offer_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_unit_list_price_currency_id_fkey"
+            columns: ["unit_list_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_unit_minimum_sell_price_currency_id_fkey"
+            columns: ["unit_minimum_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_unit_sell_price_currency_id_fkey"
+            columns: ["unit_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_orders: {
+        Row: {
+          billing_profile_id: number | null
+          cargo_rate: number | null
+          cart_id: number | null
+          conversion_rate: number | null
+          created_at: string
+          created_by_email: string
+          customer_group_id: number
+          fulfilled_at: string | null
+          global_invoice_id: number | null
+          id: number
+          is_negotiable_snapshot: boolean
+          name: string
+          negotiate_round: number
+          order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
+          order_no: string
+          placed_at: string | null
+          profit_rate: number | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          shipping_address: string | null
+          shop_id: number
+          shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
+          status: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          billing_profile_id?: number | null
+          cargo_rate?: number | null
+          cart_id?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          created_by_email: string
+          customer_group_id: number
+          fulfilled_at?: string | null
+          global_invoice_id?: number | null
+          id?: never
+          is_negotiable_snapshot?: boolean
+          name: string
+          negotiate_round?: number
+          order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
+          order_no: string
+          placed_at?: string | null
+          profit_rate?: number | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_address?: string | null
+          shop_id: number
+          shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
+          status?: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          billing_profile_id?: number | null
+          cargo_rate?: number | null
+          cart_id?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          created_by_email?: string
+          customer_group_id?: number
+          fulfilled_at?: string | null
+          global_invoice_id?: number | null
+          id?: never
+          is_negotiable_snapshot?: boolean
+          name?: string
+          negotiate_round?: number
+          order_mode_snapshot?: Database["public"]["Enums"]["shop_order_mode_enum"]
+          order_no?: string
+          placed_at?: string | null
+          profit_rate?: number | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_address?: string | null
+          shop_id?: number
+          shop_type_snapshot?: Database["public"]["Enums"]["shop_type_enum"]
+          status?: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_orders_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "shop_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_global_invoice_id_fkey"
+            columns: ["global_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_product_listings: {
+        Row: {
+          created_at: string
+          display_quantity_override: number | null
+          global_stock_allocation_id: number
+          global_stock_id: number
+          id: number
+          is_active: boolean
+          minimum_sell_price_amount: number | null
+          minimum_sell_price_currency_id: number | null
+          product_id: number
+          sell_price_amount: number
+          sell_price_currency_id: number
+          shop_id: number
+          show_quantity: boolean | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_quantity_override?: number | null
+          global_stock_allocation_id: number
+          global_stock_id: number
+          id?: never
+          is_active?: boolean
+          minimum_sell_price_amount?: number | null
+          minimum_sell_price_currency_id?: number | null
+          product_id: number
+          sell_price_amount: number
+          sell_price_currency_id: number
+          shop_id: number
+          show_quantity?: boolean | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_quantity_override?: number | null
+          global_stock_allocation_id?: number
+          global_stock_id?: number
+          id?: never
+          is_active?: boolean
+          minimum_sell_price_amount?: number | null
+          minimum_sell_price_currency_id?: number | null
+          product_id?: number
+          sell_price_amount?: number
+          sell_price_currency_id?: number
+          shop_id?: number
+          show_quantity?: boolean | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_product_listings_global_stock_allocation_id_fkey"
+            columns: ["global_stock_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "global_stock_allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_minimum_sell_price_currency_id_fkey"
+            columns: ["minimum_sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_sell_price_currency_id_fkey"
+            columns: ["sell_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_listings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_stock_reservations: {
+        Row: {
+          cart_item_id: number
+          created_at: string
+          global_stock_allocation_id: number
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cart_item_id: number
+          created_at?: string
+          global_stock_allocation_id: number
+          quantity: number
+          updated_at?: string
+        }
+        Update: {
+          cart_item_id?: number
+          created_at?: string
+          global_stock_allocation_id?: number
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_stock_reservations_cart_item_id_fkey"
+            columns: ["cart_item_id"]
+            isOneToOne: true
+            referencedRelation: "shop_cart_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_stock_reservations_global_stock_allocation_id_fkey"
+            columns: ["global_stock_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "global_stock_allocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shops: {
+        Row: {
+          created_at: string
+          default_currency_id: number | null
+          global_stock_type_id: number | null
+          id: number
+          is_active: boolean
+          is_negotiable: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity: boolean
+          slug: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_currency_id?: number | null
+          global_stock_type_id?: number | null
+          id?: never
+          is_active?: boolean
+          is_negotiable?: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity?: boolean
+          slug: string
+          tenant_id: number
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_currency_id?: number | null
+          global_stock_type_id?: number | null
+          id?: never
+          is_active?: boolean
+          is_negotiable?: boolean
+          name?: string
+          order_mode?: Database["public"]["Enums"]["shop_order_mode_enum"]
+          shop_type?: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity?: boolean
+          slug?: string
+          tenant_id?: number
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shops_default_currency_id_fkey"
+            columns: ["default_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shops_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -5642,33 +6492,29 @@ export type Database = {
           p_source_type: string
         }
         Returns: {
+          add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
           barcode: string | null
-          cost_bdt: number | null
           created_at: string
           id: number
           image_url: string | null
-          inspected: boolean
-          marker_tag: string | null
-          method: string
-          name: string | null
-          order_id: number | null
-          package_weight: number | null
-          price_gbp: number | null
+          name: string
+          ordered_quantity: number
+          package_weight: number
           product_code: string | null
           product_id: number | null
-          product_weight: number | null
-          quantity: number
-          receiving_splits: Json | null
+          product_weight: number
+          purchase_price: number
           shipment_id: number
           sort_order: number
           source_child_tenant_id: number | null
           source_id: number | null
           source_type: string | null
           updated_at: string
+          vendor_id: number | null
         }
         SetofOptions: {
           from: "*"
-          to: "shipment_items"
+          to: "global_shipment_items"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5959,6 +6805,17 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      add_to_shop_cart: {
+        Args: {
+          p_customer_sell_price_amount?: number
+          p_customer_sell_price_currency_id?: number
+          p_global_stock_allocation_id?: number
+          p_product_id: number
+          p_quantity?: number
+          p_shop_id: number
+        }
+        Returns: Json
+      }
       adjust_inventory_reserved_for_product: {
         Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
         Returns: undefined
@@ -6018,6 +6875,17 @@ export type Database = {
         Returns: undefined
       }
       auth_investor_id: { Args: never; Returns: number }
+      browse_shop_catalog: {
+        Args: {
+          p_brand?: string
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_shop_slug: string
+        }
+        Returns: Json
+      }
       bulk_add_shipment_items_from_product_ids: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
@@ -6154,8 +7022,20 @@ export type Database = {
         Args: { p_customer_group_id: number }
         Returns: boolean
       }
+      can_customer_access_shop: {
+        Args: { p_shop_id: number }
+        Returns: boolean
+      }
       can_customer_access_store: {
         Args: { p_store_id: number }
+        Returns: boolean
+      }
+      can_customer_negotiate_on_shop: {
+        Args: { p_shop_id: number }
+        Returns: boolean
+      }
+      can_customer_see_shop_price: {
+        Args: { p_shop_id: number }
         Returns: boolean
       }
       can_customer_see_store_price: {
@@ -6284,6 +7164,7 @@ export type Database = {
         Args: { p_stock_id: number }
         Returns: number
       }
+      confirm_shop_order: { Args: { p_order_id: number }; Returns: undefined }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
@@ -6701,6 +7582,10 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      customer_counter_offer: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
       delete_commerce_invoice_transactional: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -6772,6 +7657,10 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      fulfill_shop_order_to_invoice: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       generate_thrift_barcodes: {
         Args: { p_inserted_by: string; p_quantity: number; p_tenant_id: number }
         Returns: string[]
@@ -6835,6 +7724,14 @@ export type Database = {
         Args: { p_item_id: number; p_user_email: string }
         Returns: string
       }
+      get_investor_allocation_detail: {
+        Args: {
+          p_global_shipment_id: number
+          p_investor_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_investor_bootstrap_context: {
         Args: { p_tenant_id: number }
         Returns: Json
@@ -6887,9 +7784,14 @@ export type Database = {
           total_spent: number
         }[]
       }
+      get_or_create_shop_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_parent_cash_circulation: {
         Args: { p_parent_tenant_id: number }
         Returns: Json
+      }
+      get_pending_order_qty: {
+        Args: { p_allocation_id: number }
+        Returns: number
       }
       get_product_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
@@ -6907,14 +7809,17 @@ export type Database = {
           image_url: string | null
           is_available: boolean | null
           languages: string | null
+          list_price_amount: number | null
+          list_price_currency_id: number | null
           market_code: string | null
           minimum_order_quantity: number | null
           name: string | null
           package_weight: number | null
           parent_tenant_id: number | null
-          price_gbp: number | null
           product_code: string | null
           product_weight: number | null
+          reference_cost_amount: number | null
+          reference_cost_currency_id: number | null
           source: string | null
           tariff_code: string | null
           tenant_id: number | null
@@ -6954,6 +7859,18 @@ export type Database = {
           tenant_is_active: boolean
           tenant_name: string
           tenant_slug: string
+        }[]
+      }
+      get_shop_permissions_for_customer: {
+        Args: { p_shop_id: number }
+        Returns: {
+          can_add_to_cart: boolean
+          can_browse: boolean
+          can_negotiate: boolean
+          can_place_order: boolean
+          can_set_dropship_price: boolean
+          can_view_quantity: boolean
+          see_price: boolean
         }[]
       }
       get_store_access_admin: {
@@ -7139,6 +8056,10 @@ export type Database = {
         Args: { p_costing_file_id: number }
         Returns: boolean
       }
+      is_cart_owner: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: boolean
+      }
       is_child_tenant: { Args: { p_tenant_id: number }; Returns: boolean }
       is_customer_group_admin_or_negotiator: {
         Args: { p_customer_group_id: number }
@@ -7176,6 +8097,21 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      list_allocations_for_shop_pick: {
+        Args: { p_shop_id: number; p_tenant_id: number }
+        Returns: {
+          allocated_quantity: number
+          allocation_id: number
+          product_barcode: string
+          product_brand: string
+          product_category: string
+          product_code: string
+          product_id: number
+          product_image_url: string
+          product_name: string
+          stock_id: number
+        }[]
       }
       list_billing_balances: {
         Args: { p_search?: string; p_tenant_id: number }
@@ -7603,6 +8539,30 @@ export type Database = {
           sort_order: number
         }[]
       }
+      list_procurement_shop_order_lines: {
+        Args: {
+          p_child_tenant_id?: number
+          p_limit?: number
+          p_offset?: number
+          p_parent_tenant_id: number
+          p_search?: string
+        }
+        Returns: {
+          barcode: string
+          child_tenant_id: number
+          child_tenant_name: string
+          cost_bdt: number
+          image_url: string
+          name: string
+          price_gbp: number
+          product_code: string
+          product_id: number
+          quantity: number
+          reference_label: string
+          source_id: number
+          source_type: string
+        }[]
+      }
       list_product_based_costing_files: {
         Args: {
           p_page?: number
@@ -7687,6 +8647,100 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      list_shop_orders_for_customer: {
+        Args: { p_limit?: number; p_offset?: number; p_shop_id: number }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          id: number
+          item_count: number
+          name: string
+          order_no: string
+          shop_id: number
+          status: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id: number
+          total_amount: number
+          updated_at: string
+        }[]
+      }
+      list_shop_orders_for_staff: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          customer_group_name: string
+          id: number
+          item_count: number
+          name: string
+          order_no: string
+          shop_id: number
+          shop_name: string
+          status: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id: number
+          total_amount: number
+          updated_at: string
+        }[]
+      }
+      list_shop_product_listings: {
+        Args: { p_shop_id: number }
+        Returns: {
+          allocated_quantity: number
+          available_to_sell: number
+          created_at: string
+          display_quantity_override: number
+          global_stock_allocation_id: number
+          global_stock_id: number
+          id: number
+          is_active: boolean
+          minimum_sell_price_amount: number
+          minimum_sell_price_currency_id: number
+          product_barcode: string
+          product_brand: string
+          product_category: string
+          product_code: string
+          product_id: number
+          product_image_url: string
+          product_name: string
+          sell_price_amount: number
+          sell_price_currency_id: number
+          shop_id: number
+          show_quantity: boolean
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
+      list_shops: {
+        Args: {
+          p_active?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          default_currency_id: number
+          global_stock_type_id: number
+          id: number
+          is_active: boolean
+          is_negotiable: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity: boolean
+          slug: string
+          tenant_id: number
+          total_count: number
+          updated_at: string
+          vendor_code: string
+        }[]
       }
       list_store_product_pricing: {
         Args: {
@@ -7921,6 +8975,10 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      place_shop_order_for_procurement: {
+        Args: { p_order_id: number }
+        Returns: undefined
       }
       post_global_invoice: {
         Args: { p_invoice_id: number }
@@ -8182,6 +9240,7 @@ export type Database = {
         Args: { p_invoice_item_id: number }
         Returns: undefined
       }
+      remove_shop_cart_item: { Args: { p_cart_item_id: number }; Returns: Json }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -8287,6 +9346,24 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      staff_counter_offer: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      staff_price_shop_order: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      submit_shop_order_from_cart: {
+        Args: {
+          p_billing_profile_id?: number
+          p_cart_id: number
+          p_recipient_name: string
+          p_recipient_phone: string
+          p_shipping_address: string
+        }
+        Returns: Json
+      }
       thrift_barcode_sequence_sort_key: {
         Args: { p_barcode_id: string }
         Returns: {
@@ -8605,6 +9682,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_shop_cart_item_qty: {
+        Args: { p_cart_item_id: number; p_quantity: number }
+        Returns: Json
+      }
       update_store: {
         Args: { p_id: number; p_name: string; p_vendor_code: string }
         Returns: {
@@ -8710,6 +9791,41 @@ export type Database = {
           updated_at: string
         }[]
       }
+      upsert_customer_group_shop_profile: {
+        Args: {
+          p_customer_group_id: number
+          p_default_can_add_to_cart: boolean
+          p_default_can_browse: boolean
+          p_default_can_negotiate: boolean
+          p_default_can_place_order: boolean
+          p_default_can_set_dropship_price: boolean
+          p_default_can_view_quantity: boolean
+          p_default_see_price: boolean
+          p_is_active: boolean
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          customer_group_id: number
+          default_can_add_to_cart: boolean
+          default_can_browse: boolean
+          default_can_negotiate: boolean
+          default_can_place_order: boolean
+          default_can_set_dropship_price: boolean
+          default_can_view_quantity: boolean
+          default_see_price: boolean
+          id: number
+          is_active: boolean
+          tenant_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "customer_group_shop_profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       upsert_global_stock_allocation: {
         Args: {
           p_child_tenant_id: number
@@ -8782,12 +9898,133 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_shop: {
+        Args: {
+          p_default_currency_id?: number
+          p_global_stock_type_id?: number
+          p_id?: number
+          p_is_active: boolean
+          p_is_negotiable: boolean
+          p_name: string
+          p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
+          p_show_stock_quantity: boolean
+          p_slug: string
+          p_tenant_id: number
+          p_vendor_code?: string
+        }
+        Returns: {
+          created_at: string
+          default_currency_id: number | null
+          global_stock_type_id: number | null
+          id: number
+          is_active: boolean
+          is_negotiable: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity: boolean
+          slug: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shops"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      upsert_shop_customer_group_access: {
+        Args: {
+          p_can_add_to_cart?: boolean
+          p_can_browse?: boolean
+          p_can_negotiate?: boolean
+          p_can_place_order?: boolean
+          p_can_set_dropship_price?: boolean
+          p_can_view_quantity?: boolean
+          p_credit_limit_amount?: number
+          p_credit_limit_currency_id?: number
+          p_customer_group_id: number
+          p_price_tier_code?: string
+          p_see_price?: boolean
+          p_shop_id: number
+          p_status: boolean
+        }
+        Returns: {
+          can_add_to_cart: boolean | null
+          can_browse: boolean | null
+          can_negotiate: boolean | null
+          can_place_order: boolean | null
+          can_set_dropship_price: boolean | null
+          can_view_quantity: boolean | null
+          created_at: string
+          credit_limit_amount: number | null
+          credit_limit_currency_id: number | null
+          customer_group_id: number
+          id: number
+          price_tier_code: string | null
+          see_price: boolean | null
+          shop_id: number
+          status: boolean
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shop_customer_group_access"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      upsert_shop_product_listing: {
+        Args: {
+          p_display_quantity_override?: number
+          p_global_stock_allocation_id: number
+          p_id?: number
+          p_is_active?: boolean
+          p_minimum_sell_price_amount?: number
+          p_minimum_sell_price_currency_id?: number
+          p_sell_price_amount: number
+          p_sell_price_currency_id: number
+          p_shop_id: number
+          p_show_quantity?: boolean
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          display_quantity_override: number | null
+          global_stock_allocation_id: number
+          global_stock_id: number
+          id: number
+          is_active: boolean
+          minimum_sell_price_amount: number | null
+          minimum_sell_price_currency_id: number | null
+          product_id: number
+          sell_price_amount: number
+          sell_price_currency_id: number
+          shop_id: number
+          show_quantity: boolean | null
+          tenant_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shop_product_listings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       user_can_access_tenant_fetch: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
       user_can_manage_parent_tenant: {
         Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
+      user_can_manage_shop_tenant: {
+        Args: { p_tenant_id: number }
         Returns: boolean
       }
       void_global_invoice: {
@@ -8852,6 +10089,21 @@ export type Database = {
         | "invoiced"
       retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
+      shop_cart_status: "active" | "converted" | "abandoned"
+      shop_order_mode_enum:
+        | "procurement_intent"
+        | "checkout_fixed"
+        | "checkout_wholesale"
+      shop_order_status:
+        | "draft"
+        | "submitted"
+        | "cancelled"
+        | "priced"
+        | "negotiating"
+        | "confirmed"
+        | "placed"
+        | "fulfilled"
+      shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
         | "PENDING"
@@ -9056,6 +10308,23 @@ export const Constants = {
       ],
       retail_billing_mode: ["account", "direct"],
       shipment_investment_status: ["active", "closed", "cancelled"],
+      shop_cart_status: ["active", "converted", "abandoned"],
+      shop_order_mode_enum: [
+        "procurement_intent",
+        "checkout_fixed",
+        "checkout_wholesale",
+      ],
+      shop_order_status: [
+        "draft",
+        "submitted",
+        "cancelled",
+        "priced",
+        "negotiating",
+        "confirmed",
+        "placed",
+        "fulfilled",
+      ],
+      shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
       thrift_delivery_status: [
         "PENDING",

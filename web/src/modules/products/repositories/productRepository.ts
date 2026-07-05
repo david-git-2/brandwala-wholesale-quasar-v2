@@ -31,7 +31,10 @@ const buildProductPayload = (payload: ProductCreateInput) => ({
   product_code: normalizeText(payload.product_code),
   barcode: normalizeText(payload.barcode),
   name: normalizeText(payload.name),
-  price_gbp: payload.price_gbp ?? null,
+  list_price_amount: payload.list_price_amount ?? null,
+  list_price_currency_id: payload.list_price_currency_id ?? null,
+  reference_cost_amount: payload.reference_cost_amount ?? null,
+  reference_cost_currency_id: payload.reference_cost_currency_id ?? null,
   country_of_origin: normalizeText(payload.country_of_origin),
   brand: normalizeText(payload.brand),
   category: normalizeText(payload.category),
@@ -68,8 +71,20 @@ const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
     updateData.name = normalizeText(payload.name)
   }
 
-  if ('price_gbp' in payload) {
-    updateData.price_gbp = payload.price_gbp ?? null
+  if ('list_price_amount' in payload) {
+    updateData.list_price_amount = payload.list_price_amount ?? null
+  }
+
+  if ('list_price_currency_id' in payload) {
+    updateData.list_price_currency_id = payload.list_price_currency_id ?? null
+  }
+
+  if ('reference_cost_amount' in payload) {
+    updateData.reference_cost_amount = payload.reference_cost_amount ?? null
+  }
+
+  if ('reference_cost_currency_id' in payload) {
+    updateData.reference_cost_currency_id = payload.reference_cost_currency_id ?? null
   }
 
   if ('country_of_origin' in payload) {

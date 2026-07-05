@@ -5,21 +5,28 @@ export type Investor = {
   phone: string | null
   email: string | null
   address: string | null
+  is_active: boolean
+  currency_code: string
+  notes: string | null
   created_at: string
   updated_at: string
 }
 
 export type InvestorBalance = {
-  id: number
-  tenant_id: number
   investor_id: number
-  total_deposit: number
-  total_withdrawal: number
-  total_profit_payout: number
+  name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  is_active: boolean
+  currency_code: string
+  notes: string | null
+  total_capital_in: number
+  total_withdrawn: number
   total_invested_active: number
   available_balance: number
-  created_at: string
-  updated_at: string
+  total_profit_realized: number
+  total_profit_unrealized: number
 }
 
 export type InvestorCreateInput = {
@@ -28,6 +35,9 @@ export type InvestorCreateInput = {
   phone?: string | null
   email?: string | null
   address?: string | null
+  is_active?: boolean
+  currency_code?: string
+  notes?: string | null
 }
 
 export type InvestorUpdateInput = {
@@ -37,6 +47,9 @@ export type InvestorUpdateInput = {
   phone?: string | null
   email?: string | null
   address?: string | null
+  is_active?: boolean
+  currency_code?: string
+  notes?: string | null
 }
 
 export type InvestorDeleteInput = {
@@ -44,7 +57,7 @@ export type InvestorDeleteInput = {
   tenant_id: number
 }
 
-export type InvestorTransactionType = 'deposit' | 'withdrawal' | 'profit_payout'
+export type InvestorTransactionType = 'capital_in' | 'withdrawal_paid' | 'capital_adjustment'
 
 export type InvestorTransactionMethod = 'cash' | 'bank' | 'mobile_banking' | 'other'
 
@@ -77,6 +90,7 @@ export type ShipmentInvestment = {
   id: number
   tenant_id: number
   shipment_id: number
+  global_shipment_id: number
   investor_id: number
   invested_amount: number
   actual_profit: number
@@ -113,7 +127,7 @@ export type ShipmentInvestmentDeleteInput = {
   tenant_id: number
 }
 
-export type InvestorServiceResult<T> =
+export type CapitalServiceResult<T> =
   | {
       success: true
       data: T
@@ -123,9 +137,8 @@ export type InvestorServiceResult<T> =
       error: string
     }
 
-export type InvestorStoreState = {
-  investors: Investor[]
-  balancesByInvestorId: Record<number, InvestorBalance>
+export type InvestorCapitalState = {
+  investors: InvestorBalance[]
   transactions: InvestorTransaction[]
   shipmentInvestments: ShipmentInvestment[]
   loadingInvestors: boolean

@@ -9,7 +9,7 @@ This document answers:
 - How do URL redirects work?
 - How is access granted or denied?
 
-For the architecture index and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For domain detail, see linked docs in MASTER_PLAN §12. For login and navigation implementation, see [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md). For backend actor tables and RPCs, see [document/core-backend-architecture.md](../document/core-backend-architecture.md).
+For the architecture index and module catalog, see [MASTER_PLAN.md](MASTER_PLAN.md). For domain detail, see linked docs in MASTER_PLAN §12. For login and navigation implementation, see [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md). For the **target DB-backed grant system** (tenant-scoped custom roles, B8/F8 last stage), see [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). **Platform-only** modules (tenant create, superadmin assignment) are excluded from tenant admin permission UI — see PERMISSION_SYSTEM §9. For backend actor tables and RPCs, see [document/core-backend-architecture.md](../document/core-backend-architecture.md).
 
 ---
 
