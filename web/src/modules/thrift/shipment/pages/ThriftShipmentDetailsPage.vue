@@ -421,6 +421,7 @@ import ThriftShipmentItemsTable from '../components/ThriftShipmentItemsTable.vue
 import { computeThriftUnitCosts } from '../../shared/utils/computeThriftUnitCosts';
 import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedPricingPatch';
 import { useQuasar } from 'quasar';
+import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -528,7 +529,7 @@ const columnsList = [
   { name: 'listed_unit_price', label: 'Listed Sell' },
 ];
 
-const visibleColumns = ref<Set<string>>(new Set([
+const defaultVisibleColumns = [
   'barcode',
   'name',
   'measurements',
@@ -537,35 +538,24 @@ const visibleColumns = ref<Set<string>>(new Set([
   'item_markup_pct',
   'effective_markup_pct',
   'listed_unit_price',
-]));
+];
 
-// Persist visible columns in localStorage
-const storageKey = 'thrift-shipment-detail-columns';
+const allColumnNames = columnsList.map(c => c.name);
 
-function loadPersistedColumns() {
-  try {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      const arr = JSON.parse(saved);
-      if (Array.isArray(arr)) {
-        visibleColumns.value = new Set(arr);
-      }
-    }
-  } catch (err) {
-    console.error('Failed to load persisted columns:', err);
-  }
-}
+const { visibleColumns: visibleColumnsRaw } = useMembershipColumnPreference({
+  preferenceKey: 'ui.thriftShipment.detailsVisibleColumns',
+  allColumnNames,
+  defaultVisibleColumns,
+});
+
+const visibleColumns = computed(() => new Set(visibleColumnsRaw.value));
 
 function toggleColumn(colName: string) {
-  if (visibleColumns.value.has(colName)) {
-    visibleColumns.value.delete(colName);
+  const idx = visibleColumnsRaw.value.indexOf(colName);
+  if (idx !== -1) {
+    visibleColumnsRaw.value.splice(idx, 1);
   } else {
-    visibleColumns.value.add(colName);
-  }
-  try {
-    localStorage.setItem(storageKey, JSON.stringify([...visibleColumns.value]));
-  } catch (err) {
-    console.error('Failed to persist columns:', err);
+    visibleColumnsRaw.value.push(colName);
   }
 }
 
@@ -630,7 +620,6 @@ async function loadData() {
 
 onMounted(async () => {
   if (!authStore.tenantId) return;
-  loadPersistedColumns();
   await Promise.all([
     currencyStore.loadCurrencies(),
     settingsStore.loadSettings(authStore.tenantId),

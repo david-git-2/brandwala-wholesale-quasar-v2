@@ -6,6 +6,7 @@ import type {
   MembershipServiceResult,
   MembershipUpdateInput,
 } from '../types'
+import type { MembershipPreferenceSchema } from '../types/preferences'
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (!error) return fallback
@@ -150,6 +151,24 @@ const getTenantAdmins = async (tenantId: number): Promise<MembershipServiceResul
   }
 }
 
+const updateMembershipPreference = async (payload: {
+  membershipId: number
+  preference: MembershipPreferenceSchema
+}): Promise<MembershipServiceResult<any>> => {
+  try {
+    const data = await membershipRepository.updateMembershipPreference(payload)
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update membership preference.',
+    }
+  }
+}
+
 export const membershipService = {
   deleteMembership,
   listMemberships,
@@ -158,4 +177,5 @@ export const membershipService = {
   updateMembership,
   getTenantAdmins,
   fetchMembershipsByTenantId,
+  updateMembershipPreference,
 }

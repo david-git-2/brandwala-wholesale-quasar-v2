@@ -63,6 +63,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: ['view'],
+    recipient_profile: ['view'],
+    invoice_brand: ['view'],
   },
   admin: {
     order_management: ['view'],
@@ -109,6 +113,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: ['view'],
+    recipient_profile: ['view'],
+    invoice_brand: ['view'],
   },
   staff: {
     order_management: ['view'],
@@ -155,6 +163,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: ['view'],
+    recipient_profile: ['view'],
+    invoice_brand: ['view'],
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -201,6 +213,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: NO_ACCESS,
+    recipient_profile: NO_ACCESS,
+    invoice_brand: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -247,6 +263,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: NO_ACCESS,
+    recipient_profile: NO_ACCESS,
+    invoice_brand: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -293,6 +313,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: NO_ACCESS,
+    recipient_profile: NO_ACCESS,
+    invoice_brand: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -339,6 +363,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: NO_ACCESS,
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: NO_ACCESS,
+    recipient_profile: NO_ACCESS,
+    invoice_brand: NO_ACCESS,
   },
   investor_portal: {
     order_management: NO_ACCESS,
@@ -385,6 +413,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     investor_portal: ['view'],
     procurement_stock: NO_ACCESS,
     global_stock_type: NO_ACCESS,
+    sales_invoice: NO_ACCESS,
+    billing_profile: NO_ACCESS,
+    recipient_profile: NO_ACCESS,
+    invoice_brand: NO_ACCESS,
   },
 }
 

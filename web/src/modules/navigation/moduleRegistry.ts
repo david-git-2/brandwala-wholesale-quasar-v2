@@ -45,6 +45,10 @@ export type ModuleKey =
   | 'investor_portal'
   | 'procurement_stock'
   | 'global_stock_type'
+  | 'sales_invoice'
+  | 'billing_profile'
+  | 'recipient_profile'
+  | 'invoice_brand'
 
 
 export type ModuleAction = 'view'
@@ -473,6 +477,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'invoice',
     name: 'Invoice (Legacy)',
     description: 'Deprecated — use Sales Invoices (global_invoice module). Routes redirect automatically.',
+    parentModuleKey: 'sales_invoice',
     routes: [],
   },
   {
@@ -816,35 +821,66 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'sales_invoice',
+    name: 'Sales & Invoice',
+    description: 'Parent module for sales invoices, billing profiles, recipient profiles, and invoice brands.',
+    navIcon: 'receipt_long',
+    routes: [],
+  },
+  {
     key: 'global_invoice',
-    name: 'Sales Invoice',
+    name: 'Sales Invoices',
     description: 'Desk invoices: wholesale, retail, and dropship across sister concerns.',
+    parentModuleKey: 'sales_invoice',
     routes: [
       {
         scope: 'app',
-        title: 'Sales Invoices',
+        title: 'Invoices',
         caption: 'Create and manage desk invoices',
         icon: 'receipt',
-        routeSegment: 'global/invoices',
+        routeSegment: 'sales/invoices',
         requiredAction: 'view',
       },
+    ],
+  },
+  {
+    key: 'billing_profile',
+    name: 'Billing Profiles',
+    description: 'Manage billing profiles and customer group configurations.',
+    parentModuleKey: 'sales_invoice',
+    routes: [
       {
         scope: 'app',
         title: 'Billing Profiles',
         caption: 'Manage billing profiles for sales invoices',
         icon: 'contacts',
-        routeSegment: 'global/invoices/billing-profiles',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Invoice Brands',
-        caption: 'Print brand presets for invoice preview',
-        icon: 'branding_watermark',
-        routeSegment: 'global/invoices/brands',
+        routeSegment: 'sales/invoices/billing-profiles',
         requiredAction: 'view',
       },
     ],
+  },
+  {
+    key: 'recipient_profile',
+    name: 'Recipient Profiles',
+    description: 'Manage end-customer delivery and drop-ship target profiles.',
+    parentModuleKey: 'sales_invoice',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Recipient Profiles',
+        caption: 'Manage delivery and drop-ship targets',
+        icon: 'badge',
+        routeSegment: 'sales/invoices/recipient-profiles',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'invoice_brand',
+    name: 'Invoice Brands',
+    description: 'Configure invoice branding, logos, layout styles, and details.',
+    parentModuleKey: 'sales_invoice',
+    routes: [],
   },
   {
     key: 'global_accounting_ledger',

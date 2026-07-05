@@ -13,6 +13,7 @@ import {
 import { tenantService } from 'src/modules/tenant/services/tenantService'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore'
+import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore'
 import {
   useAuthStore,
   type AuthAccessSnapshot,
@@ -429,6 +430,11 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     useTenantPreferenceStore().setPreference(
       bootstrap.tenant_id,
       bootstrap.tenant_preference,
+    )
+
+    useMembershipPreferenceStore().setPreference(
+      bootstrap.member_id,
+      bootstrap.member_preference,
     )
 
     await saveAndRedirect({

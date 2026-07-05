@@ -253,6 +253,7 @@ import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentI
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
+import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 const productStore = useProductStore();
 const shipmentStore = useShipmentStore();
 const tenantStore = useTenantStore();
@@ -280,7 +281,12 @@ const allColumnNames = [
   'rowTotalCostGbp', 'costBdt', 'totalCostBdt', 'offerPriceBdt', 'totalBdt', 'profitPerUnitBdt',
   'profitBdt', 'profitRate', 'status', 'action',
 ]
-const visibleColumns = ref<string[]>([...allColumnNames])
+const { visibleColumns } = useMembershipColumnPreference({
+  preferenceKey: 'ui.productBasedCosting.fileDetailsVisibleColumns',
+  allColumnNames,
+  alwaysVisibleColumns,
+  defaultVisibleColumns: allColumnNames,
+})
 const columnSelectorOptions = [
   { label: 'Brand', value: 'brand' },
   { label: 'Note', value: 'note' },

@@ -32,7 +32,34 @@ const trackedFetch: typeof fetch = async (input, init) => {
       modifiedInit.headers = headers
     }
 
-    return await defaultFetch(input, modifiedInit)
+    const response = await defaultFetch(input, modifiedInit)
+
+    const urlStr = typeof input === 'string' ? input : (input instanceof Request ? input.url : '')
+    if (urlStr && urlStr.startsWith(supabaseUrl)) {
+      try {
+        const urlObj = new URL(urlStr)
+        const path = urlObj.pathname
+
+        const isMonitored = path.startsWith('/rest/v1/') || path.startsWith('/functions/v1/') || path.startsWith('/storage/v1/')
+        const isExcluded = path.startsWith('/auth/v1/token') || path.startsWith('/auth/v1/authorize')
+
+        if (isMonitored && !isExcluded) {
+          if (response.status === 401) {
+            import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
+              void handleUnauthorizedResponse()
+            })
+          } else if (response.status === 403) {
+            import('src/modules/auth/utils/handleForbiddenResponse').then(({ handleForbiddenResponse }) => {
+              void handleForbiddenResponse(response)
+            })
+          }
+        }
+      } catch {
+        // Fail silent if URL parsing fails
+      }
+    }
+
+    return response
   } finally {
     endGlobalRequest()
   }
@@ -50,9 +77,31 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export default defineBoot(async ({ app }) => {
   try {
-    await supabase.auth.getSession()
-  } catch {
-    // Ignore session recovery errors so the app still mounts
+    const { data: { session } } = await supabase.auth.getSession()
+    const { useAuthStore } = await import('src/modules/auth/stores/authStore')
+    const authStore = useAuthStore()
+
+    if (authStore.hasAccess && !session) {
+      const { handleUnauthorizedResponse } = await import('src/modules/auth/utils/forceAuthLogout')
+      await handleUnauthorizedResponse()
+      return
+    }
+  } catch (error) {
+    console.error('[supabase boot] session check error:', error)
   }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+      import('src/modules/auth/stores/authStore').then(({ useAuthStore }) => {
+        const authStore = useAuthStore()
+        if (authStore.isAuthenticated) {
+          import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
+            void handleUnauthorizedResponse()
+          })
+        }
+      })
+    }
+  })
+
   app.config.globalProperties.$supabase = supabase
 })

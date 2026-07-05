@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -1402,68 +1427,78 @@ export type Database = {
       global_invoice_items: {
         Row: {
           barcode_snapshot: string | null
-          cost_amount: number
           created_at: string
           global_stock_id: number
           id: number
           invoice_id: number
           line_discount_amount: number
           line_face_total_amount: number
-          line_tax_amount: number
           line_total_amount: number
           name_snapshot: string
           parent_tenant_id: number
           product_code_snapshot: string | null
           product_id: number | null
           quantity: number
-          recipient_price_amount: number | null
+          recipient_price_amount: number
+          return_quantity: number
           sell_price_amount: number
+          shipment_item_id: number | null
           tenant_id: number
+          unit_cost_price: number
           updated_at: string
         }
         Insert: {
           barcode_snapshot?: string | null
-          cost_amount?: number
           created_at?: string
           global_stock_id: number
           id?: number
           invoice_id: number
           line_discount_amount?: number
           line_face_total_amount?: number
-          line_tax_amount?: number
           line_total_amount?: number
           name_snapshot: string
           parent_tenant_id: number
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity: number
-          recipient_price_amount?: number | null
+          recipient_price_amount?: number
+          return_quantity?: number
           sell_price_amount?: number
+          shipment_item_id?: number | null
           tenant_id: number
+          unit_cost_price?: number
           updated_at?: string
         }
         Update: {
           barcode_snapshot?: string | null
-          cost_amount?: number
           created_at?: string
           global_stock_id?: number
           id?: number
           invoice_id?: number
           line_discount_amount?: number
           line_face_total_amount?: number
-          line_tax_amount?: number
           line_total_amount?: number
           name_snapshot?: string
           parent_tenant_id?: number
           product_code_snapshot?: string | null
           product_id?: number | null
           quantity?: number
-          recipient_price_amount?: number | null
+          recipient_price_amount?: number
+          return_quantity?: number
           sell_price_amount?: number
+          shipment_item_id?: number | null
           tenant_id?: number
+          unit_cost_price?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "global_invoice_items_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_invoice_items_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -1486,6 +1521,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "global_invoice_items_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "global_invoice_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1498,101 +1540,119 @@ export type Database = {
         Row: {
           accounting_subtotal_amount: number
           billing_profile_id: number | null
-          collection_source: string | null
+          cod_charge: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount: number
           created_at: string
           created_by: string | null
-          customer_group_id: number | null
           discount_amount: number
           due_amount: number
           due_date: string | null
           face_subtotal_amount: number
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
           id: number
           invoice_date: string
           invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount: number
           middle_man_payout_status: string
           note: string | null
-          ordered_by_party_id: number | null
           paid_amount: number
           parent_tenant_id: number
           payment_status: string
+          print_charge: number
           recipient_address: string | null
           recipient_name: string | null
-          recipient_party_id: number | null
           recipient_phone: string | null
-          sold_in_tenant_id: number | null
-          source_module: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge: number
           subtotal_amount: number
           tenant_id: number
           total_amount: number
           updated_at: string
+          wrapping_charge: number
         }
         Insert: {
           accounting_subtotal_amount?: number
           billing_profile_id?: number | null
-          collection_source?: string | null
+          cod_charge?: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount?: number
           created_at?: string
           created_by?: string | null
-          customer_group_id?: number | null
           discount_amount?: number
           due_amount?: number
           due_date?: string | null
           face_subtotal_amount?: number
+          fulfillment_status?: Database["public"]["Enums"]["global_fulfillment_status"]
           id?: number
           invoice_date?: string
           invoice_no: string
+          invoice_status?: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount?: number
           middle_man_payout_status?: string
           note?: string | null
-          ordered_by_party_id?: number | null
           paid_amount?: number
           parent_tenant_id: number
           payment_status?: string
+          print_charge?: number
           recipient_address?: string | null
           recipient_name?: string | null
-          recipient_party_id?: number | null
           recipient_phone?: string | null
-          sold_in_tenant_id?: number | null
-          source_module?: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id?: number | null
+          retail_billing_mode?:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge?: number
           subtotal_amount?: number
           tenant_id: number
           total_amount?: number
           updated_at?: string
+          wrapping_charge?: number
         }
         Update: {
           accounting_subtotal_amount?: number
           billing_profile_id?: number | null
-          collection_source?: string | null
+          cod_charge?: number
+          collection_source?: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount?: number
           created_at?: string
           created_by?: string | null
-          customer_group_id?: number | null
           discount_amount?: number
           due_amount?: number
           due_date?: string | null
           face_subtotal_amount?: number
+          fulfillment_status?: Database["public"]["Enums"]["global_fulfillment_status"]
           id?: number
           invoice_date?: string
           invoice_no?: string
+          invoice_status?: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount?: number
           middle_man_payout_status?: string
           note?: string | null
-          ordered_by_party_id?: number | null
           paid_amount?: number
           parent_tenant_id?: number
           payment_status?: string
+          print_charge?: number
           recipient_address?: string | null
           recipient_name?: string | null
-          recipient_party_id?: number | null
           recipient_phone?: string | null
-          sold_in_tenant_id?: number | null
-          source_module?: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id?: number | null
+          retail_billing_mode?:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge?: number
           subtotal_amount?: number
           tenant_id?: number
           total_amount?: number
           updated_at?: string
+          wrapping_charge?: number
         }
         Relationships: [
           {
@@ -1603,20 +1663,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "global_invoices_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_invoices_ordered_by_party_id_fkey"
-            columns: ["ordered_by_party_id"]
-            isOneToOne: false
-            referencedRelation: "business_parties"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "global_invoices_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
             isOneToOne: false
@@ -1624,17 +1670,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "global_invoices_recipient_party_id_fkey"
-            columns: ["recipient_party_id"]
+            foreignKeyName: "global_invoices_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
             isOneToOne: false
-            referencedRelation: "business_parties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_invoices_sold_in_tenant_id_fkey"
-            columns: ["sold_in_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
+            referencedRelation: "recipient_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1657,7 +1696,6 @@ export type Database = {
           parent_tenant_id: number
           quantity: number
           return_accounting_amount: number
-          return_amount: number
           return_charge_amount: number
           return_face_amount: number
           tenant_id: number
@@ -1673,7 +1711,6 @@ export type Database = {
           parent_tenant_id: number
           quantity: number
           return_accounting_amount?: number
-          return_amount?: number
           return_charge_amount?: number
           return_face_amount?: number
           tenant_id: number
@@ -1689,13 +1726,19 @@ export type Database = {
           parent_tenant_id?: number
           quantity?: number
           return_accounting_amount?: number
-          return_amount?: number
           return_charge_amount?: number
           return_face_amount?: number
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "global_return_items_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_return_items_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -2412,67 +2455,6 @@ export type Database = {
           },
         ]
       }
-      invoice_charge_lines: {
-        Row: {
-          amount: number
-          charge_type: Database["public"]["Enums"]["invoice_charge_type"]
-          created_at: string
-          id: number
-          invoice_id: number
-          note: string | null
-          parent_tenant_id: number
-          posted_to_ledger: boolean
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          amount?: number
-          charge_type: Database["public"]["Enums"]["invoice_charge_type"]
-          created_at?: string
-          id?: number
-          invoice_id: number
-          note?: string | null
-          parent_tenant_id: number
-          posted_to_ledger?: boolean
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          charge_type?: Database["public"]["Enums"]["invoice_charge_type"]
-          created_at?: string
-          id?: number
-          invoice_id?: number
-          note?: string | null
-          parent_tenant_id?: number
-          posted_to_ledger?: boolean
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoice_charge_lines_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "global_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_charge_lines_parent_tenant_id_fkey"
-            columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_charge_lines_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       item_assignees: {
         Row: {
           assigned_by_email: string
@@ -3180,6 +3162,7 @@ export type Database = {
           email: string
           id: number
           is_active: boolean
+          preference: Json
           role: Database["public"]["Enums"]["app_role"]
           tenant_id: number | null
           updated_at: string
@@ -3190,6 +3173,7 @@ export type Database = {
           email: string
           id?: number
           is_active?: boolean
+          preference?: Json
           role: Database["public"]["Enums"]["app_role"]
           tenant_id?: number | null
           updated_at?: string
@@ -3200,6 +3184,7 @@ export type Database = {
           email?: string
           id?: number
           is_active?: boolean
+          preference?: Json
           role?: Database["public"]["Enums"]["app_role"]
           tenant_id?: number | null
           updated_at?: string
@@ -4066,6 +4051,44 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipient_profiles: {
+        Row: {
+          address: string
+          created_at: string
+          id: number
+          name: string
+          phone: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: number
+          name: string
+          phone: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: number
+          name?: string
+          phone?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipient_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -5702,87 +5725,53 @@ export type Database = {
         }
         Returns: undefined
       }
-      add_global_invoice_item:
-        | {
-            Args: {
-              p_global_stock_id: number
-              p_invoice_id: number
-              p_line_discount_amount?: number
-              p_quantity: number
-              p_sell_price_amount: number
-            }
-            Returns: {
-              barcode_snapshot: string | null
-              cost_amount: number
-              created_at: string
-              global_stock_id: number
-              id: number
-              invoice_id: number
-              line_discount_amount: number
-              line_face_total_amount: number
-              line_tax_amount: number
-              line_total_amount: number
-              name_snapshot: string
-              parent_tenant_id: number
-              product_code_snapshot: string | null
-              product_id: number | null
-              quantity: number
-              recipient_price_amount: number | null
-              sell_price_amount: number
-              tenant_id: number
-              updated_at: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "global_invoice_items"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              p_global_stock_id: number
-              p_invoice_id: number
-              p_line_discount_amount?: number
-              p_quantity: number
-              p_recipient_price_amount?: number
-              p_sell_price_amount: number
-            }
-            Returns: {
-              barcode_snapshot: string | null
-              cost_amount: number
-              created_at: string
-              global_stock_id: number
-              id: number
-              invoice_id: number
-              line_discount_amount: number
-              line_face_total_amount: number
-              line_tax_amount: number
-              line_total_amount: number
-              name_snapshot: string
-              parent_tenant_id: number
-              product_code_snapshot: string | null
-              product_id: number | null
-              quantity: number
-              recipient_price_amount: number | null
-              sell_price_amount: number
-              tenant_id: number
-              updated_at: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "global_invoice_items"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
+      add_global_invoice_item: {
+        Args: {
+          p_global_stock_id: number
+          p_invoice_id: number
+          p_line_discount_amount?: number
+          p_quantity: number
+          p_recipient_price_amount?: number
+          p_sell_price_amount: number
+        }
+        Returns: {
+          barcode_snapshot: string | null
+          created_at: string
+          global_stock_id: number
+          id: number
+          invoice_id: number
+          line_discount_amount: number
+          line_face_total_amount: number
+          line_total_amount: number
+          name_snapshot: string
+          parent_tenant_id: number
+          product_code_snapshot: string | null
+          product_id: number | null
+          quantity: number
+          recipient_price_amount: number
+          return_quantity: number
+          sell_price_amount: number
+          shipment_item_id: number | null
+          tenant_id: number
+          unit_cost_price: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_invoice_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_global_return_item: {
         Args: {
           p_invoice_id: number
           p_invoice_item_id: number
           p_note?: string
           p_quantity: number
+          p_return_accounting_amount: number
           p_return_charge_amount?: number
+          p_return_face_amount: number
         }
         Returns: {
           created_at: string
@@ -5794,7 +5783,6 @@ export type Database = {
           parent_tenant_id: number
           quantity: number
           return_accounting_amount: number
-          return_amount: number
           return_charge_amount: number
           return_face_amount: number
           tenant_id: number
@@ -6155,6 +6143,10 @@ export type Database = {
         Args: { p_item_type: string }
         Returns: number
       }
+      calculate_landed_unit_cost: {
+        Args: { p_shipment_item_id: number }
+        Returns: number
+      }
       can_access_cart: { Args: { p_cart_id: number }; Returns: boolean }
       can_access_cart_item: {
         Args: { p_cart_item_id: number }
@@ -6477,50 +6469,56 @@ export type Database = {
           }
       create_global_invoice: {
         Args: {
-          p_billing_profile_id: number
+          p_billing_profile_id?: number
+          p_due_date?: string
           p_invoice_no: string
-          p_invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
-          p_middle_man_payout_amount?: number
+          p_invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           p_note?: string
           p_recipient_address?: string
           p_recipient_name?: string
-          p_recipient_party_id?: number
           p_recipient_phone?: string
-          p_source_module?: Database["public"]["Enums"]["global_source_module"]
+          p_recipient_profile_id?: number
+          p_retail_billing_mode?: Database["public"]["Enums"]["retail_billing_mode"]
           p_tenant_id: number
         }
         Returns: {
           accounting_subtotal_amount: number
           billing_profile_id: number | null
-          collection_source: string | null
+          cod_charge: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount: number
           created_at: string
           created_by: string | null
-          customer_group_id: number | null
           discount_amount: number
           due_amount: number
           due_date: string | null
           face_subtotal_amount: number
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
           id: number
           invoice_date: string
           invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount: number
           middle_man_payout_status: string
           note: string | null
-          ordered_by_party_id: number | null
           paid_amount: number
           parent_tenant_id: number
           payment_status: string
+          print_charge: number
           recipient_address: string | null
           recipient_name: string | null
-          recipient_party_id: number | null
           recipient_phone: string | null
-          sold_in_tenant_id: number | null
-          source_module: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge: number
           subtotal_amount: number
           tenant_id: number
           total_amount: number
           updated_at: string
+          wrapping_charge: number
         }
         SetofOptions: {
           from: "*"
@@ -6540,35 +6538,41 @@ export type Database = {
         Returns: {
           accounting_subtotal_amount: number
           billing_profile_id: number | null
-          collection_source: string | null
+          cod_charge: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount: number
           created_at: string
           created_by: string | null
-          customer_group_id: number | null
           discount_amount: number
           due_amount: number
           due_date: string | null
           face_subtotal_amount: number
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
           id: number
           invoice_date: string
           invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount: number
           middle_man_payout_status: string
           note: string | null
-          ordered_by_party_id: number | null
           paid_amount: number
           parent_tenant_id: number
           payment_status: string
+          print_charge: number
           recipient_address: string | null
           recipient_name: string | null
-          recipient_party_id: number | null
           recipient_phone: string | null
-          sold_in_tenant_id: number | null
-          source_module: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge: number
           subtotal_amount: number
           tenant_id: number
           total_amount: number
           updated_at: string
+          wrapping_charge: number
         }
         SetofOptions: {
           from: "*"
@@ -6809,6 +6813,7 @@ export type Database = {
           member_email: string
           member_id: number
           member_is_active: boolean
+          member_preference: Json
           member_role: Database["public"]["Enums"]["app_role"]
           tenant_id: number
           tenant_is_active: boolean
@@ -7824,6 +7829,10 @@ export type Database = {
         }
         Returns: Json
       }
+      post_global_invoice: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
       post_global_invoice_item_to_ledger: {
         Args: { p_invoice_item_id: number }
         Returns: {
@@ -7882,35 +7891,41 @@ export type Database = {
         Returns: {
           accounting_subtotal_amount: number
           billing_profile_id: number | null
-          collection_source: string | null
+          cod_charge: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount: number
           created_at: string
           created_by: string | null
-          customer_group_id: number | null
           discount_amount: number
           due_amount: number
           due_date: string | null
           face_subtotal_amount: number
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
           id: number
           invoice_date: string
           invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
           invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           middle_man_payout_amount: number
           middle_man_payout_status: string
           note: string | null
-          ordered_by_party_id: number | null
           paid_amount: number
           parent_tenant_id: number
           payment_status: string
+          print_charge: number
           recipient_address: string | null
           recipient_name: string | null
-          recipient_party_id: number | null
           recipient_phone: string | null
-          sold_in_tenant_id: number | null
-          source_module: Database["public"]["Enums"]["global_source_module"]
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          shipping_charge: number
           subtotal_amount: number
           tenant_id: number
           total_amount: number
           updated_at: string
+          wrapping_charge: number
         }
         SetofOptions: {
           from: "*"
@@ -8040,6 +8055,10 @@ export type Database = {
           }
       remove_commerce_invoice_item_transactional: {
         Args: { p_invoice_id: number; p_order_item_id: number }
+        Returns: undefined
+      }
+      remove_global_invoice_item: {
+        Args: { p_invoice_item_id: number }
         Returns: undefined
       }
       resolve_costing_file_creator_label: {
@@ -8354,6 +8373,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      update_global_invoice_header: {
+        Args: {
+          p_cod_charge?: number
+          p_discount_amount?: number
+          p_invoice_id: number
+          p_note?: string
+          p_print_charge?: number
+          p_recipient_address?: string
+          p_recipient_name?: string
+          p_recipient_phone?: string
+          p_shipping_charge?: number
+          p_wrapping_charge?: number
+        }
+        Returns: undefined
+      }
       update_global_shipment_items_order: {
         Args: { p_items: Json }
         Returns: undefined
@@ -8366,6 +8400,19 @@ export type Database = {
           p_unit: string
         }
         Returns: Json
+      }
+      update_membership_preference_for_self: {
+        Args: { p_membership_id: number; p_preference: Json }
+        Returns: {
+          created_at: string
+          email: string
+          id: number
+          is_active: boolean
+          preference: Json
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: number
+          updated_at: string
+        }[]
       }
       update_payment_allocation_amount: {
         Args: { p_allocation_id: number; p_amount: number; p_tenant_id: number }
@@ -8550,32 +8597,6 @@ export type Database = {
         }
         Returns: Json
       }
-      upsert_invoice_charge_line: {
-        Args: {
-          p_amount: number
-          p_charge_type: Database["public"]["Enums"]["invoice_charge_type"]
-          p_invoice_id: number
-          p_note?: string
-        }
-        Returns: {
-          amount: number
-          charge_type: Database["public"]["Enums"]["invoice_charge_type"]
-          created_at: string
-          id: number
-          invoice_id: number
-          note: string | null
-          parent_tenant_id: number
-          posted_to_ledger: boolean
-          tenant_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "invoice_charge_lines"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       user_can_access_tenant_fetch: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -8584,9 +8605,14 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: boolean
       }
+      void_global_invoice: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "superadmin" | "admin" | "staff" | "viewer" | "investor"
+      collection_source_type: "billing_profile" | "recipient"
       commerce_order_status:
         | "placed"
         | "reviewing"
@@ -8605,7 +8631,9 @@ export type Database = {
         | "cancelled"
         | "completed"
       customer_group_role: "admin" | "negotiator" | "staff"
-      global_invoice_type: "retail" | "wholesale" | "dropship"
+      global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
+      global_invoice_status: "draft" | "posted" | "voided"
+      global_invoice_type: "wholesale" | "retail" | "dropship"
       global_shipment_item_add_method: "order" | "costing" | "manual"
       global_shipment_type: "domestic" | "international"
       global_source_module: "wholesale" | "retail" | "commerce"
@@ -8629,6 +8657,7 @@ export type Database = {
         | "processing"
         | "invoicing"
         | "invoiced"
+      retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
@@ -8771,9 +8800,13 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer", "investor"],
+      collection_source_type: ["billing_profile", "recipient"],
       commerce_order_status: [
         "placed",
         "reviewing",
@@ -8794,7 +8827,9 @@ export const Constants = {
         "completed",
       ],
       customer_group_role: ["admin", "negotiator", "staff"],
-      global_invoice_type: ["retail", "wholesale", "dropship"],
+      global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
+      global_invoice_status: ["draft", "posted", "voided"],
+      global_invoice_type: ["wholesale", "retail", "dropship"],
       global_shipment_item_add_method: ["order", "costing", "manual"],
       global_shipment_type: ["domestic", "international"],
       global_source_module: ["wholesale", "retail", "commerce"],
@@ -8820,6 +8855,7 @@ export const Constants = {
         "invoicing",
         "invoiced",
       ],
+      retail_billing_mode: ["account", "direct"],
       shipment_investment_status: ["active", "closed", "cancelled"],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
       thrift_delivery_status: [

@@ -16,6 +16,7 @@ const toInvoiceRow = (invoice: GlobalInvoiceCreated): GlobalInvoiceRow => ({
   parent_tenant_id: invoice.parent_tenant_id,
   invoice_no: invoice.invoice_no,
   invoice_type: invoice.invoice_type,
+  invoice_status: invoice.invoice_status,
   payment_status: invoice.payment_status,
   invoice_date: invoice.invoice_date,
   total_amount: invoice.total_amount,

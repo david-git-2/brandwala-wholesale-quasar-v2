@@ -8,6 +8,7 @@ import {
   useTenantStore,
 } from 'src/modules/tenant/stores/tenantStore'
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore'
+import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore'
 
 export interface AuthUserSnapshot {
   id: string
@@ -169,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
     writeStorage(null)
     clearTenantWorkspaceStorage()
     useTenantPreferenceStore().clear()
+    useMembershipPreferenceStore().clear()
   }
 
   return {

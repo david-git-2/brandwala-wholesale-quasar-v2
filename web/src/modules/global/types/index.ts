@@ -124,6 +124,7 @@ export type GlobalInvoiceRow = {
   parent_tenant_id: number
   invoice_no: string
   invoice_type: string
+  invoice_status: string
   payment_status: string
   invoice_date: string
   total_amount: number
@@ -140,15 +141,19 @@ export type InvoiceCollectionSource = 'billing_profile' | 'recipient'
 export type CreateGlobalInvoiceInput = {
   tenant_id: number
   invoice_no: string
-  billing_profile_id: number
+  billing_profile_id?: number | null
   invoice_type?: GlobalInvoiceType
+  recipient_profile_id?: number | null
   recipient_name?: string | null
   recipient_phone?: string | null
   recipient_address?: string | null
   recipient_party_id?: number | null
+  retail_billing_mode?: 'account' | 'direct' | null
+  due_date?: string | null
   middle_man_payout_amount?: number | null
   note?: string | null
 }
+
 
 export type GlobalInvoiceCreated = GlobalInvoiceRow & {
   note: string | null
@@ -171,6 +176,12 @@ export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
   collection_source?: InvoiceCollectionSource | null
   middle_man_payout_amount?: number
   middle_man_payout_status?: string | null
+  shipping_charge: number
+  cod_charge: number
+  wrapping_charge: number
+  print_charge: number
+  recipient_phone: string | null
+  recipient_address: string | null
   billing_profiles?: {
     id: number
     name: string
@@ -193,6 +204,7 @@ export type GlobalInvoiceItemRow = {
   line_face_total_amount?: number | null
   line_discount_amount: number
   line_total_amount: number
+  return_quantity: number
 }
 
 export type InvoiceChargeLineRow = {

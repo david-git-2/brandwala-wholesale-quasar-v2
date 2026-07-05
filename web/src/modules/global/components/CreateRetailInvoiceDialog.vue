@@ -18,7 +18,27 @@
             @update:model-value="onIssuingTenantChange"
           />
 
+          <!-- Retail Billing Mode Selector -->
+          <div class="text-caption text-grey-8 q-mb-xs">Billing Mode:</div>
+          <q-btn-toggle
+            v-model="form.retail_billing_mode"
+            spread
+            no-caps
+            rounded
+            unelevated
+            toggle-color="primary"
+            color="grey-2"
+            text-color="primary"
+            :options="[
+              { label: 'Retail Account', value: 'account' },
+              { label: 'Retail Direct', value: 'direct' }
+            ]"
+            class=" soft-toggle q-mb-xs"
+            @update:model-value="onRetailModeChange"
+          />
+
           <q-select
+            v-if="form.retail_billing_mode === 'account'"
             v-model="form.billing_profile_id"
             :options="billingProfileOptions"
             label="Billing Profile *"
@@ -32,6 +52,21 @@
           />
 
           <q-input v-model="form.invoice_no" label="Invoice Number *" outlined dense class="soft-input" />
+
+          <!-- Saved Recipient Profile Picker -->
+          <q-select
+            v-model="form.recipient_profile_id"
+            :options="recipientProfileOptions"
+            label="Load Saved Recipient (Optional)"
+            outlined
+            dense
+            emit-value
+            map-options
+            clearable
+            class="soft-input"
+            :loading="loadingRecipients"
+            @update:model-value="onRecipientProfileChange"
+          />
 
           <q-input v-model="form.recipient_name" label="Recipient Name *" outlined dense class="soft-input" />
           <q-input v-model="form.recipient_phone" label="Recipient Phone" outlined dense class="soft-input" />
@@ -69,6 +104,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 
 import { useBillingProfileStore } from 'src/modules/invoice/stores/billingProfileStore'
+import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { showWarningDialog } from 'src/utils/appFeedback'
 
@@ -83,12 +119,17 @@ const emit = defineEmits<{
 
 const globalInvoiceStore = useGlobalInvoiceStore()
 const billingProfileStore = useBillingProfileStore()
+const recipientProfileStore = useRecipientProfileStore()
 const tenantStore = useTenantStore()
+
 const loadingProfiles = ref(false)
+const loadingRecipients = ref(false)
 
 const form = reactive({
   tenant_id: null as number | null,
   billing_profile_id: null as number | null,
+  recipient_profile_id: null as number | null,
+  retail_billing_mode: 'account' as 'account' | 'direct',
   invoice_no: '',
   recipient_name: '',
   recipient_phone: '',
@@ -129,15 +170,21 @@ const billingProfileOptions = computed(() =>
   billingProfileStore.items.map((p) => ({ label: p.name, value: p.id })),
 )
 
-const canSubmit = computed(
-  () =>
-    Boolean(
-      form.tenant_id &&
-        form.billing_profile_id &&
-        form.invoice_no.trim() &&
-        form.recipient_name.trim(),
-    ) && !globalInvoiceStore.saving,
+const recipientProfileOptions = computed(() =>
+  recipientProfileStore.items.map((p) => ({ label: `${p.name} (${p.phone})`, value: p.id })),
 )
+
+const canSubmit = computed(() => {
+  const baseCheck = Boolean(
+    form.tenant_id &&
+      form.invoice_no.trim() &&
+      form.recipient_name.trim(),
+  )
+  if (form.retail_billing_mode === 'account') {
+    return baseCheck && Boolean(form.billing_profile_id) && !globalInvoiceStore.saving
+  }
+  return baseCheck && !globalInvoiceStore.saving
+})
 
 const buildDefaultInvoiceNo = (tenantId: number | null) => {
   const label = allIssuingOptions.value.find((o) => o.value === tenantId)?.label ?? 'Retail'
@@ -148,6 +195,8 @@ const buildDefaultInvoiceNo = (tenantId: number | null) => {
 const resetForm = (tenantId: number | null) => {
   form.tenant_id = tenantId
   form.billing_profile_id = null
+  form.recipient_profile_id = null
+  form.retail_billing_mode = 'account'
   form.invoice_no = buildDefaultInvoiceNo(tenantId)
   form.recipient_name = ''
   form.recipient_phone = ''
@@ -165,21 +214,55 @@ const loadBillingProfiles = async (tenantId: number | null) => {
   }
 }
 
+const loadRecipientProfiles = async (tenantId: number | null) => {
+  if (!tenantId) return
+  loadingRecipients.value = true
+  try {
+    await recipientProfileStore.fetchRecipientProfiles(tenantId)
+  } finally {
+    loadingRecipients.value = false
+  }
+}
+
 const onIssuingTenantChange = async (tenantId: number | null) => {
   form.invoice_no = buildDefaultInvoiceNo(tenantId)
   form.billing_profile_id = null
-  await loadBillingProfiles(tenantId)
+  form.recipient_profile_id = null
+  await Promise.all([
+    loadBillingProfiles(tenantId),
+    loadRecipientProfiles(tenantId),
+  ])
+}
+
+const onRetailModeChange = (mode: 'account' | 'direct') => {
+  if (mode === 'direct') {
+    form.billing_profile_id = null
+  }
+}
+
+const onRecipientProfileChange = (profileId: number | null) => {
+  if (!profileId) return
+  const profile = recipientProfileStore.items.find((p) => p.id === profileId)
+  if (profile) {
+    form.recipient_name = profile.name
+    form.recipient_phone = profile.phone
+    form.recipient_address = profile.address
+  }
 }
 
 const onCancel = () => emit('update:modelValue', false)
 
 const onSubmit = async () => {
-  if (!form.tenant_id || !form.billing_profile_id) return
+  if (!form.tenant_id) return
+  if (form.retail_billing_mode === 'account' && !form.billing_profile_id) return
+
   const result = await globalInvoiceStore.createInvoice({
     tenant_id: form.tenant_id,
     invoice_no: form.invoice_no.trim(),
     billing_profile_id: form.billing_profile_id,
+    recipient_profile_id: form.recipient_profile_id,
     invoice_type: 'retail',
+    retail_billing_mode: form.retail_billing_mode,
     recipient_name: form.recipient_name.trim(),
     recipient_phone: form.recipient_phone.trim() || null,
     recipient_address: form.recipient_address.trim() || null,
@@ -199,7 +282,18 @@ watch(
     if (!open) return
     const defaultTenantId = allIssuingOptions.value[0]?.value ?? null
     resetForm(defaultTenantId)
-    await loadBillingProfiles(defaultTenantId)
+    await Promise.all([
+      loadBillingProfiles(defaultTenantId),
+      loadRecipientProfiles(defaultTenantId),
+    ])
   },
 )
 </script>
+
+<style scoped>
+.soft-toggle {
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(34, 56, 101, 0.12);
+}
+</style>

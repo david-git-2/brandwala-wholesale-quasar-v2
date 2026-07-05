@@ -126,6 +126,8 @@ watchEffect(() => {
 
 const loginErrorMessage = computed(() => {
   const error = route.query.login_error
+  if (error === 'session_expired')
+    return 'Your session expired. Please sign in again.'
   if (error === 'no_membership')
     return 'This Google account does not have permission for this entry point yet.'
   if (error === 'wrong_tenant')

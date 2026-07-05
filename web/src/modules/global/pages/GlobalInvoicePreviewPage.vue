@@ -28,32 +28,31 @@ import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrin
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel'
 
 import { globalRepository } from 'src/modules/global/repositories/globalRepository'
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, InvoiceChargeLineRow } from 'src/modules/global/types'
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/global/types'
 
 const route = useRoute()
 const loading = ref(true)
 const invoice = ref<GlobalInvoiceDetail | null>(null)
 const items = ref<GlobalInvoiceItemRow[]>([])
-const charges = ref<InvoiceChargeLineRow[]>([])
 
 const brandName = ref('')
 const brandAddress = ref('')
 const clientName = ref('')
 const thankYouMessage = ref('Thank you for your business!')
 
-const chargeLabel: Record<string, string> = {
-  cod: 'COD',
-  delivery: 'Delivery',
-  print: 'Print',
-  packing: 'Wrapping',
-  other: 'Other',
-}
-
 const printModel = computed<InvoicePrintModel>(() => {
   const inv = invoice.value
   const isWholesale = inv?.invoice_type === 'wholesale'
   const isDropship = inv?.invoice_type === 'dropship'
   const subtotal = isDropship ? (inv?.face_subtotal_amount ?? inv?.subtotal_amount ?? 0) : (inv?.subtotal_amount ?? 0)
+
+  // Construct charges array from inline header columns
+  const inlineCharges = [
+    { type: 'delivery', label: 'Delivery', amount: Number(inv?.shipping_charge ?? 0) },
+    { type: 'cod', label: 'COD', amount: Number(inv?.cod_charge ?? 0) },
+    { type: 'print', label: 'Print', amount: Number(inv?.print_charge ?? 0) },
+    { type: 'packing', label: 'Wrapping', amount: Number(inv?.wrapping_charge ?? 0) },
+  ].filter((c) => c.amount > 0)
 
   return {
     id: inv?.id ?? 0,
@@ -81,11 +80,7 @@ const printModel = computed<InvoicePrintModel>(() => {
         lineTotal,
       }
     }),
-    charges: charges.value.map((c) => ({
-      type: c.charge_type,
-      label: chargeLabel[c.charge_type] ?? c.charge_type,
-      amount: Number(c.amount),
-    })),
+    charges: inlineCharges,
     subtotal,
     discount: Number(inv?.discount_amount ?? 0),
     total: Number(inv?.total_amount ?? 0),
@@ -101,14 +96,12 @@ const printInvoice = () => window.print()
 onMounted(async () => {
   const id = Number(route.params.id)
   try {
-    const [inv, invItems, invCharges] = await Promise.all([
+    const [inv, invItems] = await Promise.all([
       globalRepository.getGlobalInvoiceById(id),
       globalRepository.listGlobalInvoiceItems(id),
-      globalRepository.listInvoiceChargeLines(id),
     ])
     invoice.value = inv
     items.value = invItems
-    charges.value = invCharges
     brandName.value = inv.billing_profiles?.name ?? ''
     brandAddress.value = inv.billing_profiles?.address ?? ''
     clientName.value = inv.billing_profiles?.name ?? ''

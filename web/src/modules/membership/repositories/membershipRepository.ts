@@ -1,33 +1,11 @@
 import { supabase } from 'src/boot/supabase'
-
-export type Membership = {
-  id: number
-  email: string
-  tenant_id: number | null
-  role: string
-  is_active: boolean
-  created_at?: string
-  updated_at?: string
-}
-
-export type MembershipCreateInput = {
-  tenant_id: number | null
-  email: string
-  role: string
-  is_active: boolean
-}
-
-export type MembershipUpdateInput = {
-  id: number
-  tenant_id?: number | null
-  email?: string
-  role?: string
-  is_active?: boolean
-}
-
-export type MembershipDeleteInput = {
-  id: number
-}
+import type {
+  Membership,
+  MembershipCreateInput,
+  MembershipDeleteInput,
+  MembershipUpdateInput,
+} from '../types'
+import type { MembershipPreferenceSchema } from '../types/preferences'
 
 const listMemberships = async (): Promise<Membership[]> => {
   const { data, error } = await supabase
@@ -130,7 +108,6 @@ const updateMembership = async (
   }
 
   const updatedMembership = Array.isArray(data) ? data[0] : data
-
   if (!updatedMembership) {
     throw new Error('Membership was not updated.')
   }
@@ -150,6 +127,7 @@ const deleteMembership = async (
     throw error
   }
 }
+
 const getTenantAdmins = async (tenantId: number): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from('memberships')
@@ -164,6 +142,27 @@ const getTenantAdmins = async (tenantId: number): Promise<Membership[]> => {
   return (data as Membership[] | null) ?? []
 }
 
+const updateMembershipPreference = async (payload: {
+  membershipId: number
+  preference: MembershipPreferenceSchema
+}) => {
+  const { data, error } = await supabase.rpc('update_membership_preference_for_self', {
+    p_membership_id: payload.membershipId,
+    p_preference: payload.preference as any,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  const updatedMembership = Array.isArray(data) ? data[0] : data
+  if (!updatedMembership) {
+    throw new Error('Membership preference was not updated.')
+  }
+
+  return updatedMembership
+}
+
 export const membershipRepository = {
   listMemberships,
   listSuperadmins,
@@ -172,4 +171,5 @@ export const membershipRepository = {
   deleteMembership,
   getTenantAdmins,
   fetchMembershipsByTenantId,
+  updateMembershipPreference,
 }
