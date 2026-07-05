@@ -340,7 +340,7 @@ const listPaymentAllocations = async (
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase.from('payment_allocations').select('*', { count: 'exact' })
+  let query = supabase.from('invoice_payments').select('*', { count: 'exact' })
   if (typeof payload.tenant_id === 'number') {
     query = query.eq('tenant_id', payload.tenant_id)
   }
@@ -415,7 +415,7 @@ const updatePaymentAllocationAmount = async (
 
 const updatePayment = async (payload: UpdatePaymentInput): Promise<Payment> => {
   const { data, error } = await supabase
-    .from('payments')
+    .from('global_payments')
     .update(payload.patch)
     .eq('tenant_id', payload.tenant_id)
     .eq('id', payload.payment_id)
@@ -428,7 +428,7 @@ const updatePayment = async (payload: UpdatePaymentInput): Promise<Payment> => {
 
 const deletePayment = async (payload: DeletePaymentInput): Promise<void> => {
   const { data: allocations, error: allocationReadError } = await supabase
-    .from('payment_allocations')
+    .from('invoice_payments')
     .select('invoice_id')
     .eq('tenant_id', payload.tenant_id)
     .eq('payment_id', payload.payment_id)
@@ -437,14 +437,14 @@ const deletePayment = async (payload: DeletePaymentInput): Promise<void> => {
   const invoiceIds = Array.from(new Set((allocations ?? []).map((row) => Number(row.invoice_id)).filter(Number.isFinite)))
 
   const { error: allocationDeleteError } = await supabase
-    .from('payment_allocations')
+    .from('invoice_payments')
     .delete()
     .eq('tenant_id', payload.tenant_id)
     .eq('payment_id', payload.payment_id)
   if (allocationDeleteError) throw allocationDeleteError
 
   const { error } = await supabase
-    .from('payments')
+    .from('global_payments')
     .delete()
     .eq('tenant_id', payload.tenant_id)
     .eq('id', payload.payment_id)

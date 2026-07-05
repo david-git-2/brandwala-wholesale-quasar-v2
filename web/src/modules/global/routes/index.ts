@@ -12,6 +12,11 @@ const guard = (requiredModule: ModuleKey, allowedRoles: ('admin' | 'staff')[] = 
     requiredModule,
   })
 
+const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : ''
+  return tenantSlug ? `/${tenantSlug}` : ''
+}
+
 const globalRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/global/stock',
@@ -68,45 +73,32 @@ const globalRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/global/accounting/ledger',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-global-ledger-page',
-        component: () => import('../pages/GlobalLedgerPage.vue'),
-        beforeEnter: guard('global_accounting_ledger'),
-      },
-    ],
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      return `${prefix}/app/finance/invoices`
+    },
   },
   {
     path: '/:tenantSlug?/app/global/accounting/shipments',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-global-shipment-accounting-page',
-        component: () => import('../pages/GlobalShipmentAccountingPage.vue'),
-        beforeEnter: guard('global_shipment_accounting'),
-      },
-      {
-        path: ':id',
-        name: 'app-global-shipment-accounting-details-page',
-        component: () => import('../pages/GlobalShipmentAccountingDetailsPage.vue'),
-        beforeEnter: guard('global_shipment_accounting'),
-      },
-    ],
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      return `${prefix}/app/finance/shipments`
+    },
+  },
+  {
+    path: '/:tenantSlug?/app/global/accounting/shipments/:id',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      const id = typeof to.params.id === 'string' ? to.params.id : ''
+      return `${prefix}/app/finance/shipments/${id}`
+    },
   },
   {
     path: '/:tenantSlug?/app/global/accounting/invoices',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-global-invoice-accounting-page',
-        component: () => import('../pages/GlobalInvoiceAccountingPage.vue'),
-        beforeEnter: guard('global_invoice_accounting'),
-      },
-    ],
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      return `${prefix}/app/finance/invoices`
+    },
   },
   {
     path: '/:tenantSlug?/app/global/investors',

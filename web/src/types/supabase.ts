@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_logs: {
@@ -1685,6 +1660,60 @@ export type Database = {
           },
         ]
       }
+      global_payments: {
+        Row: {
+          amount: number
+          billing_profile_id: number
+          created_at: string
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          reference: string | null
+          tenant_id: number
+          unallocated_amount: number
+        }
+        Insert: {
+          amount: number
+          billing_profile_id: number
+          created_at?: string
+          id?: number
+          method?: string | null
+          note?: string | null
+          payment_date?: string
+          reference?: string | null
+          tenant_id: number
+          unallocated_amount?: number
+        }
+        Update: {
+          amount?: number
+          billing_profile_id?: number
+          created_at?: string
+          id?: number
+          method?: string | null
+          note?: string | null
+          payment_date?: string
+          reference?: string | null
+          tenant_id?: number
+          unallocated_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_return_items: {
         Row: {
           created_at: string
@@ -2448,6 +2477,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "invoice_brands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_payments: {
+        Row: {
+          amount: number
+          commerce_invoice_id: number | null
+          created_at: string
+          global_invoice_id: number | null
+          id: number
+          invoice_id: number | null
+          payment_id: number
+          tenant_id: number
+        }
+        Insert: {
+          amount: number
+          commerce_invoice_id?: number | null
+          created_at?: string
+          global_invoice_id?: number | null
+          id?: number
+          invoice_id?: number | null
+          payment_id: number
+          tenant_id: number
+        }
+        Update: {
+          amount?: number
+          commerce_invoice_id?: number | null
+          created_at?: string
+          global_invoice_id?: number | null
+          id?: number
+          invoice_id?: number | null
+          payment_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_commerce_invoice_id_fkey"
+            columns: ["commerce_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_global_invoice_id_fkey"
+            columns: ["global_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "global_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3419,68 +3510,6 @@ export type Database = {
           },
         ]
       }
-      payment_allocations: {
-        Row: {
-          amount: number
-          commerce_invoice_id: number | null
-          created_at: string
-          global_invoice_id: number | null
-          id: number
-          invoice_id: number | null
-          payment_id: number
-          tenant_id: number
-        }
-        Insert: {
-          amount: number
-          commerce_invoice_id?: number | null
-          created_at?: string
-          global_invoice_id?: number | null
-          id?: number
-          invoice_id?: number | null
-          payment_id: number
-          tenant_id: number
-        }
-        Update: {
-          amount?: number
-          commerce_invoice_id?: number | null
-          created_at?: string
-          global_invoice_id?: number | null
-          id?: number
-          invoice_id?: number | null
-          payment_id?: number
-          tenant_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_allocations_commerce_invoice_id_fkey"
-            columns: ["commerce_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_allocations_global_invoice_id_fkey"
-            columns: ["global_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "global_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_allocations_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_allocations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payment_methods: {
         Row: {
           category: string
@@ -3519,57 +3548,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      payments: {
-        Row: {
-          amount: number
-          billing_profile_id: number
-          created_at: string
-          id: number
-          method: string | null
-          note: string | null
-          payment_date: string
-          reference: string | null
-          tenant_id: number
-        }
-        Insert: {
-          amount: number
-          billing_profile_id: number
-          created_at?: string
-          id?: number
-          method?: string | null
-          note?: string | null
-          payment_date?: string
-          reference?: string | null
-          tenant_id: number
-        }
-        Update: {
-          amount?: number
-          billing_profile_id?: number
-          created_at?: string
-          id?: number
-          method?: string | null
-          note?: string | null
-          payment_date?: string
-          reference?: string | null
-          tenant_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_billing_profile_id_fkey"
-            columns: ["billing_profile_id"]
-            isOneToOne: false
-            referencedRelation: "billing_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       product_based_costing_files: {
         Row: {
@@ -5858,7 +5836,7 @@ export type Database = {
         }
         SetofOptions: {
           from: "*"
-          to: "payment_allocations"
+          to: "invoice_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -6000,6 +5978,30 @@ export type Database = {
       adjust_inventory_reserved_for_product: {
         Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
         Returns: undefined
+      }
+      allocate_payment_to_global_invoice: {
+        Args: {
+          p_amount: number
+          p_global_invoice_id: number
+          p_payment_id: number
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          commerce_invoice_id: number | null
+          created_at: string
+          global_invoice_id: number | null
+          id: number
+          invoice_id: number | null
+          payment_id: number
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       apply_global_shipment_weight_balance: {
         Args: {
@@ -6335,10 +6337,11 @@ export type Database = {
           payment_date: string
           reference: string | null
           tenant_id: number
+          unallocated_amount: number
         }
         SetofOptions: {
           from: "*"
-          to: "payments"
+          to: "global_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -6855,6 +6858,10 @@ export type Database = {
         Args: { p_investor_id: number }
         Returns: Json
       }
+      get_invoice_margin_detail: {
+        Args: { p_invoice_id: number }
+        Returns: Json
+      }
       get_item_details: { Args: { p_item_id: number }; Returns: Json }
       get_koba_cart: {
         Args: { p_customer_group_id?: number; p_tenant_id: number }
@@ -6923,6 +6930,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_shipment_pnl: {
+        Args: { p_shipment_id: number; p_tenant_id: number }
+        Returns: Json
       }
       get_shop_bootstrap_context: {
         Args: {
@@ -7166,6 +7177,10 @@ export type Database = {
           p_stock_type_id?: number
           p_tenant_id: number
         }
+        Returns: Json
+      }
+      list_billing_balances: {
+        Args: { p_search?: string; p_tenant_id: number }
         Returns: Json
       }
       list_child_allocation_summary: {
@@ -7426,6 +7441,22 @@ export type Database = {
           p_sort_order?: string
           p_tenant_id: number
         }
+        Returns: Json
+      }
+      list_invoice_margin_report: {
+        Args: {
+          p_end_date?: string
+          p_invoice_type?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_invoice_outstanding: {
+        Args: { p_search?: string; p_tenant_id: number }
         Returns: Json
       }
       list_invoices_paginated: {
@@ -7833,43 +7864,6 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
-      post_global_invoice_item_to_ledger: {
-        Args: { p_invoice_item_id: number }
-        Returns: {
-          charge_type: Database["public"]["Enums"]["invoice_charge_type"] | null
-          cost_amount: number
-          created_at: string
-          created_by: string | null
-          entry_date: string
-          global_invoice_id: number | null
-          global_invoice_item_id: number | null
-          global_stock_id: number | null
-          gross_profit_amount: number
-          id: number
-          is_charge: boolean
-          note: string | null
-          parent_tenant_id: number
-          product_id: number | null
-          quantity: number
-          return_amount: number
-          return_quantity: number
-          sell_price_amount: number
-          shipment_id: number | null
-          shipment_item_id: number | null
-          sold_in_tenant_id: number | null
-          status: string
-          tenant_id: number
-          total_cost_amount: number
-          total_sell_amount: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "global_accounting_ledger"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       recalculate_shipment_transaction_rate: {
         Args: { p_shipment_id: number }
         Returns: number
@@ -7959,25 +7953,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "global_invoice_accounting"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      refresh_global_shipment_accounting: {
-        Args: { p_parent_tenant_id: number; p_shipment_id: number }
-        Returns: {
-          buy_cost_total: number
-          gross_profit_total: number
-          id: number
-          parent_tenant_id: number
-          refreshed_at: string
-          sell_total: number
-          shipment_id: number
-          tenant_id: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "global_shipment_accounting"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8428,7 +8403,7 @@ export type Database = {
         }
         SetofOptions: {
           from: "*"
-          to: "payment_allocations"
+          to: "invoice_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8800,9 +8775,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "staff", "viewer", "investor"],

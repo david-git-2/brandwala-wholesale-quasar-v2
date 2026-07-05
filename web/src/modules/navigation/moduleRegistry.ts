@@ -45,10 +45,14 @@ export type ModuleKey =
   | 'investor_portal'
   | 'procurement_stock'
   | 'global_stock_type'
-  | 'sales_invoice'
-  | 'billing_profile'
-  | 'recipient_profile'
   | 'invoice_brand'
+  | 'reporting_treasury'
+  | 'payments'
+  | 'invoice_reports'
+  | 'shipment_reports'
+  | 'billing_balances'
+  | 'parent_dashboard'
+  | 'investor_reports'
 
 
 export type ModuleAction = 'view'
@@ -881,6 +885,109 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description: 'Configure invoice branding, logos, layout styles, and details.',
     parentModuleKey: 'sales_invoice',
     routes: [],
+  },
+  {
+    key: 'reporting_treasury',
+    name: 'Reports & Treasury',
+    description: 'Parent module for payments, balances, and margin reports.',
+    navIcon: 'account_balance',
+    routes: [],
+  },
+  {
+    key: 'payments',
+    name: 'Payments & Collection',
+    description: 'Record payments and allocate to invoices.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Payments',
+        caption: 'Create customer payments and allocate across invoices',
+        icon: 'payments',
+        routeSegment: 'finance/payments',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'invoice_reports',
+    name: 'Invoice Reports',
+    description: 'Invoice margins and gross profit reports.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Invoice Reports',
+        caption: 'Invoice margins and gross profit reports',
+        icon: 'summarize',
+        routeSegment: 'finance/invoices',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shipment_reports',
+    name: 'Shipment Reports',
+    description: 'Shipment batch landed cost vs realized margin P&L.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipment P&L',
+        caption: 'Shipment batch landed cost vs realized margin P&L',
+        icon: 'local_shipping',
+        routeSegment: 'finance/shipments',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'billing_balances',
+    name: 'Customer Balances',
+    description: 'Total amount due per billing profile.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Customer Balances',
+        caption: 'Total amount due per billing profile',
+        icon: 'account_balance_wallet',
+        routeSegment: 'finance/balances',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'parent_dashboard',
+    name: 'Consolidated Dashboard',
+    description: 'Roll up sales and margin across sister concerns.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Consolidated Dashboard',
+        caption: 'Roll up sales and margin across sister concerns',
+        icon: 'dashboard',
+        routeSegment: 'finance/dashboard',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'investor_reports',
+    name: 'Investor Reports',
+    description: 'Profit share per shipment batch for investors.',
+    parentModuleKey: 'reporting_treasury',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Investor Reports',
+        caption: 'Profit share per shipment batch for investors',
+        icon: 'savings',
+        routeSegment: 'finance/investors',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'global_accounting_ledger',

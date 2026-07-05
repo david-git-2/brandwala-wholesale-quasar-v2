@@ -30,6 +30,7 @@ import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
 import salesInvoiceRoutes from 'src/modules/sales_invoice/routes';
+import reportingTreasuryRoutes from 'src/modules/reporting_treasury/routes';
 
 
 
@@ -119,6 +120,7 @@ const routes: RouteRecordRaw[] = [
   ...globalRoutes,
   ...procurementStockRoutes,
   ...salesInvoiceRoutes,
+  ...reportingTreasuryRoutes,
 
 
   // Always leave this as last one
