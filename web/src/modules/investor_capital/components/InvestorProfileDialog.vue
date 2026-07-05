@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 
-import type { Investor } from '../types'
+import type { Investor } from 'src/modules/investor/types'
 
 type InvestorForm = {
   id?: number

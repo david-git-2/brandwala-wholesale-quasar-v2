@@ -25,9 +25,76 @@ const getPortfolioSummary = async (investorId: number) => {
   }
 }
 
+const getDashboardSummary = async (tenantId: number, investorId: number) => {
+  try {
+    const data = await investorPortalRepository.getInvestorDashboardSummary(tenantId, investorId)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to load dashboard summary.',
+    }
+  }
+}
+
+const listAllocations = async (
+  tenantId: number,
+  investorId: number,
+  limit = 50,
+  offset = 0
+) => {
+  try {
+    const data = await investorPortalRepository.listInvestorAllocations(tenantId, investorId, limit, offset)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to load allocations.',
+    }
+  }
+}
+
+const listTransactions = async (
+  tenantId: number,
+  investorId: number,
+  limit = 50,
+  offset = 0
+) => {
+  try {
+    const data = await investorPortalRepository.listInvestorTransactions(tenantId, investorId, limit, offset)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to load transactions.',
+    }
+  }
+}
+
+const getCapitalReport = async (
+  tenantId: number,
+  investorId: number,
+  startDate: string,
+  endDate: string
+) => {
+  try {
+    const data = await investorPortalRepository.getInvestorCapitalReport(tenantId, investorId, startDate, endDate)
+    return { success: true as const, data }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Failed to generate report.',
+    }
+  }
+}
+
 export const investorPortalService = {
   getBootstrapContext,
   getPortfolioSummary,
+  getDashboardSummary,
+  listAllocations,
+  listTransactions,
+  getCapitalReport,
 }
 
 export type { InvestorBootstrapContext, InvestorPortfolioSummary }

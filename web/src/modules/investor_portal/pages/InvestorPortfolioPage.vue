@@ -2,12 +2,12 @@
   <q-page class="q-pa-md costing-list-page">
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 q-pa-md">
       <AppPageHeader
-        title="Portfolio"
-        subtitle="Capital balances and active shipment investments"
+        title="Portfolio Dashboard"
+        subtitle="Manage your capital balances and track shipment earnings"
       />
     </q-card>
 
-    <PageInitialLoader v-if="loading" message="Loading portfolio..." />
+    <PageInitialLoader v-if="loading" message="Loading dashboard..." />
 
     <q-banner v-else-if="error" class="bg-negative text-white q-mb-md" rounded>
       {{ error }}
@@ -16,36 +16,45 @@
     <template v-else-if="portfolio">
       <div class="row q-col-gutter-md q-mb-md">
         <div class="col-12 col-sm-6 col-md-3" v-for="card in balanceCards" :key="card.label">
-          <q-card flat class="floating-surface shadow-1 q-pa-md">
+          <q-card flat class="floating-surface shadow-1 q-pa-md" :class="card.class">
             <div class="text-caption text-grey-7">{{ card.label }}</div>
             <div class="text-h6 text-weight-bold">{{ formatCurrency(card.value) }}</div>
           </q-card>
         </div>
       </div>
 
+      <q-banner dense inline-actions class="bg-indigo-1 text-indigo-9 q-mb-md rounded-borders">
+        <template #avatar>
+          <q-icon name="info" color="indigo" />
+        </template>
+        Withdrawable balance is calculated from realized profits. Contact your administrator to request a payout.
+      </q-banner>
+
       <q-card flat class="floating-surface shadow-1 q-pa-md">
-        <div class="text-subtitle1 text-weight-bold q-mb-md">Active investments</div>
+        <div class="text-subtitle1 text-weight-bold q-mb-md">Active shipment allocations</div>
         <q-markup-table v-if="portfolio.active_investments?.length" flat bordered wrap-cells>
           <thead>
             <tr>
-              <th>Shipment</th>
-              <th>Invested</th>
-              <th>Share %</th>
-              <th>Allocated cost</th>
-              <th>Profit</th>
+              <th class="text-left">Shipment</th>
+              <th class="text-right">Invested amount</th>
+              <th class="text-right">Cost share %</th>
+              <th class="text-right">Allocated cost</th>
+              <th class="text-right">Computed profit</th>
+              <th class="text-left">Status</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in portfolio.active_investments" :key="item.id">
-              <td>#{{ item.shipment_id }}</td>
-              <td>{{ formatCurrency(item.invested_amount) }}</td>
-              <td>{{ item.cost_share_pct ?? '—' }}%</td>
-              <td>{{ formatCurrency(item.allocated_cost) }}</td>
-              <td>{{ formatCurrency(item.computed_profit) }}</td>
+              <td class="text-left">#{{ item.global_shipment_id }}</td>
+              <td class="text-right">{{ formatCurrency(item.invested_amount) }}</td>
+              <td class="text-right">{{ item.cost_share_pct ?? '0.00' }}%</td>
+              <td class="text-right">{{ formatCurrency(item.allocated_cost) }}</td>
+              <td class="text-right">{{ formatCurrency(item.computed_profit) }}</td>
+              <td class="text-left text-capitalize">{{ item.profit_status || 'open' }}</td>
             </tr>
           </tbody>
         </q-markup-table>
-        <div v-else class="text-grey-7">No active shipment investments.</div>
+        <div v-else class="text-grey-7">No active shipment allocations found.</div>
       </q-card>
     </template>
   </q-page>
@@ -72,10 +81,13 @@ const balanceCards = computed(() => {
   if (!balances) return []
 
   return [
-    { label: 'Deposits', value: balances.deposits },
-    { label: 'Withdrawals', value: balances.withdrawals },
-    { label: 'Deployed', value: balances.deployed },
-    { label: 'Available', value: balances.available },
+    { label: 'Total Invested', value: balances.deposits },
+    { label: 'Deployed in Shipments', value: balances.deployed },
+    { label: 'Unallocated Cash', value: balances.available },
+    { label: 'Realized Profit', value: balances.realized_profit },
+    { label: 'Unrealized Profit', value: balances.unrealized_profit },
+    { label: 'Withdrawable Balance', value: balances.withdrawable_balance, class: 'bg-green-1 text-green-9' },
+    { label: 'Total Withdrawn', value: balances.withdrawals },
   ]
 })
 

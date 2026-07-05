@@ -53,6 +53,10 @@ export type ModuleKey =
   | 'billing_balances'
   | 'parent_dashboard'
   | 'investor_reports'
+  | 'investor_capital'
+  | 'investor_profiles'
+  | 'investor_capital_ledger'
+  | 'investor_shipment_share'
 
 
 export type ModuleAction = 'view'
@@ -1068,6 +1072,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'investor_portal',
     name: 'Investor Portal',
     description: 'External investor login and portfolio.',
+    parentModuleKey: 'investor_capital',
     routes: [],
   },
   {
@@ -1083,6 +1088,61 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description: 'Stock classification types config (e.g. Standard Sellable, Box Damage).',
     parentModuleKey: 'procurement_stock',
     routes: [],
+  },
+  {
+    key: 'investor_capital',
+    name: 'Investor Capital',
+    description: 'Parent module for investor profiles, capital ledger, shipment share allocations, and investor portal.',
+    navIcon: 'savings',
+    routes: [],
+  },
+  {
+    key: 'investor_profiles',
+    name: 'Investor Profiles',
+    description: 'Manage investor profiles and client contact details.',
+    parentModuleKey: 'investor_capital',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Profiles',
+        caption: 'Manage investor profiles',
+        icon: 'groups',
+        routeSegment: 'capital/profiles',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'investor_capital_ledger',
+    name: 'Capital Ledger',
+    description: 'Manage capital deposits, adjustments, and withdrawal transactions.',
+    parentModuleKey: 'investor_capital',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Capital Ledger',
+        caption: 'Manage capital transactions and records',
+        icon: 'sync_alt',
+        routeSegment: 'capital/ledger',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'investor_shipment_share',
+    name: 'Shipment Share Allocations',
+    description: 'Assign investor cost-share percentage and track shipment profit allocations.',
+    parentModuleKey: 'investor_capital',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipment Allocations',
+        caption: 'Track shipment allocations and cost share',
+        icon: 'local_shipping',
+        routeSegment: 'capital/shipments',
+        requiredAction: 'view',
+      },
+    ],
   },
 ] as const
 

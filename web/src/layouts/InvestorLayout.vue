@@ -29,16 +29,28 @@ const links = computed(() => {
 
   return [
     {
-      title: 'Portfolio',
+      title: 'Portfolio Dashboard',
       caption: 'Balances and overview',
       icon: 'savings',
       to: `/${slug}/investor/portfolio`,
     },
     {
-      title: 'Shipments',
-      caption: 'Cost-share investments',
+      title: 'Capital Deployment',
+      caption: 'Shipment allocations',
       icon: 'local_shipping',
-      to: `/${slug}/investor/shipments`,
+      to: `/${slug}/investor/allocations`,
+    },
+    {
+      title: 'Profit Report',
+      caption: 'Earnings status',
+      icon: 'trending_up',
+      to: `/${slug}/investor/profit`,
+    },
+    {
+      title: 'Activity Ledger',
+      caption: 'Transaction history',
+      icon: 'history',
+      to: `/${slug}/investor/activity`,
     },
   ]
 })

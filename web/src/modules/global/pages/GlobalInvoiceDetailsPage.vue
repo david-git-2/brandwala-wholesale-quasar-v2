@@ -347,7 +347,7 @@
             :show-search-controls="true"
             @select="onSelectStockRow"
           />
-          <div v-slot:default v-if="selectedStock" class="q-mt-md q-gutter-y-sm">
+          <div v-if="selectedStock" class="q-mt-md q-gutter-y-sm">
             <div class="text-subtitle2 text-weight-bold">
               Selected: {{ selectedStock.name }}
               <span v-if="selectedStockHoldingLabel" class="text-caption text-grey-7 q-ml-sm">
@@ -357,7 +357,6 @@
             <q-input v-model.number="addQty" type="number" label="Quantity" dense outlined min="1" class="soft-input" />
             <q-input v-model.number="addSellPrice" type="number" label="Sell price" dense outlined min="0" class="soft-input" />
             <q-input
-              v-slot:default
               v-if="isDropship"
               v-model.number="addRecipientPrice"
               type="number"

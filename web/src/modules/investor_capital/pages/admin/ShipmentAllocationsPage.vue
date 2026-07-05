@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="bw-page">
     <div class="text-h5 text-weight-bold q-mb-md">Investor Shipment</div>
 
     <q-markup-table flat bordered wrap-cells>
@@ -53,7 +53,7 @@ const loadShipments = async () => {
 
 const onSelectShipment = async (shipmentId: number) => {
   await router.push({
-    name: 'app-investor-shipment-details-page',
+    name: 'app-capital-shipment-details-page',
     params: {
       tenantSlug: route.params.tenantSlug,
       id: shipmentId,

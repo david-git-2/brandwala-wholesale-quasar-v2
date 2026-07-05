@@ -8,7 +8,12 @@ export const useInvestorPortalStore = defineStore('investorPortal', {
     loading: false,
     error: null as string | null,
     portfolio: null as InvestorPortfolioSummary | null,
+    dashboardSummary: null as any | null,
+    allocations: [] as any[],
+    transactions: [] as any[],
     investorId: null as number | null,
+    totalAllocationsCount: 0,
+    totalTransactionsCount: 0,
   }),
 
   actions: {
@@ -30,11 +35,63 @@ export const useInvestorPortalStore = defineStore('investorPortal', {
       return result
     },
 
+    async fetchDashboardSummary(tenantId: number, investorId: number) {
+      this.loading = true
+      this.error = null
+      const result = await investorPortalService.getDashboardSummary(tenantId, investorId)
+      this.loading = false
+
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to load dashboard summary.'
+        return result
+      }
+
+      this.dashboardSummary = result.data
+      return result
+    },
+
+    async fetchAllocations(tenantId: number, investorId: number, limit = 50, offset = 0) {
+      this.loading = true
+      this.error = null
+      const result = await investorPortalService.listAllocations(tenantId, investorId, limit, offset)
+      this.loading = false
+
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to load allocations.'
+        return result
+      }
+
+      this.allocations = result.data ?? []
+      this.totalAllocationsCount = result.data?.[0]?.total_count ?? 0
+      return result
+    },
+
+    async fetchTransactions(tenantId: number, investorId: number, limit = 50, offset = 0) {
+      this.loading = true
+      this.error = null
+      const result = await investorPortalService.listTransactions(tenantId, investorId, limit, offset)
+      this.loading = false
+
+      if (!result.success) {
+        this.error = result.error ?? 'Failed to load transactions.'
+        return result
+      }
+
+      this.transactions = result.data ?? []
+      this.totalTransactionsCount = result.data?.[0]?.total_count ?? 0
+      return result
+    },
+
     clear() {
       this.loading = false
       this.error = null
       this.portfolio = null
+      this.dashboardSummary = null
+      this.allocations = []
+      this.transactions = []
       this.investorId = null
+      this.totalAllocationsCount = 0
+      this.totalTransactionsCount = 0
     },
   },
 })

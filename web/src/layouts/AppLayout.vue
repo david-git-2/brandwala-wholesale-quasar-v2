@@ -1,5 +1,6 @@
 <template>
   <WorkspaceShell
+    ref="workspaceShellRef"
     :logout-to="logoutTo"
     theme="app"
     :links="links"
@@ -51,6 +52,14 @@
                   <q-icon name="inventory_2" size="sm" color="primary" />
                 </q-item-section>
                 <q-item-section>Search Stock</q-item-section>
+              </q-item>
+
+              <q-separator class="q-my-xs" />
+              <q-item clickable v-close-popup @click="onMobileSignOut">
+                <q-item-section avatar class="q-pr-none" style="min-width: 32px;">
+                  <q-icon name="logout" size="sm" color="negative" />
+                </q-item-section>
+                <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -153,8 +162,13 @@ const route = useRoute()
 const router = useRouter()
 const { links } = useAppWorkspaceLinks()
 
+const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null)
 const searchDialogOpen = ref(false)
 const stockSearchDialogOpen = ref(false)
+
+const onMobileSignOut = () => {
+  workspaceShellRef.value?.openSignOutDialog()
+}
 const hasTasksModule = computed(() => authStore.activeModuleKeys.includes('tasks'))
 const hasGlobalStockModule = computed(() => authStore.activeModuleKeys.includes('global_stock'))
 const logoutTo = computed(() =>

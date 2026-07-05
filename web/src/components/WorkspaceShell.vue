@@ -75,6 +75,13 @@
                       <q-item-label caption>{{ contextValue }}</q-item-label>
                     </q-item-section>
                   </q-item>
+                  <q-separator class="q-my-xs" />
+                  <q-item clickable v-close-popup @click="handleLogout">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                      <q-icon name="logout" size="xs" color="negative" />
+                    </q-item-section>
+                    <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                  </q-item>
                 </q-list>
               </q-menu>
             </q-btn>
@@ -529,6 +536,8 @@ const handleLogout = () => {
   showLogoutDialog.value = true
 }
 
+defineExpose({ openSignOutDialog: handleLogout })
+
 const confirmLogout = async () => {
   showLogoutDialog.value = false
   drawerOpen.value = false
@@ -645,7 +654,8 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__drawer-inner {
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
@@ -825,9 +835,11 @@ const confirmLogout = async () => {
 
 .workspace-shell__drawer-bottom {
   margin-top: auto;
+  flex-shrink: 0;
   position: sticky;
   bottom: 0;
   z-index: 1;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
   border-top: 1px solid var(--shell-border);
 }

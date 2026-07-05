@@ -80,8 +80,7 @@ import type {
   Investor,
   InvestorTransactionCreateInput,
   InvestorTransactionMethod,
-  InvestorTransactionType,
-} from '../types'
+} from 'src/modules/investor/types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -102,13 +101,13 @@ const datePopupRef = ref<QPopupProxy | null>(null)
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-const form = reactive<Omit<InvestorTransactionCreateInput, 'amount'> & { amount: number | null }>({
+const form = reactive<Omit<InvestorTransactionCreateInput, 'amount' | 'type'> & { amount: number | null; type: string }>({
   tenant_id: props.tenantId,
   investor_id: 0,
   amount: null,
   date: today(),
   method: 'cash',
-  type: 'deposit',
+  type: 'capital_in',
   note: null,
 })
 
@@ -119,10 +118,10 @@ const investorOptions = computed(() =>
   })),
 )
 
-const transactionTypeOptions: { label: string; value: InvestorTransactionType }[] = [
-  { label: 'Deposit', value: 'deposit' },
-  { label: 'Withdrawal', value: 'withdrawal' },
-  { label: 'Profit Payout', value: 'profit_payout' },
+const transactionTypeOptions = [
+  { label: 'Capital In (Deposit)', value: 'capital_in' },
+  { label: 'Withdrawal Paid', value: 'withdrawal_paid' },
+  { label: 'Capital Adjustment', value: 'capital_adjustment' },
 ]
 
 const transactionMethodOptions: { label: string; value: InvestorTransactionMethod }[] = [
@@ -151,7 +150,7 @@ watch(
     form.amount = null
     form.date = today()
     form.method = 'cash'
-    form.type = 'deposit'
+    form.type = 'capital_in'
     form.note = null
   },
   { immediate: true },
@@ -168,7 +167,7 @@ const onSave = () => {
     amount: Number(form.amount ?? 0),
     date: form.date,
     method: form.method,
-    type: form.type,
+    type: form.type as any,
     note: form.note?.trim() || null,
   })
 

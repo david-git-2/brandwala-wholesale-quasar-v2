@@ -15,11 +15,10 @@ import type {
 } from '../types'
 
 const listInvestorsByTenant = async (tenantId: number): Promise<Investor[]> => {
-  const { data, error } = await supabase
-    .from('investors')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .order('id', { ascending: true })
+  const { data, error } = await supabase.rpc('list_investor_profiles', {
+    p_tenant_id: tenantId,
+    p_limit: 1000,
+  })
 
   if (error) {
     throw error
@@ -45,19 +44,17 @@ const listInvestorBalancesByTenant = async (
 }
 
 const createInvestor = async (payload: InvestorCreateInput): Promise<Investor> => {
-  const { data, error } = await supabase
-    .from('investors')
-    .insert([
-      {
-        tenant_id: payload.tenant_id,
-        name: payload.name.trim(),
-        phone: payload.phone?.trim() || null,
-        email: payload.email?.trim() || null,
-        address: payload.address?.trim() || null,
-      },
-    ])
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('upsert_investor_profile', {
+    p_id: null,
+    p_tenant_id: payload.tenant_id,
+    p_name: payload.name.trim(),
+    p_phone: payload.phone?.trim() || null,
+    p_email: payload.email?.trim() || null,
+    p_address: payload.address?.trim() || null,
+    p_is_active: true,
+    p_currency_code: 'BDT',
+    p_notes: null,
+  })
 
   if (error) {
     throw error
@@ -71,18 +68,17 @@ const createInvestor = async (payload: InvestorCreateInput): Promise<Investor> =
 }
 
 const updateInvestor = async (payload: InvestorUpdateInput): Promise<Investor> => {
-  const { data, error } = await supabase
-    .from('investors')
-    .update({
-      name: payload.name.trim(),
-      phone: payload.phone?.trim() || null,
-      email: payload.email?.trim() || null,
-      address: payload.address?.trim() || null,
-    })
-    .eq('id', payload.id)
-    .eq('tenant_id', payload.tenant_id)
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('upsert_investor_profile', {
+    p_id: payload.id,
+    p_tenant_id: payload.tenant_id,
+    p_name: payload.name.trim(),
+    p_phone: payload.phone?.trim() || null,
+    p_email: payload.email?.trim() || null,
+    p_address: payload.address?.trim() || null,
+    p_is_active: true,
+    p_currency_code: 'BDT',
+    p_notes: null,
+  })
 
   if (error) {
     throw error
@@ -126,21 +122,43 @@ const listTransactionsByTenant = async (
 const createTransaction = async (
   payload: InvestorTransactionCreateInput,
 ): Promise<InvestorTransaction> => {
-  const { data, error } = await supabase
-    .from('investor_transactions')
-    .insert([
-      {
-        tenant_id: payload.tenant_id,
-        investor_id: payload.investor_id,
-        amount: payload.amount,
-        date: payload.date,
-        method: payload.method,
-        type: payload.type,
-        note: payload.note?.trim() || null,
-      },
-    ])
-    .select('*')
-    .single()
+  let data: any
+  let error: any
+
+  if (payload.type === 'deposit' || payload.type === 'capital_in') {
+    const res = await supabase.rpc('record_investor_capital_in', {
+      p_tenant_id: payload.tenant_id,
+      p_investor_id: payload.investor_id,
+      p_amount: payload.amount,
+      p_date: payload.date,
+      p_method: payload.method,
+      p_note: payload.note || null,
+    })
+    data = res.data
+    error = res.error
+  } else if (payload.type === 'withdrawal' || payload.type === 'withdrawal_paid') {
+    const res = await supabase.rpc('record_investor_withdrawal_paid', {
+      p_tenant_id: payload.tenant_id,
+      p_investor_id: payload.investor_id,
+      p_amount: payload.amount,
+      p_date: payload.date,
+      p_method: payload.method,
+      p_note: payload.note || null,
+    })
+    data = res.data
+    error = res.error
+  } else {
+    const res = await supabase.rpc('record_investor_capital_adjustment', {
+      p_tenant_id: payload.tenant_id,
+      p_investor_id: payload.investor_id,
+      p_amount: payload.amount,
+      p_date: payload.date,
+      p_method: payload.method,
+      p_note: payload.note || null,
+    })
+    data = res.data
+    error = res.error
+  }
 
   if (error) {
     throw error
@@ -161,7 +179,7 @@ const listShipmentInvestmentsByShipment = async (
     .from('shipment_investments')
     .select('*')
     .eq('tenant_id', tenantId)
-    .eq('shipment_id', shipmentId)
+    .eq('global_shipment_id', shipmentId)
     .order('id', { ascending: true })
 
   if (error) {
@@ -179,10 +197,9 @@ const createShipmentInvestment = async (
     .insert([
       {
         tenant_id: payload.tenant_id,
-        shipment_id: payload.shipment_id,
+        global_shipment_id: payload.shipment_id,
         investor_id: payload.investor_id,
         invested_amount: payload.invested_amount,
-        actual_profit: payload.actual_profit ?? 0,
         status: payload.status ?? 'active',
       },
     ])
@@ -197,7 +214,19 @@ const createShipmentInvestment = async (
     throw new Error('Shipment investment was not created.')
   }
 
-  return data as ShipmentInvestment
+  // Refresh profits
+  await supabase.rpc('refresh_shipment_investor_profits', {
+    p_global_shipment_id: payload.shipment_id,
+  })
+
+  // Select again to get refreshed values
+  const { data: updatedData } = await supabase
+    .from('shipment_investments')
+    .select('*')
+    .eq('id', data.id)
+    .single()
+
+  return (updatedData ?? data) as ShipmentInvestment
 }
 
 const updateShipmentInvestment = async (
@@ -206,10 +235,8 @@ const updateShipmentInvestment = async (
   const { data, error } = await supabase
     .from('shipment_investments')
     .update({
-      shipment_id: payload.shipment_id,
       investor_id: payload.investor_id,
       invested_amount: payload.invested_amount,
-      actual_profit: payload.actual_profit ?? 0,
       status: payload.status ?? 'active',
     })
     .eq('id', payload.id)
@@ -225,7 +252,19 @@ const updateShipmentInvestment = async (
     throw new Error('Shipment investment was not updated.')
   }
 
-  return data as ShipmentInvestment
+  // Refresh profits
+  await supabase.rpc('refresh_shipment_investor_profits', {
+    p_global_shipment_id: payload.shipment_id,
+  })
+
+  // Select again to get refreshed values
+  const { data: updatedData } = await supabase
+    .from('shipment_investments')
+    .select('*')
+    .eq('id', data.id)
+    .single()
+
+  return (updatedData ?? data) as ShipmentInvestment
 }
 
 const deleteShipmentInvestment = async (
@@ -246,8 +285,21 @@ const updateShipmentInvestmentCostShare = async (payload: {
   id: number
   cost_share_pct: number
 }): Promise<ShipmentInvestment> => {
-  const { data, error } = await supabase.rpc('update_shipment_investment_cost_share', {
-    p_shipment_investment_id: payload.id,
+  const { data: current } = await supabase
+    .from('shipment_investments')
+    .select('global_shipment_id, tenant_id, investor_id')
+    .eq('id', payload.id)
+    .single()
+
+  if (!current) {
+    throw new Error('Investment not found')
+  }
+
+  const { data, error } = await supabase.rpc('upsert_shipment_investment', {
+    p_id: payload.id,
+    p_tenant_id: current.tenant_id,
+    p_global_shipment_id: current.global_shipment_id,
+    p_investor_id: current.investor_id,
     p_cost_share_pct: payload.cost_share_pct,
   })
 

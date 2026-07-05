@@ -59,7 +59,7 @@
           </thead>
           <tbody>
             <tr v-if="!investorStore.shipmentInvestments.length">
-              <td colspan="8" class="text-center text-grey-7">No shipment investments found.</td>
+              <td colspan="9" class="text-center text-grey-7">No shipment investments found.</td>
             </tr>
             <tr v-for="(row, index) in investorStore.shipmentInvestments" :key="row.id">
               <td>{{ index + 1 }}</td>
@@ -93,7 +93,7 @@
     <q-dialog v-model="openDialog" persistent>
       <q-card style="min-width: 380px; max-width: 95vw">
         <q-card-section>
-          <div class="text-h6">Add Shipment Investment</div>
+          <div class="text-h6">Add/Edit Shipment Investment</div>
           <div class="text-body2 text-grey-7 q-mt-xs">Investor: {{ selectedInvestorName }}</div>
         </q-card-section>
         <q-card-section>
@@ -140,10 +140,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvestorStore } from '../stores/investorStore'
+import { useInvestorStore } from 'src/modules/investor/stores/investorStore'
 import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
 import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
-import type { ShipmentInvestment } from '../types'
+import type { ShipmentInvestment } from 'src/modules/investor/types'
 import { formatAmountBdt } from 'src/utils/currency'
 
 const route = useRoute()
@@ -216,6 +216,7 @@ const openAddDialog = (investorId: number, investorName: string) => {
   selectedInvestorId.value = investorId
   selectedInvestorName.value = investorName
   investedAmount.value = null
+  costSharePct.value = null
   openDialog.value = true
 }
 
@@ -300,7 +301,7 @@ const load = async () => {
 
 const onBack = async () => {
   await router.push({
-    name: 'app-investor-shipment-page',
+    name: 'app-capital-shipments-page',
     params: { tenantSlug: route.params.tenantSlug },
   })
 }

@@ -97,9 +97,9 @@ import { storeToRefs } from 'pinia'
 import type { QTableColumn } from 'quasar'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import InvestorProfileDialog from '../components/InvestorProfileDialog.vue'
-import { useInvestorStore } from '../stores/investorStore'
-import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from '../types'
+import InvestorProfileDialog from '../../components/InvestorProfileDialog.vue'
+import { useInvestorStore } from 'src/modules/investor/stores/investorStore'
+import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from 'src/modules/investor/types'
 import { formatAmountBdt } from 'src/utils/currency'
 
 const authStore = useAuthStore()

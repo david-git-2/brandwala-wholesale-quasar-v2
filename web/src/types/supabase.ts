@@ -2217,51 +2217,6 @@ export type Database = {
           },
         ]
       }
-      investor_accounts: {
-        Row: {
-          created_at: string
-          email: string
-          id: number
-          investor_id: number
-          is_active: boolean
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: number
-          investor_id: number
-          is_active?: boolean
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: number
-          investor_id?: number
-          is_active?: boolean
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "investor_accounts_investor_id_fkey"
-            columns: ["investor_id"]
-            isOneToOne: true
-            referencedRelation: "investors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "investor_accounts_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       investor_balances: {
         Row: {
           available_balance: number
@@ -2374,9 +2329,12 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          currency_code: string
           email: string | null
           id: number
+          is_active: boolean
           name: string
+          notes: string | null
           phone: string | null
           tenant_id: number
           updated_at: string
@@ -2384,9 +2342,12 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          currency_code?: string
           email?: string | null
           id?: number
+          is_active?: boolean
           name: string
+          notes?: string | null
           phone?: string | null
           tenant_id: number
           updated_at?: string
@@ -2394,9 +2355,12 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          currency_code?: string
           email?: string | null
           id?: number
+          is_active?: boolean
           name?: string
+          notes?: string | null
           phone?: string | null
           tenant_id?: number
           updated_at?: string
@@ -3252,6 +3216,7 @@ export type Database = {
           created_at: string
           email: string
           id: number
+          investor_id: number | null
           is_active: boolean
           preference: Json
           role: Database["public"]["Enums"]["app_role"]
@@ -3263,6 +3228,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: number
+          investor_id?: number | null
           is_active?: boolean
           preference?: Json
           role: Database["public"]["Enums"]["app_role"]
@@ -3274,6 +3240,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: number
+          investor_id?: number | null
           is_active?: boolean
           preference?: Json
           role?: Database["public"]["Enums"]["app_role"]
@@ -3281,6 +3248,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "memberships_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "investors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "memberships_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -4078,11 +4052,12 @@ export type Database = {
           computed_profit: number
           cost_share_pct: number | null
           created_at: string
+          global_shipment_id: number | null
           id: number
           invested_amount: number
           investor_id: number
           profit_status: string
-          shipment_id: number
+          shipment_id: number | null
           status: Database["public"]["Enums"]["shipment_investment_status"]
           tenant_id: number
           updated_at: string
@@ -4093,11 +4068,12 @@ export type Database = {
           computed_profit?: number
           cost_share_pct?: number | null
           created_at?: string
+          global_shipment_id?: number | null
           id?: number
           invested_amount?: number
           investor_id: number
           profit_status?: string
-          shipment_id: number
+          shipment_id?: number | null
           status?: Database["public"]["Enums"]["shipment_investment_status"]
           tenant_id: number
           updated_at?: string
@@ -4108,16 +4084,24 @@ export type Database = {
           computed_profit?: number
           cost_share_pct?: number | null
           created_at?: string
+          global_shipment_id?: number | null
           id?: number
           invested_amount?: number
           investor_id?: number
           profit_status?: string
-          shipment_id?: number
+          shipment_id?: number | null
           status?: Database["public"]["Enums"]["shipment_investment_status"]
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shipment_investments_global_shipment_id_fkey"
+            columns: ["global_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shipment_investments_investor_id_fkey"
             columns: ["investor_id"]
@@ -6033,6 +6017,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      auth_investor_id: { Args: never; Returns: number }
       bulk_add_shipment_items_from_product_ids: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
@@ -6854,6 +6839,19 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_investor_capital_report: {
+        Args: {
+          p_end_date: string
+          p_investor_id: number
+          p_start_date: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_investor_dashboard_summary: {
+        Args: { p_investor_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_investor_portfolio_summary: {
         Args: { p_investor_id: number }
         Returns: Json
@@ -7443,6 +7441,70 @@ export type Database = {
         }
         Returns: Json
       }
+      list_investor_allocations: {
+        Args: {
+          p_investor_id: number
+          p_limit?: number
+          p_offset?: number
+          p_tenant_id: number
+        }
+        Returns: {
+          allocated_cost: number
+          computed_profit: number
+          cost_share_pct: number
+          created_at: string
+          global_shipment_id: number
+          id: number
+          profit_status: string
+          shipment_name: string
+          shipment_status: string
+          total_count: number
+        }[]
+      }
+      list_investor_profiles: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          address: string
+          available_balance: number
+          created_at: string
+          currency_code: string
+          deployed_capital: number
+          email: string
+          id: number
+          is_active: boolean
+          name: string
+          notes: string
+          phone: string
+          tenant_id: number
+          total_capital_in: number
+          total_count: number
+          total_withdrawn: number
+          updated_at: string
+        }[]
+      }
+      list_investor_transactions: {
+        Args: {
+          p_investor_id: number
+          p_limit?: number
+          p_offset?: number
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note: string
+          total_count: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+        }[]
+      }
       list_invoice_margin_report: {
         Args: {
           p_end_date?: string
@@ -7880,6 +7942,90 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      record_investor_capital_adjustment: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_investor_id: number
+          p_method: Database["public"]["Enums"]["investor_payment_method"]
+          p_note: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          investor_id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note: string | null
+          tenant_id: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "investor_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_investor_capital_in: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_investor_id: number
+          p_method: Database["public"]["Enums"]["investor_payment_method"]
+          p_note: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          investor_id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note: string | null
+          tenant_id: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "investor_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_investor_withdrawal_paid: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_investor_id: number
+          p_method: Database["public"]["Enums"]["investor_payment_method"]
+          p_note: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          date: string
+          id: number
+          investor_id: number
+          method: Database["public"]["Enums"]["investor_payment_method"]
+          note: string | null
+          tenant_id: number
+          type: Database["public"]["Enums"]["investor_transaction_type"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "investor_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_recipient_invoice_collection: {
         Args: { p_amount: number; p_global_invoice_id: number; p_note?: string }
         Returns: {
@@ -7966,7 +8112,7 @@ export type Database = {
         Returns: number
       }
       refresh_shipment_investor_profits: {
-        Args: { p_shipment_id: number }
+        Args: { p_global_shipment_id: number }
         Returns: Json
       }
       register_thrift_stock_from_app:
@@ -8442,11 +8588,12 @@ export type Database = {
           computed_profit: number
           cost_share_pct: number | null
           created_at: string
+          global_shipment_id: number | null
           id: number
           invested_amount: number
           investor_id: number
           profit_status: string
-          shipment_id: number
+          shipment_id: number | null
           status: Database["public"]["Enums"]["shipment_investment_status"]
           tenant_id: number
           updated_at: string
@@ -8572,6 +8719,69 @@ export type Database = {
         }
         Returns: Json
       }
+      upsert_investor_profile: {
+        Args: {
+          p_address: string
+          p_currency_code: string
+          p_email: string
+          p_id: number
+          p_is_active: boolean
+          p_name: string
+          p_notes: string
+          p_phone: string
+          p_tenant_id: number
+        }
+        Returns: {
+          address: string | null
+          created_at: string
+          currency_code: string
+          email: string | null
+          id: number
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "investors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_shipment_investment: {
+        Args: {
+          p_cost_share_pct: number
+          p_global_shipment_id: number
+          p_id: number
+          p_investor_id: number
+          p_tenant_id: number
+        }
+        Returns: {
+          actual_profit: number
+          allocated_cost: number
+          computed_profit: number
+          cost_share_pct: number | null
+          created_at: string
+          global_shipment_id: number | null
+          id: number
+          invested_amount: number
+          investor_id: number
+          profit_status: string
+          shipment_id: number | null
+          status: Database["public"]["Enums"]["shipment_investment_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_investments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       user_can_access_tenant_fetch: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -8613,7 +8823,15 @@ export type Database = {
       global_shipment_type: "domestic" | "international"
       global_source_module: "wholesale" | "retail" | "commerce"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
-      investor_transaction_type: "deposit" | "withdrawal" | "profit_payout"
+      investor_transaction_type:
+        | "deposit"
+        | "withdrawal"
+        | "profit_payout"
+        | "capital_in"
+        | "capital_adjustment"
+        | "withdrawal_paid"
+        | "profit_reinvest"
+        | "manual_adjustment"
       invoice_charge_type: "cod" | "packing" | "print" | "delivery" | "other"
       koba_order_status:
         | "pending"
@@ -8806,7 +9024,16 @@ export const Constants = {
       global_shipment_type: ["domestic", "international"],
       global_source_module: ["wholesale", "retail", "commerce"],
       investor_payment_method: ["cash", "bank", "mobile_banking", "other"],
-      investor_transaction_type: ["deposit", "withdrawal", "profit_payout"],
+      investor_transaction_type: [
+        "deposit",
+        "withdrawal",
+        "profit_payout",
+        "capital_in",
+        "capital_adjustment",
+        "withdrawal_paid",
+        "profit_reinvest",
+        "manual_adjustment",
+      ],
       invoice_charge_type: ["cod", "packing", "print", "delivery", "other"],
       koba_order_status: [
         "pending",

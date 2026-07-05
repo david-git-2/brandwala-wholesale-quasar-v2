@@ -74,6 +74,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: ['view'],
     parent_dashboard: ['view'],
     investor_reports: ['view'],
+    investor_capital: NO_ACCESS,
+    investor_profiles: ['view'],
+    investor_capital_ledger: ['view'],
+    investor_shipment_share: ['view'],
   },
   admin: {
     order_management: ['view'],
@@ -131,6 +135,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: ['view'],
     parent_dashboard: ['view'],
     investor_reports: ['view'],
+    investor_capital: NO_ACCESS,
+    investor_profiles: ['view'],
+    investor_capital_ledger: ['view'],
+    investor_shipment_share: ['view'],
   },
   staff: {
     order_management: ['view'],
@@ -188,6 +196,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: ['view'],
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: ['view'],
+    investor_capital_ledger: ['view'],
+    investor_shipment_share: ['view'],
   },
   viewer: {
     order_management: NO_ACCESS,
@@ -245,6 +257,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: NO_ACCESS,
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: NO_ACCESS,
+    investor_capital_ledger: NO_ACCESS,
+    investor_shipment_share: NO_ACCESS,
   },
   customer_admin: {
     order_management: ['view'],
@@ -302,6 +318,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: NO_ACCESS,
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: NO_ACCESS,
+    investor_capital_ledger: NO_ACCESS,
+    investor_shipment_share: NO_ACCESS,
   },
   customer_negotiator: {
     order_management: ['view'],
@@ -359,6 +379,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: NO_ACCESS,
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: NO_ACCESS,
+    investor_capital_ledger: NO_ACCESS,
+    investor_shipment_share: NO_ACCESS,
   },
   customer_staff: {
     order_management: ['view'],
@@ -416,6 +440,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: NO_ACCESS,
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: NO_ACCESS,
+    investor_capital_ledger: NO_ACCESS,
+    investor_shipment_share: NO_ACCESS,
   },
   investor_portal: {
     order_management: NO_ACCESS,
@@ -473,6 +501,10 @@ const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
     billing_balances: NO_ACCESS,
     parent_dashboard: NO_ACCESS,
     investor_reports: NO_ACCESS,
+    investor_capital: NO_ACCESS,
+    investor_profiles: NO_ACCESS,
+    investor_capital_ledger: NO_ACCESS,
+    investor_shipment_share: NO_ACCESS,
   },
 }
 
@@ -556,7 +588,15 @@ export const canAccessModule = ({
   const allowedActions = getAllowedModuleActions(role, moduleKey)
   const roleAllowed = allowedActions.includes(action)
 
-  if (moduleKey === 'global_shipment' || moduleKey === 'global_stock') {
+  if (
+    moduleKey === 'global_shipment' ||
+    moduleKey === 'global_stock' ||
+    moduleKey === 'investor_capital' ||
+    moduleKey === 'investor_profiles' ||
+    moduleKey === 'investor_capital_ledger' ||
+    moduleKey === 'investor_shipment_share' ||
+    moduleKey === 'investor_portal'
+  ) {
     const tenantStore = useTenantStore()
     const current =
       tenantStore.selectedTenant ??
@@ -604,7 +644,15 @@ export const resolveModuleAccess = ({
   const roleAllowed = allowedActions.includes(action)
 
   let isBlockedByChildStatus = false
-  if (moduleKey === 'global_shipment' || moduleKey === 'global_stock') {
+  if (
+    moduleKey === 'global_shipment' ||
+    moduleKey === 'global_stock' ||
+    moduleKey === 'investor_capital' ||
+    moduleKey === 'investor_profiles' ||
+    moduleKey === 'investor_capital_ledger' ||
+    moduleKey === 'investor_shipment_share' ||
+    moduleKey === 'investor_portal'
+  ) {
     const tenantStore = useTenantStore()
     const current =
       tenantStore.selectedTenant ??

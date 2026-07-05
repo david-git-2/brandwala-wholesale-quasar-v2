@@ -96,7 +96,7 @@ import type { QTableColumn } from 'quasar'
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import InvestorProfileDialog from 'src/modules/investor/components/InvestorProfileDialog.vue'
+import InvestorProfileDialog from 'src/modules/investor_capital/components/InvestorProfileDialog.vue'
 import { useInvestorStore } from 'src/modules/investor/stores/investorStore'
 import type { Investor, InvestorCreateInput, InvestorDeleteInput, InvestorUpdateInput } from 'src/modules/investor/types'
 import { formatAmountBdt } from 'src/utils/currency'
