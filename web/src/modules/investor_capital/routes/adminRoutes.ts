@@ -73,6 +73,38 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/investors/profile',
+    redirect: (to) => ({
+      name: 'app-capital-profiles-page',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: guard('investor_profiles'),
+  },
+  {
+    path: '/:tenantSlug?/app/investors/transactions',
+    redirect: (to) => ({
+      name: 'app-capital-ledger-page',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: guard('investor_capital_ledger'),
+  },
+  {
+    path: '/:tenantSlug?/app/investors/shipments',
+    redirect: (to) => ({
+      name: 'app-capital-shipments-page',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: guard('investor_shipment_share'),
+  },
+  {
+    path: '/:tenantSlug?/app/investors/shipments/:id',
+    redirect: (to) => ({
+      name: 'app-capital-shipment-details-page',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+    }),
+    beforeEnter: guard('investor_shipment_share'),
+  },
 ]
 
 export default investorCapitalAdminRoutes

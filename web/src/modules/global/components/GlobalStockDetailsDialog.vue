@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { InventoryItemWithStock } from 'src/modules/inventory/types'
+import type { InventoryItemWithStock } from '../types'
 
 const props = defineProps<{
   modelValue: boolean

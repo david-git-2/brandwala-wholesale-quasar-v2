@@ -121,6 +121,23 @@ const shopRoutes: RouteRecordRaw[] = [
       return `${tenantSlug}/shop${subPath}`
     },
   },
+  {
+    path: '/:tenantSlug?/shop/commerce-shop/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      const subPath = to.params.catchAll
+        ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
+        : ''
+      return `${tenantSlug}/shop${subPath}`
+    },
+  },
+  {
+    path: '/:tenantSlug?/shop/stores/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      return `${tenantSlug}/app/shop/shops`
+    },
+  },
 ]
 
 export default shopRoutes

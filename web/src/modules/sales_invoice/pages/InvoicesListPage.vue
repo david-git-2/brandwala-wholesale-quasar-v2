@@ -203,11 +203,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import { formatAmountBdt } from 'src/utils/currency'
 
-import CreateGlobalInvoiceDialog from 'src/modules/global/components/CreateGlobalInvoiceDialog.vue'
-import CreateRetailInvoiceDialog from 'src/modules/global/components/CreateRetailInvoiceDialog.vue'
-import CreateDropshipInvoiceDialog from 'src/modules/global/components/CreateDropshipInvoiceDialog.vue'
+import CreateGlobalInvoiceDialog from '../components/CreateGlobalInvoiceDialog.vue'
+import CreateRetailInvoiceDialog from '../components/CreateRetailInvoiceDialog.vue'
+import CreateDropshipInvoiceDialog from '../components/CreateDropshipInvoiceDialog.vue'
 import { useInvoiceStore } from '../stores/invoiceStore'
-import type { GlobalInvoiceCreated, GlobalInvoiceRow } from 'src/modules/global/types'
+import type { GlobalInvoiceCreated, GlobalInvoiceRow } from '../types'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()

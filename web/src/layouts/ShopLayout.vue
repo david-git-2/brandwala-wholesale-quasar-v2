@@ -46,15 +46,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useCartStore } from 'src/modules/cart/stores/cartStore'
-import { useCommerceCartStore } from 'src/modules/commerce_cart/stores/commerceCartStore'
+import { useShopCartStore } from 'src/modules/shop_order/stores/shopCartStore'
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
-import { canAccessModule } from 'src/modules/navigation/modulePermissions'
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
 
 const authStore = useAuthStore()
-const cartStore = useCartStore()
-const commerceCartStore = useCommerceCartStore()
+const shopCartStore = useShopCartStore()
 const kobaCartStore = useKobaCartStore()
 const router = useRouter()
 const route = useRoute()
@@ -73,39 +70,14 @@ const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount
   }
-  if (isCommerceCartActive.value) {
-    return commerceCartStore.items.length
-  }
-  return cartStore.items.length
+  return shopCartStore.itemCount
 })
-
-const isCommerceCartActive = computed(() =>
-  canAccessModule({
-    scope: authStore.scope,
-    tenantId: authStore.tenantId,
-    customerGroupId: authStore.customerGroupId,
-    role: authStore.matchedRole,
-    moduleKey: 'commerce_cart',
-    activeModuleKeys: authStore.activeModuleKeys,
-  }),
-)
-
-const isStandardCartActive = computed(() =>
-  canAccessModule({
-    scope: authStore.scope,
-    tenantId: authStore.tenantId,
-    customerGroupId: authStore.customerGroupId,
-    role: authStore.matchedRole,
-    moduleKey: 'cart',
-    activeModuleKeys: authStore.activeModuleKeys,
-  }),
-)
 
 const canShowCartIcon = computed(() => {
   if (isKobaActive.value) {
     return true
   }
-  return isCommerceCartActive.value || isStandardCartActive.value
+  return true
 })
 
 
@@ -136,25 +108,14 @@ const goToCart = async () => {
     return
   }
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  if (isCommerceCartActive.value) {
-    await router.push(`${tenantPrefix}/shop/commerce-shop/cart`)
-  } else {
-    await router.push(`${tenantPrefix}/shop/cart`)
-  }
+  await router.push(`${tenantPrefix}/shop/cart`)
 }
 
 onMounted(() => {
   if (authStore.tenantId) {
-    if (isCommerceCartActive.value) {
-      void commerceCartStore.fetchItemsForContext({
-        tenant_id: authStore.tenantId,
-        customer_group_id: authStore.customerGroupId,
-      })
-    } else {
-      void cartStore.fetchItemsForContext({
-        tenant_id: authStore.tenantId,
-        customer_group_id: authStore.customerGroupId,
-      })
+    const lastVisitedShopId = localStorage.getItem('last_visited_shop_id')
+    if (lastVisitedShopId) {
+      void shopCartStore.fetchCart(Number(lastVisitedShopId))
     }
   }
   if (isKobaActive.value) {

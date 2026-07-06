@@ -28,7 +28,7 @@ import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrin
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/global/types'
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
 
 const route = useRoute()
 const loading = ref(true)

@@ -118,114 +118,6 @@ export type GlobalStockRow = {
   total_qty: number
 }
 
-export type GlobalInvoiceRow = {
-  id: number
-  tenant_id: number
-  parent_tenant_id: number
-  invoice_no: string
-  invoice_type: string
-  invoice_status: string
-  payment_status: string
-  invoice_date: string
-  total_amount: number
-  due_amount: number
-  paid_amount: number
-  billing_profile_id?: number | null
-  billing_profile_name?: string | null
-  recipient_name?: string | null
-}
-
-export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship'
-export type InvoiceCollectionSource = 'billing_profile' | 'recipient'
-
-export type CreateGlobalInvoiceInput = {
-  tenant_id: number
-  invoice_no: string
-  billing_profile_id?: number | null
-  invoice_type?: GlobalInvoiceType
-  recipient_profile_id?: number | null
-  recipient_name?: string | null
-  recipient_phone?: string | null
-  recipient_address?: string | null
-  recipient_party_id?: number | null
-  retail_billing_mode?: 'account' | 'direct' | null
-  due_date?: string | null
-  middle_man_payout_amount?: number | null
-  note?: string | null
-}
-
-
-export type GlobalInvoiceCreated = GlobalInvoiceRow & {
-  note: string | null
-  customer_group_id: number | null
-  billing_profile_id: number | null
-  recipient_party_id: number | null
-  recipient_name: string | null
-  recipient_phone: string | null
-  recipient_address: string | null
-  source_module: string
-  sold_in_tenant_id: number | null
-  subtotal_amount: number
-  discount_amount: number
-}
-
-export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
-  ordered_by_party_id: number | null
-  face_subtotal_amount?: number
-  accounting_subtotal_amount?: number
-  collection_source?: InvoiceCollectionSource | null
-  middle_man_payout_amount?: number
-  middle_man_payout_status?: string | null
-  shipping_charge: number
-  cod_charge: number
-  wrapping_charge: number
-  print_charge: number
-  recipient_phone: string | null
-  recipient_address: string | null
-  billing_profiles?: {
-    id: number
-    name: string
-    email: string | null
-    phone: string | null
-    address: string | null
-    color: string | null
-  } | null
-}
-
-export type GlobalInvoiceItemRow = {
-  id: number
-  invoice_id: number
-  global_stock_id: number
-  name_snapshot: string
-  quantity: number
-  cost_amount: number
-  sell_price_amount: number
-  recipient_price_amount?: number | null
-  line_face_total_amount?: number | null
-  line_discount_amount: number
-  line_total_amount: number
-  return_quantity: number
-}
-
-export type InvoiceChargeLineRow = {
-  id: number
-  invoice_id: number
-  charge_type: string
-  amount: number
-  note: string | null
-}
-
-export type BusinessPartyRow = {
-  id: number
-  tenant_id: number
-  parent_tenant_id: number
-  name: string
-  party_type: string
-  phone: string | null
-  email: string | null
-  address: string | null
-  is_active: boolean
-}
 
 export type GlobalLedgerRow = {
   id: number
@@ -298,4 +190,54 @@ export type GlobalShipmentInvestmentRow = {
   computed_profit: number
   profit_status: string
   status: string
+}
+
+export type Shipment = {
+  id: number
+  name: string
+  status?: string | null
+  tenant_shipment_id?: number | null
+}
+
+export type InventoryItemWithStock = {
+  id: number
+  tenant_id: number
+  source_type: string
+  source_id: number | null
+  product_id: number | null
+  name: string
+  image_url: string | null
+  cost: number
+  barcode: string | null
+  product_code: string | null
+  manufacturing_date: string | null
+  expire_date: string | null
+  status: string
+  created_at: string
+  updated_at: string
+  stock: {
+    id: number
+    inventory_item_id: number
+    available_quantity: number
+    reserved_quantity: number
+    damaged_quantity: number
+    stolen_quantity: number
+    expired_quantity: number
+    open_box_quantity: number
+    created_at: string
+    updated_at: string
+  }
+  shipment: {
+    shipment_item: null
+    shipment: Record<string, unknown>
+  } | null
+  quantities: {
+    available: number
+    usable: number
+    reserved: number
+    damaged: number
+    stolen: number
+    expired: number
+    open_box: number
+  }
 }

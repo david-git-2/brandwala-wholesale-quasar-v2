@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type { InvoiceBrand, CreateInvoiceBrandInput } from '../repositories/invoiceRepository'
-import type { CreateGlobalInvoiceInput, GlobalInvoiceCreated, GlobalInvoiceRow } from 'src/modules/global/types'
+import type { CreateGlobalInvoiceInput, GlobalInvoiceCreated, GlobalInvoiceRow } from '../types'
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
 
 type InvoiceStoreState = {

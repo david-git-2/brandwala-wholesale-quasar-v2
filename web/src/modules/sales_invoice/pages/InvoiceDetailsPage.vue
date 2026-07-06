@@ -456,8 +456,9 @@ import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
-import NetworkStockSearchPanel from 'src/modules/global/components/NetworkStockSearchPanel.vue'
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, StockNetworkRow } from 'src/modules/global/types'
+import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
+import type { StockNetworkRow } from 'src/modules/global/types'
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
 
 const route = useRoute()
 const router = useRouter()

@@ -31,10 +31,10 @@ import { computed, ref } from 'vue'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import type { InventoryItemWithStock } from 'src/modules/inventory/types'
+import type { InventoryItemWithStock } from '../types'
 
 import GlobalStockDetailsDialog from './GlobalStockDetailsDialog.vue'
-import NetworkStockSearchPanel from './NetworkStockSearchPanel.vue'
+import NetworkStockSearchPanel from 'src/modules/sales_invoice/components/NetworkStockSearchPanel.vue'
 import type { StockNetworkRow } from '../types'
 import { mapStockNetworkToInventoryView } from '../utils/mapStockNetworkRow'
 

@@ -1,20 +1,13 @@
 import { supabase } from 'src/boot/supabase'
 
 import type {
-  BusinessPartyRow,
-  CreateGlobalInvoiceInput,
   GlobalInvoiceAccountingRow,
-  GlobalInvoiceCreated,
-  GlobalInvoiceDetail,
-  GlobalInvoiceItemRow,
-  GlobalInvoiceRow,
   GlobalLedgerRow,
   GlobalShipmentLedgerEntry,
   GlobalShipmentAccountingRow,
   GlobalShipmentInvestmentRow,
   GlobalStockListPage,
   GlobalStockListQuery,
-  InvoiceChargeLineRow,
   ParentCashCirculation,
   StockNetworkPage,
   StockNetworkQuery,
@@ -22,6 +15,15 @@ import type {
   AllocationReconciliationRow,
   ChildStockAllocationRow,
 } from '../types'
+import type {
+  BusinessPartyRow,
+  CreateGlobalInvoiceInput,
+  GlobalInvoiceCreated,
+  GlobalInvoiceDetail,
+  GlobalInvoiceItemRow,
+  GlobalInvoiceRow,
+  InvoiceChargeLineRow,
+} from 'src/modules/sales_invoice/types'
 import { mapStockNetworkToGlobalStockRow } from '../utils/mapStockNetworkRow'
 
 const sanitizePage = (value: number | undefined, fallback: number) => {
@@ -181,16 +183,6 @@ const listGlobalInvoiceItems = async (invoiceId: number): Promise<GlobalInvoiceI
   return (data as GlobalInvoiceItemRow[] | null) ?? []
 }
 
-const listInvoiceChargeLines = async (invoiceId: number): Promise<InvoiceChargeLineRow[]> => {
-  const { data, error } = await supabase
-    .from('invoice_charge_lines')
-    .select('id, invoice_id, charge_type, amount, note')
-    .eq('invoice_id', invoiceId)
-
-  if (error) throw error
-  return (data as InvoiceChargeLineRow[] | null) ?? []
-}
-
 
 const addGlobalInvoiceItem = async (payload: {
   invoice_id: number
@@ -283,26 +275,6 @@ const addGlobalReturnItem = async (payload: {
   })
   if (error) throw error
   return data
-}
-
-const listBusinessParties = async (
-  parentTenantId: number,
-  tenantId?: number | null,
-): Promise<BusinessPartyRow[]> => {
-  let query = supabase
-    .from('business_parties')
-    .select('id, tenant_id, parent_tenant_id, name, party_type, phone, email, address, is_active')
-    .eq('parent_tenant_id', parentTenantId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
-  }
-
-  const { data, error } = await query
-  if (error) throw error
-  return (data as BusinessPartyRow[] | null) ?? []
 }
 
 
@@ -476,13 +448,11 @@ export const globalRepository = {
   createGlobalInvoice,
   getGlobalInvoiceById,
   listGlobalInvoiceItems,
-  listInvoiceChargeLines,
   addGlobalInvoiceItem,
   recordBillingProfilePayment,
   recordRecipientInvoiceCollection,
   createMiddleManPayout,
   addGlobalReturnItem,
-  listBusinessParties,
   getGlobalInvoicesPaidAmounts,
   getParentCashCirculation,
   listGlobalShipmentInvestments,

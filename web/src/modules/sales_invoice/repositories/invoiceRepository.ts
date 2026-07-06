@@ -1,13 +1,11 @@
 import { supabase } from 'src/boot/supabase'
 import type {
-  BusinessPartyRow,
   CreateGlobalInvoiceInput,
   GlobalInvoiceCreated,
   GlobalInvoiceDetail,
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
-  InvoiceChargeLineRow,
-} from 'src/modules/global/types'
+} from '../types'
 
 const listGlobalInvoices = async (parentTenantId: number): Promise<GlobalInvoiceRow[]> => {
   const { data, error } = await supabase
@@ -84,15 +82,6 @@ const listGlobalInvoiceItems = async (invoiceId: number): Promise<GlobalInvoiceI
   return (data as GlobalInvoiceItemRow[] | null) ?? []
 }
 
-const listInvoiceChargeLines = async (invoiceId: number): Promise<InvoiceChargeLineRow[]> => {
-  const { data, error } = await supabase
-    .from('invoice_charge_lines')
-    .select('id, invoice_id, charge_type, amount, note')
-    .eq('invoice_id', invoiceId)
-
-  if (error) throw error
-  return (data as InvoiceChargeLineRow[] | null) ?? []
-}
 
 const addGlobalInvoiceItem = async (payload: {
   invoice_id: number
@@ -259,25 +248,6 @@ const deleteGlobalInvoice = async (invoiceId: number): Promise<void> => {
   if (error) throw error
 }
 
-const listBusinessParties = async (
-  parentTenantId: number,
-  tenantId?: number | null,
-): Promise<BusinessPartyRow[]> => {
-  let query = supabase
-    .from('business_parties')
-    .select('id, tenant_id, parent_tenant_id, name, party_type, phone, email, address, is_active')
-    .eq('parent_tenant_id', parentTenantId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-
-  if (typeof tenantId === 'number') {
-    query = query.eq('tenant_id', tenantId)
-  }
-
-  const { data, error } = await query
-  if (error) throw error
-  return (data as BusinessPartyRow[] | null) ?? []
-}
 
 export type InvoiceBrand = {
   id: number
@@ -327,7 +297,6 @@ export const invoiceRepository = {
   createGlobalInvoice,
   getGlobalInvoiceById,
   listGlobalInvoiceItems,
-  listInvoiceChargeLines,
   addGlobalInvoiceItem,
   recordBillingProfilePayment,
   recordRecipientInvoiceCollection,
@@ -339,7 +308,6 @@ export const invoiceRepository = {
   postGlobalInvoice,
   voidGlobalInvoice,
   deleteGlobalInvoice,
-  listBusinessParties,
   listInvoiceBrands,
   createInvoiceBrand,
   updateInvoiceBrand,

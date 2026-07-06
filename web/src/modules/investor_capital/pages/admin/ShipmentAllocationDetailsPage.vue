@@ -12,11 +12,11 @@
       />
     </div>
 
-    <div v-if="shipmentStore.selectedShipment" class="q-mb-md">
+    <div v-if="shipmentStore.currentShipment" class="q-mb-md">
       <div class="text-h6 text-weight-bold">
-        #{{ shipmentStore.selectedShipment.tenant_shipment_id ?? shipmentStore.selectedShipment.id }} {{ shipmentStore.selectedShipment.name }}
+        #{{ shipmentStore.currentShipment.tenant_shipment_id ?? shipmentStore.currentShipment.id }} {{ shipmentStore.currentShipment.name }}
       </div>
-      <div class="text-body2 text-grey-8">Status: {{ shipmentStore.selectedShipment.status }}</div>
+      <div class="text-body2 text-grey-8">Status: {{ shipmentStore.currentShipment.status }}</div>
       <div class="text-body2 text-grey-8">Total Shipment Cost (BDT): {{ formatAmount(totalShipmentCost) }}</div>
     </div>
 
@@ -48,14 +48,16 @@
               <td colspan="3" class="text-center text-grey-7">No investors found.</td>
             </tr>
             <tr v-for="investor in capitalStore.investors" :key="investor.investor_id">
-              <td>{{ investor.name }}</td>
-              <td class="text-right">{{ formatAmount(investor.available_balance) }}</td>
+              <td class="text-left">{{ investor.name }}</td>
+              <td class="text-right">BDT {{ formatAmount(investor.balance) }}</td>
               <td class="text-right">
                 <q-btn
                   color="primary"
-                  size="sm"
-                  label="Add Share"
-                  :disable="parentRemainderPct <= 0 || hasExistingInvestment(investor.investor_id)"
+                  label="Allocate"
+                  dense
+                  flat
+                  no-caps
+                  :disabled="hasExistingInvestment(investor.investor_id) || parentRemainderPct <= 0"
                   @click="openAddDialog(investor)"
                 />
               </td>
@@ -68,12 +70,12 @@
         <q-markup-table flat bordered wrap-cells>
           <thead>
             <tr>
-              <th class="text-left">SL</th>
               <th class="text-left">Investor</th>
-              <th class="text-right">Cost Share %</th>
-              <th class="text-right">Allocated cost</th>
-              <th class="text-right">Computed profit</th>
-              <th class="text-left">Status</th>
+              <th class="text-right">Cost Share</th>
+              <th class="text-right">Profit Share</th>
+              <th class="text-right">Allocated Cost</th>
+              <th class="text-right">Realized Profit</th>
+              <th class="text-right">Status</th>
               <th class="text-right">Action</th>
             </tr>
           </thead>
@@ -81,22 +83,26 @@
             <tr v-if="!capitalStore.shipmentInvestments.length">
               <td colspan="7" class="text-center text-grey-7">No shipment investments found.</td>
             </tr>
-            <tr v-for="(row, index) in capitalStore.shipmentInvestments" :key="row.id">
-              <td>{{ index + 1 }}</td>
-              <td>{{ investorNameById(row.investor_id) }}</td>
-              <td class="text-right text-weight-bold">{{ row.cost_share_pct }}%</td>
-              <td class="text-right">{{ formatAmount(row.allocated_cost) }}</td>
-              <td class="text-right text-weight-bold text-positive">{{ formatAmount(row.computed_profit) }}</td>
-              <td>{{ row.profit_status || row.status }}</td>
+            <tr v-for="row in capitalStore.shipmentInvestments" :key="row.id">
+              <td class="text-left">{{ investorNameById(row.investor_id) }}</td>
+              <td class="text-right">{{ row.cost_share_pct }}%</td>
+              <td class="text-right">{{ row.cost_share_pct }}%</td>
+              <td class="text-right">BDT {{ formatAmount(row.allocated_cost) }}</td>
+              <td class="text-right">BDT {{ formatAmount(row.computed_profit) }}</td>
               <td class="text-right">
-                <q-btn flat round dense icon="more_vert">
-                  <q-menu auto-close>
-                    <q-list dense style="min-width: 140px">
-                      <q-item clickable v-ripple @click="openEditDialog(row)">
+                <q-badge :color="row.profit_status === 'distributed' ? 'green' : 'orange'">
+                  {{ row.profit_status }}
+                </q-badge>
+              </td>
+              <td class="text-right">
+                <q-btn flat round dense icon="more_vert" color="grey-7">
+                  <q-menu>
+                    <q-list dense style="min-width: 100px">
+                      <q-item clickable v-close-popup @click="openEditDialog(row)">
                         <q-item-section>Edit</q-item-section>
                       </q-item>
-                      <q-item clickable v-ripple @click="openDeleteDialog(row)">
-                        <q-item-section class="text-negative">Delete</q-item-section>
+                      <q-item clickable v-close-popup class="text-negative" @click="openDeleteDialog(row)">
+                        <q-item-section>Delete</q-item-section>
                       </q-item>
                     </q-list>
                   </q-menu>
@@ -141,8 +147,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
-import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
-import { calculateCostBdt } from 'src/modules/shipment/utils/costing'
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
+import { calculateLineLandedCostBdt } from 'src/modules/procurement_stock/utils/landedCost'
 import type { ShipmentInvestment } from 'src/modules/investor_capital/types'
 import { formatAmountBdt } from 'src/utils/currency'
 import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue'
@@ -151,7 +157,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const capitalStore = useInvestorCapitalStore()
-const shipmentStore = useShipmentStore()
+const shipmentStore = useGlobalShipmentStore()
 
 const activeTab = ref<'allocate' | 'investments'>('investments')
 const openDialog = ref(false)
@@ -167,20 +173,20 @@ const shipmentId = computed(() => {
 })
 
 const totalShipmentCost = computed(() => {
-  const shipment = shipmentStore.selectedShipment
-  return shipmentStore.shipmentItems.reduce((sum, item) => {
-    const unitCost = shipment && shipment.shipment_type === 'local'
-      ? Number(item.cost_bdt ?? 0)
-      : calculateCostBdt({
-          productWeight: item.product_weight,
-          packageWeight: item.package_weight,
-          cargoRate: shipment?.cargo_rate,
-          priceGbp: item.price_gbp,
-          transactionRate: shipment?.transaction_rate,
-          productConversionRate: shipment?.product_conversion_rate,
-          cargoConversionRate: shipment?.cargo_conversion_rate,
-        })
-    return sum + unitCost * Number(item.quantity ?? 0)
+  const shipment = shipmentStore.currentShipment
+  if (!shipment) return 0
+  return shipmentStore.currentShipmentItems.reduce((sum, item) => {
+    const unitCost = calculateLineLandedCostBdt(
+      {
+        purchase_price: item.purchase_price ?? 0,
+        product_weight: item.product_weight ?? 0,
+        package_weight: item.package_weight ?? 0,
+        ordered_quantity: item.ordered_quantity ?? 0,
+      },
+      shipment,
+      shipmentStore.currentShipmentItems,
+    )
+    return sum + unitCost * Number(item.ordered_quantity ?? 0)
   }, 0)
 })
 
@@ -190,6 +196,7 @@ const parentRemainderPct = computed(() => {
     (acc, item) => acc + Number(item.cost_share_pct ?? 0),
     0
   )
+
   return Math.max(0, 100 - sum)
 })
 
@@ -256,7 +263,7 @@ const load = async () => {
   if (!tenantId || !shipmentId.value) return
 
   await Promise.all([
-    shipmentStore.fetchShipmentById(shipmentId.value),
+    shipmentStore.fetchShipmentDetails(shipmentId.value),
     capitalStore.fetchInvestorsByTenant(tenantId),
     capitalStore.fetchShipmentInvestmentsByShipment(tenantId, shipmentId.value),
   ])

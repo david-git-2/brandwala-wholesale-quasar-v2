@@ -2,22 +2,10 @@ import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 
 export type ModuleKey =
   | 'order_management'
-  | 'shipment'
-  | 'inventory'
-  | 'commerce_shop'
-  | 'commerce_order'
-  | 'commerce_invoice'
-  | 'commerce_accounting'
-  | 'commerce_cart'
-  | 'investor'
   | 'vendor'
   | 'products'
   | 'product_based_costing'
   | 'costing_file'
-  | 'store'
-  | 'cart'
-  | 'accounting'
-  | 'invoice'
   | 'koba_retail'
   | 'koba_wholesale'
   | 'tasks'
@@ -37,11 +25,6 @@ export type ModuleKey =
   | 'global_shipment'
   | 'global_stock'
   | 'global_invoice'
-  | 'global_accounting_ledger'
-  | 'global_shipment_accounting'
-  | 'global_invoice_accounting'
-  | 'global_investor'
-  | 'global_investor_shipment'
   | 'investor_portal'
   | 'procurement_stock'
   | 'global_stock_type'
@@ -111,214 +94,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Build carts, place orders, and follow negotiation',
         icon: 'shopping_bag',
         routeSegment: 'orders',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'shipment',
-    name: 'Shipment',
-    description: 'Legacy shipment module key (superseded by global_shipment).',
-    routes: [],
-  },
-  {
-    key: 'inventory',
-    name: 'Tenant Stock',
-    description: 'Tenant allocated stock view and parent allocation manager. Separate from global_stock.',
-    parentModuleKey: 'procurement_stock',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Tenant Stock',
-        caption: 'Your allocated stock slices (not the global pool)',
-        icon: 'inventory_2',
-        routeSegment: 'procurement/tenant-stock',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'commerce_shop',
-    name: 'Commerce Shop',
-    description: 'Isolated commerce module using dedicated pricing and inventory summary flow.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Commerce Shop Manage',
-        caption: 'Manage commerce shop stores',
-        icon: 'storefront',
-        routeSegment: 'commerce-shop/manage-store',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Shop Access',
-        caption: 'Manage commerce shop customer-group access',
-        icon: 'lock_open',
-        routeSegment: 'commerce-shop/manage-access',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Shop Products',
-        caption: 'Manage products for commerce shop stores',
-        icon: 'inventory_2',
-        routeSegment: 'commerce-shop/store-products',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Shop Pricing',
-        caption: 'Manage prices and sell prices for store products',
-        icon: 'payments',
-        routeSegment: 'commerce-shop/pricing',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'shop',
-        title: 'Commerce Shop',
-        caption: 'Browse products in isolated commerce flow',
-        icon: 'storefront',
-        routeSegment: 'commerce-shop',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'commerce_order',
-    name: 'Commerce Order',
-    description: 'Dedicated order module for commerce shop flows.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Commerce Orders',
-        caption: 'Manage commerce orders',
-        icon: 'receipt_long',
-        routeSegment: 'commerce-shop/orders',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Order Settings',
-        caption: 'Manage default charges',
-        icon: 'settings',
-        routeSegment: 'commerce-shop/settings',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'shop',
-        title: 'Commerce Orders',
-        caption: 'Track your commerce orders',
-        icon: 'shopping_bag',
-        routeSegment: 'commerce-shop/orders',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'commerce_invoice',
-    name: 'Shop Invoice',
-    description: 'Order-generated shop invoices (wholesale and retail).',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shop Invoices',
-        caption: 'Invoices generated from B2B shop orders',
-        icon: 'description',
-        routeSegment: 'commerce-shop/invoices',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Shop Billing Profiles',
-        caption: 'Billing profiles for shop (shared with sales invoices)',
-        icon: 'badge',
-        routeSegment: 'commerce-shop/invoices/billing-profiles',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'commerce_accounting',
-    name: 'Commerce Accounting',
-    description: 'Dedicated accounting module for commerce shop workflows.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Commerce Accounting',
-        caption: 'Review commerce accounting entries',
-        icon: 'account_balance',
-        routeSegment: 'commerce-shop/accounting',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Invoice Accounting',
-        caption: 'Review commerce invoice accounting entries',
-        icon: 'request_quote',
-        routeSegment: 'commerce-shop/accounting/invoice',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Shipment Accounting',
-        caption: 'Review commerce shipment accounting details',
-        icon: 'local_shipping',
-        routeSegment: 'commerce-shop/accounting/shipment',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Commerce Stock Shipment Summary',
-        caption: 'View commerce shipment-wise totals',
-        icon: 'inventory_2',
-        routeSegment: 'commerce-shop/accounting/inventory-shipment',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'commerce_cart',
-    name: 'Commerce Cart',
-    description: 'Dedicated cart module for commerce shop workflows.',
-    routes: [
-      {
-        scope: 'shop',
-        title: 'Commerce Cart',
-        caption: 'Review and manage your commerce cart',
-        icon: 'shopping_cart',
-        routeSegment: 'commerce-shop/cart',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'investor',
-    name: 'Investor',
-    description: 'Manage investor profiles and investor transaction records.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Investor Profile',
-        caption: 'Manage investor profiles',
-        icon: 'groups',
-        routeSegment: 'investors/profile',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Investor Transaction',
-        caption: 'Manage investor transactions',
-        icon: 'sync_alt',
-        routeSegment: 'investors/transactions',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Investor Shipment',
-        caption: 'Manage shipment investments',
-        icon: 'local_shipping',
-        routeSegment: 'investors/shipments',
         requiredAction: 'view',
       },
     ],
@@ -407,98 +182,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
     ],
   },
-  {
-    key: 'accounting',
-    name: 'Accounting',
-    description: 'Handle accounting workflows tied to tenant operations.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Accounting',
-        caption: 'Review accounting workflows and financial handoff',
-        icon: 'account_balance',
-        routeSegment: 'accounting',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Invoice Accounting',
-        caption: 'Review invoice accounting entries and payments',
-        icon: 'request_quote',
-        routeSegment: 'accounting/invoice',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Customer Payments',
-        caption: 'Create customer payments and allocate across invoices',
-        icon: 'payments',
-        routeSegment: 'accounting/customer-payments',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Shipment Accounting',
-        caption: 'Review shipments and open shipment accounting details',
-        icon: 'local_shipping',
-        routeSegment: 'accounting/shipment',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Stock Shipment Summary',
-        caption: 'View shipment-wise usable, damaged, stolen, and expired accounting totals',
-        icon: 'inventory_2',
-        routeSegment: 'accounting/inventory-shipment',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'store',
-    name: 'Store',
-    description: 'Manage storefront configuration and store-level operations.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Stores',
-        caption: 'Manage tenant stores and customer access',
-        icon: 'store',
-        routeSegment: 'stores',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'shop',
-        title: 'Stores',
-        caption: 'View stores available to your customer group',
-        icon: 'storefront',
-        routeSegment: 'stores',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'cart',
-    name: 'Cart',
-    description: 'Manage customer shopping carts and line items.',
-    routes: [
-      {
-        scope: 'shop',
-        title: 'Cart',
-        caption: 'Review and manage your cart',
-        icon: 'shopping_cart',
-        routeSegment: 'cart',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'invoice',
-    name: 'Invoice (Legacy)',
-    description: 'Deprecated — use Sales Invoices (global_invoice module). Routes redirect automatically.',
-    parentModuleKey: 'sales_invoice',
-    routes: [],
-  },
+
   {
     key: 'koba_retail',
     name: 'Koba Retail',
@@ -1004,81 +688,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
     ],
   },
-  {
-    key: 'global_accounting_ledger',
-    name: 'Global Ledger',
-    description: 'Consolidated accounting ledger across sister concerns.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Global Ledger',
-        caption: 'Parent consolidated accounting',
-        icon: 'account_balance',
-        routeSegment: 'global/accounting/ledger',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'global_shipment_accounting',
-    name: 'Shipment Accounting',
-    description: 'Shipment buy/sell cost and profit summary.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shipment Accounting',
-        caption: 'Shipment P&L rollups',
-        icon: 'local_shipping',
-        routeSegment: 'global/accounting/shipments',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'global_invoice_accounting',
-    name: 'Invoice Accounting',
-    description: 'Invoice rollup including charge lines.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoice Accounting',
-        caption: 'Invoice P&L and charges',
-        icon: 'summarize',
-        routeSegment: 'global/accounting/invoices',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'global_investor',
-    name: 'Global Investor',
-    description: 'Parent-managed investor profiles and balances.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Investors',
-        caption: 'Manage investor capital',
-        icon: 'savings',
-        routeSegment: 'global/investors',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'global_investor_shipment',
-    name: 'Investor Shipment',
-    description: 'Investor cost-share per shipment.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Investor Shipments',
-        caption: 'Cost-share and profit allocation',
-        icon: 'pie_chart',
-        routeSegment: 'global/investor-shipments',
-        requiredAction: 'view',
-      },
-    ],
-  },
+
   {
     key: 'investor_portal',
     name: 'Investor Portal',
@@ -1293,15 +903,10 @@ export const GLOBAL_MODULE_KEYS = [
   'global_shipment',
   'global_stock',
   'global_invoice',
-  'global_accounting_ledger',
-  'global_shipment_accounting',
-  'global_invoice_accounting',
-  'global_investor',
-  'global_investor_shipment',
 ] as const satisfies readonly ModuleKey[]
 
 /** Top-level tenant modules — must never appear under the Global nav group. */
-export const TENANT_STOCK_MODULE_KEY = 'inventory' as const satisfies ModuleKey
+export const TENANT_STOCK_MODULE_KEY = 'global_stock' as const satisfies ModuleKey
 
 /**
  * Sidebar nav families for domain grouping only (Invoices, Commerce, …).
@@ -1309,31 +914,13 @@ export const TENANT_STOCK_MODULE_KEY = 'inventory' as const satisfies ModuleKey
  */
 export type ModuleNavFamily =
   | 'global'
-  | 'tenant_stock'
-  | 'invoice'
-  | 'accounting'
-  | 'store'
   | 'products'
-  | 'commerce_shop'
-  | 'commerce_order'
-  | 'commerce_invoice'
-  | 'commerce_accounting'
-  | 'investor'
   | 'koba_retail'
   | 'standalone'
 
 export const getModuleNavFamily = (moduleKey: ModuleKey): ModuleNavFamily => {
   if (isGlobalModuleKey(moduleKey)) return 'standalone'
-  if (moduleKey === TENANT_STOCK_MODULE_KEY) return 'tenant_stock'
-  if (moduleKey === 'invoice') return 'invoice'
-  if (moduleKey === 'accounting') return 'accounting'
-  if (moduleKey === 'store') return 'store'
   if (moduleKey === 'products') return 'products'
-  if (moduleKey === 'commerce_shop') return 'commerce_shop'
-  if (moduleKey === 'commerce_order') return 'commerce_order'
-  if (moduleKey === 'commerce_invoice') return 'commerce_invoice'
-  if (moduleKey === 'commerce_accounting') return 'commerce_accounting'
-  if (moduleKey === 'investor') return 'investor'
   if (moduleKey === 'koba_retail') return 'koba_retail'
   return 'standalone'
 }

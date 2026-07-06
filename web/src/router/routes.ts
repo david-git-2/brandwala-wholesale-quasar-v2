@@ -8,20 +8,7 @@ import membershipRoutes from 'src/modules/membership/routes';
 import globalReferenceRoutes from 'src/modules/global_reference/routes';
 import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
 import productRoutes from 'src/modules/products/routes';
-import cartRoutes from 'src/modules/cart/routes';
-import orderRoutes from 'src/modules/order/routes';
-import storeRoutes from 'src/modules/store/routes';
 import vendorRoutes from 'src/modules/vendor/routes';
-import shipmentRoutes from 'src/modules/shipment/routes';
-import inventoryRoutes from 'src/modules/inventory/routes';
-import invoiceRoutes from 'src/modules/invoice/routes';
-import accountingRoutes from 'src/modules/accounting/routes';
-import investorRoutes from 'src/modules/investor/routes';
-import commerceShopRoutes from 'src/modules/commerce_shop/routes';
-import commerceOrderRoutes from 'src/modules/commerce_order/routes';
-import commerceInvoiceRoutes from 'src/modules/commerce_invoice/routes';
-import commerceAccountingRoutes from 'src/modules/commerce_accounting/routes';
-import commerceCartRoutes from 'src/modules/commerce_cart/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
@@ -98,19 +85,6 @@ const routes: RouteRecordRaw[] = [
   ...globalReferenceRoutes,
   ...productBasedCostingRoutes,
   ...productRoutes,
-  ...cartRoutes,
-  ...orderRoutes,
-  ...shipmentRoutes,
-  ...inventoryRoutes,
-  ...accountingRoutes,
-  ...investorRoutes,
-  ...commerceShopRoutes,
-  ...commerceOrderRoutes,
-  ...commerceInvoiceRoutes,
-  ...commerceAccountingRoutes,
-  ...commerceCartRoutes,
-  ...invoiceRoutes,
-  ...storeRoutes,
   ...vendorRoutes,
   ...costingFileRoutes,
   ...membershipRoutes,
@@ -119,12 +93,12 @@ const routes: RouteRecordRaw[] = [
   ...tasksRoutes,
   ...thriftRoutes,
   ...investorPortalRoutes,
-  ...globalRoutes,
   ...procurementStockRoutes,
+  ...shopOrderRoutes,
+  ...globalRoutes,
   ...salesInvoiceRoutes,
   ...reportingTreasuryRoutes,
   ...investorCapitalAdminRoutes,
-  ...shopOrderRoutes,
 
 
   // Always leave this as last one

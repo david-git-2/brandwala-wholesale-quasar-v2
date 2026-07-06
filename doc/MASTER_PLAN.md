@@ -148,17 +148,15 @@ Full decision log: §14.3.
 
 ## 10. Implementation stages
 
-### Backend stages
-
 | Stage | Deliverables | Domain doc | Status |
 |-------|--------------|------------|--------|
 | **B1 — Foundation** | Hierarchy constraint; `seed_global_modules.sql`; registry + permissions stubs | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Done |
 | **B2 — Stock** | `global_stocks`, quantities, allocations; receive → stock; RLS | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
 | **B3 — Procurement** | Child line pull; `add_child_line_to_parent_shipment` | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
-| **B4 — Invoice & charges** | `global_invoices`, items, returns, charges; fresh-insert RPCs | [SALES_INVOICE.md](SALES_INVOICE.md) | **Not started** (provisional RPCs only; see SALES_INVOICE §17) |
-| **B5 — Reports & treasury** | Payment tables; margin report RPCs; retire ledger writes | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | **In progress** (pages exist; P1–P6 backend consolidation open) |
-| **B6 — Capital** | `investor_capital` module; shipment investments; portal bootstrap | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | **In progress** (migrations written; apply + wire remaining admin/portal) |
-| **B7 — Cleanup** | Drop legacy tables; regenerate `supabase.ts` | — | Blocked (after B4–B6 cutover) |
+| **B4 — Invoice & charges** | `global_invoices`, items, returns, charges; fresh-insert RPCs | [SALES_INVOICE.md](SALES_INVOICE.md) | Done |
+| **B5 — Reports & treasury** | Payment tables; margin report RPCs; retire ledger writes | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Mostly done |
+| **B6 — Capital** | `investor_capital` module; shipment investments; portal bootstrap | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Mostly done |
+| **B7 — Cleanup** | Drop legacy tables; regenerate `supabase.ts` | — | Blocked (cutover only) |
 | **B8 — Access grants** | `tenant_roles`, grant tables, `has_module_action`, bootstrap grants, shop permission tables; strangler RLS migration | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (after B7 + shop_order P8) |
 
 ### Frontend stages
@@ -170,9 +168,9 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **F1 — Shared UI** | `floating-surface`, `AppPageHeader`, tokens | Style guides | Done |
 | **F2 — Parent shipment** | Procurement lines → parent shipment UI | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
 | **F3 — Global stock** | Stock list, allocation manager, network search | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Done |
-| **F4 — Sales invoice** | Wholesale / retail (account + direct) / dropship; billing profiles; draft-post-void lifecycle | [SALES_INVOICE.md](SALES_INVOICE.md) | **Not started** (recipient profiles page only; desk UI still in `global/` + `invoice/`) |
-| **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | **In progress** (8 pages under `/app/finance/*`; restyle to `bw-page` + backend phases open) |
-| **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | **In progress** (profiles done; ledger + shipments + auth cutover remain) |
+| **F4 — Sales invoice** | Wholesale / retail (account + direct) / dropship; billing profiles; draft-post-void lifecycle | [SALES_INVOICE.md](SALES_INVOICE.md) | Done (global/ decouple pending) |
+| **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Mostly done |
+| **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Mostly done |
 | **F7 — Commerce retarget** | Commerce sells `global_stock_id` | §14 row 23–28 | Blocked (after `shop_order`) |
 | **F8 — Access grants UI** | Role CRUD, grant matrix, member role assignment, overrides, shop permission admin; bootstrap `effectiveGrants` | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (with B8) |
 
@@ -186,9 +184,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 
 #### Next step (active work)
 
-1. **Apply B6 migrations** — `supabase/migrations/20260831*` (module hierarchy, schema/auth, admin + profit RPCs, balance trigger, legacy retirement).
-2. **Capital Ledger** — finish `investor_capital_ledger` at `/app/capital/ledger` (RPC list, filters, v1 transaction types). Profiles submodule is done.
-3. **reporting_treasury UI** — restyle all 8 `/app/finance/*` pages from hardcoded dark slate (`bg-slate-900`) to App UI (`bw-page`, `AppPageHeader`, standard `q-card` / `q-table`).
+1. **Phase 0 Cleanup** — Retire duplicate routes, decouple sales_invoice, and align schema/code.
 
 #### Completed (P0 redesign)
 
@@ -198,20 +194,16 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
 | **F1–F3** | Shared UI tokens + procurement/stock admin pages |
 | **shop_order** | P0–P9 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
+| **sales_invoice** | B4, F4 done (UI live; global/ decouple pending) |
+| **investor_capital** | B6, F6 mostly done (admin + portal pages scaffolded; cutover pending) |
+| **reporting_treasury** | B5, F5 mostly done (finance pages live; ledger consolidation pending) |
 
-#### In progress
+#### In progress (Cutover debt only)
 
 | Area | Done | Remaining |
 |------|------|-----------|
-| **investor_capital** (B6, F6) | Profiles CRUD, routes, registry, portal page scaffolds, `investorProfit.ts` | Capital ledger, shipment cost-share editor, `investor_id` membership auth, portal drill-down, optional export |
-| **reporting_treasury** (B5, F5) | `/app/finance/*` pages wired to data | App-theme restyle; RPC consolidation (P3); payments hardening (P4); retire ledger writes (P6) |
+| **B7 — Cleanup** | — | Cutover cleanup, legacy route removal, global/ decouple, table drops, regenerate `supabase.ts` |
 
-#### Not started (P0 queue after capital + treasury UI)
-
-| Area | Stage | Notes |
-|------|-------|-------|
-| **sales_invoice** | B4, F4 | Parent module, fresh invoice lifecycle, desk UI migration off `global/` + `invoice/` — see [SALES_INVOICE.md](SALES_INVOICE.md) §17 |
-| **B7 — Cleanup** | — | Drop legacy tables (§9); regenerate `supabase.ts` |
 
 #### Recommended order (after next step)
 

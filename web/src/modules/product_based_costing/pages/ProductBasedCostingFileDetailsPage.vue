@@ -247,15 +247,15 @@ import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItem
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore';
-import { shipmentService } from 'src/modules/shipment/services/shipmentService';
-import ShipmentItemCompactDialog from 'src/modules/shipment/components/ShipmentItemCompactDialog.vue';
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
+import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
+import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 const productStore = useProductStore();
-const shipmentStore = useShipmentStore();
+const shipmentStore = useGlobalShipmentStore();
 const tenantStore = useTenantStore();
 const $q = useQuasar();
 
@@ -761,12 +761,8 @@ const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => 
     return null;
   }
 
-  const result = await shipmentService.listShipmentItems(item.assigned_shipment_id);
-  if (!result.success) {
-    return null;
-  }
-
-  const shipmentItems = (result.data ?? []).filter((entry) => entry.method === 'costing');
+  const items = await globalShipmentRepository.listShipmentItems(item.assigned_shipment_id);
+  const shipmentItems = (items ?? []).filter((entry) => entry.add_method === 'costing');
   const itemProductId = item.product_id ?? null;
   const itemName = normalizeText(item.name);
   const itemBarcode = normalizeText(item.barcode);
@@ -809,8 +805,9 @@ const onConfirmRemoveShipment = async () => {
     return;
   }
 
-  const deleteResult = await shipmentStore.deleteShipmentItem({ id: shipmentItem.id });
-  if (!deleteResult.success) {
+  try {
+    await shipmentStore.deleteShipmentItem(shipmentItem.id);
+  } catch {
     return;
   }
 
@@ -847,22 +844,30 @@ const onSaveShipment = async (data: {
     return;
   }
 
-  const addResult = await shipmentStore.addShipmentItemManual({
-    shipment_id: data.shipment_id,
-    order_id: null,
-    method: 'costing',
-    name: rowItem.name ?? null,
-    quantity,
-    barcode: rowItem.barcode ?? null,
-    product_code: rowItem.product_code ?? null,
-    product_id: rowItem.product_id,
-    image_url: rowItem.image_url ?? null,
-    product_weight: rowItem.product_weight ?? null,
-    package_weight: rowItem.package_weight ?? null,
-    price_gbp: data.price_gbp,
-  });
+  let newItem;
+  try {
+    newItem = await shipmentStore.addShipmentItem({
+      shipment_id: data.shipment_id,
+      product_id: rowItem.product_id,
+      vendor_id: null,
+      name: rowItem.name ?? '',
+      ordered_quantity: quantity,
+      image_url: rowItem.image_url ?? null,
+      add_method: 'costing',
+      purchase_price: data.price_gbp ?? 0,
+      product_weight: rowItem.product_weight ?? 0,
+      package_weight: rowItem.package_weight ?? 0,
+      barcode: rowItem.barcode ?? null,
+      product_code: rowItem.product_code ?? null,
+      source_child_tenant_id: null,
+      source_type: null,
+      source_id: null,
+    });
+  } catch {
+    return;
+  }
 
-  if (!addResult.success) {
+  if (!newItem) {
     return;
   }
 

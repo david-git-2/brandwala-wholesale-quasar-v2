@@ -1,5 +1,4 @@
-import type { InventoryItemWithStock } from 'src/modules/inventory/types'
-import type { Shipment } from 'src/modules/shipment/types'
+import type { InventoryItemWithStock, Shipment } from '../types'
 
 import type { GlobalStockRow, StockNetworkRow } from '../types'
 import { mapGlobalStockToInventoryView } from './mapGlobalStockToInventoryView'

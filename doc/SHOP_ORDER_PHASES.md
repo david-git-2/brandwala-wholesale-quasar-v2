@@ -23,6 +23,7 @@ Update this file when a phase completes. Agent: set status to `done` and stop.
 | P7 | done | `20260902000600_shop_order_p7_orders.sql` | `shop_order_mgmt` |
 | P8 | done | `20260902000700_shop_order_p8_fulfillment.sql` | `shop_fulfillment` |
 | P9 | done | — (web only) | — |
+| P10 | done | — (web only) | — |
 
 ---
 
@@ -242,3 +243,15 @@ Update [MASTER_PLAN.md](MASTER_PLAN.md) §10.1: `shop_order` status.
 - [x] Legacy commerce routes redirect to shop_order targets
 - [x] No broken nav links for enabled tenants
 - [x] MASTER_PLAN status updated
+
+---
+
+## P10 — commerce-shop path retirement
+
+### Web only
+
+Retire the legacy `/app/commerce-shop` and `/shop/commerce-shop/*` paths. Ensure all requests and routes point to `/shop/*` equivalents served by the unified `shop_order` module.
+
+### Exit
+
+- [x] Legacy `commerce-shop` routes retired/redirected to `shop_order` targets.

@@ -134,6 +134,20 @@ const adminRoutes: RouteRecordRaw[] = [
       return `${tenantSlug}/app/shop/orders`
     },
   },
+  {
+    path: '/:tenantSlug?/app/commerce-shop/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      return `${tenantSlug}/app/shop/shops`
+    },
+  },
+  {
+    path: '/:tenantSlug?/app/stores/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      return `${tenantSlug}/app/shop/shops`
+    },
+  },
 ]
 
 export default adminRoutes

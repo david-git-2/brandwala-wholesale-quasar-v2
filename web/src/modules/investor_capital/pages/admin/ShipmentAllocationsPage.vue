@@ -15,7 +15,7 @@
         <q-table
           flat
           row-key="id"
-          :rows="shipmentStore.shipments"
+          :rows="shipmentStore.rows"
           :columns="columns"
           :loading="shipmentStore.loading || loadingShares"
           :pagination="{ rowsPerPage: 20 }"
@@ -64,11 +64,10 @@ import { useRoute, useRouter } from 'vue-router'
 import type { QTableColumn } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShipmentStore } from 'src/modules/shipment/stores/shipmentStore'
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
 
 const authStore = useAuthStore()
-const shipmentStore = useShipmentStore()
+const shipmentStore = useGlobalShipmentStore()
 const router = useRouter()
 const route = useRoute()
 
