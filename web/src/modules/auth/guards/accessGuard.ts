@@ -56,10 +56,12 @@ export const createAccessGuard = ({
             scope: authStore.scope,
             tenantId: authStore.tenantId,
             customerGroupId: authStore.customerGroupId,
-            role: memberRole,
+            role: authStore.matchedRole,
             moduleKey: requiredModule,
             activeModuleKeys: authStore.activeModuleKeys,
             action: requiredModuleAction ?? 'view',
+            effectiveGrants: authStore.access?.effectiveGrants,
+            isAdmin: authStore.access?.isAdmin,
           })
 
     if (

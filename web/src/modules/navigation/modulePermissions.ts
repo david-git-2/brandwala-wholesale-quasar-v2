@@ -75,8 +75,8 @@ export const canAccessModule = ({
   moduleKey: ModuleKey
   activeModuleKeys: readonly string[]
   action?: ModuleAction
-  effectiveGrants?: readonly { module_key: string; action: string }[] | null
-  isAdmin?: boolean | null
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined
+  isAdmin?: boolean | null | undefined
 }) => {
   const hasScopeContext = isInteractiveScope(scope)
   const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
@@ -141,8 +141,8 @@ export const resolveModuleAccess = ({
   moduleKey: ModuleKey
   activeModuleKeys: readonly string[]
   action?: ModuleAction
-  effectiveGrants?: readonly { module_key: string; action: string }[] | null
-  isAdmin?: boolean | null
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined
+  isAdmin?: boolean | null | undefined
 }): ModuleAccessResolution => {
   const hasScopeContext = isInteractiveScope(scope)
   const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
@@ -220,8 +220,8 @@ export const getAccessibleModuleRoutes = ({
   role: AccessRole | null | undefined
   activeModuleKeys: readonly string[]
   tenantSlug?: string | null | undefined
-  effectiveGrants?: readonly { module_key: string; action: string }[] | null
-  isAdmin?: boolean | null
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined
+  isAdmin?: boolean | null | undefined
 }) => {
   if (!isInteractiveScope(scope)) {
     return []

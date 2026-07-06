@@ -1,8 +1,8 @@
 # Permission System — Target Design
 
-**Status:** Design — implement **last** (PERM P1→P3 after B7 cleanup and shop_order P8).  
-**Today:** Layer 3 is code-only (`modulePermissions.ts`); grants loaded at bootstrap into `authStore` as role + `activeModuleKeys` only — action matrix still in TS (see §15.1). Shop Subsystem B (per-shop flags) shipped in shop_order P3; unified `tenant_roles` at PERM P1.  
-**Canon for scopes:** [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md). **Login/nav today:** [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md).
+**Status:** **Implemented** — PERM P1–P3 applied (`20260910*`–`20260912*` migrations). Enum login gate unchanged; grants from bootstrap `effectiveGrants`; RLS cutover via `membership_has_module_action()` / `has_module_action()`.  
+**Today:** Nav + `createAccessGuard` read `authStore.effectiveGrants` (no `MODULE_PERMISSION_MATRIX`). Admin UI: app + shop roles/grants, member assign + overrides. Shop Subsystem B (per-shop flags) in shop_order P3.  
+**Canon for scopes:** [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md). **Login/nav:** [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md).
 
 This document defines the **unified, database-backed permission system** with **tenant-scoped custom roles**, per-module actions, and member-level overrides — while keeping the four-scope model unchanged.
 
@@ -624,10 +624,10 @@ Three phases: **database + RPCs → admin UI → module seeding + cutover**. Map
 
 **Exit criteria:**
 
-- [ ] `has_module_action(tenant_id, module_key, action)` returns correct results for admin, staff, custom role, member override
-- [ ] Tenant create seeds app + shop system roles via `seed_tenant_roles_and_grants`
-- [ ] Bootstrap payload includes `effectiveGrants[]` (may still be unused by frontend until P2)
-- [ ] Login RPCs unchanged
+- [x] `has_module_action(tenant_id, module_key, action)` returns correct results for admin, staff, custom role, member override
+- [x] Tenant create seeds app + shop system roles via `seed_tenant_roles_and_grants`
+- [x] Bootstrap payload includes `effectiveGrants[]`
+- [x] Login RPCs unchanged
 
 ---
 
@@ -647,9 +647,9 @@ Three phases: **database + RPCs → admin UI → module seeding + cutover**. Map
 
 **Exit criteria:**
 
-- [ ] Admin creates custom role, grants `global_invoice.view`, assigns member; member's next login shows correct nav
-- [ ] Route guards use in-memory `effectiveGrants` — no permission RPC on navigation
-- [ ] Platform modules never appear in tenant admin grant matrix
+- [x] Admin creates custom role, grants `global_invoice.view`, assigns member; member's next login shows correct nav *(manual smoke test)*
+- [x] Route guards use in-memory `effectiveGrants` — no permission RPC on navigation
+- [x] Platform modules never appear in tenant admin grant matrix
 
 ---
 
@@ -678,9 +678,9 @@ Three phases: **database + RPCs → admin UI → module seeding + cutover**. Map
 
 **Exit criteria:**
 
-- [ ] Runtime no longer reads `MODULE_PERMISSION_MATRIX` for allowed actions
-- [ ] At least one domain fully on `has_module_action()` in RLS
-- [ ] New tenants and backfilled tenants resolve grants identically to pre-migration enum behavior
+- [x] Runtime no longer reads `MODULE_PERMISSION_MATRIX` for allowed actions
+- [x] All six domains on `has_module_action()` / `membership_has_module_action()` in RLS (migrations `20260912001000`–`06000`)
+- [x] New tenants and backfilled tenants resolve grants from `system_role_templates` (+ `20260912000000` staff template fix)
 
 ---
 
@@ -705,8 +705,8 @@ Do **not** fold PERM P1–P3 into shop_order phases — separate track after sho
 | Route `allowedRoles` | Remove incrementally |
 | RLS `role in ('admin','staff')` | → `has_module_action(...)` |
 | SHOP_ORDER P3 | **Done** — Subsystem B resource tables + admin UI only; `tenant_roles` unified at PERM P1 |
-| `authStore` (today) | Holds `matchedRole` + `activeModuleKeys`; action matrix still in `modulePermissions.ts` until PERM P2 |
-| `authStore` (target) | Adds `effectiveGrants`, `tenantRoleId`, `isAdmin` from bootstrap — see §15.1 |
+| `authStore` (today) | Holds `matchedRole`, `activeModuleKeys`, `effectiveGrants`, `tenantRoleId`, `isAdmin` from bootstrap — see §15.1 |
+| `authStore` (target) | Same as today — implemented |
 
 New domain work may stub `has_module_action` to delegate to enum checks until PERM P3.
 

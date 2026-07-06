@@ -134,7 +134,7 @@
             label="Administrator Role"
             color="purple"
             class="q-mb-md"
-            :disable="isEdit && form.is_system"
+            :disable="isEdit && selectedRole?.is_system"
           />
         </q-card-section>
 
@@ -329,10 +329,12 @@ const confirmDeleteRole = async () => {
 
 const navigateToGrants = (roleId: number) => {
   const tenantSlug = authStore.tenantSlug
+  const base =
+    props.scope === 'shop' ? 'app/shop/roles' : 'app/settings/roles'
   if (tenantSlug) {
-    void router.push(`/${tenantSlug}/app/settings/roles/${roleId}/grants`)
+    void router.push(`/${tenantSlug}/${base}/${roleId}/grants`)
   } else {
-    void router.push(`/app/settings/roles/${roleId}/grants`)
+    void router.push(`/${base}/${roleId}/grants`)
   }
 }
 

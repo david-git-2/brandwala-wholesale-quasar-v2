@@ -1,32 +1,32 @@
 import { calculateLineLandedCostBdt, type CostingLineItemInput, type CostingShipmentInput } from '../../procurement_stock/utils/landedCost'
 
 export interface LineInput {
-  id?: number
-  sell_price_amount?: number
-  sell_price?: number
-  unit_cost_price?: number
-  unit_cost?: number
-  quantity?: number
-  qty?: number
-  line_discount_amount?: number
-  line_discount?: number
-  recipient_price_amount?: number
-  recipient_price?: number
-  line_total_amount?: number
-  line_face_total_amount?: number
+  id?: number | null | undefined
+  sell_price_amount?: number | null | undefined
+  sell_price?: number | null | undefined
+  unit_cost_price?: number | null | undefined
+  unit_cost?: number | null | undefined
+  quantity?: number | null | undefined
+  qty?: number | null | undefined
+  line_discount_amount?: number | null | undefined
+  line_discount?: number | null | undefined
+  recipient_price_amount?: number | null | undefined
+  recipient_price?: number | null | undefined
+  line_total_amount?: number | null | undefined
+  line_face_total_amount?: number | null | undefined
 }
 
 export interface InvoiceInput {
   invoice_type: 'wholesale' | 'retail' | 'dropship'
-  shipping_charge?: number
-  cod_charge?: number
-  print_charge?: number
-  wrapping_charge?: number
-  discount_amount?: number
-  invoice_status?: string
-  accounting_subtotal_amount?: number
-  face_subtotal_amount?: number
-  middle_man_payout_amount?: number
+  shipping_charge?: number | null | undefined
+  cod_charge?: number | null | undefined
+  print_charge?: number | null | undefined
+  wrapping_charge?: number | null | undefined
+  discount_amount?: number | null | undefined
+  invoice_status?: string | null | undefined
+  accounting_subtotal_amount?: number | null | undefined
+  face_subtotal_amount?: number | null | undefined
+  middle_man_payout_amount?: number | null | undefined
 }
 
 export interface ReturnInput {
@@ -37,25 +37,24 @@ export interface ReturnInput {
 
 export interface ShipmentItemInput {
   id: number
-  received_qty?: number
-  received_quantity?: number
-  purchase_price?: number
-  product_weight?: number
-  package_weight?: number
-  ordered_quantity?: number
-  // Landed cost can be calculated dynamically or passed in directly
-  landed_unit_cost?: number
+  received_qty?: number | null | undefined
+  received_quantity?: number | null | undefined
+  purchase_price?: number | null | undefined
+  product_weight?: number | null | undefined
+  package_weight?: number | null | undefined
+  ordered_quantity?: number | null | undefined
+  landed_unit_cost?: number | null | undefined
 }
 
 export interface SoldLineInput {
   id: number
-  shipment_item_id: number | null
-  unit_cost_price?: number
-  unit_cost?: number
-  sell_price_amount?: number
-  sell_price?: number
-  quantity?: number
-  qty?: number
+  shipment_item_id: number | null | undefined
+  unit_cost_price?: number | null | undefined
+  unit_cost?: number | null | undefined
+  sell_price_amount?: number | null | undefined
+  sell_price?: number | null | undefined
+  quantity?: number | null | undefined
+  qty?: number | null | undefined
 }
 
 /**
@@ -157,7 +156,7 @@ export const batchPnl = (
     
     // Resolve landed unit cost: use calculated landed cost from landedCost.ts if available, otherwise direct override
     let landedUnitCost = item.landed_unit_cost
-    if (landedUnitCost === undefined) {
+    if (landedUnitCost === undefined || landedUnitCost === null) {
       const costingItem = costingItems[index]
       if (costingItem) {
         landedUnitCost = calculateLineLandedCostBdt(costingItem, shipment, costingItems)

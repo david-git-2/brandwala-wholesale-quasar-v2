@@ -49,7 +49,7 @@
             </tr>
             <tr v-for="investor in capitalStore.investors" :key="investor.investor_id">
               <td class="text-left">{{ investor.name }}</td>
-              <td class="text-right">BDT {{ formatAmount(investor.balance) }}</td>
+              <td class="text-right">BDT {{ formatAmount(investor.available_balance) }}</td>
               <td class="text-right">
                 <q-btn
                   color="primary"

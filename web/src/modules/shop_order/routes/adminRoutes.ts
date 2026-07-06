@@ -6,12 +6,11 @@ import {
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext'
 
-const guard = (requiredModule: ModuleKey, allowedRoles: ('admin' | 'staff')[] = ['admin', 'staff']) =>
+const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
     loginRoute: 'admin-login-page',
     requiredScope: 'app',
     requireTenantContext: true,
-    allowedRoles,
     requiredModule,
     validateAccess: ({ authStore, to }) => {
       const selectedTenantSlug = authStore.selectedTenant?.slug ?? null

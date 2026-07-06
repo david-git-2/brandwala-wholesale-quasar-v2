@@ -64,6 +64,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { QTableColumn } from 'quasar'
 
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
 
 const authStore = useAuthStore()

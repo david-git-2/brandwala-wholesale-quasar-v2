@@ -56,7 +56,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
       'Margin reports, shipment P&L, billing balances, and payments — reads procurement/sales tables; no shadow ledger.',
     filename: 'doc/REPORTING_TREASURY.md',
     scope: 'app',
-    moduleKey: 'accounting',
+    moduleKey: 'reporting_treasury',
   },
   {
     key: 'investor_capital',
@@ -65,7 +65,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
       'Investor profiles, capital ledger, shipment cost-share, and read-only investor portal — admin App + investor scope.',
     filename: 'doc/INVESTOR_CAPITAL.md',
     scope: 'both',
-    moduleKey: 'investor',
+    moduleKey: 'investor_capital',
   },
   {
     key: 'package_commands',
@@ -149,7 +149,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on accounting entries, ledgers, and transactions.',
     filename: 'doc/accounting.md',
     scope: 'app',
-    moduleKey: 'accounting',
+    moduleKey: 'reporting_treasury',
   },
   {
     key: 'module_store',
@@ -157,7 +157,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on storefront configuration and store-level operations.',
     filename: 'doc/store.md',
     scope: 'app',
-    moduleKey: 'store',
+    moduleKey: 'shop_config',
   },
   {
     key: 'module_cart',
@@ -165,7 +165,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on shopping carts and item reservation workflows.',
     filename: 'doc/cart.md',
     scope: 'app',
-    moduleKey: 'cart',
+    moduleKey: 'shop_cart',
   },
   {
     key: 'module_order_management',
@@ -181,7 +181,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on logistics dispatch, freight tracking, and delivery.',
     filename: 'doc/shipment.md',
     scope: 'app',
-    moduleKey: 'shipment',
+    moduleKey: 'global_shipment',
   },
   {
     key: 'module_inventory',
@@ -189,7 +189,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on stock monitoring, tracking movements, and locations.',
     filename: 'doc/inventory.md',
     scope: 'app',
-    moduleKey: 'inventory',
+    moduleKey: 'global_stock',
   },
   {
     key: 'module_invoice',
@@ -197,7 +197,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on billing, invoice generation, and payments.',
     filename: 'doc/invoice.md',
     scope: 'app',
-    moduleKey: 'invoice',
+    moduleKey: 'global_invoice',
   },
   {
     key: 'module_investor',
@@ -205,7 +205,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on investor transaction records, balances, and funding.',
     filename: 'doc/investor.md',
     scope: 'app',
-    moduleKey: 'investor',
+    moduleKey: 'investor_capital',
   },
   {
     key: 'module_commerce_shop',
@@ -213,7 +213,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on isolated commerce flow and storefront configurations.',
     filename: 'doc/commerce_shop.md',
     scope: 'app',
-    moduleKey: 'commerce_shop',
+    moduleKey: 'shop_config',
   },
   {
     key: 'module_commerce_order',
@@ -221,7 +221,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on checkout, negotiation, and tracking commerce orders.',
     filename: 'doc/commerce_order.md',
     scope: 'app',
-    moduleKey: 'commerce_order',
+    moduleKey: 'shop_order_mgmt',
   },
   {
     key: 'module_commerce_invoice',
@@ -229,6 +229,6 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     description: 'Guides on billing profiles, payments, and commercial invoices.',
     filename: 'doc/commerce_invoice.md',
     scope: 'app',
-    moduleKey: 'commerce_invoice',
+    moduleKey: 'sales_invoice',
   },
 ]

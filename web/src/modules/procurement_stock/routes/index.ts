@@ -7,7 +7,6 @@ const guard = (requiredModule: ModuleKey) =>
     loginRoute: 'admin-login-page',
     requiredScope: 'app',
     requireTenantContext: true,
-    allowedRoles: ['admin', 'staff'],
     requiredModule,
   })
 
@@ -107,7 +106,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-procurement-tenant-stock-list',
         component: () => import('../pages/TenantStockListPage.vue'),
-        beforeEnter: guard('inventory'),
+        beforeEnter: guard('procurement_stock'),
       },
     ],
   },

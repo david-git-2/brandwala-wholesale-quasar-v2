@@ -164,10 +164,10 @@ const groupedActions = computed(() => {
 
   const groups: Record<string, any[]> = {}
   activeActions.forEach((action) => {
-    if (!groups[action.module_key]) {
-      groups[action.module_key] = []
-    }
-    groups[action.module_key].push(action)
+    const key = action.module_key
+    const arr = groups[key] || []
+    arr.push(action)
+    groups[key] = arr
   })
 
   return Object.keys(groups).map((moduleKey) => ({

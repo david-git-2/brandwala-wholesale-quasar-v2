@@ -1223,6 +1223,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { supabase } from 'src/boot/supabase'
+import { showSuccessNotification } from 'src/utils/appFeedback'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'

@@ -26,8 +26,11 @@ const label = computed(() => {
   switch (props.family) {
     case 'global':
       return 'Global module'
-    case 'tenant_stock':
-      return 'Tenant module'
+    case 'products':
+      return 'Products module'
+    case 'koba_retail':
+      return 'Koba Retail module'
+    case 'standalone':
     default:
       return 'Module'
   }
@@ -37,8 +40,10 @@ const icon = computed(() => {
   switch (props.family) {
     case 'global':
       return 'public'
-    case 'tenant_stock':
-      return 'domain'
+    case 'products':
+      return 'inventory_2'
+    case 'koba_retail':
+      return 'shopping_bag'
     default:
       return undefined
   }

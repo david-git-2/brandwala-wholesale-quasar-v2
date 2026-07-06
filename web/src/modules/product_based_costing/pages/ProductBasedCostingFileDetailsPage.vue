@@ -253,6 +253,7 @@ import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
+import { buildCostingExcelWorkbook } from '../utils/buildCostingExcelWorkbook';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 const productStore = useProductStore();
 const shipmentStore = useGlobalShipmentStore();
@@ -603,53 +604,13 @@ const downloadExcel = async () => {
     return
   }
 
+  const loading = $q.loading.show({ message: 'Generating Excel...' })
+
   try {
-    const ExcelJS = await import('exceljs')
-    const workbook = new ExcelJS.Workbook()
-    const worksheet = workbook.addWorksheet('Costing Items')
-
-    worksheet.columns = [
-      { header: 'Name', key: 'name', width: 34 },
-      { header: 'Brand', key: 'brand', width: 22 },
-      { header: 'Barcode', key: 'barcode', width: 22 },
-      { header: 'Product Code', key: 'product_code', width: 22 },
-      { header: 'Product ID', key: 'product_id', width: 12 },
-      { header: 'Qty', key: 'quantity', width: 10 },
-      { header: 'Price GBP', key: 'price_gbp', width: 12 },
-      { header: 'Offer Price', key: 'offer_price', width: 12 },
-      { header: 'Status', key: 'status', width: 14 },
-      { header: 'Note', key: 'note', width: 40 },
-    ]
-
-    const headerRow = worksheet.getRow(1)
-    headerRow.font = { bold: true }
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
-    headerRow.height = 22
-
-    const items = store.costingItems ?? []
-    for (const item of items) {
-      const row = worksheet.addRow({
-        name: item.name ?? '',
-        brand: item.brand ?? '',
-        barcode: item.barcode ?? '',
-        product_code: item.product_code ?? '',
-        product_id: item.product_id ?? '',
-        quantity: item.quantity ?? '',
-        price_gbp: item.price_gbp ?? '',
-        offer_price: item.offer_price ?? '',
-        status: item.status ?? '',
-        note: item.note ?? '',
-      })
-
-      row.height = 24
-      row.alignment = { vertical: 'middle', wrapText: true }
-    }
-
-    worksheet.views = [{ state: 'frozen', ySplit: 1 }]
-    worksheet.autoFilter = {
-      from: 'A1',
-      to: 'J1',
-    }
+    const workbook = await buildCostingExcelWorkbook({
+      file: store.item,
+      items: store.costingItems ?? [],
+    })
 
     const buffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([buffer], {
@@ -667,6 +628,8 @@ const downloadExcel = async () => {
       type: 'negative',
       message: error instanceof Error ? error.message : 'Failed to generate Excel.',
     })
+  } finally {
+    loading()
   }
 }
 

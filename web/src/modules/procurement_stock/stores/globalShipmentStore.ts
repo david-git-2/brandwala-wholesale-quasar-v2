@@ -9,6 +9,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
   state: () => ({
     rows: [] as GlobalShipment[],
     loading: false,
+    saving: false,
     error: null as string | null,
     page: 1,
     pageSize: 20,
@@ -196,7 +197,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     },
 
     async addShipmentItem(payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>) {
-      this.loading = true
+      this.saving = true
       this.error = null
       try {
         const maxSortOrder = this.currentShipmentItems.length > 0
@@ -216,7 +217,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.error = (err as Error).message || 'Failed to add shipment item'
         throw err
       } finally {
-        this.loading = false
+        this.saving = false
       }
     },
 
@@ -242,7 +243,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     },
 
     async deleteShipmentItem(id: number) {
-      this.loading = true
+      this.saving = true
       this.error = null
       try {
         const isReferenced = await globalShipmentRepository.checkShipmentItemStockReferences(id)
@@ -256,7 +257,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.error = (err as Error).message || 'Failed to delete shipment item'
         throw err
       } finally {
-        this.loading = false
+        this.saving = false
       }
     },
 

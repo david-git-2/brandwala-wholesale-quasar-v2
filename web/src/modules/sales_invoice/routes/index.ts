@@ -2,12 +2,11 @@ import type { RouteRecordRaw } from 'vue-router'
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
 import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
 
-const guard = (requiredModule: ModuleKey, allowedRoles: ('admin' | 'staff')[] = ['admin', 'staff']) =>
+const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
     loginRoute: 'admin-login-page',
     requiredScope: 'app',
     requireTenantContext: true,
-    allowedRoles,
     requiredModule,
   })
 

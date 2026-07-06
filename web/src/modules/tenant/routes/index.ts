@@ -362,6 +362,18 @@ const tenantRoutes: RouteRecordRaw[] = [
           requireTenantContext: true,
         }),
       },
+      {
+        path: 'roles/:id/grants',
+        name: 'admin-shop-role-grants',
+        component: () => import('../pages/AdminSettingsRoleGrantsPage.vue'),
+        props: (route) => ({ id: Number(route.params.id) }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
     ],
   },
 ]
