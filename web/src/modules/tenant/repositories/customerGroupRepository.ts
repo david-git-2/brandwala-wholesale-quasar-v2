@@ -134,6 +134,7 @@ const createCustomerGroupMember = async (
         email: payload.email.trim().toLowerCase(),
         role: payload.role,
         is_active: payload.is_active,
+        tenant_role_id: payload.tenant_role_id || null,
       },
     ])
     .select()
@@ -173,6 +174,10 @@ const updateCustomerGroupMember = async (
 
   if (payload.is_active !== undefined) {
     updateData.is_active = payload.is_active
+  }
+
+  if (payload.tenant_role_id !== undefined) {
+    updateData.tenant_role_id = payload.tenant_role_id
   }
 
   const { data, error } = await supabase

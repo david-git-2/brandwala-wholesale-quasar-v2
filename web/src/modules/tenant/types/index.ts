@@ -86,7 +86,9 @@ export type CustomerGroupRole = Enums<'customer_group_role'>
 export type CustomerGroupMemberCreateInput = Pick<
   CustomerGroupMember,
   'customer_group_id' | 'name' | 'email' | 'role' | 'is_active'
->
+> & {
+  tenant_role_id?: number | null
+}
 export type CustomerGroupMemberUpdateInput = {
   id: CustomerGroupMember['id']
   customer_group_id?: CustomerGroupMember['customer_group_id']
@@ -94,6 +96,7 @@ export type CustomerGroupMemberUpdateInput = {
   email?: CustomerGroupMember['email']
   role?: CustomerGroupMember['role']
   is_active?: CustomerGroupMember['is_active']
+  tenant_role_id?: number | null
 }
 export type CustomerGroupMemberDeleteInput = Pick<CustomerGroupMember, 'id'>
 

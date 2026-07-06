@@ -2,7 +2,6 @@ import { computed } from 'vue'
 
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions'
@@ -104,6 +103,15 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
       tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants',
   },
   {
+    title: 'Roles & Permissions',
+    caption: 'Manage custom roles and grants',
+    icon: 'admin_panel_settings',
+    scopes: ['app'],
+    allowedRoles: ['admin'],
+    route: ({ tenantSlug }) =>
+      tenantSlug ? `/${tenantSlug}/app/settings/roles` : '/app/settings/roles',
+  },
+  {
     title: 'Documentation',
     caption: 'User guides and feature manuals',
     icon: 'menu_book',
@@ -173,7 +181,6 @@ const getBaseWorkspaceLinks = ({
 
 export const useWorkspaceLinks = (scope: WorkspaceScope) => {
   const authStore = useAuthStore()
-  const tenantStore = useTenantStore()
   const { accessibleModuleRoutes } = useModulePermissions()
 
   const links = computed<WorkspaceLink[]>(() => {

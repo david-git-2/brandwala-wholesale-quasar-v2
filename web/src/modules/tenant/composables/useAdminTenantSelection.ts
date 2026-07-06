@@ -89,6 +89,9 @@ export function useAdminTenantSelection() {
         activeModuleKeys: Array.isArray(bootstrap.active_module_keys)
           ? bootstrap.active_module_keys
           : [],
+        effectiveGrants: bootstrap.effective_grants || [],
+        tenantRoleId: bootstrap.tenant_role_id ?? null,
+        isAdmin: Boolean(bootstrap.is_admin),
         savedAt: new Date().toISOString(),
       })
 

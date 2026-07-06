@@ -1072,6 +1072,51 @@ export type Database = {
           },
         ]
       }
+      customer_group_member_grants: {
+        Row: {
+          action: string
+          created_at: string
+          customer_group_member_id: number
+          effect: string
+          id: number
+          module_key: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          customer_group_member_id: number
+          effect: string
+          id?: number
+          module_key: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          customer_group_member_id?: number
+          effect?: string
+          id?: number
+          module_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_group_member_grants_customer_group_member_id_fkey"
+            columns: ["customer_group_member_id"]
+            isOneToOne: false
+            referencedRelation: "customer_group_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_group_member_grants_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       customer_group_members: {
         Row: {
           added_by: number | null
@@ -1082,6 +1127,7 @@ export type Database = {
           is_active: boolean
           name: string
           role: Database["public"]["Enums"]["customer_group_role"]
+          tenant_role_id: number | null
           updated_at: string
         }
         Insert: {
@@ -1093,6 +1139,7 @@ export type Database = {
           is_active?: boolean
           name: string
           role: Database["public"]["Enums"]["customer_group_role"]
+          tenant_role_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -1104,6 +1151,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           role?: Database["public"]["Enums"]["customer_group_role"]
+          tenant_role_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1112,6 +1160,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_group_members_tenant_role_id_fkey"
+            columns: ["tenant_role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -3009,6 +3064,54 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_grants: {
+        Row: {
+          action: string
+          created_at: string
+          created_by_email: string | null
+          effect: string
+          id: number
+          membership_id: number
+          module_key: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by_email?: string | null
+          effect: string
+          id?: number
+          membership_id: number
+          module_key: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by_email?: string | null
+          effect?: string
+          id?: number
+          membership_id?: number
+          module_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_grants_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_grants_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           accent_color: string | null
@@ -3020,6 +3123,7 @@ export type Database = {
           preference: Json
           role: Database["public"]["Enums"]["app_role"]
           tenant_id: number | null
+          tenant_role_id: number | null
           updated_at: string
         }
         Insert: {
@@ -3032,6 +3136,7 @@ export type Database = {
           preference?: Json
           role: Database["public"]["Enums"]["app_role"]
           tenant_id?: number | null
+          tenant_role_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -3044,6 +3149,7 @@ export type Database = {
           preference?: Json
           role?: Database["public"]["Enums"]["app_role"]
           tenant_id?: number | null
+          tenant_role_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -3060,6 +3166,57 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_tenant_role_id_fkey"
+            columns: ["tenant_role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_actions: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: number
+          is_active: boolean
+          module_key: string
+          scope: string
+          tenant_configurable: boolean
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          module_key: string
+          scope: string
+          tenant_configurable?: boolean
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          module_key?: string
+          scope?: string
+          tenant_configurable?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_actions_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
           },
         ]
       }
@@ -5044,6 +5201,47 @@ export type Database = {
           },
         ]
       }
+      system_role_templates: {
+        Row: {
+          action: string
+          allowed: boolean
+          created_at: string
+          id: number
+          module_key: string
+          role_slug: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          allowed: boolean
+          created_at?: string
+          id?: number
+          module_key: string
+          role_slug: string
+          scope: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          created_at?: string
+          id?: number
+          module_key?: string
+          role_slug?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_role_templates_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string
@@ -5172,6 +5370,104 @@ export type Database = {
           },
           {
             foreignKeyName: "tenant_modules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_role_grants: {
+        Row: {
+          action: string
+          allowed: boolean
+          created_at: string
+          id: number
+          module_key: string
+          tenant_role_id: number
+          updated_at: string
+          updated_by_email: string | null
+        }
+        Insert: {
+          action: string
+          allowed: boolean
+          created_at?: string
+          id?: number
+          module_key: string
+          tenant_role_id: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          created_at?: string
+          id?: number
+          module_key?: string
+          tenant_role_id?: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_role_grants_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "tenant_role_grants_tenant_role_id_fkey"
+            columns: ["tenant_role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_roles: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_admin: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          slug: string
+          source_app_role: Database["public"]["Enums"]["app_role"] | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_admin?: boolean
+          is_system?: boolean
+          name: string
+          scope: string
+          slug: string
+          source_app_role?: Database["public"]["Enums"]["app_role"] | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_admin?: boolean
+          is_system?: boolean
+          name?: string
+          scope?: string
+          slug?: string
+          source_app_role?: Database["public"]["Enums"]["app_role"] | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_roles_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -6610,6 +6906,49 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_customer_group_member_role: {
+        Args: { p_cgm_id: number; p_tenant_role_id: number }
+        Returns: {
+          added_by: number | null
+          created_at: string
+          customer_group_id: number
+          email: string
+          id: number
+          is_active: boolean
+          name: string
+          role: Database["public"]["Enums"]["customer_group_role"]
+          tenant_role_id: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_group_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      assign_membership_role: {
+        Args: { p_membership_id: number; p_tenant_role_id: number }
+        Returns: {
+          accent_color: string | null
+          created_at: string
+          email: string
+          id: number
+          investor_id: number | null
+          is_active: boolean
+          preference: Json
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: number | null
+          tenant_role_id: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       auth_investor_id: { Args: never; Returns: number }
       browse_shop_catalog: {
         Args: {
@@ -7311,6 +7650,34 @@ export type Database = {
           updated_at: string
         }[]
       }
+      create_tenant_role: {
+        Args: {
+          p_is_admin?: boolean
+          p_name: string
+          p_scope: string
+          p_slug: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_admin: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          slug: string
+          source_app_role: Database["public"]["Enums"]["app_role"] | null
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_roles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
@@ -7371,6 +7738,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      delete_tenant_role: { Args: { p_role_id: number }; Returns: undefined }
       find_active_tenant_by_public_domain: {
         Args: { p_public_domain: string }
         Returns: {
@@ -7423,6 +7791,8 @@ export type Database = {
         }
         Returns: {
           active_module_keys: string[]
+          effective_grants: Json
+          is_admin: boolean
           member_email: string
           member_id: number
           member_is_active: boolean
@@ -7432,6 +7802,7 @@ export type Database = {
           tenant_is_active: boolean
           tenant_name: string
           tenant_preference: Json
+          tenant_role_id: number
           tenant_slug: string
         }[]
       }
@@ -7454,6 +7825,13 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           tenant_id: number
           updated_at: string
+        }[]
+      }
+      get_effective_grants: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          action: string
+          module_key: string
         }[]
       }
       get_effective_item_role: {
@@ -7590,6 +7968,8 @@ export type Database = {
           customer_group_id: number
           customer_group_is_active: boolean
           customer_group_name: string
+          effective_grants: Json
+          is_admin: boolean
           member_email: string
           member_id: number
           member_is_active: boolean
@@ -7598,7 +7978,15 @@ export type Database = {
           tenant_id: number
           tenant_is_active: boolean
           tenant_name: string
+          tenant_role_id: number
           tenant_slug: string
+        }[]
+      }
+      get_shop_effective_grants: {
+        Args: { p_customer_group_member_id: number; p_tenant_id: number }
+        Returns: {
+          action: string
+          module_key: string
         }[]
       }
       get_shop_permissions_for_customer: {
@@ -7792,6 +8180,10 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      has_module_action: {
+        Args: { p_action: string; p_module_key: string; p_tenant_id: number }
+        Returns: boolean
+      }
       is_assigned_costing_file_viewer: {
         Args: { p_costing_file_id: number }
         Returns: boolean
@@ -7969,6 +8361,16 @@ export type Database = {
             }
             Returns: Json
           }
+      list_customer_group_member_grants: {
+        Args: { p_cgm_id: number }
+        Returns: {
+          action: string
+          customer_group_member_id: number
+          effect: string
+          id: number
+          module_key: string
+        }[]
+      }
       list_global_currencies: {
         Args: never
         Returns: {
@@ -8170,6 +8572,19 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      list_membership_grants: {
+        Args: { p_membership_id: number }
+        Returns: {
+          action: string
+          created_at: string
+          created_by_email: string
+          effect: string
+          id: number
+          membership_id: number
+          module_key: string
+          updated_at: string
+        }[]
       }
       list_my_admin_tenants: {
         Args: never
@@ -8458,6 +8873,35 @@ export type Database = {
           id: number
           is_active: boolean
           module_key: string
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
+      list_tenant_role_grants: {
+        Args: { p_tenant_role_id: number }
+        Returns: {
+          action: string
+          allowed: boolean
+          created_at: string
+          id: number
+          module_key: string
+          tenant_role_id: number
+          updated_at: string
+          updated_by_email: string
+        }[]
+      }
+      list_tenant_roles: {
+        Args: { p_scope: string; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_admin: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          slug: string
+          source_app_role: Database["public"]["Enums"]["app_role"]
           tenant_id: number
           updated_at: string
         }[]
@@ -8962,6 +9406,10 @@ export type Database = {
           total_qty: number
         }[]
       }
+      seed_tenant_roles_and_grants: {
+        Args: { p_tenant_id: number }
+        Returns: undefined
+      }
       set_tenant_module_submodule_for_superadmin: {
         Args: {
           p_is_enabled: boolean
@@ -9426,6 +9874,51 @@ export type Database = {
           updated_at: string
         }[]
       }
+      update_tenant_role: {
+        Args: { p_is_admin: boolean; p_name: string; p_role_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_admin: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          slug: string
+          source_app_role: Database["public"]["Enums"]["app_role"] | null
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_roles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_customer_group_member_grant: {
+        Args: {
+          p_action: string
+          p_cgm_id: number
+          p_effect: string
+          p_module_key: string
+        }
+        Returns: {
+          action: string
+          created_at: string
+          customer_group_member_id: number
+          effect: string
+          id: number
+          module_key: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_group_member_grants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_customer_group_shop_profile: {
         Args: {
           p_customer_group_id: number
@@ -9498,6 +9991,30 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "investors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_membership_grant: {
+        Args: {
+          p_action: string
+          p_effect: string
+          p_membership_id: number
+          p_module_key: string
+        }
+        Returns: {
+          action: string
+          created_at: string
+          created_by_email: string | null
+          effect: string
+          id: number
+          membership_id: number
+          module_key: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "membership_grants"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -9650,6 +10167,30 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      upsert_tenant_role_grant: {
+        Args: {
+          p_action: string
+          p_allowed: boolean
+          p_module_key: string
+          p_tenant_role_id: number
+        }
+        Returns: {
+          action: string
+          allowed: boolean
+          created_at: string
+          id: number
+          module_key: string
+          tenant_role_id: number
+          updated_at: string
+          updated_by_email: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_role_grants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       user_can_access_tenant_fetch: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -9662,6 +10203,7 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      user_is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
       void_global_invoice: {
         Args: { p_invoice_id: number }
         Returns: undefined

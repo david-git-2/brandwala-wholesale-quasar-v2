@@ -92,7 +92,27 @@
               </div>
             </div>
 
-            <q-btn color="primary" class="pill-btn slim-btn" no-caps size="sm" icon="groups" label="Add Group" @click="openCreateGroupDialog" />
+            <div class="row q-gutter-sm">
+              <q-btn
+                color="secondary"
+                flat
+                class="pill-btn slim-btn"
+                no-caps
+                size="sm"
+                icon="admin_panel_settings"
+                label="Shop Roles"
+                @click="navigateToShopRoles"
+              />
+              <q-btn
+                color="primary"
+                class="pill-btn slim-btn"
+                no-caps
+                size="sm"
+                icon="groups"
+                label="Add Group"
+                @click="openCreateGroupDialog"
+              />
+            </div>
           </q-card-section>
 
           <q-separator />
@@ -214,7 +234,35 @@
               </template>
 
               <template #body-cell-role="props">
-                <q-td :props="props">{{ props.row.role }}</q-td>
+                <q-td :props="props">
+                  <q-select
+                    v-if="props.row.tenant_role_id !== undefined"
+                    :model-value="props.row.tenant_role_id"
+                    :options="appRoles.map(r => ({ label: r.name, value: r.id }))"
+                    emit-value
+                    map-options
+                    outlined
+                    dense
+                    options-dense
+                    style="min-width: 150px"
+                    @update:model-value="(val) => onChangeMemberRole(props.row, val)"
+                  />
+                  <span v-else>{{ props.row.role }}</span>
+                </q-td>
+              </template>
+
+              <template #body-cell-overrides="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="primary"
+                    flat
+                    no-caps
+                    icon="admin_panel_settings"
+                    label="Grants"
+                    @click="openOverridesDialog(props.row, 'app')"
+                  />
+                </q-td>
               </template>
 
               <template #body-cell-active="props">
@@ -269,7 +317,35 @@
               </template>
 
               <template #body-cell-role="props">
-                <q-td :props="props">{{ props.row.role }}</q-td>
+                <q-td :props="props">
+                  <q-select
+                    v-if="props.row.tenant_role_id !== undefined"
+                    :model-value="props.row.tenant_role_id"
+                    :options="appRoles.map(r => ({ label: r.name, value: r.id }))"
+                    emit-value
+                    map-options
+                    outlined
+                    dense
+                    options-dense
+                    style="min-width: 150px"
+                    @update:model-value="(val) => onChangeMemberRole(props.row, val)"
+                  />
+                  <span v-else>{{ props.row.role }}</span>
+                </q-td>
+              </template>
+
+              <template #body-cell-overrides="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="primary"
+                    flat
+                    no-caps
+                    icon="admin_panel_settings"
+                    label="Grants"
+                    @click="openOverridesDialog(props.row, 'app')"
+                  />
+                </q-td>
               </template>
 
               <template #body-cell-active="props">
@@ -350,6 +426,12 @@
                   <span v-if="props.row.investor_id" class="text-caption text-grey-6">
                     ({{ investorNameById(props.row.investor_id) }})
                   </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-overrides="props">
+                <q-td :props="props">
+                  <span>-</span>
                 </q-td>
               </template>
 
@@ -465,7 +547,35 @@
               </template>
 
               <template #body-cell-role="props">
-                <q-td :props="props">{{ formatCustomerRole(props.row.role) }}</q-td>
+                <q-td :props="props">
+                  <q-select
+                    v-if="props.row.tenant_role_id !== undefined"
+                    :model-value="props.row.tenant_role_id"
+                    :options="shopRoles.map(r => ({ label: r.name, value: r.id }))"
+                    emit-value
+                    map-options
+                    outlined
+                    dense
+                    options-dense
+                    style="min-width: 150px"
+                    @update:model-value="(val) => onChangeCustomerMemberRole(props.row, val)"
+                  />
+                  <span v-else>{{ formatCustomerRole(props.row.role) }}</span>
+                </q-td>
+              </template>
+
+              <template #body-cell-overrides="props">
+                <q-td :props="props">
+                  <q-btn
+                    size="sm"
+                    color="primary"
+                    flat
+                    no-caps
+                    icon="admin_panel_settings"
+                    label="Grants"
+                    @click="openOverridesDialog(props.row, 'shop')"
+                  />
+                </q-td>
               </template>
 
               <template #body-cell-active="props">
@@ -978,6 +1088,68 @@
       </q-card>
     </q-dialog>
 
+    <!-- Overrides Dialog -->
+    <q-dialog v-model="overridesDialogOpen" persistent>
+      <q-card style="min-width: 500px; border-radius: 12px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div>
+            <div class="text-h6 text-weight-bold">Access Overrides</div>
+            <div class="text-caption text-grey-7">
+              Configure explicit Allow/Deny overrides for <strong>{{ overridesDialogMember?.email }}</strong>.
+            </div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-py-md">
+          <div v-if="overridesLoading" class="row justify-center q-my-md">
+            <q-spinner-dots size="30px" color="primary" />
+          </div>
+          <div v-else-if="overridesActions.length === 0" class="text-center text-grey-6 q-my-md">
+            No configurable modules active for this tenant.
+          </div>
+          <div v-else style="max-height: 400px; overflow-y: auto;">
+            <q-list separator>
+              <q-item v-for="act in overridesActions" :key="act.id">
+                <q-item-section>
+                  <q-item-label class="text-weight-medium text-grey-8">
+                    {{ act.module_key }} × {{ act.action }}
+                  </q-item-label>
+                  <q-item-label caption class="text-grey-6">
+                    {{ act.description || 'No description' }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-btn-toggle
+                    :model-value="overridesGrants[`${act.module_key}:${act.action}`] || 'inherit'"
+                    toggle-color="primary"
+                    color="grey-3"
+                    text-color="grey-8"
+                    dense
+                    no-caps
+                    unelevated
+                    :options="[
+                      { label: 'Inherit', value: 'inherit' },
+                      { label: 'Allow', value: 'allow' },
+                      { label: 'Deny', value: 'deny' },
+                    ]"
+                    :disable="overridesSavingMap[`${act.module_key}:${act.action}`]"
+                    @update:model-value="(val) => toggleOverride(act.module_key, act.action, val)"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Close" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="openCustomerMemberDialog" persistent>
       <q-card style="min-width: 460px; border-radius: 12px;">
         <q-card-section>
@@ -1052,7 +1224,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
 
@@ -1100,6 +1272,7 @@ const props = withDefaults(
 )
 
 const route = useRoute()
+const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
 
@@ -1320,6 +1493,7 @@ const investorMembers = computed(() =>
 const internalMemberColumns = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
   { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
+  { name: 'overrides', label: 'Overrides', field: 'id', align: 'left' as const },
   { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
   { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
 ]
@@ -1352,6 +1526,7 @@ const customerGroupMemberColumns = [
   { name: 'name', label: 'Name', field: 'name', align: 'left' as const },
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
   { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
+  { name: 'overrides', label: 'Overrides', field: 'id', align: 'left' as const },
   { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
   { name: 'edit', label: 'Actions', field: 'id', align: 'left' as const },
 ]
@@ -1661,6 +1836,7 @@ const loadPageData = async () => {
       loadTenantModules(),
       loadCustomerGroups(),
       capitalStore.fetchInvestorsByTenant(tenantId.value),
+      loadTenantRoles(),
     ])
 
     await loadCostingFiles()
@@ -2081,11 +2257,191 @@ const confirmDeleteCustomerGroupMember = async () => {
   )
   customerGroupMembersByGroupId.value = {
     ...customerGroupMembersByGroupId.value,
-    [selectedCustomerGroup.value.id]: [...customerGroupStore.members],
   }
-
   openDeleteCustomerMemberDialogModel.value = false
   customerGroupMemberToDelete.value = null
+}
+
+// Roles and Overrides System
+const appRoles = ref<any[]>([])
+const shopRoles = ref<any[]>([])
+const overridesDialogOpen = ref(false)
+const overridesDialogMember = ref<any>(null)
+const overridesDialogScope = ref<'app' | 'shop'>('app')
+const overridesActions = ref<any[]>([])
+const overridesGrants = ref<Record<string, 'allow' | 'deny' | 'inherit'>>({})
+const overridesLoading = ref(false)
+const overridesSavingMap = ref<Record<string, boolean>>({})
+
+const loadTenantRoles = async () => {
+  if (!tenantId.value) return
+
+  try {
+    const { data: appData } = await supabase.rpc('list_tenant_roles', {
+      p_tenant_id: tenantId.value,
+      p_scope: 'app',
+    })
+    appRoles.value = appData || []
+
+    const { data: shopData } = await supabase.rpc('list_tenant_roles', {
+      p_tenant_id: tenantId.value,
+      p_scope: 'shop',
+    })
+    shopRoles.value = shopData || []
+  } catch (error) {
+    console.error('Failed to load tenant roles:', error)
+  }
+}
+
+const onChangeMemberRole = async (member: any, roleId: number) => {
+  try {
+    const { error } = await supabase.rpc('assign_membership_role', {
+      p_membership_id: member.id,
+      p_tenant_role_id: roleId,
+    })
+    if (error) {
+      pageError.value = error.message
+      await loadTenantMembers()
+    } else {
+      showSuccessNotification('Member role updated successfully.')
+    }
+  } catch (err) {
+    console.error(err)
+    pageError.value = 'Failed to update member role.'
+  }
+}
+
+const onChangeCustomerMemberRole = async (member: any, roleId: number) => {
+  try {
+    const { error } = await supabase.rpc('assign_customer_group_member_role', {
+      p_cgm_id: member.id,
+      p_tenant_role_id: roleId,
+    })
+    if (error) {
+      pageError.value = error.message
+      if (selectedCustomerGroupId.value) {
+        await loadCustomerGroupMembers(selectedCustomerGroupId.value)
+      }
+    } else {
+      showSuccessNotification('Customer member role updated successfully.')
+    }
+  } catch (err) {
+    console.error(err)
+    pageError.value = 'Failed to update customer member role.'
+  }
+}
+
+const openOverridesDialog = async (member: any, scope: 'app' | 'shop') => {
+  overridesDialogMember.value = member
+  overridesDialogScope.value = scope
+  overridesDialogOpen.value = true
+  overridesLoading.value = true
+  overridesGrants.value = {}
+
+  try {
+    // 1. Fetch configurable module actions for this scope
+    const { data: actionsData } = await supabase
+      .from('module_actions')
+      .select('*')
+      .eq('is_active', true)
+      .eq('tenant_configurable', true)
+      .eq('scope', scope)
+
+    // Filter by enabled tenant modules
+    const activeModuleKeysList = Array.from(tenantModuleKeys.value)
+    overridesActions.value = (actionsData || []).filter((action) =>
+      activeModuleKeysList.includes(action.module_key)
+    )
+
+    // 2. Fetch overrides
+    if (scope === 'app') {
+      const { data: grantsData } = await supabase
+        .from('membership_grants')
+        .select('*')
+        .eq('membership_id', member.id)
+
+      const grantsMap: Record<string, 'allow' | 'deny' | 'inherit'> = {}
+      ;(grantsData || []).forEach((g: any) => {
+        grantsMap[`${g.module_key}:${g.action}`] = g.effect
+      })
+      overridesGrants.value = grantsMap
+    } else {
+      const { data: grantsData } = await supabase
+        .from('customer_group_member_grants')
+        .select('*')
+        .eq('customer_group_member_id', member.id)
+
+      const grantsMap: Record<string, 'allow' | 'deny' | 'inherit'> = {}
+      ;(grantsData || []).forEach((g: any) => {
+        grantsMap[`${g.module_key}:${g.action}`] = g.effect
+      })
+      overridesGrants.value = grantsMap
+    }
+  } catch (error) {
+    console.error('Failed to load member overrides:', error)
+  } finally {
+    overridesLoading.value = false
+  }
+}
+
+const toggleOverride = async (moduleKey: string, action: string, effect: 'allow' | 'deny' | 'inherit') => {
+  const member = overridesDialogMember.value
+  const scope = overridesDialogScope.value
+  if (!member) return
+
+  const key = `${moduleKey}:${action}`
+  overridesSavingMap.value[key] = true
+
+  try {
+    if (effect === 'inherit') {
+      if (scope === 'app') {
+        await supabase
+          .from('membership_grants')
+          .delete()
+          .eq('membership_id', member.id)
+          .eq('module_key', moduleKey)
+          .eq('action', action)
+      } else {
+        await supabase
+          .from('customer_group_member_grants')
+          .delete()
+          .eq('customer_group_member_id', member.id)
+          .eq('module_key', moduleKey)
+          .eq('action', action)
+      }
+      overridesGrants.value[key] = 'inherit'
+    } else {
+      if (scope === 'app') {
+        await supabase.rpc('upsert_membership_grant', {
+          p_membership_id: member.id,
+          p_module_key: moduleKey,
+          p_action: action,
+          p_effect: effect,
+        })
+      } else {
+        await supabase.rpc('upsert_customer_group_member_grant', {
+          p_cgm_id: member.id,
+          p_module_key: moduleKey,
+          p_action: action,
+          p_effect: effect,
+        })
+      }
+      overridesGrants.value[key] = effect
+    }
+  } catch (error) {
+    console.error('Failed to save override:', error)
+  } finally {
+    overridesSavingMap.value[key] = false
+  }
+}
+
+const navigateToShopRoles = () => {
+  const tenantSlug = tenant.value?.slug
+  if (tenantSlug) {
+    void router.push(`/${tenantSlug}/app/shop/roles`)
+  } else {
+    void router.push('/app/shop/roles')
+  }
 }
 
 onMounted(() => {

@@ -53,14 +53,17 @@ export interface AuthAccessSnapshot {
   tenant: AuthTenantSnapshot | null
   customerGroup: AuthCustomerGroupSnapshot | null
   activeModuleKeys: string[]
+  effectiveGrants: Array<{ module_key: string; action: string }>
+  tenantRoleId: number | null
+  isAdmin: boolean
   savedAt: string
 }
 
 type StoredAuthAccess = AuthAccessSnapshot & {
-  schemaVersion: 2
+  schemaVersion: 3
 }
 
-const STORAGE_KEY = 'brandwala.auth.access.v2'
+const STORAGE_KEY = 'brandwala.auth.access.v3'
 
 const readStorage = (): StoredAuthAccess | null => {
   if (typeof window === 'undefined') {
@@ -76,12 +79,13 @@ const readStorage = (): StoredAuthAccess | null => {
     const parsed = JSON.parse(rawValue) as Partial<StoredAuthAccess>
 
     if (
-      parsed?.schemaVersion !== 2 ||
+      parsed?.schemaVersion !== 3 ||
       !parsed?.scope ||
       !parsed?.matchedRole ||
       !parsed?.user ||
       !parsed?.member ||
-      !Array.isArray(parsed?.activeModuleKeys)
+      !Array.isArray(parsed?.activeModuleKeys) ||
+      !Array.isArray(parsed?.effectiveGrants)
     ) {
       return null
     }
@@ -121,6 +125,9 @@ export const useAuthStore = defineStore('auth', () => {
   const availableAdminTenants = computed(() => tenantStore.availableAdminTenants)
   const customerGroup = computed(() => snapshot.value?.customerGroup ?? null)
   const activeModuleKeys = computed(() => snapshot.value?.activeModuleKeys ?? [])
+  const effectiveGrants = computed(() => snapshot.value?.effectiveGrants ?? [])
+  const tenantRoleId = computed(() => snapshot.value?.tenantRoleId ?? null)
+  const isAdmin = computed(() => snapshot.value?.isAdmin ?? false)
   const scope = computed(() => snapshot.value?.scope ?? null)
   const matchedRole = computed(() => snapshot.value?.matchedRole ?? null)
   const isAuthenticated = computed(() => Boolean(snapshot.value?.user))
@@ -160,7 +167,7 @@ export const useAuthStore = defineStore('auth', () => {
   const saveAccess = (nextAccess: Omit<StoredAuthAccess, 'schemaVersion'>) => {
     snapshot.value = {
       ...nextAccess,
-      schemaVersion: 2,
+      schemaVersion: 3,
     }
     writeStorage(snapshot.value)
   }
@@ -195,6 +202,9 @@ export const useAuthStore = defineStore('auth', () => {
     tenantSlug,
     user,
     activeModuleKeys,
+    effectiveGrants,
+    tenantRoleId,
+    isAdmin,
   }
 })
 

@@ -288,12 +288,15 @@ export function useOAuthLogin(
       tenant: null,
       customerGroup: null,
       activeModuleKeys: [],
+      effectiveGrants: [],
+      tenantRoleId: null,
+      isAdmin: true,
     })
 
     return true
   }
 
-const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+  const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     const requestedTenantSlug = normalizeTenantSlug(
       options?.tenantSlug ?? getTenantSlugFromRoute(route),
     )
@@ -375,6 +378,9 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
         tenant: null,
         customerGroup: null,
         activeModuleKeys: [],
+        effectiveGrants: [],
+        tenantRoleId: null,
+        isAdmin: false,
         savedAt: new Date().toISOString(),
       })
       tenantStore.clearSelectedTenant()
@@ -456,6 +462,9 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       tenant,
       customerGroup: null,
       activeModuleKeys: normalizeModuleKeys(bootstrap.active_module_keys),
+      effectiveGrants: bootstrap.effective_grants || [],
+      tenantRoleId: bootstrap.tenant_role_id ?? null,
+      isAdmin: Boolean(bootstrap.is_admin),
     })
 
     return true
@@ -587,6 +596,9 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       tenant,
       customerGroup,
       activeModuleKeys: normalizeModuleKeys(bootstrap.active_module_keys),
+      effectiveGrants: bootstrap.effective_grants || [],
+      tenantRoleId: bootstrap.tenant_role_id ?? null,
+      isAdmin: Boolean(bootstrap.is_admin),
     })
 
     return true
@@ -634,7 +646,6 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       slug: bootstrap.tenant.slug,
       isActive: bootstrap.tenant.is_active ?? true,
     }
-
     await saveAndRedirect({
       scope: 'investor',
       matchedRole: 'investor_portal',
@@ -654,6 +665,9 @@ const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
       tenant,
       customerGroup: null,
       activeModuleKeys: normalizeModuleKeys(bootstrap.module_keys ?? ['investor_portal']),
+      effectiveGrants: [{ module_key: 'investor_portal', action: 'view' }],
+      tenantRoleId: null,
+      isAdmin: false,
     })
 
     return true

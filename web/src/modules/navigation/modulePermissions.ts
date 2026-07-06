@@ -11,414 +11,7 @@ import {
   type ModuleKey,
 } from './moduleRegistry'
 
-type ModulePermissionMatrix = Readonly<
-  Record<AccessRole, Readonly<Partial<Record<ModuleKey, readonly ModuleAction[]>>>>
->
-
 const NO_ACCESS: readonly ModuleAction[] = []
-
-const MODULE_PERMISSION_MATRIX: ModulePermissionMatrix = {
-  superadmin: {
-    order_management: ['view'],
-    vendor: ['view'],
-    products: ['view'],
-    product_based_costing: NO_ACCESS,
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: ['view'],
-    tasks: ['view'],
-    thrift_stock: ['view'],
-    thrift_shipment: ['view'],
-    thrift_box: ['view'],
-    thrift_shelf: ['view'],
-    thrift_barcode: ['view'],
-    thrift_category: ['view'],
-    thrift_type: ['view'],
-    thrift_settings: ['view'],
-    global_reference: NO_ACCESS,
-    global_reference_currency: ['view'],
-    global_reference_market: ['view'],
-    global_reference_payment_method: ['view'],
-    global_reference_unit_of_measure: ['view'],
-    global_invoice: ['view'],
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: ['view'],
-    recipient_profile: ['view'],
-    invoice_brand: ['view'],
-    reporting_treasury: NO_ACCESS,
-    payments: ['view'],
-    invoice_reports: ['view'],
-    shipment_reports: ['view'],
-    billing_balances: ['view'],
-    parent_dashboard: ['view'],
-    investor_reports: ['view'],
-    investor_capital: NO_ACCESS,
-    investor_profiles: ['view'],
-    investor_capital_ledger: ['view'],
-    investor_shipment_share: ['view'],
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: NO_ACCESS,
-    shop_cart: NO_ACCESS,
-    shop_order_mgmt: NO_ACCESS,
-    shop_fulfillment: NO_ACCESS,
-  },
-  admin: {
-    order_management: ['view'],
-    vendor: ['view'],
-    products: ['view'],
-    product_based_costing: ['view'],
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: ['view'],
-    tasks: ['view'],
-    thrift_stock: ['view'],
-    thrift_shipment: ['view'],
-    thrift_box: ['view'],
-    thrift_shelf: ['view'],
-    thrift_barcode: ['view'],
-    thrift_category: ['view'],
-    thrift_type: ['view'],
-    thrift_settings: ['view'],
-    global_reference: NO_ACCESS,
-    global_reference_currency: ['view'],
-    global_reference_market: ['view'],
-    global_reference_payment_method: ['view'],
-    global_reference_unit_of_measure: ['view'],
-    global_invoice: ['view'],
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: ['view'],
-    recipient_profile: ['view'],
-    invoice_brand: ['view'],
-    reporting_treasury: NO_ACCESS,
-    payments: ['view'],
-    invoice_reports: ['view'],
-    shipment_reports: ['view'],
-    billing_balances: ['view'],
-    parent_dashboard: ['view'],
-    investor_reports: ['view'],
-    investor_capital: NO_ACCESS,
-    investor_profiles: ['view'],
-    investor_capital_ledger: ['view'],
-    investor_shipment_share: ['view'],
-    shop_order: NO_ACCESS,
-    shop_config: ['view'],
-    shop_permissions: ['view'],
-    shop_pricing: ['view'],
-    shop_storefront: NO_ACCESS,
-    shop_cart: NO_ACCESS,
-    shop_order_mgmt: ['view'],
-    shop_fulfillment: ['view'],
-  },
-  staff: {
-    order_management: ['view'],
-    vendor: ['view'],
-    products: ['view'],
-    product_based_costing: ['view'],
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: ['view'],
-    tasks: ['view'],
-    thrift_stock: ['view'],
-    thrift_shipment: ['view'],
-    thrift_box: ['view'],
-    thrift_shelf: ['view'],
-    thrift_barcode: ['view'],
-    thrift_category: ['view'],
-    thrift_type: ['view'],
-    thrift_settings: ['view'],
-    global_reference: NO_ACCESS,
-    global_reference_currency: ['view'],
-    global_reference_market: ['view'],
-    global_reference_payment_method: ['view'],
-    global_reference_unit_of_measure: ['view'],
-    global_invoice: ['view'],
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: ['view'],
-    recipient_profile: ['view'],
-    invoice_brand: ['view'],
-    reporting_treasury: NO_ACCESS,
-    payments: ['view'],
-    invoice_reports: ['view'],
-    shipment_reports: NO_ACCESS,
-    billing_balances: ['view'],
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: ['view'],
-    investor_capital_ledger: ['view'],
-    investor_shipment_share: ['view'],
-    shop_order: NO_ACCESS,
-    shop_config: ['view'],
-    shop_permissions: ['view'],
-    shop_pricing: ['view'],
-    shop_storefront: NO_ACCESS,
-    shop_cart: NO_ACCESS,
-    shop_order_mgmt: ['view'],
-    shop_fulfillment: ['view'],
-  },
-  viewer: {
-    order_management: NO_ACCESS,
-    vendor: NO_ACCESS,
-    products: NO_ACCESS,
-    product_based_costing: NO_ACCESS,
-    costing_file: ['view'],
-    koba_retail: NO_ACCESS,
-    koba_wholesale: NO_ACCESS,
-    tasks: ['view'],
-    thrift_stock: NO_ACCESS,
-    thrift_shipment: NO_ACCESS,
-    thrift_box: NO_ACCESS,
-    thrift_shelf: NO_ACCESS,
-    thrift_barcode: NO_ACCESS,
-    thrift_category: NO_ACCESS,
-    thrift_type: NO_ACCESS,
-    thrift_settings: NO_ACCESS,
-    global_reference: NO_ACCESS,
-    global_reference_currency: NO_ACCESS,
-    global_reference_market: NO_ACCESS,
-    global_reference_payment_method: NO_ACCESS,
-    global_reference_unit_of_measure: NO_ACCESS,
-    global_invoice: NO_ACCESS,
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: NO_ACCESS,
-    recipient_profile: NO_ACCESS,
-    invoice_brand: NO_ACCESS,
-    reporting_treasury: NO_ACCESS,
-    payments: NO_ACCESS,
-    invoice_reports: NO_ACCESS,
-    shipment_reports: NO_ACCESS,
-    billing_balances: NO_ACCESS,
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: NO_ACCESS,
-    investor_capital_ledger: NO_ACCESS,
-    investor_shipment_share: NO_ACCESS,
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: NO_ACCESS,
-    shop_cart: NO_ACCESS,
-    shop_order_mgmt: NO_ACCESS,
-    shop_fulfillment: NO_ACCESS,
-  },
-  customer_admin: {
-    order_management: ['view'],
-    vendor: NO_ACCESS,
-    products: NO_ACCESS,
-    product_based_costing: NO_ACCESS,
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: NO_ACCESS,
-    tasks: NO_ACCESS,
-    thrift_stock: NO_ACCESS,
-    thrift_shipment: NO_ACCESS,
-    thrift_box: NO_ACCESS,
-    thrift_shelf: NO_ACCESS,
-    thrift_barcode: NO_ACCESS,
-    thrift_category: NO_ACCESS,
-    thrift_type: NO_ACCESS,
-    thrift_settings: NO_ACCESS,
-    global_reference: NO_ACCESS,
-    global_reference_currency: NO_ACCESS,
-    global_reference_market: NO_ACCESS,
-    global_reference_payment_method: NO_ACCESS,
-    global_reference_unit_of_measure: NO_ACCESS,
-    global_invoice: NO_ACCESS,
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: NO_ACCESS,
-    recipient_profile: NO_ACCESS,
-    invoice_brand: NO_ACCESS,
-    reporting_treasury: NO_ACCESS,
-    payments: NO_ACCESS,
-    invoice_reports: NO_ACCESS,
-    shipment_reports: NO_ACCESS,
-    billing_balances: NO_ACCESS,
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: NO_ACCESS,
-    investor_capital_ledger: NO_ACCESS,
-    investor_shipment_share: NO_ACCESS,
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: ['view'],
-    shop_cart: ['view'],
-    shop_order_mgmt: ['view'],
-    shop_fulfillment: NO_ACCESS,
-  },
-  customer_negotiator: {
-    order_management: ['view'],
-    vendor: NO_ACCESS,
-    products: NO_ACCESS,
-    product_based_costing: NO_ACCESS,
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: NO_ACCESS,
-    tasks: NO_ACCESS,
-    thrift_stock: NO_ACCESS,
-    thrift_shipment: NO_ACCESS,
-    thrift_box: NO_ACCESS,
-    thrift_shelf: NO_ACCESS,
-    thrift_barcode: NO_ACCESS,
-    thrift_category: NO_ACCESS,
-    thrift_type: NO_ACCESS,
-    thrift_settings: NO_ACCESS,
-    global_reference: NO_ACCESS,
-    global_reference_currency: NO_ACCESS,
-    global_reference_market: NO_ACCESS,
-    global_reference_payment_method: NO_ACCESS,
-    global_reference_unit_of_measure: NO_ACCESS,
-    global_invoice: NO_ACCESS,
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: NO_ACCESS,
-    recipient_profile: NO_ACCESS,
-    invoice_brand: NO_ACCESS,
-    reporting_treasury: NO_ACCESS,
-    payments: NO_ACCESS,
-    invoice_reports: NO_ACCESS,
-    shipment_reports: NO_ACCESS,
-    billing_balances: NO_ACCESS,
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: NO_ACCESS,
-    investor_capital_ledger: NO_ACCESS,
-    investor_shipment_share: NO_ACCESS,
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: ['view'],
-    shop_cart: ['view'],
-    shop_order_mgmt: ['view'],
-    shop_fulfillment: NO_ACCESS,
-  },
-  customer_staff: {
-    order_management: ['view'],
-    vendor: NO_ACCESS,
-    products: NO_ACCESS,
-    product_based_costing: NO_ACCESS,
-    costing_file: ['view'],
-    koba_retail: ['view'],
-    koba_wholesale: NO_ACCESS,
-    tasks: NO_ACCESS,
-    thrift_stock: NO_ACCESS,
-    thrift_shipment: NO_ACCESS,
-    thrift_box: NO_ACCESS,
-    thrift_shelf: NO_ACCESS,
-    thrift_barcode: NO_ACCESS,
-    thrift_category: NO_ACCESS,
-    thrift_type: NO_ACCESS,
-    thrift_settings: NO_ACCESS,
-    global_reference: NO_ACCESS,
-    global_reference_currency: NO_ACCESS,
-    global_reference_market: NO_ACCESS,
-    global_reference_payment_method: NO_ACCESS,
-    global_reference_unit_of_measure: NO_ACCESS,
-    global_invoice: NO_ACCESS,
-    investor_portal: NO_ACCESS,
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: NO_ACCESS,
-    recipient_profile: NO_ACCESS,
-    invoice_brand: NO_ACCESS,
-    reporting_treasury: NO_ACCESS,
-    payments: NO_ACCESS,
-    invoice_reports: NO_ACCESS,
-    shipment_reports: NO_ACCESS,
-    billing_balances: NO_ACCESS,
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: NO_ACCESS,
-    investor_capital_ledger: NO_ACCESS,
-    investor_shipment_share: NO_ACCESS,
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: ['view'],
-    shop_cart: ['view'],
-    shop_order_mgmt: ['view'],
-    shop_fulfillment: NO_ACCESS,
-  },
-  investor_portal: {
-    order_management: NO_ACCESS,
-    vendor: NO_ACCESS,
-    products: NO_ACCESS,
-    product_based_costing: NO_ACCESS,
-    costing_file: NO_ACCESS,
-    koba_retail: NO_ACCESS,
-    koba_wholesale: NO_ACCESS,
-    tasks: NO_ACCESS,
-    thrift_stock: NO_ACCESS,
-    thrift_shipment: NO_ACCESS,
-    thrift_box: NO_ACCESS,
-    thrift_shelf: NO_ACCESS,
-    thrift_barcode: NO_ACCESS,
-    thrift_category: NO_ACCESS,
-    thrift_type: NO_ACCESS,
-    thrift_settings: NO_ACCESS,
-    global_reference: NO_ACCESS,
-    global_reference_currency: NO_ACCESS,
-    global_reference_market: NO_ACCESS,
-    global_reference_payment_method: NO_ACCESS,
-    global_reference_unit_of_measure: NO_ACCESS,
-    global_invoice: NO_ACCESS,
-    investor_portal: ['view'],
-    procurement_stock: NO_ACCESS,
-    global_stock_type: NO_ACCESS,
-    sales_invoice: NO_ACCESS,
-    billing_profile: NO_ACCESS,
-    recipient_profile: NO_ACCESS,
-    invoice_brand: NO_ACCESS,
-    reporting_treasury: NO_ACCESS,
-    payments: NO_ACCESS,
-    invoice_reports: NO_ACCESS,
-    shipment_reports: NO_ACCESS,
-    billing_balances: NO_ACCESS,
-    parent_dashboard: NO_ACCESS,
-    investor_reports: NO_ACCESS,
-    investor_capital: NO_ACCESS,
-    investor_profiles: NO_ACCESS,
-    investor_capital_ledger: NO_ACCESS,
-    investor_shipment_share: NO_ACCESS,
-    shop_order: NO_ACCESS,
-    shop_config: NO_ACCESS,
-    shop_permissions: NO_ACCESS,
-    shop_pricing: NO_ACCESS,
-    shop_storefront: NO_ACCESS,
-    shop_cart: NO_ACCESS,
-    shop_order_mgmt: NO_ACCESS,
-    shop_fulfillment: NO_ACCESS,
-  },
-}
 
 const isInteractiveScope = (
   scope: AuthScope | null,
@@ -462,16 +55,7 @@ export type ModuleAccessResolution = {
   allowedActions: readonly ModuleAction[]
 }
 
-export const getAllowedModuleActions = (
-  role: AccessRole | null | undefined,
-  moduleKey: ModuleKey,
-) => {
-  if (!role) {
-    return NO_ACCESS
-  }
 
-  return MODULE_PERMISSION_MATRIX[role]?.[moduleKey] ?? NO_ACCESS
-}
 
 export const canAccessModule = ({
   scope,
@@ -481,6 +65,8 @@ export const canAccessModule = ({
   moduleKey,
   activeModuleKeys,
   action = 'view',
+  effectiveGrants,
+  isAdmin,
 }: {
   scope: AuthScope | null
   tenantId: number | null | undefined
@@ -489,6 +75,8 @@ export const canAccessModule = ({
   moduleKey: ModuleKey
   activeModuleKeys: readonly string[]
   action?: ModuleAction
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null
+  isAdmin?: boolean | null
 }) => {
   const hasScopeContext = isInteractiveScope(scope)
   const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
@@ -497,8 +85,15 @@ export const canAccessModule = ({
     customerGroupId,
   })
   const tenantHasModule = activeModuleKeys.includes(moduleKey)
-  const allowedActions = getAllowedModuleActions(role, moduleKey)
-  const roleAllowed = allowedActions.includes(action)
+
+  let roleAllowed = false
+  if (role === 'superadmin' || isAdmin === true) {
+    roleAllowed = true
+  } else if (effectiveGrants) {
+    roleAllowed = effectiveGrants.some(
+      (grant) => grant.module_key === moduleKey && grant.action === action,
+    )
+  }
 
   if (
     moduleKey === 'global_shipment' ||
@@ -536,6 +131,8 @@ export const resolveModuleAccess = ({
   moduleKey,
   activeModuleKeys,
   action = 'view',
+  effectiveGrants,
+  isAdmin,
 }: {
   scope: AuthScope | null
   tenantId: number | null | undefined
@@ -544,6 +141,8 @@ export const resolveModuleAccess = ({
   moduleKey: ModuleKey
   activeModuleKeys: readonly string[]
   action?: ModuleAction
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null
+  isAdmin?: boolean | null
 }): ModuleAccessResolution => {
   const hasScopeContext = isInteractiveScope(scope)
   const hasTenantContext = hasTenantContextForScope({ scope, tenantId })
@@ -551,9 +150,22 @@ export const resolveModuleAccess = ({
     scope,
     customerGroupId,
   })
-  const allowedActions = getAllowedModuleActions(role, moduleKey)
   const moduleEnabled = activeModuleKeys.includes(moduleKey)
-  const roleAllowed = allowedActions.includes(action)
+
+  let roleAllowed = false
+  let allowedActions: readonly ModuleAction[] = []
+  if (role === 'superadmin' || isAdmin === true) {
+    roleAllowed = true
+    allowedActions = ['view']
+  } else if (effectiveGrants) {
+    allowedActions = effectiveGrants
+      .filter((grant) => grant.module_key === moduleKey)
+      .map((grant) => grant.action as ModuleAction)
+    roleAllowed = allowedActions.includes(action)
+  } else {
+    allowedActions = NO_ACCESS
+    roleAllowed = false
+  }
 
   let isBlockedByChildStatus = false
   if (
@@ -599,6 +211,8 @@ export const getAccessibleModuleRoutes = ({
   role,
   activeModuleKeys,
   tenantSlug,
+  effectiveGrants,
+  isAdmin,
 }: {
   scope: AuthScope | null
   tenantId: number | null | undefined
@@ -606,6 +220,8 @@ export const getAccessibleModuleRoutes = ({
   role: AccessRole | null | undefined
   activeModuleKeys: readonly string[]
   tenantSlug?: string | null | undefined
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null
+  isAdmin?: boolean | null
 }) => {
   if (!isInteractiveScope(scope)) {
     return []
@@ -620,6 +236,8 @@ export const getAccessibleModuleRoutes = ({
       moduleKey: routeDefinition.moduleKey,
       activeModuleKeys,
       action: routeDefinition.requiredAction ?? 'view',
+      effectiveGrants,
+      isAdmin,
     }).allowed,
   )
 }
@@ -635,6 +253,8 @@ export const useModulePermissions = () => {
       role: authStore.matchedRole,
       activeModuleKeys: authStore.activeModuleKeys,
       tenantSlug: authStore.tenantSlug,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
     }),
   )
 
@@ -647,6 +267,8 @@ export const useModulePermissions = () => {
       moduleKey,
       activeModuleKeys: authStore.activeModuleKeys,
       action,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
     })
 
   const getModuleAccess = (moduleKey: ModuleKey, action: ModuleAction = 'view') =>
@@ -658,6 +280,8 @@ export const useModulePermissions = () => {
       moduleKey,
       activeModuleKeys: authStore.activeModuleKeys,
       action,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
     })
 
   return {

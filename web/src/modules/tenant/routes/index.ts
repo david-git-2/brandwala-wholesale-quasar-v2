@@ -312,6 +312,58 @@ const tenantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  // ROLE & SETTINGS ROUTES
+  {
+    path: '/:tenantSlug?/app/settings',
+    component: () => import('layouts/AppLayout.vue'),
+    name: 'admin-settings',
+    children: [
+      {
+        path: 'roles',
+        name: 'admin-settings-roles',
+        component: () => import('../pages/AdminSettingsRolesPage.vue'),
+        props: () => ({ scope: 'app' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+      {
+        path: 'roles/:id/grants',
+        name: 'admin-settings-role-grants',
+        component: () => import('../pages/AdminSettingsRoleGrantsPage.vue'),
+        props: (route) => ({ id: Number(route.params.id) }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+    ],
+  },
+  // SHOP ROLES ROUTE
+  {
+    path: '/:tenantSlug?/app/shop',
+    component: () => import('layouts/AppLayout.vue'),
+    name: 'admin-shop-settings',
+    children: [
+      {
+        path: 'roles',
+        name: 'admin-shop-roles',
+        component: () => import('../pages/AdminSettingsRolesPage.vue'),
+        props: () => ({ scope: 'shop' }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+    ],
+  },
 ]
 
 export default tenantRoutes
