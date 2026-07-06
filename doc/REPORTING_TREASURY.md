@@ -444,13 +444,13 @@ During transition, legacy rollup pages may read old tables; new work targets rea
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| **P0 — Documentation** | This file | Current |
-| **P1 — Module hierarchy** | `reporting_treasury` seeder, registry, nav, `/app/finance/*` routes + redirects | Planned |
-| **P2 — margin.ts** | Shared line / invoice / batch formulas; unit tests | Planned |
-| **P3 — Read RPCs / views** | `list_invoice_margin_report`, `get_shipment_pnl`, `list_billing_balances`, `list_invoice_outstanding` | Planned |
-| **P4 — Payments** | Fresh `global_payments` + `invoice_payments`; allocation UI | Planned |
-| **P5 — Dashboards** | Parent consolidated + shipment P&L pages | Planned |
-| **P6 — Ledger drop** | Stop writing `global_accounting_ledger`; deprecate rollup tables | Planned |
+| **P0 — Documentation** | This file | Done |
+| **P1 — Module hierarchy** | `reporting_treasury` seeder, registry, nav, `/app/finance/*` routes + redirects | Done |
+| **P2 — margin.ts** | Shared line / invoice / batch formulas; unit tests; inline margin on invoice detail (D-RT10) | Done |
+| **P3 — Read RPCs / views** | `list_invoice_margin_report`, `get_shipment_pnl`, `list_billing_balances`, `list_invoice_outstanding` | Done |
+| **P4 — Payments** | Fresh `global_payments` + `invoice_payments`; allocation UI | Done |
+| **P5 — Dashboards** | `get_parent_dashboard` RPC + parent consolidated dashboard | Done |
+| **P6 — Ledger drop** | Stop writing `global_accounting_ledger`; deprecate rollup tables | Done (apply migration chain at cutover) |
 
 ---
 
@@ -460,8 +460,8 @@ During transition, legacy rollup pages may read old tables; new work targets rea
 |------|------|
 | Landed cost (batch side) | `web/src/modules/procurement_stock/utils/landedCost.ts` |
 | Margin formulas (target) | `web/src/modules/reporting_treasury/utils/margin.ts` |
-| Payment UI (reuse patterns) | `web/src/modules/accounting/`, legacy global payment pages |
-| Invoice data | `web/src/modules/global/stores/globalInvoiceStore.ts` |
+| Payment UI | `web/src/modules/reporting_treasury/pages/PaymentsListPage.vue` |
+| Invoice data | `web/src/modules/sales_invoice/stores/invoiceStore.ts` |
 | Module registry | `web/src/modules/navigation/moduleRegistry.ts` |
 | Permissions | `web/src/modules/navigation/modulePermissions.ts` |
 

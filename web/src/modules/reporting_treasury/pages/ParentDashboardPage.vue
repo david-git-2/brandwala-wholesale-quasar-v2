@@ -4,17 +4,14 @@
     subtitle="Multi-tenant operations summary: sales performance, cash collections, accounts receivable, and middle-man obligations."
     :error="error"
   >
-    <!-- Loading State -->
     <div v-if="loading" class="row justify-center py-12">
       <q-spinner-dots size="50px" color="primary" />
     </div>
 
     <div v-else class="q-gutter-y-lg">
-      <!-- Metrics Grid -->
       <TreasuryStatGrid :items="statCards" />
 
       <div class="row q-col-gutter-lg">
-        <!-- Sales Split by Invoice Type -->
         <div class="col-12 col-md-5">
           <q-card flat bordered class="q-pa-md full-height">
             <div class="text-subtitle1 text-weight-bold q-mb-lg text-primary">
@@ -37,7 +34,6 @@
           </q-card>
         </div>
 
-        <!-- System Summary details -->
         <div class="col-12 col-md-7">
           <q-card flat bordered class="q-pa-md full-height">
             <div class="text-subtitle1 text-weight-bold q-mb-lg text-primary">
@@ -89,9 +85,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
+import { treasuryRepository } from '../repositories/treasuryRepository'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
 
@@ -100,8 +96,6 @@ const authStore = useAuthStore()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
-const invoices = ref<any[]>([])
-const payments = ref<any[]>([])
 
 const totals = ref({
   revenue: 0,
@@ -110,6 +104,12 @@ const totals = ref({
   unallocated_payments: 0,
   middleman_total: 0,
   middleman_liability: 0,
+})
+
+const typeAmounts = ref<Record<string, number>>({
+  wholesale: 0,
+  retail: 0,
+  dropship: 0,
 })
 
 const statCards = computed(() => [
@@ -145,89 +145,40 @@ const loadStats = async () => {
   loading.value = true
   error.value = null
   try {
-    // 1. Fetch invoices
-    const { data: invData, error: invError } = await supabase
-      .from('global_invoices')
-      .select('invoice_type, total_amount, paid_amount, due_amount, middle_man_payout_amount, middle_man_payout_status')
-      .eq('tenant_id', tenantId)
-      .eq('invoice_status', 'posted')
-
-    if (invError) throw invError
-    invoices.value = invData || []
-
-    // 2. Fetch payments
-    const { data: payData, error: payError } = await supabase
-      .from('global_payments')
-      .select('amount, unallocated_amount')
-      .eq('tenant_id', tenantId)
-
-    if (payError) throw payError
-    payments.value = payData || []
-
-    // Calculate aggregations
-    let rev = 0
-    let ar = 0
-    let mmTotal = 0
-    let mmLiability = 0
-
-    invoices.value.forEach((inv) => {
-      rev += Number(inv.total_amount) || 0
-      ar += Number(inv.due_amount) || 0
-
-      if (inv.invoice_type === 'dropship') {
-        const mmAmt = Number(inv.middle_man_payout_amount) || 0
-        mmTotal += mmAmt
-        if (inv.middle_man_payout_status !== 'paid') {
-          mmLiability += mmAmt
-        }
-      }
-    })
-
-    let cash = 0
-    let unallocated = 0
-
-    payments.value.forEach((p) => {
-      cash += Number(p.amount) || 0
-      unallocated += Number(p.unallocated_amount) || 0
-    })
-
+    const dashboard = await treasuryRepository.getParentDashboard(tenantId)
     totals.value = {
-      revenue: rev,
-      cash_collected: cash,
-      active_ar: ar,
-      unallocated_payments: unallocated,
-      middleman_total: mmTotal,
-      middleman_liability: mmLiability,
+      revenue: Number(dashboard.totals.revenue) || 0,
+      cash_collected: Number(dashboard.totals.cash_collected) || 0,
+      active_ar: Number(dashboard.totals.active_ar) || 0,
+      unallocated_payments: Number(dashboard.totals.unallocated_payments) || 0,
+      middleman_total: Number(dashboard.totals.middleman_total) || 0,
+      middleman_liability: Number(dashboard.totals.middleman_liability) || 0,
     }
-  } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load dashboard: ${err.message}` })
+
+    const map: Record<string, number> = { wholesale: 0, retail: 0, dropship: 0 }
+    for (const row of dashboard.type_distribution ?? []) {
+      const key = row.name || 'wholesale'
+      if (map[key] !== undefined) {
+        map[key] = Number(row.amount) || 0
+      }
+    }
+    typeAmounts.value = map
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to load dashboard'
+    error.value = message
+    $q.notify({ type: 'negative', message: `Failed to load dashboard: ${message}` })
   } finally {
     loading.value = false
   }
 }
 
-// Distribution by type
 const typeDistribution = computed(() => {
-  const map: Record<string, number> = {
-    wholesale: 0,
-    retail: 0,
-    dropship: 0,
-  }
-
-  invoices.value.forEach((inv) => {
-    const t = inv.invoice_type || 'wholesale'
-    if (map[t] !== undefined) {
-      map[t] += Number(inv.total_amount) || 0
-    }
-  })
-
-  const sum = Object.values(map).reduce((a, b) => a + b, 0)
-
-  return Object.entries(map).map(([name, amount]) => {
-    const percent = sum > 0 ? Math.round((amount / sum) * 100) : 0
-    return { name, amount, percent }
-  })
+  const sum = Object.values(typeAmounts.value).reduce((a, b) => a + b, 0)
+  return Object.entries(typeAmounts.value).map(([name, amount]) => ({
+    name,
+    amount,
+    percent: sum > 0 ? Math.round((amount / sum) * 100) : 0,
+  }))
 })
 
 onMounted(() => {

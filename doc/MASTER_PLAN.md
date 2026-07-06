@@ -180,11 +180,11 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 
 ### 10.1 Implementation status & next step
 
-**Last updated:** 2026-07-05
+**Last updated:** 2026-07-06
 
 #### Next step (active work)
 
-1. **Phase 0 Cleanup** — Retire duplicate routes, decouple sales_invoice, and align schema/code.
+1. **B8/F8 — Access grants** — Unified permission system (PERM P1→P3). See [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md).
 
 #### Completed (P0 redesign)
 
@@ -193,25 +193,22 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **procurement_stock** | Phases 1–10 done — see [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) §11 |
 | **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
 | **F1–F3** | Shared UI tokens + procurement/stock admin pages |
-| **shop_order** | P0–P9 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
-| **sales_invoice** | B4, F4 done (UI live; global/ decouple pending) |
-| **investor_capital** | B6, F6 mostly done (admin + portal pages scaffolded; cutover pending) |
-| **reporting_treasury** | B5, F5 mostly done (finance pages live; ledger consolidation pending) |
+| **shop_order** | P0–P10 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
+| **sales_invoice** | B4, F4 done — decoupled to `sales_invoice/` module |
+| **investor_capital** | B6, F6 done — admin + portal live |
+| **reporting_treasury** | B5, F5 done — P1–P6 backend + finance UI; ledger retired |
 
 #### In progress (Cutover debt only)
 
 | Area | Done | Remaining |
 |------|------|-----------|
-| **B7 — Cleanup** | — | Cutover cleanup, legacy route removal, global/ decouple, table drops, regenerate `supabase.ts` |
-
+| **B7 — Cleanup** | Legacy module folders removed; redirects wired; migrations authored | Apply `20260709000600_b7_cleanup.sql` + ledger chain at tenant cutover; run `npm run backend:types` after DB push |
 
 #### Recommended order (after next step)
 
 ```
-investor_capital (finish)  →  sales_invoice  →  reporting_treasury (backend)  →  shop_order  →  B7 cleanup
+B8/F8 permissions (PERM P1→P3) — last stage
 ```
-
-Sales invoice unblocks correct margin/P&L for treasury and investor profit refresh. `shop_order` is the largest remaining greenfield module.
 
 ---
 

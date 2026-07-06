@@ -11,7 +11,44 @@ const guard = (requiredModule: ModuleKey, allowedRoles: ('admin' | 'staff')[] = 
     requiredModule,
   })
 
+const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : ''
+  return tenantSlug ? `/${tenantSlug}` : ''
+}
+
 const salesInvoiceRoutes: RouteRecordRaw[] = [
+  {
+    path: '/:tenantSlug?/app/invoices',
+    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/sales/invoices`,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/billing-profiles',
+    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/sales/invoices/billing-profiles`,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/recipient-profiles',
+    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/sales/invoices/recipient-profiles`,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/brands',
+    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/sales/invoices/brands`,
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/:id',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      const id = typeof to.params.id === 'string' ? to.params.id : ''
+      return `${prefix}/app/sales/invoices/${id}`
+    },
+  },
+  {
+    path: '/:tenantSlug?/app/invoices/:id/preview',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params)
+      const id = typeof to.params.id === 'string' ? to.params.id : ''
+      return `${prefix}/app/sales/invoices/${id}/preview`
+    },
+  },
   {
     path: '/:tenantSlug?/app/sales/invoices',
     component: () => import('layouts/AppLayout.vue'),

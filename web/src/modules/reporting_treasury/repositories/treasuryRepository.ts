@@ -111,11 +111,35 @@ const listInvoiceOutstanding = async (
   return data as unknown as any[]
 }
 
+export interface ParentDashboardResponse {
+  totals: {
+    revenue: number
+    cash_collected: number
+    active_ar: number
+    unallocated_payments: number
+    middleman_total: number
+    middleman_liability: number
+  }
+  type_distribution: Array<{ name: string; amount: number }>
+}
+
+const getParentDashboard = async (
+  parentTenantId: number
+): Promise<ParentDashboardResponse> => {
+  const { data, error } = await supabase.rpc('get_parent_dashboard', {
+    p_parent_tenant_id: parentTenantId,
+  })
+
+  if (error) throw error
+  return data as unknown as ParentDashboardResponse
+}
+
 export const treasuryRepository = {
   listInvoiceMarginReport,
   getInvoiceMarginDetail,
   getShipmentPnL,
   listBillingBalances,
   listInvoiceOutstanding,
+  getParentDashboard,
 }
 export type TreasuryRepository = typeof treasuryRepository

@@ -742,10 +742,10 @@ Target submodule keys get explicit rows in `modulePermissions.ts` when extracted
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
 | **P0 — Documentation** | This file | Current |
-| **P1 — Module hierarchy** | `sales_invoice` seeder, registry, nav, `/app/sales/*` routes + redirects | Done (UI live; global/ decouple pending) |
-| **P2 — Fresh backend** | `recipient_profiles` + drop-recreate invoice tables (lifecycle, retail mode) | Done (UI live; global/ decouple pending) |
-| **P3 — Fresh RPCs** | Create / add item / post / void / return / payment per type + `unit_cost_price` on post | Done (UI live; global/ decouple pending) |
-| **P4 — Wire UI** | Desk invoice pages; retail mode toggle; post/void actions; submodule guards | Done (UI live; global/ decouple pending) |
+| **P1 — Module hierarchy** | `sales_invoice` seeder, registry, nav, `/app/sales/*` routes + redirects | Done |
+| **P2 — Fresh backend** | `recipient_profiles` + drop-recreate invoice tables (lifecycle, retail mode) | Done |
+| **P3 — Fresh RPCs** | Create / add item / post / void / return / payment per type + `unit_cost_price` on post | Done |
+| **P4 — Wire UI** | Desk invoice pages; retail mode toggle; post/void actions; submodule guards | Done |
 
 ---
 

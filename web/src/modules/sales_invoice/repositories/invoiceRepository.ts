@@ -73,7 +73,7 @@ const listGlobalInvoiceItems = async (invoiceId: number): Promise<GlobalInvoiceI
   const { data, error } = await supabase
     .from('global_invoice_items')
     .select(
-      'id, invoice_id, global_stock_id, name_snapshot, quantity, cost_amount, sell_price_amount, recipient_price_amount, line_face_total_amount, line_discount_amount, line_total_amount',
+      'id, invoice_id, global_stock_id, name_snapshot, quantity, cost_amount, sell_price_amount, recipient_price_amount, line_face_total_amount, line_discount_amount, line_total_amount, unit_cost_price, return_quantity',
     )
     .eq('invoice_id', invoiceId)
     .order('id', { ascending: true })

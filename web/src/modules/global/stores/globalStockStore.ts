@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import type { InventoryItemWithStock } from 'src/modules/inventory/types'
+import type { InventoryItemWithStock } from '../types'
 import type { Shipment } from 'src/modules/shipment/types'
 
 import { globalRepository } from '../repositories/globalRepository'

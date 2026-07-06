@@ -17,18 +17,6 @@ export default defineConfigWithVueTs(
      */
     ignores: [
       'src/types/supabase.ts',
-      'src/modules/accounting/**',
-      'src/modules/invoice/**',
-      'src/modules/investor/**',
-      'src/modules/commerce_accounting/**',
-      'src/modules/commerce_cart/**',
-      'src/modules/commerce_invoice/**',
-      'src/modules/commerce_order/**',
-      'src/modules/commerce_shop/**',
-      'src/modules/global/pages/GlobalShipmentAccountingDetailsPage.vue',
-      'src/modules/global/pages/GlobalInvestorsPage.vue',
-      'src/modules/global/stores/globalAccountingStore.ts',
-      'src/modules/global/repositories/globalRepository.ts'
     ],
   },
 

@@ -83,6 +83,7 @@ export type GlobalInvoiceItemRow = {
   line_face_total_amount?: number | null
   line_discount_amount: number
   line_total_amount: number
+  unit_cost_price?: number | null
   return_quantity: number
 }
 

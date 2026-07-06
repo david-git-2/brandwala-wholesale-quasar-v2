@@ -111,6 +111,7 @@
                   <th class="text-right">Sell</th>
                   <th v-if="isDropship" class="text-right">Recipient</th>
                   <th class="text-right">Total</th>
+                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
                   <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
                 </tr>
               </thead>
@@ -128,6 +129,9 @@
                     {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
                   </td>
                   <td class="text-right">{{ formatAmount(row.line_total_amount) }}</td>
+                  <td v-if="invoice.invoice_status === 'posted'" class="text-right">
+                    {{ formatAmount(lineMarginForRow(row)) }}
+                  </td>
                   <td v-if="invoice.invoice_status === 'draft'" class="text-right">
                     <q-btn
                       flat
@@ -302,6 +306,13 @@
             </div>
             <q-separator class="q-my-xs" />
             <div class="row justify-between text-subtitle1 text-weight-bold text-primary"><span>Total</span><span>{{ formatAmount(invoice.total_amount) }}</span></div>
+            <div
+              v-if="invoice.invoice_status === 'posted'"
+              class="row justify-between text-body2 text-weight-medium"
+            >
+              <span>Gross profit</span>
+              <span :class="grossProfit >= 0 ? 'text-positive' : 'text-negative'">{{ formatAmount(grossProfit) }}</span>
+            </div>
             <div class="row justify-between text-body2 text-grey-9"><span>Paid</span><span>{{ formatAmount(invoice.paid_amount) }}</span></div>
             <div class="row justify-between text-subtitle1 text-weight-bold">
               <span>Due</span>
@@ -457,6 +468,7 @@ import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedbac
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
+import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin'
 import type { StockNetworkRow } from 'src/modules/global/types'
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
 
@@ -524,6 +536,30 @@ const returnItemOptions = computed(() =>
 )
 
 const formatAmount = (value: number) => formatAmountBdt(value)
+
+const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
+  lineMargin({
+    sell_price_amount: row.sell_price_amount,
+    unit_cost_price: row.unit_cost_price ?? undefined,
+    quantity: row.quantity,
+    line_discount_amount: row.line_discount_amount,
+  })
+
+const grossProfit = computed(() => {
+  if (!invoice.value || invoice.value.invoice_status !== 'posted') return 0
+  return invoiceGrossProfit(
+    {
+      invoice_type: invoice.value.invoice_type as 'wholesale' | 'retail' | 'dropship',
+      shipping_charge: invoice.value.shipping_charge,
+      cod_charge: invoice.value.cod_charge,
+      print_charge: invoice.value.print_charge,
+      wrapping_charge: invoice.value.wrapping_charge,
+      discount_amount: invoice.value.discount_amount,
+      invoice_status: invoice.value.invoice_status,
+    },
+    items.value.map((row) => ({ ...row, id: row.id })),
+  )
+})
 
 const loadInvoice = async () => {
   loading.value = true

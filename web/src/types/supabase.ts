@@ -7525,6 +7525,10 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: Json
       }
+      get_parent_dashboard: {
+        Args: { p_parent_tenant_id: number }
+        Returns: Json
+      }
       get_pending_order_qty: {
         Args: { p_allocation_id: number }
         Returns: number
