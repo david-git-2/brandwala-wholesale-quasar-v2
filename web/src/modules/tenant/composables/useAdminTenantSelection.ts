@@ -92,6 +92,7 @@ export function useAdminTenantSelection() {
         effectiveGrants: bootstrap.effective_grants || [],
         tenantRoleId: bootstrap.tenant_role_id ?? null,
         isAdmin: Boolean(bootstrap.is_admin),
+        permissionVersion: bootstrap.permission_version ?? null,
         savedAt: new Date().toISOString(),
       })
 

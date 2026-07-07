@@ -13,5 +13,5 @@ export function parseMembershipPreference(raw: unknown): MembershipPreferenceSch
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return {}
   }
-  return raw as MembershipPreferenceSchema
+  return raw
 }

@@ -201,7 +201,7 @@
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useTasksStore } from '../stores/tasksStore';
-import type { Item, ItemType, ItemStatus, ItemPriority } from '../types';
+import type { Item, ItemType, ItemStatus, ItemPriority, ItemAccessibility } from '../types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { tasksRepository } from '../repositories/tasksRepository';
 
@@ -256,7 +256,7 @@ const form = ref({
   parent_id: null as number | null,
   status: 'todo' as ItemStatus,
   priority: 'medium' as ItemPriority,
-  accessibility: 'public' as 'public' | 'private' | 'restricted',
+  accessibility: 'public' as ItemAccessibility,
   is_markdown: false,
   start_date: '',
   due_date: '',

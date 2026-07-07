@@ -58,7 +58,7 @@ const listInvoiceMarginReport = async (
   })
 
   if (error) throw error
-  return data as unknown as InvoiceMarginReportResponse
+  return data
 }
 
 const getInvoiceMarginDetail = async (
@@ -69,7 +69,7 @@ const getInvoiceMarginDetail = async (
   })
 
   if (error) throw error
-  return data as unknown as InvoiceMarginDetailResponse
+  return data
 }
 
 const getShipmentPnL = async (
@@ -82,7 +82,7 @@ const getShipmentPnL = async (
   })
 
   if (error) throw error
-  return data as unknown as ShipmentPnLResponse
+  return data
 }
 
 const listBillingBalances = async (
@@ -95,7 +95,7 @@ const listBillingBalances = async (
   })
 
   if (error) throw error
-  return data as unknown as any[]
+  return data
 }
 
 const listInvoiceOutstanding = async (
@@ -108,7 +108,7 @@ const listInvoiceOutstanding = async (
   })
 
   if (error) throw error
-  return data as unknown as any[]
+  return data
 }
 
 export interface ParentDashboardResponse {
@@ -131,7 +131,7 @@ const getParentDashboard = async (
   })
 
   if (error) throw error
-  return data as unknown as ParentDashboardResponse
+  return data
 }
 
 export const treasuryRepository = {

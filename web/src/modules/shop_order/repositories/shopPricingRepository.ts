@@ -72,7 +72,7 @@ const listCurrencies = async (): Promise<Currency[]> => {
     throw error
   }
 
-  return (data as Currency[] | null) ?? []
+  return (data) ?? []
 }
 
 export const shopPricingRepository = {

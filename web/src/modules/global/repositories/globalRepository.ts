@@ -102,7 +102,7 @@ const listChildStockAllocations = async (
     .eq('status', status ?? 'excellent')
 
   if (error) throw error
-  return (data as ChildStockAllocationRow[] | null) ?? []
+  return (data) ?? []
 }
 
 const getAllocationReconciliation = async (

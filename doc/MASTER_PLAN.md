@@ -157,7 +157,7 @@ Full decision log: §14.3.
 | **B5 — Reports & treasury** | Payment tables; margin report RPCs; retire ledger writes | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Mostly done |
 | **B6 — Capital** | `investor_capital` module; shipment investments; portal bootstrap | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Mostly done |
 | **B7 — Cleanup** | Drop legacy tables; regenerate `supabase.ts` | — | Blocked (cutover only) |
-| **B8 — Access grants** | `tenant_roles`, grant tables, `has_module_action`, bootstrap grants, shop permission tables; strangler RLS migration | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (after B7 + shop_order P8) |
+| **B8 — Access grants** | `tenant_roles`, grant tables, `has_module_action`, bootstrap grants, shop permission tables; strangler RLS migration | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Done (`20260910*`–`20260913*`) |
 
 ### Frontend stages
 
@@ -172,7 +172,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 | **F5 — Finance reports** | Margin reports, payments, balances | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Mostly done |
 | **F6 — Investor capital** | Admin `/app/capital/*` + investor portal | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Mostly done |
 | **F7 — Commerce retarget** | Commerce sells `global_stock_id` | §14 row 23–28 | Blocked (after `shop_order`) |
-| **F8 — Access grants UI** | Role CRUD, grant matrix, member role assignment, overrides, shop permission admin; bootstrap `effectiveGrants` | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | **Last stage** (with B8) |
+| **F8 — Access grants UI** | Access Control module (`/app/access-control`), role CRUD, grant matrix, member assignment, overrides; bootstrap `effectiveGrants` + `permissionVersion` | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Done (`20260910*`–`20260913*`) |
 
 **Investor portal:** See [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) — admin capital management + read-only investor reports at `/:slug/investor/*`.
 
@@ -184,7 +184,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 
 #### Next step (active work)
 
-1. **B8/F8 — Access grants** — Unified permission system (PERM P1→P3). See [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md).
+1. **B8/F8 — Access grants** — Unified permission system (PERM P1→P3 + AC-P1→P4). See [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). **Done.**
 
 #### Completed (P0 redesign)
 
@@ -207,7 +207,7 @@ All new/updated pages **must** follow [doc/frontend style guilde.md](doc/fronten
 #### Recommended order (after next step)
 
 ```
-B8/F8 permissions (PERM P1→P3) — last stage
+B8/F8 permissions (PERM P1→P3 + AC-P1→P4) — done
 ```
 
 ---
@@ -237,7 +237,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Platform / App / Shop / Investor scopes, guards, redirects |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant types, hierarchy, modules, data ownership, investor membership |
 | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Login → bootstrap → nav implementation |
-| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Target DB grant model, tables, data flows, B8/F8 (last stage) |
+| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Unified grant model, tables, data flows, Access Control v2 (implemented) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies, markets, payment methods, units |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
@@ -340,14 +340,14 @@ Per-tenant assignment table: §15.5 and domain docs.
 | D11 | Costing → order | Not required; optional later |
 | D12 | Thrift | No phase 1 global integration |
 | D13 | Module enablement | `tenant_modules` per tenant; no inheritance |
-| D14 | Role abilities | **Today:** code matrix in `modulePermissions.ts` (view only). **Target:** tenant-scoped custom roles + DB grants per [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) — Administrator auto-access on enabled modules; B8/F8 last |
+| D14 | Role abilities | DB-backed `tenant_roles` + grants via bootstrap `effectiveGrants`; Administrator auto-access on enabled modules; admin UI at `/app/access-control` — see [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) |
 | D15 | Margin / P&L | Read-side from transactions — no shadow ledger |
 
 ---
 
 ## 15. Permission schema & role matrix
 
-> **Target design (DB-backed grants, per-user overrides, shop flags):** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) — implement **B8/F8 last** after domain cutover. §15.3 below is **today’s** code matrix.
+> **Implemented:** DB-backed grants, per-user overrides, shop flags — [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). §15.3 below is the historical code-matrix reference (no longer used at runtime).
 
 ### 15.1 Access model
 
@@ -530,7 +530,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Scopes, guards, redirects |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Tenant model and access |
 | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) | Auth bootstrap implementation |
-| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Unified grant design (B8/F8 last stage) |
+| [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Unified grant design (implemented) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Reference catalogs |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |

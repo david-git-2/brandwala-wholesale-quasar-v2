@@ -1,7 +1,7 @@
 # Permission System — Target Design
 
-**Status:** **Implemented** — PERM P1–P3 applied (`20260910*`–`20260912*` migrations). Enum login gate unchanged; grants from bootstrap `effectiveGrants`; RLS cutover via `membership_has_module_action()` / `has_module_action()`.  
-**Today:** Nav + `createAccessGuard` read `authStore.effectiveGrants` (no `MODULE_PERMISSION_MATRIX`). Admin UI: app + shop roles/grants, member assign + overrides. Shop Subsystem B (per-shop flags) in shop_order P3.  
+**Status:** **Implemented** — PERM P1–P3 + Access Control v2 AC-P1–P4 (`20260910*`–`20260913*` migrations). Enum login gate unchanged; grants from bootstrap `effectiveGrants` + `permissionVersion`; RLS cutover via `membership_has_module_action()` / `has_module_action()`. Admin UI consolidated at `/:slug/app/access-control/*` (RPC-only grant reads/writes).
+**Today:** Nav + `createAccessGuard` read `authStore.effectiveGrants`; silent re-bootstrap on `permissionVersion` mismatch. Shop Subsystem B (per-shop flags) in shop_order P3.  
 **Canon for scopes:** [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md). **Login/nav:** [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md).
 
 This document defines the **unified, database-backed permission system** with **tenant-scoped custom roles**, per-module actions, and member-level overrides — while keeping the four-scope model unchanged.
@@ -288,11 +288,9 @@ Per-**shop** member overrides (same shape as `membership_grants`).
 
 ---
 
-### 7.7 `grant_audit_log` (optional v1.1)
+### 7.7 `grant_audit_log` (deferred)
 
-| Column | Type |
-|--------|------|
-| `id`, `tenant_id`, `tenant_role_id` NULL, `membership_id` NULL, `actor_email`, `table_name`, `change_type`, `payload` jsonb, `created_at` |
+Out of scope for the current access-control implementation track. Do not add this table in the current phase plan.
 
 ---
 
@@ -683,6 +681,219 @@ Three phases: **database + RPCs → admin UI → module seeding + cutover**. Map
 - [x] New tenants and backfilled tenants resolve grants from `system_role_templates` (+ `20260912000000` staff template fix)
 
 ---
+
+## 17A. Access Control v2 phased execution plan (for implementation agents)
+
+This section is the execution source of truth for the upcoming rework.  
+Focus order is fixed:
+1. permission setup foundation
+2. module-by-module rollout
+
+Locked decisions:
+- No audit-log implementation in this track.
+- Revocation freshness must be automatic (no user-manual refresh dependency).
+- Safety guardrails are mandatory (last-admin, module dependency, scope-safe assignment).
+- Platform/superadmin behavior remains unchanged.
+- Investor remains separate `investor` scope.
+
+### 17A.1 Architecture targets
+
+- New admin module: `access_control`.
+- Route namespace: `/:slug/app/access-control/*`.
+- All protected role/grant reads and writes use `SECURITY DEFINER` RPCs.
+- Clients must not directly query protected tables such as `tenant_roles` in admin pages.
+- UI permissions are bootstrap-cached; server permissions enforced on every request via RLS/RPC.
+
+### 17A.2 Data model additions and constraints
+
+Required entities:
+- Existing: `module_actions`, `tenant_roles`, `tenant_role_grants`, `membership_grants`, `customer_group_member_grants`.
+- New: `tenant_permission_versions` for automatic revocation freshness.
+
+`tenant_permission_versions` contract:
+- columns: `tenant_id bigint primary key`, `version bigint not null default 1`, `updated_at timestamptz not null default now()`
+- helper function: `bump_tenant_permission_version(p_tenant_id bigint)` used by all permission-mutating RPCs.
+
+Constraint/guardrail requirements:
+- only one active admin role per tenant+scope.
+- deny delete/deactivate of final admin role per scope.
+- deny unassign/downgrade if it would leave no active admin for that scope.
+- deny cross-tenant role assignments.
+- deny scope-mismatched assignments (`shop` role -> app member, etc).
+- on module disable, block if dependent grants/overrides exist unless explicit `force` operation is used.
+
+### 17A.3 API surface contract (must exist before UI cutover)
+
+Read RPCs:
+- `list_tenant_roles(p_tenant_id, p_scope)`
+- `get_tenant_role_detail(p_role_id)` (new)
+- `list_tenant_role_grants(p_tenant_role_id)`
+- `list_membership_grants(p_membership_id, p_scope)`
+- `list_customer_group_member_grants(p_customer_group_member_id)`
+- `get_tenant_permission_version(p_tenant_id)` (new, optional optimization)
+- bootstrap RPCs must return `permissionVersion` + scoped grant payload
+
+Write RPCs:
+- role CRUD + grant upsert + assignment + per-assignee override upsert
+- every write RPC that mutates role/grant/assignment/override must bump `tenant_permission_versions.version` in the same transaction
+
+### 17A.4 Per-request permission handling
+
+Resolution order (authoritative):
+1. module inactive for tenant -> deny
+2. scope admin shortcut (`is_admin`) -> allow
+3. assigned role grant -> allow/deny
+4. assignee override exists -> override final decision and mark `is_custom=true`
+5. default -> deny
+
+Freshness behavior:
+- login/tenant-switch bootstrap loads `effectiveGrants` + `permissionVersion`
+- if current version mismatch is detected, client performs silent re-bootstrap and retries once
+- RLS/RPC continues to enforce on server regardless of client cache state
+
+### 17A.5 Phase breakdown (detailed)
+
+#### Phase AC-P1 — Permission setup foundation (target first)
+
+AC-P1.1 Schema primitives:
+- add `tenant_permission_versions`
+- add/verify role/grant uniqueness + scope/tenant integrity constraints
+
+AC-P1.2 Permission engine:
+- finalize shared SQL functions for app/shop/investor scope checks
+- ensure disabled module always denies non-bootstrap actions
+
+AC-P1.3 RPC contract hardening:
+- add `get_tenant_role_detail` RPC and replace direct-table-read assumptions
+- ensure all mutating RPCs bump permission version
+
+AC-P1.4 Bootstrap contract:
+- extend bootstrap payload with `permissionVersion`, scope grants, role IDs, and custom markers
+- ensure auth snapshot persists these fields
+
+AC-P1.5 Guardrail enforcement:
+- implement last-admin and scope-safe assignment checks in write RPCs
+- implement module-disable dependency checks
+
+AC-P1 exit criteria:
+- tenant admin can manage app/shop/investor roles via RPC-only reads/writes
+- revocations auto-propagate via version mismatch and silent re-bootstrap
+- no path allows last-admin lockout or scope-invalid role assignment
+
+#### Phase AC-P2 — Access Control module and assignment UX
+
+AC-P2.1 UI consolidation:
+- introduce `access_control` section with `Modules`, `Roles`, `Team`, `Customer Groups`, `Investor Access`
+- deprecate legacy Staff/Customer Group/Investor tenant admin entries
+
+AC-P2.2 Role/grant pages:
+- role matrix lists only active tenant modules and tenant-configurable actions by scope
+- app/shop/investor share one behavior model
+
+AC-P2.3 Assignment UX:
+- app member and customer-group member role assignment screens
+- per-assignee override editing
+- `Custom` badge when overrides exist
+
+AC-P2 exit criteria:
+- deprecated entry points removed from tenant settings UI
+- `Custom` status visible and accurate for all assignment targets
+
+#### Phase AC-P3 — Module-by-module configuration rollout
+
+For each domain batch:
+1. seed/verify `module_actions`
+2. migrate RLS/RPC checks to `has_module_action(...)`
+3. expose controls in access-control UI if configurable
+4. run scope matrix smoke checks
+
+Rollout order:
+1. procurement + stock
+2. invoice + treasury
+3. investor
+4. shop admin + shop customer
+5. verticals when touched (`thrift_*`, `koba_*`, `tasks`)
+
+AC-P3 exit criteria:
+- all targeted modules enforce grants server-side through unified permission functions
+- UI and backend behavior are consistent across scopes and tenants
+
+### 17A.6 Implementation Playbook (Detailed Change List)
+
+#### Phase AC-P3 — Domain Rollout and Server Enforcement
+
+* **Goal**: Execute the rollout of database-backed permission enforcement for all core domains batch by batch, transitioning from legacy hardcoded checks to server-side RLS and RPC checks driven by `has_module_action()`.
+
+* **Implementation Tasks (ordered)**:
+  1. **Batch 1: Procurement & Stock**
+     * Seed and verify all `module_actions` for `order_management`, `costing_file`, `product_based_costing`, `global_shipment`, `global_stock`, `global_stock_type`, `procurement_stock`, and `inventory`.
+     * Apply migrations to convert table RLS policies on procurement-related tables to use `membership_has_module_action()`.
+     * Expose controls in the Access Control configuration UI and verify staff role matrix updates.
+     * Validate permissions for both parent and child tenants.
+  2. **Batch 2: Invoice & Treasury**
+     * Seed and verify `module_actions` for `global_invoice`, `sales_invoice`, `payments`, `invoice_reports`, `shipment_reports`, `billing_balances`, `reporting_treasury`, `billing_profile`, `recipient_profile`, and `invoice_brand`.
+     * Update RLS policies and read/write RPCs for invoices, payments, and billing profiles to enforce grants via `membership_has_module_action()`.
+     * Test configurability in the UI for invoice & treasury submodules.
+  3. **Batch 3: Investor Capital**
+     * Seed and verify `module_actions` for `investor_profiles`, `investor_capital_ledger`, `investor_shipment_share`, and `investor_portal`.
+     * Restructure RLS policies for investor balance/ledger tables and restrict the investor portal read operations to `investor_portal` scope.
+     * Verify that children tenants do not have access to parent investor submodules.
+  4. **Batch 4: Shop Admin & Shop Customer**
+     * Seed and verify `module_actions` for `shop_order`, `shop_config`, `shop_permissions`, `shop_pricing`, `shop_order_mgmt`, `shop_fulfillment`, `shop_storefront`, and `shop_cart`.
+     * Transition customer group access policies and shop storefront APIs (e.g. cart reservation, storefront search) to check permissions against shop-scoped roles using `has_module_action()`.
+     * Verify storefront access controls and price visibility flags.
+  5. **Batch 5: Verticals**
+     * Seed and verify `module_actions` for `tasks`, `thrift_stock` (and submodules), `koba_retail`, and `koba_wholesale`.
+     * Restructure RLS policies for vertical-specific tables to check respective module permissions.
+
+* **Required Changes**:
+  * **DB migrations**: Incremental domain migration scripts (e.g., `20260912001000` to `20260912006000`).
+  * **SQL functions/RPC**: Update `has_module_action(...)` to support multi-scope resolution and verify performance index usage.
+  * **backend types/contracts**: Keep types aligned with active module action records.
+  * **frontend/auth+UI**: Wire up active module action list dynamically to the role edit matrix, filtering out platform-only or inactive actions.
+  * **RLS/policies**: Replace legacy `role in ('admin', 'staff')` or hardcoded membership rules with `membership_has_module_action()` or `has_module_action()`.
+
+* **Dependencies / sequencing gates**:
+  * **Gate 2**: UI must use bootstrap-cached grants and silent re-bootstrap (Phase AC-P2 exit gate) before server RLS enforcement is cut over.
+  * Rollout must proceed in order of batches (Procurement/Stock -> Invoice/Treasury -> Investor -> Shop -> Verticals).
+
+* **Exit Criteria**:
+  * **AC-P3-D1**: All domain migrations are successfully executed on the target environment.
+  * **AC-P3-D2**: Zero runtime dependency on legacy `MODULE_PERMISSION_MATRIX` configuration in any domain.
+  * **AC-P3-D3**: Server-side enforcement (RLS/RPC) and client-side access control UI state are fully aligned across all scopes and tenants.
+
+* **Rollback/Safety notes**:
+  * If a domain rollout causes regression, the RLS policy can be temporarily reverted to delegate to a legacy helper function checking `memberships.role` until the configuration mismatch is solved.
+
+#### Phase AC-P4 — Stabilization and Legacy Cleanup
+
+* **Goal**: Lock down database/RPC security, purge all remaining legacy permission configs/routes, and align all architectural documents with the final state of the Unified Permission System.
+
+* **Implementation Tasks (ordered)**:
+  1. **Purge Legacy Frontend Assets & Configs**
+     * Remove the legacy `MODULE_PERMISSION_MATRIX` configuration from the client codebase.
+     * Remove deprecated settings pages and sub-routes (e.g. legacy staff management, legacy roles/permissions pages in settings).
+  2. **Enforce Database Lockdowns (RPC-only)**
+     * Ensure direct table access is restricted, transitioning entirely to definer-RPC-based mutations for role/grant/member changes.
+     * Ensure database triggers/constraints enforce the single-admin-per-scope guardrail at the schema level.
+  3. **Documentation Alignment & Reconciliation**
+     * Update `LOGIN_NAV_PERMISSION_FLOW.md`, `MASTER_PLAN.md`, and `SHOP_ORDER.md` to point to the new unified access control module.
+     * Reconcile any remaining legacy terminology with the finalized Access Control v2 design.
+
+* **Required Changes**:
+  * **DB migrations**: Lock down direct table access patterns.
+  * **SQL functions/RPC**: Deprecate legacy permission/role query and mutation RPCs.
+  * **backend types/contracts**: Clean up deprecated interfaces.
+  * **frontend/auth+UI**: Delete obsolete settings routes and components.
+  * **RLS/policies**: Restrict direct read/write grants on backend role/grant tables.
+
+* **Dependencies / sequencing gates**:
+  * **Gate 3**: Zero runtime dependency on legacy `MODULE_PERMISSION_MATRIX` and successful server RLS cutover (Phase AC-P3 exit criteria).
+
+* **Exit Criteria**:
+  * **AC-P4-D1**: Legacy client settings paths are removed, and all permission controls are routed through the consolidated access control module.
+  * **AC-P4-D2**: Direct select/write permissions on the underlying role/grant tables are locked down to prevent admin-bypass.
+  * **AC-P4-D3**: All referenced documentation files are fully consistent with Access Control v2.
 
 ### Shop_order overlap
 

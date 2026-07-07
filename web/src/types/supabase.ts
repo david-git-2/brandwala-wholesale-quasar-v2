@@ -5377,6 +5377,32 @@ export type Database = {
           },
         ]
       }
+      tenant_permission_versions: {
+        Row: {
+          tenant_id: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          tenant_id: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          tenant_id?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_permission_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_role_grants: {
         Row: {
           action: string
@@ -7065,6 +7091,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      bump_tenant_permission_version: {
+        Args: { p_tenant_id: number }
+        Returns: undefined
+      }
       calculate_costing_auxiliary_price_gbp: {
         Args: { p_delivery_price_gbp: number; p_price_in_web_gbp: number }
         Returns: number
@@ -7693,6 +7723,10 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      delete_customer_group_member_grant: {
+        Args: { p_action: string; p_cgm_id: number; p_module_key: string }
+        Returns: undefined
+      }
       delete_global_stock_allocation: {
         Args: { p_allocation_id: number }
         Returns: undefined
@@ -7703,6 +7737,14 @@ export type Database = {
       }
       delete_invoice_transactional: {
         Args: { p_invoice_id: number }
+        Returns: undefined
+      }
+      delete_membership_grant: {
+        Args: {
+          p_action: string
+          p_membership_id: number
+          p_module_key: string
+        }
         Returns: undefined
       }
       delete_shipment: { Args: { p_id: number }; Returns: undefined }
@@ -7798,6 +7840,7 @@ export type Database = {
           member_is_active: boolean
           member_preference: Json
           member_role: Database["public"]["Enums"]["app_role"]
+          permission_version: number
           tenant_id: number
           tenant_is_active: boolean
           tenant_name: string
@@ -7975,6 +8018,7 @@ export type Database = {
           member_is_active: boolean
           member_name: string
           member_role: Database["public"]["Enums"]["customer_group_role"]
+          permission_version: number
           tenant_id: number
           tenant_is_active: boolean
           tenant_name: string
@@ -8120,6 +8164,11 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_tenant_permission_version: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
       get_vendor_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
         Returns: {
@@ -8182,6 +8231,10 @@ export type Database = {
       }
       has_module_action: {
         Args: { p_action: string; p_module_key: string; p_tenant_id: number }
+        Returns: boolean
+      }
+      investor_tenant_can_view: {
+        Args: { p_tenant_id: number }
         Returns: boolean
       }
       is_assigned_costing_file_viewer: {
@@ -8249,6 +8302,12 @@ export type Database = {
         Args: { p_search?: string; p_tenant_id: number }
         Returns: Json
       }
+      list_cgm_ids_with_overrides: {
+        Args: { p_customer_group_id: number }
+        Returns: {
+          customer_group_member_id: number
+        }[]
+      }
       list_child_allocation_summary: {
         Args: { p_stock_id: number }
         Returns: {
@@ -8295,6 +8354,18 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      list_configurable_module_actions: {
+        Args: { p_scope: string; p_tenant_id: number }
+        Returns: {
+          action: string
+          description: string
+          id: number
+          is_active: boolean
+          module_key: string
+          scope: string
+          tenant_configurable: boolean
+        }[]
       }
       list_costing_file_items: {
         Args: { p_costing_file_id: number }
@@ -8584,6 +8655,12 @@ export type Database = {
           membership_id: number
           module_key: string
           updated_at: string
+        }[]
+      }
+      list_membership_ids_with_overrides: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          membership_id: number
         }[]
       }
       list_my_admin_tenants: {
@@ -9031,6 +9108,10 @@ export type Database = {
         }
         Returns: number
       }
+      membership_has_module_action: {
+        Args: { p_action: string; p_module_key: string; p_tenant_id: number }
+        Returns: boolean
+      }
       migrate_legacy_inventory_to_global_stock: {
         Args: { p_tenant_id?: number }
         Returns: Json
@@ -9038,6 +9119,14 @@ export type Database = {
       next_tenant_scoped_counter: {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: number
+      }
+      parent_tenant_has_module_action: {
+        Args: {
+          p_action: string
+          p_module_key: string
+          p_parent_tenant_id: number
+        }
+        Returns: boolean
       }
       place_commerce_order: {
         Args: {

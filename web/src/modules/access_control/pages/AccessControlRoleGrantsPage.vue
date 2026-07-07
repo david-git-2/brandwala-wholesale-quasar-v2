@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md admin-settings-role-grants-page">
+  <q-page class="q-pa-md admin-access-control-role-grants-page">
     <!-- Header -->
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
@@ -107,11 +107,10 @@ const loadData = async () => {
 
   try {
     // 1. Fetch role details
-    const { data: roleData, error: roleError } = await supabase
-      .from('tenant_roles')
-      .select('*')
-      .eq('id', props.id)
-      .single()
+    const { data: roleData, error: roleError } = await supabase.rpc(
+      'get_tenant_role_detail',
+      { p_role_id: props.id }
+    )
 
     if (roleError) {
       pageError.value = roleError.message
@@ -120,13 +119,19 @@ const loadData = async () => {
 
     role.value = roleData
 
-    // 2. Fetch all active configurable actions for this scope
-    const { data: actionsData, error: actionsError } = await supabase
-      .from('module_actions')
-      .select('*')
-      .eq('is_active', true)
-      .eq('tenant_configurable', true)
-      .eq('scope', roleData.scope)
+    const tenantId = authStore.tenantId
+    if (!tenantId) {
+      pageError.value = 'Tenant context is required.'
+      return
+    }
+
+    const { data: actionsData, error: actionsError } = await supabase.rpc(
+      'list_configurable_module_actions',
+      {
+        p_scope: roleData.scope,
+        p_tenant_id: tenantId,
+      },
+    )
 
     if (actionsError) {
       pageError.value = actionsError.message
@@ -237,11 +242,7 @@ const formatModuleKey = (key: string): string => {
 
 const goBack = () => {
   const tenantSlug = authStore.tenantSlug
-  const backRoute =
-    role.value?.scope === 'shop'
-      ? (tenantSlug ? `/${tenantSlug}/app/shop/roles` : '/app/shop/roles')
-      : (tenantSlug ? `/${tenantSlug}/app/settings/roles` : '/app/settings/roles')
-
+  const backRoute = tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
   void router.push(backRoute)
 }
 

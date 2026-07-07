@@ -103,13 +103,13 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
       tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants',
   },
   {
-    title: 'Roles & Permissions',
-    caption: 'Manage custom roles and grants',
+    title: 'Access Control',
+    caption: 'Govern roles, members & features',
     icon: 'admin_panel_settings',
     scopes: ['app'],
     allowedRoles: ['admin'],
     route: ({ tenantSlug }) =>
-      tenantSlug ? `/${tenantSlug}/app/settings/roles` : '/app/settings/roles',
+      tenantSlug ? `/${tenantSlug}/app/access-control` : '/app/access-control',
   },
   {
     title: 'Documentation',
@@ -331,7 +331,51 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       ...hierarchyLinks,
     ]
 
-    return [...baseLinks, ...groupedLinks]
+    const baseLinksMapped = baseLinks.map((link) => {
+      if (link.title === 'Access Control') {
+        const basePath = authStore.tenantSlug ? `/${authStore.tenantSlug}/app/access-control` : '/app/access-control'
+        return {
+          title: 'Access Control',
+          caption: link.caption,
+          icon: link.icon,
+          children: [
+            {
+              title: 'Modules',
+              caption: 'Workspace features',
+              icon: 'extension',
+              to: `${basePath}/modules`,
+            },
+            {
+              title: 'Roles',
+              caption: 'Workspace roles',
+              icon: 'admin_panel_settings',
+              to: `${basePath}/roles`,
+            },
+            {
+              title: 'Team',
+              caption: 'Workspace team',
+              icon: 'manage_accounts',
+              to: `${basePath}/team`,
+            },
+            {
+              title: 'Customer Groups',
+              caption: 'Workspace customer groups',
+              icon: 'groups',
+              to: `${basePath}/customer-groups`,
+            },
+            {
+              title: 'Investor Access',
+              caption: 'Workspace investor access',
+              icon: 'savings',
+              to: `${basePath}/investors`,
+            },
+          ],
+        }
+      }
+      return link
+    })
+
+    return [...baseLinksMapped, ...groupedLinks]
   })
 
   return {

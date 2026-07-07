@@ -44,8 +44,13 @@ export const createAccessGuard = ({
     to: GuardRoute
   }) => boolean | RouteLocationRaw
 }) => {
-  return (to: GuardRoute) => {
+  return async (to: GuardRoute) => {
     const authStore = useAuthStore()
+
+    if (authStore.isAuthenticated && authStore.tenantId) {
+      await authStore.checkFreshness()
+    }
+
     const memberRole = authStore.member?.role
     const currentScope = authStore.scope
     const hasTenantContext = authStore.tenantId !== null

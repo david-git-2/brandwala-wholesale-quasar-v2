@@ -98,7 +98,7 @@ export const useTenantStore = defineStore('tenant', {
     persistWorkspaceState() {
       writeStorage({
         schemaVersion: 1,
-        availableAdminTenants: this.availableAdminTenants as Tenant[],
+        availableAdminTenants: this.availableAdminTenants,
         selectedTenantId: this.selectedTenantId,
         selectedTenantSlug: this.selectedTenantSlug,
       })

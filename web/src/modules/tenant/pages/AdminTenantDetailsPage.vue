@@ -240,8 +240,21 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
 
 const goToSection = (section: 'customer-groups' | 'staff' | 'investors' | 'modules' | 'preferences') => {
   const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null
-  const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
-  void router.push(`${base}/${section}`)
+  if (section === 'preferences') {
+    const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
+    void router.push(`${base}/preferences`)
+  } else {
+    // Map section to corresponding access control tab name
+    const tabMap = {
+      'customer-groups': 'customer-groups',
+      'staff': 'team',
+      'investors': 'investors',
+      'modules': 'modules'
+    }
+    const tab = tabMap[section] || 'modules'
+    const base = slug ? `/${slug}/app/access-control` : '/app/access-control'
+    void router.push(`${base}/${tab}`)
+  }
 }
 
 watch(

@@ -142,7 +142,7 @@ const emit = defineEmits<{
 
 const form = reactive({
   name: '',
-  itemType: '' as string | null,
+  itemType: '',
   imageUrl: '',
   productWeight: null as number | null,
   packageWeight: null as number | null,
@@ -173,7 +173,7 @@ const isFormInvalid = computed(() => {
 
 const syncForm = (item: CostingFileItem | null) => {
   form.name = item?.name ?? ''
-  form.itemType = item?.item_type ?? null
+  form.itemType = item?.item_type ?? ''
   form.imageUrl = item?.image_url ?? ''
   form.productWeight = item?.product_weight ?? null
   form.packageWeight = item?.package_weight ?? null

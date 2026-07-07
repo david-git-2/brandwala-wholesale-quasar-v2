@@ -6,7 +6,7 @@ export function parseTenantPreference(raw: unknown): TenantPreferenceSchema {
     return {}
   }
 
-  return raw as TenantPreferenceSchema
+  return raw
 }
 
 export function getNestedValue(
@@ -93,7 +93,7 @@ export function formStateToPreference(
     next = setNestedValue(next, field.path, value)
   }
 
-  return next as TenantPreferenceSchema
+  return next
 }
 
 export function resolveActiveCurrencyId(

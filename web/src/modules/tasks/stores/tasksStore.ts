@@ -22,7 +22,7 @@ export const useTasksStore = defineStore('tasks', {
       done: 0,
       blocked: 0,
       archived: 0,
-    } as Record<string, number>,
+    },
   }),
 
   getters: {
@@ -106,13 +106,13 @@ export const useTasksStore = defineStore('tasks', {
         this.currentPage = page;
         this.pageSize = pageSize;
         this.totalPages = Math.max(1, Math.ceil(result.total / pageSize));
-        this.statusCounts = result.statusCounts || {
-          todo: 0,
-          in_progress: 0,
-          review: 0,
-          done: 0,
-          blocked: 0,
-          archived: 0,
+        this.statusCounts = {
+          todo: Number(result.statusCounts?.todo ?? 0),
+          in_progress: Number(result.statusCounts?.in_progress ?? 0),
+          review: Number(result.statusCounts?.review ?? 0),
+          done: Number(result.statusCounts?.done ?? 0),
+          blocked: Number(result.statusCounts?.blocked ?? 0),
+          archived: Number(result.statusCounts?.archived ?? 0),
         };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to fetch items';

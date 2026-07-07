@@ -103,170 +103,34 @@ const tenantRoutes: RouteRecordRaw[] = [
       {
         path: ':id/customer-groups',
         name: 'admin-tenant-customer-groups',
-        component: () => import('../pages/AdminTenantManagementPage.vue'),
-        props: () => ({ view: 'customer-groups' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-          validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
-
-            if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
-            }
-
-            if (
-              Number.isFinite(routeTenantId) &&
-              routeTenantId === selectedTenantId &&
-              routeTenantSlug === selectedTenantSlug
-            ) {
-              return true
-            }
-
-            return getAppRouteLocation(
-              {
-                ...to,
-                name: 'admin-tenant-customer-groups',
-                params: {
-                  ...(to.params ?? {}),
-                  id: selectedTenantId,
-                },
-              },
-              selectedTenantSlug,
-            )
-          },
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/customer-groups` : '/app/access-control/customer-groups'
+        }
       },
       {
         path: ':id/staff',
         name: 'admin-tenant-staff',
-        component: () => import('../pages/AdminTenantManagementPage.vue'),
-        props: () => ({ view: 'staff' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-          validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
-
-            if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
-            }
-
-            if (
-              Number.isFinite(routeTenantId) &&
-              routeTenantId === selectedTenantId &&
-              routeTenantSlug === selectedTenantSlug
-            ) {
-              return true
-            }
-
-            return getAppRouteLocation(
-              {
-                ...to,
-                name: 'admin-tenant-staff',
-                params: {
-                  ...(to.params ?? {}),
-                  id: selectedTenantId,
-                },
-              },
-              selectedTenantSlug,
-            )
-          },
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/team` : '/app/access-control/team'
+        }
       },
       {
         path: ':id/investors',
         name: 'admin-tenant-investors',
-        component: () => import('../pages/AdminTenantManagementPage.vue'),
-        props: () => ({ view: 'investors' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-          validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
-
-            if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
-            }
-
-            if (
-              Number.isFinite(routeTenantId) &&
-              routeTenantId === selectedTenantId &&
-              routeTenantSlug === selectedTenantSlug
-            ) {
-              return true
-            }
-
-            return getAppRouteLocation(
-              {
-                ...to,
-                name: 'admin-tenant-investors',
-                params: {
-                  ...(to.params ?? {}),
-                  id: selectedTenantId,
-                },
-              },
-              selectedTenantSlug,
-            )
-          },
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/investors` : '/app/access-control/investors'
+        }
       },
       {
         path: ':id/modules',
         name: 'admin-tenant-modules',
-        component: () => import('../pages/AdminTenantManagementPage.vue'),
-        props: () => ({ view: 'modules' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-          validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
-
-            if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
-            }
-
-            if (
-              Number.isFinite(routeTenantId) &&
-              routeTenantId === selectedTenantId &&
-              routeTenantSlug === selectedTenantSlug
-            ) {
-              return true
-            }
-
-            return getAppRouteLocation(
-              {
-                ...to,
-                name: 'admin-tenant-modules',
-                params: {
-                  ...(to.params ?? {}),
-                  id: selectedTenantId,
-                },
-              },
-              selectedTenantSlug,
-            )
-          },
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/modules` : '/app/access-control/modules'
+        }
       },
       {
         path: ':id/preferences',
@@ -321,26 +185,19 @@ const tenantRoutes: RouteRecordRaw[] = [
       {
         path: 'roles',
         name: 'admin-settings-roles',
-        component: () => import('../pages/AdminSettingsRolesPage.vue'),
-        props: () => ({ scope: 'app' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
+        }
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-settings-role-grants',
-        component: () => import('../pages/AdminSettingsRoleGrantsPage.vue'),
-        props: (route) => ({ id: Number(route.params.id) }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          const id = String(to.params.id)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/roles/${id}/grants` : `/app/access-control/roles/${id}/grants`
+        }
       },
     ],
   },
@@ -353,26 +210,19 @@ const tenantRoutes: RouteRecordRaw[] = [
       {
         path: 'roles',
         name: 'admin-shop-roles',
-        component: () => import('../pages/AdminSettingsRolesPage.vue'),
-        props: () => ({ scope: 'shop' }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
+        }
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-shop-role-grants',
-        component: () => import('../pages/AdminSettingsRoleGrantsPage.vue'),
-        props: (route) => ({ id: Number(route.params.id) }),
-        beforeEnter: createAccessGuard({
-          loginRoute: 'admin-login-page',
-          requiredScope: 'app',
-          allowedRoles: ['admin'],
-          requireTenantContext: true,
-        }),
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to)
+          const id = String(to.params.id)
+          return tenantSlug ? `/${tenantSlug}/app/access-control/roles/${id}/grants` : `/app/access-control/roles/${id}/grants`
+        }
       },
     ],
   },

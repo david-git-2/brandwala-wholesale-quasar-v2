@@ -140,7 +140,7 @@ const form = reactive({
   invoice_charge_flat: 1,
   extra_profit_user_pct: 90,
   extra_profit_company_pct: 10,
-  delivery_rates: {} as Record<string, number>
+  delivery_rates: {}
 })
 
 // To handle key edits

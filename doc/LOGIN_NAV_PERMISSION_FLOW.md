@@ -30,14 +30,16 @@ This separation is better because the master plan stays stable and readable, whi
 Use this model:
 
 - database controls which modules exist for a tenant
-- **today:** code controls what each role can do inside those modules (`modulePermissions.ts`)
-- **target (B8/F8):** `tenant_roles` (custom roles per tenant) + grant tables + `has_module_action()` — see [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md)
-- **dual login model:** keep `memberships.role` / `customer_group_members.role` for scope admission; `tenant_role_id` drives permissions (safe migration)
+- **runtime:** `tenant_roles` + grant tables + bootstrap `effectiveGrants` resolved via `has_module_action()` on the server — see [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md)
+- **dual login model:** keep `memberships.role` / `customer_group_members.role` for scope admission; `tenant_role_id` drives permissions
+- **admin UI:** consolidated at `/:slug/app/access-control/*` — all role/grant reads and writes go through SECURITY DEFINER RPCs
 
 In practice:
 
 - `tenant_modules` decides whether a module is enabled for a tenant
-- frontend/backend code decides what `superadmin`, `admin`, `staff`, and customer-side roles can do within that enabled module
+- bootstrap RPCs return `effectiveGrants`, `tenantRoleId`, `isAdmin`, and `permissionVersion`
+- nav/guards read cached grants from `authStore` (no per-navigation permission RPC)
+- server enforces on every request via RLS/RPC using `has_module_action()`
 
 ## Scope Model
 
@@ -218,17 +220,13 @@ This controls tenant-level feature access and feature visibility.
 
 ### Step 2: Role Ability
 
-Once a module is enabled for the tenant, application code decides what each role can do inside that module.
+Once a module is enabled for the tenant, effective access comes from bootstrap `effectiveGrants` (role grants + member overrides). Administrator roles (`is_admin = true`) receive all actions on enabled modules.
 
-Example:
+`permissionVersion` on bootstrap enables silent re-bootstrap when grants change — route guards call `authStore.checkFreshness()` before evaluating access.
 
-- tenant has `inventory`
-- `admin` can manage inventory
-- `staff` can only view inventory
+Effective permission is:
 
-This means effective permission is:
-
-`module enabled for tenant` AND `role allowed to perform the action`
+`module enabled for tenant` AND (`is_admin` OR grant in `effectiveGrants` for `module_key` + `action`)
 
 ## Auto-Generated Navigation
 
@@ -240,7 +238,7 @@ Instead, generate it from:
 2. current actor role
 3. current tenant context
 4. active module keys from `tenant_modules`
-5. code-defined role rules
+5. bootstrap `effectiveGrants` from auth store (not hardcoded role matrix)
 
 ### Recommended Navigation Model
 

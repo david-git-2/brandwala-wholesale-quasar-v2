@@ -195,7 +195,7 @@ const updateOrderStatus = async (
   if (error) throw error
   if (!data) throw new Error('Failed to update order status.')
 
-  return data as Pick<KobaOrder, 'id' | 'status' | 'updated_at'>
+  return data
 }
 
 const updateItemConfirmedQty = async (
@@ -215,7 +215,7 @@ const updateItemConfirmedQty = async (
   if (error) throw error
   if (!data) throw new Error('Failed to update confirmed quantity.')
 
-  return data as Pick<KobaOrderItem, 'id' | 'confirmed_quantity' | 'updated_at'>
+  return data
 }
 
 const updateItemDeliveredQty = async (
@@ -235,7 +235,7 @@ const updateItemDeliveredQty = async (
   if (error) throw error
   if (!data) throw new Error('Failed to update delivered quantity.')
 
-  return data as Pick<KobaOrderItem, 'id' | 'delivered_quantity' | 'updated_at'>
+  return data
 }
 
 const softDeleteOrder = async (

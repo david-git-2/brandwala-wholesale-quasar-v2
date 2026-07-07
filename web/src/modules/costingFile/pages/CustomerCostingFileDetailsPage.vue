@@ -1072,7 +1072,7 @@ const requestForm = reactive({
   quantity: 1,
   size: '',
   color: '',
-  itemType: '' as string | null,
+  itemType: '',
   extraInformation1: '',
   extraInformation2: '',
 })
@@ -1420,7 +1420,7 @@ const resetRequestForm = () => {
   requestForm.quantity = 1
   requestForm.size = ''
   requestForm.color = ''
-  requestForm.itemType = null
+  requestForm.itemType = ''
   requestForm.extraInformation1 = ''
   requestForm.extraInformation2 = ''
 }
@@ -1488,7 +1488,7 @@ const handleEditDraftItem = (row: { id: number }) => {
   editingItemId.value = item.id
   requestForm.websiteUrl = item.website_url ?? ''
   requestForm.quantity = item.quantity ?? 1
-  requestForm.itemType = item.item_type ?? null
+  requestForm.itemType = item.item_type ?? ''
   requestForm.size = item.size ?? ''
   requestForm.color = item.color ?? ''
   requestForm.extraInformation1 = item.extra_information_1 ?? ''

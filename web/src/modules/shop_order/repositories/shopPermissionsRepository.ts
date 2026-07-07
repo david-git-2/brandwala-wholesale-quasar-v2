@@ -29,7 +29,7 @@ const listCustomerGroups = async (tenantId: number): Promise<CustomerGroup[]> =>
     throw error
   }
 
-  return (data as CustomerGroup[] | null) ?? []
+  return (data) ?? []
 }
 
 const getProfile = async (tenantId: number, customerGroupId: number): Promise<CustomerGroupShopProfile | null> => {
@@ -123,7 +123,7 @@ const listCurrencies = async (): Promise<Currency[]> => {
     throw error
   }
 
-  return (data as Currency[] | null) ?? []
+  return (data) ?? []
 }
 
 export const shopPermissionsRepository = {

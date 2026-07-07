@@ -291,6 +291,7 @@ export function useOAuthLogin(
       effectiveGrants: [],
       tenantRoleId: null,
       isAdmin: true,
+      permissionVersion: null,
     })
 
     return true
@@ -381,6 +382,7 @@ export function useOAuthLogin(
         effectiveGrants: [],
         tenantRoleId: null,
         isAdmin: false,
+        permissionVersion: null,
         savedAt: new Date().toISOString(),
       })
       tenantStore.clearSelectedTenant()
@@ -465,6 +467,7 @@ export function useOAuthLogin(
       effectiveGrants: bootstrap.effective_grants || [],
       tenantRoleId: bootstrap.tenant_role_id ?? null,
       isAdmin: Boolean(bootstrap.is_admin),
+      permissionVersion: bootstrap.permission_version ?? null,
     })
 
     return true
@@ -599,6 +602,7 @@ export function useOAuthLogin(
       effectiveGrants: bootstrap.effective_grants || [],
       tenantRoleId: bootstrap.tenant_role_id ?? null,
       isAdmin: Boolean(bootstrap.is_admin),
+      permissionVersion: bootstrap.permission_version ?? null,
     })
 
     return true
@@ -629,6 +633,7 @@ export function useOAuthLogin(
       tenant?: { id: number; name: string; slug: string; is_active?: boolean }
       investor_account?: { id: number; investor_id: number; email: string; tenant_id: number; is_active?: boolean }
       module_keys?: string[]
+      permission_version?: number
     }
 
     if (
@@ -668,6 +673,7 @@ export function useOAuthLogin(
       effectiveGrants: [{ module_key: 'investor_portal', action: 'view' }],
       tenantRoleId: null,
       isAdmin: false,
+      permissionVersion: bootstrap.permission_version ?? null,
     })
 
     return true

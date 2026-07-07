@@ -291,7 +291,7 @@ const form = reactive({
   websiteUrl: '',
   quantity: 1,
   name: '',
-  itemType: '' as string | null,
+  itemType: '',
   size: '',
   color: '',
   extraInformation1: '',

@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 declare namespace NodeJS {
   interface ProcessEnv {
     NODE_ENV: string;
@@ -10,4 +12,9 @@ declare namespace NodeJS {
     VITE_GEMINI_API_KEY: string | undefined;
     GEMINI_API_KEY: string | undefined;
   }
+}
+
+declare module '*.png' {
+  const content: string;
+  export default content;
 }

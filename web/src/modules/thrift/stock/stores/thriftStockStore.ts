@@ -109,7 +109,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             origin_unit_price: originUnitPrice ?? undefined,
             extra_origin_unit_price: extraOriginUnitPrice ?? undefined,
             additional_charges_cost: additionalChargesCost ?? undefined,
-            status: 'AVAILABLE' as ThriftStockStatus,
+            status: 'AVAILABLE',
             note: note || '',
             inserted_by: userEmail,
           },

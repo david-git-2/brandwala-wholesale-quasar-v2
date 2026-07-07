@@ -165,7 +165,7 @@ async function loadShipments() {
     .select('id, name')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
-  shipments.value = (data || []) as Array<Record<string, unknown>>;
+  shipments.value = (data || []);
 }
 
 async function loadBoxes() {
@@ -269,7 +269,7 @@ async function deleteItem() {
     const { error } = await supabase
       .from('thrift_boxes')
       .delete()
-      .eq('id', selectedRow.value.id as number);
+      .eq('id', selectedRow.value.id);
     if (error) throw error;
     $q.notify({ type: 'positive', message: 'Box deleted successfully' });
     deleteConfirmOpen.value = false;

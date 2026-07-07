@@ -185,6 +185,18 @@ const buildEmptyProductPage = (page: number, pageSize: number): ProductListPage 
 const isMissingListProductsRpcError = (error: { code?: string; message?: string } | null) =>
   error?.code === 'PGRST202' && (error.message ?? '').includes('list_products_paginated')
 
+const resolveProductScopeTenantId = async (tenantId: number): Promise<number> => {
+  const { data, error } = await supabase.rpc('resolve_parent_tenant_id', {
+    p_tenant_id: tenantId,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return data as number
+}
+
 const listProductsFallback = async ({
   page = 1,
   pageSize = 20,
@@ -208,7 +220,8 @@ const listProductsFallback = async ({
   let query = supabase.from('products').select('*', { count: 'exact' })
 
   if (tenantId !== null && tenantId !== undefined) {
-    query = query.or(`tenant_id.eq.${tenantId},parent_tenant_id.eq.${tenantId}`)
+    const scopeTenantId = await resolveProductScopeTenantId(tenantId)
+    query = query.eq('parent_tenant_id', scopeTenantId)
   }
 
   if (normalizedCategory) {

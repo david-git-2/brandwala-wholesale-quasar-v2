@@ -215,7 +215,7 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
       drive_file_id: stock.drive_file_id || primaryImage?.drive_file_id || undefined,
       measurements,
     };
-  }) as ThriftStock[];
+  });
 }
 
 function mapRpcPayload(payload: {
@@ -457,7 +457,7 @@ export const thriftStockRepository = {
       pricing: mapPricingRow(pricingData),
       ...(resolvedImageUrl !== undefined ? { image_url: resolvedImageUrl } : {}),
       ...(resolvedDriveFileId !== undefined ? { drive_file_id: resolvedDriveFileId } : {}),
-    } as ThriftStock;
+    };
   },
 
   async upsertPrimaryStockImage(

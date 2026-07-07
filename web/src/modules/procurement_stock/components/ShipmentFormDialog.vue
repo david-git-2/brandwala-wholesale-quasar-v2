@@ -215,7 +215,7 @@ const statusOptions = [
 
 const form = ref({
   name: '',
-  type: 'international' as 'international' | 'domestic',
+  type: 'international' as 'domestic' | 'international',
   shipment_purchase_currency_id: null as number | null,
   shipment_cost_currency_id: null as number | null,
   status: 'Draft',

@@ -129,7 +129,7 @@ const form = reactive({
   tenant_id: null as number | null,
   billing_profile_id: null as number | null,
   recipient_profile_id: null as number | null,
-  retail_billing_mode: 'account' as 'account' | 'direct',
+  retail_billing_mode: 'account' as 'account' | 'direct' | null,
   invoice_no: '',
   recipient_name: '',
   recipient_phone: '',

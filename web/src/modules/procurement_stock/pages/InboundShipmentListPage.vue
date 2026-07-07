@@ -5,9 +5,20 @@
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col">
+            <div class="col-12 col-sm">
               <div class="text-h6 text-weight-bold text-grey-9">Inbound Shipments</div>
               <div class="text-caption text-grey-7">Manage inbound supplier shipment batches, costing, and statuses</div>
+            </div>
+            <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
+              <q-btn
+                color="primary"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn"
+                icon="add"
+                label="Add Shipment"
+                @click="openCreateShipment"
+              />
             </div>
           </div>
         </q-card-section>
@@ -121,16 +132,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { type QTableColumn } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
 import type { GlobalShipment } from '../repositories/globalShipmentRepository'
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import FilterSidebar from 'src/components/FilterSidebar.vue'
+import ShipmentFormDialog from '../components/ShipmentFormDialog.vue'
 
 const authStore = useAuthStore()
 const shipmentStore = useGlobalShipmentStore()
 const router = useRouter()
+const $q = useQuasar()
 
 // Filter State
 const searchText = ref('')
@@ -227,6 +240,13 @@ const viewDetails = (id: number) => {
   void router.push(`${tenantPrefix}/app/procurement/shipment/${id}`)
 }
 
+const openCreateShipment = () => {
+  $q.dialog({
+    component: ShipmentFormDialog,
+  }).onOk(() => {
+    void loadShipments()
+  })
+}
 
 // Legacy Visual Styling Map
 type ShipmentStatusVisual = {

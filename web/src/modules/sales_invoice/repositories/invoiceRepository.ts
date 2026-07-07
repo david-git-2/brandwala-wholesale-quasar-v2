@@ -79,7 +79,7 @@ const listGlobalInvoiceItems = async (invoiceId: number): Promise<GlobalInvoiceI
     .order('id', { ascending: true })
 
   if (error) throw error
-  return (data as GlobalInvoiceItemRow[] | null) ?? []
+  return (data) ?? []
 }
 
 
@@ -267,7 +267,7 @@ const listInvoiceBrands = async (payload: { tenant_id?: number } = {}): Promise<
   }
   const { data, error } = await query.order('name', { ascending: true })
   if (error) throw error
-  return (data as unknown as (InvoiceBrand & { tenants?: { name: string } })[]) || []
+  return (data) || []
 }
 
 const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<InvoiceBrand> => {

@@ -344,7 +344,7 @@ display_qty =
 
 ## 5. Customer group permissions (two-layer model)
 
-> **Unified permission design:** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). Shop uses **shop-scoped `tenant_roles`** on `customer_group_members` for module actions, plus **Subsystem B** resource flags below. Shop P3 may implement resource tables early; role unification is **B8 last stage**.
+> **Unified permission design:** [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). Shop uses **shop-scoped `tenant_roles`** on `customer_group_members` for module actions, plus **Subsystem B** resource flags below. Tenant admin configures shop roles and member overrides in **Access Control** (`/:slug/app/access-control`).
 
 Portable pattern: **tenant-wide defaults** + **per-shop overrides** with `COALESCE(override, default, safe_fallback)`.
 
