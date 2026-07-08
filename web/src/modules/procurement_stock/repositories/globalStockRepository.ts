@@ -41,6 +41,7 @@ const listPaginated = async (
   stockTypeId?: number | null,
   isSellable?: boolean | null,
   shipmentStatus?: string | null,
+  hideZeroStock: boolean = true,
 ): Promise<PaginatedResult<GlobalStock>> => {
   const { data, error } = await db.rpc('list_global_stocks_paginated', {
     p_tenant_id: tenantId,
@@ -50,6 +51,7 @@ const listPaginated = async (
     p_stock_type_id: stockTypeId || null,
     p_is_sellable: isSellable === undefined ? null : isSellable,
     p_shipment_status: shipmentStatus || null,
+    p_hide_zero_stock: hideZeroStock,
   })
 
   if (error) {

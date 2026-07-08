@@ -14,6 +14,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
     stockTypeFilter: null as number | null,
     isSellableFilter: null as boolean | null,
     shipmentStatusFilter: null as string | null,
+    hideZeroStockFilter: true,
   }),
 
   actions: {
@@ -26,6 +27,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
         stockTypeId?: number | null
         isSellable?: boolean | null
         shipmentStatus?: string | null
+        hideZeroStock?: boolean
       },
     ) {
       this.loading = true
@@ -37,6 +39,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
         const stockTypeId = options?.stockTypeId !== undefined ? options.stockTypeId : this.stockTypeFilter
         const isSellable = options?.isSellable !== undefined ? options.isSellable : this.isSellableFilter
         const shipmentStatus = options?.shipmentStatus !== undefined ? options.shipmentStatus : this.shipmentStatusFilter
+        const hideZeroStock = options?.hideZeroStock !== undefined ? options.hideZeroStock : this.hideZeroStockFilter
 
         const result = await globalStockRepository.listPaginated(
           tenantId,
@@ -46,6 +49,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
           stockTypeId,
           isSellable,
           shipmentStatus,
+          hideZeroStock,
         )
 
         this.rows = result.data
@@ -57,6 +61,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
         this.stockTypeFilter = stockTypeId
         this.isSellableFilter = isSellable
         this.shipmentStatusFilter = shipmentStatus
+        this.hideZeroStockFilter = hideZeroStock
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load stock'
       } finally {

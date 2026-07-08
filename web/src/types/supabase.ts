@@ -1575,7 +1575,8 @@ export type Database = {
       global_payments: {
         Row: {
           amount: number
-          billing_profile_id: number
+          billing_profile_id: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           id: number
           method: string | null
@@ -1587,7 +1588,8 @@ export type Database = {
         }
         Insert: {
           amount: number
-          billing_profile_id: number
+          billing_profile_id?: number | null
+          collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           id?: number
           method?: string | null
@@ -1599,7 +1601,8 @@ export type Database = {
         }
         Update: {
           amount?: number
-          billing_profile_id?: number
+          billing_profile_id?: number | null
+          collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           id?: number
           method?: string | null
@@ -7363,7 +7366,8 @@ export type Database = {
         }
         Returns: {
           amount: number
-          billing_profile_id: number
+          billing_profile_id: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           id: number
           method: string | null
@@ -9340,7 +9344,14 @@ export type Database = {
         }
       }
       record_recipient_invoice_collection: {
-        Args: { p_amount: number; p_global_invoice_id: number; p_note?: string }
+        Args: {
+          p_amount: number
+          p_global_invoice_id: number
+          p_method?: string
+          p_note?: string
+          p_payment_date?: string
+          p_reference?: string
+        }
         Returns: {
           accounting_subtotal_amount: number
           billing_profile_id: number | null

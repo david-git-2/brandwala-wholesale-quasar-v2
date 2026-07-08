@@ -7,6 +7,13 @@ import type {
   GlobalInvoiceRow,
 } from '../types'
 
+const localToday = (): string => {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
 const listGlobalInvoices = async (parentTenantId: number): Promise<GlobalInvoiceRow[]> => {
   const { data, error } = await supabase
     .from('global_invoices')
@@ -150,15 +157,18 @@ const recordBillingProfilePayment = async (payload: {
   tenant_id: number
   billing_profile_id: number
   amount: number
+  payment_date?: string
+  method?: string
+  reference?: string | null
   allocations: Array<{ global_invoice_id: number; amount: number }>
 }) => {
   const { data, error } = await supabase.rpc('create_billing_profile_payment_with_allocations', {
     p_tenant_id: payload.tenant_id,
     p_billing_profile_id: payload.billing_profile_id,
     p_amount: payload.amount,
-    p_payment_date: new Date().toISOString().slice(0, 10),
-    p_method: 'cash',
-    p_reference: null,
+    p_payment_date: payload.payment_date ?? localToday(),
+    p_method: payload.method ?? 'cash',
+    p_reference: payload.reference ?? null,
     p_note: null,
     p_allocations: payload.allocations.map((a) => ({
       global_invoice_id: a.global_invoice_id,
@@ -169,11 +179,18 @@ const recordBillingProfilePayment = async (payload: {
   return data
 }
 
-const recordRecipientInvoiceCollection = async (globalInvoiceId: number, amount: number) => {
+const recordRecipientInvoiceCollection = async (
+  globalInvoiceId: number,
+  amount: number,
+  opts?: { payment_date?: string; method?: string; reference?: string | null; note?: string | null },
+) => {
   const { data, error } = await supabase.rpc('record_recipient_invoice_collection', {
     p_global_invoice_id: globalInvoiceId,
     p_amount: amount,
-    p_note: null,
+    p_payment_date: opts?.payment_date ?? localToday(),
+    p_method: opts?.method ?? 'cash',
+    p_reference: opts?.reference ?? null,
+    p_note: opts?.note ?? null,
   })
   if (error) throw error
   return data

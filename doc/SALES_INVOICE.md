@@ -429,7 +429,7 @@ Optional `return_charge_amount` (restocking/handling) reduces credit on the face
 
 **Collection rules:**
 
-- `collection_source = recipient` — reject billing-profile payment allocation; use recipient collection RPC.
+- `collection_source = recipient` — reject billing-profile payment allocation; use recipient collection RPC. This RPC now writes a real `global_payments` transaction (`billing_profile_id = null`, `collection_source = 'recipient'`, `unallocated_amount = 0`) plus a linking `invoice_payments` row, and accepts an editable `p_payment_date` + `p_method`. So dropship/retail-direct cash surfaces in the treasury Payments list and reconciles to the invoice (`paid_amount` bumped once — no double count).
 - `collection_source = billing_profile` — payments attach to `billing_profile_id` and allocate to invoices.
 - `global_payments` may include `payment_method_id` (cash, bank, mobile wallet) — treasury only; does not change margin.
 

@@ -342,6 +342,8 @@ Used when `billing_profile_id` is null (retail direct) or for per-invoice collec
 
 Target shape per MASTER_PLAN §16.10–16.11. `unallocated_amount` on payment until manually allocated.
 
+COD / recipient collections (retail-direct, dropship) now write a `global_payments` row too (`billing_profile_id = null`, `collection_source = 'recipient'`), so they appear in the Payments list — rendered as "Walk-in / Direct" — with their own date and method.
+
 ### 5.3 Tables to avoid (target)
 
 | Object | Action |

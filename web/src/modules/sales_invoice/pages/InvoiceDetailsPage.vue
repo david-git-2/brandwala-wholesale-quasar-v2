@@ -298,7 +298,7 @@
                 color="primary"
                 no-caps
                 label="Record COD"
-                @click="codDialog = true"
+                @click="openCodDialog"
               />
               <q-btn
                 v-if="showPayments && invoice.invoice_status === 'posted' && invoice.middle_man_payout_status !== 'paid' && (invoice.middle_man_payout_amount ?? 0) > 0"
@@ -325,7 +325,7 @@
           <q-card v-if="showPayments && !isDropship && invoice.invoice_status === 'posted' && invoice.due_amount > 0" flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Collections</div>
             <div class="row q-gutter-sm">
-              <q-btn color="primary" no-caps class="col pill-btn slim-btn" label="Record Payment" @click="paymentDialog = true" />
+              <q-btn color="primary" no-caps class="col pill-btn slim-btn" label="Record Payment" @click="openPaymentDialog" />
               <q-btn color="orange" no-caps outline class="col pill-btn slim-btn" label="Settle / Write-off" @click="openSettleDialog" />
             </div>
           </q-card>
@@ -754,8 +754,18 @@
     <q-dialog v-model="paymentDialog" persistent>
       <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px;">
         <q-card-section class="text-h6 text-weight-bold">Record Payment</q-card-section>
-        <q-card-section>
+        <q-card-section class="q-gutter-md">
           <q-input v-model.number="paymentAmount" type="number" label="Amount" outlined dense min="0" class="soft-input" />
+          <q-input v-model="paymentDate" label="Payment Date" outlined dense readonly class="soft-input">
+            <template #append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="paymentDate" mask="YYYY-MM-DD" />
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
+          <q-select v-model="paymentMethod" :options="paymentMethodOptions" label="Method" outlined dense class="soft-input" />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
@@ -768,8 +778,18 @@
     <q-dialog v-model="codDialog" persistent>
       <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px;">
         <q-card-section class="text-h6 text-weight-bold">Record COD Collection</q-card-section>
-        <q-card-section>
+        <q-card-section class="q-gutter-md">
           <q-input v-model.number="codAmount" type="number" label="Amount collected" outlined dense min="0" class="soft-input" />
+          <q-input v-model="codDate" label="Collection Date" outlined dense readonly class="soft-input">
+            <template #append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="codDate" mask="YYYY-MM-DD" />
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
+          <q-select v-model="codMethod" :options="paymentMethodOptions" label="Method" outlined dense class="soft-input" />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
@@ -895,6 +915,31 @@ const codAmount = ref(0)
 const settleAmount = ref(0)
 const payoutAmount = ref(0)
 const paymentSaving = ref(false)
+
+const localToday = (): string => {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+const paymentMethodOptions = ['cash', 'bkash', 'bank_transfer', 'nagad']
+const paymentDate = ref(localToday())
+const paymentMethod = ref('cash')
+const codDate = ref(localToday())
+const codMethod = ref('cash')
+
+const openPaymentDialog = () => {
+  paymentAmount.value = 0
+  paymentDate.value = localToday()
+  paymentMethod.value = 'cash'
+  paymentDialog.value = true
+}
+const openCodDialog = () => {
+  codAmount.value = 0
+  codDate.value = localToday()
+  codMethod.value = 'cash'
+  codDialog.value = true
+}
 
 const returnDialog = ref(false)
 const returnItemId = ref<number | null>(null)
@@ -1396,6 +1441,8 @@ const onRecordPayment = async () => {
       tenant_id: invoice.value.tenant_id,
       billing_profile_id: invoice.value.billing_profile_id,
       amount: paymentAmount.value,
+      payment_date: paymentDate.value,
+      method: paymentMethod.value,
       allocations: [{ global_invoice_id: invoice.value.id, amount: paymentAmount.value }],
     })
     paymentDialog.value = false
@@ -1412,7 +1459,10 @@ const onRecordCod = async () => {
   if (!invoice.value) return
   paymentSaving.value = true
   try {
-    await invoiceRepository.recordRecipientInvoiceCollection(invoice.value.id, codAmount.value)
+    await invoiceRepository.recordRecipientInvoiceCollection(invoice.value.id, codAmount.value, {
+      payment_date: codDate.value,
+      method: codMethod.value,
+    })
     codDialog.value = false
     await loadInvoice()
     showSuccessNotification('COD recorded.')
