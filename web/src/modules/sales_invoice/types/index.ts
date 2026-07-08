@@ -30,6 +30,7 @@ export type CreateGlobalInvoiceInput = {
   recipient_party_id?: number | null
   retail_billing_mode?: 'account' | 'direct' | null
   due_date?: string | null
+  invoice_date?: string | null
   middle_man_payout_amount?: number | null
   note?: string | null
 }
@@ -77,7 +78,6 @@ export type GlobalInvoiceItemRow = {
   global_stock_id: number
   name_snapshot: string
   quantity: number
-  cost_amount: number
   sell_price_amount: number
   recipient_price_amount?: number | null
   line_face_total_amount?: number | null
@@ -85,6 +85,7 @@ export type GlobalInvoiceItemRow = {
   line_total_amount: number
   unit_cost_price?: number | null
   return_quantity: number
+  image_url?: string | null | undefined
 }
 
 export type InvoiceChargeLineRow = {

@@ -9,6 +9,9 @@ function getNestedPreference(preference: any, key: string): string[] | undefined
   if (key === 'ui.thriftShipment.detailsVisibleColumns') {
     return preference?.ui?.thriftShipment?.detailsVisibleColumns
   }
+  if (key === 'ui.procurementShipment.detailsVisibleColumns') {
+    return preference?.ui?.procurementShipment?.detailsVisibleColumns
+  }
   return undefined
 }
 
@@ -31,11 +34,23 @@ function setNestedPreferencePatch(key: string, value: string[]): any {
       },
     }
   }
+  if (key === 'ui.procurementShipment.detailsVisibleColumns') {
+    return {
+      ui: {
+        procurementShipment: {
+          detailsVisibleColumns: value,
+        },
+      },
+    }
+  }
   return {}
 }
 
 export function useMembershipColumnPreference(options: {
-  preferenceKey: 'ui.productBasedCosting.fileDetailsVisibleColumns' | 'ui.thriftShipment.detailsVisibleColumns'
+  preferenceKey:
+    | 'ui.productBasedCosting.fileDetailsVisibleColumns'
+    | 'ui.thriftShipment.detailsVisibleColumns'
+    | 'ui.procurementShipment.detailsVisibleColumns'
   allColumnNames: string[]
   alwaysVisibleColumns?: string[]
   defaultVisibleColumns: string[]

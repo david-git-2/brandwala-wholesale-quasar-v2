@@ -110,6 +110,8 @@ const panelStyle = computed(() => ({
   overflow: hidden;
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(
     160deg,
     rgba(255, 255, 255, 0.62),

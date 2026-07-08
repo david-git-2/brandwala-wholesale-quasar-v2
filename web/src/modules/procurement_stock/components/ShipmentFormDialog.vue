@@ -89,6 +89,31 @@
               </div>
               <div class="col-12 col-sm-6">
                 <q-input
+                  v-model="form.received_date"
+                  label="Received Date"
+                  filled
+                  dense
+                  readonly
+                  clearable
+                >
+                  <template #append>
+                    <q-icon name="event" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date v-model="form.received_date" mask="YYYY-MM-DD">
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
                   v-model.number="form.transaction_rate"
                   type="number"
                   step="0.0001"
@@ -223,6 +248,7 @@ const form = ref({
   cargo_conversion_rate: 1.0,
   cargo_rate: 0.0,
   received_weight: null as number | null,
+  received_date: null as string | null,
   transaction_rate: null as number | null,
   stock_ready: false,
 })
@@ -257,6 +283,7 @@ onMounted(async () => {
       cargo_conversion_rate: props.shipment.cargo_conversion_rate,
       cargo_rate: props.shipment.cargo_rate,
       received_weight: props.shipment.received_weight,
+      received_date: props.shipment.received_date,
       transaction_rate: props.shipment.transaction_rate,
       stock_ready: props.shipment.stock_ready,
     }

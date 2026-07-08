@@ -4,6 +4,7 @@ export type InvoicePrintLine = {
   quantity: number
   unitPrice: number
   lineTotal: number
+  imageUrl?: string | null | undefined
 }
 
 export type InvoicePrintCharge = {
@@ -33,4 +34,7 @@ export type InvoicePrintModel = {
   due: number
   thankYouMessage?: string
   isWholesale: boolean
+  totalCost?: number
+  profit?: number
+  averageProfitRate?: string
 }

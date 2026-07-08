@@ -8,7 +8,7 @@
             <th class="text-right shipment-sl-col">SL</th>
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
-            <th v-if="isColumnVisible('product_id') && props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col" style="width: 80px; min-width: 80px; max-width: 80px;">Split Qty</th>
+            <th v-if="props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col" style="width: 80px; min-width: 80px; max-width: 80px;">Split Qty</th>
             <th v-if="isColumnVisible('product_id')" class="text-center shipment-product-id-col">Product ID</th>
             <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">Barcode</th>
             <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">Product Code</th>
@@ -98,7 +98,7 @@
             >
               {{ item.name ?? '-' }}
             </td>
-            <td v-if="isColumnVisible('product_id') && props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col">
+            <td v-if="props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col">
               <div class="column items-center q-gutter-y-xs q-py-xs">
                 <q-btn
                   flat
@@ -183,6 +183,7 @@
                   outlined
                   autofocus
                   min="1"
+                  step="1"
                   @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
                   @keyup.enter="scope.set"
                 />
@@ -266,7 +267,7 @@
             <td class="shipment-sl-col" />
             <td class="shipment-image-col" />
             <td v-if="isColumnVisible('name')" class="shipment-name-col" />
-            <td v-if="isColumnVisible('product_id') && props.shipment?.status === 'Warehouse Received'" class="shipment-split-col" />
+            <td v-if="props.shipment?.status === 'Warehouse Received'" class="shipment-split-col" />
             <td v-if="isColumnVisible('product_id')" />
             <td v-if="isColumnVisible('barcode')" />
             <td v-if="isColumnVisible('product_code')" />
@@ -483,7 +484,7 @@ const tableColspan = computed(() => {
   for (const opt of columnOptions.value) {
     if (isColumnVisible(opt.value)) count++
   }
-  if (isColumnVisible('product_id') && props.shipment?.status === 'Warehouse Received') count++
+  if (props.shipment?.status === 'Warehouse Received') count++
   return count
 })
 
@@ -776,14 +777,19 @@ defineExpose({
 .shipment-item-image-box {
   width: 1in;
   height: 1in;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f8f9fa;
 }
 
-.shipment-details-table :deep(.shipment-item-image) {
-  max-width: 1in;
-  max-height: 1in;
+.shipment-details-table :deep(.shipment-item-image),
+.shipment-details-table :deep(.shipment-item-image-fallback) {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 

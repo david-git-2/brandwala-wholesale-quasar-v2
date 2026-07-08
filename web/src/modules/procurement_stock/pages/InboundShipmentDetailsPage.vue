@@ -42,6 +42,8 @@
                   <span>|</span>
                   <span>Weight: <strong>{{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}</strong></span>
                   <span>|</span>
+                  <span>Received Date: <strong>{{ shipmentStore.currentShipment.received_date || '—' }}</strong></span>
+                  <span>|</span>
                   <q-chip
                     dense
                     square
@@ -294,6 +296,28 @@
                     </q-menu>
                   </q-btn>
                   <q-btn
+                    v-if="shipmentStore.currentShipment?.status === 'Warehouse Received' && !isSplitsComplete"
+                    color="green-7"
+                    icon="call_split"
+                    label="Auto Accept Splits"
+                    unelevated
+                    dense
+                    no-caps
+                    class="q-px-md q-mr-sm"
+                    :loading="shipmentStore.loading"
+                    @click="autoAcceptSplits"
+                  />
+                  <q-btn
+                    color="secondary"
+                    icon="content_paste"
+                    label="Bulk Paste"
+                    unelevated
+                    dense
+                    no-caps
+                    class="q-px-md q-mr-sm"
+                    @click="openBulkPaste"
+                  />
+                  <q-btn
                     color="primary"
                     icon="add_shopping_cart"
                     label="Add Items"
@@ -479,6 +503,54 @@
                 </q-btn>
               </template>
             </q-card>
+
+            <!-- Stock Splits Summary Card -->
+            <q-card
+              v-if="shipmentStore.currentShipment?.status === 'Warehouse Received'"
+              flat
+              bordered
+              class="q-pa-md bg-white text-grey-9 shadow-1 q-mt-md"
+            >
+              <div class="row items-center justify-between q-mb-md">
+                <div class="text-subtitle1 text-weight-bold text-primary">Quantity Splits Summary</div>
+                <q-chip
+                  dense
+                  square
+                  :color="splitsSummary.isComplete ? 'green-1' : 'orange-1'"
+                  :text-color="splitsSummary.isComplete ? 'green-9' : 'orange-9'"
+                  class="text-weight-bold"
+                >
+                  {{ splitsSummary.isComplete ? 'Complete' : 'Pending Splits' }}
+                </q-chip>
+              </div>
+
+              <div class="q-gutter-y-sm">
+                <!-- Breakdown list -->
+                <div v-for="item in splitsSummary.breakdown" :key="item.id" class="row justify-between items-center q-py-xs" style="border-bottom: 1px dashed rgba(0, 0, 0, 0.08);">
+                  <div class="column">
+                    <span class="text-subtitle2 text-weight-bold" style="line-height: 1.2;">{{ item.description }}</span>
+                    <span class="text-caption text-grey-6" style="font-size: 11px;">
+                      {{ item.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
+                    </span>
+                  </div>
+                  <div class="text-subtitle2 text-weight-bold text-primary">{{ item.quantity }} pcs</div>
+                </div>
+
+                <div v-if="splitsSummary.breakdown.length === 0" class="text-center text-grey-6 q-py-md">
+                  No stock allocations saved yet.
+                </div>
+
+                <q-separator class="q-my-sm" />
+
+                <!-- Total -->
+                <div class="row justify-between items-center q-py-sm bg-grey-1 q-px-sm rounded-borders">
+                  <span class="text-caption text-weight-medium text-grey-8">Total Allocated:</span>
+                  <span class="text-subtitle2 text-weight-bolder text-primary">
+                    {{ splitsSummary.totalAllocated }} / {{ splitsSummary.totalOrdered }} pcs
+                  </span>
+                </div>
+              </div>
+            </q-card>
           </div>
 
           <div class="col-12 col-sm-6">
@@ -598,25 +670,30 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
+import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore'
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository'
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue'
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue'
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue'
+import BulkPasteDialog from '../components/BulkPasteDialog.vue'
 import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLineItemsTable.vue'
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue'
 import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost'
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
 import type { GlobalCurrency } from 'src/modules/global_reference/types'
 import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback'
+import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference'
 
 const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
 const shipmentStore = useGlobalShipmentStore()
+const globalStockTypeStore = useGlobalStockTypeStore()
 
 const isLeftColumnVisible = ref(true)
 
@@ -646,6 +723,33 @@ const isSplitsComplete = computed(() => {
     const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0)
     return sum === item.ordered_quantity
   })
+})
+
+const splitsSummary = computed(() => {
+  const stocks = shipmentStore.currentShipmentStocks || []
+  const stockTypes = globalStockTypeStore.items
+
+  const breakdown = stockTypes.map((type) => {
+    const totalQty = stocks
+      .filter((s) => s.stock_type_id === type.id)
+      .reduce((sum, s) => sum + (s.quantity || 0), 0)
+    return {
+      id: type.id,
+      description: type.description,
+      is_sellable: type.is_sellable,
+      quantity: totalQty,
+    }
+  })
+
+  const totalAllocated = breakdown.reduce((sum, item) => sum + item.quantity, 0)
+  const totalOrdered = shipmentStore.currentShipmentItems.reduce((sum, item) => sum + (item.ordered_quantity || 0), 0)
+
+  return {
+    breakdown: breakdown.filter((item) => item.quantity > 0),
+    totalAllocated,
+    totalOrdered,
+    isComplete: totalAllocated === totalOrdered && totalOrdered > 0,
+  }
 })
 
 const baseColumnOptions = [
@@ -696,7 +800,9 @@ const hasCargoInvoiceWeight = computed(() => {
   return rw != null && rw > 0
 })
 
-const visibleColumns = ref<ColumnKey[]>([
+const authStore = useAuthStore()
+
+const defaultColumns: ColumnKey[] = [
   'name',
   'product_id',
   'barcode',
@@ -708,7 +814,17 @@ const visibleColumns = ref<ColumnKey[]>([
   'product_weight',
   'package_weight',
   'actions',
-])
+]
+
+const allColumnNames = baseColumnOptions.map((col) => col.value)
+const alwaysVisibleColumns: ColumnKey[] = ['name', 'actions']
+
+const { visibleColumns } = useMembershipColumnPreference({
+  preferenceKey: 'ui.procurementShipment.detailsVisibleColumns',
+  allColumnNames,
+  alwaysVisibleColumns,
+  defaultVisibleColumns: defaultColumns,
+})
 
 const allColumnsSelected = computed({
   get: () => availableColumnOptions.value.every((col) => visibleColumns.value.includes(col.value)),
@@ -835,6 +951,16 @@ const loadShipmentDetails = () => {
   }
 }
 
+watch(
+  () => authStore.tenantId,
+  (newTenantId) => {
+    if (newTenantId && globalStockTypeStore.items.length === 0) {
+      void globalStockTypeStore.fetchStockTypes(newTenantId)
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   loadShipmentDetails()
   void loadCurrencies()
@@ -919,8 +1045,6 @@ const openEditShipment = () => {
     componentProps: {
       shipment: shipmentStore.currentShipment,
     },
-  }).onOk(() => {
-    loadShipmentDetails()
   })
 }
 
@@ -948,8 +1072,30 @@ const openAddItems = () => {
   $q.dialog({
     component: AddShipmentItemsDrawer,
     componentProps: { shipmentId },
+  })
+}
+
+const openBulkPaste = () => {
+  $q.dialog({
+    component: BulkPasteDialog,
+  })
+}
+
+const autoAcceptSplits = () => {
+  $q.dialog({
+    title: 'Auto Accept Quantity Splits',
+    message: 'This will automatically allocate 100% of the ordered quantity to "Standard Sellable" for all pending line items that do not have complete splits configured. Already completed splits will not be overwritten. Continue?',
+    cancel: true,
+    persistent: true,
   }).onOk(() => {
-    loadShipmentDetails()
+    void (async () => {
+      try {
+        await shipmentStore.autoAcceptAllSplits(shipmentId)
+        showSuccessNotification('All pending splits auto-accepted successfully.')
+      } catch (err: any) {
+        showErrorNotification(err.message || 'Failed to auto-accept splits.')
+      }
+    })()
   })
 }
 
@@ -960,8 +1106,6 @@ const openEditItem = (item: GlobalShipmentItem) => {
       shipmentId,
       item,
     },
-  }).onOk(() => {
-    loadShipmentDetails()
   })
 }
 
@@ -976,7 +1120,6 @@ const confirmDeleteItem = (itemId: number) => {
       try {
         await shipmentStore.deleteShipmentItem(itemId)
         showSuccessNotification('Item deleted successfully')
-        loadShipmentDetails()
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         showErrorNotification(message || 'Failed to delete item')

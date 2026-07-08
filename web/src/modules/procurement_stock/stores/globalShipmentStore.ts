@@ -4,6 +4,8 @@ import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRe
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository'
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance'
 import { supabase } from 'src/boot/supabase'
+import { useGlobalStockTypeStore } from './globalStockTypeStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
   state: () => ({
@@ -242,6 +244,38 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async updateShipmentItemsBulk(
+      updates: Array<{
+        id: number
+        payload: Partial<Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>>
+      }>
+    ) {
+      this.saving = true
+      this.error = null
+      try {
+        await Promise.all(
+          updates.map((u) => globalShipmentRepository.updateShipmentItem(u.id, u.payload))
+        )
+        for (const u of updates) {
+          const index = this.currentShipmentItems.findIndex((item) => item.id === u.id)
+          if (index !== -1) {
+            const item = this.currentShipmentItems[index]
+            if (item) {
+              this.currentShipmentItems[index] = {
+                ...item,
+                ...u.payload,
+              } as GlobalShipmentItem
+            }
+          }
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update shipment items'
+        throw err
+      } finally {
+        this.saving = false
+      }
+    },
+
     async deleteShipmentItem(id: number) {
       this.saving = true
       this.error = null
@@ -269,6 +303,68 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         await this.fetchShipmentDetails(shipmentId)
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to reorder shipment items'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async autoAcceptAllSplits(shipmentId: number) {
+      this.loading = true
+      this.error = null
+      try {
+        const authStore = useAuthStore()
+        const stockTypeStore = useGlobalStockTypeStore()
+
+        if (!authStore.tenantId) {
+          throw new Error('Tenant ID is missing')
+        }
+
+        if (stockTypeStore.items.length === 0) {
+          await stockTypeStore.fetchStockTypes(authStore.tenantId)
+        }
+
+        const defaultType = stockTypeStore.items.find((t) => t.description === 'Standard Sellable') || stockTypeStore.items[0]
+        if (!defaultType) {
+          throw new Error('No default stock type found')
+        }
+
+        const items = this.currentShipmentItems
+        const stocks = this.currentShipmentStocks || []
+
+        const pendingItems = items.filter((item) => {
+          const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id)
+          const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0)
+          return sum !== item.ordered_quantity
+        })
+
+        if (pendingItems.length === 0) {
+          return
+        }
+
+        const pendingItemIds = pendingItems.map((item) => item.id)
+        const { error: deleteError } = await supabase
+          .from('global_stocks')
+          .delete()
+          .in('shipment_item_id', pendingItemIds)
+        if (deleteError) throw deleteError
+
+        const stockRows = pendingItems.map((item) => ({
+          parent_tenant_id: authStore.tenantId!,
+          shipment_item_id: item.id,
+          stock_type_id: defaultType.id,
+          quantity: item.ordered_quantity,
+          is_usable: defaultType.is_sellable,
+        }))
+
+        const { error: insertError } = await supabase
+          .from('global_stocks')
+          .insert(stockRows)
+        if (insertError) throw insertError
+
+        await this.fetchShipmentDetails(shipmentId)
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to auto-accept splits'
         throw err
       } finally {
         this.loading = false

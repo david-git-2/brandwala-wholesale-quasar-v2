@@ -1856,6 +1856,7 @@ export type Database = {
           name: string
           parent_tenant_id: number
           product_conversion_rate: number
+          received_date: string | null
           received_weight: number | null
           shipment_cost_currency_id: number | null
           shipment_purchase_currency_id: number | null
@@ -1874,6 +1875,7 @@ export type Database = {
           name: string
           parent_tenant_id: number
           product_conversion_rate?: number
+          received_date?: string | null
           received_weight?: number | null
           shipment_cost_currency_id?: number | null
           shipment_purchase_currency_id?: number | null
@@ -1892,6 +1894,7 @@ export type Database = {
           name?: string
           parent_tenant_id?: number
           product_conversion_rate?: number
+          received_date?: string | null
           received_weight?: number | null
           shipment_cost_currency_id?: number | null
           shipment_purchase_currency_id?: number | null
@@ -9548,6 +9551,10 @@ export type Database = {
         Args: { p_invoice_id: number; p_order_item_id: number }
         Returns: undefined
       }
+      unpost_global_invoice: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
       update_commerce_invoice_charges: {
         Args: {
           p_advance_amount?: number
@@ -9757,6 +9764,42 @@ export type Database = {
           p_wrapping_charge?: number
         }
         Returns: undefined
+      }
+      update_global_invoice_item: {
+        Args: {
+          p_item_id: number
+          p_quantity: number
+          p_recipient_price_amount?: number
+          p_sell_price_amount: number
+        }
+        Returns: {
+          barcode_snapshot: string | null
+          created_at: string
+          global_stock_id: number
+          id: number
+          invoice_id: number
+          line_discount_amount: number
+          line_face_total_amount: number
+          line_total_amount: number
+          name_snapshot: string
+          parent_tenant_id: number
+          product_code_snapshot: string | null
+          product_id: number | null
+          quantity: number
+          recipient_price_amount: number
+          return_quantity: number
+          sell_price_amount: number
+          shipment_item_id: number | null
+          tenant_id: number
+          unit_cost_price: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_invoice_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_global_shipment_items_order: {
         Args: { p_items: Json }

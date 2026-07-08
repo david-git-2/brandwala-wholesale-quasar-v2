@@ -1,57 +1,57 @@
 <template>
   <div class="add-items-panel column no-wrap" :class="{ 'add-items-panel--drawer': layout === 'drawer' }">
     <!-- Top compact toolbar -->
-    <div class="q-pa-md toolbar-section row items-center q-col-gutter-sm">
-      <div class="col">
-        <q-input
-          v-model="browseSearch"
-          :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
-          filled
-          dense
-          clearable
-          debounce="400"
-        >
-          <template #prepend>
-            <q-btn-dropdown
-              flat
-              dense
-              :label="searchFieldLabel"
-              class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-              no-caps
-            >
-              <q-list dense>
-                <q-item clickable v-close-popup @click="browseSearchField = 'name'">
-                  <q-item-section>Name</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
-                  <q-item-section>Barcode</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
-                  <q-item-section>Product Code</q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-          </template>
-        </q-input>
+    <div class="q-pa-md toolbar-section column q-gutter-y-sm">
+      <div class="row items-center q-col-gutter-sm">
+        <div class="col">
+          <q-input
+            v-model="browseSearch"
+            :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
+            filled
+            dense
+            clearable
+            debounce="400"
+          >
+            <template #prepend>
+              <q-btn-dropdown
+                flat
+                dense
+                :label="searchFieldLabel"
+                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+                no-caps
+              >
+                <q-list dense>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'name'">
+                    <q-item-section>Name</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
+                    <q-item-section>Barcode</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
+                    <q-item-section>Product Code</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </template>
+          </q-input>
+        </div>
+        <div class="col-auto">
+          <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
+            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+              {{ activeFilterCount }}
+            </q-badge>
+          </q-btn>
+        </div>
       </div>
-      <div class="col-auto">
-        <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
-          <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-            {{ activeFilterCount }}
-          </q-badge>
-        </q-btn>
-      </div>
-      <div class="col-auto">
-        <q-btn
-          unelevated
-          no-caps
-          color="primary"
-          icon="add"
-          label="New Product"
-          class="new-product-btn"
-          @click="showNewProductSidebar = true"
-        />
-      </div>
+      <q-btn
+        unelevated
+        no-caps
+        color="primary"
+        icon="add"
+        label="New Product"
+        class="new-product-btn full-width"
+        @click="showNewProductSidebar = true"
+      />
     </div>
 
     <!-- Catalog Browse list -->
@@ -63,7 +63,7 @@
           <q-item v-for="product in browseList" :key="product.id">
             <q-item-section avatar>
               <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in;">
-                <SmartImage :src="product.image_url" style="width: 1in; height: 1in; object-fit: contain;" />
+                <SmartImage :src="product.image_url" style="width: 1in; height: 1in; object-fit: contain;" :enable-edit="false" />
               </q-avatar>
             </q-item-section>
             <q-item-section>
@@ -83,6 +83,8 @@
                 dense
                 placeholder="Qty"
                 style="width: 70px;"
+                min="1"
+                step="1"
                 @update:model-value="(val) => setBrowseQty(product.id, val === '' ? null : Number(val))"
               />
               <q-btn
@@ -129,7 +131,7 @@
           <div class="row items-start no-wrap q-col-gutter-sm">
             <div class="col-auto">
               <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in;">
-                <SmartImage :src="item.image_url" style="width: 1in; height: 1in; object-fit: contain;" />
+                <SmartImage :src="item.image_url" style="width: 1in; height: 1in; object-fit: contain;" :enable-edit="false" />
               </q-avatar>
             </div>
             <div class="col" style="min-width: 0;">
@@ -151,7 +153,7 @@
             </div>
           </div>
           <div class="row q-col-gutter-xs q-mt-xs">
-            <div class="col-4">
+            <div class="col-6">
               <q-input
                 v-model.number="item.ordered_quantity"
                 type="number"
@@ -159,24 +161,12 @@
                 outlined
                 dense
                 min="1"
+                step="1"
                 @update:model-value="(v) => onCartQtyUpdated(item, Number(v))"
               />
             </div>
-            <div class="col-4">
+            <div class="col-6">
               <q-input v-model.number="item.purchase_price" type="number" step="0.01" label="Price £" outlined dense min="0" />
-            </div>
-            <div class="col-4">
-              <q-select
-                v-model="item.vendor_id"
-                :options="vendorOptions"
-                label="Vendor"
-                outlined
-                dense
-                emit-value
-                map-options
-                options-dense
-                clearable
-              />
             </div>
           </div>
           <div class="text-caption text-grey-7 text-right q-mt-xs">£{{ formatMoney(lineSubtotal(item)) }}</div>
@@ -272,6 +262,10 @@
     />
   </div>
 </template>
+
+<script lang="ts">
+let cachedCurrencies: any[] | null = null
+</script>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
@@ -455,7 +449,7 @@ const setBrowseQty = (productId: number, qty: number | null) => {
   if (qty === null || isNaN(qty) || qty < 1) {
     browseQtyById.value[productId] = null
   } else {
-    browseQtyById.value[productId] = qty
+    browseQtyById.value[productId] = Math.floor(qty)
   }
 }
 
@@ -468,10 +462,11 @@ const addProductToCart = (product: ProductItem, qty: number | null | undefined) 
     return
   }
 
+  const cleanQty = Math.floor(qty)
   const key = `catalog_${product.id}`
   const existing = cart.value.find((c) => c.key === key)
   if (existing) {
-    existing.ordered_quantity += qty
+    existing.ordered_quantity += cleanQty
     // Refresh weights from the latest catalog product record
     existing.product_weight = product.product_weight ?? 0
     existing.package_weight = product.package_weight ?? 0
@@ -483,8 +478,8 @@ const addProductToCart = (product: ProductItem, qty: number | null | undefined) 
       cart.value.unshift(existing)
     }
   } else {
-    // Unshift to put last added item first
-    cart.value.unshift(buildCatalogCartItem(product, qty))
+    // Unshift to put last added item first in the cart stack
+    cart.value.unshift(buildCatalogCartItem(product, cleanQty))
   }
   // Reset row qty
   browseQtyById.value[product.id] = null
@@ -493,6 +488,8 @@ const addProductToCart = (product: ProductItem, qty: number | null | undefined) 
   browseSearch.value = ''
 }
 
+let currentQuerySeq = 0
+
 const loadBrowse = async (append = false) => {
   if (!browseSearch.value.trim() && !filterBrand.value && !filterCategory.value && !filterVendorId.value) {
     browseList.value = []
@@ -500,6 +497,8 @@ const loadBrowse = async (append = false) => {
     return
   }
 
+  currentQuerySeq++
+  const seq = currentQuerySeq
   browseLoading.value = true
   try {
     const vendorCode = filterVendorId.value
@@ -516,11 +515,16 @@ const loadBrowse = async (append = false) => {
       category: filterCategory.value || undefined,
       tenantId: authStore.tenantId,
     })
+
+    if (seq !== currentQuerySeq) return
+
     const items = res.data as ProductItem[]
     browseList.value = append ? [...browseList.value, ...items] : items
     browseTotal.value = res.meta.total
   } finally {
-    browseLoading.value = false
+    if (seq === currentQuerySeq) {
+      browseLoading.value = false
+    }
   }
 }
 
@@ -533,10 +537,19 @@ const loadMoreBrowse = () => {
 watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim()
   if (query) {
+    let detectedField: 'name' | 'barcode' | 'product_code' | null = null
     if (/^\d{6,}$/.test(query)) {
-      browseSearchField.value = 'barcode'
+      detectedField = 'barcode'
     } else if (/^[A-Za-z0-9\-_]{3,}$/.test(query) && /\d/.test(query) && /[A-Za-z]/.test(query)) {
-      browseSearchField.value = 'product_code'
+      detectedField = 'product_code'
+    }
+
+    if (detectedField && browseSearchField.value !== detectedField) {
+      browseSearchField.value = detectedField
+      // Changing browseSearchField will trigger the browseSearchField watcher below,
+      // which handles calling loadBrowse(). We return early to prevent a double API call.
+      browsePage.value = 1
+      return
     }
   }
 
@@ -550,7 +563,9 @@ watch(browseSearchField, () => {
 })
 
 const onCartQtyUpdated = (item: ShipmentCartItem, val: number) => {
-  if (val <= 0) cart.value = cart.value.filter((c) => c.key !== item.key)
+  const intVal = Math.floor(val)
+  item.ordered_quantity = intVal
+  if (intVal <= 0) cart.value = cart.value.filter((c) => c.key !== item.key)
 }
 
 const removeFromCart = (item: ShipmentCartItem) => {
@@ -563,7 +578,7 @@ const confirmClearCart = () => {
 }
 
 const onNewProductAdd = (newProduct: Omit<ShipmentCartItem, 'key'>) => {
-  // Unshift to put last added item first
+  // Unshift to put last added item first in the cart stack
   cart.value.unshift({
     ...newProduct,
     key: `new_${Date.now()}`,
@@ -710,7 +725,9 @@ const onCommitCart = async () => {
   let registeredCount = 0
 
   try {
-    for (const item of cart.value) {
+    // Reverse the cart array before entry so that the first added item (last in stack) is entered first
+    const reversedCart = [...cart.value].reverse()
+    for (const item of reversedCart) {
       const { productId, registered } = await resolveProductId(item)
       if (registered) registeredCount++
 
@@ -769,11 +786,18 @@ const gbpCurrencyId = ref<number | null>(null)
 
 onMounted(async () => {
   loadCartFromStorage()
-  if (authStore.tenantId) void vendorStore.fetchVendors(authStore.tenantId)
+  if (authStore.tenantId && vendorStore.items.length === 0) {
+    void vendorStore.fetchVendors(authStore.tenantId)
+  }
   void loadBrowse()
   try {
-    const currencyData = await globalReferenceRepository.listCurrencies()
-    gbpCurrencyId.value = currencyData.find(c => c.code === 'GBP')?.id ?? null
+    if (cachedCurrencies) {
+      gbpCurrencyId.value = cachedCurrencies.find(c => c.code === 'GBP')?.id ?? null
+    } else {
+      const currencyData = await globalReferenceRepository.listCurrencies()
+      cachedCurrencies = currencyData
+      gbpCurrencyId.value = currencyData.find(c => c.code === 'GBP')?.id ?? null
+    }
   } catch (e) {
     console.error('Error fetching currencies:', e)
   }

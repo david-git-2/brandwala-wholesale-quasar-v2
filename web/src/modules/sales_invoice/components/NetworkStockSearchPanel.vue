@@ -55,7 +55,7 @@
             <q-item-label class="text-subtitle2 text-weight-bold row items-center justify-between">
               <span>{{ group.name }}</span>
               <span class="text-caption text-grey-8 text-weight-bold">
-                Cost: BDT {{ group.cost }}
+                Cost: BDT {{ formatCost(group.cost) }}
               </span>
             </q-item-label>
             <q-item-label caption class="text-grey-7 row q-gutter-x-md">
@@ -123,6 +123,9 @@ import { computed, ref, watch } from 'vue'
 import { globalRepository } from 'src/modules/global/repositories/globalRepository'
 import type { GlobalStockSearchField, StockNetworkMode, StockNetworkRow } from 'src/modules/global/types'
 import { groupStockNetworkRows, type StockNetworkProductGroup } from 'src/modules/global/utils/mapStockNetworkRow'
+import { formatAmountBdt } from 'src/utils/currency'
+
+const formatCost = (val: number) => formatAmountBdt(val)
 
 const props = withDefaults(
   defineProps<{
@@ -177,7 +180,7 @@ const runSearch = async () => {
   }
 
   const query = searchQuery.value.trim()
-  if (!query && props.mode === 'search') {
+  if (!query) {
     results.value = []
     return
   }
@@ -187,9 +190,10 @@ const runSearch = async () => {
     const result = await globalRepository.searchStockNetwork({
       context_tenant_id: props.contextTenantId,
       mode: props.mode,
-      search: query || null,
+      search: query,
       search_field: searchField.value,
       page_size: 50,
+      skip_count: true,
     })
     results.value = props.mode === 'invoice'
       ? result.data.filter((row) => row.is_pickable)
@@ -209,7 +213,7 @@ const onSearchInput = () => {
 }
 
 const onCriteriaChange = () => {
-  if (searchQuery.value.trim() || props.mode === 'invoice') {
+  if (searchQuery.value.trim()) {
     void runSearch()
   }
 }
@@ -231,7 +235,7 @@ const onSelectGroup = (group: StockNetworkProductGroup) => {
 watch(
   () => [props.contextTenantId, props.mode] as const,
   () => {
-    if (props.mode === 'invoice' || searchQuery.value.trim()) {
+    if (searchQuery.value.trim()) {
       void runSearch()
     }
   },

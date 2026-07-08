@@ -475,6 +475,7 @@ Upon applying weight balance, the difference between the saved cargo invoice wei
 | `cargo_conversion_rate` | numeric | Forced `1.0` when domestic |
 | `cargo_rate` | numeric | Freight per kg — **both** domestic and international |
 | `received_weight` | numeric | Cargo invoice weight (kg); drives weight balance and cargo costing |
+| `received_date` | date nullable | Date when the shipment was received at the warehouse |
 | `transaction_rate` | numeric nullable | International only; frontend-computed cache |
 | `stock_ready` | boolean | `true` when status is `Ready Stock` — parent pool is sellable |
 | `created_at`, `updated_at` | timestamptz | |

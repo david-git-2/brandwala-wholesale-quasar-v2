@@ -84,7 +84,7 @@
             <div class="row items-start justify-between no-wrap">
               <div>
                 <div class="text-subtitle1 text-weight-bold text-black">{{ row.invoice_no }}</div>
-                <div class="text-caption text-grey-7">Invoice #{{ row.id }}</div>
+                <div class="text-caption text-grey-7">Invoice ID: {{ row.id }}-{{ row.invoice_date }}</div>
               </div>
               <div class="row items-center q-gutter-x-xs no-wrap">
                 <q-chip

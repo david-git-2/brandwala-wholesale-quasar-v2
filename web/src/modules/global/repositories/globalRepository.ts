@@ -21,37 +21,45 @@ const searchStockNetwork = async (payload: StockNetworkQuery): Promise<StockNetw
   const offset = (page - 1) * pageSize
   const search = payload.search?.trim() || null
   const mode = payload.mode ?? 'search'
+  const skipCount = payload.skip_count ?? false
 
-  const [listResult, countResult] = await Promise.all([
-    supabase.rpc('search_stock_network', {
-      p_context_tenant_id: payload.context_tenant_id,
-      p_mode: mode,
-      p_search: search,
-      p_search_field: payload.search_field ?? null,
-      p_product_id: payload.product_id ?? null,
-      p_status: payload.status ?? 'excellent',
-      p_shipment_id: payload.shipment_id ?? null,
-      p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
-      p_limit: pageSize,
-      p_offset: offset,
-    }),
-    supabase.rpc('count_search_stock_network', {
-      p_context_tenant_id: payload.context_tenant_id,
-      p_mode: mode,
-      p_search: search,
-      p_search_field: payload.search_field ?? null,
-      p_product_id: payload.product_id ?? null,
-      p_status: payload.status ?? 'excellent',
-      p_shipment_id: payload.shipment_id ?? null,
-      p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
-    }),
-  ])
+  const listPromise = supabase.rpc('search_stock_network', {
+    p_context_tenant_id: payload.context_tenant_id,
+    p_mode: mode,
+    p_search: search,
+    p_search_field: payload.search_field ?? null,
+    p_product_id: payload.product_id ?? null,
+    p_status: payload.status ?? 'excellent',
+    p_shipment_id: payload.shipment_id ?? null,
+    p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
+    p_limit: pageSize,
+    p_offset: offset,
+  })
+
+  const countPromise = skipCount
+    ? Promise.resolve({ data: 0, error: null })
+    : supabase.rpc('count_search_stock_network', {
+        p_context_tenant_id: payload.context_tenant_id,
+        p_mode: mode,
+        p_search: search,
+        p_search_field: payload.search_field ?? null,
+        p_product_id: payload.product_id ?? null,
+        p_status: payload.status ?? 'excellent',
+        p_shipment_id: payload.shipment_id ?? null,
+        p_exclude_zero_qty: payload.exclude_zero_qty ?? true,
+      })
+
+  const [listResult, countResult] = await Promise.all([listPromise, countPromise])
 
   if (listResult.error) throw listResult.error
   if (countResult.error) throw countResult.error
 
   const total = Number(countResult.data ?? 0)
-  const rows = (listResult.data as StockNetworkPage['data'] | null) ?? []
+  const rawRows = (listResult.data as StockNetworkPage['data'] | null) ?? []
+  const rows = rawRows.map((row) => ({
+    ...row,
+    cost: row.cost != null ? Math.round((Number(row.cost) + Number.EPSILON) * 100) / 100 : 0,
+  }))
 
   return {
     data: rows,

@@ -37,6 +37,10 @@ export const useMembershipPreferenceStore = defineStore('membershipPreference', 
             ...this.preference.ui?.thriftShipment,
             ...patch.ui?.thriftShipment,
           },
+          procurementShipment: {
+            ...this.preference.ui?.procurementShipment,
+            ...patch.ui?.procurementShipment,
+          },
         },
       }
     },

@@ -6,7 +6,7 @@
     width="min(420px, 92vw)"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <q-form ref="formRef" @submit="onAdd" class="column full-height no-wrap">
+    <q-form ref="formRef" @submit="onAdd" class="column col no-wrap" style="min-height: 0;">
       <div class="col scroll q-gutter-y-md q-pb-md">
         <!-- Image URL & Preview -->
         <div>
@@ -21,6 +21,7 @@
             <SmartImage
               :src="form.image_url"
               style="height: 100px; width: 100px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 8px;"
+              :enable-edit="false"
             />
           </div>
         </div>
@@ -121,7 +122,11 @@
               filled
               dense
               min="1"
-              :rules="[v => v !== null && v !== undefined && v >= 1 || 'Must be >= 1']"
+              step="1"
+              :rules="[
+                v => v !== null && v !== undefined && v >= 1 || 'Must be >= 1',
+                v => Number.isInteger(Number(v)) || 'Quantity must be a whole number'
+              ]"
             />
           </div>
         </div>
@@ -299,7 +304,7 @@ const onAdd = () => {
     isNewProduct: true,
     vendor_id: form.value.vendor_id,
     name: form.value.name.trim(),
-    ordered_quantity: form.value.ordered_quantity,
+    ordered_quantity: Math.floor(form.value.ordered_quantity),
     purchase_price: form.value.purchase_price,
     product_weight: form.value.product_weight || 0,
     package_weight: form.value.package_weight || 0,

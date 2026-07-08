@@ -114,6 +114,9 @@
                   {{ props.row.status }}
                 </q-chip>
               </q-td>
+              <q-td key="received_date" :props="props">
+                {{ props.row.received_date || '-' }}
+              </q-td>
             </q-tr>
           </template>
 
@@ -171,6 +174,7 @@ const columns: QTableColumn[] = [
   { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: false },
   { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: false },
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
+  { name: 'received_date', label: 'Received Date', field: 'received_date', align: 'left', sortable: false },
 ]
 
 const pagination = computed({

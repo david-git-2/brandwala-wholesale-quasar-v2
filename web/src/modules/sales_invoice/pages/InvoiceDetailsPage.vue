@@ -9,20 +9,75 @@
       <q-card flat class="hero-surface floating-surface shadow-1 q-pa-sm q-px-md">
         <div class="row items-center justify-between wrap q-gutter-sm">
           <div>
-            <div class="row items-center q-gutter-x-sm">
-              <div class="text-h6 text-weight-bold text-black">{{ invoice.invoice_no }}</div>
+            <div class="row items-center q-gutter-sm">
+              <template v-if="invoice.invoice_status === 'draft'">
+                <q-input
+                  v-model="form.invoice_no"
+                  label="Invoice Name / Number *"
+                  dense
+                  outlined
+                  class="soft-input text-subtitle1 text-weight-bold"
+                  style="min-width: 250px"
+                  @blur="onHeaderUpdate"
+                />
+                <q-input
+                  v-model="form.invoice_date"
+                  label="Invoice Date *"
+                  dense
+                  outlined
+                  readonly
+                  class="soft-input text-caption"
+                  style="width: 150px"
+                >
+                  <template #append>
+                    <q-icon name="event" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date v-model="form.invoice_date" mask="YYYY-MM-DD" @update:model-value="onDateChange">
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </template>
+              <template v-else>
+                <div class="text-h6 text-weight-bold text-black">{{ invoice.invoice_no }}</div>
+              </template>
+
               <q-chip
                 dense
                 square
-                :color="invoice.invoice_status === 'posted' ? 'green-2' : invoice.invoice_status === 'voided' ? 'red-2' : 'orange-2'"
-                :text-color="invoice.invoice_status === 'posted' ? 'green-10' : invoice.invoice_status === 'voided' ? 'red-10' : 'orange-10'"
-                class="text-weight-bold text-uppercase"
+                clickable
+                :style="statusChipStyle(invoice.invoice_status)"
+                class="q-px-md q-py-sm text-weight-bold q-ma-none text-uppercase"
               >
+                <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(invoice.invoice_status) }" />
                 {{ invoice.invoice_status }}
+                <q-icon name="arrow_drop_down" class="q-ml-xs" size="16px" />
+                <q-menu>
+                  <q-list dense style="min-width: 150px">
+                    <q-item
+                      v-for="status in ['draft', 'posted', 'voided']"
+                      :key="status"
+                      clickable
+                      v-close-popup
+                      :disable="isTransitionDisabled(status)"
+                      @click="changeInvoiceStatus(status)"
+                    >
+                      <q-item-section>
+                        <div class="row items-center justify-between no-wrap">
+                          <span class="text-uppercase">{{ status }}</span>
+                        </div>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
               </q-chip>
             </div>
-            <div class="text-caption text-grey-8">
-              Invoice #{{ invoice.id }} · {{ invoice.invoice_date }}
+            <div class="text-caption text-grey-8 q-mt-xs">
+              Invoice ID: {{ invoice.id }}-{{ form.invoice_date || invoice.invoice_date }}
             </div>
           </div>
           
@@ -39,50 +94,71 @@
             >
               <q-tooltip>Preview</q-tooltip>
             </q-btn>
-            
-            <q-btn
-              v-if="invoice.invoice_status === 'draft'"
-              color="positive"
-              icon="send"
-              label="Post Invoice"
-              no-caps
-              class="pill-btn slim-btn shadow-1"
-              :loading="postingInvoice"
-              @click="onPostInvoice"
-            />
-            
-            <q-btn
-              v-if="invoice.invoice_status === 'posted' && invoice.paid_amount === 0"
-              color="negative"
-              icon="cancel"
-              label="Void Invoice"
-              no-caps
-              class="pill-btn slim-btn shadow-1"
-              :loading="voidingInvoice"
-              @click="onVoidInvoice"
-            />
-
-            <q-btn
-              v-if="invoice.invoice_status === 'draft'"
-              color="negative"
-              outline
-              icon="delete"
-              label="Delete Draft"
-              no-caps
-              class="pill-btn slim-btn"
-              :loading="deletingInvoice"
-              @click="onDeleteInvoice"
-            />
 
             <q-btn
               v-if="invoice.invoice_status === 'draft'"
               color="primary"
               icon="add"
-              label="Add Stock"
               no-caps
               class="pill-btn slim-btn"
               @click="stockDialog = true"
-            />
+            >
+              <q-tooltip>Add Stock</q-tooltip>
+            </q-btn>
+
+
+            <q-btn
+              v-if="invoice.invoice_status === 'draft' || (invoice.invoice_status === 'posted' && canUnpostOrVoid)"
+              flat
+              round
+              dense
+              icon="more_vert"
+              class="pill-btn slim-btn"
+            >
+              <q-tooltip>More Actions</q-tooltip>
+              <q-menu auto-close>
+                <q-list style="min-width: 150px">
+                  <q-item
+                    v-if="invoice.invoice_status === 'draft'"
+                    clickable
+                    class="text-negative"
+                    :disable="deletingInvoice"
+                    @click="onDeleteInvoice"
+                  >
+                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                      <q-icon name="delete" />
+                    </q-item-section>
+                    <q-item-section>Delete Draft</q-item-section>
+                  </q-item>
+
+                  <q-item
+                    v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                    clickable
+                    class="text-negative"
+                    :disable="voidingInvoice"
+                    @click="changeInvoiceStatus('voided')"
+                  >
+                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                      <q-icon name="cancel" />
+                    </q-item-section>
+                    <q-item-section>Void Invoice</q-item-section>
+                  </q-item>
+
+                  <q-item
+                    v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                    clickable
+                    class="text-warning"
+                    :disable="unpostingInvoice"
+                    @click="changeInvoiceStatus('draft')"
+                  >
+                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                      <q-icon name="undo" />
+                    </q-item-section>
+                    <q-item-section>Undo Post (Draft)</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
             
             <q-chip square dense class="status-chip text-weight-bold text-capitalize">
               {{ invoice.invoice_type }}
@@ -95,64 +171,8 @@
       </q-card>
 
       <div class="row q-col-gutter-md">
-        <!-- Lines Table -->
-        <div class="col-12 col-md-8">
-          <q-card flat class="floating-surface shadow-1">
-            <q-card-section class="text-subtitle1 text-weight-bold">Items ({{ items.length }})</q-card-section>
-            <q-separator />
-            <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-lg">
-              No items yet. Add from global stock.
-            </q-card-section>
-            <q-markup-table v-else flat dense wrap-cells>
-              <thead>
-                <tr>
-                  <th class="text-left">Product</th>
-                  <th class="text-right">Qty</th>
-                  <th class="text-right">Sell</th>
-                  <th v-if="isDropship" class="text-right">Recipient</th>
-                  <th class="text-right">Total</th>
-                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
-                  <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in items" :key="row.id">
-                  <td>{{ row.name_snapshot }}</td>
-                  <td class="text-right">
-                    <span>{{ row.quantity }}</span>
-                    <div v-if="row.return_quantity > 0" class="text-caption text-orange text-weight-bold">
-                      Returned: {{ row.return_quantity }}
-                    </div>
-                  </td>
-                  <td class="text-right">{{ formatAmount(row.sell_price_amount) }}</td>
-                  <td v-if="isDropship" class="text-right">
-                    {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
-                  </td>
-                  <td class="text-right">{{ formatAmount(row.line_total_amount) }}</td>
-                  <td v-if="invoice.invoice_status === 'posted'" class="text-right">
-                    {{ formatAmount(lineMarginForRow(row)) }}
-                  </td>
-                  <td v-if="invoice.invoice_status === 'draft'" class="text-right">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      color="negative"
-                      icon="delete"
-                      size="sm"
-                      @click="onRemoveItem(row.id)"
-                    >
-                      <q-tooltip>Remove Item</q-tooltip>
-                    </q-btn>
-                  </td>
-                </tr>
-              </tbody>
-            </q-markup-table>
-          </q-card>
-        </div>
-
         <!-- Sidebar Actions & Meta -->
-        <div class="col-12 col-md-4 q-gutter-y-md">
+        <div v-if="showSidebar" class="col-12 col-md-4 q-gutter-y-md">
           <!-- Billing Profile Details -->
           <q-card flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Billing Profile</div>
@@ -304,14 +324,23 @@
             <div v-if="isDropship" class="row justify-between text-caption text-grey-7">
               <span>Face subtotal</span><span>{{ formatAmount(invoice.face_subtotal_amount ?? 0) }}</span>
             </div>
+            <div class="row justify-between text-body2 text-grey-9">
+              <span>Total Cost</span>
+              <span>{{ formatAmount(totalCost) }}</span>
+            </div>
+            <div class="row justify-between text-body2 text-grey-9">
+              <span>Total Qty</span>
+              <span>{{ totalQuantity }}</span>
+            </div>
             <q-separator class="q-my-xs" />
             <div class="row justify-between text-subtitle1 text-weight-bold text-primary"><span>Total</span><span>{{ formatAmount(invoice.total_amount) }}</span></div>
-            <div
-              v-if="invoice.invoice_status === 'posted'"
-              class="row justify-between text-body2 text-weight-medium"
-            >
-              <span>Gross profit</span>
-              <span :class="grossProfit >= 0 ? 'text-positive' : 'text-negative'">{{ formatAmount(grossProfit) }}</span>
+            <div class="row justify-between text-body2 text-weight-medium">
+              <span>{{ invoice.invoice_status === 'posted' ? 'Gross Profit' : 'Est. Gross Profit' }}</span>
+              <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">{{ formatAmount(estimatedProfit) }}</span>
+            </div>
+            <div class="row justify-between text-body2 text-grey-9">
+              <span>Avg Profit Rate</span>
+              <span class="text-weight-medium text-grey-8">{{ averageProfitRate }}</span>
             </div>
             <div class="row justify-between text-body2 text-grey-9"><span>Paid</span><span>{{ formatAmount(invoice.paid_amount) }}</span></div>
             <div class="row justify-between text-subtitle1 text-weight-bold">
@@ -342,46 +371,310 @@
             <div v-else class="text-body2 text-grey-8">{{ invoice.note || '—' }}</div>
           </q-card>
         </div>
+
+        <!-- Lines Table -->
+        <div :class="showSidebar ? 'col-12 col-md-8 transition-width' : 'col-12 transition-width'">
+          <q-card flat class="floating-surface shadow-1">
+            <q-card-section class="row items-center q-py-sm">
+              <q-btn
+                flat
+                round
+                dense
+                color="primary"
+                :icon="showSidebar ? 'keyboard_double_arrow_left' : 'keyboard_double_arrow_right'"
+                @click="showSidebar = !showSidebar"
+                class="q-mr-sm"
+              >
+                <q-tooltip>{{ showSidebar ? 'Hide Sidebar' : 'Show Sidebar' }}</q-tooltip>
+              </q-btn>
+              <div class="text-subtitle1 text-weight-bold">Items ({{ items.length }})</div>
+            </q-card-section>
+            <q-separator />
+            <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-lg">
+              No items yet. Add from global stock.
+            </q-card-section>
+            <q-markup-table v-else flat dense wrap-cells class="invoice-items-table">
+              <thead>
+                <tr>
+                  <th class="text-left" style="width: 40px">SL</th>
+                  <th style="width: 60px"></th>
+                  <th class="text-left">Product</th>
+                  <th class="text-right">Qty</th>
+                  <th class="text-right">Cost</th>
+                  <th class="text-right">Sell</th>
+                  <th v-if="isDropship" class="text-right">Recipient</th>
+                  <th class="text-right">Total</th>
+                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
+                  <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in items" :key="row.id" class="invoice-item-row">
+                  <td class="text-left">{{ idx + 1 }}</td>
+                  <td>
+                    <div class="invoice-item-image-box shadow-1">
+                      <SmartImage
+                        :src="row.image_url"
+                        alt="item snapshot"
+                        img-class="invoice-item-image"
+                        fallback-class="invoice-item-image-fallback"
+                        :enable-edit="false"
+                      />
+                    </div>
+                  </td>
+                  <td class="text-weight-medium">{{ row.name_snapshot }}</td>
+                  <td class="text-right">
+                    <span
+                      class="text-weight-bold"
+                      :class="{ 'cursor-pointer': invoice.invoice_status === 'draft', 'text-underline-dashed': invoice.invoice_status === 'draft' }"
+                    >
+                      {{ row.quantity }}
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.quantity"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'quantity', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="1"
+                        step="1"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                    <div v-if="row.return_quantity > 0" class="text-caption text-orange text-weight-bold">
+                      Returned: {{ row.return_quantity }}
+                    </div>
+                  </td>
+                  <td class="text-right text-grey-8">{{ formatAmount(row.unit_cost_price ?? 0) }}</td>
+                  <td class="text-right">
+                    <span
+                      :class="{ 'cursor-pointer': invoice.invoice_status === 'draft', 'text-underline-dashed': invoice.invoice_status === 'draft' }"
+                    >
+                      {{ formatAmount(row.sell_price_amount) }}
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.sell_price_amount"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'sell_price_amount', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="0"
+                        step="0.01"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td v-if="isDropship" class="text-right">
+                    <span
+                      :class="{ 'cursor-pointer': invoice.invoice_status === 'draft', 'text-underline-dashed': invoice.invoice_status === 'draft' }"
+                    >
+                      {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.recipient_price_amount ?? row.sell_price_amount"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'recipient_price_amount', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="0"
+                        step="0.01"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td class="text-right text-weight-bold">{{ formatAmount(row.line_total_amount) }}</td>
+                  <td v-if="invoice.invoice_status === 'posted'" class="text-right">
+                    {{ formatAmount(lineMarginForRow(row)) }}
+                  </td>
+                  <td v-if="invoice.invoice_status === 'draft'" class="text-right">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      icon="delete"
+                      size="sm"
+                      @click="onRemoveItem(row.id)"
+                    >
+                      <q-tooltip>Remove Item</q-tooltip>
+                    </q-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
+        </div>
       </div>
     </div>
 
     <!-- Add From Stock Dialog -->
     <q-dialog v-model="stockDialog" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw; border-radius: 16px;" class="floating-surface q-pa-sm">
-        <q-card-section class="text-h6 text-weight-bold">Add From Stock</q-card-section>
-        <q-card-section class="q-pt-none">
-          <NetworkStockSearchPanel
-            v-if="invoice && stockDialog"
-            mode="invoice"
-            :context-tenant-id="invoice.tenant_id"
-            selectable
-            :show-search-controls="true"
-            @select="onSelectStockRow"
-          />
-          <div v-if="selectedStock" class="q-mt-md q-gutter-y-sm">
-            <div class="text-subtitle2 text-weight-bold">
-              Selected: {{ selectedStock.name }}
-              <span v-if="selectedStockHoldingLabel" class="text-caption text-grey-7 q-ml-sm">
-                ({{ selectedStockHoldingLabel }})
-              </span>
+      <q-card style="width: 1100px; max-width: 95vw; border-radius: 16px;" class="floating-surface q-pa-sm">
+        <q-card-section class="text-h6 text-weight-bold row items-center justify-between q-pb-none">
+          <span>Add From Stock</span>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        
+        <q-card-section class="q-pt-md">
+          <div class="row q-col-gutter-md">
+            <!-- Search Panel -->
+            <div class="col-12 col-md-6 column">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Search Stock</div>
+              <NetworkStockSearchPanel
+                v-if="invoice && stockDialog"
+                mode="invoice"
+                :context-tenant-id="invoice.tenant_id"
+                selectable
+                :show-search-controls="true"
+                @select="onSelectStockRow"
+              />
             </div>
-            <q-input v-model.number="addQty" type="number" label="Quantity" dense outlined min="1" class="soft-input" />
-            <q-input v-model.number="addSellPrice" type="number" label="Sell price" dense outlined min="0" class="soft-input" />
-            <q-input
-              v-if="isDropship"
-              v-model.number="addRecipientPrice"
-              type="number"
-              label="Recipient price"
-              dense
-              outlined
-              min="0"
-              class="soft-input"
-            />
+            
+            <!-- Cart Panel -->
+            <div class="col-12 col-md-6 column">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm row items-center justify-between">
+                <span>Selected Items (Cart)</span>
+                <div class="row items-center q-gutter-x-sm">
+                  <q-btn
+                    v-if="stockCart.length"
+                    flat
+                    dense
+                    no-caps
+                    color="negative"
+                    label="Clear Cart"
+                    size="sm"
+                    @click="stockCart = []"
+                    class="pill-btn"
+                  />
+                  <q-badge color="primary" class="q-px-sm q-py-xs" style="border-radius: 8px;">
+                    {{ stockCart.length }} item(s)
+                  </q-badge>
+                </div>
+              </div>
+              
+              <div
+                class="border rounded-borders q-pa-sm scroll"
+                style="height: 450px; background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px;"
+              >
+                <div v-if="stockCart.length === 0" class="column items-center justify-center text-grey-5 q-py-xl" style="height: 100%;">
+                  <q-icon name="shopping_cart" size="48px" class="q-mb-sm" />
+                  <div class="text-subtitle2">Cart is empty</div>
+                  <div class="text-caption text-center">Click items in the search results to add them here</div>
+                </div>
+                
+                <q-list v-else separator>
+                  <q-item v-for="(item, idx) in stockCart" :key="item.global_stock_id" class="q-py-md q-px-sm">
+                    <q-item-section avatar>
+                      <q-avatar rounded size="48px" class="bg-grey-2 shadow-1">
+                        <img
+                          :src="item.image_url || 'https://placehold.co/48x48?text=No+Image'"
+                          alt="product image"
+                          style="object-fit: contain;"
+                        />
+                      </q-avatar>
+                    </q-item-section>
+                    
+                    <q-item-section>
+                      <q-item-label class="text-weight-bold text-subtitle2">{{ item.name }}</q-item-label>
+                      <q-item-label caption class="text-grey-7 row q-gutter-x-md">
+                        <span v-if="item.product_code">Code: {{ item.product_code }}</span>
+                        <span v-if="item.is_own_tenant" class="text-green-9 text-weight-bold">Own Stock</span>
+                        <span v-else-if="item.holding_tenant_name" class="text-grey-8">{{ item.holding_tenant_name }}</span>
+                      </q-item-label>
+                      
+                      <!-- Editable fields for each item -->
+                      <div class="row q-col-gutter-sm q-mt-xs">
+                        <div class="col-4">
+                          <q-input
+                            v-model.number="item.quantity"
+                            type="number"
+                            label="Quantity"
+                            dense
+                            outlined
+                            min="1"
+                            class="soft-input"
+                          />
+                        </div>
+                        <div class="col-4">
+                          <q-input
+                            v-model.number="item.sell_price_amount"
+                            type="number"
+                            label="Sell Price"
+                            dense
+                            outlined
+                            min="0"
+                            class="soft-input"
+                          />
+                        </div>
+                        <div class="col-4" v-if="isDropship">
+                          <q-input
+                            v-model.number="item.recipient_price_amount"
+                            type="number"
+                            label="Recipient"
+                            dense
+                            outlined
+                            min="0"
+                            class="soft-input"
+                          />
+                        </div>
+                      </div>
+                    </q-item-section>
+                    
+                    <q-item-section side>
+                      <q-btn flat round dense color="negative" icon="delete" size="sm" @click="stockCart.splice(idx, 1)">
+                        <q-tooltip>Remove</q-tooltip>
+                      </q-btn>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </div>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
+        
+        <q-card-actions align="right" class="q-px-md q-pb-md">
           <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
-          <q-btn color="primary" label="Add" :loading="addingItem" :disable="!selectedStock" @click="onAddItem" class="pill-btn" />
+          <q-btn
+            color="primary"
+            :label="stockCart.length ? `Add ${stockCart.length} Item${stockCart.length === 1 ? '' : 's'}` : 'Add'"
+            :loading="addingItem"
+            :disable="stockCart.length === 0"
+            @click="onAddCartItems"
+            class="pill-btn"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -460,11 +753,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
+import SmartImage from 'src/components/SmartImage.vue'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { formatAmountBdt } from 'src/utils/currency'
-import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback'
+import { showSuccessNotification, showWarningDialog, showWarningNotification, requestConfirmation } from 'src/utils/appFeedback'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
@@ -474,19 +769,33 @@ import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const invoice = ref<GlobalInvoiceDetail | null>(null)
 const items = ref<GlobalInvoiceItemRow[]>([])
+const showSidebar = ref(false)
 
 const stockDialog = ref(false)
-const selectedStock = ref<StockNetworkRow | null>(null)
-const addQty = ref(1)
-const addSellPrice = ref(0)
-const addRecipientPrice = ref(0)
 const addingItem = ref(false)
+
+interface StockCartItem {
+  global_stock_id: number
+  product_id: number | null
+  name: string
+  barcode: string | null
+  product_code: string | null
+  image_url: string | null
+  cost: number
+  holding_tenant_name: string | null
+  is_own_tenant: boolean
+  quantity: number
+  sell_price_amount: number
+  recipient_price_amount: number
+}
+const stockCart = ref<StockCartItem[]>([])
 
 const paymentDialog = ref(false)
 const codDialog = ref(false)
@@ -506,6 +815,7 @@ const returnSaving = ref(false)
 
 const postingInvoice = ref(false)
 const voidingInvoice = ref(false)
+const unpostingInvoice = ref(false)
 const deletingInvoice = ref(false)
 
 const showPreview = true
@@ -522,7 +832,9 @@ const form = reactive({
   recipient_name: '',
   recipient_phone: '',
   recipient_address: '',
-  note: ''
+  note: '',
+  invoice_no: '',
+  invoice_date: ''
 })
 
 const invoiceId = computed(() => Number(route.params.id))
@@ -545,8 +857,14 @@ const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
     line_discount_amount: row.line_discount_amount,
   })
 
-const grossProfit = computed(() => {
-  if (!invoice.value || invoice.value.invoice_status !== 'posted') return 0
+const totalCost = computed(() => {
+  return items.value.reduce((sum, row) => sum + (row.unit_cost_price ?? 0) * row.quantity, 0)
+})
+const totalQuantity = computed(() => {
+  return items.value.reduce((sum, row) => sum + row.quantity, 0)
+})
+const estimatedProfit = computed(() => {
+  if (!invoice.value) return 0
   return invoiceGrossProfit(
     {
       invoice_type: invoice.value.invoice_type as 'wholesale' | 'retail' | 'dropship',
@@ -555,10 +873,18 @@ const grossProfit = computed(() => {
       print_charge: invoice.value.print_charge,
       wrapping_charge: invoice.value.wrapping_charge,
       discount_amount: invoice.value.discount_amount,
-      invoice_status: invoice.value.invoice_status,
+      invoice_status: 'posted', // force posted to calculate profit
     },
     items.value.map((row) => ({ ...row, id: row.id })),
   )
+})
+
+const averageProfitRate = computed(() => {
+  const cost = totalCost.value
+  if (cost <= 0) return '-'
+  const profit = estimatedProfit.value
+  const rate = (profit / cost) * 100
+  return `${rate.toFixed(2)}%`
 })
 
 const loadInvoice = async () => {
@@ -582,6 +908,8 @@ const loadInvoice = async () => {
     form.recipient_phone = inv.recipient_phone || ''
     form.recipient_address = inv.recipient_address || ''
     form.note = inv.note || ''
+    form.invoice_no = inv.invoice_no || ''
+    form.invoice_date = inv.invoice_date || ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load invoice.'
   } finally {
@@ -589,44 +917,64 @@ const loadInvoice = async () => {
   }
 }
 
-const selectedStockHoldingLabel = computed(() => {
-  if (!selectedStock.value) return ''
-  if (selectedStock.value.is_own_tenant && selectedStock.value.allocated_qty === 0) {
-    return 'Available via network'
-  }
-  return selectedStock.value.holding_tenant_name ?? ''
-})
+
 
 const onSelectStockRow = (row: StockNetworkRow) => {
-  selectedStock.value = row
-  addSellPrice.value = row.cost
-  addRecipientPrice.value = row.cost
+  const existingIdx = stockCart.value.findIndex(item => item.global_stock_id === row.global_stock_id)
+  if (existingIdx > -1) {
+    const existing = stockCart.value[existingIdx]
+    if (existing) {
+      existing.quantity++
+      stockCart.value.splice(existingIdx, 1)
+      stockCart.value.unshift(existing)
+    }
+  } else {
+    stockCart.value.unshift({
+      global_stock_id: row.global_stock_id,
+      product_id: row.product_id,
+      name: row.name,
+      barcode: row.barcode,
+      product_code: row.product_code,
+      image_url: row.image_url,
+      cost: row.cost,
+      holding_tenant_name: row.holding_tenant_name ?? null,
+      is_own_tenant: row.is_own_tenant,
+      quantity: 1,
+      sell_price_amount: row.cost,
+      recipient_price_amount: row.cost
+    })
+  }
 }
 
-const onAddItem = async () => {
-  if (!invoice.value || !selectedStock.value || addQty.value <= 0) return
+const onAddCartItems = async () => {
+  if (!invoice.value || stockCart.value.length === 0) return
   addingItem.value = true
   try {
-    const payload = {
-      invoice_id: invoice.value.id,
-      global_stock_id: selectedStock.value.global_stock_id,
-      quantity: addQty.value,
-      sell_price_amount: addSellPrice.value || selectedStock.value.cost,
-    }
-    if (isDropship.value) {
-      await invoiceRepository.addGlobalInvoiceItem({
-        ...payload,
-        recipient_price_amount: addRecipientPrice.value,
-      })
-    } else {
-      await invoiceRepository.addGlobalInvoiceItem(payload)
+    // Process items in opposite order of the stack display (oldest first)
+    // to avoid Postgres lock contention and preserve chronological list order
+    const itemsToInsert = [...stockCart.value].reverse()
+    for (const item of itemsToInsert) {
+      const payload = {
+        invoice_id: invoice.value.id,
+        global_stock_id: item.global_stock_id,
+        quantity: item.quantity,
+        sell_price_amount: item.sell_price_amount,
+      }
+      if (isDropship.value) {
+        await invoiceRepository.addGlobalInvoiceItem({
+          ...payload,
+          recipient_price_amount: item.recipient_price_amount,
+        })
+      } else {
+        await invoiceRepository.addGlobalInvoiceItem(payload)
+      }
     }
     stockDialog.value = false
-    selectedStock.value = null
+    stockCart.value = []
     await loadInvoice()
-    showSuccessNotification('Item added.')
+    showSuccessNotification('Items added to invoice successfully.')
   } catch (e) {
-    showWarningDialog(e instanceof Error ? e.message : 'Failed to add item.')
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to add items.')
   } finally {
     addingItem.value = false
   }
@@ -643,6 +991,73 @@ const onRemoveItem = async (itemId: number) => {
   }
 }
 
+const onUpdateItemField = async (
+  row: GlobalInvoiceItemRow,
+  field: 'quantity' | 'sell_price_amount' | 'recipient_price_amount',
+  value: any
+) => {
+  if (!invoice.value) return
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    showWarningNotification('Value must be 0 or greater.')
+    return
+  }
+  if (field === 'quantity' && parsed <= 0) {
+    showWarningNotification('Quantity must be greater than 0.')
+    return
+  }
+
+  const quantity = field === 'quantity' ? parsed : row.quantity
+  const sellPrice = field === 'sell_price_amount' ? parsed : row.sell_price_amount
+  const recipientPrice = field === 'recipient_price_amount' ? parsed : (row.recipient_price_amount ?? row.sell_price_amount)
+
+  try {
+    await invoiceRepository.updateGlobalInvoiceItem({
+      id: row.id,
+      quantity,
+      sell_price_amount: sellPrice,
+      recipient_price_amount: recipientPrice,
+    })
+    await loadInvoice()
+    showSuccessNotification('Item updated successfully.')
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to update item.')
+  }
+}
+
+
+const getMonthYear = (dateStr: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleString('en-GB', { month: 'short', year: 'numeric' })
+}
+
+const onDateChange = async (val: string) => {
+  if (!invoice.value) return
+
+  const monthYear = getMonthYear(val)
+  const isWholesale = invoice.value.invoice_type === 'wholesale'
+  const isDropship = invoice.value.invoice_type === 'dropship'
+  const isRetail = invoice.value.invoice_type === 'retail'
+  const isRetailDirect = isRetail && !invoice.value.billing_profile_id
+
+  let expectedProfileName = ''
+  if (isWholesale || isDropship || (isRetail && invoice.value.billing_profile_id)) {
+    expectedProfileName = invoice.value.billing_profiles?.name || ''
+  } else if (isRetailDirect) {
+    expectedProfileName = 'Retail Direct'
+  }
+
+  const currentNo = form.invoice_no.trim()
+  if (!currentNo || currentNo.startsWith('Invoice - ')) {
+    const newName = expectedProfileName ? `Invoice - ${expectedProfileName} - ${monthYear}` : `Invoice - ${monthYear}`
+    form.invoice_no = newName
+  }
+
+  await onHeaderUpdate()
+}
+
 const onHeaderUpdate = async () => {
   if (!invoice.value) return
   try {
@@ -656,7 +1071,9 @@ const onHeaderUpdate = async () => {
       recipient_name: form.recipient_name.trim() || null,
       recipient_phone: form.recipient_phone.trim() || null,
       recipient_address: form.recipient_address.trim() || null,
-      note: form.note.trim() || null
+      note: form.note.trim() || null,
+      invoice_no: form.invoice_no.trim() || null,
+      invoice_date: form.invoice_date || null
     })
     await loadInvoice()
   } catch (e) {
@@ -692,8 +1109,114 @@ const onVoidInvoice = async () => {
   }
 }
 
+const onUnpostInvoice = async () => {
+  if (!invoice.value) return
+  unpostingInvoice.value = true
+  try {
+    await invoiceRepository.unpostGlobalInvoice(invoice.value.id)
+    await loadInvoice()
+    showSuccessNotification('Invoice unposted (reverted to draft) successfully.')
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to unpost invoice.')
+  } finally {
+    unpostingInvoice.value = false
+  }
+}
+
+const canUnpostOrVoid = computed(() => {
+  if (!invoice.value) return false
+  if (invoice.value.paid_amount > 0) return false
+  const hasReturns = items.value.some(item => item.return_quantity > 0)
+  return !hasReturns
+})
+
+const isTransitionDisabled = (targetStatus: string) => {
+  if (!invoice.value) return true
+  const current = invoice.value.invoice_status
+  if (current === targetStatus) return true
+  
+  if (current === 'draft') {
+    return targetStatus !== 'posted'
+  }
+  if (current === 'posted') {
+    if (targetStatus === 'draft' || targetStatus === 'voided') {
+      return !canUnpostOrVoid.value
+    }
+    return true
+  }
+  if (current === 'voided') {
+    return true
+  }
+  return true
+}
+
+const changeInvoiceStatus = (newStatus: string) => {
+  if (!invoice.value) return
+  const current = invoice.value.invoice_status
+  if (current === newStatus) return
+
+  if (newStatus === 'posted') {
+    $q.dialog({
+      title: 'Post Invoice',
+      message: 'Are you sure you want to post this invoice? This will lock the invoice and deduct the items from stock.',
+      cancel: true,
+      persistent: true,
+    }).onOk(() => {
+      void onPostInvoice()
+    })
+  } else if (newStatus === 'draft') {
+    $q.dialog({
+      title: 'Undo Post / Unpost Invoice',
+      message: 'Are you sure you want to unpost this invoice and revert it to draft? This will restore the stock quantities.',
+      cancel: true,
+      persistent: true,
+    }).onOk(() => {
+      void onUnpostInvoice()
+    })
+  } else if (newStatus === 'voided') {
+    $q.dialog({
+      title: 'Void Invoice',
+      message: 'Are you sure you want to void this invoice? This action will cancel the invoice and restore the stock quantities. It cannot be undone.',
+      cancel: true,
+      persistent: true,
+    }).onOk(() => {
+      void onVoidInvoice()
+    })
+  }
+}
+
+const statusChipStyle = (status: string) => {
+  const value = (status ?? '').toLowerCase()
+  switch (value) {
+    case 'draft':
+      return { backgroundColor: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', borderRadius: '6px' }
+    case 'posted':
+      return { backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '6px' }
+    case 'voided':
+      return { backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fee2e2', borderRadius: '6px' }
+    default:
+      return { backgroundColor: '#f9fafb', color: '#1f2937', border: '1px solid #e5e7eb', borderRadius: '6px' }
+  }
+}
+
+const statusDotColor = (status: string) => {
+  const value = (status ?? '').toLowerCase()
+  switch (value) {
+    case 'draft': return '#ea580c'
+    case 'posted': return '#15803d'
+    case 'voided': return '#dc2626'
+    default: return '#9ca3af'
+  }
+}
+
 const onDeleteInvoice = async () => {
   if (!invoice.value) return
+  const confirmed = await requestConfirmation(
+    'Are you sure you want to delete this draft invoice? This action cannot be undone.',
+    'Delete Invoice Draft',
+    'Delete'
+  )
+  if (!confirmed) return
   deletingInvoice.value = true
   try {
     await invoiceRepository.deleteGlobalInvoice(invoice.value.id)
@@ -795,7 +1318,7 @@ const onAddReturn = async () => {
 
 watch(stockDialog, (open) => {
   if (!open) {
-    selectedStock.value = null
+    stockCart.value = []
   }
 })
 
@@ -821,6 +1344,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.text-underline-dashed {
+  text-decoration: underline dashed;
+}
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
 .status-chip {
   border-radius: 6px !important;
 }
@@ -844,5 +1377,31 @@ onMounted(() => {
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
+}
+.transition-width {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.invoice-item-image-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+}
+.global-invoice-details-page :deep(.invoice-item-image),
+.global-invoice-details-page :deep(.invoice-item-image-fallback) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.invoice-items-table {
+  background: transparent;
+}
+.invoice-item-row:hover {
+  background: rgba(37, 99, 235, 0.03);
 }
 </style>

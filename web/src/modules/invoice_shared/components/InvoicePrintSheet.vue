@@ -7,6 +7,7 @@
       </div>
       <div class="col-5 text-right" style="font-size: 11px">
         <div class="text-subtitle1 text-weight-bold text-green-accent q-mb-xs">INVOICE</div>
+        <div><strong>Invoice ID:</strong> {{ model.id }}-{{ model.invoiceDate }}</div>
         <div><strong>No:</strong> {{ model.invoiceNo }}</div>
         <div><strong>Date:</strong> {{ model.invoiceDate }}</div>
         <div class="text-capitalize"><strong>Type:</strong> {{ model.invoiceType }}</div>
@@ -26,7 +27,8 @@
     <q-markup-table flat dense class="invoice-table q-mb-sm">
       <thead>
         <tr>
-          <th class="text-left">SL</th>
+          <th class="text-left" style="width: 40px">SL</th>
+          <th v-if="hasImages" class="text-left" style="width: 50px">Image</th>
           <th class="text-left">Item</th>
           <th class="text-right">Qty</th>
           <th class="text-right">Rate</th>
@@ -36,6 +38,14 @@
       <tbody>
         <tr v-for="(line, idx) in model.lines" :key="line.id">
           <td>{{ idx + 1 }}</td>
+          <td v-if="hasImages">
+            <div v-if="line.imageUrl" class="print-item-image-box">
+              <img :src="line.imageUrl" class="print-item-image" />
+            </div>
+            <div v-else class="print-item-image-box print-item-image-fallback">
+              No Image
+            </div>
+          </td>
           <td>{{ line.name }}</td>
           <td class="text-right">{{ line.quantity }}</td>
           <td class="text-right">{{ formatAmount(line.unitPrice) }}</td>
@@ -47,6 +57,7 @@
     <div class="row justify-end">
       <div style="min-width: 220px">
         <div class="row justify-between"><span>Subtotal</span><span>{{ formatAmount(model.subtotal) }}</span></div>
+        <div class="row justify-between"><span>Total Qty</span><span>{{ totalQuantity }}</span></div>
         <div v-for="charge in model.charges" :key="charge.type" class="row justify-between">
           <span>{{ charge.label }}</span><span>{{ formatAmount(charge.amount) }}</span>
         </div>
@@ -62,11 +73,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { formatAmountBdt } from 'src/utils/currency'
 
 import type { InvoicePrintModel } from '../types/invoicePrintModel'
 
-defineProps<{ model: InvoicePrintModel }>()
+const props = defineProps<{ model: InvoicePrintModel }>()
+
+const hasImages = computed(() => props.model.lines.some((line) => !!line.imageUrl))
+
+const totalQuantity = computed(() => props.model.lines.reduce((sum, line) => sum + (line.quantity || 0), 0))
 
 const formatAmount = (value: number) => formatAmountBdt(value)
 </script>
@@ -79,5 +95,38 @@ const formatAmount = (value: number) => formatAmountBdt(value)
 }
 .border-light {
   border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.print-item-image-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+}
+.print-item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.print-item-image-fallback {
+  font-size: 8px;
+  color: #888;
+  text-align: center;
+}
+
+@media print {
+  .invoice-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .billing-profile-box {
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    background-color: transparent !important;
+  }
 }
 </style>

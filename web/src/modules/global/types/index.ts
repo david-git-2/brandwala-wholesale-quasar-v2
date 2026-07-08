@@ -13,6 +13,7 @@ export type StockNetworkQuery = {
   exclude_zero_qty?: boolean
   page?: number
   page_size?: number
+  skip_count?: boolean
 }
 
 export type StockNetworkRow = {

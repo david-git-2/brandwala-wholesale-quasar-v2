@@ -6,6 +6,9 @@ export interface MembershipPreferenceSchema {
     thriftShipment?: {
       detailsVisibleColumns?: string[]
     }
+    procurementShipment?: {
+      detailsVisibleColumns?: string[]
+    }
   }
 }
 

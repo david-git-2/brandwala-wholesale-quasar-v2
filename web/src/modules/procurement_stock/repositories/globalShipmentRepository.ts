@@ -15,6 +15,7 @@ export interface GlobalShipment {
   cargo_conversion_rate: number
   cargo_rate: number
   received_weight: number | null
+  received_date: string | null
   transaction_rate: number | null
   stock_ready: boolean
   created_at: string

@@ -378,6 +378,7 @@ declare
   v_recipient_price numeric;
   v_line_total numeric;
   v_line_face_total numeric;
+  v_product_id bigint;
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
@@ -392,8 +393,8 @@ begin
   end if;
 
   -- Load item details
-  select name, barcode, product_code
-  into v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot
+  select name, barcode, product_code, product_id
+  into v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot, v_product_id
   from public.global_shipment_items
   where id = v_stock.shipment_item_id;
 
@@ -432,7 +433,7 @@ begin
     p_invoice_id,
     p_global_stock_id,
     v_stock.shipment_item_id,
-    v_stock.product_id,
+    v_product_id,
     v_name_snapshot,
     v_barcode_snapshot,
     v_product_code_snapshot,

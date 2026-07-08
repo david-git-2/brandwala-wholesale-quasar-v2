@@ -26,6 +26,7 @@ import { useRoute } from 'vue-router'
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue'
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel'
+import { invoiceGrossProfit } from 'src/modules/reporting_treasury/utils/margin'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
@@ -54,6 +55,22 @@ const printModel = computed<InvoicePrintModel>(() => {
     { type: 'packing', label: 'Wrapping', amount: Number(inv?.wrapping_charge ?? 0) },
   ].filter((c) => c.amount > 0)
 
+  const totalCost = items.value.reduce((sum, row) => sum + (row.unit_cost_price ?? 0) * Number(row.quantity), 0)
+  const profit = invoiceGrossProfit(
+    {
+      invoice_type: inv?.invoice_type as 'wholesale' | 'retail' | 'dropship',
+      shipping_charge: inv?.shipping_charge,
+      cod_charge: inv?.cod_charge,
+      print_charge: inv?.print_charge,
+      wrapping_charge: inv?.wrapping_charge,
+      discount_amount: inv?.discount_amount,
+      invoice_status: 'posted', // bypass check
+    },
+    items.value.map((row) => ({ ...row, id: row.id })),
+  )
+  const rate = totalCost > 0 ? (profit / totalCost) * 100 : 0
+  const averageProfitRate = totalCost > 0 ? `${rate.toFixed(2)}%` : '-'
+
   return {
     id: inv?.id ?? 0,
     invoiceNo: inv?.invoice_no ?? '-',
@@ -78,6 +95,7 @@ const printModel = computed<InvoicePrintModel>(() => {
         quantity: Number(row.quantity),
         unitPrice: unit,
         lineTotal,
+        imageUrl: row.image_url ?? null,
       }
     }),
     charges: inlineCharges,
@@ -88,6 +106,9 @@ const printModel = computed<InvoicePrintModel>(() => {
     due: Number(inv?.due_amount ?? 0),
     thankYouMessage: thankYouMessage.value,
     isWholesale,
+    totalCost,
+    profit,
+    averageProfitRate,
   }
 })
 
