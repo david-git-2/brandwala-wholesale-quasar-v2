@@ -197,7 +197,7 @@
           </q-card>
 
           <!-- Editable Charges (Draft Only) -->
-          <q-card v-if="showCharges" flat class="floating-surface shadow-1 q-pa-md">
+          <q-card flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Charges & Discounts</div>
             <div class="row items-center q-mb-sm q-gutter-sm">
               <div class="col text-caption text-weight-medium">Delivery Charge</div>
@@ -215,7 +215,7 @@
                 <div v-else class="text-body2 text-right">{{ formatAmount(invoice.shipping_charge) }}</div>
               </div>
             </div>
-            <div class="row items-center q-mb-sm q-gutter-sm">
+            <div v-if="showCharges" class="row items-center q-mb-sm q-gutter-sm">
               <div class="col text-caption text-weight-medium">COD Charge</div>
               <div class="col">
                 <q-input
@@ -231,7 +231,7 @@
                 <div v-else class="text-body2 text-right">{{ formatAmount(invoice.cod_charge) }}</div>
               </div>
             </div>
-            <div class="row items-center q-mb-sm q-gutter-sm">
+            <div v-if="showCharges" class="row items-center q-mb-sm q-gutter-sm">
               <div class="col text-caption text-weight-medium">Wrapping Charge</div>
               <div class="col">
                 <q-input
@@ -247,7 +247,7 @@
                 <div v-else class="text-body2 text-right">{{ formatAmount(invoice.wrapping_charge) }}</div>
               </div>
             </div>
-            <div class="row items-center q-mb-sm q-gutter-sm">
+            <div v-if="showCharges" class="row items-center q-mb-sm q-gutter-sm">
               <div class="col text-caption text-weight-medium">Print Charge</div>
               <div class="col">
                 <q-input
@@ -310,12 +310,80 @@
                 @click="payoutDialog = true"
               />
             </div>
+            <q-btn
+              v-if="showPayments && invoice.invoice_status === 'posted' && invoice.due_amount > 0"
+              class="full-width pill-btn slim-btn q-mt-sm"
+              color="orange"
+              no-caps
+              outline
+              label="Settle / Write-off remaining"
+              @click="openSettleDialog"
+            />
           </q-card>
 
           <!-- Retail / Wholesale Payments -->
           <q-card v-if="showPayments && !isDropship && invoice.invoice_status === 'posted' && invoice.due_amount > 0" flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Collections</div>
-            <q-btn color="primary" no-caps class="pill-btn slim-btn" label="Record Payment" @click="paymentDialog = true" />
+            <div class="row q-gutter-sm">
+              <q-btn color="primary" no-caps class="col pill-btn slim-btn" label="Record Payment" @click="paymentDialog = true" />
+              <q-btn color="orange" no-caps outline class="col pill-btn slim-btn" label="Settle / Write-off" @click="openSettleDialog" />
+            </div>
+          </q-card>
+
+          <!-- Adjust to Total (Draft Only) -->
+          <q-card v-if="invoice.invoice_status === 'draft' && items.length > 0" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="text-subtitle2 text-weight-bold q-mb-xs">
+              {{ isDropship ? 'Adjust to Total (Customer)' : 'Adjust to Total' }}
+            </div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              Enter the final total you want; item prices auto-adjust to match.
+            </div>
+            <div class="row items-center q-gutter-sm no-wrap">
+              <q-input
+                v-model.number="targetTotal"
+                type="number"
+                dense
+                outlined
+                class="soft-input col"
+                min="0"
+                placeholder="Desired total"
+                :loading="targetPreviewing"
+                @update:model-value="onTargetTotalInput"
+              />
+              <q-btn
+                color="primary"
+                no-caps
+                class="pill-btn slim-btn"
+                label="Apply"
+                :disable="!targetPreview || !!targetError || applyingTarget"
+                :loading="applyingTarget"
+                @click="onApplyTargetTotal"
+              />
+            </div>
+
+            <div v-if="targetError" class="text-caption text-negative q-mt-sm">{{ targetError }}</div>
+
+            <div v-else-if="targetPreview" class="q-mt-sm">
+              <q-separator class="q-mb-sm" />
+              <div class="row justify-between text-caption text-grey-8"><span>Current total</span><span>{{ formatAmount(targetPreview.current_total) }}</span></div>
+              <div class="row justify-between text-caption text-grey-8"><span>Desired total</span><span>{{ formatAmount(targetPreview.target_total) }}</span></div>
+              <div class="row justify-between text-body2 text-weight-medium">
+                <span>Adjustment</span>
+                <span :class="targetPreview.adjustment >= 0 ? 'text-positive' : 'text-negative'">
+                  {{ targetPreview.adjustment >= 0 ? '+' : '' }}{{ formatAmount(targetPreview.adjustment) }}
+                </span>
+              </div>
+              <q-separator class="q-my-sm" />
+              <div v-for="line in targetPreview.lines" :key="line.item_id" class="q-mb-xs">
+                <div class="text-caption text-weight-medium ellipsis">{{ line.name }}</div>
+                <div class="row justify-between text-caption text-grey-8">
+                  <span>{{ line.quantity }} &times; {{ formatAmount(line.old_price) }} &rarr; {{ formatAmount(line.new_price) }}</span>
+                  <span :class="line.unit_delta >= 0 ? 'text-positive' : 'text-negative'">
+                    {{ line.unit_delta >= 0 ? '+' : '' }}{{ formatAmount(line.unit_delta) }}/unit
+                  </span>
+                </div>
+              </div>
+            </div>
           </q-card>
 
           <!-- Totals Breakdown Card -->
@@ -333,6 +401,9 @@
               <span>{{ totalQuantity }}</span>
             </div>
             <q-separator class="q-my-xs" />
+            <div v-if="(invoice.settlement_discount_amount ?? 0) > 0" class="row justify-between text-body2 text-orange-9">
+              <span>Settlement discount</span><span>-{{ formatAmount(invoice.settlement_discount_amount ?? 0) }}</span>
+            </div>
             <div class="row justify-between text-subtitle1 text-weight-bold text-primary"><span>Total</span><span>{{ formatAmount(invoice.total_amount) }}</span></div>
             <div class="row justify-between text-body2 text-weight-medium">
               <span>{{ invoice.invoice_status === 'posted' ? 'Gross Profit' : 'Est. Gross Profit' }}</span>
@@ -707,6 +778,23 @@
       </q-card>
     </q-dialog>
 
+    <!-- Settlement / Write-off Dialog -->
+    <q-dialog v-model="settleDialog" persistent>
+      <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px;">
+        <q-card-section class="text-h6 text-weight-bold">Settle / Write-off</q-card-section>
+        <q-card-section>
+          <div class="text-caption text-grey-7 q-mb-sm">
+            Records a settlement discount that closes the remaining due. Outstanding: {{ formatAmount(invoice?.due_amount ?? 0) }}
+          </div>
+          <q-input v-model.number="settleAmount" type="number" label="Discount amount" outlined dense min="0" :max="invoice?.due_amount ?? 0" class="soft-input" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
+          <q-btn color="orange" label="Apply" :loading="paymentSaving" @click="onApplySettlement" class="pill-btn" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Pay Middle Man Dialog -->
     <q-dialog v-model="payoutDialog" persistent>
       <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px;">
@@ -762,6 +850,7 @@ import { formatAmountBdt } from 'src/utils/currency'
 import { showSuccessNotification, showWarningDialog, showWarningNotification, requestConfirmation } from 'src/utils/appFeedback'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
+import type { TargetTotalSummary } from '../repositories/invoiceRepository'
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue'
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin'
 import type { StockNetworkRow } from 'src/modules/global/types'
@@ -776,7 +865,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const invoice = ref<GlobalInvoiceDetail | null>(null)
 const items = ref<GlobalInvoiceItemRow[]>([])
-const showSidebar = ref(false)
+const showSidebar = ref(true)
 
 const stockDialog = ref(false)
 const addingItem = ref(false)
@@ -799,9 +888,11 @@ const stockCart = ref<StockCartItem[]>([])
 
 const paymentDialog = ref(false)
 const codDialog = ref(false)
+const settleDialog = ref(false)
 const payoutDialog = ref(false)
 const paymentAmount = ref(0)
 const codAmount = ref(0)
+const settleAmount = ref(0)
 const payoutAmount = ref(0)
 const paymentSaving = ref(false)
 
@@ -817,6 +908,13 @@ const postingInvoice = ref(false)
 const voidingInvoice = ref(false)
 const unpostingInvoice = ref(false)
 const deletingInvoice = ref(false)
+
+const targetTotal = ref<number | null>(null)
+const targetPreview = ref<TargetTotalSummary | null>(null)
+const targetError = ref<string | null>(null)
+const targetPreviewing = ref(false)
+const applyingTarget = ref(false)
+let targetDebounce: ReturnType<typeof setTimeout> | null = null
 
 const showPreview = true
 const showPayments = true
@@ -873,6 +971,7 @@ const estimatedProfit = computed(() => {
       print_charge: invoice.value.print_charge,
       wrapping_charge: invoice.value.wrapping_charge,
       discount_amount: invoice.value.discount_amount,
+      settlement_discount_amount: invoice.value.settlement_discount_amount,
       invoice_status: 'posted', // force posted to calculate profit
     },
     items.value.map((row) => ({ ...row, id: row.id })),
@@ -1022,6 +1121,56 @@ const onUpdateItemField = async (
     showSuccessNotification('Item updated successfully.')
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Failed to update item.')
+  }
+}
+
+const onTargetTotalInput = () => {
+  if (targetDebounce) clearTimeout(targetDebounce)
+  targetError.value = null
+  const value = targetTotal.value
+  if (!invoice.value || value === null || !Number.isFinite(value) || value < 0) {
+    targetPreview.value = null
+    targetPreviewing.value = false
+    return
+  }
+  targetPreviewing.value = true
+  targetDebounce = setTimeout(() => {
+    void (async () => {
+      try {
+        targetPreview.value = await invoiceRepository.applyGlobalInvoiceTargetTotal({
+          id: invoice.value!.id,
+          target_total: value,
+          dry_run: true,
+        })
+        targetError.value = null
+      } catch (e) {
+        targetPreview.value = null
+        targetError.value = e instanceof Error ? e.message : 'Cannot preview adjustment.'
+      } finally {
+        targetPreviewing.value = false
+      }
+    })()
+  }, 400)
+}
+
+const onApplyTargetTotal = async () => {
+  if (!invoice.value || targetTotal.value === null) return
+  applyingTarget.value = true
+  try {
+    await invoiceRepository.applyGlobalInvoiceTargetTotal({
+      id: invoice.value.id,
+      target_total: targetTotal.value,
+      dry_run: false,
+    })
+    targetTotal.value = null
+    targetPreview.value = null
+    targetError.value = null
+    await loadInvoice()
+    showSuccessNotification('Invoice adjusted to target total.')
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to adjust invoice total.')
+  } finally {
+    applyingTarget.value = false
   }
 }
 
@@ -1269,6 +1418,26 @@ const onRecordCod = async () => {
     showSuccessNotification('COD recorded.')
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'COD recording failed.')
+  } finally {
+    paymentSaving.value = false
+  }
+}
+
+const openSettleDialog = () => {
+  settleAmount.value = invoice.value?.due_amount ?? 0
+  settleDialog.value = true
+}
+
+const onApplySettlement = async () => {
+  if (!invoice.value) return
+  paymentSaving.value = true
+  try {
+    await invoiceRepository.applySettlementDiscount(invoice.value.id, settleAmount.value)
+    settleDialog.value = false
+    await loadInvoice()
+    showSuccessNotification('Settlement discount applied.')
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Settlement failed.')
   } finally {
     paymentSaving.value = false
   }

@@ -10,7 +10,7 @@
           {{ card.label }}
         </div>
         <div class="text-h5 text-weight-bolder q-mt-xs text-primary" :class="card.valueClass">
-          {{ formatCurrency(card.value) }}
+          {{ formatCardValue(card.value, card.format) }}
         </div>
         <div v-if="card.caption" class="text-caption text-grey-5 q-mt-xs">
           {{ card.caption }}
@@ -26,12 +26,27 @@ import { formatAmountBdt } from 'src/utils/currency'
 defineProps<{
   items: Array<{
     label: string
-    value: number
+    value: number | string
     caption?: string
     class?: string
     valueClass?: string
+    format?: 'currency' | 'percent' | 'number' | 'text'
   }>
 }>()
 
-const formatCurrency = (val: number) => formatAmountBdt(val)
+const formatCardValue = (val: number | string, format?: 'currency' | 'percent' | 'number' | 'text') => {
+  if (format === 'percent') {
+    const num = Number(val)
+    return `${Number.isFinite(num) ? num.toFixed(2) : val}%`
+  }
+  if (format === 'number') {
+    const num = Number(val)
+    return Number.isFinite(num) ? num.toLocaleString() : String(val)
+  }
+  if (format === 'text') {
+    return String(val)
+  }
+  // Default: currency
+  return formatAmountBdt(val)
+}
 </script>

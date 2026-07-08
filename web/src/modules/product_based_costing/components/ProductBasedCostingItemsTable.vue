@@ -176,11 +176,18 @@
               <!-- Note Section -->
               <div v-if="isColumnVisible('note')" class="card-note-section q-mt-md q-pa-sm rounded-borders cursor-pointer bg-grey-1 text-caption">
                 <div class="text-weight-bold text-grey-7 q-mb-xs">Note:</div>
-                <div
-                  v-if="slotProps.row.noteHtml"
-                  class="item-note-html"
-                  v-html="slotProps.row.noteHtml"
-                />
+                <div v-if="slotProps.row.noteHtml" class="item-note-preview">
+                  {{ htmlToPlainText(slotProps.row.noteHtml) }}
+                  <q-tooltip
+                    v-if="isNoteTruncated(slotProps.row.noteHtml)"
+                    anchor="top middle"
+                    self="bottom middle"
+                    :offset="[0, 8]"
+                    max-width="320px"
+                  >
+                    {{ htmlToPlainText(slotProps.row.noteHtml) }}
+                  </q-tooltip>
+                </div>
                 <span v-else class="text-grey-5">No notes. Tap to add one.</span>
 
                 <q-popup-edit
@@ -416,12 +423,19 @@
           </q-td>
 
           <q-td v-if="isColumnVisible('note')" key="note" :props="slotProps" class="col-note editable-cell">
-            <div
-              v-if="slotProps.row.noteHtml"
-              class="item-note-html"
-              v-html="slotProps.row.noteHtml"
-            />
-            <span v-else>-</span>
+            <div v-if="slotProps.row.noteHtml" class="item-note-preview">
+              {{ htmlToPlainText(slotProps.row.noteHtml) }}
+              <q-tooltip
+                v-if="isNoteTruncated(slotProps.row.noteHtml)"
+                anchor="top middle"
+                self="bottom middle"
+                :offset="[0, 8]"
+                max-width="320px"
+              >
+                {{ htmlToPlainText(slotProps.row.noteHtml) }}
+              </q-tooltip>
+            </div>
+            <span v-else class="item-note-empty">-</span>
 
             <q-popup-edit
               v-slot="scope"
@@ -1403,19 +1417,28 @@ const isColumnVisible = (columnName: string) => resolvedVisibleColumns.value.inc
 watch(
   allColumnNames,
   (names) => {
-    if (!resolvedVisibleColumns.value.length) {
-      resolvedVisibleColumns.value = [...names]
+    if (props.visibleColumns !== undefined) {
+      const allowed = new Set(names)
+      const next = props.visibleColumns.filter((name) => allowed.has(name))
+      if (next.length !== props.visibleColumns.length) {
+        resolvedVisibleColumns.value = next
+      }
+      return
+    }
+
+    if (!internalVisibleColumns.value.length) {
+      internalVisibleColumns.value = [...names]
       return
     }
 
     const allowed = new Set(names)
-    const next = resolvedVisibleColumns.value.filter((name) => allowed.has(name))
+    const next = internalVisibleColumns.value.filter((name) => allowed.has(name))
     names.forEach((name) => {
       if (!next.includes(name)) {
         next.push(name)
       }
     })
-    resolvedVisibleColumns.value = next
+    internalVisibleColumns.value = next
   },
   { immediate: true },
 )
@@ -1565,6 +1588,16 @@ const onNoteSave = (row: ProductBasedCostingTableRow) => {
   row.noteHtml = toText(row.noteHtml, '');
   emitRowChange(row, 'note');
 };
+
+const htmlToPlainText = (html: string): string => {
+  if (!html) return '';
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
+
+const isNoteTruncated = (html: string): boolean =>
+  htmlToPlainText(html).length > 0 && html.includes('<');
 
 const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
   row.productWeight = toNumber(row.productWeight);
@@ -1908,7 +1941,7 @@ const totals = computed(() => {
   max-width: 260px;
   background: #fcfcfc;
   overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: top;
 }
 
 .col-qty {
@@ -2105,29 +2138,18 @@ const totals = computed(() => {
   line-height: 1.3;
 }
 
-.item-note-html {
-  max-width: 100%;
+.item-note-preview,
+.item-note-empty {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
+  min-height: calc(1.35em * 2);
+  max-height: calc(1.35em * 2);
+  line-height: 1.35;
   word-break: break-word;
   overflow-wrap: anywhere;
-  line-height: 1.35;
-}
-
-.item-note-html :deep(p),
-.item-note-html :deep(ul),
-.item-note-html :deep(ol) {
-  margin: 0;
-  padding-left: 0;
-}
-
-.item-note-html :deep(img),
-.item-note-html :deep(table),
-.item-note-html :deep(pre) {
-  max-width: 100%;
-  overflow: hidden;
 }
 /* Card View Styles */
 .costing-item-card {

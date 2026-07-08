@@ -1,7 +1,7 @@
 <template>
   <TreasuryPageShell
     title="Customer Balances &amp; Outstanding AR"
-    subtitle="Analyze real-time Accounts Receivable (AR) rollups, active credit balances, and age-of-invoices tracking."
+    subtitle="Analyze real-time Accounts Receivable (AR) rollups and active credit balances."
     :error="error"
   >
     <div class="q-gutter-y-lg">
@@ -45,17 +45,18 @@
         <q-tab-panels v-model="activeTab" animated class="bg-transparent text-black">
           <!-- Billing Profiles Panel -->
           <q-tab-panel name="profiles" class="q-pa-none">
-            <q-table
-              flat
-              row-key="id"
-              :rows="profiles"
-              :columns="profileColumns"
-              :loading="loading"
-              :pagination="{ rowsPerPage: 50 }"
-              :dense="$q.screen.lt.md"
-            >
-              <template #body-cell-name="props">
-                <q-td :props="props">
+            <TreasuryTableWrap>
+              <q-table
+                flat
+                row-key="id"
+                :rows="profiles"
+                :columns="profileColumns"
+                :loading="loading"
+                :pagination="{ rowsPerPage: 50 }"
+                :dense="$q.screen.lt.md"
+                table-style="min-width: 900px;"
+              >
+                <template #body-cell-name="props">
                   <div class="row items-center no-wrap">
                     <q-avatar
                       size="32px"
@@ -69,99 +70,102 @@
                       <div class="text-caption text-grey-6">{{ props.row.email || '-' }}</div>
                     </div>
                   </div>
-                </q-td>
-              </template>
+                </template>
 
-              <template #body-cell-total_invoiced="props">
-                <q-td :props="props" class="text-right">
-                  {{ formatAmountBdt(props.row.total_invoiced) }}
-                </q-td>
-              </template>
+                <template #body-cell-total_invoiced="props">
+                  <q-td :props="props" class="text-right">
+                    {{ formatAmountBdt(props.row.total_invoiced) }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-total_paid="props">
-                <q-td :props="props" class="text-right text-positive">
-                  {{ formatAmountBdt(props.row.total_paid) }}
-                </q-td>
-              </template>
+                <template #body-cell-total_paid="props">
+                  <q-td :props="props" class="text-right text-positive">
+                    {{ formatAmountBdt(props.row.total_paid) }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-balance_due="props">
-                <q-td :props="props" class="text-right text-weight-bold" :class="props.row.balance_due > 0 ? 'text-negative' : 'text-grey-6'">
-                  {{ formatAmountBdt(props.row.balance_due) }}
-                </q-td>
-              </template>
+                <template #body-cell-balance_due="props">
+                  <q-td :props="props" class="text-right text-weight-bold" :class="props.row.balance_due > 0 ? 'text-negative' : 'text-grey-6'">
+                    {{ formatAmountBdt(props.row.balance_due) }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-collection_pct="props">
-                <q-td :props="props" class="text-center">
-                  <div class="row items-center justify-center no-wrap">
-                    <q-linear-progress
-                      :value="props.row.total_invoiced > 0 ? (props.row.total_paid / props.row.total_invoiced) : 0"
-                      color="primary"
-                      class="q-mr-sm rounded-borders"
-                      style="width: 60px; height: 6px;"
-                    />
-                    <span class="text-caption text-grey-8 text-weight-bold">
-                      {{ props.row.total_invoiced > 0 ? ((props.row.total_paid / props.row.total_invoiced) * 100).toFixed(0) : '0' }}%
-                    </span>
-                  </div>
-                </q-td>
-              </template>
-            </q-table>
+                <template #body-cell-collection_pct="props">
+                  <q-td :props="props" class="text-center">
+                    <div class="row items-center justify-center no-wrap">
+                      <q-linear-progress
+                        :value="props.row.total_invoiced > 0 ? (props.row.total_paid / props.row.total_invoiced) : 0"
+                        color="primary"
+                        class="q-mr-sm rounded-borders"
+                        style="width: 60px; height: 6px;"
+                      />
+                      <span class="text-caption text-grey-8 text-weight-bold">
+                        {{ props.row.total_invoiced > 0 ? ((props.row.total_paid / props.row.total_invoiced) * 100).toFixed(0) : '0' }}%
+                      </span>
+                    </div>
+                  </q-td>
+                </template>
+              </q-table>
+            </TreasuryTableWrap>
           </q-tab-panel>
 
           <!-- Outstanding Invoices Panel -->
           <q-tab-panel name="outstanding" class="q-pa-none">
-            <q-table
-              flat
-              row-key="id"
-              :rows="outstandingInvoices"
-              :columns="invoiceColumns"
-              :loading="loading"
-              :pagination="{ rowsPerPage: 50 }"
-              :dense="$q.screen.lt.md"
-            >
-              <template #body-cell-invoice_no="props">
-                <q-td :props="props" class="text-weight-bold text-primary">
-                  {{ props.row.invoice_no }}
-                </q-td>
-              </template>
+            <TreasuryTableWrap>
+              <q-table
+                flat
+                row-key="id"
+                :rows="outstandingInvoices"
+                :columns="invoiceColumns"
+                :loading="loading"
+                :pagination="{ rowsPerPage: 50 }"
+                :dense="$q.screen.lt.md"
+                table-style="min-width: 900px;"
+              >
+                <template #body-cell-invoice_no="props">
+                  <q-td :props="props" class="text-weight-bold text-primary">
+                    {{ props.row.invoice_no }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-invoice_date="props">
-                <q-td :props="props">
-                  {{ props.row.invoice_date || '-' }}
-                </q-td>
-              </template>
+                <template #body-cell-invoice_date="props">
+                  <q-td :props="props">
+                    {{ props.row.invoice_date || '-' }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-billing_profile_name="props">
-                <q-td :props="props">
-                  {{ props.row.billing_profile_name || 'Walk-in / Direct' }}
-                </q-td>
-              </template>
+                <template #body-cell-billing_profile_name="props">
+                  <q-td :props="props">
+                    {{ props.row.billing_profile_name || 'Walk-in / Direct' }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-recipient="props">
-                <q-td :props="props">
-                  <div class="text-weight-medium">{{ props.row.recipient_name || '-' }}</div>
-                  <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
-                </q-td>
-              </template>
+                <template #body-cell-recipient="props">
+                  <q-td :props="props">
+                    <div class="text-weight-medium">{{ props.row.recipient_name || '-' }}</div>
+                    <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
+                  </q-td>
+                </template>
 
-              <template #body-cell-total_amount="props">
-                <q-td :props="props" class="text-right">
-                  {{ formatAmountBdt(props.row.total_amount) }}
-                </q-td>
-              </template>
+                <template #body-cell-total_amount="props">
+                  <q-td :props="props" class="text-right">
+                    {{ formatAmountBdt(props.row.total_amount) }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-paid_amount="props">
-                <q-td :props="props" class="text-right text-positive">
-                  {{ formatAmountBdt(props.row.paid_amount) }}
-                </q-td>
-              </template>
+                <template #body-cell-paid_amount="props">
+                  <q-td :props="props" class="text-right text-positive">
+                    {{ formatAmountBdt(props.row.paid_amount) }}
+                  </q-td>
+                </template>
 
-              <template #body-cell-due_amount="props">
-                <q-td :props="props" class="text-right text-weight-bold text-negative">
-                  {{ formatAmountBdt(props.row.due_amount) }}
-                </q-td>
-              </template>
-            </q-table>
+                <template #body-cell-due_amount="props">
+                  <q-td :props="props" class="text-right text-weight-bold text-negative">
+                    {{ formatAmountBdt(props.row.due_amount) }}
+                  </q-td>
+                </template>
+              </q-table>
+            </TreasuryTableWrap>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
@@ -179,6 +183,7 @@ import { treasuryRepository } from '../repositories/treasuryRepository'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
 import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -232,32 +237,43 @@ const loadData = async () => {
 }
 
 // Stats rollups
-const totalOutstandingDue = computed(() => {
-  return outstandingInvoices.value.reduce((sum, inv) => sum + inv.due_amount, 0)
+const totalInvoiced = computed(() => {
+  return profiles.value.reduce((sum, p) => sum + (p.total_invoiced || 0), 0)
 })
 
-const totalInvoiced = computed(() => {
-  return profiles.value.reduce((sum, p) => sum + p.total_invoiced, 0)
+const totalPaid = computed(() => {
+  return profiles.value.reduce((sum, p) => sum + (p.total_paid || 0), 0)
+})
+
+const totalOutstandingDue = computed(() => {
+  return profiles.value.reduce((sum, p) => sum + (p.balance_due || 0), 0)
+})
+
+const collectionRate = computed(() => {
+  return totalInvoiced.value > 0 ? (totalPaid.value / totalInvoiced.value) * 100 : 0
 })
 
 const statCards = computed(() => [
   {
     label: 'Total Outstanding AR',
     value: totalOutstandingDue.value,
-    caption: 'Active unpaid balance sheet',
+    caption: search.value ? 'Based on filtered profiles (includes Walk-in)' : 'Based on billing profiles tab (includes Walk-in / Direct)',
     valueClass: 'text-negative',
+    format: 'currency' as const,
   },
   {
     label: 'Total Paid Collections',
-    value: totalInvoiced.value - totalOutstandingDue.value,
-    caption: 'Cleared cash receipts',
+    value: totalPaid.value,
+    caption: search.value ? 'Based on filtered profiles (includes Walk-in)' : 'Based on billing profiles tab (includes Walk-in / Direct)',
     valueClass: 'text-positive',
+    format: 'currency' as const,
   },
   {
     label: 'Average Collection Rate',
-    value: totalInvoiced.value > 0 ? (totalInvoiced.value - totalOutstandingDue.value) : 0,
-    caption: 'Invoiced to cash conversion percentage',
+    value: collectionRate.value,
+    caption: search.value ? 'Invoiced to cash conversion (filtered)' : 'Invoiced to cash conversion percentage',
     valueClass: 'text-primary',
+    format: 'percent' as const,
   },
 ])
 

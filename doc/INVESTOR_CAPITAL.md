@@ -186,11 +186,19 @@ computed_profit   = batch_gross_profit × cost_share_pct / 100
 
 | Status | Meaning |
 |--------|---------|
-| `open` | Batch has unsold stock — profit is unrealized |
+| `open` | Batch has sellable on-hand stock — profit is unrealized |
 | `partial` | Some stock sold |
 | `realized` | Batch fully sold (or admin closed) |
 
-### 4.3 Investor balance metrics
+> [!NOTE]
+> **Sellable On-Hand Semantics**: A batch is marked as `open` or `partial` as long as it has sellable on-hand stock. Stolen, box damage, or expired stock (shrinkage) does not count towards sellable on-hand stock and is not considered a recoverable asset.
+
+### 4.3 Inventory Shrinkage and Loss
+Inventory shrinkage (consisting of stolen, box-damaged, and expired units) is recorded at landed cost:
+\[\text{Shrinkage Value} = (\text{Stolen Qty} + \text{Box Damage Qty} + \text{Expired Qty}) \times \text{Landed Unit Cost}\]
+Shrinkage represents a direct capital loss to the shipment investment and is subtracted/reported separately as inventory loss rather than contributing to sellable on-hand asset value.
+
+### 4.4 Investor balance metrics
 
 | Metric | Formula |
 |--------|---------|

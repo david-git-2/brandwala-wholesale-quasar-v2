@@ -819,7 +819,7 @@ const defaultColumns: ColumnKey[] = [
 const allColumnNames = baseColumnOptions.map((col) => col.value)
 const alwaysVisibleColumns: ColumnKey[] = ['name', 'actions']
 
-const { visibleColumns } = useMembershipColumnPreference({
+const { visibleColumns } = useMembershipColumnPreference<ColumnKey>({
   preferenceKey: 'ui.procurementShipment.detailsVisibleColumns',
   allColumnNames,
   alwaysVisibleColumns,

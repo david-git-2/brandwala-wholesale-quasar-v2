@@ -11,7 +11,7 @@
           <div class="col-12 col-md-5">
             <q-input
               v-model="search"
-              placeholder="Search by shipment name or cargo ID..."
+              placeholder="Search by shipment name or ID..."
               dense
               outlined
             >
@@ -37,65 +37,68 @@
 
       <!-- Shipments Table -->
       <q-card flat bordered>
-        <q-table
-          flat
-          row-key="id"
-          :rows="filteredShipments"
-          :columns="columns"
-          :loading="loading"
-          :pagination="{ rowsPerPage: 20 }"
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-id="props">
-            <q-td :props="props" class="text-weight-bold text-primary">
-              #{{ props.row.tenant_shipment_id || props.row.id }}
-            </q-td>
-          </template>
+        <TreasuryTableWrap>
+          <q-table
+            flat
+            row-key="id"
+            :rows="filteredShipments"
+            :columns="columns"
+            :loading="loading"
+            :pagination="{ rowsPerPage: 20 }"
+            :dense="$q.screen.lt.md"
+            table-style="min-width: 800px;"
+          >
+            <template #body-cell-id="props">
+              <q-td :props="props" class="text-weight-bold text-primary">
+                #{{ props.row.tenant_shipment_id || props.row.id }}
+              </q-td>
+            </template>
 
-          <template #body-cell-name="props">
-            <q-td :props="props" class="text-weight-bold">
-              {{ props.row.name || 'Unnamed Shipment' }}
-            </q-td>
-          </template>
+            <template #body-cell-name="props">
+              <q-td :props="props" class="text-weight-bold">
+                {{ props.row.name || 'Unnamed Shipment' }}
+              </q-td>
+            </template>
 
-          <template #body-cell-type="props">
-            <q-td :props="props">
-              <span class="text-capitalize font-mono text-sm">
-                {{ props.row.type || 'domestic' }}
-              </span>
-            </q-td>
-          </template>
+            <template #body-cell-type="props">
+              <q-td :props="props">
+                <span class="text-capitalize font-mono text-sm">
+                  {{ props.row.type || 'domestic' }}
+                </span>
+              </q-td>
+            </template>
 
-          <template #body-cell-status="props">
-            <q-td :props="props">
-              <q-chip
-                dense
-                square
-                :color="statusColor(props.row.status).bg"
-                :text-color="statusColor(props.row.status).text"
-                :icon="statusColor(props.row.status).icon"
-                class="status-chip text-capitalize"
-              >
-                {{ props.row.status || 'unknown' }}
-              </q-chip>
-            </q-td>
-          </template>
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-chip
+                  dense
+                  square
+                  :color="statusColor(props.row.status).bg"
+                  :text-color="statusColor(props.row.status).text"
+                  :icon="statusColor(props.row.status).icon"
+                  class="status-chip text-capitalize"
+                >
+                  {{ props.row.status || 'unknown' }}
+                </q-chip>
+              </q-td>
+            </template>
 
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-center">
-              <q-btn
-                flat
-                round
-                dense
-                color="primary"
-                icon="o_insights"
-                @click="navigateToPnL(props.row.id)"
-              >
-                <q-tooltip>Analyze Profitability &amp; P&amp;L</q-tooltip>
-              </q-btn>
-            </q-td>
-          </template>
-        </q-table>
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="text-center">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  color="primary"
+                  icon="o_insights"
+                  @click="navigateToPnL(props.row.id)"
+                >
+                  <q-tooltip>Analyze Profitability &amp; P&amp;L</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
+          </q-table>
+        </TreasuryTableWrap>
       </q-card>
     </div>
   </TreasuryPageShell>
@@ -110,6 +113,7 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -121,7 +125,7 @@ const shipments = ref<any[]>([])
 
 // Filters
 const search = ref('')
-const statusFilter = ref('__all__')
+const statusFilter = ref('Ready Stock')
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Shipment ID', field: 'id', align: 'left', sortable: true },
@@ -133,12 +137,17 @@ const columns: QTableColumn[] = [
 ]
 
 const statusOptions = [
+  { label: 'Ready Stock (Active)', value: 'Ready Stock' },
   { label: 'All Statuses', value: '__all__' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'In Transit', value: 'in_transit' },
-  { label: 'Delivered', value: 'delivered' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Draft', value: 'Draft' },
+  { label: 'Order Placed', value: 'Order Placed' },
+  { label: 'Proforma Generated', value: 'Proforma Generated' },
+  { label: 'Payment Done', value: 'Payment Done' },
+  { label: 'Uk Warehouse Delivery Received', value: 'Uk Warehouse Delivery Received' },
+  { label: 'Air Shipment Date Set', value: 'Air Shipment Date Set' },
+  { label: 'Airport Arrival', value: 'Airport Arrival' },
+  { label: 'Airport Released', value: 'Airport Released' },
+  { label: 'Warehouse Received', value: 'Warehouse Received' },
 ]
 
 // Load Shipments
@@ -176,12 +185,17 @@ const resolveParentTenantId = async (id: number): Promise<number> => {
 const filteredShipments = computed(() => {
   return shipments.value.filter((s) => {
     const nameText = s.name || ''
+    const shipmentIdText = String(s.tenant_shipment_id || s.id || '')
     const matchesSearch =
       !search.value ||
-      nameText.toLowerCase().includes(search.value.toLowerCase())
+      nameText.toLowerCase().includes(search.value.toLowerCase()) ||
+      shipmentIdText.toLowerCase().includes(search.value.toLowerCase())
 
     const matchesStatus =
-      statusFilter.value === '__all__' || s.status === statusFilter.value
+      statusFilter.value === '__all__' ||
+      (statusFilter.value === 'Ready Stock'
+        ? (s.status === 'Ready Stock' || s.stock_ready === true)
+        : s.status === statusFilter.value)
 
     return matchesSearch && matchesStatus
   })

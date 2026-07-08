@@ -70,6 +70,12 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('invoice_reports'),
       },
       {
+        path: 'invoices/:id',
+        name: 'app-finance-invoice-margin-details-page',
+        component: () => import('../pages/InvoiceMarginDetailPage.vue'),
+        beforeEnter: guard('invoice_reports'),
+      },
+      {
         path: 'shipments',
         name: 'app-finance-shipments-page',
         component: () => import('../pages/ShipmentsListPage.vue'),

@@ -30,7 +30,14 @@ export interface ShipmentPnLResponse {
     sold_cost: number
     revenue: number
     gross_profit: number
+    sellable_on_hand_value: number
+    shrinkage_value: number
+    stolen_value: number
+    box_damage_value: number
+    expired_value: number
     unsold_value: number
+    disposition_available: boolean
+    reconciliation_gap: number
   }
 }
 

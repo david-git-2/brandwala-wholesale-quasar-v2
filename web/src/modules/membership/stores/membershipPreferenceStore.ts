@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
+import { supabase } from 'src/boot/supabase'
 import { membershipService } from '../services/membershipService'
-import { parseMembershipPreference } from '../types/preferences'
 import type { MembershipPreferenceSchema } from '../types/preferences'
+import {
+  parseMembershipPreference,
+  setPreferencePath,
+} from '../utils/preferenceUtils'
 
 export const useMembershipPreferenceStore = defineStore('membershipPreference', {
   state: () => ({
@@ -18,31 +22,46 @@ export const useMembershipPreferenceStore = defineStore('membershipPreference', 
       this.error = null
     },
 
-    patchPreference(membershipId: number, patch: Partial<MembershipPreferenceSchema>) {
-      if (this.loadedMembershipId !== membershipId) {
-        this.loadedMembershipId = membershipId
+    async ensureLoaded(
+      membershipId: number,
+      email?: string | null,
+      tenantId?: number | null,
+    ) {
+      if (this.loadedMembershipId === membershipId) {
+        return { success: true as const }
       }
 
-      this.preference = {
-        ...this.preference,
-        ...patch,
-        ui: {
-          ...this.preference.ui,
-          ...patch.ui,
-          productBasedCosting: {
-            ...this.preference.ui?.productBasedCosting,
-            ...patch.ui?.productBasedCosting,
-          },
-          thriftShipment: {
-            ...this.preference.ui?.thriftShipment,
-            ...patch.ui?.thriftShipment,
-          },
-          procurementShipment: {
-            ...this.preference.ui?.procurementShipment,
-            ...patch.ui?.procurementShipment,
-          },
-        },
+      this.loading = true
+      this.error = null
+
+      try {
+        const { data, error } = await supabase.rpc('get_app_bootstrap_context', {
+          p_email: email ?? undefined,
+          p_tenant_id: tenantId ?? undefined,
+          p_membership_id: membershipId,
+        })
+
+        if (error) {
+          this.error = error.message
+          return { success: false as const, error: this.error }
+        }
+
+        const bootstrap = Array.isArray(data) ? data[0] : data
+        if (!bootstrap?.member_id) {
+          this.error = 'Failed to load membership preferences.'
+          return { success: false as const, error: this.error }
+        }
+
+        this.setPreference(bootstrap.member_id, bootstrap.member_preference)
+        return { success: true as const }
+      } finally {
+        this.loading = false
       }
+    },
+
+    patchPreferencePath(membershipId: number, path: readonly string[], value: unknown) {
+      this.preference = setPreferencePath(this.preference, path, value)
+      this.loadedMembershipId = membershipId
     },
 
     async savePreference(membershipId: number) {

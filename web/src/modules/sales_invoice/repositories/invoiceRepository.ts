@@ -179,6 +179,16 @@ const recordRecipientInvoiceCollection = async (globalInvoiceId: number, amount:
   return data
 }
 
+const applySettlementDiscount = async (invoiceId: number, amount: number, note?: string | null) => {
+  const { data, error } = await supabase.rpc('apply_global_invoice_settlement_discount', {
+    p_invoice_id: invoiceId,
+    p_amount: amount,
+    p_note: note ?? null,
+  })
+  if (error) throw error
+  return data
+}
+
 const createMiddleManPayout = async (payload: {
   tenant_id: number
   billing_profile_id: number
@@ -259,6 +269,39 @@ const updateGlobalInvoiceItem = async (payload: {
 
   if (error) throw error
   return data as GlobalInvoiceItemRow
+}
+
+export type TargetTotalLineChange = {
+  item_id: number
+  name: string
+  quantity: number
+  old_price: number
+  new_price: number
+  unit_delta: number
+  line_delta: number
+}
+
+export type TargetTotalSummary = {
+  current_total: number
+  target_total: number
+  adjustment: number
+  is_dropship: boolean
+  lines: TargetTotalLineChange[]
+}
+
+const applyGlobalInvoiceTargetTotal = async (payload: {
+  id: number
+  target_total: number
+  dry_run?: boolean
+}): Promise<TargetTotalSummary> => {
+  const { data, error } = await supabase.rpc('apply_global_invoice_target_total', {
+    p_invoice_id: payload.id,
+    p_target_total: payload.target_total,
+    p_dry_run: payload.dry_run ?? false,
+  })
+
+  if (error) throw error
+  return data as unknown as TargetTotalSummary
 }
 
 
@@ -370,8 +413,10 @@ export const invoiceRepository = {
   listGlobalInvoiceItems,
   addGlobalInvoiceItem,
   updateGlobalInvoiceItem,
+  applyGlobalInvoiceTargetTotal,
   recordBillingProfilePayment,
   recordRecipientInvoiceCollection,
+  applySettlementDiscount,
   createMiddleManPayout,
   addGlobalReturnItem,
   getGlobalInvoicesPaidAmounts,

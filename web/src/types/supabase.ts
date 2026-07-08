@@ -1453,6 +1453,7 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           tenant_id: number
@@ -1492,6 +1493,7 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
           tenant_id: number
@@ -1531,6 +1533,7 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
           tenant_id?: number
@@ -6905,6 +6908,63 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_global_invoice_settlement_discount: {
+        Args: { p_amount: number; p_invoice_id: number; p_note?: string }
+        Returns: {
+          accounting_subtotal_amount: number
+          billing_profile_id: number | null
+          cod_charge: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          courier_collected_amount: number
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          due_amount: number
+          due_date: string | null
+          face_subtotal_amount: number
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
+          id: number
+          invoice_date: string
+          invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
+          invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+          middle_man_payout_amount: number
+          middle_man_payout_status: string
+          note: string | null
+          paid_amount: number
+          parent_tenant_id: number
+          payment_status: string
+          print_charge: number
+          recipient_address: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          settlement_discount_amount: number
+          shipping_charge: number
+          subtotal_amount: number
+          tenant_id: number
+          total_amount: number
+          updated_at: string
+          wrapping_charge: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      apply_global_invoice_target_total: {
+        Args: {
+          p_dry_run?: boolean
+          p_invoice_id: number
+          p_target_total: number
+        }
+        Returns: Json
+      }
       apply_global_shipment_weight_balance: {
         Args: {
           p_adjustments: Json
@@ -7448,6 +7508,7 @@ export type Database = {
         Args: {
           p_billing_profile_id?: number
           p_due_date?: string
+          p_invoice_date?: string
           p_invoice_no: string
           p_invoice_type: Database["public"]["Enums"]["global_invoice_type"]
           p_note?: string
@@ -7490,6 +7551,7 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           tenant_id: number
@@ -7544,6 +7606,7 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           tenant_id: number
@@ -9310,6 +9373,7 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
+          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           tenant_id: number
@@ -9754,7 +9818,9 @@ export type Database = {
         Args: {
           p_cod_charge?: number
           p_discount_amount?: number
+          p_invoice_date?: string
           p_invoice_id: number
+          p_invoice_no?: string
           p_note?: string
           p_print_charge?: number
           p_recipient_address?: string

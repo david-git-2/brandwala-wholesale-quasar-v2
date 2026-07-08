@@ -222,5 +222,31 @@ describe('Reporting Treasury Margin Formulas', () => {
       expect(res.grossProfit).toBe(160)
       expect(res.unsoldValue).toBe(480)
     })
+
+    test('calculates correct batch metrics with explicit disposition quantities', () => {
+      const customShipmentItems: ShipmentItemInput[] = [
+        {
+          id: 1,
+          received_qty: 10,
+          landed_unit_cost: 80,
+          sellable_qty: 2,
+          stolen_qty: 1,
+          box_damage_qty: 1,
+          expired_qty: 0,
+        },
+      ]
+      const res = batchPnl(shipment, customShipmentItems, soldLines)
+
+      expect(res.landedCost).toBe(800)
+      expect(res.soldCost).toBe(480)
+      expect(res.revenue).toBe(720)
+      expect(res.grossProfit).toBe(240)
+      expect(res.sellableOnHandValue).toBe(160)
+      expect(res.stolenValue).toBe(80)
+      expect(res.boxDamageValue).toBe(80)
+      expect(res.expiredValue).toBe(0)
+      expect(res.shrinkageValue).toBe(160)
+      expect(res.unsoldValue).toBe(160)
+    })
   })
 })

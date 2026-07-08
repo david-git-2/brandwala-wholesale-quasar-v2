@@ -260,9 +260,12 @@ line_margin = (sell_price_amount - unit_cost_price) × quantity - line_discount_
 ```
 invoice_gross_profit = Σ line_margin
                      - invoice_discount_amount
+                     - settlement_discount_amount
                      + charge_effect
                      - return_margin_total
 ```
+
+`settlement_discount_amount` is the post-post write-off (see SALES_INVOICE.md D-SI22); it reduces gross profit like the pre-post discount.
 
 | Invoice type | Charges in margin (`charge_effect`) |
 |--------------|-------------------------------------|
@@ -275,12 +278,23 @@ invoice_gross_profit = Σ line_margin
 ### 4.4 Batch / shipment P&L
 
 ```
-batch_landed_cost   = Σ landedCost(item) × received_qty
-batch_sold_cost     = Σ unit_cost_price × sold_qty     -- from invoice lines where shipment_item_id matches
-batch_revenue       = Σ sell_price_amount × sold_qty - returns on those lines
-batch_gross_profit  = batch_revenue - batch_sold_cost
-unsold_value        = (received_qty - sold_qty) × landed_unit_cost
+batch_landed_cost      = Σ landedCost(item) × received_qty
+batch_sold_cost        = Σ unit_cost_price × sold_qty     -- from invoice lines where shipment_item_id matches
+batch_revenue          = Σ sell_price_amount × sold_qty - returns on those lines - allocated_discount
+batch_gross_profit     = batch_revenue - batch_sold_cost
+-- allocated_discount = (discount_amount + settlement_discount_amount) × (line_total / invoice_line_subtotal)
+--                      wholesale/retail only; dropship excluded (its header discount reduces the face/COD total)
+sellable_qty           = received_qty - sold_qty - stolen_qty - box_damage_qty - expired_qty
+sellable_on_hand_value = sellable_qty × landed_unit_cost
+shrinkage_value        = (stolen_qty + box_damage_qty + expired_qty) × landed_unit_cost
+stolen_value           = stolen_qty × landed_unit_cost
+box_damage_value       = box_damage_qty × landed_unit_cost
+expired_value          = expired_qty × landed_unit_cost
+unsold_value           = <alias of sellable_on_hand_value for backward compatibility>
 ```
+
+> [!IMPORTANT]
+> **Deprecation of Legacy Unsold Formula**: The legacy calculation `unsold_qty = ordered_quantity - sold_qty` is deprecated. It incorrectly lumped sellable stock together with stolen, damaged, and expired units. By reading stock disposition from `global_stocks` + `global_stock_types`, we separate actual sellable assets from shrinkage losses to prevent overstating recoverable assets.
 
 Join path: `global_shipment_items.id` ← `global_invoice_items.shipment_item_id`.
 
@@ -376,6 +390,7 @@ Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §8.
 | Payments list / create | `/:slug/app/finance/payments` | `payments` |
 | Payment allocate dialog | on payments detail | `payments` |
 | Invoice margin report | `/:slug/app/finance/invoices` | `invoice_reports` |
+| Invoice margin detail | `/:slug/app/finance/invoices/:id` | `invoice_reports` |
 | Shipment P&L report | `/:slug/app/finance/shipments` | `shipment_reports` |
 | Shipment P&L detail | `/:slug/app/finance/shipments/:id` | `shipment_reports` |
 | Billing profile balances | `/:slug/app/finance/balances` | `billing_balances` |
@@ -386,6 +401,13 @@ Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §8.
 **Inline margin on invoice detail** may remain on `sales_invoice` routes — same `margin.ts` helpers, not a second formula.
 
 **Sidebar:** **Reports & Treasury** group under `reporting_treasury` — parallel to Procurement & Stock and Sales & Invoice.
+
+### 7.1 Treasury UI Table Wrap and Layout Patterns
+- **TreasuryTableWrap**: Every `q-table` in `reporting_treasury` pages must be wrapped in `TreasuryTableWrap` component to handle horizontal overflows gracefully, with appropriate `table-style="min-width: ..."` settings (e.g., 900px to 1100px).
+- **TreasuryStatGrid Formats**: `TreasuryStatGrid` cards should explicitly configure the `format` prop (`'currency' | 'percent' | 'number' | 'text'`) rather than hardcoding currency formatting for percentages/counts.
+- **Two-Table P&L Pattern**: High-density batch/shipment P&L pages should split trading metrics and stock disposition into two distinct cards/tables (Trading P&L and Stock Disposition) to maintain visual clarity and scannability, rather than loading one massive 15+ column table.
+- **Invoice Detail Route**: A dedicated invoice margin detail route `/:slug/app/finance/invoices/:id` presents line-level revenue, COGS, and GP margin calculations to resolve margin discrepancies.
+
 
 ---
 

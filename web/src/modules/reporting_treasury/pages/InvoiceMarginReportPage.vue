@@ -73,73 +73,76 @@
 
       <!-- Invoices List Table -->
       <q-card flat bordered>
-        <q-table
-          flat
-          row-key="id"
-          :rows="invoices"
-          :columns="columns"
-          :loading="loading"
-          :pagination="{ rowsPerPage: pageSize }"
-          hide-pagination
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-invoice_no="props">
-            <q-td :props="props" class="text-weight-bold text-primary">
-              {{ props.row.invoice_no }}
-            </q-td>
-          </template>
+        <TreasuryTableWrap>
+          <q-table
+            flat
+            row-key="id"
+            :rows="invoices"
+            :columns="columns"
+            :loading="loading"
+            :pagination="{ rowsPerPage: pageSize }"
+            hide-pagination
+            :dense="$q.screen.lt.md"
+            table-style="min-width: 1000px;"
+          >
+            <template #body-cell-invoice_no="props">
+              <q-td :props="props" class="text-weight-bold text-primary cursor-pointer" @click="navigateToDetails(props.row.id)">
+                {{ props.row.invoice_no }}
+              </q-td>
+            </template>
 
-          <template #body-cell-recipient="props">
-            <q-td :props="props">
-              <div class="text-weight-medium">{{ props.row.recipient_name || 'Walk-in / Direct' }}</div>
-              <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
-            </q-td>
-          </template>
+            <template #body-cell-recipient="props">
+              <q-td :props="props">
+                <div class="text-weight-medium">{{ props.row.recipient_name || 'Walk-in / Direct' }}</div>
+                <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
+              </q-td>
+            </template>
 
-          <template #body-cell-invoice_type="props">
-            <q-td :props="props">
-              <q-chip
-                dense
-                square
-                color="blue-1"
-                text-color="blue-9"
-                class="text-weight-bold text-uppercase text-xs"
-              >
-                {{ props.row.invoice_type }}
-              </q-chip>
-            </q-td>
-          </template>
+            <template #body-cell-invoice_type="props">
+              <q-td :props="props">
+                <q-chip
+                  dense
+                  square
+                  color="blue-1"
+                  text-color="blue-9"
+                  class="text-weight-bold text-uppercase text-xs"
+                >
+                  {{ props.row.invoice_type }}
+                </q-chip>
+              </q-td>
+            </template>
 
-          <template #body-cell-total_amount="props">
-            <q-td :props="props" class="text-right">
-              {{ formatAmountBdt(props.row.total_amount) }}
-            </q-td>
-          </template>
+            <template #body-cell-total_amount="props">
+              <q-td :props="props" class="text-right">
+                {{ formatAmountBdt(props.row.total_amount) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-paid_amount="props">
-            <q-td :props="props" class="text-right text-positive">
-              {{ formatAmountBdt(props.row.paid_amount) }}
-            </q-td>
-          </template>
+            <template #body-cell-paid_amount="props">
+              <q-td :props="props" class="text-right text-positive">
+                {{ formatAmountBdt(props.row.paid_amount) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-due_amount="props">
-            <q-td :props="props" class="text-right text-negative">
-              {{ formatAmountBdt(props.row.due_amount) }}
-            </q-td>
-          </template>
+            <template #body-cell-due_amount="props">
+              <q-td :props="props" class="text-right text-negative">
+                {{ formatAmountBdt(props.row.due_amount) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-gross_profit="props">
-            <q-td :props="props" class="text-right text-weight-bold text-primary">
-              {{ formatAmountBdt(props.row.gross_profit) }}
-            </q-td>
-          </template>
+            <template #body-cell-gross_profit="props">
+              <q-td :props="props" class="text-right text-weight-bold text-primary">
+                {{ formatAmountBdt(props.row.gross_profit) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-margin_pct="props">
-            <q-td :props="props" class="text-right text-weight-bold" :class="getMarginClass(props.row.gross_profit, props.row.total_amount)">
-              {{ formatPercent(props.row.gross_profit, props.row.total_amount) }}
-            </q-td>
-          </template>
-        </q-table>
+            <template #body-cell-margin_pct="props">
+              <q-td :props="props" class="text-right text-weight-bold" :class="getMarginClass(props.row.gross_profit, props.row.total_amount)">
+                {{ formatPercent(props.row.gross_profit, props.row.total_amount) }}
+              </q-td>
+            </template>
+          </q-table>
+        </TreasuryTableWrap>
 
         <!-- Pagination Block -->
         <div v-if="totalPages > 1" class="row justify-between items-center q-pa-md border-t">
@@ -163,6 +166,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import type { QTableColumn } from 'quasar'
 import { useAuthStore } from 'src/modules/auth/stores/authStore'
@@ -170,6 +174,9 @@ import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
+
+const router = useRouter()
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -199,7 +206,7 @@ const columns: QTableColumn[] = [
   { name: 'paid_amount', label: 'Paid Amount', field: 'paid_amount', align: 'right', sortable: true },
   { name: 'due_amount', label: 'Due Amount', field: 'due_amount', align: 'right', sortable: true },
   { name: 'gross_profit', label: 'Gross Profit', field: 'gross_profit', align: 'right', sortable: true },
-  { name: 'margin_pct', label: 'Margin %', field: 'gross_profit', align: 'right' },
+  { name: 'margin_pct', label: 'GP %', field: 'gross_profit', align: 'right' },
 ]
 
 const typeOptions = [
@@ -265,6 +272,15 @@ const formatPercent = (profit: number, total: number) => {
   return `${pct.toFixed(1)}%`
 }
 
+const navigateToDetails = (id: number) => {
+  void router.push({
+    name: 'app-finance-invoice-margin-details-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? undefined,
+      id,
+    },
+  })
+}
 
 onMounted(() => {
   void fetchReport()

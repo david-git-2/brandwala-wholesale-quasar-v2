@@ -5,6 +5,20 @@
       <div class="col-12 col-md-4 no-print">
         <q-card flat class="floating-surface shadow-1 q-pa-md">
           <div class="text-subtitle1 text-weight-bold q-mb-md">Customize</div>
+          <q-select
+            v-model="selectedBrandId"
+            :options="brandOptions"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
+            label="Business Profile (Brand)"
+            outlined
+            dense
+            clearable
+            class="soft-input q-mb-sm"
+            @update:model-value="onBrandChanged"
+          />
           <q-input v-model="brandName" label="Brand Name" outlined dense class="soft-input q-mb-sm" />
           <q-input v-model="brandAddress" label="Brand Address" type="textarea" outlined dense rows="2" class="soft-input q-mb-sm" />
           <q-input v-model="clientName" label="Client Name" outlined dense class="soft-input q-mb-sm" />
@@ -27,19 +41,46 @@ import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue'
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel'
 import { invoiceGrossProfit } from 'src/modules/reporting_treasury/utils/margin'
+import { useInvoiceStore } from 'src/modules/sales_invoice/stores/invoiceStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore'
 
 import { invoiceRepository } from '../repositories/invoiceRepository'
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const invoiceStore = useInvoiceStore()
+
 const loading = ref(true)
 const invoice = ref<GlobalInvoiceDetail | null>(null)
 const items = ref<GlobalInvoiceItemRow[]>([])
 
+const selectedBrandId = ref<number | null>(null)
 const brandName = ref('')
 const brandAddress = ref('')
 const clientName = ref('')
 const thankYouMessage = ref('Thank you for your business!')
+
+const brandOptions = computed(() => {
+  return invoiceStore.brands.map((b) => ({
+    id: b.id,
+    name: b.name,
+    address: b.address,
+  }))
+})
+
+const onBrandChanged = (id: number | null) => {
+  if (id) {
+    const selected = invoiceStore.brands.find((b) => b.id === id)
+    if (selected) {
+      brandName.value = selected.name
+      brandAddress.value = selected.address
+    }
+  } else {
+    brandName.value = ''
+    brandAddress.value = ''
+  }
+}
 
 const printModel = computed<InvoicePrintModel>(() => {
   const inv = invoice.value
@@ -123,9 +164,25 @@ onMounted(async () => {
     ])
     invoice.value = inv
     items.value = invItems
-    brandName.value = inv.billing_profiles?.name ?? ''
-    brandAddress.value = inv.billing_profiles?.address ?? ''
+    
     clientName.value = inv.billing_profiles?.name ?? ''
+
+    if (inv?.tenant_id) {
+      await invoiceStore.fetchInvoiceBrands({ tenant_id: inv.tenant_id })
+    }
+
+    if (invoiceStore.brands.length > 0) {
+      const defaultBrand = invoiceStore.brands[0]
+      if (defaultBrand) {
+        selectedBrandId.value = defaultBrand.id
+        brandName.value = defaultBrand.name
+        brandAddress.value = defaultBrand.address
+      }
+    } else {
+      const tenantName = authStore.selectedTenant?.name ?? authStore.tenant?.name ?? ''
+      brandName.value = tenantName || inv.billing_profiles?.name || ''
+      brandAddress.value = ''
+    }
   } finally {
     loading.value = false
   }

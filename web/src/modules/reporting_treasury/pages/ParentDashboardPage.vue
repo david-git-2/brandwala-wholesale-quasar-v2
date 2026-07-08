@@ -37,44 +37,49 @@
         <div class="col-12 col-md-7">
           <q-card flat bordered class="q-pa-md full-height">
             <div class="text-subtitle1 text-weight-bold q-mb-lg text-primary">
-              Treasury Clearances MTD
+              Treasury Clearances
             </div>
-            <q-markup-table flat bordered wrap-cells>
-              <thead>
-                <tr>
-                  <th class="text-left font-semibold">Financial Area</th>
-                  <th class="text-right font-semibold">Total Amount</th>
-                  <th class="text-right font-semibold">Unallocated/Pending</th>
-                  <th class="text-right font-semibold">Clearance Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="py-3 font-semibold">Customer Invoices</td>
-                  <td class="text-right">{{ formatAmountBdt(totals.revenue) }}</td>
-                  <td class="text-right text-negative">{{ formatAmountBdt(totals.active_ar) }}</td>
-                  <td class="text-right text-primary font-semibold">
-                    {{ totals.revenue > 0 ? (((totals.revenue - totals.active_ar) / totals.revenue) * 100).toFixed(1) : '0.0' }}%
-                  </td>
-                </tr>
-                <tr>
-                  <td class="py-3 font-semibold">Received Payments</td>
-                  <td class="text-right">{{ formatAmountBdt(totals.cash_collected) }}</td>
-                  <td class="text-right text-warning">{{ formatAmountBdt(totals.unallocated_payments) }}</td>
-                  <td class="text-right text-primary font-semibold">
-                    {{ totals.cash_collected > 0 ? (((totals.cash_collected - totals.unallocated_payments) / totals.cash_collected) * 100).toFixed(1) : '0.0' }}%
-                  </td>
-                </tr>
-                <tr>
-                  <td class="py-3 font-semibold">Middle-Man Payouts</td>
-                  <td class="text-right">{{ formatAmountBdt(totals.middleman_total) }}</td>
-                  <td class="text-right text-warning">{{ formatAmountBdt(totals.middleman_liability) }}</td>
-                  <td class="text-right text-primary font-semibold">
-                    {{ totals.middleman_total > 0 ? (((totals.middleman_total - totals.middleman_liability) / totals.middleman_total) * 100).toFixed(1) : '0.0' }}%
-                  </td>
-                </tr>
-              </tbody>
-            </q-markup-table>
+            <TreasuryTableWrap>
+              <q-markup-table flat bordered wrap-cells style="min-width: 700px;">
+                <thead>
+                  <tr>
+                    <th class="text-left font-semibold">Financial Area</th>
+                    <th class="text-right font-semibold">Total Amount</th>
+                    <th class="text-right font-semibold">Unallocated/Pending</th>
+                    <th class="text-right font-semibold">Clearance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="py-3 font-semibold">Customer Invoices</td>
+                    <td class="text-right">{{ formatAmountBdt(totals.revenue) }}</td>
+                    <td class="text-right text-negative">{{ formatAmountBdt(totals.active_ar) }}</td>
+                    <td class="text-right text-primary font-semibold cursor-pointer">
+                      {{ totals.revenue > 0 ? (((totals.revenue - totals.active_ar) / totals.revenue) * 100).toFixed(1) : '0.0' }}%
+                      <q-tooltip>AR Clearance % = (Revenue - Active AR) / Revenue</q-tooltip>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 font-semibold">Received Payments</td>
+                    <td class="text-right">{{ formatAmountBdt(totals.cash_collected) }}</td>
+                    <td class="text-right text-warning">{{ formatAmountBdt(totals.unallocated_payments) }}</td>
+                    <td class="text-right text-primary font-semibold cursor-pointer">
+                      {{ totals.cash_collected > 0 ? (((totals.cash_collected - totals.unallocated_payments) / totals.cash_collected) * 100).toFixed(1) : '0.0' }}%
+                      <q-tooltip>Allocation % = (Collected - Unallocated) / Collected</q-tooltip>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 font-semibold">Middle-Man Payouts</td>
+                    <td class="text-right">{{ formatAmountBdt(totals.middleman_total) }}</td>
+                    <td class="text-right text-warning">{{ formatAmountBdt(totals.middleman_liability) }}</td>
+                    <td class="text-right text-primary font-semibold cursor-pointer">
+                      {{ totals.middleman_total > 0 ? (((totals.middleman_total - totals.middleman_liability) / totals.middleman_total) * 100).toFixed(1) : '0.0' }}%
+                      <q-tooltip>Settled % = (Payouts Total - Pending Liability) / Payouts Total</q-tooltip>
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+            </TreasuryTableWrap>
           </q-card>
         </div>
       </div>
@@ -90,6 +95,7 @@ import { formatAmountBdt } from 'src/utils/currency'
 import { treasuryRepository } from '../repositories/treasuryRepository'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()

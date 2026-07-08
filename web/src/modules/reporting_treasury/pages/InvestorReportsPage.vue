@@ -10,6 +10,17 @@
     </div>
 
     <div v-else class="q-gutter-y-lg">
+      <!-- Failed PnL Warning Banner -->
+      <q-banner v-if="failedShipmentNames.length > 0" class="bg-warning text-black rounded-borders q-pa-md">
+        <template #avatar>
+          <q-icon name="warning" color="black" />
+        </template>
+        <div>
+          <strong>PnL data unavailable for {{ failedShipmentNames.length }} shipments:</strong>
+          {{ failedShipmentNames.join(', ') }}
+        </div>
+      </q-banner>
+
       <!-- Metrics Grid -->
       <TreasuryStatGrid :items="statCards" />
 
@@ -52,50 +63,59 @@
           Shipment Investment Performance
         </div>
 
-        <q-table
-          flat
-          row-key="id"
-          :rows="shipmentPnLs"
-          :columns="shipmentColumns"
-          :pagination="{ rowsPerPage: 20 }"
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-name="props">
-            <q-td :props="props" class="text-weight-bold">
-              {{ props.row.name }}
-            </q-td>
-          </template>
+        <TreasuryTableWrap>
+          <q-table
+            flat
+            row-key="id"
+            :rows="shipmentPnLs"
+            :columns="shipmentColumns"
+            :pagination="{ rowsPerPage: 20 }"
+            :dense="$q.screen.lt.md"
+            table-style="min-width: 1000px;"
+          >
+            <template #body-cell-name="props">
+              <q-td :props="props" class="text-weight-bold">
+                {{ props.row.name }}
+              </q-td>
+            </template>
 
-          <template #body-cell-landed_cost="props">
-            <q-td :props="props" class="text-right">
-              {{ formatAmountBdt(props.row.totals.landed_cost) }}
-            </q-td>
-          </template>
+            <template #body-cell-landed_cost="props">
+              <q-td :props="props" class="text-right">
+                {{ formatAmountBdt(props.row.totals.landed_cost) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-sold_cost="props">
-            <q-td :props="props" class="text-right text-indigo-9">
-              {{ formatAmountBdt(props.row.totals.sold_cost) }}
-            </q-td>
-          </template>
+            <template #body-cell-sold_cost="props">
+              <q-td :props="props" class="text-right text-indigo-9">
+                {{ formatAmountBdt(props.row.totals.sold_cost) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-revenue="props">
-            <q-td :props="props" class="text-right text-positive">
-              {{ formatAmountBdt(props.row.totals.revenue) }}
-            </q-td>
-          </template>
+            <template #body-cell-revenue="props">
+              <q-td :props="props" class="text-right text-positive">
+                {{ formatAmountBdt(props.row.totals.revenue) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-gross_profit="props">
-            <q-td :props="props" class="text-right text-weight-bold text-primary">
-              {{ formatAmountBdt(props.row.totals.gross_profit) }}
-            </q-td>
-          </template>
+            <template #body-cell-gross_profit="props">
+              <q-td :props="props" class="text-right text-weight-bold text-primary">
+                {{ formatAmountBdt(props.row.totals.gross_profit) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-unsold_value="props">
-            <q-td :props="props" class="text-right text-warning">
-              {{ formatAmountBdt(props.row.totals.unsold_value) }}
-            </q-td>
-          </template>
-        </q-table>
+            <template #body-cell-sellable_on_hand_value="props">
+              <q-td :props="props" class="text-right text-warning">
+                {{ formatAmountBdt(props.row.totals.sellable_on_hand_value) }}
+              </q-td>
+            </template>
+
+            <template #body-cell-shrinkage_value="props">
+              <q-td :props="props" class="text-right text-negative">
+                {{ formatAmountBdt(props.row.totals.shrinkage_value) }}
+              </q-td>
+            </template>
+          </q-table>
+        </TreasuryTableWrap>
       </q-card>
 
       <!-- Capital Partner Profit Shares -->
@@ -104,55 +124,58 @@
           Capital Partner Balances &amp; Contributions
         </div>
 
-        <q-table
-          flat
-          row-key="id"
-          :rows="partners"
-          :columns="partnerColumns"
-          :pagination="{ rowsPerPage: 20 }"
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-name="props">
-            <q-td :props="props">
-              <div class="row items-center no-wrap">
-                <q-avatar
-                  size="32px"
-                  class="q-mr-sm text-weight-bold text-slate-900"
-                  :style="{ backgroundColor: props.row.color }"
-                >
-                  {{ props.row.name.charAt(0) }}
-                </q-avatar>
-                <div>
-                  <div class="text-weight-bold">{{ props.row.name }}</div>
+        <TreasuryTableWrap>
+          <q-table
+            flat
+            row-key="id"
+            :rows="partners"
+            :columns="partnerColumns"
+            :pagination="{ rowsPerPage: 20 }"
+            :dense="$q.screen.lt.md"
+            table-style="min-width: 900px;"
+          >
+            <template #body-cell-name="props">
+              <q-td :props="props">
+                <div class="row items-center no-wrap">
+                  <q-avatar
+                    size="32px"
+                    class="q-mr-sm text-weight-bold text-slate-900"
+                    :style="{ backgroundColor: props.row.color }"
+                  >
+                    {{ props.row.name.charAt(0) }}
+                  </q-avatar>
+                  <div>
+                    <div class="text-weight-bold">{{ props.row.name }}</div>
+                  </div>
                 </div>
-              </div>
-            </q-td>
-          </template>
+              </q-td>
+            </template>
 
-          <template #body-cell-total_in="props">
-            <q-td :props="props" class="text-right">
-              {{ formatAmountBdt(props.row.total_in) }}
-            </q-td>
-          </template>
+            <template #body-cell-total_in="props">
+              <q-td :props="props" class="text-right">
+                {{ formatAmountBdt(props.row.total_in) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-deployed="props">
-            <q-td :props="props" class="text-right text-indigo-9">
-              {{ formatAmountBdt(props.row.deployed) }}
-            </q-td>
-          </template>
+            <template #body-cell-deployed="props">
+              <q-td :props="props" class="text-right text-indigo-9">
+                {{ formatAmountBdt(props.row.deployed) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-available="props">
-            <q-td :props="props" class="text-right text-weight-bold text-primary">
-              {{ formatAmountBdt(props.row.available) }}
-            </q-td>
-          </template>
+            <template #body-cell-available="props">
+              <q-td :props="props" class="text-right text-weight-bold text-primary">
+                {{ formatAmountBdt(props.row.available) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-total_out="props">
-            <q-td :props="props" class="text-right text-positive">
-              {{ formatAmountBdt(props.row.total_out) }}
-            </q-td>
-          </template>
-        </q-table>
+            <template #body-cell-total_out="props">
+              <q-td :props="props" class="text-right text-positive">
+                {{ formatAmountBdt(props.row.total_out) }}
+              </q-td>
+            </template>
+          </q-table>
+        </TreasuryTableWrap>
       </q-card>
     </div>
   </TreasuryPageShell>
@@ -169,6 +192,7 @@ import { treasuryRepository } from '../repositories/treasuryRepository'
 import TreasuryPageShell from '../components/TreasuryPageShell.vue'
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
 import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -177,6 +201,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const shipmentPnLs = ref<any[]>([])
 const partners = ref<any[]>([])
+const failedShipmentNames = ref<string[]>([])
 
 const reportStartDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10))
 const reportEndDate = ref(new Date().toISOString().slice(0, 10))
@@ -186,6 +211,8 @@ const totals = ref({
   invested_cost: 0,
   realized_revenue: 0,
   gross_profit: 0,
+  sellable_on_hand: 0,
+  shrinkage_loss: 0,
   unsold_stock: 0,
 })
 
@@ -195,7 +222,8 @@ const shipmentColumns: QTableColumn[] = [
   { name: 'sold_cost', label: 'Sold Cost', field: 'id', align: 'right' },
   { name: 'revenue', label: 'Revenue', field: 'id', align: 'right' },
   { name: 'gross_profit', label: 'Gross Profit', field: 'id', align: 'right' },
-  { name: 'unsold_value', label: 'Unsold Value', field: 'id', align: 'right' },
+  { name: 'sellable_on_hand_value', label: 'Sellable on-hand', field: 'id', align: 'right' },
+  { name: 'shrinkage_value', label: 'Shrinkage Loss', field: 'id', align: 'right' },
 ]
 
 const partnerColumns: QTableColumn[] = [
@@ -218,24 +246,35 @@ const statCards = computed(() => [
     label: 'Total Invested Landed Cost',
     value: totals.value.invested_cost,
     caption: 'LCs of imported shipments',
+    class: 'col-12 col-sm-6 col-md-4',
   },
   {
     label: 'Realized Revenue',
     value: totals.value.realized_revenue,
     caption: 'Sold item revenue rollup',
     valueClass: 'text-positive',
+    class: 'col-12 col-sm-6 col-md-4',
   },
   {
     label: 'Gross Profit Realized',
     value: totals.value.gross_profit,
     caption: 'Accumulated batch margins',
     valueClass: 'text-primary',
+    class: 'col-12 col-sm-6 col-md-4',
   },
   {
-    label: 'Unsold Asset Stock',
-    value: totals.value.unsold_stock,
-    caption: 'Remaining inventory asset estimate',
+    label: 'Sellable on-hand',
+    value: totals.value.sellable_on_hand,
+    caption: 'Recoverable on-hand stock',
     valueClass: 'text-warning',
+    class: 'col-12 col-sm-6 col-md-4',
+  },
+  {
+    label: 'Inventory Loss (Shrinkage)',
+    value: totals.value.shrinkage_loss,
+    caption: 'Stolen, damaged, expired at cost',
+    valueClass: 'text-negative',
+    class: 'col-12 col-sm-6 col-md-4',
   },
 ])
 
@@ -248,12 +287,12 @@ const loadReports = async () => {
   try {
     const parentId = await resolveParentTenantId(tenantId)
 
-    // 1. Fetch completed shipments
+    // 1. Fetch shipments with stock ready
     const { data: shipments, error: err } = await supabase
       .from('global_shipments')
       .select('id, name')
       .eq('parent_tenant_id', parentId)
-      .in('status', ['delivered', 'completed'])
+      .eq('stock_ready', true)
 
     if (err) throw err
 
@@ -261,7 +300,9 @@ const loadReports = async () => {
     let cost = 0
     let rev = 0
     let gp = 0
-    let unsold = 0
+    let sellableOnHand = 0
+    let shrinkage = 0
+    failedShipmentNames.value = []
 
     // 2. Fetch PnL for each shipment
     for (const ship of (shipments || [])) {
@@ -275,9 +316,11 @@ const loadReports = async () => {
         cost += res.totals.landed_cost
         rev += res.totals.revenue
         gp += res.totals.gross_profit
-        unsold += res.totals.unsold_value
-      } catch {
-        // Skip individual errors to not break dashboard
+        sellableOnHand += res.totals.sellable_on_hand_value
+        shrinkage += res.totals.shrinkage_value
+      } catch (err: any) {
+        failedShipmentNames.value.push(ship.name)
+        console.warn(`Failed to load P&L for shipment ${ship.name}:`, err)
       }
     }
 
@@ -286,7 +329,9 @@ const loadReports = async () => {
       invested_cost: cost,
       realized_revenue: rev,
       gross_profit: gp,
-      unsold_stock: unsold,
+      sellable_on_hand: sellableOnHand,
+      shrinkage_loss: shrinkage,
+      unsold_stock: sellableOnHand,
     }
 
     // 3. Fetch real active partners

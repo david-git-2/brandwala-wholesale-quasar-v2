@@ -13,6 +13,7 @@ export type GlobalInvoiceRow = {
   billing_profile_id?: number | null
   billing_profile_name?: string | null
   recipient_name?: string | null
+  settlement_discount_amount?: number
 }
 
 export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship'

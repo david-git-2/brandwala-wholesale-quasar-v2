@@ -23,6 +23,7 @@ export interface InvoiceInput {
   print_charge?: number | null | undefined
   wrapping_charge?: number | null | undefined
   discount_amount?: number | null | undefined
+  settlement_discount_amount?: number | null | undefined
   invoice_status?: string | null | undefined
   accounting_subtotal_amount?: number | null | undefined
   face_subtotal_amount?: number | null | undefined
@@ -44,6 +45,11 @@ export interface ShipmentItemInput {
   package_weight?: number | null | undefined
   ordered_quantity?: number | null | undefined
   landed_unit_cost?: number | null | undefined
+  sellable_qty?: number | null | undefined
+  stolen_qty?: number | null | undefined
+  box_damage_qty?: number | null | undefined
+  expired_qty?: number | null | undefined
+  reserved_qty?: number | null | undefined
 }
 
 export interface SoldLineInput {
@@ -106,7 +112,7 @@ export const invoiceGrossProfit = (
   }
 
   const sumLineMargin = lines.reduce((sum, line) => sum + lineMargin(line), 0)
-  const discount = invoice.discount_amount ?? 0
+  const discount = (invoice.discount_amount ?? 0) + (invoice.settlement_discount_amount ?? 0)
   const charges = chargeEffect(invoice)
 
   const returnMarginTotal = returns.reduce((sum, ret) => {
@@ -125,6 +131,11 @@ export interface BatchPnlResult {
   soldCost: number
   revenue: number
   grossProfit: number
+  sellableOnHandValue: number
+  shrinkageValue: number
+  stolenValue: number
+  boxDamageValue: number
+  expiredValue: number
   unsoldValue: number
 }
 
@@ -149,7 +160,11 @@ export const batchPnl = (
   let totalLandedCost = 0
   let totalSoldCost = 0
   let totalRevenue = 0
-  let totalUnsoldValue = 0
+  let totalSellableOnHandValue = 0
+  let totalShrinkageValue = 0
+  let totalStolenValue = 0
+  let totalBoxDamageValue = 0
+  let totalExpiredValue = 0
 
   shipmentItems.forEach((item, index) => {
     const receivedQty = item.received_qty ?? item.received_quantity ?? 0
@@ -192,7 +207,19 @@ export const batchPnl = (
 
     totalSoldCost += itemSoldCost
     totalRevenue += itemRevenue
-    totalUnsoldValue += (receivedQty - itemSoldQty) * landedUnitCost
+
+    const sellableQty = (item.sellable_qty !== undefined && item.sellable_qty !== null)
+      ? item.sellable_qty
+      : (receivedQty - itemSoldQty)
+    const stolenQty = item.stolen_qty ?? 0
+    const boxDamageQty = item.box_damage_qty ?? 0
+    const expiredQty = item.expired_qty ?? 0
+
+    totalSellableOnHandValue += sellableQty * landedUnitCost
+    totalStolenValue += stolenQty * landedUnitCost
+    totalBoxDamageValue += boxDamageQty * landedUnitCost
+    totalExpiredValue += expiredQty * landedUnitCost
+    totalShrinkageValue += (stolenQty + boxDamageQty + expiredQty) * landedUnitCost
   })
 
   return {
@@ -200,7 +227,12 @@ export const batchPnl = (
     soldCost: totalSoldCost,
     revenue: totalRevenue,
     grossProfit: totalRevenue - totalSoldCost,
-    unsoldValue: totalUnsoldValue,
+    sellableOnHandValue: totalSellableOnHandValue,
+    shrinkageValue: totalShrinkageValue,
+    stolenValue: totalStolenValue,
+    boxDamageValue: totalBoxDamageValue,
+    expiredValue: totalExpiredValue,
+    unsoldValue: totalSellableOnHandValue,
   }
 }
 

@@ -150,6 +150,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore'
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation'
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection'
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore'
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore'
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue'
 import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue'
@@ -158,6 +159,7 @@ import type { Tenant } from 'src/modules/tenant/types'
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 const tenantPreferenceStore = useTenantPreferenceStore()
+const membershipPreferenceStore = useMembershipPreferenceStore()
 const route = useRoute()
 const router = useRouter()
 const { links } = useAppWorkspaceLinks()
@@ -322,6 +324,14 @@ onMounted(() => {
         authStore.tenantId,
         authStore.user?.email ?? null,
         role === 'admin' || role === 'staff' || role === 'viewer' ? role : null,
+      )
+    }
+
+    if (authStore.membershipId) {
+      await membershipPreferenceStore.ensureLoaded(
+        authStore.membershipId,
+        authStore.user?.email ?? null,
+        authStore.tenantId,
       )
     }
   })()

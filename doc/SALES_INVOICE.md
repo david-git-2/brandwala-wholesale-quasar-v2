@@ -381,9 +381,12 @@ Use void for mistaken invoices. Use **returns** for partial credit after a valid
 |-------------|----------------|-------------------|
 | Line prices, qty | Locked | Locked |
 | Header charges, discount | Locked | Locked |
+| `settlement_discount_amount` | Editable while `due_amount > 0` (write-off) | Editable while `due_amount > 0` |
 | Void | Allowed if unpaid | Blocked until payments reversed |
 | Returns | Allowed | Allowed |
 | `fulfillment_status` | Editable | Editable |
+
+**Settlement discount (D-SI22):** `settlement_discount_amount` is the one field that may change after post. It is a write-off applied at collection time when the customer settles for less than billed (e.g. billed 123.44, pays 100 → settle 23.44). It reduces `total_amount` and `due_amount` (never below the paid amount), flipping `payment_status` to `paid`, while `subtotal_amount` and line prices keep the original invoiced snapshot. RPC: `apply_global_invoice_settlement_discount(p_invoice_id, p_amount, p_note)` — posted only, `p_amount ≤ due_amount`.
 
 ---
 
@@ -420,6 +423,7 @@ Optional `return_charge_amount` (restocking/handling) reduces credit on the face
 | Void invoice | `void_global_invoice` | All — posted → voided when unpaid |
 | Billing profile payment + allocation | `create_billing_profile_payment_with_allocations` | Wholesale, retail account |
 | Recipient collection (COD / cash) | `record_recipient_invoice_collection` | Retail direct, dropship |
+| Settlement discount / write-off | `apply_global_invoice_settlement_discount` | All — closes remaining `due_amount` as a discount |
 | Middle-man payout | `create_middle_man_payout` | Dropship only |
 | Status recompute | `recompute_global_invoice_payment_status` | All — `due` / `partially_paid` / `paid` |
 
@@ -796,3 +800,4 @@ Target submodule keys get explicit rows in `modulePermissions.ts` when extracted
 | D-SI19 | Fulfillment | `fulfillment_status` is operational — does not affect margin or AR |
 | D-SI20 | Courier reconcile | `courier_collected_amount` for COD variance reporting — not a second invoice |
 | D-SI21 | Profile ownership | `billing_profiles` and `recipient_profiles` owned by child `tenant_id`; invoice FKs must match issuing child; no parent-wide shared catalog |
+| D-SI22 | Settlement discount | Post-post write-off via `settlement_discount_amount`; reduces `total_amount`/`due_amount` to close AR, keeps line/subtotal snapshot; net of discount in Shipment P&L (wholesale/retail; dropship face discount excluded) |

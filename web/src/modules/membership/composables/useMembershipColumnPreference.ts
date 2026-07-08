@@ -1,133 +1,69 @@
-import { ref, watch, onMounted } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useMembershipPreferenceStore } from '../stores/membershipPreferenceStore'
+import { watch } from 'vue'
+import {
+  LEGACY_MEMBERSHIP_PREFERENCE_KEYS,
+  MEMBERSHIP_UI_PATHS,
+  type MembershipUiPathKey,
+} from '../types/preferences'
+import { arraysEqualAsSets } from '../utils/preferenceUtils'
+import { useMembershipPreference } from './useMembershipPreference'
 
-function getNestedPreference(preference: any, key: string): string[] | undefined {
-  if (key === 'ui.productBasedCosting.fileDetailsVisibleColumns') {
-    return preference?.ui?.productBasedCosting?.fileDetailsVisibleColumns
+type LegacyPreferenceKey =
+  | 'ui.productBasedCosting.fileDetailsVisibleColumns'
+  | 'ui.thriftShipment.detailsVisibleColumns'
+  | 'ui.procurementShipment.detailsVisibleColumns'
+
+function resolvePreferencePath(
+  preferencePath?: MembershipUiPathKey,
+  preferenceKey?: LegacyPreferenceKey,
+): readonly string[] {
+  if (preferencePath) {
+    return MEMBERSHIP_UI_PATHS[preferencePath]
   }
-  if (key === 'ui.thriftShipment.detailsVisibleColumns') {
-    return preference?.ui?.thriftShipment?.detailsVisibleColumns
+  if (preferenceKey) {
+    const mapped = LEGACY_MEMBERSHIP_PREFERENCE_KEYS[preferenceKey]
+    if (mapped) {
+      return MEMBERSHIP_UI_PATHS[mapped]
+    }
   }
-  if (key === 'ui.procurementShipment.detailsVisibleColumns') {
-    return preference?.ui?.procurementShipment?.detailsVisibleColumns
-  }
-  return undefined
+  throw new Error('useMembershipColumnPreference requires preferencePath or preferenceKey.')
 }
 
-function setNestedPreferencePatch(key: string, value: string[]): any {
-  if (key === 'ui.productBasedCosting.fileDetailsVisibleColumns') {
-    return {
-      ui: {
-        productBasedCosting: {
-          fileDetailsVisibleColumns: value,
-        },
-      },
-    }
-  }
-  if (key === 'ui.thriftShipment.detailsVisibleColumns') {
-    return {
-      ui: {
-        thriftShipment: {
-          detailsVisibleColumns: value,
-        },
-      },
-    }
-  }
-  if (key === 'ui.procurementShipment.detailsVisibleColumns') {
-    return {
-      ui: {
-        procurementShipment: {
-          detailsVisibleColumns: value,
-        },
-      },
-    }
-  }
-  return {}
-}
-
-export function useMembershipColumnPreference(options: {
-  preferenceKey:
-    | 'ui.productBasedCosting.fileDetailsVisibleColumns'
-    | 'ui.thriftShipment.detailsVisibleColumns'
-    | 'ui.procurementShipment.detailsVisibleColumns'
-  allColumnNames: string[]
-  alwaysVisibleColumns?: string[]
-  defaultVisibleColumns: string[]
+export function useMembershipColumnPreference<T extends string = string>(options: {
+  preferencePath?: MembershipUiPathKey
+  preferenceKey?: LegacyPreferenceKey
+  allColumnNames: T[]
+  alwaysVisibleColumns?: T[]
+  defaultVisibleColumns: T[]
 }) {
-  const authStore = useAuthStore()
-  const store = useMembershipPreferenceStore()
-  const visibleColumns = ref<string[]>([...options.defaultVisibleColumns])
+  const path = resolvePreferencePath(options.preferencePath, options.preferenceKey)
 
-  const hydrateColumns = () => {
-    const rawVal = getNestedPreference(store.preference, options.preferenceKey)
-    if (rawVal && Array.isArray(rawVal)) {
-      const filtered = rawVal.filter((col) => options.allColumnNames.includes(col))
-      if (options.alwaysVisibleColumns) {
-        options.alwaysVisibleColumns.forEach((col) => {
-          if (options.allColumnNames.includes(col) && !filtered.includes(col)) {
-            filtered.push(col)
-          }
-        })
-      }
-      visibleColumns.value = filtered
-    } else {
-      visibleColumns.value = [...options.defaultVisibleColumns]
+  const normalizeColumns = (columns: T[]) => {
+    const filtered = columns.filter((col) => options.allColumnNames.includes(col))
+    if (options.alwaysVisibleColumns) {
+      options.alwaysVisibleColumns.forEach((col) => {
+        if (options.allColumnNames.includes(col) && !filtered.includes(col)) {
+          filtered.push(col)
+        }
+      })
     }
+    return filtered.length ? filtered : [...options.defaultVisibleColumns]
   }
 
-  onMounted(() => {
-    hydrateColumns()
+  const { value: visibleColumns } = useMembershipPreference<T[]>({
+    path,
+    defaultValue: [...options.defaultVisibleColumns],
+    equals: arraysEqualAsSets,
   })
 
   watch(
-    () => store.preference,
-    () => {
-      hydrateColumns()
-    },
-    { deep: true }
-  )
-
-  let isSaving = false
-
-  const debouncedSave = (() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => {
-        void (async () => {
-        const membershipId = authStore.membershipId
-        if (!membershipId) {
-          return
-        }
-
-        const rawVal = getNestedPreference(store.preference, options.preferenceKey)
-        const currentSet = new Set(visibleColumns.value)
-        const storedSet = new Set(rawVal || [])
-        const isSame = currentSet.size === storedSet.size && [...currentSet].every(x => storedSet.has(x))
-        if (isSame) return
-
-        isSaving = true
-        try {
-          const patch = setNestedPreferencePatch(options.preferenceKey, [...visibleColumns.value])
-          store.patchPreference(membershipId, patch)
-          await store.savePreference(membershipId)
-        } finally {
-          isSaving = false
-        }
-        })()
-      }, 500)
-    }
-  })()
-
-  watch(
     visibleColumns,
-    () => {
-      if (!isSaving) {
-        debouncedSave()
+    (columns) => {
+      const normalized = normalizeColumns(columns)
+      if (!arraysEqualAsSets(columns, normalized)) {
+        visibleColumns.value = normalized
       }
     },
-    { deep: true }
+    { deep: true, flush: 'sync' },
   )
 
   return {

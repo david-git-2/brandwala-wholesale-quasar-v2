@@ -198,6 +198,19 @@ Follow the Compact Design pattern to maximize screen space:
 - **Standardized Weights**: Keep unit weights and table totals in grams (`gm`) for operational clarity in high-density tables.
 - **Inline Quantity Split Workflow**: When in `Warehouse Received` status, add a Split Qty action column next to the Product ID. Showing Done/Pending badges (Done green, Pending orange) and clicking the button prompts a centered screen dialog featuring a product image, name, and input fields to allocate stock.
 
+## Treasury Layout and Overflow Rules
+
+For treasury and reporting pages under the `reporting_treasury` module, follow these layout guidelines to avoid table overflow and maintain high visual consistency:
+- **TreasuryPageShell Flow**: Standard treasury detail and list pages follow a strict top-to-bottom layout flow:
+  1. **Page Header / Hero**: Title, status chips, search input/filters.
+  2. **TreasuryStatGrid**: 4 to 6 metric cards displaying high-level totals.
+  3. **Data Tables**: Wrapped in scroll containers.
+- **TreasuryTableWrap**: Always wrap all `q-table` elements in a `TreasuryTableWrap` container component to handle horizontal overflows. The wrapper must have `min-width: 0` and `width: 100%`, and the inner `.q-table__middle` target must be set to `overflow-x: auto` to prevent page-level horizontal bleed.
+- **Min-Width Tables**: Define explicit minimum widths (e.g., `table-style="min-width: 900px"` or `1100px` depending on column count) directly on the tables to enforce horizontal scroll inside the card boundary, preventing narrow column squishing.
+- **Card and Stack Constraints**: Ensure any parent container cards have class `overflow-hidden` and `style="min-width: 0"`. The root `.bw-page` must have `overflow-x: hidden` and `max-width: 100%`, and the `.bw-page__stack` container must specify `min-width: 0` so grid/flex items can shrink correctly.
+- **Explicit Stat Formatting**: Ensure `TreasuryStatGrid` cards declare the correct type of metric format (e.g., `percent`, `currency`, `number`) to guarantee proper unit rendering.
+- **Split P&L Layout**: Avoid combining trading profit/loss figures and warehouse disposition metrics into a single layout. Divide them into a Trading P&L table and a Stock Disposition table.
+
 ## When To Create A New Shared Component
 
 Create a new shared UI component only if:

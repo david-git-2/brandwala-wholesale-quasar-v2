@@ -191,7 +191,7 @@
             @product-weight-change="onProductWeightChange"
             @package-weight-change="onPackageWeightChange"
             @bulk-delete="onBulkDelete"
-            @update:visible-columns="visibleColumns = $event"
+            @update:visible-columns="onVisibleColumnsUpdate"
           />
         </div>
       </div>
@@ -323,6 +323,9 @@ const allSelectableColumnsSelected = computed({
       : [...alwaysVisibleColumns]
   },
 })
+const onVisibleColumnsUpdate = (columns: string[]) => {
+  visibleColumns.value = columns
+}
 const cargoRateValue = computed(() => cargo_rate_kg_gbp.value ?? 0);
 const conversionRateValue = computed(() => conversion_rate.value ?? 140);
 const profitRateValue = computed(() => profit_rate.value ?? 25);

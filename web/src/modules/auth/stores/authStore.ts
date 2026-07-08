@@ -194,6 +194,15 @@ export const useAuthStore = defineStore('auth', () => {
         const bootstrap = Array.isArray(data) ? data[0] : data
         if (!bootstrap) return false
 
+        useTenantPreferenceStore().setPreference(
+          bootstrap.tenant_id,
+          bootstrap.tenant_preference,
+        )
+        useMembershipPreferenceStore().setPreference(
+          bootstrap.member_id,
+          bootstrap.member_preference,
+        )
+
         saveAccess({
           scope: 'app',
           matchedRole: bootstrap.member_role,

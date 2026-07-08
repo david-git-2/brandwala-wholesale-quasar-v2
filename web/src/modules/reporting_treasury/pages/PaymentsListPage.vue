@@ -57,70 +57,73 @@
 
       <!-- Payments Table -->
       <q-card flat bordered>
-        <q-table
-          flat
-          row-key="id"
-          :rows="filteredPayments"
-          :columns="columns"
-          :loading="loading"
-          :pagination="{ rowsPerPage: 20 }"
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-id="props">
-            <q-td :props="props" class="text-weight-bold text-primary">
-              #{{ props.row.id }}
-            </q-td>
-          </template>
+        <TreasuryTableWrap>
+          <q-table
+            flat
+            row-key="id"
+            :rows="filteredPayments"
+            :columns="columns"
+            :loading="loading"
+            :pagination="{ rowsPerPage: 20 }"
+            :dense="$q.screen.lt.md"
+            table-style="min-width: 900px;"
+          >
+            <template #body-cell-id="props">
+              <q-td :props="props" class="text-weight-bold text-primary">
+                #{{ props.row.id }}
+              </q-td>
+            </template>
 
-          <template #body-cell-billing_profile="props">
-            <q-td :props="props">
-              {{ props.row.billing_profile?.name || 'Walk-in / Direct' }}
-            </q-td>
-          </template>
+            <template #body-cell-billing_profile="props">
+              <q-td :props="props">
+                {{ props.row.billing_profile?.name || 'Walk-in / Direct' }}
+              </q-td>
+            </template>
 
-          <template #body-cell-method="props">
-            <q-td :props="props">
-              <q-chip
-                dense
-                square
-                color="blue-1"
-                text-color="blue-9"
-                class="text-weight-bold text-uppercase text-xs"
-              >
-                {{ props.row.method || 'cash' }}
-              </q-chip>
-            </q-td>
-          </template>
+            <template #body-cell-method="props">
+              <q-td :props="props">
+                <q-chip
+                  dense
+                  square
+                  color="blue-1"
+                  text-color="blue-9"
+                  class="text-weight-bold text-uppercase text-xs"
+                >
+                  {{ props.row.method || 'cash' }}
+                </q-chip>
+              </q-td>
+            </template>
 
-          <template #body-cell-amount="props">
-            <q-td :props="props" class="text-right">
-              {{ formatAmountBdt(props.row.amount) }}
-            </q-td>
-          </template>
+            <template #body-cell-amount="props">
+              <q-td :props="props" class="text-right">
+                {{ formatAmountBdt(props.row.amount) }}
+              </q-td>
+            </template>
 
-          <template #body-cell-unallocated_amount="props">
-            <q-td :props="props" class="text-right font-semibold">
-              <span :class="props.row.unallocated_amount > 0 ? 'text-warning text-weight-bold' : 'text-grey-5'">
-                {{ formatAmountBdt(props.row.unallocated_amount) }}
-              </span>
-            </q-td>
-          </template>
+            <template #body-cell-unallocated_amount="props">
+              <q-td :props="props" class="text-right font-semibold">
+                <span :class="props.row.unallocated_amount > 0 ? 'text-warning text-weight-bold' : 'text-grey-5'">
+                  {{ formatAmountBdt(props.row.unallocated_amount) }}
+                </span>
+              </q-td>
+            </template>
 
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-center">
-              <q-btn
-                flat
-                round
-                dense
-                color="primary"
-                icon="o_visibility"
-                @click="navigateToDetails(props.row.id)"
-              >
-                <q-tooltip>View Details & Allocate</q-tooltip>
-              </q-btn>
-            </q-td>
-          </template>
-        </q-table>
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="text-center">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  color="primary"
+                  icon="o_visibility"
+                  @click="navigateToDetails(props.row.id)"
+                >
+                  <q-tooltip>View Details & Allocate</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
+          </q-table>
+        </TreasuryTableWrap>
       </q-card>
     </div>
 
@@ -328,11 +331,11 @@ const profileOptions = computed(() => {
 
 // Sums
 const totalPaymentsSum = computed(() => {
-  return payments.value.reduce((sum, p) => sum + p.amount, 0)
+  return filteredPayments.value.reduce((sum, p) => sum + p.amount, 0)
 })
 
 const totalUnallocatedSum = computed(() => {
-  return payments.value.reduce((sum, p) => sum + p.unallocated_amount, 0)
+  return filteredPayments.value.reduce((sum, p) => sum + p.unallocated_amount, 0)
 })
 
 const statCards = computed(() => [

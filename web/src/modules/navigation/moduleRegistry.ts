@@ -583,7 +583,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Invoice Brands',
     description: 'Configure invoice branding, logos, layout styles, and details.',
     parentModuleKey: 'sales_invoice',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Invoice Brands',
+        caption: 'Manage print profiles & names',
+        icon: 'branding_watermark',
+        routeSegment: 'sales/invoices/brands',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'reporting_treasury',

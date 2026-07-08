@@ -124,8 +124,12 @@
                 <span class="text-weight-bold text-positive">{{ formatCurrency(selectedAllocation.gross_profit) }}</span>
               </div>
               <div class="row justify-between">
-                <span class="text-grey-7">Unsold Asset Stock:</span>
+                <span class="text-grey-7">Sellable on-hand:</span>
                 <span class="text-weight-medium text-warning">{{ formatCurrency(selectedAllocation.unsold_value) }}</span>
+              </div>
+              <div class="row justify-between">
+                <span class="text-grey-7">Shrinkage Loss:</span>
+                <span class="text-weight-medium text-negative">{{ formatCurrency(selectedAllocation.shrinkage_value) }}</span>
               </div>
             </div>
           </q-card>
