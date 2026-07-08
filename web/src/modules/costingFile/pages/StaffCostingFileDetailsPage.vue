@@ -53,7 +53,10 @@
                 :style="statusChipStyle(selectedFile.status)"
                 class="costing-status-chip"
               >
-                <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedFile.status) }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: statusDotColor(selectedFile.status) }"
+                />
                 {{ selectedFile.status }}
               </q-chip>
               <q-btn
@@ -83,9 +86,7 @@
       </q-card>
 
       <q-card v-if="loadingPage || !selectedFile" flat class="floating-surface shadow-1">
-        <q-card-section class="text-grey-7">
-          Loading costing file details...
-        </q-card-section>
+        <q-card-section class="text-grey-7"> Loading costing file details... </q-card-section>
       </q-card>
 
       <template v-else>
@@ -147,7 +148,6 @@
                   <div v-html="props.value" class="costing-table__rich-text-cell" />
                 </q-td>
               </template>
-
 
               <template #body-cell-name="props">
                 <q-td :props="props" class="costing-page__name-cell">
@@ -238,51 +238,62 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
-import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue';
+import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue';
 import {
   buildAdminProductRows,
   summarizeAdminProductRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileDetails, CostingFileItem, CostingFileStatus } from 'src/modules/costingFile/types'
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import type {
+  CostingFileDetails,
+  CostingFileItem,
+  CostingFileStatus,
+} from 'src/modules/costingFile/types';
 
-const route = useRoute()
-const router = useRouter()
-const costingFileStore = useCostingFileStore()
-const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
-const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
-const detailsLoading = computed(() => costingFileStore.detailsLoading)
-const itemLoading = computed(() => costingFileStore.itemLoading)
+const route = useRoute();
+const router = useRouter();
+const costingFileStore = useCostingFileStore();
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem);
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems);
+const detailsLoading = computed(() => costingFileStore.detailsLoading);
+const itemLoading = computed(() => costingFileStore.itemLoading);
 
-const addItemDialogOpen = ref(false)
-const editDialogOpen = ref(false)
-const initialLoading = ref(true)
-const creatingItem = ref(false)
-const savingItemId = ref<number | null>(null)
-const savingStatus = ref(false)
-const editingItemId = ref<number | null>(null)
+const addItemDialogOpen = ref(false);
+const editDialogOpen = ref(false);
+const initialLoading = ref(true);
+const creatingItem = ref(false);
+const savingItemId = ref<number | null>(null);
+const savingStatus = ref(false);
+const editingItemId = ref<number | null>(null);
 
-const editableStatuses: CostingFileStatus[] = ['customer_submitted']
+const editableStatuses: CostingFileStatus[] = ['customer_submitted'];
 
 const formatFixed = (value: number | null | undefined) =>
-  value == null ? '' : Number(value).toFixed(2)
+  value == null ? '' : Number(value).toFixed(2);
 
 const formatWhole = (value: number | null | undefined) =>
-  value == null ? '' : String(Math.round(Number(value)))
+  value == null ? '' : String(Math.round(Number(value)));
 
-const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
-const productTotals = computed(() => summarizeAdminProductRows(productRows.value))
+const productRows = computed(() => buildAdminProductRows(costingFileItems.value));
+const productTotals = computed(() => summarizeAdminProductRows(productRows.value));
 const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
-)
+);
 
 const productColumns = [
-  { name: 'actions', label: '', field: 'actions', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  {
+    name: 'actions',
+    label: '',
+    field: 'actions',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
   {
     name: 'sl',
     label: 'SL',
@@ -312,7 +323,14 @@ const productColumns = [
     style: 'min-width: 280px;',
     headerStyle: 'min-width: 280px;',
   },
-  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
   {
     name: 'quantity',
     label: 'Qty',
@@ -321,194 +339,249 @@ const productColumns = [
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px;',
   },
-  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 220px; min-width: 220px;', headerStyle: 'width: 220px; min-width: 220px;' },
-  { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
-  { name: 'extraInformation2', label: 'Extra info 2', field: 'extraInformation2', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
-  { name: 'priceInWebGbp', label: 'Web price (GBP)', field: 'priceInWebGbp', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
-  { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-]
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'left' as const,
+    style: 'width: 220px; min-width: 220px;',
+    headerStyle: 'width: 220px; min-width: 220px;',
+  },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'priceInWebGbp',
+    label: 'Web price (GBP)',
+    field: 'priceInWebGbp',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
+  {
+    name: 'productWeight',
+    label: 'Product wt',
+    field: 'productWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package wt',
+    field: 'packageWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+];
 
-const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name'] as const
+const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name'] as const;
 const selectableColumns = productColumns
   .map((column) => column.name)
-  .filter((name) => !alwaysVisibleColumns.includes(name as (typeof alwaysVisibleColumns)[number]))
-const visibleColumns = ref<string[]>([...alwaysVisibleColumns, ...selectableColumns])
+  .filter((name) => !alwaysVisibleColumns.includes(name as (typeof alwaysVisibleColumns)[number]));
+const visibleColumns = ref<string[]>([...alwaysVisibleColumns, ...selectableColumns]);
 const columnSelectorOptions = productColumns
   .filter((column) => selectableColumns.includes(column.name))
-  .map((column) => ({ label: column.label, value: column.name }))
+  .map((column) => ({ label: column.label, value: column.name }));
 const allSelectableColumnsSelected = computed({
   get: () => selectableColumns.every((name) => visibleColumns.value.includes(name)),
   set: (checked: boolean) => {
     visibleColumns.value = checked
       ? [...alwaysVisibleColumns, ...selectableColumns]
-      : [...alwaysVisibleColumns]
+      : [...alwaysVisibleColumns];
   },
-})
+});
 const visibleProductColumns = computed(() =>
   productColumns.filter((column) => visibleColumns.value.includes(column.name)),
-)
+);
 
 const subtitle = computed(() =>
   selectedFile.value
     ? `Staff can add items and send this file to review.`
     : 'Loading costing file details.',
-)
+);
 
-const loadingPage = computed(() => detailsLoading.value || itemLoading.value)
+const loadingPage = computed(() => detailsLoading.value || itemLoading.value);
 const canEditFile = computed(() =>
   Boolean(selectedFile.value && editableStatuses.includes(selectedFile.value.status)),
-)
-const canSendToReview = computed(
-  () => Boolean(selectedFile.value && editableStatuses.includes(selectedFile.value.status)),
-)
+);
+const canSendToReview = computed(() =>
+  Boolean(selectedFile.value && editableStatuses.includes(selectedFile.value.status)),
+);
 
 const getProductTotalsValue = (columnName: string) => {
   switch (columnName) {
     case 'actions':
     case 'image':
-      return ''
+      return '';
     case 'sl':
-      return 'Total'
+      return 'Total';
     case 'name':
-      return `${productRows.value.length} Items`
+      return `${productRows.value.length} Items`;
     case 'priceInWebGbp':
-      return formatFixed(productTotals.value.priceInWebGbp)
+      return formatFixed(productTotals.value.priceInWebGbp);
     case 'productWeight':
-      return formatWhole(productTotals.value.productWeight)
+      return formatWhole(productTotals.value.productWeight);
     case 'packageWeight':
-      return formatWhole(productTotals.value.packageWeight)
+      return formatWhole(productTotals.value.packageWeight);
     case 'quantity':
-      return formatWhole(productTotals.value.quantity)
+      return formatWhole(productTotals.value.quantity);
     default:
-      return ''
+      return '';
   }
-}
+};
 
 const getProductTotalsCellClass = (columnName: string) =>
-  columnName === 'priceInWebGbp' ? 'costing-page__tone-indigo' : ''
+  columnName === 'priceInWebGbp' ? 'costing-page__tone-indigo' : '';
 
 const statusChipStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 const statusDotColor = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
 
-const toExternalUrl = (value: string) =>
-  /^https?:\/\//i.test(value) ? value : `https://${value}`
+const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
 const loadFile = async () => {
-  const fileId = Number(route.params.id)
+  const fileId = Number(route.params.id);
 
   if (!Number.isFinite(fileId) || fileId <= 0) {
-    await router.replace({ name: 'staff-costing-file-page' })
-    return
+    await router.replace({ name: 'staff-costing-file-page' });
+    return;
   }
 
-  costingFileStore.clearSelectedItem()
+  costingFileStore.clearSelectedItem();
 
-  const result = await costingFileStore.fetchCostingFileWithItems(fileId)
+  const result = await costingFileStore.fetchCostingFileWithItems(fileId);
 
   if (!result.success || !result.data) {
-    await router.replace({ name: 'staff-costing-file-page' })
-    return
+    await router.replace({ name: 'staff-costing-file-page' });
+    return;
   }
 
   if (!editableStatuses.includes(result.data.status)) {
-    await router.replace({ name: 'staff-costing-file-page' })
+    await router.replace({ name: 'staff-costing-file-page' });
   }
-}
+};
 
 const openEditDialog = (itemId: number) => {
-  editingItemId.value = itemId
-  editDialogOpen.value = true
-}
+  editingItemId.value = itemId;
+  editDialogOpen.value = true;
+};
 
 const handleCreateItem = async (payload: {
-  websiteUrl: string
-  quantity: number
-  name: string
-  itemType: string | null
-  size: string | null
-  color: string | null
-  extraInformation1: string | null
-  extraInformation2: string | null
-  imageUrl: string
-  productWeight: number
-  packageWeight: number
-  priceInWebGbp: number
-  deliveryPriceGbp: number
+  websiteUrl: string;
+  quantity: number;
+  name: string;
+  itemType: string | null;
+  size: string | null;
+  color: string | null;
+  extraInformation1: string | null;
+  extraInformation2: string | null;
+  imageUrl: string;
+  productWeight: number;
+  packageWeight: number;
+  priceInWebGbp: number;
+  deliveryPriceGbp: number;
 }) => {
   if (!selectedFile.value || !canEditFile.value) {
-    return
+    return;
   }
 
-  creatingItem.value = true
+  creatingItem.value = true;
   try {
     const result = await costingFileStore.createCostingFileItem({
       costingFileId: selectedFile.value.id,
@@ -526,31 +599,31 @@ const handleCreateItem = async (payload: {
       priceInWebGbp: payload.priceInWebGbp,
       deliveryPriceGbp: payload.deliveryPriceGbp,
       status: 'pending',
-    })
+    });
 
     if (result.success) {
-      addItemDialogOpen.value = false
+      addItemDialogOpen.value = false;
     }
   } finally {
-    creatingItem.value = false
+    creatingItem.value = false;
   }
-}
+};
 
 const handleSaveItem = async (payload: {
-  id: number
-  name: string
-  itemType: string | null
-  imageUrl: string
-  productWeight: number
-  packageWeight: number
-  priceInWebGbp: number
-  deliveryPriceGbp: number
+  id: number;
+  name: string;
+  itemType: string | null;
+  imageUrl: string;
+  productWeight: number;
+  packageWeight: number;
+  priceInWebGbp: number;
+  deliveryPriceGbp: number;
 }) => {
   if (!selectedFile.value || !canEditFile.value) {
-    return
+    return;
   }
 
-  savingItemId.value = payload.id
+  savingItemId.value = payload.id;
   try {
     const result = await costingFileStore.updateCostingFileItemEnrichment({
       id: payload.id,
@@ -561,56 +634,56 @@ const handleSaveItem = async (payload: {
       packageWeight: payload.packageWeight,
       priceInWebGbp: payload.priceInWebGbp,
       deliveryPriceGbp: payload.deliveryPriceGbp,
-    })
+    });
 
     if (result.success) {
-      editDialogOpen.value = false
+      editDialogOpen.value = false;
     }
   } finally {
-    savingItemId.value = null
+    savingItemId.value = null;
   }
-}
+};
 
 const handleSendToReview = async () => {
   if (!selectedFile.value || !canSendToReview.value) {
-    return
+    return;
   }
 
-  savingStatus.value = true
+  savingStatus.value = true;
   try {
     const result = await costingFileStore.updateCostingFileStatus({
       id: selectedFile.value.id,
       status: 'in_review',
-    })
+    });
 
     if (result.success) {
-      await router.replace({ name: 'staff-costing-file-page' })
+      await router.replace({ name: 'staff-costing-file-page' });
     }
   } finally {
-    savingStatus.value = false
+    savingStatus.value = false;
   }
-}
+};
 
 watch(
   () => route.params.id,
   async () => {
     try {
-      addItemDialogOpen.value = false
-      editDialogOpen.value = false
-      editingItemId.value = null
-      await loadFile()
+      addItemDialogOpen.value = false;
+      editDialogOpen.value = false;
+      editingItemId.value = null;
+      await loadFile();
     } finally {
-      initialLoading.value = false
+      initialLoading.value = false;
     }
   },
   { immediate: true },
-)
+);
 
 watch(editDialogOpen, (isOpen) => {
   if (!isOpen) {
-    editingItemId.value = null
+    editingItemId.value = null;
   }
-})
+});
 </script>
 
 <style scoped>

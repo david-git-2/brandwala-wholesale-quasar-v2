@@ -5,21 +5,15 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-auto">
-            <q-btn
-              flat
-              round
-              dense
-              icon="arrow_back"
-              color="primary"
-              @click="goBack"
-            />
+            <q-btn flat round dense icon="arrow_back" color="primary" @click="goBack" />
           </div>
           <div class="col">
             <div class="text-h6 text-weight-bold">
               Grants Matrix: {{ role?.name || 'Loading...' }}
             </div>
             <div class="text-caption text-grey-8">
-              Configure fine-grained module × action access rights. Platform-scoped controls are hidden.
+              Configure fine-grained module × action access rights. Platform-scoped controls are
+              hidden.
             </div>
           </div>
         </div>
@@ -66,7 +60,11 @@
                     :disable="savingMap[mod.moduleKey + ':' + act.action]"
                     @update:model-value="(val) => toggleGrant(mod.moduleKey, act.action, val)"
                   >
-                    <q-spinner v-if="savingMap[mod.moduleKey + ':' + act.action]" size="xs" color="positive" />
+                    <q-spinner
+                      v-if="savingMap[mod.moduleKey + ':' + act.action]"
+                      size="xs"
+                      color="positive"
+                    />
                   </q-toggle>
                 </q-item-section>
               </q-item>
@@ -79,50 +77,49 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { showSuccessNotification } from 'src/utils/appFeedback'
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { showSuccessNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{
-  id: number
-}>()
+  id: number;
+}>();
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const role = ref<any>(null)
-const grants = ref<any[]>([])
-const moduleActions = ref<any[]>([])
-const loading = ref(false)
-const pageError = ref<string | null>(null)
+const role = ref<any>(null);
+const grants = ref<any[]>([]);
+const moduleActions = ref<any[]>([]);
+const loading = ref(false);
+const pageError = ref<string | null>(null);
 
 // Track individual toggles currently saving to DB
-const savingMap = ref<Record<string, boolean>>({})
+const savingMap = ref<Record<string, boolean>>({});
 
 const loadData = async () => {
-  loading.value = true
-  pageError.value = null
+  loading.value = true;
+  pageError.value = null;
 
   try {
     // 1. Fetch role details
-    const { data: roleData, error: roleError } = await supabase.rpc(
-      'get_tenant_role_detail',
-      { p_role_id: props.id }
-    )
+    const { data: roleData, error: roleError } = await supabase.rpc('get_tenant_role_detail', {
+      p_role_id: props.id,
+    });
 
     if (roleError) {
-      pageError.value = roleError.message
-      return
+      pageError.value = roleError.message;
+      return;
     }
 
-    role.value = roleData
+    role.value = roleData;
 
-    const tenantId = authStore.tenantId
+    const tenantId = authStore.tenantId;
     if (!tenantId) {
-      pageError.value = 'Tenant context is required.'
-      return
+      pageError.value = 'Tenant context is required.';
+      return;
     }
 
     const { data: actionsData, error: actionsError } = await supabase.rpc(
@@ -131,67 +128,64 @@ const loadData = async () => {
         p_scope: roleData.scope,
         p_tenant_id: tenantId,
       },
-    )
+    );
 
     if (actionsError) {
-      pageError.value = actionsError.message
-      return
+      pageError.value = actionsError.message;
+      return;
     }
 
-    moduleActions.value = actionsData || []
+    moduleActions.value = actionsData || [];
 
     // 3. Fetch existing role grants
-    const { data: grantsData, error: grantsError } = await supabase.rpc(
-      'list_tenant_role_grants',
-      { p_tenant_role_id: props.id }
-    )
+    const { data: grantsData, error: grantsError } = await supabase.rpc('list_tenant_role_grants', {
+      p_tenant_role_id: props.id,
+    });
 
     if (grantsError) {
-      pageError.value = grantsError.message
-      return
+      pageError.value = grantsError.message;
+      return;
     }
 
-    grants.value = grantsData || []
+    grants.value = grantsData || [];
   } catch (err: any) {
-    pageError.value = err.message || 'Failed to load grants data'
+    pageError.value = err.message || 'Failed to load grants data';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Group active configurable module actions by module key
 const groupedActions = computed(() => {
-  const activeModuleKeys = authStore.activeModuleKeys
+  const activeModuleKeys = authStore.activeModuleKeys;
   // Only display actions belonging to modules currently enabled for the tenant
   const activeActions = moduleActions.value.filter((action) =>
-    activeModuleKeys.includes(action.module_key)
-  )
+    activeModuleKeys.includes(action.module_key),
+  );
 
-  const groups: Record<string, any[]> = {}
+  const groups: Record<string, any[]> = {};
   activeActions.forEach((action) => {
-    const key = action.module_key
-    const arr = groups[key] || []
-    arr.push(action)
-    groups[key] = arr
-  })
+    const key = action.module_key;
+    const arr = groups[key] || [];
+    arr.push(action);
+    groups[key] = arr;
+  });
 
   return Object.keys(groups).map((moduleKey) => ({
     moduleKey,
     actions: groups[moduleKey],
-  }))
-})
+  }));
+});
 
 const isAllowed = (moduleKey: string, action: string): boolean => {
-  const grant = grants.value.find(
-    (g) => g.module_key === moduleKey && g.action === action
-  )
-  return grant ? Boolean(grant.allowed) : false
-}
+  const grant = grants.value.find((g) => g.module_key === moduleKey && g.action === action);
+  return grant ? Boolean(grant.allowed) : false;
+};
 
 const toggleGrant = async (moduleKey: string, action: string, allowed: boolean) => {
-  const key = `${moduleKey}:${action}`
-  savingMap.value[key] = true
-  pageError.value = null
+  const key = `${moduleKey}:${action}`;
+  savingMap.value[key] = true;
+  pageError.value = null;
 
   try {
     const { error } = await supabase.rpc('upsert_tenant_role_grant', {
@@ -199,56 +193,58 @@ const toggleGrant = async (moduleKey: string, action: string, allowed: boolean) 
       p_module_key: moduleKey,
       p_action: action,
       p_allowed: allowed,
-    })
+    });
 
     if (error) {
-      pageError.value = error.message
-      return
+      pageError.value = error.message;
+      return;
     }
 
     // Update local state list
     const existingIndex = grants.value.findIndex(
-      (g) => g.module_key === moduleKey && g.action === action
-    )
+      (g) => g.module_key === moduleKey && g.action === action,
+    );
 
     if (existingIndex >= 0) {
       grants.value[existingIndex] = {
         ...grants.value[existingIndex],
         allowed,
-      }
+      };
     } else {
       grants.value.push({
         tenant_role_id: props.id,
         module_key: moduleKey,
         action,
         allowed,
-      })
+      });
     }
 
-    showSuccessNotification(`Grant rules updated for ${formatModuleKey(moduleKey)}: ${action}`)
+    showSuccessNotification(`Grant rules updated for ${formatModuleKey(moduleKey)}: ${action}`);
   } catch (err: any) {
-    pageError.value = err.message || 'Failed to update grant rule'
+    pageError.value = err.message || 'Failed to update grant rule';
   } finally {
-    savingMap.value[key] = false
+    savingMap.value[key] = false;
   }
-}
+};
 
 const formatModuleKey = (key: string): string => {
   return key
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
+    .join(' ');
+};
 
 const goBack = () => {
-  const tenantSlug = authStore.tenantSlug
-  const backRoute = tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
-  void router.push(backRoute)
-}
+  const tenantSlug = authStore.tenantSlug;
+  const backRoute = tenantSlug
+    ? `/${tenantSlug}/app/access-control/roles`
+    : '/app/access-control/roles';
+  void router.push(backRoute);
+};
 
 onMounted(() => {
-  void loadData()
-})
+  void loadData();
+});
 </script>
 
 <style scoped>

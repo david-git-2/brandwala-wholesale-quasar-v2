@@ -6,7 +6,10 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
             <div class="text-h6 text-weight-bold">Recipient Profiles</div>
-            <div class="text-caption text-grey-8">Manage saved delivery addresses and end-customer profiles for retail and dropship invoices</div>
+            <div class="text-caption text-grey-8">
+              Manage saved delivery addresses and end-customer profiles for retail and dropship
+              invoices
+            </div>
           </div>
           <div class="col-auto">
             <q-btn
@@ -127,9 +130,11 @@
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="min-width: 420px; border-radius: 16px;">
+      <q-card style="min-width: 420px; border-radius: 16px">
         <q-card-section class="q-pb-none">
-          <div class="text-h6 text-weight-bold">{{ isEditMode ? 'Edit Recipient Profile' : 'Create Recipient Profile' }}</div>
+          <div class="text-h6 text-weight-bold">
+            {{ isEditMode ? 'Edit Recipient Profile' : 'Create Recipient Profile' }}
+          </div>
           <div class="text-caption text-grey-6">Fill in the delivery details below</div>
         </q-card-section>
 
@@ -142,7 +147,7 @@
               dense
               class="soft-input"
               lazy-rules
-              :rules="[ val => val && val.trim().length > 0 || 'Name is required' ]"
+              :rules="[(val) => (val && val.trim().length > 0) || 'Name is required']"
             />
             <q-input
               v-model="form.phone"
@@ -151,7 +156,7 @@
               dense
               class="soft-input"
               lazy-rules
-              :rules="[ val => val && val.trim().length > 0 || 'Phone is required' ]"
+              :rules="[(val) => (val && val.trim().length > 0) || 'Phone is required']"
             />
             <q-input
               v-model="form.address"
@@ -161,7 +166,7 @@
               rows="3"
               class="soft-input"
               lazy-rules
-              :rules="[ val => val && val.trim().length > 0 || 'Address is required' ]"
+              :rules="[(val) => (val && val.trim().length > 0) || 'Address is required']"
             />
           </q-card-section>
 
@@ -182,14 +187,22 @@
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="deleteOpen">
-      <q-card style="min-width: 320px; border-radius: 16px;">
+      <q-card style="min-width: 320px; border-radius: 16px">
         <q-card-section class="text-h6 text-weight-bold">Delete Recipient Profile</q-card-section>
         <q-card-section class="text-body2 text-grey-7">
-          Are you sure you want to delete this recipient profile? Invoices currently using this profile will not be deleted, but the profile will be removed from the catalog.
+          Are you sure you want to delete this recipient profile? Invoices currently using this
+          profile will not be deleted, but the profile will be removed from the catalog.
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat no-caps label="Cancel" v-close-popup class="pill-btn" />
-          <q-btn color="negative" no-caps label="Delete" :loading="store.saving" @click="onDelete" class="pill-btn" />
+          <q-btn
+            color="negative"
+            no-caps
+            label="Delete"
+            :loading="store.saving"
+            @click="onDelete"
+            class="pill-btn"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -197,109 +210,109 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, reactive } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useRecipientProfileStore } from '../stores/recipientProfileStore'
-import type { RecipientProfile } from 'src/types/recipientProfile'
+import { computed, onMounted, ref, reactive } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useRecipientProfileStore } from '../stores/recipientProfileStore';
+import type { RecipientProfile } from 'src/types/recipientProfile';
 
-const authStore = useAuthStore()
-const store = useRecipientProfileStore()
+const authStore = useAuthStore();
+const store = useRecipientProfileStore();
 
-const showSearchInput = ref(false)
-const searchText = ref('')
-const dialogOpen = ref(false)
-const isEditMode = ref(false)
-const deleteOpen = ref(false)
-const selectedId = ref<number | null>(null)
+const showSearchInput = ref(false);
+const searchText = ref('');
+const dialogOpen = ref(false);
+const isEditMode = ref(false);
+const deleteOpen = ref(false);
+const selectedId = ref<number | null>(null);
 
 const form = reactive({
   name: '',
   phone: '',
-  address: ''
-})
+  address: '',
+});
 
 const filteredItems = computed(() => {
-  const search = searchText.value.trim().toLowerCase()
-  if (!search) return store.items
+  const search = searchText.value.trim().toLowerCase();
+  if (!search) return store.items;
   return store.items.filter((row) =>
-    [row.name, row.phone, row.address].some((val) => val.toLowerCase().includes(search))
-  )
-})
+    [row.name, row.phone, row.address].some((val) => val.toLowerCase().includes(search)),
+  );
+});
 
 const load = async () => {
-  if (!authStore.tenantId) return
-  await store.fetchRecipientProfiles(authStore.tenantId)
-}
+  if (!authStore.tenantId) return;
+  await store.fetchRecipientProfiles(authStore.tenantId);
+};
 
 const openCreateDialog = () => {
-  isEditMode.value = false
-  form.name = ''
-  form.phone = ''
-  form.address = ''
-  dialogOpen.value = true
-}
+  isEditMode.value = false;
+  form.name = '';
+  form.phone = '';
+  form.address = '';
+  dialogOpen.value = true;
+};
 
 const onOpenEdit = (row: RecipientProfile) => {
-  isEditMode.value = true
-  selectedId.value = row.id
-  form.name = row.name
-  form.phone = row.phone
-  form.address = row.address
-  dialogOpen.value = true
-}
+  isEditMode.value = true;
+  selectedId.value = row.id;
+  form.name = row.name;
+  form.phone = row.phone;
+  form.address = row.address;
+  dialogOpen.value = true;
+};
 
 const onOpenDelete = (id: number) => {
-  selectedId.value = id
-  deleteOpen.value = true
-}
+  selectedId.value = id;
+  deleteOpen.value = true;
+};
 
 const onFormSubmit = async () => {
-  if (!authStore.tenantId) return
-  
+  if (!authStore.tenantId) return;
+
   if (isEditMode.value && selectedId.value) {
     const res = await store.updateRecipientProfile({
       id: selectedId.value,
       patch: {
         name: form.name.trim(),
         phone: form.phone.trim(),
-        address: form.address.trim()
-      }
-    })
+        address: form.address.trim(),
+      },
+    });
     if (res.success) {
-      dialogOpen.value = false
+      dialogOpen.value = false;
     }
   } else {
     const res = await store.createRecipientProfile({
       tenant_id: authStore.tenantId,
       name: form.name.trim(),
       phone: form.phone.trim(),
-      address: form.address.trim()
-    })
+      address: form.address.trim(),
+    });
     if (res.success) {
-      dialogOpen.value = false
+      dialogOpen.value = false;
     }
   }
-}
+};
 
 const onDelete = async () => {
-  if (!selectedId.value) return
-  const res = await store.deleteRecipientProfile(selectedId.value)
+  if (!selectedId.value) return;
+  const res = await store.deleteRecipientProfile(selectedId.value);
   if (res.success) {
-    deleteOpen.value = false
-    selectedId.value = null
+    deleteOpen.value = false;
+    selectedId.value = null;
   }
-}
+};
 
 const onClearSearch = () => {
-  searchText.value = ''
-}
+  searchText.value = '';
+};
 
 const onCloseSearch = () => {
-  showSearchInput.value = false
-  searchText.value = ''
-}
+  showSearchInput.value = false;
+  searchText.value = '';
+};
 
-onMounted(load)
+onMounted(load);
 </script>
 
 <style scoped>
@@ -345,7 +358,9 @@ onMounted(load)
   background-color: rgba(34, 56, 101, 0.02);
 }
 .hover-elevate {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .hover-elevate:hover {
   transform: translateY(-1px);

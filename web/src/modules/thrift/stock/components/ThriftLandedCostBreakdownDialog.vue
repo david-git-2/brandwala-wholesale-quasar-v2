@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card style="width: 580px; max-width: 95vw;" class="floating-surface shadow-2">
+    <q-card style="width: 580px; max-width: 95vw" class="floating-surface shadow-2">
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div>
           <div class="text-h6 text-weight-bold">Landed cost breakdown</div>
@@ -25,12 +25,14 @@
                 = {{ formatMoney(originTotal) }}
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
-                × product conversion {{ d.product_conversion_rate }}
-                = {{ formatMoney(breakdown.product_unit_cost) }}
+                × product conversion {{ d.product_conversion_rate }} =
+                {{ formatMoney(breakdown.product_unit_cost) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-item-label class="text-weight-bold">{{ formatMoney(breakdown.product_unit_cost) }}</q-item-label>
+              <q-item-label class="text-weight-bold">{{
+                formatMoney(breakdown.product_unit_cost)
+              }}</q-item-label>
             </q-item-section>
           </q-item>
 
@@ -43,9 +45,8 @@
                 Cargo bill (shipment)
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
-                Invoice weight {{ formatKg(d.total_cargo_weight_kg) }}
-                × cargo rate {{ formatMoney(d.cargo_rate) }}/kg
-                × cargo conv. {{ d.cargo_conversion_rate }}
+                Invoice weight {{ formatKg(d.total_cargo_weight_kg) }} × cargo rate
+                {{ formatMoney(d.cargo_rate) }}/kg × cargo conv. {{ d.cargo_conversion_rate }}
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
                 = cargo total {{ formatMoney(breakdown.shipment_cargo_cost) }}
@@ -57,38 +58,47 @@
               <template v-if="breakdown.uses_weight_based_cargo">
                 <q-item-label caption class="breakdown-detail">
                   Product weight {{ formatGrams(d.product_weight_g) }}
-                  <template v-if="d.extra_weight_g > 0">+ extra {{ formatGrams(d.extra_weight_g) }}</template>
+                  <template v-if="d.extra_weight_g > 0"
+                    >+ extra {{ formatGrams(d.extra_weight_g) }}</template
+                  >
                   = {{ formatGrams(d.product_weight_g + d.extra_weight_g) }} per unit
                 </q-item-label>
                 <q-item-label caption class="breakdown-detail">
-                  {{ formatKg(d.unit_weight_kg) }} × qty {{ d.quantity }}
-                  = line weight {{ formatKg(breakdown.line_weight_kg) }}
+                  {{ formatKg(d.unit_weight_kg) }} × qty {{ d.quantity }} = line weight
+                  {{ formatKg(breakdown.line_weight_kg) }}
                 </q-item-label>
                 <q-item-label caption class="breakdown-detail">
-                  {{ formatKg(breakdown.line_weight_kg) }} of {{ formatKg(breakdown.shipment_total_weight_kg) }} item weights
-                  ({{ formatPct(d.cargo_weight_share_pct) }})
+                  {{ formatKg(breakdown.line_weight_kg) }} of
+                  {{ formatKg(breakdown.shipment_total_weight_kg) }} item weights ({{
+                    formatPct(d.cargo_weight_share_pct)
+                  }})
                 </q-item-label>
                 <q-item-label caption class="breakdown-detail">
-                  × cargo total {{ formatMoney(breakdown.shipment_cargo_cost) }}
-                  = line allocation {{ formatMoney(d.cargo_line_allocation) }}
+                  × cargo total {{ formatMoney(breakdown.shipment_cargo_cost) }} = line allocation
+                  {{ formatMoney(d.cargo_line_allocation) }}
                 </q-item-label>
                 <q-item-label caption class="breakdown-detail">
-                  ÷ qty {{ d.quantity || 1 }}
-                  = {{ formatMoney(breakdown.cargo_share_per_unit) }} per unit
+                  ÷ qty {{ d.quantity || 1 }} =
+                  {{ formatMoney(breakdown.cargo_share_per_unit) }} per unit
                 </q-item-label>
               </template>
               <template v-else>
                 <q-item-label caption class="breakdown-detail text-grey-7">
-                  No item weights — equal split: cargo total ÷ U ({{ breakdown.shipment_unit_count }})
+                  No item weights — equal split: cargo total ÷ U ({{
+                    breakdown.shipment_unit_count
+                  }})
                 </q-item-label>
                 <q-item-label caption class="breakdown-detail">
-                  {{ formatMoney(breakdown.shipment_cargo_cost) }} ÷ {{ breakdown.shipment_unit_count }}
-                  = {{ formatMoney(breakdown.cargo_share_per_unit) }} per unit
+                  {{ formatMoney(breakdown.shipment_cargo_cost) }} ÷
+                  {{ breakdown.shipment_unit_count }} =
+                  {{ formatMoney(breakdown.cargo_share_per_unit) }} per unit
                 </q-item-label>
               </template>
             </q-item-section>
             <q-item-section side>
-              <q-item-label class="text-weight-bold">{{ formatMoney(breakdown.cargo_share_per_unit) }}</q-item-label>
+              <q-item-label class="text-weight-bold">{{
+                formatMoney(breakdown.cargo_share_per_unit)
+              }}</q-item-label>
             </q-item-section>
           </q-item>
 
@@ -97,26 +107,30 @@
             <q-item-section>
               <q-item-label class="text-weight-medium">Ops share (per unit)</q-item-label>
               <q-item-label caption class="breakdown-detail">
-                Hand tags {{ formatMoney(d.hand_tag_unit_cost) }} × U ({{ breakdown.shipment_unit_count }})
-                = {{ formatMoney(d.hand_tags_total) }}
+                Hand tags {{ formatMoney(d.hand_tag_unit_cost) }} × U ({{
+                  breakdown.shipment_unit_count
+                }}) = {{ formatMoney(d.hand_tags_total) }}
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
-                Stickers {{ formatMoney(d.sticker_unit_cost) }} × U ({{ breakdown.shipment_unit_count }})
-                = {{ formatMoney(d.stickers_total) }}
+                Stickers {{ formatMoney(d.sticker_unit_cost) }} × U ({{
+                  breakdown.shipment_unit_count
+                }}) = {{ formatMoney(d.stickers_total) }}
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
-                Labor {{ formatMoney(d.labor_total_cost) }}
-                + transport {{ formatMoney(d.transportation_total_cost) }}
-                + washing {{ formatMoney(d.washing_total_cost) }}
+                Labor {{ formatMoney(d.labor_total_cost) }} + transport
+                {{ formatMoney(d.transportation_total_cost) }} + washing
+                {{ formatMoney(d.washing_total_cost) }}
               </q-item-label>
               <q-item-label caption class="breakdown-detail">
-                = ops total {{ formatMoney(breakdown.shipment_ops_cost) }}
-                ÷ U ({{ breakdown.shipment_unit_count }})
-                = {{ formatMoney(breakdown.ops_share_per_unit) }} per unit
+                = ops total {{ formatMoney(breakdown.shipment_ops_cost) }} ÷ U ({{
+                  breakdown.shipment_unit_count
+                }}) = {{ formatMoney(breakdown.ops_share_per_unit) }} per unit
               </q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-item-label class="text-weight-bold">{{ formatMoney(breakdown.ops_share_per_unit) }}</q-item-label>
+              <q-item-label class="text-weight-bold">{{
+                formatMoney(breakdown.ops_share_per_unit)
+              }}</q-item-label>
             </q-item-section>
           </q-item>
 
@@ -124,10 +138,14 @@
           <q-item>
             <q-item-section>
               <q-item-label class="text-weight-medium">Additional charges</q-item-label>
-              <q-item-label caption class="breakdown-detail">Per-item extra cost (cost currency)</q-item-label>
+              <q-item-label caption class="breakdown-detail"
+                >Per-item extra cost (cost currency)</q-item-label
+              >
             </q-item-section>
             <q-item-section side>
-              <q-item-label class="text-weight-bold">{{ formatMoney(breakdown.additional_charges_cost) }}</q-item-label>
+              <q-item-label class="text-weight-bold">{{
+                formatMoney(breakdown.additional_charges_cost)
+              }}</q-item-label>
             </q-item-section>
           </q-item>
 
@@ -137,10 +155,10 @@
               <q-item-label class="text-weight-bold text-teal-10">Landed unit cost</q-item-label>
               <q-item-label caption class="breakdown-detail text-teal-9">
                 {{ formatMoney(breakdown.product_unit_cost) }}
-                + {{ formatMoney(breakdown.cargo_share_per_unit) }}
-                + {{ formatMoney(breakdown.ops_share_per_unit) }}
-                + {{ formatMoney(breakdown.additional_charges_cost) }}
-                = {{ formatMoney(breakdown.landed_unit_cost) }}
+                + {{ formatMoney(breakdown.cargo_share_per_unit) }} +
+                {{ formatMoney(breakdown.ops_share_per_unit) }} +
+                {{ formatMoney(breakdown.additional_charges_cost) }} =
+                {{ formatMoney(breakdown.landed_unit_cost) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side>

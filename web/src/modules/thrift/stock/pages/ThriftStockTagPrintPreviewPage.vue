@@ -1,7 +1,9 @@
 <template>
   <q-page class="q-pa-md preview-canvas">
     <div class="preview-page__shell a4-sheet">
-      <div class="preview-page__actions q-mb-md no-print row justify-between items-center q-col-gutter-sm">
+      <div
+        class="preview-page__actions q-mb-md no-print row justify-between items-center q-col-gutter-sm"
+      >
         <div class="col-auto">
           <q-btn
             flat
@@ -60,11 +62,7 @@
             />
           </div>
           <div class="tag-grid">
-            <div
-              v-for="(sticker, idx) in pageStickers"
-              :key="`${pageIdx}-${idx}`"
-              class="tag-cell"
-            >
+            <div v-for="(sticker, idx) in pageStickers" :key="`${pageIdx}-${idx}`" class="tag-cell">
               <StockMarketingTag
                 :stock="sticker.stock"
                 :tag-config="sticker.tagConfig"

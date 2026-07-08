@@ -1,10 +1,8 @@
 <template>
   <q-dialog ref="dialogRef" persistent @hide="onDialogHide">
-    <q-card class="q-dialog-plugin" style="min-width: 350px; border-radius: 12px;">
+    <q-card class="q-dialog-plugin" style="min-width: 350px; border-radius: 12px">
       <q-card-section class="q-pb-none">
-        <div class="text-subtitle1 text-weight-bold text-grey-9">
-          Download images
-        </div>
+        <div class="text-subtitle1 text-weight-bold text-grey-9">Download images</div>
         <div class="text-caption text-grey-7">
           {{ shipmentName }}
         </div>
@@ -46,8 +44,13 @@
             <div class="text-caption text-weight-bold text-red-7 q-mb-xs">
               Failed items ({{ errors.length }}):
             </div>
-            <q-scroll-area style="height: 100px;" class="bg-grey-1 rounded-borders q-pa-xs">
-              <div v-for="(err, idx) in errors" :key="idx" class="text-caption text-grey-8" style="font-size: 11px;">
+            <q-scroll-area style="height: 100px" class="bg-grey-1 rounded-borders q-pa-xs">
+              <div
+                v-for="(err, idx) in errors"
+                :key="idx"
+                class="text-caption text-grey-8"
+                style="font-size: 11px"
+              >
                 Barcode: {{ err.barcode }} - {{ err.message }}
               </div>
             </q-scroll-area>
@@ -70,12 +73,7 @@
           v-if="phase !== 'done' && phase !== 'cancelled'"
           @click="cancelDownload"
         />
-        <q-btn
-          color="primary"
-          label="Close"
-          v-else
-          @click="closeDialog"
-        />
+        <q-btn color="primary" label="Close" v-else @click="closeDialog" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -95,9 +93,7 @@ const props = defineProps<{
   shipmentName: string;
 }>();
 
-defineEmits([
-  ...useDialogPluginComponent.emits,
-]);
+defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const $q = useQuasar();

@@ -4,14 +4,7 @@
       <q-card-section class="text-h6">Create Billing Profile</q-card-section>
 
       <q-card-section class="column q-gutter-sm">
-        <q-input
-          v-model="form.name"
-          outlined
-          dense
-          label="Name *"
-          :rules="nameRules"
-          lazy-rules
-        />
+        <q-input v-model="form.name" outlined dense label="Name *" :rules="nameRules" lazy-rules />
 
         <q-select
           v-model="form.customerGroupId"
@@ -82,23 +75,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, onMounted } from 'vue'
-import { showWarningDialog } from 'src/utils/appFeedback'
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
-import type { CreateBillingProfileInput } from '../repositories/billingProfileRepository'
+import { computed, reactive, watch, onMounted } from 'vue';
+import { showWarningDialog } from 'src/utils/appFeedback';
+import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
+import type { CreateBillingProfileInput } from '../repositories/billingProfileRepository';
 
 const props = defineProps<{
-  modelValue: boolean
-  tenantId: number | null
-  saving?: boolean
-}>()
+  modelValue: boolean;
+  tenantId: number | null;
+  saving?: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'submit', payload: CreateBillingProfileInput): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'submit', payload: CreateBillingProfileInput): void;
+}>();
 
-const customerGroupStore = useCustomerGroupStore()
+const customerGroupStore = useCustomerGroupStore();
 
 const form = reactive({
   name: '',
@@ -107,7 +100,7 @@ const form = reactive({
   color: '',
   phone: '',
   address: '',
-})
+});
 
 const colorPresets = [
   '#B45F34', // Orange/Brown
@@ -119,7 +112,7 @@ const colorPresets = [
   '#2E7D32', // Green
   '#C62828', // Red
   '#1565C0', // Blue
-] as const
+] as const;
 
 const customerGroupOptions = computed(() => {
   const activeGroups = customerGroupStore.groups
@@ -127,67 +120,64 @@ const customerGroupOptions = computed(() => {
     .map((g) => ({
       label: g.name,
       value: g.id,
-    }))
-  return [
-    { label: 'Others (None)', value: null },
-    ...activeGroups,
-  ]
-})
+    }));
+  return [{ label: 'Others (None)', value: null }, ...activeGroups];
+});
 
-const nameRules = [(value: string) => (value?.trim()?.length ? true : 'Name is required')]
+const nameRules = [(value: string) => (value?.trim()?.length ? true : 'Name is required')];
 
 const loadCustomerGroups = () => {
   if (props.tenantId) {
-    void customerGroupStore.fetchCustomerGroupsByTenant(props.tenantId)
+    void customerGroupStore.fetchCustomerGroupsByTenant(props.tenantId);
   }
-}
+};
 
-onMounted(loadCustomerGroups)
+onMounted(loadCustomerGroups);
 
 watch(
   () => props.tenantId,
   (newTenantId) => {
     if (newTenantId) {
-      loadCustomerGroups()
+      loadCustomerGroups();
     }
-  }
-)
+  },
+);
 
 const reset = () => {
-  form.name = ''
-  form.email = ''
-  form.customerGroupId = null
-  form.color = ''
-  form.phone = ''
-  form.address = ''
-}
+  form.name = '';
+  form.email = '';
+  form.customerGroupId = null;
+  form.color = '';
+  form.phone = '';
+  form.address = '';
+};
 
 watch(
   () => props.modelValue,
   (isOpen) => {
     if (!isOpen) {
-      reset()
+      reset();
     } else {
-      loadCustomerGroups()
+      loadCustomerGroups();
     }
-  }
-)
+  },
+);
 
 const onDialogToggle = (next: boolean) => {
-  emit('update:modelValue', next)
-  if (!next) reset()
-}
+  emit('update:modelValue', next);
+  if (!next) reset();
+};
 
 const onSubmit = () => {
-  const tenantId = props.tenantId
+  const tenantId = props.tenantId;
   if (!tenantId) {
-    showWarningDialog('Tenant is missing.')
-    return
+    showWarningDialog('Tenant is missing.');
+    return;
   }
 
   if (!form.name.trim()) {
-    showWarningDialog('Name is required.')
-    return
+    showWarningDialog('Name is required.');
+    return;
   }
 
   emit('submit', {
@@ -198,8 +188,8 @@ const onSubmit = () => {
     color: form.color.trim() || null,
     phone: form.phone.trim() || null,
     address: form.address.trim() || null,
-  })
-}
+  });
+};
 </script>
 
 <style scoped>

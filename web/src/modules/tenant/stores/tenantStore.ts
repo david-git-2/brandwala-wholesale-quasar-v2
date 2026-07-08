@@ -1,72 +1,66 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import {
-  handleApiFailure,
-  showSuccessNotification,
-} from 'src/utils/appFeedback'
-import { tenantService } from '../services/tenantService'
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { tenantService } from '../services/tenantService';
 import type {
   Tenant,
   TenantCreateInput,
   TenantDeleteInput,
   TenantStoreState,
   TenantUpdateInput,
-} from '../types'
+} from '../types';
 
 type StoredTenantWorkspace = {
-  schemaVersion: 1
-  availableAdminTenants: Tenant[]
-  selectedTenantId: Tenant['id'] | null
-  selectedTenantSlug: Tenant['slug'] | null
-}
+  schemaVersion: 1;
+  availableAdminTenants: Tenant[];
+  selectedTenantId: Tenant['id'] | null;
+  selectedTenantSlug: Tenant['slug'] | null;
+};
 
-const STORAGE_KEY = 'brandwala.tenant.workspace.v1'
+const STORAGE_KEY = 'brandwala.tenant.workspace.v1';
 
 const readStorage = (): StoredTenantWorkspace | null => {
   if (typeof window === 'undefined') {
-    return null
+    return null;
   }
 
-  const rawValue = window.localStorage.getItem(STORAGE_KEY)
+  const rawValue = window.localStorage.getItem(STORAGE_KEY);
 
   if (!rawValue) {
-    return null
+    return null;
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Partial<StoredTenantWorkspace>
+    const parsed = JSON.parse(rawValue) as Partial<StoredTenantWorkspace>;
 
-    if (
-      parsed?.schemaVersion !== 1 ||
-      !Array.isArray(parsed.availableAdminTenants)
-    ) {
-      return null
+    if (parsed?.schemaVersion !== 1 || !Array.isArray(parsed.availableAdminTenants)) {
+      return null;
     }
 
-    return parsed as StoredTenantWorkspace
+    return parsed as StoredTenantWorkspace;
   } catch {
-    return null
+    return null;
   }
-}
+};
 
 const writeStorage = (value: StoredTenantWorkspace | null) => {
   if (typeof window === 'undefined') {
-    return
+    return;
   }
 
   if (!value) {
-    window.localStorage.removeItem(STORAGE_KEY)
-    return
+    window.localStorage.removeItem(STORAGE_KEY);
+    return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-}
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+};
 
 export const clearTenantWorkspaceStorage = () => {
-  writeStorage(null)
-}
+  writeStorage(null);
+};
 
-const storedWorkspace = readStorage()
+const storedWorkspace = readStorage();
 
 export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
@@ -80,17 +74,17 @@ export const useTenantStore = defineStore('tenant', {
 
   getters: {
     selectedTenant(state): Tenant | null {
-      const available = state.availableAdminTenants as Tenant[]
-      const items = state.items as Tenant[]
+      const available = state.availableAdminTenants as Tenant[];
+      const items = state.items as Tenant[];
 
       const fromAvailableTenants =
-        available.find((tenant) => tenant.id === state.selectedTenantId) ?? null
+        available.find((tenant) => tenant.id === state.selectedTenantId) ?? null;
 
       if (fromAvailableTenants) {
-        return fromAvailableTenants
+        return fromAvailableTenants;
       }
 
-      return items.find((tenant) => tenant.id === state.selectedTenantId) ?? null
+      return items.find((tenant) => tenant.id === state.selectedTenantId) ?? null;
     },
   },
 
@@ -101,245 +95,247 @@ export const useTenantStore = defineStore('tenant', {
         availableAdminTenants: this.availableAdminTenants,
         selectedTenantId: this.selectedTenantId,
         selectedTenantSlug: this.selectedTenantSlug,
-      })
+      });
     },
 
     syncSelectedTenant() {
       if (this.selectedTenantId === null) {
-        this.selectedTenantSlug = null
-        this.persistWorkspaceState()
-        return
+        this.selectedTenantSlug = null;
+        this.persistWorkspaceState();
+        return;
       }
 
-      const available = this.availableAdminTenants as Tenant[]
-      const items = this.items as Tenant[]
+      const available = this.availableAdminTenants as Tenant[];
+      const items = this.items as Tenant[];
 
       const selectedTenant =
         available.find((tenant) => tenant.id === this.selectedTenantId) ??
         items.find((tenant) => tenant.id === this.selectedTenantId) ??
-        null
+        null;
 
       if (!selectedTenant) {
-        this.selectedTenantId = null
-        this.selectedTenantSlug = null
-        this.persistWorkspaceState()
-        return
+        this.selectedTenantId = null;
+        this.selectedTenantSlug = null;
+        this.persistWorkspaceState();
+        return;
       }
 
-      this.selectedTenantSlug = selectedTenant.slug
-      this.persistWorkspaceState()
+      this.selectedTenantSlug = selectedTenant.slug;
+      this.persistWorkspaceState();
     },
 
     setAvailableAdminTenants(tenants: Tenant[]) {
-      this.availableAdminTenants = tenants
-      this.syncSelectedTenant()
+      this.availableAdminTenants = tenants;
+      this.syncSelectedTenant();
     },
 
     setSelectedTenant(tenant: { id: number; slug: string } | null) {
-      this.selectedTenantId = tenant?.id ?? null
-      this.selectedTenantSlug = tenant?.slug ?? null
-      this.persistWorkspaceState()
+      this.selectedTenantId = tenant?.id ?? null;
+      this.selectedTenantSlug = tenant?.slug ?? null;
+      this.persistWorkspaceState();
     },
 
     clearSelectedTenant() {
-      this.selectedTenantId = null
-      this.selectedTenantSlug = null
-      this.persistWorkspaceState()
+      this.selectedTenantId = null;
+      this.selectedTenantSlug = null;
+      this.persistWorkspaceState();
     },
 
     hydrateSelectedTenantFromAuth(tenant: { id: number; slug: string } | null) {
       if (!tenant) {
-        this.clearSelectedTenant()
-        return
+        this.clearSelectedTenant();
+        return;
       }
 
-      this.setSelectedTenant(tenant)
+      this.setSelectedTenant(tenant);
     },
 
     clearError() {
-      this.error = null
+      this.error = null;
     },
 
     /* ---------------- TENANTS ---------------- */
 
     async fetchTenants() {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.listTenants()
+        const result = await tenantService.listTenants();
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load tenants.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load tenants.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = result.data ?? []
-        this.setAvailableAdminTenants(this.items)
-        return result
+        this.items = result.data ?? [];
+        this.setAvailableAdminTenants(this.items);
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     async fetchAdminTenantsByEmail() {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.listAdminTenantsByEmail()
+        const result = await tenantService.listAdminTenantsByEmail();
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load tenants.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load tenants.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = result.data ?? []
-        this.setAvailableAdminTenants(this.items)
-        return result
+        this.items = result.data ?? [];
+        this.setAvailableAdminTenants(this.items);
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createTenant(tenant: TenantCreateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.createTenant(tenant)
+        const result = await tenantService.createTenant(tenant);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to create tenant.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to create tenant.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items.push(result.data!)
-        showSuccessNotification('Tenant created successfully.')
-        return result
+        this.items.push(result.data!);
+        showSuccessNotification('Tenant created successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async updateTenant(tenant: TenantUpdateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.updateTenant(tenant)
+        const result = await tenantService.updateTenant(tenant);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to update tenant.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to update tenant.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const updatedTenant = result.data!
-        const index = this.items.findIndex((item) => item.id === updatedTenant.id)
+        const updatedTenant = result.data!;
+        const index = this.items.findIndex((item) => item.id === updatedTenant.id);
 
         if (index >= 0) {
-          this.items.splice(index, 1, updatedTenant)
+          this.items.splice(index, 1, updatedTenant);
         }
 
-        showSuccessNotification('Tenant updated successfully.')
-        return result
+        showSuccessNotification('Tenant updated successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async deleteTenant(tenant: TenantDeleteInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.deleteTenant(tenant)
+        const result = await tenantService.deleteTenant(tenant);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to delete tenant.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to delete tenant.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = this.items.filter((item: Tenant) => item.id !== tenant.id)
-        showSuccessNotification('Tenant deleted successfully.')
-        return result
+        this.items = this.items.filter((item: Tenant) => item.id !== tenant.id);
+        showSuccessNotification('Tenant deleted successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     async fetchTenantsByMembership(payload?: {
-      tenantId?: number | null
-      email?: string | null
-      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
+      tenantId?: number | null;
+      email?: string | null;
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null;
     }) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.listTenantsByMembership(payload)
+        const result = await tenantService.listTenantsByMembership(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load tenants.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load tenants.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = result.data ?? []
-        this.setAvailableAdminTenants(this.items)
-        return result
+        this.items = result.data ?? [];
+        this.setAvailableAdminTenants(this.items);
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async fetchTenantDetailsByMembership(payload: {
-      tenantId: number
-      email?: string | null
-      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null
+      tenantId: number;
+      email?: string | null;
+      role?: 'superadmin' | 'admin' | 'staff' | 'viewer' | null;
     }) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.getTenantDetailsByMembership(payload)
+        const result = await tenantService.getTenantDetailsByMembership(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load tenant details.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load tenant details.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const tenant = result.data
+        const tenant = result.data;
 
         if (tenant) {
-          const index = this.items.findIndex((item) => item.id === tenant.id)
+          const index = this.items.findIndex((item) => item.id === tenant.id);
 
           if (index >= 0) {
-            this.items.splice(index, 1, tenant)
+            this.items.splice(index, 1, tenant);
           } else {
-            this.items.push(tenant)
+            this.items.push(tenant);
           }
 
-          const adminTenantIndex = this.availableAdminTenants.findIndex((item) => item.id === tenant.id)
+          const adminTenantIndex = this.availableAdminTenants.findIndex(
+            (item) => item.id === tenant.id,
+          );
 
           if (adminTenantIndex >= 0) {
-            this.availableAdminTenants.splice(adminTenantIndex, 1, tenant)
+            this.availableAdminTenants.splice(adminTenantIndex, 1, tenant);
           }
 
           if (this.selectedTenantId === tenant.id) {
-            this.selectedTenantSlug = tenant.slug
-            this.persistWorkspaceState()
+            this.selectedTenantSlug = tenant.slug;
+            this.persistWorkspaceState();
           }
         }
 
-        return result
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
   },
-})
+});

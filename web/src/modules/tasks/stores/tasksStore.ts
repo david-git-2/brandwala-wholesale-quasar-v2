@@ -95,7 +95,7 @@ export const useTasksStore = defineStore('tasks', {
         dateTo?: string | null;
       },
       page: number = 1,
-      pageSize: number = 20
+      pageSize: number = 20,
     ) {
       this.loading = true;
       this.error = null;
@@ -147,11 +147,11 @@ export const useTasksStore = defineStore('tasks', {
 
     async updateItem(id: number, updates: Partial<Item>) {
       try {
-        const oldItem = this.items.find(i => i.id === id);
+        const oldItem = this.items.find((i) => i.id === id);
         const updatedItem = await tasksRepository.updateItem(id, updates);
-        
+
         // Update local state
-        const index = this.items.findIndex(i => i.id === id);
+        const index = this.items.findIndex((i) => i.id === id);
         if (index !== -1) {
           this.items[index] = { ...this.items[index], ...updatedItem };
         }
@@ -185,18 +185,18 @@ export const useTasksStore = defineStore('tasks', {
     async deleteItem(id: number) {
       try {
         await tasksRepository.deleteItem(id);
-        
+
         const getDescendantIds = (parentId: number): number[] => {
-          const children = this.items.filter(i => i.parent_id === parentId);
-          let ids = children.map(c => c.id);
-          children.forEach(c => {
+          const children = this.items.filter((i) => i.parent_id === parentId);
+          let ids = children.map((c) => c.id);
+          children.forEach((c) => {
             ids = ids.concat(getDescendantIds(c.id));
           });
           return ids;
         };
 
         const idsToRemove = [id, ...getDescendantIds(id)];
-        this.items = this.items.filter(i => !idsToRemove.includes(i.id));
+        this.items = this.items.filter((i) => !idsToRemove.includes(i.id));
         this.totalItems = Math.max(0, this.totalItems - idsToRemove.length);
         this.totalPages = Math.max(1, Math.ceil(this.totalItems / this.pageSize));
       } catch (err: unknown) {
@@ -210,22 +210,22 @@ export const useTasksStore = defineStore('tasks', {
         await tasksRepository.deleteItemsBulk(ids);
 
         const getDescendantIds = (parentId: number): number[] => {
-          const children = this.items.filter(i => i.parent_id === parentId);
-          let descendantIds = children.map(c => c.id);
-          children.forEach(c => {
+          const children = this.items.filter((i) => i.parent_id === parentId);
+          let descendantIds = children.map((c) => c.id);
+          children.forEach((c) => {
             descendantIds = descendantIds.concat(getDescendantIds(c.id));
           });
           return descendantIds;
         };
 
         const allIdsToRemove = new Set<number>();
-        ids.forEach(id => {
+        ids.forEach((id) => {
           allIdsToRemove.add(id);
-          getDescendantIds(id).forEach(dId => allIdsToRemove.add(dId));
+          getDescendantIds(id).forEach((dId) => allIdsToRemove.add(dId));
         });
 
-        const removedCount = this.items.filter(i => allIdsToRemove.has(i.id)).length;
-        this.items = this.items.filter(i => !allIdsToRemove.has(i.id));
+        const removedCount = this.items.filter((i) => allIdsToRemove.has(i.id)).length;
+        this.items = this.items.filter((i) => !allIdsToRemove.has(i.id));
         this.totalItems = Math.max(0, this.totalItems - removedCount);
         this.totalPages = Math.max(1, Math.ceil(this.totalItems / this.pageSize));
       } catch (err: unknown) {
@@ -249,15 +249,15 @@ export const useTasksStore = defineStore('tasks', {
     async updateTag(id: number, updates: Partial<Tag>) {
       try {
         const updatedTag = await tasksRepository.updateTag(id, updates);
-        const index = this.tags.findIndex(t => t.id === id);
+        const index = this.tags.findIndex((t) => t.id === id);
         if (index !== -1) {
           this.tags[index] = { ...this.tags[index], ...updatedTag };
         }
 
         // Propagate tag update to items cache
-        this.items.forEach(item => {
+        this.items.forEach((item) => {
           if (item.tags) {
-            const tIndex = item.tags.findIndex(t => t.id === id);
+            const tIndex = item.tags.findIndex((t) => t.id === id);
             if (tIndex !== -1) {
               item.tags[tIndex] = { ...item.tags[tIndex], ...updatedTag };
             }
@@ -274,12 +274,12 @@ export const useTasksStore = defineStore('tasks', {
     async deleteTag(tagId: number) {
       try {
         await tasksRepository.deleteTag(tagId);
-        this.tags = this.tags.filter(t => t.id !== tagId);
+        this.tags = this.tags.filter((t) => t.id !== tagId);
 
         // Remove tag from items cache
-        this.items.forEach(item => {
+        this.items.forEach((item) => {
           if (item.tags) {
-            item.tags = item.tags.filter(t => t.id !== tagId);
+            item.tags = item.tags.filter((t) => t.id !== tagId);
           }
         });
       } catch (err: unknown) {
@@ -299,12 +299,12 @@ export const useTasksStore = defineStore('tasks', {
         });
 
         // Update local cache
-        const item = this.items.find(i => i.id === itemId);
+        const item = this.items.find((i) => i.id === itemId);
         if (item) {
-          const tag = this.tags.find(t => t.id === tagId);
+          const tag = this.tags.find((t) => t.id === tagId);
           if (tag) {
             item.tags = item.tags || [];
-            if (!item.tags.some(t => t.id === tagId)) {
+            if (!item.tags.some((t) => t.id === tagId)) {
               item.tags.push(tag);
             }
           }
@@ -325,9 +325,9 @@ export const useTasksStore = defineStore('tasks', {
         });
 
         // Update local cache
-        const item = this.items.find(i => i.id === itemId);
+        const item = this.items.find((i) => i.id === itemId);
         if (item && item.tags) {
-          item.tags = item.tags.filter(t => t.id !== tagId);
+          item.tags = item.tags.filter((t) => t.id !== tagId);
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to unlink tag';
@@ -346,10 +346,10 @@ export const useTasksStore = defineStore('tasks', {
         });
 
         // Update local cache
-        const item = this.items.find(i => i.id === itemId);
+        const item = this.items.find((i) => i.id === itemId);
         if (item) {
           item.assignees = item.assignees || [];
-          if (!item.assignees.some(a => a.user_email === email)) {
+          if (!item.assignees.some((a) => a.user_email === email)) {
             item.assignees.push(ass);
           }
         }
@@ -366,9 +366,9 @@ export const useTasksStore = defineStore('tasks', {
         await tasksRepository.removeAssignee(itemId, email);
 
         // Update local cache
-        const item = this.items.find(i => i.id === itemId);
+        const item = this.items.find((i) => i.id === itemId);
         if (item && item.assignees) {
-          item.assignees = item.assignees.filter(a => a.user_email !== email);
+          item.assignees = item.assignees.filter((a) => a.user_email !== email);
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to remove assignee';

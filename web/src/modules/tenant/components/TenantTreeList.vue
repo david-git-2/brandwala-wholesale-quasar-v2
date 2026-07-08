@@ -9,7 +9,10 @@
         <div class="row justify-between items-center q-mb-xs">
           <div class="text-overline text-primary text-weight-bold">
             Tenant #{{ node.tenant.id }}
-            <span v-if="node.tenant.parent_id" class="text-grey-6 text-lowercase text-weight-regular q-ml-sm">
+            <span
+              v-if="node.tenant.parent_id"
+              class="text-grey-6 text-lowercase text-weight-regular q-ml-sm"
+            >
               (child of #{{ node.tenant.parent_id }})
             </span>
             <span v-else class="text-grey-6 text-lowercase text-weight-regular q-ml-sm">
@@ -22,88 +25,92 @@
             class="costing-status-chip"
             :style="node.tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
           >
-            <span class="status-dot" :style="{ backgroundColor: node.tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+            <span
+              class="status-dot"
+              :style="{ backgroundColor: node.tenant.is_active ? '#2f8b5d' : '#66758c' }"
+            />
             {{ node.tenant.is_active ? 'Active' : 'Inactive' }}
           </q-chip>
         </div>
         <div class="text-subtitle1 text-weight-bold text-grey-9">{{ node.tenant.name }}</div>
         <div class="text-body2 text-grey-7 q-mt-xs">
-          {{ node.tenant.public_domain ? `${node.tenant.slug} | ${node.tenant.public_domain}` : node.tenant.slug }}
+          {{
+            node.tenant.public_domain
+              ? `${node.tenant.slug} | ${node.tenant.public_domain}`
+              : node.tenant.slug
+          }}
         </div>
       </div>
 
       <!-- Recursive Children list -->
       <div v-if="node.children && node.children.length" class="tenant-tree__children">
-        <TenantTreeSubList
-          :nodes="node.children"
-          @click-tenant="$emit('click-tenant', $event)"
-        />
+        <TenantTreeSubList :nodes="node.children" @click-tenant="$emit('click-tenant', $event)" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { Tenant } from '../types'
-import TenantTreeSubList from './TenantTreeSubList.vue'
+import { computed } from 'vue';
+import type { Tenant } from '../types';
+import TenantTreeSubList from './TenantTreeSubList.vue';
 
 interface TenantNode {
-  tenant: Tenant
-  children: TenantNode[]
+  tenant: Tenant;
+  children: TenantNode[];
 }
 
 const props = defineProps<{
-  tenants: Tenant[]
-}>()
+  tenants: Tenant[];
+}>();
 
 defineEmits<{
-  (e: 'click-tenant', tenantId: number): void
-}>()
+  (e: 'click-tenant', tenantId: number): void;
+}>();
 
 const activeStatusStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
   border: '1px solid #9fd4b7',
   boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
+};
 
 const inactiveStatusStyle = {
   backgroundColor: '#dbe5f3',
   color: '#3b4b66',
   border: '1px solid #b9c8dd',
   boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
+};
 
 const treeData = computed(() => {
-  const map = new Map<number, TenantNode>()
-  
+  const map = new Map<number, TenantNode>();
+
   // First pass: create nodes
   props.tenants.forEach((tenant) => {
-    map.set(tenant.id, { tenant, children: [] })
-  })
-  
-  const roots: TenantNode[] = []
-  
+    map.set(tenant.id, { tenant, children: [] });
+  });
+
+  const roots: TenantNode[] = [];
+
   // Second pass: structure hierarchy
   props.tenants.forEach((tenant) => {
-    const node = map.get(tenant.id)
-    if (!node) return
-    
+    const node = map.get(tenant.id);
+    if (!node) return;
+
     if (tenant.parent_id === null || !map.has(tenant.parent_id)) {
-      roots.push(node)
+      roots.push(node);
     } else {
-      const parentNode = map.get(tenant.parent_id)
+      const parentNode = map.get(tenant.parent_id);
       if (parentNode) {
-        parentNode.children.push(node)
+        parentNode.children.push(node);
       } else {
-        roots.push(node)
+        roots.push(node);
       }
     }
-  })
-  
-  return roots
-})
+  });
+
+  return roots;
+});
 </script>
 
 <style scoped>
@@ -134,7 +141,9 @@ const treeData = computed(() => {
 }
 
 .tenant-tree__card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .tenant-tree__card:hover {

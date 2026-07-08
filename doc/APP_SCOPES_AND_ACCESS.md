@@ -284,7 +284,7 @@ sequenceDiagram
 3. Callback reads Supabase session email.
 4. Scope-specific backend check runs (see table below).
 5. **Failure:** sign out, clear `authStore`, redirect to scope login with `login_error`.
-6. **Success:** persist `AuthAccessSnapshot` (localStorage key `brandwala.auth.access.v2`), load active module keys, redirect.
+6. **Success:** persist `AuthAccessSnapshot` (localStorage key `brandwala.auth.access.v4`), load active module keys, redirect.
 
 ### Backend checks by scope
 

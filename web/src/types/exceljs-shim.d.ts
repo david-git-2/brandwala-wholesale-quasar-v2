@@ -1,1 +1,1 @@
-declare module 'exceljs'
+declare module 'exceljs';

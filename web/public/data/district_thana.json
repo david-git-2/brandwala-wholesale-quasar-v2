@@ -28,14 +28,7 @@
     },
     {
       "name": "Barguna",
-      "thanas": [
-        "Amtali",
-        "Bamna",
-        "Barguna Sadar",
-        "Betagi",
-        "Patharghata",
-        "Taltali"
-      ]
+      "thanas": ["Amtali", "Bamna", "Barguna Sadar", "Betagi", "Patharghata", "Taltali"]
     },
     {
       "name": "Barishal",
@@ -112,13 +105,7 @@
     },
     {
       "name": "Chapainawabganj",
-      "thanas": [
-        "Bholahat",
-        "Chapainawabganj Sadar",
-        "Gomastapur",
-        "Nachol",
-        "Shibganj Sadar"
-      ]
+      "thanas": ["Bholahat", "Chapainawabganj Sadar", "Gomastapur", "Nachol", "Shibganj Sadar"]
     },
     {
       "name": "Chittagong",
@@ -161,13 +148,7 @@
     },
     {
       "name": "Chuadanga",
-      "thanas": [
-        "Alamdanga",
-        "Chuadanga Sadar",
-        "Damurhuda",
-        "Darshana",
-        "Jibannagar"
-      ]
+      "thanas": ["Alamdanga", "Chuadanga Sadar", "Damurhuda", "Darshana", "Jibannagar"]
     },
     {
       "name": "Cox's Bazar",
@@ -317,14 +298,7 @@
     },
     {
       "name": "Feni",
-      "thanas": [
-        "Chagalnaiya",
-        "Daganbhuiyan",
-        "Feni Sadar",
-        "Fulgazi",
-        "Parshuram",
-        "Sonagazi"
-      ]
+      "thanas": ["Chagalnaiya", "Daganbhuiyan", "Feni Sadar", "Fulgazi", "Parshuram", "Sonagazi"]
     },
     {
       "name": "Gaibandha",
@@ -354,13 +328,7 @@
     },
     {
       "name": "Gopalganj",
-      "thanas": [
-        "Gopalganj Sadar",
-        "Kashiani",
-        "Kotalipara",
-        "Muksudpur",
-        "Tungipara"
-      ]
+      "thanas": ["Gopalganj Sadar", "Kashiani", "Kotalipara", "Muksudpur", "Tungipara"]
     },
     {
       "name": "Habiganj",
@@ -403,12 +371,7 @@
     },
     {
       "name": "Jhalokati",
-      "thanas": [
-        "Jhalokati Sadar",
-        "Kathalia",
-        "Nalchity",
-        "Rajapur"
-      ]
+      "thanas": ["Jhalokati Sadar", "Kathalia", "Nalchity", "Rajapur"]
     },
     {
       "name": "Jhenaidah",
@@ -423,13 +386,7 @@
     },
     {
       "name": "Joypurhat",
-      "thanas": [
-        "Akkelpur",
-        "Joypurhat Sadar",
-        "Kalai",
-        "Khetlal",
-        "Panchbibi"
-      ]
+      "thanas": ["Akkelpur", "Joypurhat Sadar", "Kalai", "Khetlal", "Panchbibi"]
     },
     {
       "name": "Khagrachori",
@@ -494,54 +451,23 @@
     },
     {
       "name": "Kustia",
-      "thanas": [
-        "Bheramara",
-        "Daulatpur",
-        "Khoksa",
-        "Kumarkhali",
-        "Kushtia Sadar",
-        "Mirpur"
-      ]
+      "thanas": ["Bheramara", "Daulatpur", "Khoksa", "Kumarkhali", "Kushtia Sadar", "Mirpur"]
     },
     {
       "name": "Lalmonirhat",
-      "thanas": [
-        "Aditmari",
-        "Hatibandha",
-        "Kaliganj Sadar",
-        "Lalmonirhat Sadar",
-        "Patgram"
-      ]
+      "thanas": ["Aditmari", "Hatibandha", "Kaliganj Sadar", "Lalmonirhat Sadar", "Patgram"]
     },
     {
       "name": "Laxmipur",
-      "thanas": [
-        "Chandraganj",
-        "Kamalnagar",
-        "Laxmipur Sadar",
-        "Raipur",
-        "Ramganj",
-        "Ramgati"
-      ]
+      "thanas": ["Chandraganj", "Kamalnagar", "Laxmipur Sadar", "Raipur", "Ramganj", "Ramgati"]
     },
     {
       "name": "Madaripur",
-      "thanas": [
-        "Dasar",
-        "Kalkini",
-        "Madaripur Sadar",
-        "Rajoir",
-        "Shibchar"
-      ]
+      "thanas": ["Dasar", "Kalkini", "Madaripur Sadar", "Rajoir", "Shibchar"]
     },
     {
       "name": "Magura",
-      "thanas": [
-        "Magura Sadar",
-        "Mohammadpur",
-        "Shalikha",
-        "Sreepur"
-      ]
+      "thanas": ["Magura Sadar", "Mohammadpur", "Shalikha", "Sreepur"]
     },
     {
       "name": "Manikganj",
@@ -557,11 +483,7 @@
     },
     {
       "name": "Meherpur",
-      "thanas": [
-        "Gangni",
-        "Meherpur Sadar",
-        "Mujibnagar"
-      ]
+      "thanas": ["Gangni", "Meherpur Sadar", "Mujibnagar"]
     },
     {
       "name": "Moulvibazar",
@@ -625,11 +547,7 @@
     },
     {
       "name": "Narail",
-      "thanas": [
-        "Kalia",
-        "Lohagara",
-        "Narail Sadar"
-      ]
+      "thanas": ["Kalia", "Lohagara", "Narail Sadar"]
     },
     {
       "name": "Narayanganj",
@@ -688,14 +606,7 @@
     },
     {
       "name": "Nilphamari",
-      "thanas": [
-        "Dimla",
-        "Domar",
-        "Jaldhaka",
-        "Kishoreganj",
-        "Nilphamari Sadar",
-        "Saidpur"
-      ]
+      "thanas": ["Dimla", "Domar", "Jaldhaka", "Kishoreganj", "Nilphamari Sadar", "Saidpur"]
     },
     {
       "name": "Noakhali",
@@ -726,13 +637,7 @@
     },
     {
       "name": "Panchgarh",
-      "thanas": [
-        "Atwari",
-        "Boda",
-        "Debiganj",
-        "Panchagarh Sadar",
-        "Tetulia"
-      ]
+      "thanas": ["Atwari", "Boda", "Debiganj", "Panchagarh Sadar", "Tetulia"]
     },
     {
       "name": "Patuakhali",
@@ -762,13 +667,7 @@
     },
     {
       "name": "Rajbari",
-      "thanas": [
-        "Baliakandi",
-        "Goalandaha",
-        "Kalukhali",
-        "Pangsha",
-        "Rajbari Sadar"
-      ]
+      "thanas": ["Baliakandi", "Goalandaha", "Kalukhali", "Pangsha", "Rajbari Sadar"]
     },
     {
       "name": "Rajshahi",
@@ -840,13 +739,7 @@
     },
     {
       "name": "Sherpur",
-      "thanas": [
-        "Jhenaigati",
-        "Nakla",
-        "Nalitabari",
-        "Sherpur sadar",
-        "Sreebardi"
-      ]
+      "thanas": ["Jhenaigati", "Nakla", "Nalitabari", "Sherpur sadar", "Sreebardi"]
     },
     {
       "name": "Sirajganj",
@@ -922,13 +815,7 @@
     },
     {
       "name": "Thakurgaon",
-      "thanas": [
-        "Baliadangi",
-        "Haripur",
-        "Pirganj upazila",
-        "Ranisankail",
-        "Thakurgaon Sadar"
-      ]
+      "thanas": ["Baliadangi", "Haripur", "Pirganj upazila", "Ranisankail", "Thakurgaon Sadar"]
     }
   ],
   "meta": {

@@ -1,34 +1,34 @@
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import { supabase } from 'src/boot/supabase'
-import type { AccessRole } from '../guards/accessGuard'
+import { supabase } from 'src/boot/supabase';
+import type { AccessRole } from '../guards/accessGuard';
 import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
   getTenantHostnameForEntry,
   getShopLoginRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
-import { tenantService } from 'src/modules/tenant/services/tenantService'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore'
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore'
+} from 'src/modules/tenant/utils/tenantRouteContext';
+import { tenantService } from 'src/modules/tenant/services/tenantService';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
+import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
 import {
   useAuthStore,
   type AuthAccessSnapshot,
   type AuthCustomerGroupSnapshot,
   type AuthTenantSnapshot,
   type AuthUserSnapshot,
-} from '../stores/authStore'
+} from '../stores/authStore';
 
-export type AuthScope = 'platform' | 'app' | 'shop' | 'investor'
+export type AuthScope = 'platform' | 'app' | 'shop' | 'investor';
 
 const scopeConfig: Record<
   AuthScope,
   {
-    homeRouteName: string
-    loginRouteName: string
+    homeRouteName: string;
+    loginRouteName: string;
   }
 > = {
   platform: {
@@ -47,85 +47,82 @@ const scopeConfig: Record<
     homeRouteName: 'investor-portfolio-page',
     loginRouteName: 'investor-login-page',
   },
-}
+};
 
 const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
   switch (role) {
     case 'admin':
-      return 'customer_admin'
+      return 'customer_admin';
     case 'negotiator':
-      return 'customer_negotiator'
+      return 'customer_negotiator';
     case 'staff':
-      return 'customer_staff'
+      return 'customer_staff';
     default:
-      return null
+      return null;
   }
-}
+};
 
 const normalizeModuleKeys = (moduleKeys: string[] | null | undefined) =>
   Array.isArray(moduleKeys)
     ? moduleKeys
         .map((moduleKey) => moduleKey?.trim())
         .filter((moduleKey): moduleKey is string => Boolean(moduleKey))
-    : []
+    : [];
 
 const normalizeCallbackBaseUrl = (value: string | undefined) =>
-  value?.trim().replace(/\/+$/, '') || null
+  value?.trim().replace(/\/+$/, '') || null;
 
 const normalizeTenantSlug = (value: string | null | undefined) =>
-  value?.trim().toLowerCase() || null
+  value?.trim().toLowerCase() || null;
 
 const getOAuthCallbackBaseUrl = () => {
-  const localUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_LOCAL_APP_URL)
-  const productionUrl = normalizeCallbackBaseUrl(
-    import.meta.env.VITE_PRODUCTION_APP_URL,
-  )
+  const localUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_LOCAL_APP_URL);
+  const productionUrl = normalizeCallbackBaseUrl(import.meta.env.VITE_PRODUCTION_APP_URL);
 
   if (import.meta.env.DEV) {
-    return localUrl ?? window.location.origin
+    return localUrl ?? window.location.origin;
   }
 
-  return productionUrl ?? window.location.origin
-}
+  return productionUrl ?? window.location.origin;
+};
 
 export function useOAuthLogin(
   scope?: AuthScope,
   options?: {
-    tenantSlug?: string | null
+    tenantSlug?: string | null;
   },
 ) {
-  const route = useRoute()
-  const router = useRouter()
-  const authStore = useAuthStore()
-  const tenantStore = useTenantStore()
-  const isLoading = ref(false)
-  const resolvedScope =
-    scope ?? (((route.meta as { authScope?: AuthScope }).authScope) ?? 'app')
-  const currentScope = scopeConfig[resolvedScope]
+  const route = useRoute();
+  const router = useRouter();
+  const authStore = useAuthStore();
+  const tenantStore = useTenantStore();
+  const isLoading = ref(false);
+  const resolvedScope = scope ?? (route.meta as { authScope?: AuthScope }).authScope ?? 'app';
+  const currentScope = scopeConfig[resolvedScope];
 
   const logAuthContext = (message: string, payload?: unknown) => {
-    console.log(`[auth:${resolvedScope}] ${message}`, payload ?? '')
-  }
+    console.log(`[auth:${resolvedScope}] ${message}`, payload ?? '');
+  };
 
   const sendBackToLogin = async (
     message: string,
     payload?: unknown,
     loginError = 'no_membership',
   ) => {
-    logAuthContext(message, payload)
-    authStore.clearAccess()
-    await supabase.auth.signOut()
+    logAuthContext(message, payload);
+    authStore.clearAccess();
+    await supabase.auth.signOut();
     if (resolvedScope === 'shop') {
       await router.replace(
         getShopLoginRouteLocation(route, {
           login_error: loginError,
         }),
-      )
-      return
+      );
+      return;
     }
 
     if (resolvedScope === 'app') {
-      const tenantSlug = getTenantSlugFromRoute(route)
+      const tenantSlug = getTenantSlugFromRoute(route);
       const loginRouteLocation = getAppRouteLocation(
         {
           name: currentScope.loginRouteName,
@@ -133,15 +130,17 @@ export function useOAuthLogin(
           query: {},
         },
         tenantSlug,
-      )
+      );
 
       await router.replace({
-        ...(typeof loginRouteLocation === 'string' ? { path: loginRouteLocation } : loginRouteLocation),
+        ...(typeof loginRouteLocation === 'string'
+          ? { path: loginRouteLocation }
+          : loginRouteLocation),
         query: {
           login_error: loginError,
         },
-      })
-      return
+      });
+      return;
     }
 
     await router.replace({
@@ -149,16 +148,16 @@ export function useOAuthLogin(
       query: {
         login_error: loginError,
       },
-    })
-  }
+    });
+  };
 
   const resolveShopTenantEntry = async () => {
-    const tenantSlug = options?.tenantSlug ?? getTenantSlugFromRoute(route)
-    const hostname = getTenantHostnameForEntry()
+    const tenantSlug = options?.tenantSlug ?? getTenantSlugFromRoute(route);
+    const hostname = getTenantHostnameForEntry();
     const result = await tenantService.resolveTenantForEntry({
       slug: tenantSlug,
       hostname,
-    })
+    });
 
     if (!result.success || !result.data) {
       await sendBackToLogin(
@@ -169,17 +168,15 @@ export function useOAuthLogin(
           result,
         },
         'invalid_tenant',
-      )
-      return null
+      );
+      return null;
     }
 
-    return result.data
-  }
+    return result.data;
+  };
 
   const buildUserSnapshot = (
-    session: NonNullable<
-      Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
-    >,
+    session: NonNullable<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>,
     userEmail: string,
   ): AuthUserSnapshot => ({
     id: session.user.id,
@@ -193,26 +190,24 @@ export function useOAuthLogin(
       (session.user.user_metadata?.picture as string | undefined) ??
       null,
     provider: session.user.app_metadata?.provider ?? null,
-  })
+  });
 
-  const saveAndRedirect = async (
-    payload: Omit<AuthAccessSnapshot, 'savedAt'>,
-  ) => {
+  const saveAndRedirect = async (payload: Omit<AuthAccessSnapshot, 'savedAt'>) => {
     authStore.saveAccess({
       ...payload,
       savedAt: new Date().toISOString(),
-    })
+    });
 
     if (payload.scope === 'app') {
-      tenantStore.hydrateSelectedTenantFromAuth(payload.tenant)
+      tenantStore.hydrateSelectedTenantFromAuth(payload.tenant);
     }
 
     const redirectPath =
-      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
-    const resolvedRedirectRoute = redirectPath ? router.resolve(redirectPath) : null
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
+    const resolvedRedirectRoute = redirectPath ? router.resolve(redirectPath) : null;
     const redirectTenantSlug = resolvedRedirectRoute
       ? getTenantSlugFromRoute(resolvedRedirectRoute)
-      : null
+      : null;
 
     if (
       redirectPath &&
@@ -223,39 +218,36 @@ export function useOAuthLogin(
         redirectTenantSlug !== payload.tenant.slug
       )
     ) {
-      await router.replace(redirectPath)
-      return
+      await router.replace(redirectPath);
+      return;
     }
 
     if (resolvedScope === 'shop') {
-      await router.replace(getShopDashboardRouteLocation(route))
-      return
+      await router.replace(getShopDashboardRouteLocation(route));
+      return;
     }
 
     if (resolvedScope === 'app' && payload.matchedRole === 'viewer') {
-      await router.replace({ name: 'viewer-costing-file-page' })
-      return
+      await router.replace({ name: 'viewer-costing-file-page' });
+      return;
     }
 
-    await router.replace({ name: currentScope.homeRouteName })
-  }
+    await router.replace({ name: currentScope.homeRouteName });
+  };
 
-  const processPlatformLogin = async (
-    userEmail: string,
-    user: AuthUserSnapshot,
-  ) => {
+  const processPlatformLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     const { data, error } = await supabase.rpc('check_login_membership', {
       p_email: userEmail,
       p_scope: 'platform',
-    })
+    });
 
     if (error) {
-      console.error('[auth:platform] Login access check failed', error)
-      await sendBackToLogin('Login access check failed', error)
-      return false
+      console.error('[auth:platform] Login access check failed', error);
+      await sendBackToLogin('Login access check failed', error);
+      return false;
     }
 
-    const result = Array.isArray(data) ? data[0] : data
+    const result = Array.isArray(data) ? data[0] : data;
 
     if (
       !result?.has_match ||
@@ -263,11 +255,11 @@ export function useOAuthLogin(
       !result.member_email ||
       !result.matched_role
     ) {
-      await sendBackToLogin('No matching membership found for this route', result)
-      return false
+      await sendBackToLogin('No matching membership found for this route', result);
+      return false;
     }
 
-    logAuthContext('Platform membership match found', result)
+    logAuthContext('Platform membership match found', result);
 
     await saveAndRedirect({
       scope: 'platform',
@@ -292,27 +284,27 @@ export function useOAuthLogin(
       tenantRoleId: null,
       isAdmin: true,
       permissionVersion: null,
-    })
+    });
 
-    return true
-  }
+    return true;
+  };
 
   const processAppLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     const requestedTenantSlug = normalizeTenantSlug(
       options?.tenantSlug ?? getTenantSlugFromRoute(route),
-    )
+    );
     const { data, error } = await supabase.rpc('check_login_membership', {
       p_email: userEmail,
       p_scope: 'app',
-    })
+    });
 
     if (error) {
-      console.error('[auth:app] Login access check failed', error)
-      await sendBackToLogin('Login access check failed', error)
-      return false
+      console.error('[auth:app] Login access check failed', error);
+      await sendBackToLogin('Login access check failed', error);
+      return false;
     }
 
-    const result = Array.isArray(data) ? data[0] : data
+    const result = Array.isArray(data) ? data[0] : data;
 
     if (
       !result?.has_match ||
@@ -320,32 +312,33 @@ export function useOAuthLogin(
       !result.member_email ||
       !result.matched_role
     ) {
-      await sendBackToLogin('No matching membership found for this route', result)
-      return false
+      await sendBackToLogin('No matching membership found for this route', result);
+      return false;
     }
 
     const tenantListResult = await tenantService.listTenantsByMembership({
       email: userEmail,
-    })
+    });
 
     if (!tenantListResult.success) {
-      await sendBackToLogin('App tenant list fetch failed', tenantListResult)
-      return false
+      await sendBackToLogin('App tenant list fetch failed', tenantListResult);
+      return false;
     }
 
-    const availableTenants = tenantListResult.data ?? []
+    const availableTenants = tenantListResult.data ?? [];
 
     if (availableTenants.length === 0) {
-      await sendBackToLogin('No tenant access found for this route', tenantListResult)
-      return false
+      await sendBackToLogin('No tenant access found for this route', tenantListResult);
+      return false;
     }
 
-    tenantStore.setAvailableAdminTenants(availableTenants)
+    tenantStore.setAvailableAdminTenants(availableTenants);
 
-    const requestedTenant =
-      requestedTenantSlug
-        ? availableTenants.find((tenant) => normalizeTenantSlug(tenant.slug) === requestedTenantSlug) ?? null
-        : null
+    const requestedTenant = requestedTenantSlug
+      ? (availableTenants.find(
+          (tenant) => normalizeTenantSlug(tenant.slug) === requestedTenantSlug,
+        ) ?? null)
+      : null;
 
     if (requestedTenantSlug && !requestedTenant) {
       await sendBackToLogin(
@@ -355,8 +348,8 @@ export function useOAuthLogin(
           availableTenants,
         },
         'invalid_tenant',
-      )
-      return false
+      );
+      return false;
     }
 
     if (!requestedTenant) {
@@ -384,32 +377,31 @@ export function useOAuthLogin(
         isAdmin: false,
         permissionVersion: null,
         savedAt: new Date().toISOString(),
-      })
-      tenantStore.clearSelectedTenant()
+      });
+      tenantStore.clearSelectedTenant();
 
-      await router.replace({ name: 'admin-tenant-list' })
-      return true
+      await router.replace({ name: 'admin-tenant-list' });
+      return true;
     }
 
-    const selectedTenantId = requestedTenant.id
+    const selectedTenantId = requestedTenant.id;
 
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
       'get_app_bootstrap_context',
       {
         p_email: userEmail,
         p_tenant_id: selectedTenantId,
-        p_membership_id:
-          result.member_tenant_id === selectedTenantId ? result.member_id : null,
+        p_membership_id: result.member_tenant_id === selectedTenantId ? result.member_id : null,
       },
-    )
+    );
 
     if (bootstrapError) {
-      console.error('[auth:app] Bootstrap fetch failed', bootstrapError)
-      await sendBackToLogin('App bootstrap fetch failed', bootstrapError)
-      return false
+      console.error('[auth:app] Bootstrap fetch failed', bootstrapError);
+      await sendBackToLogin('App bootstrap fetch failed', bootstrapError);
+      return false;
     }
 
-    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData
+    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData;
 
     if (
       !bootstrap ||
@@ -419,31 +411,25 @@ export function useOAuthLogin(
       !bootstrap.tenant_slug ||
       !bootstrap.member_role
     ) {
-      await sendBackToLogin('App bootstrap returned no usable context', bootstrap)
-      return false
+      await sendBackToLogin('App bootstrap returned no usable context', bootstrap);
+      return false;
     }
 
     logAuthContext('App membership and bootstrap resolved', {
       login: result,
       bootstrap,
-    })
+    });
 
     const tenant: AuthTenantSnapshot = {
       id: bootstrap.tenant_id,
       name: bootstrap.tenant_name,
       slug: bootstrap.tenant_slug,
       isActive: Boolean(bootstrap.tenant_is_active),
-    }
+    };
 
-    useTenantPreferenceStore().setPreference(
-      bootstrap.tenant_id,
-      bootstrap.tenant_preference,
-    )
+    useTenantPreferenceStore().setPreference(bootstrap.tenant_id, bootstrap.tenant_preference);
 
-    useMembershipPreferenceStore().setPreference(
-      bootstrap.member_id,
-      bootstrap.member_preference,
-    )
+    useMembershipPreferenceStore().setPreference(bootstrap.member_id, bootstrap.member_preference);
 
     await saveAndRedirect({
       scope: 'app',
@@ -468,34 +454,31 @@ export function useOAuthLogin(
       tenantRoleId: bootstrap.tenant_role_id ?? null,
       isAdmin: Boolean(bootstrap.is_admin),
       permissionVersion: bootstrap.permission_version ?? null,
-    })
+    });
 
-    return true
-  }
+    return true;
+  };
 
-  const processShopLogin = async (
-    userEmail: string,
-    user: AuthUserSnapshot,
-  ) => {
-    const entryTenant = await resolveShopTenantEntry()
+  const processShopLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+    const entryTenant = await resolveShopTenantEntry();
 
     if (!entryTenant) {
-      return false
+      return false;
     }
 
     const { data, error } = await supabase.rpc('check_shop_login_access', {
       p_email: userEmail,
       p_tenant_id: entryTenant.id,
-    })
+    });
 
     if (error) {
-      console.error('[auth:shop] Login access check failed', error)
-      await sendBackToLogin('Shop login access check failed', error)
-      return false
+      console.error('[auth:shop] Login access check failed', error);
+      await sendBackToLogin('Shop login access check failed', error);
+      return false;
     }
 
-    const result = Array.isArray(data) ? data[0] : data
-    const matchedRole = mapShopRoleToAccessRole(result?.matched_role ?? '')
+    const result = Array.isArray(data) ? data[0] : data;
+    const matchedRole = mapShopRoleToAccessRole(result?.matched_role ?? '');
 
     if (
       !result?.has_match ||
@@ -513,8 +496,8 @@ export function useOAuthLogin(
           tenantSlug: entryTenant.slug,
         },
         'wrong_tenant',
-      )
-      return false
+      );
+      return false;
     }
 
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
@@ -524,16 +507,16 @@ export function useOAuthLogin(
         p_tenant_id: entryTenant.id,
         p_customer_group_member_id: result.member_id,
       },
-    )
+    );
 
     if (bootstrapError) {
-      console.error('[auth:shop] Bootstrap fetch failed', bootstrapError)
-      await sendBackToLogin('Shop bootstrap fetch failed', bootstrapError)
-      return false
+      console.error('[auth:shop] Bootstrap fetch failed', bootstrapError);
+      await sendBackToLogin('Shop bootstrap fetch failed', bootstrapError);
+      return false;
     }
 
-    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData
-    const bootstrapRole = mapShopRoleToAccessRole(bootstrap?.member_role ?? '')
+    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData;
+    const bootstrapRole = mapShopRoleToAccessRole(bootstrap?.member_role ?? '');
 
     if (
       !bootstrap ||
@@ -545,8 +528,8 @@ export function useOAuthLogin(
       !bootstrap.tenant_slug ||
       !bootstrapRole
     ) {
-      await sendBackToLogin('Shop bootstrap returned no usable context', bootstrap)
-      return false
+      await sendBackToLogin('Shop bootstrap returned no usable context', bootstrap);
+      return false;
     }
 
     if (bootstrap.tenant_id !== entryTenant.id) {
@@ -557,28 +540,28 @@ export function useOAuthLogin(
           entryTenant,
         },
         'wrong_tenant',
-      )
-      return false
+      );
+      return false;
     }
 
     logAuthContext('Shop customer access and bootstrap resolved', {
       login: result,
       bootstrap,
-    })
+    });
 
     const tenant: AuthTenantSnapshot = {
       id: bootstrap.tenant_id,
       name: bootstrap.tenant_name,
       slug: bootstrap.tenant_slug,
       isActive: Boolean(bootstrap.tenant_is_active),
-    }
+    };
 
     const customerGroup: AuthCustomerGroupSnapshot = {
       id: bootstrap.customer_group_id,
       name: bootstrap.customer_group_name,
       isActive: Boolean(bootstrap.customer_group_is_active),
       accentColor: bootstrap.customer_group_accent_color?.trim() || null,
-    }
+    };
 
     await saveAndRedirect({
       scope: 'shop',
@@ -603,46 +586,45 @@ export function useOAuthLogin(
       tenantRoleId: bootstrap.tenant_role_id ?? null,
       isAdmin: Boolean(bootstrap.is_admin),
       permissionVersion: bootstrap.permission_version ?? null,
-    })
+    });
 
-    return true
-  }
+    return true;
+  };
 
-  const processInvestorLogin = async (
-    userEmail: string,
-    user: AuthUserSnapshot,
-  ) => {
-    const entryTenant = await resolveShopTenantEntry()
+  const processInvestorLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+    const entryTenant = await resolveShopTenantEntry();
 
     if (!entryTenant) {
-      return false
+      return false;
     }
 
     const { data, error } = await supabase.rpc('get_investor_bootstrap_context', {
       p_tenant_id: entryTenant.id,
-    })
+    });
 
     if (error) {
-      console.error('[auth:investor] Bootstrap fetch failed', error)
-      await sendBackToLogin('Investor bootstrap fetch failed', error)
-      return false
+      console.error('[auth:investor] Bootstrap fetch failed', error);
+      await sendBackToLogin('Investor bootstrap fetch failed', error);
+      return false;
     }
 
     const bootstrap = data as {
-      authenticated?: boolean
-      tenant?: { id: number; name: string; slug: string; is_active?: boolean }
-      investor_account?: { id: number; investor_id: number; email: string; tenant_id: number; is_active?: boolean }
-      module_keys?: string[]
-      permission_version?: number
-    }
+      authenticated?: boolean;
+      tenant?: { id: number; name: string; slug: string; is_active?: boolean };
+      investor_account?: {
+        id: number;
+        investor_id: number;
+        email: string;
+        tenant_id: number;
+        is_active?: boolean;
+      };
+      module_keys?: string[];
+      permission_version?: number;
+    };
 
-    if (
-      !bootstrap?.authenticated ||
-      !bootstrap.investor_account ||
-      !bootstrap.tenant
-    ) {
-      await sendBackToLogin('No investor account linked to this email', bootstrap)
-      return false
+    if (!bootstrap?.authenticated || !bootstrap.investor_account || !bootstrap.tenant) {
+      await sendBackToLogin('No investor account linked to this email', bootstrap);
+      return false;
     }
 
     const tenant: AuthTenantSnapshot = {
@@ -650,7 +632,7 @@ export function useOAuthLogin(
       name: bootstrap.tenant.name,
       slug: bootstrap.tenant.slug,
       isActive: bootstrap.tenant.is_active ?? true,
-    }
+    };
     await saveAndRedirect({
       scope: 'investor',
       matchedRole: 'investor_portal',
@@ -674,32 +656,32 @@ export function useOAuthLogin(
       tenantRoleId: null,
       isAdmin: false,
       permissionVersion: bootstrap.permission_version ?? null,
-    })
+    });
 
-    return true
-  }
+    return true;
+  };
 
   const processLoginResult = async () => {
-    const { data: sessionData } = await supabase.auth.getSession()
-    const session = sessionData.session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
 
     if (!session?.user) {
       await sendBackToLogin('No OAuth session yet on this page', {
         path: route.path,
         fullPath: route.fullPath,
         url: window.location.href,
-      })
-      return false
+      });
+      return false;
     }
 
-    const userEmail = session.user.email?.trim().toLowerCase() ?? ''
+    const userEmail = session.user.email?.trim().toLowerCase() ?? '';
 
     if (!userEmail) {
       await sendBackToLogin('OAuth session did not include an email address', {
         userId: session.user.id,
         scope: resolvedScope,
-      })
-      return false
+      });
+      return false;
     }
 
     logAuthContext('Current route', {
@@ -707,41 +689,44 @@ export function useOAuthLogin(
       fullPath: route.fullPath,
       url: window.location.href,
       email: userEmail,
-    })
+    });
 
-    const user = buildUserSnapshot(session, userEmail)
+    const user = buildUserSnapshot(session, userEmail);
 
     if (resolvedScope === 'platform') {
-      return processPlatformLogin(userEmail, user)
+      return processPlatformLogin(userEmail, user);
     }
 
     if (resolvedScope === 'app') {
-      return processAppLogin(userEmail, user)
+      return processAppLogin(userEmail, user);
     }
 
     if (resolvedScope === 'investor') {
-      return processInvestorLogin(userEmail, user)
+      return processInvestorLogin(userEmail, user);
     }
 
-    return processShopLogin(userEmail, user)
-  }
+    return processShopLogin(userEmail, user);
+  };
 
   const handleGoogleLogin = async () => {
-    isLoading.value = true
-    const callbackBaseUrl = getOAuthCallbackBaseUrl()
+    isLoading.value = true;
+    const callbackBaseUrl = getOAuthCallbackBaseUrl();
     const callbackSearchParams = new URLSearchParams({
       scope: resolvedScope,
-    })
+    });
     const redirectPath =
-      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
-    const tenantSlug = getTenantSlugFromRoute(route)
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
+    const tenantSlug = getTenantSlugFromRoute(route);
 
     if (redirectPath) {
-      callbackSearchParams.set('redirect', redirectPath)
+      callbackSearchParams.set('redirect', redirectPath);
     }
 
-    if ((resolvedScope === 'shop' || resolvedScope === 'app' || resolvedScope === 'investor') && tenantSlug) {
-      callbackSearchParams.set('tenant_slug', tenantSlug)
+    if (
+      (resolvedScope === 'shop' || resolvedScope === 'app' || resolvedScope === 'investor') &&
+      tenantSlug
+    ) {
+      callbackSearchParams.set('tenant_slug', tenantSlug);
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -749,21 +734,21 @@ export function useOAuthLogin(
       options: {
         redirectTo: `${callbackBaseUrl}/auth/callback?${callbackSearchParams.toString()}`,
       },
-    })
+    });
 
-    isLoading.value = false
+    isLoading.value = false;
 
     if (error) {
-      console.error(`[auth:${resolvedScope}] Google OAuth error`, error)
-      return
+      console.error(`[auth:${resolvedScope}] Google OAuth error`, error);
+      return;
     }
 
-    logAuthContext('Google OAuth started', data)
-  }
+    logAuthContext('Google OAuth started', data);
+  };
 
   return {
     handleGoogleLogin,
     isLoading,
     processLoginResult,
-  }
+  };
 }

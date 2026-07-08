@@ -1,25 +1,17 @@
 <template>
   <q-page class="dashboard-page theme-shop">
-    <div style="margin: auto;" class="text-bold text-h4" > {{ tenantName }} Dashboard</div>
-
+    <div style="margin: auto" class="text-bold text-h4">{{ tenantName }} Dashboard</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
-const tenantName = computed(() => authStore.tenant?.name ?? 'Tenant workspace')
-
-
-
-
-
-
-
+const tenantName = computed(() => authStore.tenant?.name ?? 'Tenant workspace');
 </script>
 
 <style scoped>

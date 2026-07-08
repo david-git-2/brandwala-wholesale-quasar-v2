@@ -38,50 +38,50 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue';
 
-import { TENANT_PREFERENCE_FIELDS } from '../config/tenantPreferenceFields'
-import TenantPreferenceFieldRenderer from './TenantPreferenceFieldRenderer.vue'
+import { TENANT_PREFERENCE_FIELDS } from '../config/tenantPreferenceFields';
+import TenantPreferenceFieldRenderer from './TenantPreferenceFieldRenderer.vue';
 
 const props = defineProps<{
-  modelValue: Record<string, unknown>
-  saving?: boolean
-}>()
+  modelValue: Record<string, unknown>;
+  saving?: boolean;
+}>();
 
 const emit = defineEmits<{
-  save: [formState: Record<string, unknown>]
-}>()
+  save: [formState: Record<string, unknown>];
+}>();
 
-const localState = reactive<Record<string, unknown>>({ ...props.modelValue })
+const localState = reactive<Record<string, unknown>>({ ...props.modelValue });
 
 watch(
   () => props.modelValue,
   (value) => {
     Object.keys(localState).forEach((key) => {
-      delete localState[key]
-    })
-    Object.assign(localState, value)
+      delete localState[key];
+    });
+    Object.assign(localState, value);
   },
   { deep: true },
-)
+);
 
 const groupedSections = computed(() => {
-  const sections = new Map<string, typeof TENANT_PREFERENCE_FIELDS>()
+  const sections = new Map<string, typeof TENANT_PREFERENCE_FIELDS>();
 
   for (const field of TENANT_PREFERENCE_FIELDS) {
-    const existing = sections.get(field.section) ?? []
-    existing.push(field)
-    sections.set(field.section, existing)
+    const existing = sections.get(field.section) ?? [];
+    existing.push(field);
+    sections.set(field.section, existing);
   }
 
   return Array.from(sections.entries()).map(([name, fields]) => ({
     name,
     fields,
-  }))
-})
+  }));
+});
 
 function updateField(key: string, value: unknown) {
-  localState[key] = value
+  localState[key] = value;
 }
 </script>
 

@@ -18,7 +18,6 @@
               label="Print Barcodes"
               @click="onClickPrint"
             />
-
           </div>
         </div>
       </q-card-section>
@@ -32,10 +31,13 @@
     <!-- Barcode Bulk Generator Form -->
     <q-card flat class="q-mb-md floating-surface shadow-1">
       <q-card-section>
-        <div class="text-subtitle2 text-weight-bold q-mb-md text-primary">Bulk Barcode Generator</div>
+        <div class="text-subtitle2 text-weight-bold q-mb-md text-primary">
+          Bulk Barcode Generator
+        </div>
         <q-form @submit.prevent="showConfirmGenDialog" class="row q-col-gutter-md items-end">
           <div class="col-12 col-sm-6 text-grey-8">
-            The system will automatically determine the next sequential prefix (starting from AA) and append the current year (e.g. {{ currentYear }}).
+            The system will automatically determine the next sequential prefix (starting from AA)
+            and append the current year (e.g. {{ currentYear }}).
           </div>
           <div class="col-12 col-sm-3">
             <q-select
@@ -130,7 +132,10 @@
                 class="status-chip"
                 :style="props.value === 'AVAILABLE' ? activeChipStyle : inactiveChipStyle"
               >
-                <span class="status-dot" :style="{ backgroundColor: props.value === 'AVAILABLE' ? '#2f8b5d' : '#a85b2f' }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: props.value === 'AVAILABLE' ? '#2f8b5d' : '#a85b2f' }"
+                />
                 {{ props.value }}
               </q-chip>
             </q-td>
@@ -144,7 +149,10 @@
                 class="status-chip"
                 :style="props.value === 1 ? printedChipStyle : unprintedChipStyle"
               >
-                <span class="status-dot" :style="{ backgroundColor: props.value === 1 ? '#2f5b8b' : '#66758c' }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: props.value === 1 ? '#2f5b8b' : '#66758c' }"
+                />
                 {{ props.value === 1 ? 'Yes' : 'No' }}
               </q-chip>
             </q-td>
@@ -176,7 +184,7 @@
 
     <!-- Barcode Generation Confirmation Dialog -->
     <q-dialog v-model="confirmGenDialog" persistent>
-      <q-card style="min-width: 400px; border-radius: 12px;">
+      <q-card style="min-width: 400px; border-radius: 12px">
         <q-card-section class="bg-primary text-white q-py-sm">
           <div class="text-subtitle1 text-weight-bold">Confirm Generation</div>
         </q-card-section>
@@ -190,22 +198,35 @@
             <div><strong>Current Year Code:</strong> {{ currentYear }}</div>
           </div>
           <div class="text-caption text-grey-8">
-            <div>• Total previously generated codes: <strong>{{ prevCount }}</strong></div>
-            <div>• Total available catalog codes: <strong>{{ availableCount }}</strong></div>
-            <div>• Total unprinted codes: <strong>{{ unprintedCount }}</strong></div>
+            <div>
+              • Total previously generated codes: <strong>{{ prevCount }}</strong>
+            </div>
+            <div>
+              • Total available catalog codes: <strong>{{ availableCount }}</strong>
+            </div>
+            <div>
+              • Total unprinted codes: <strong>{{ unprintedCount }}</strong>
+            </div>
           </div>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pt-none">
           <q-btn flat label="Cancel" color="grey" v-close-popup />
-          <q-btn unelevated label="Generate" color="primary" class="pill-btn" @click="handleGenerate" v-close-popup />
+          <q-btn
+            unelevated
+            label="Generate"
+            color="primary"
+            class="pill-btn"
+            @click="handleGenerate"
+            v-close-popup
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Print Setup Dialog -->
     <q-dialog v-model="printDialog" persistent>
-      <q-card style="min-width: 450px; border-radius: 12px;">
+      <q-card style="min-width: 450px; border-radius: 12px">
         <q-card-section class="bg-primary text-white q-py-sm">
           <div class="text-subtitle1 text-weight-bold">Print Setup</div>
         </q-card-section>
@@ -213,16 +234,22 @@
         <q-card-section class="q-py-md">
           <div class="q-pa-sm rounded-borders bg-blue-1 q-mb-md">
             <div class="text-caption text-grey-8 q-mb-xs">
-              Only barcodes with <strong>Printed = No</strong> and <strong>Status = Available</strong> can go to print.
+              Only barcodes with <strong>Printed = No</strong> and
+              <strong>Status = Available</strong> can go to print.
             </div>
-            <div class="text-h6 text-weight-bold text-primary">{{ printableCount }} ready to print</div>
+            <div class="text-h6 text-weight-bold text-primary">
+              {{ printableCount }} ready to print
+            </div>
           </div>
 
           <!-- Option A: Print Selected checkboxes -->
           <div v-if="selected.length > 0" class="q-mb-md">
-            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Option 1: Print Selected Barcodes</div>
+            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">
+              Option 1: Print Selected Barcodes
+            </div>
             <div class="text-body2 text-grey-7 q-mb-md">
-              You currently have <strong>{{ selected.length }}</strong> barcodes selected in the table.
+              You currently have <strong>{{ selected.length }}</strong> barcodes selected in the
+              table.
             </div>
             <q-btn
               color="secondary"
@@ -237,17 +264,20 @@
               v-if="selected.length > selectedPrintableCount"
               class="text-caption text-warning q-mt-xs"
             >
-              {{ selected.length - selectedPrintableCount }} barcode(s) skipped (must be Not printed and Available).
+              {{ selected.length - selectedPrintableCount }} barcode(s) skipped (must be Not printed
+              and Available).
             </div>
             <q-separator class="q-my-lg" />
           </div>
 
           <!-- Option B: Bulk print -->
           <div>
-            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Bulk Print Barcodes</div>
+            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">
+              Bulk Print Barcodes
+            </div>
             <div class="text-body2 text-grey-7 q-mb-md">
-              Choose how many eligible barcodes to print. The system picks the first ones in sequence
-              (Not printed + Available only).
+              Choose how many eligible barcodes to print. The system picks the first ones in
+              sequence (Not printed + Available only).
             </div>
 
             <div class="row q-col-gutter-sm items-center q-mb-md">
@@ -268,9 +298,14 @@
               </div>
             </div>
 
-            <q-banner v-if="!hasSufficientForBulk" class="bg-warning text-dark q-mb-md" rounded dense>
-              Insufficient barcodes. You requested {{ printQty }} but only {{ printableCount }} eligible barcodes
-              (Not printed + Available) exist.
+            <q-banner
+              v-if="!hasSufficientForBulk"
+              class="bg-warning text-dark q-mb-md"
+              rounded
+              dense
+            >
+              Insufficient barcodes. You requested {{ printQty }} but only
+              {{ printableCount }} eligible barcodes (Not printed + Available) exist.
             </q-banner>
 
             <q-btn
@@ -293,24 +328,41 @@
 
     <!-- Single Barcode Preview Dialog -->
     <q-dialog v-model="previewDialog">
-      <q-card style="min-width: 320px; text-align: center; border-radius: 14px;">
+      <q-card style="min-width: 320px; text-align: center; border-radius: 14px">
         <q-card-section class="bg-grey-2 q-py-xs text-right">
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-lg">
           <div class="text-overline text-grey-7 q-mb-xs">THRIFT BARCODE PREVIEW</div>
-          <div class="q-mb-md text-weight-bold text-subtitle1">{{ previewBarcode?.barcode_id }}</div>
+          <div class="q-mb-md text-weight-bold text-subtitle1">
+            {{ previewBarcode?.barcode_id }}
+          </div>
 
           <div class="q-my-md q-px-md row justify-center">
-            <div style="width: 100%; max-width: 240px; border: 1px solid #e0e0e0; padding: 12px; border-radius: 8px; background: #fff;">
-              <BarcodeRenderer v-if="previewBarcode" :value="previewBarcode.barcode_id" :display-value="false" />
+            <div
+              style="
+                width: 100%;
+                max-width: 240px;
+                border: 1px solid #e0e0e0;
+                padding: 12px;
+                border-radius: 8px;
+                background: #fff;
+              "
+            >
+              <BarcodeRenderer
+                v-if="previewBarcode"
+                :value="previewBarcode.barcode_id"
+                :display-value="false"
+              />
             </div>
           </div>
 
           <div class="text-caption text-grey-8 q-mt-md">
             <span v-if="previewBarcode?.status === 'AVAILABLE'">Available</span>
-            <span v-if="previewBarcode?.status === 'AVAILABLE' && previewBarcode?.is_printed === 0"> · </span>
+            <span v-if="previewBarcode?.status === 'AVAILABLE' && previewBarcode?.is_printed === 0">
+              ·
+            </span>
             <span v-if="previewBarcode?.is_printed === 0">Not printed (No)</span>
           </div>
         </q-card-section>
@@ -320,262 +372,287 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore'
-import BarcodeRenderer from '../components/BarcodeRenderer.vue'
-import type { ThriftBarcode } from '../types'
-import { isBarcodePrintEligible } from '../types'
+import { onMounted, ref, computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore';
+import BarcodeRenderer from '../components/BarcodeRenderer.vue';
+import type { ThriftBarcode } from '../types';
+import { isBarcodePrintEligible } from '../types';
 
-const router = useRouter()
-const $q = useQuasar()
-const authStore = useAuthStore()
-const barcodeStore = useThriftBarcodeStore()
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
+const barcodeStore = useThriftBarcodeStore();
 
-const { barcodes, loading, error, page, total, meta } = storeToRefs(barcodeStore)
+const { barcodes, loading, error, page, total, meta } = storeToRefs(barcodeStore);
 
 const tablePagination = ref({
   page: 1,
   rowsPerPage: 50,
   rowsNumber: 0,
-})
+});
 
 // Generator State
-const genQuantity = ref(50)
-const qtyOptions = [50, 100, 150, 200, 300, 400, 500]
+const genQuantity = ref(50);
+const qtyOptions = [50, 100, 150, 200, 300, 400, 500];
 
 // Dialog state
-const confirmGenDialog = ref(false)
-const previewDialog = ref(false)
-const previewBarcode = ref<ThriftBarcode | null>(null)
-const printDialog = ref(false)
-const printQty = ref(50)
+const confirmGenDialog = ref(false);
+const previewDialog = ref(false);
+const previewBarcode = ref<ThriftBarcode | null>(null);
+const printDialog = ref(false);
+const printQty = ref(50);
 
 // Filter State
-const filterText = ref('')
-const filterPrinted = ref('ALL')
-const filterStatus = ref('ALL')
+const filterText = ref('');
+const filterPrinted = ref('ALL');
+const filterStatus = ref('ALL');
 
 const printedOptions = [
   { label: 'All Printed Statuses', value: 'ALL' },
   { label: 'Printed Only', value: 'PRINTED' },
   { label: 'Not Printed Only', value: 'UNPRINTED' },
-]
+];
 
 const statusOptions = [
   { label: 'All Statuses', value: 'ALL' },
   { label: 'Available', value: 'AVAILABLE' },
   { label: 'Used', value: 'USED' },
-]
+];
 
-const selected = ref<ThriftBarcode[]>([])
+const selected = ref<ThriftBarcode[]>([]);
 
 const columns = [
-  { name: 'barcode_id', label: 'Barcode ID', field: 'barcode_id', align: 'left' as const, sortable: false },
+  {
+    name: 'barcode_id',
+    label: 'Barcode ID',
+    field: 'barcode_id',
+    align: 'left' as const,
+    sortable: false,
+  },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const, sortable: false },
-  { name: 'is_printed', label: 'Printed', field: 'is_printed', align: 'center' as const, sortable: false },
-  { name: 'inserted_by', label: 'Generated By', field: 'inserted_by', align: 'left' as const, sortable: false },
-  { name: 'created_at', label: 'Created At', field: 'created_at', align: 'left' as const, sortable: false },
+  {
+    name: 'is_printed',
+    label: 'Printed',
+    field: 'is_printed',
+    align: 'center' as const,
+    sortable: false,
+  },
+  {
+    name: 'inserted_by',
+    label: 'Generated By',
+    field: 'inserted_by',
+    align: 'left' as const,
+    sortable: false,
+  },
+  {
+    name: 'created_at',
+    label: 'Created At',
+    field: 'created_at',
+    align: 'left' as const,
+    sortable: false,
+  },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' as const },
-]
+];
 
-const currentYear = computed(() => new Date().getFullYear().toString().slice(-2))
+const currentYear = computed(() => new Date().getFullYear().toString().slice(-2));
 
-const prevCount = computed(() => meta.value.total)
-const availableCount = computed(() => meta.value.available_total)
-const unprintedCount = computed(() => meta.value.unprinted_total)
-const printableCount = computed(() => meta.value.printable_total)
-const hasSufficientForBulk = computed(() => printableCount.value >= printQty.value)
-const selectedPrintableCount = computed(() => selected.value.filter(isBarcodePrintEligible).length)
+const prevCount = computed(() => meta.value.total);
+const availableCount = computed(() => meta.value.available_total);
+const unprintedCount = computed(() => meta.value.unprinted_total);
+const printableCount = computed(() => meta.value.printable_total);
+const hasSufficientForBulk = computed(() => printableCount.value >= printQty.value);
+const selectedPrintableCount = computed(() => selected.value.filter(isBarcodePrintEligible).length);
 
 function mapPrintedFilter(value: string): number | null {
-  if (value === 'PRINTED') return 1
-  if (value === 'UNPRINTED') return 0
-  return null
+  if (value === 'PRINTED') return 1;
+  if (value === 'UNPRINTED') return 0;
+  return null;
 }
 
 function mapStatusFilter(value: string): string | null {
-  return value === 'ALL' ? null : value
+  return value === 'ALL' ? null : value;
 }
 
 function syncTablePagination() {
-  tablePagination.value.page = page.value
-  tablePagination.value.rowsNumber = total.value
+  tablePagination.value.page = page.value;
+  tablePagination.value.rowsNumber = total.value;
 }
 
 const estimatedRange = computed(() => {
-  const yr = currentYear.value
-  let prefix = 'AA'
-  let startSeq = 1
-  const latest = meta.value.latest_current_year_barcode_id
+  const yr = currentYear.value;
+  let prefix = 'AA';
+  let startSeq = 1;
+  const latest = meta.value.latest_current_year_barcode_id;
 
   if (latest) {
-    const parts = latest.split('-')
+    const parts = latest.split('-');
     if (parts.length === 4) {
-      prefix = parts[1] || 'AA'
-      startSeq = parseInt(parts[3] || '0', 10) + 1
+      prefix = parts[1] || 'AA';
+      startSeq = parseInt(parts[3] || '0', 10) + 1;
     } else if (parts.length === 3) {
-      prefix = parts[0] || 'AA'
-      startSeq = parseInt(parts[2] || '0', 10) + 1
+      prefix = parts[0] || 'AA';
+      startSeq = parseInt(parts[2] || '0', 10) + 1;
     }
 
     if (startSeq > 999999) {
-      let c1 = prefix.charCodeAt(0)
-      let c2 = prefix.charCodeAt(1)
-      c2++
+      let c1 = prefix.charCodeAt(0);
+      let c2 = prefix.charCodeAt(1);
+      c2++;
       if (c2 > 90) {
-        c2 = 65
-        c1++
+        c2 = 65;
+        c1++;
       }
-      prefix = String.fromCharCode(c1) + String.fromCharCode(c2)
-      startSeq = 1
+      prefix = String.fromCharCode(c1) + String.fromCharCode(c2);
+      startSeq = 1;
     }
   }
 
-  const startSeqStr = startSeq.toString().padStart(6, '0')
-  const endSeqStr = (startSeq + genQuantity.value - 1).toString().padStart(6, '0')
-  const tenantPrefix = authStore.tenantId ? authStore.tenantId.toString().padStart(2, '0') + '-' : ''
+  const startSeqStr = startSeq.toString().padStart(6, '0');
+  const endSeqStr = (startSeq + genQuantity.value - 1).toString().padStart(6, '0');
+  const tenantPrefix = authStore.tenantId
+    ? authStore.tenantId.toString().padStart(2, '0') + '-'
+    : '';
 
-  return `${tenantPrefix}${prefix}-${yr}-${startSeqStr} ~ ${tenantPrefix}${prefix}-${yr}-${endSeqStr}`
-})
+  return `${tenantPrefix}${prefix}-${yr}-${startSeqStr} ~ ${tenantPrefix}${prefix}-${yr}-${endSeqStr}`;
+});
 
 const activeChipStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
   border: '1px solid #9fd4b7',
-}
+};
 const inactiveChipStyle = {
   backgroundColor: '#f3dbdb',
   color: '#8b2f2f',
   border: '1px solid #d49f9f',
-}
+};
 const printedChipStyle = {
   backgroundColor: '#c3dbe8',
   color: '#1f3e5d',
   border: '1px solid #9fbad4',
-}
+};
 const unprintedChipStyle = {
   backgroundColor: '#e2e5eb',
   color: '#4f555d',
   border: '1px solid #c2c6cc',
-}
+};
 
 const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString()
-}
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString();
+};
 
 async function loadBarcodes(requestedPage = 1) {
-  if (!authStore.tenantId) return
-  selected.value = []
+  if (!authStore.tenantId) return;
+  selected.value = [];
   await barcodeStore.loadBarcodes(authStore.tenantId, {
     page: requestedPage,
     pageSize: 50,
     search: filterText.value,
     isPrinted: mapPrintedFilter(filterPrinted.value),
     status: mapStatusFilter(filterStatus.value),
-  })
-  syncTablePagination()
+  });
+  syncTablePagination();
 }
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 watch([filterText, filterPrinted, filterStatus], () => {
-  if (searchDebounce) clearTimeout(searchDebounce)
+  if (searchDebounce) clearTimeout(searchDebounce);
   searchDebounce = setTimeout(() => {
-    void loadBarcodes(1)
-  }, 300)
-})
+    void loadBarcodes(1);
+  }, 300);
+});
 
 const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  await loadBarcodes(props.pagination.page)
-}
+  await loadBarcodes(props.pagination.page);
+};
 
 const showConfirmGenDialog = () => {
-  confirmGenDialog.value = true
-}
+  confirmGenDialog.value = true;
+};
 
 const handleGenerate = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   try {
     await barcodeStore.generateBarcodes({
       tenantId: authStore.tenantId,
       quantity: genQuantity.value,
       insertedBy: authStore.user?.email || 'System',
-    })
-    selected.value = []
-    syncTablePagination()
+    });
+    selected.value = [];
+    syncTablePagination();
   } catch {
     // Error handled by store
   }
-}
+};
 
 const onPreviewBarcode = (barcode: ThriftBarcode) => {
-  previewBarcode.value = barcode
-  previewDialog.value = true
-}
+  previewBarcode.value = barcode;
+  previewDialog.value = true;
+};
 
 const onClickPrint = () => {
-  printDialog.value = true
-}
+  printDialog.value = true;
+};
 
 const confirmSelectedPrint = () => {
-  const printable = selected.value.filter(isBarcodePrintEligible)
+  const printable = selected.value.filter(isBarcodePrintEligible);
 
   if (printable.length === 0) {
     $q.notify({
       type: 'warning',
       message: 'No eligible barcodes in selection (must be Not printed and Available).',
-    })
-    return
+    });
+    return;
   }
 
   if (printable.length < selected.value.length) {
     $q.notify({
       type: 'info',
       message: `${selected.value.length - printable.length} barcode(s) skipped (must be Not printed and Available).`,
-    })
+    });
   }
 
-  const ids = printable.map((s) => s.id).join(',')
-  printDialog.value = false
+  const ids = printable.map((s) => s.id).join(',');
+  printDialog.value = false;
   void router.push({
     name: 'thrift-barcodes-print-preview',
     query: { ids },
-  })
-}
+  });
+};
 
 const confirmBulkPrint = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   try {
-    const toPrint = await barcodeStore.fetchPrintableForPrint(authStore.tenantId, printQty.value)
+    const toPrint = await barcodeStore.fetchPrintableForPrint(authStore.tenantId, printQty.value);
 
     if (toPrint.length === 0) {
       $q.notify({
         type: 'warning',
         message: 'No eligible barcodes to print (Not printed + Available).',
-      })
-      return
+      });
+      return;
     }
 
-    const ids = toPrint.map((b) => b.id).join(',')
-    printDialog.value = false
+    const ids = toPrint.map((b) => b.id).join(',');
+    printDialog.value = false;
     void router.push({
       name: 'thrift-barcodes-print-preview',
       query: { ids },
-    })
+    });
   } catch {
-    $q.notify({ type: 'negative', message: 'Failed to load barcodes for printing.' })
+    $q.notify({ type: 'negative', message: 'Failed to load barcodes for printing.' });
   }
-}
-
+};
 
 onMounted(() => {
-  void loadBarcodes(1)
-})
+  void loadBarcodes(1);
+});
 </script>
 
 <style scoped>

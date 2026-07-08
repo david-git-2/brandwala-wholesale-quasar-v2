@@ -1,10 +1,6 @@
 <template>
   <div class="row q-col-gutter-md">
-    <div
-      v-for="item in items"
-      :key="item.id"
-      class="col-12 col-sm-6"
-    >
+    <div v-for="item in items" :key="item.id" class="col-12 col-sm-6">
       <q-card
         class="q-pa-md cursor-pointer"
         bordered
@@ -14,32 +10,17 @@
       >
         <div class="row items-start justify-between no-wrap">
           <div>
-            <div class="text-h6 text-weight-bold">
-              #{{ item.id }} {{ item.name }}
-            </div>
+            <div class="text-h6 text-weight-bold">#{{ item.id }} {{ item.name }}</div>
 
-            <div class="text-subtitle2 q-mt-sm">
-              created for: {{ item.order_for }}
-            </div>
+            <div class="text-subtitle2 q-mt-sm">created for: {{ item.order_for }}</div>
           </div>
 
           <div class="row items-center q-gutter-xs">
-            <q-chip
-              dense
-              square
-              :style="statusChipStyle(item.status)"
-              class="costing-status-chip"
-            >
+            <q-chip dense square :style="statusChipStyle(item.status)" class="costing-status-chip">
               <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
               {{ item.status ?? 'pending' }}
             </q-chip>
-            <q-btn
-              icon="more_vert"
-              flat
-              round
-              dense
-              @click.stop
-            >
+            <q-btn icon="more_vert" flat round dense @click.stop>
               <q-menu auto-close>
                 <q-list dense style="min-width: 140px">
                   <q-item clickable v-ripple @click="handleCopy(item)">
@@ -62,109 +43,109 @@
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar'
-import type { ProductBasedCostingFile } from '../types'
+import { useQuasar } from 'quasar';
+import type { ProductBasedCostingFile } from '../types';
 
 defineProps<{
-  items: ProductBasedCostingFile[]
-}>()
+  items: ProductBasedCostingFile[];
+}>();
 
 const emit = defineEmits<{
-  (event: 'select', item: ProductBasedCostingFile): void
-  (event: 'copy', item: ProductBasedCostingFile): void
-  (event: 'edit', item: ProductBasedCostingFile): void
-  (event: 'delete', item: ProductBasedCostingFile): void
-}>()
+  (event: 'select', item: ProductBasedCostingFile): void;
+  (event: 'copy', item: ProductBasedCostingFile): void;
+  (event: 'edit', item: ProductBasedCostingFile): void;
+  (event: 'delete', item: ProductBasedCostingFile): void;
+}>();
 
-const $q = useQuasar()
+const $q = useQuasar();
 
 const handleSelect = (item: ProductBasedCostingFile) => {
-  emit('select', item)
-}
+  emit('select', item);
+};
 
 const handleEdit = (item: ProductBasedCostingFile) => {
-  emit('edit', item)
-}
+  emit('edit', item);
+};
 
 const handleCopy = (item: ProductBasedCostingFile) => {
-  emit('copy', item)
-}
+  emit('copy', item);
+};
 
 const handleDelete = (item: ProductBasedCostingFile) => {
   $q.dialog({
     title: 'Confirm Delete',
     message: `Are you sure you want to delete #${item.id} ${item.name}?`,
     cancel: true,
-    persistent: true
+    persistent: true,
   }).onOk(() => {
-    emit('delete', item)
-  })
-}
+    emit('delete', item);
+  });
+};
 
 const normalizeStatus = (status: string | null | undefined) => {
-  const value = (status ?? '').trim().toLowerCase()
-  return value || 'pending'
-}
+  const value = (status ?? '').trim().toLowerCase();
+  return value || 'pending';
+};
 
 const statusSurfaceStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
+  const value = normalizeStatus(status);
   if (value === 'pending') {
     return {
       backgroundColor: '#fffbf2',
       boxShadow: 'inset 6px 0 0 #d8a54a',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#f3f7ff',
       boxShadow: 'inset 6px 0 0 #6f93d8',
-    }
+    };
   }
   if (value === 'processing') {
     return {
       backgroundColor: '#f2fbf6',
       boxShadow: 'inset 6px 0 0 #59aa7d',
-    }
+    };
   }
   if (value === 'ordered') {
     return {
       backgroundColor: '#f7fbff',
       boxShadow: 'inset 6px 0 0 #6d91b0',
-    }
+    };
   }
   if (value === 'invoicing') {
     return {
       backgroundColor: '#f8f9fa',
       boxShadow: 'inset 6px 0 0 #3f51b5',
-    }
+    };
   }
   if (value === 'invoiced') {
     return {
       backgroundColor: '#f2fbfb',
       boxShadow: 'inset 6px 0 0 #009688',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#fff4f6',
       boxShadow: 'inset 6px 0 0 #c97586',
-    }
+    };
   }
   return {
     backgroundColor: '#f8f9fb',
     boxShadow: 'inset 6px 0 0 #8ea0b8',
-  }
-}
+  };
+};
 
 const statusChipStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
+  const value = normalizeStatus(status);
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
       boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
-    }
+    };
   }
   if (value === 'offered') {
     return {
@@ -172,7 +153,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#27487a',
       border: '1px solid #a9c4f3',
       boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
-    }
+    };
   }
   if (value === 'processing') {
     return {
@@ -180,7 +161,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
       boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-    }
+    };
   }
   if (value === 'ordered') {
     return {
@@ -188,7 +169,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#1a4562',
       border: '1px solid #9ebfdc',
       boxShadow: '0 1px 2px rgba(26, 69, 98, 0.18)',
-    }
+    };
   }
   if (value === 'invoicing') {
     return {
@@ -196,7 +177,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#283593',
       border: '1px solid #c5cae9',
       boxShadow: '0 1px 2px rgba(40, 53, 147, 0.18)',
-    }
+    };
   }
   if (value === 'invoiced') {
     return {
@@ -204,7 +185,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#00695c',
       border: '1px solid #b2dfdb',
       boxShadow: '0 1px 2px rgba(0, 105, 92, 0.18)',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
@@ -212,27 +193,27 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
       boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
-    }
+    };
   }
   return {
     backgroundColor: '#dbe5f3',
     color: '#3b4b66',
     border: '1px solid #b9c8dd',
     boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-  }
-}
+  };
+};
 
 const statusDotColor = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
-  if (value === 'pending') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'processing') return '#2f8b5d'
-  if (value === 'ordered') return '#2f6e92'
-  if (value === 'invoicing') return '#3f51b5'
-  if (value === 'invoiced') return '#009688'
-  if (value === 'cancelled') return '#a64c62'
-  return '#66758c'
-}
+  const value = normalizeStatus(status);
+  if (value === 'pending') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'processing') return '#2f8b5d';
+  if (value === 'ordered') return '#2f6e92';
+  if (value === 'invoicing') return '#3f51b5';
+  if (value === 'invoiced') return '#009688';
+  if (value === 'cancelled') return '#a64c62';
+  return '#66758c';
+};
 </script>
 
 <style scoped>

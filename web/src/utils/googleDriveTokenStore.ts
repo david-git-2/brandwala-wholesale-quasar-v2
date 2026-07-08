@@ -1,40 +1,40 @@
-const STORAGE_KEY = 'tradeflow_google_drive_tokens_v1'
+const STORAGE_KEY = 'tradeflow_google_drive_tokens_v1';
 
 type StoredGoogleDriveTokens = {
-  userId: string
-  email: string
-  providerToken: string
-  providerRefreshToken?: string
-  savedAt: number
-}
+  userId: string;
+  email: string;
+  providerToken: string;
+  providerRefreshToken?: string;
+  savedAt: number;
+};
 
 function readStore(): StoredGoogleDriveTokens | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined') return null;
 
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as StoredGoogleDriveTokens
-    if (!parsed.userId || !parsed.providerToken) return null
-    return parsed
+    const parsed = JSON.parse(raw) as StoredGoogleDriveTokens;
+    if (!parsed.userId || !parsed.providerToken) return null;
+    return parsed;
   } catch {
-    return null
+    return null;
   }
 }
 
 export function clearGoogleDriveTokens(): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.removeItem(STORAGE_KEY)
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(STORAGE_KEY);
 }
 
 export function saveGoogleDriveTokens(input: {
-  userId: string
-  email: string
-  providerToken: string
-  providerRefreshToken?: string | null
+  userId: string;
+  email: string;
+  providerToken: string;
+  providerRefreshToken?: string | null;
 }): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') return;
 
   const payload: StoredGoogleDriveTokens = {
     userId: input.userId,
@@ -44,31 +44,30 @@ export function saveGoogleDriveTokens(input: {
     ...(input.providerRefreshToken?.trim()
       ? { providerRefreshToken: input.providerRefreshToken.trim() }
       : {}),
-  }
+  };
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
-export function getStoredGoogleDriveToken(
-  userId: string,
-  email?: string | null,
-): string | null {
-  const stored = readStore()
-  if (!stored || stored.userId !== userId) return null
+export function getStoredGoogleDriveToken(userId: string, email?: string | null): string | null {
+  const stored = readStore();
+  if (!stored || stored.userId !== userId) return null;
 
-  const normalizedEmail = email?.trim().toLowerCase()
-  if (normalizedEmail && stored.email !== normalizedEmail) return null
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (normalizedEmail && stored.email !== normalizedEmail) return null;
 
-  return stored.providerToken.trim() || null
+  return stored.providerToken.trim() || null;
 }
 
-export function captureGoogleDriveTokensFromSession(session: {
-  user: { id: string; email?: string | null }
-  provider_token?: string | null
-  provider_refresh_token?: string | null
-} | null): boolean {
-  const providerToken = session?.provider_token?.trim()
-  if (!session?.user?.id || !providerToken) return false
+export function captureGoogleDriveTokensFromSession(
+  session: {
+    user: { id: string; email?: string | null };
+    provider_token?: string | null;
+    provider_refresh_token?: string | null;
+  } | null,
+): boolean {
+  const providerToken = session?.provider_token?.trim();
+  if (!session?.user?.id || !providerToken) return false;
 
   saveGoogleDriveTokens({
     userId: session.user.id,
@@ -77,7 +76,7 @@ export function captureGoogleDriveTokensFromSession(session: {
     ...(session.provider_refresh_token != null && session.provider_refresh_token.trim()
       ? { providerRefreshToken: session.provider_refresh_token }
       : {}),
-  })
+  });
 
-  return true
+  return true;
 }

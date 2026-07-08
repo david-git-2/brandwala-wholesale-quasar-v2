@@ -1,17 +1,12 @@
 <template>
   <div class="product-based-costing-table">
-    <div v-if="selectedRowIds.length" class="bulk-selection-bar row items-center justify-between q-mb-sm">
-      <div class="text-body2 text-weight-medium">
-        {{ selectedRowIds.length }} item(s) selected
-      </div>
+    <div
+      v-if="selectedRowIds.length"
+      class="bulk-selection-bar row items-center justify-between q-mb-sm"
+    >
+      <div class="text-body2 text-weight-medium">{{ selectedRowIds.length }} item(s) selected</div>
       <div class="row items-center q-gutter-sm">
-        <q-btn
-          flat
-          no-caps
-          color="grey-8"
-          label="Clear Selection"
-          @click="selectedRowIds = []"
-        />
+        <q-btn flat no-caps color="grey-8" label="Clear Selection" @click="selectedRowIds = []" />
         <q-btn
           color="negative"
           no-caps
@@ -53,8 +48,15 @@
 
               <div class="row items-center q-gutter-xs">
                 <!-- Status -->
-                <div v-if="isColumnVisible('status')" class="cursor-pointer text-center relative-position">
-                  <q-badge :color="getStatusColor(slotProps.row.status)" outline class="q-px-sm q-py-xs">
+                <div
+                  v-if="isColumnVisible('status')"
+                  class="cursor-pointer text-center relative-position"
+                >
+                  <q-badge
+                    :color="getStatusColor(slotProps.row.status)"
+                    outline
+                    class="q-px-sm q-py-xs"
+                  >
                     {{ slotProps.row.status }}
                     <q-icon name="arrow_drop_down" size="xs" />
                   </q-badge>
@@ -140,18 +142,28 @@
                         size="sm"
                         @click="onShip(slotProps.row)"
                       >
-                        <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+                        <q-tooltip>{{
+                          isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment'
+                        }}</q-tooltip>
                       </q-btn>
                     </div>
                   </div>
 
-                  <div v-if="isColumnVisible('brand') && slotProps.row.brand" class="text-caption text-grey-8 q-mt-xs">
+                  <div
+                    v-if="isColumnVisible('brand') && slotProps.row.brand"
+                    class="text-caption text-grey-8 q-mt-xs"
+                  >
                     <strong>Brand:</strong> {{ slotProps.row.brand }}
                   </div>
 
-                  <div v-if="isColumnVisible('barcodeText')" class="card-barcode-lines text-caption text-grey-7 q-mt-xs">
+                  <div
+                    v-if="isColumnVisible('barcodeText')"
+                    class="card-barcode-lines text-caption text-grey-7 q-mt-xs"
+                  >
                     <div v-if="slotProps.row.barcode">Barcode: {{ slotProps.row.barcode }}</div>
-                    <div v-if="slotProps.row.productCode">Code: {{ slotProps.row.productCode }}</div>
+                    <div v-if="slotProps.row.productCode">
+                      Code: {{ slotProps.row.productCode }}
+                    </div>
                     <div v-if="slotProps.row.productId">ID: {{ slotProps.row.productId }}</div>
                   </div>
 
@@ -174,7 +186,10 @@
               </div>
 
               <!-- Note Section -->
-              <div v-if="isColumnVisible('note')" class="card-note-section q-mt-md q-pa-sm rounded-borders cursor-pointer bg-grey-1 text-caption">
+              <div
+                v-if="isColumnVisible('note')"
+                class="card-note-section q-mt-md q-pa-sm rounded-borders cursor-pointer bg-grey-1 text-caption"
+              >
                 <div class="text-weight-bold text-grey-7 q-mb-xs">Note:</div>
                 <div v-if="slotProps.row.noteHtml" class="item-note-preview">
                   {{ htmlToPlainText(slotProps.row.noteHtml) }}
@@ -230,7 +245,10 @@
             <q-card-section class="q-pa-md bg-grey-0">
               <div class="row q-col-gutter-sm card-costing-grid">
                 <!-- Qty -->
-                <div v-if="isColumnVisible('qty')" class="col-6 col-sm-3 cursor-pointer text-center">
+                <div
+                  v-if="isColumnVisible('qty')"
+                  class="col-6 col-sm-3 cursor-pointer text-center"
+                >
                   <div class="metric-label">Qty</div>
                   <div class="metric-value font-mono font-weight-medium">
                     {{ slotProps.row.qty }}
@@ -262,7 +280,10 @@
                 </div>
 
                 <!-- Delivered Qty -->
-                <div v-if="isColumnVisible('deliveredQty')" class="col-6 col-sm-3 cursor-pointer text-center">
+                <div
+                  v-if="isColumnVisible('deliveredQty')"
+                  class="col-6 col-sm-3 cursor-pointer text-center"
+                >
                   <div class="metric-label">Delivered Qty</div>
                   <div class="metric-value font-mono font-weight-medium">
                     {{ slotProps.row.deliveredQty }}
@@ -294,7 +315,10 @@
                 </div>
 
                 <!-- Price GBP -->
-                <div v-if="isColumnVisible('priceGbp')" class="col-6 col-sm-3 text-center bg-gbp-light q-pa-xs rounded-borders">
+                <div
+                  v-if="isColumnVisible('priceGbp')"
+                  class="col-6 col-sm-3 text-center bg-gbp-light q-pa-xs rounded-borders"
+                >
                   <div class="metric-label text-green-9">Price GBP</div>
                   <div class="metric-value text-green-10 text-weight-bold font-mono">
                     £{{ formatNumber(slotProps.row.priceGbp) }}
@@ -302,7 +326,10 @@
                 </div>
 
                 <!-- Offer Price BDT -->
-                <div v-if="isColumnVisible('offerPriceBdt')" class="col-6 col-sm-3 cursor-pointer text-center bg-offer-light q-pa-xs rounded-borders">
+                <div
+                  v-if="isColumnVisible('offerPriceBdt')"
+                  class="col-6 col-sm-3 cursor-pointer text-center bg-offer-light q-pa-xs rounded-borders"
+                >
                   <div class="metric-label text-purple-9">Offer Price BDT</div>
                   <div class="metric-value text-purple-10 text-weight-bold font-mono">
                     ৳{{ formatNumber(slotProps.row.offerPriceBdt) }}
@@ -334,7 +361,10 @@
                 </div>
 
                 <!-- Cost BDT -->
-                <div v-if="isColumnVisible('costBdt')" class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders">
+                <div
+                  v-if="isColumnVisible('costBdt')"
+                  class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
+                >
                   <div class="metric-label text-amber-9">Cost BDT</div>
                   <div class="metric-value text-amber-10 font-mono text-weight-medium">
                     ৳{{ formatNumber(getCostBdt(slotProps.row)) }}
@@ -342,7 +372,10 @@
                 </div>
 
                 <!-- Total Cost BDT -->
-                <div v-if="isColumnVisible('totalCostBdt')" class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders">
+                <div
+                  v-if="isColumnVisible('totalCostBdt')"
+                  class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
+                >
                   <div class="metric-label text-amber-9">Total Cost BDT</div>
                   <div class="metric-value text-amber-10 font-mono text-weight-medium">
                     ৳{{ formatNumber(getTotalCostBdt(slotProps.row)) }}
@@ -412,7 +445,9 @@
                   size="md"
                   @click="onShip(slotProps.row)"
                 >
-                  <q-tooltip>{{ isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
+                  <q-tooltip>{{
+                    isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment'
+                  }}</q-tooltip>
                 </q-btn>
               </div>
             </div>
@@ -422,7 +457,12 @@
             {{ slotProps.row.brand || '-' }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('note')" key="note" :props="slotProps" class="col-note editable-cell">
+          <q-td
+            v-if="isColumnVisible('note')"
+            key="note"
+            :props="slotProps"
+            class="col-note editable-cell"
+          >
             <div v-if="slotProps.row.noteHtml" class="item-note-preview">
               {{ htmlToPlainText(slotProps.row.noteHtml) }}
               <q-tooltip
@@ -470,7 +510,12 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td v-if="isColumnVisible('qty')" key="qty" :props="slotProps" class="col-qty text-center editable-cell">
+          <q-td
+            v-if="isColumnVisible('qty')"
+            key="qty"
+            :props="slotProps"
+            class="col-qty text-center editable-cell"
+          >
             <div class="editable-value">
               {{ slotProps.row.qty }}
             </div>
@@ -500,7 +545,12 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td v-if="isColumnVisible('deliveredQty')" key="deliveredQty" :props="slotProps" class="col-delivered-qty text-center editable-cell">
+          <q-td
+            v-if="isColumnVisible('deliveredQty')"
+            key="deliveredQty"
+            :props="slotProps"
+            class="col-delivered-qty text-center editable-cell"
+          >
             <div class="editable-value">
               {{ slotProps.row.deliveredQty }}
             </div>
@@ -530,7 +580,12 @@
             </q-popup-edit>
           </q-td>
 
-          <q-td v-if="isColumnVisible('barcodeText')" key="barcodeText" :props="slotProps" class="col-barcode">
+          <q-td
+            v-if="isColumnVisible('barcodeText')"
+            key="barcodeText"
+            :props="slotProps"
+            class="col-barcode"
+          >
             <div class="barcode-lines">
               <div><strong>Barcode:</strong> {{ slotProps.row.barcode || '-' }}</div>
               <div><strong>Code:</strong> {{ slotProps.row.productCode || '-' }}</div>
@@ -538,7 +593,12 @@
             </div>
           </q-td>
 
-          <q-td v-if="isColumnVisible('website')" key="website" :props="slotProps" class="col-website">
+          <q-td
+            v-if="isColumnVisible('website')"
+            key="website"
+            :props="slotProps"
+            class="col-website"
+          >
             <a
               v-if="slotProps.row.website"
               :href="slotProps.row.website"
@@ -550,7 +610,12 @@
             <span v-else>-</span>
           </q-td>
 
-          <q-td v-if="isColumnVisible('priceGbp')" key="priceGbp" :props="slotProps" class="col-price-gbp text-right">
+          <q-td
+            v-if="isColumnVisible('priceGbp')"
+            key="priceGbp"
+            :props="slotProps"
+            class="col-price-gbp text-right"
+          >
             {{ formatNumber(slotProps.row.priceGbp) }}
           </q-td>
 
@@ -642,11 +707,21 @@
             {{ formatNumber(getTotalWeight(slotProps.row)) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('cargoRate')" key="cargoRate" :props="slotProps" class="col-cargo-rate text-right">
+          <q-td
+            v-if="isColumnVisible('cargoRate')"
+            key="cargoRate"
+            :props="slotProps"
+            class="col-cargo-rate text-right"
+          >
             {{ formatNumber(slotProps.row.cargoRate) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('cargoCostGbp')" key="cargoCostGbp" :props="slotProps" class="col-cargo-cost-gbp text-right">
+          <q-td
+            v-if="isColumnVisible('cargoCostGbp')"
+            key="cargoCostGbp"
+            :props="slotProps"
+            class="col-cargo-cost-gbp text-right"
+          >
             {{ formatNumber(getCargoCostGbp(slotProps.row)) }}
           </q-td>
 
@@ -668,7 +743,12 @@
             {{ formatNumber(getRowTotalCostGbp(slotProps.row)) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('costBdt')" key="costBdt" :props="slotProps" class="col-cost-bdt text-right">
+          <q-td
+            v-if="isColumnVisible('costBdt')"
+            key="costBdt"
+            :props="slotProps"
+            class="col-cost-bdt text-right"
+          >
             {{ formatNumber(getCostBdt(slotProps.row)) }}
           </q-td>
 
@@ -725,7 +805,12 @@
             {{ formatNumber(getTotalBdt(slotProps.row)) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('profitPerUnitBdt')" key="profitPerUnitBdt" :props="slotProps" class="col-profit-per-unit-bdt text-right">
+          <q-td
+            v-if="isColumnVisible('profitPerUnitBdt')"
+            key="profitPerUnitBdt"
+            :props="slotProps"
+            class="col-profit-per-unit-bdt text-right"
+          >
             {{ formatNumber(getProfitPerUnit(slotProps.row)) }}
           </q-td>
 
@@ -738,11 +823,21 @@
             {{ formatNumber(getProfitBdt(slotProps.row)) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('profitRate')" key="profitRate" :props="slotProps" class="col-profit-rate text-right">
+          <q-td
+            v-if="isColumnVisible('profitRate')"
+            key="profitRate"
+            :props="slotProps"
+            class="col-profit-rate text-right"
+          >
             {{ formatNumber(getProfitRate(slotProps.row)) }}
           </q-td>
 
-          <q-td v-if="isColumnVisible('status')" key="status" :props="slotProps" class="col-status text-center editable-cell">
+          <q-td
+            v-if="isColumnVisible('status')"
+            key="status"
+            :props="slotProps"
+            class="col-status text-center editable-cell"
+          >
             <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
             </q-badge>
@@ -814,17 +909,26 @@
           <q-td v-if="isColumnVisible('qty')" class="totals-row__cell col-qty text-center">
             {{ formatNumber(totals.qty) }}
           </q-td>
-          <q-td v-if="isColumnVisible('deliveredQty')" class="totals-row__cell col-delivered-qty text-center">
+          <q-td
+            v-if="isColumnVisible('deliveredQty')"
+            class="totals-row__cell col-delivered-qty text-center"
+          >
             {{ formatNumber(totals.deliveredQty) }}
           </q-td>
           <q-td v-if="isColumnVisible('barcodeText')" class="totals-row__cell col-barcode" />
           <q-td v-if="isColumnVisible('website')" class="totals-row__cell col-website" />
-          <q-td v-if="isColumnVisible('priceGbp')" class="totals-row__cell col-price-gbp text-right">
+          <q-td
+            v-if="isColumnVisible('priceGbp')"
+            class="totals-row__cell col-price-gbp text-right"
+          >
             <div class="totals-row__value bg-gbp">
               {{ formatNumber(totals.priceGbp) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('totalPurchasePriceGbp')" class="totals-row__cell col-total-purchase-price-gbp text-right">
+          <q-td
+            v-if="isColumnVisible('totalPurchasePriceGbp')"
+            class="totals-row__cell col-total-purchase-price-gbp text-right"
+          >
             <div class="totals-row__value bg-gbp">
               {{ formatNumber(totals.totalPurchasePriceGbp) }}
             </div>
@@ -841,10 +945,16 @@
           >
             {{ formatNumber(totals.packageWeight) }}
           </q-td>
-          <q-td v-if="isColumnVisible('totalWeight')" class="totals-row__cell col-total-weight text-right">
+          <q-td
+            v-if="isColumnVisible('totalWeight')"
+            class="totals-row__cell col-total-weight text-right"
+          >
             {{ formatNumber(totals.totalWeight) }}
           </q-td>
-          <q-td v-if="isColumnVisible('cargoRate')" class="totals-row__cell col-cargo-rate text-right">
+          <q-td
+            v-if="isColumnVisible('cargoRate')"
+            class="totals-row__cell col-cargo-rate text-right"
+          >
             {{ formatNumber(totals.cargoRate) }}
           </q-td>
           <q-td
@@ -855,7 +965,10 @@
               {{ formatNumber(totals.cargoCostGbp) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('totalCostGbp')" class="totals-row__cell col-total-cost-gbp text-right">
+          <q-td
+            v-if="isColumnVisible('totalCostGbp')"
+            class="totals-row__cell col-total-cost-gbp text-right"
+          >
             <div class="totals-row__value bg-gbp">
               {{ formatNumber(totals.totalCostGbp) }}
             </div>
@@ -873,7 +986,10 @@
               {{ formatNumber(totals.costBdt) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('totalCostBdt')" class="totals-row__cell col-total-cost-bdt text-right">
+          <q-td
+            v-if="isColumnVisible('totalCostBdt')"
+            class="totals-row__cell col-total-cost-bdt text-right"
+          >
             <div class="totals-row__value bg-bdt">
               {{ formatNumber(totals.totalCostBdt) }}
             </div>
@@ -886,7 +1002,10 @@
               {{ formatNumber(totals.offerPriceBdt) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('totalBdt')" class="totals-row__cell col-total-bdt text-right">
+          <q-td
+            v-if="isColumnVisible('totalBdt')"
+            class="totals-row__cell col-total-bdt text-right"
+          >
             <div class="totals-row__value bg-offer">
               {{ formatNumber(totals.totalBdt) }}
             </div>
@@ -899,12 +1018,18 @@
               {{ formatNumber(totals.profitPerUnitBdt) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('profitBdt')" class="totals-row__cell col-profit-bdt text-right">
+          <q-td
+            v-if="isColumnVisible('profitBdt')"
+            class="totals-row__cell col-profit-bdt text-right"
+          >
             <div class="totals-row__value bg-bdt">
               {{ formatNumber(totals.profitBdt) }}
             </div>
           </q-td>
-          <q-td v-if="isColumnVisible('profitRate')" class="totals-row__cell col-profit-rate text-right">
+          <q-td
+            v-if="isColumnVisible('profitRate')"
+            class="totals-row__cell col-profit-rate text-right"
+          >
             {{ formatNumber(totals.averageProfitRate) }}
           </q-td>
           <q-td v-if="isColumnVisible('status')" class="totals-row__cell col-status" />
@@ -1068,11 +1193,8 @@ const formatNumber = (value: number | null | undefined) => {
 const getUnitWeight = (productWeight: number, packageWeight: number) =>
   productWeight + packageWeight;
 
-const getUnitCargoCostGbp = (
-  productWeight: number,
-  packageWeight: number,
-  cargoRate: number,
-) => (getUnitWeight(productWeight, packageWeight) / 1000) * cargoRate;
+const getUnitCargoCostGbp = (productWeight: number, packageWeight: number, cargoRate: number) =>
+  (getUnitWeight(productWeight, packageWeight) / 1000) * cargoRate;
 
 const getUnitTotalCostGbp = (
   priceGbp: number,
@@ -1144,7 +1266,9 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       conversionRate,
       profitRate,
       offerPriceBdt:
-        item.offer_price == null ? calculatedOfferPriceBdt : normalizeOfferPriceBdt(item.offer_price),
+        item.offer_price == null
+          ? calculatedOfferPriceBdt
+          : normalizeOfferPriceBdt(item.offer_price),
       status: toText(item.status, 'pending').toLowerCase(),
       raw: { ...item },
     };
@@ -1152,8 +1276,8 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
 };
 
 const tableRows = ref<ProductBasedCostingTableRow[]>([]);
-const selectedRowIds = ref<number[]>([])
-const showBulkDeleteConfirm = ref(false)
+const selectedRowIds = ref<number[]>([]);
+const showBulkDeleteConfirm = ref(false);
 
 const isAllSelected = computed({
   get: () => {
@@ -1173,8 +1297,8 @@ watch(
   () => [props.items, props.cargoRate, props.conversionRate, props.profitRate],
   () => {
     tableRows.value = buildRows();
-    const allowedIds = new Set(tableRows.value.map((row) => row.id))
-    selectedRowIds.value = selectedRowIds.value.filter((id) => allowedIds.has(id))
+    const allowedIds = new Set(tableRows.value.map((row) => row.id));
+    selectedRowIds.value = selectedRowIds.value.filter((id) => allowedIds.has(id));
   },
   { immediate: true, deep: true },
 );
@@ -1399,49 +1523,51 @@ const columns = computed<QTableColumn[]>(() => [
   },
 ]);
 
-type ColumnName = string
-const allColumnNames = computed<ColumnName[]>(() => columns.value.map((column) => String(column.name)))
-const internalVisibleColumns = ref<ColumnName[]>([])
+type ColumnName = string;
+const allColumnNames = computed<ColumnName[]>(() =>
+  columns.value.map((column) => String(column.name)),
+);
+const internalVisibleColumns = ref<ColumnName[]>([]);
 const resolvedVisibleColumns = computed<ColumnName[]>({
   get: () => props.visibleColumns ?? internalVisibleColumns.value,
   set: (next) => {
     if (props.visibleColumns !== undefined) {
-      emit('update:visible-columns', next)
-      return
+      emit('update:visible-columns', next);
+      return;
     }
-    internalVisibleColumns.value = next
+    internalVisibleColumns.value = next;
   },
-})
-const isColumnVisible = (columnName: string) => resolvedVisibleColumns.value.includes(columnName)
+});
+const isColumnVisible = (columnName: string) => resolvedVisibleColumns.value.includes(columnName);
 
 watch(
   allColumnNames,
   (names) => {
     if (props.visibleColumns !== undefined) {
-      const allowed = new Set(names)
-      const next = props.visibleColumns.filter((name) => allowed.has(name))
+      const allowed = new Set(names);
+      const next = props.visibleColumns.filter((name) => allowed.has(name));
       if (next.length !== props.visibleColumns.length) {
-        resolvedVisibleColumns.value = next
+        resolvedVisibleColumns.value = next;
       }
-      return
+      return;
     }
 
     if (!internalVisibleColumns.value.length) {
-      internalVisibleColumns.value = [...names]
-      return
+      internalVisibleColumns.value = [...names];
+      return;
     }
 
-    const allowed = new Set(names)
-    const next = internalVisibleColumns.value.filter((name) => allowed.has(name))
+    const allowed = new Set(names);
+    const next = internalVisibleColumns.value.filter((name) => allowed.has(name));
     names.forEach((name) => {
       if (!next.includes(name)) {
-        next.push(name)
+        next.push(name);
       }
-    })
-    internalVisibleColumns.value = next
+    });
+    internalVisibleColumns.value = next;
   },
   { immediate: true },
-)
+);
 
 const getTotalPurchasePriceGbp = (row: ProductBasedCostingTableRow) => {
   return row.priceGbp * row.qty;
@@ -1456,12 +1582,7 @@ const getCargoCostGbp = (row: ProductBasedCostingTableRow) => {
 };
 
 const getTotalCostGbp = (row: ProductBasedCostingTableRow) => {
-  return getUnitTotalCostGbp(
-    row.priceGbp,
-    row.productWeight,
-    row.packageWeight,
-    row.cargoRate,
-  );
+  return getUnitTotalCostGbp(row.priceGbp, row.productWeight, row.packageWeight, row.cargoRate);
 };
 
 const getRowTotalCostGbp = (row: ProductBasedCostingTableRow) => {
@@ -1643,23 +1764,23 @@ const onDelete = (row: ProductBasedCostingTableRow) => {
 const onToggleRowSelection = (rowId: number, checked: boolean) => {
   if (checked) {
     if (!selectedRowIds.value.includes(rowId)) {
-      selectedRowIds.value.push(rowId)
+      selectedRowIds.value.push(rowId);
     }
-    return
+    return;
   }
-  selectedRowIds.value = selectedRowIds.value.filter((id) => id !== rowId)
-}
+  selectedRowIds.value = selectedRowIds.value.filter((id) => id !== rowId);
+};
 
 const onConfirmBulkDelete = () => {
   if (!selectedRowIds.value.length) {
-    showBulkDeleteConfirm.value = false
-    return
+    showBulkDeleteConfirm.value = false;
+    return;
   }
 
-  emit('bulk-delete', [...selectedRowIds.value])
-  selectedRowIds.value = []
-  showBulkDeleteConfirm.value = false
-}
+  emit('bulk-delete', [...selectedRowIds.value]);
+  selectedRowIds.value = [];
+  showBulkDeleteConfirm.value = false;
+};
 
 const onShip = (row: ProductBasedCostingTableRow) => {
   emit('ship', row.raw);
@@ -1729,7 +1850,6 @@ const totals = computed(() => {
 
   return sum;
 });
-
 </script>
 
 <style scoped>

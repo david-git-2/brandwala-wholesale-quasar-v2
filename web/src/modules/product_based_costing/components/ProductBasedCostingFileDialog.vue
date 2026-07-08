@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="localOpen" persistent @hide="onDialogHide">
-    <q-card style="min-width: 500px; max-width: 90vw;">
+    <q-card style="min-width: 500px; max-width: 90vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6">
           {{ isEditMode ? 'Edit Costing File' : 'Create Costing File' }}
@@ -12,18 +12,14 @@
       <q-separator />
 
       <q-card-section>
-        <q-form
-          ref="formRef"
-          @submit.prevent="handleSubmit"
-          class="q-gutter-md"
-        >
+        <q-form ref="formRef" @submit.prevent="handleSubmit" class="q-gutter-md">
           <q-input
             v-model="form.name"
             label="Name"
             outlined
             dense
             clearable
-            :rules="[val => !!val || 'Name is required']"
+            :rules="[(val) => !!val || 'Name is required']"
           />
 
           <q-input
@@ -32,18 +28,10 @@
             outlined
             dense
             clearable
-            :rules="[val => !!val || 'Created For is required']"
+            :rules="[(val) => !!val || 'Created For is required']"
           />
 
-          <q-input
-            v-model="form.note"
-            label="Note"
-            type="textarea"
-            autogrow
-            outlined
-            dense
-          />
-
+          <q-input v-model="form.note" label="Note" type="textarea" autogrow outlined dense />
         </q-form>
       </q-card-section>
 
@@ -63,32 +51,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, ref } from 'vue'
+import { computed, reactive, watch, ref } from 'vue';
 
 interface CostingFileForm {
-  id: number | null
-  name: string
-  order_for: string
-  note: string
-  vendor_code: string | null
-  market_code: string | null
+  id: number | null;
+  name: string;
+  order_for: string;
+  note: string;
+  vendor_code: string | null;
+  market_code: string | null;
 }
 
 const props = defineProps<{
-  modelValue: boolean
-  data: CostingFileForm | null
-}>()
+  modelValue: boolean;
+  data: CostingFileForm | null;
+}>();
 
 const emit = defineEmits<{
-  (event: 'update:modelValue', value: boolean): void
-  (event: 'submit', value: CostingFileForm): void
-}>()
+  (event: 'update:modelValue', value: boolean): void;
+  (event: 'submit', value: CostingFileForm): void;
+}>();
 
 type FormRef = {
-  validate: () => boolean | Promise<boolean>
-}
+  validate: () => boolean | Promise<boolean>;
+};
 
-const formRef = ref<FormRef | null>(null)
+const formRef = ref<FormRef | null>(null);
 
 const emptyForm = (): CostingFileForm => ({
   id: null,
@@ -97,47 +85,47 @@ const emptyForm = (): CostingFileForm => ({
   note: '',
   vendor_code: null,
   market_code: null,
-})
+});
 
-const form = reactive(emptyForm())
+const form = reactive(emptyForm());
 
-const isEditMode = computed(() => !!props.data?.id)
+const isEditMode = computed(() => !!props.data?.id);
 
 const localOpen = computed({
   get: () => props.modelValue,
-  set: (v) => emit('update:modelValue', v)
-})
+  set: (v) => emit('update:modelValue', v),
+});
 
 function fillForm(source: CostingFileForm | null) {
-  const values = source || emptyForm()
+  const values = source || emptyForm();
 
-  form.id = values.id ?? null
-  form.name = values.name ?? ''
-  form.order_for = values.order_for ?? ''
-  form.note = values.note ?? ''
-  form.vendor_code = values.vendor_code ?? null
-  form.market_code = values.market_code ?? null
+  form.id = values.id ?? null;
+  form.name = values.name ?? '';
+  form.order_for = values.order_for ?? '';
+  form.note = values.note ?? '';
+  form.vendor_code = values.vendor_code ?? null;
+  form.market_code = values.market_code ?? null;
 }
 
 watch(
   () => props.data,
   (val) => fillForm(val),
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch(
   () => props.modelValue,
   (isOpen) => {
     if (isOpen) {
-      fillForm(props.data)
+      fillForm(props.data);
     }
-  }
-)
+  },
+);
 
 async function handleSubmit() {
-  const isValid = await formRef.value?.validate()
+  const isValid = await formRef.value?.validate();
 
-  if (!isValid) return
+  if (!isValid) return;
 
   emit('submit', {
     id: form.id,
@@ -146,12 +134,12 @@ async function handleSubmit() {
     note: form.note,
     vendor_code: form.vendor_code,
     market_code: form.market_code,
-  })
+  });
 
-  emit('update:modelValue', false)
+  emit('update:modelValue', false);
 }
 
 function onDialogHide() {
-  fillForm(props.data)
+  fillForm(props.data);
 }
 </script>

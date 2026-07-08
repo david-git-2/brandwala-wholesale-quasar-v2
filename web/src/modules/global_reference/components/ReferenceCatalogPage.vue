@@ -8,7 +8,13 @@
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">{{ description }}</p>
         </div>
         <div class="col-auto">
-          <q-btn color="primary" unelevated icon="add" :label="`Add ${entityLabel}`" @click="$emit('add')" />
+          <q-btn
+            color="primary"
+            unelevated
+            icon="add"
+            :label="`Add ${entityLabel}`"
+            @click="$emit('add')"
+          />
         </div>
       </section>
 
@@ -36,8 +42,23 @@
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-right">
-              <q-btn flat round dense icon="o_edit" :disable="props.row.is_system" @click="$emit('edit', props.row)" />
-              <q-btn flat round dense color="negative" icon="o_delete" :disable="props.row.is_system" @click="$emit('delete', props.row)" />
+              <q-btn
+                flat
+                round
+                dense
+                icon="o_edit"
+                :disable="props.row.is_system"
+                @click="$emit('edit', props.row)"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                color="negative"
+                icon="o_delete"
+                :disable="props.row.is_system"
+                @click="$emit('delete', props.row)"
+              />
             </q-td>
           </template>
         </q-table>
@@ -47,22 +68,22 @@
 </template>
 
 <script setup lang="ts">
-import type { QTableColumn } from 'quasar'
+import type { QTableColumn } from 'quasar';
 
 defineProps<{
-  title: string
-  description: string
-  entityLabel: string
-  columns: QTableColumn[]
-  rows: unknown[]
-  loading: boolean
-  error: string | null
-}>()
+  title: string;
+  description: string;
+  entityLabel: string;
+  columns: QTableColumn[];
+  rows: unknown[];
+  loading: boolean;
+  error: string | null;
+}>();
 
 defineEmits<{
-  add: []
-  edit: [row: unknown]
-  delete: [row: unknown]
-  refresh: []
-}>()
+  add: [];
+  edit: [row: unknown];
+  delete: [row: unknown];
+  refresh: [];
+}>();
 </script>

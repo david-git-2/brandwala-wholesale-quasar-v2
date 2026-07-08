@@ -1,7 +1,6 @@
 <template>
   <q-page class="bw-page">
     <section class="bw-page__stack">
-
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
@@ -12,13 +11,7 @@
           </p>
         </div>
         <div class="col-auto">
-          <q-btn
-            color="primary"
-            icon="add"
-            label="New Shop"
-            unelevated
-            @click="openCreate"
-          />
+          <q-btn color="primary" icon="add" label="New Shop" unelevated @click="openCreate" />
         </div>
       </section>
 
@@ -73,11 +66,20 @@
           Loading shops…
         </q-card-section>
 
-        <q-card-section v-else-if="store.shops.length === 0" class="text-grey-6 text-center q-pa-xl">
+        <q-card-section
+          v-else-if="store.shops.length === 0"
+          class="text-grey-6 text-center q-pa-xl"
+        >
           <q-icon name="storefront" size="48px" class="q-mb-sm block" />
           No shops found.
           <br />
-          <q-btn class="q-mt-md" color="primary" label="Create your first shop" unelevated @click="openCreate" />
+          <q-btn
+            class="q-mt-md"
+            color="primary"
+            label="Create your first shop"
+            unelevated
+            @click="openCreate"
+          />
         </q-card-section>
 
         <q-table
@@ -104,11 +106,7 @@
           <!-- order_mode chip -->
           <template #body-cell-order_mode="props">
             <q-td :props="props">
-              <q-chip
-                dense
-                outline
-                :label="orderModeLabel(props.row.order_mode)"
-              />
+              <q-chip dense outline :label="orderModeLabel(props.row.order_mode)" />
             </q-td>
           </template>
 
@@ -158,21 +156,13 @@
               >
                 <q-tooltip>Manage Access Matrix</q-tooltip>
               </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="edit"
-                color="primary"
-                @click="openEdit(props.row)"
-              >
+              <q-btn flat round dense icon="edit" color="primary" @click="openEdit(props.row)">
                 <q-tooltip>Edit</q-tooltip>
               </q-btn>
             </q-td>
           </template>
         </q-table>
       </q-card>
-
     </section>
 
     <!-- Create / Edit dialog -->
@@ -188,88 +178,94 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore'
-import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue'
-import type { Shop, ShopType, ShopOrderMode, CreateShopPayload, UpdateShopPayload } from 'src/modules/shop_order/types'
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore';
+import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
+import type {
+  Shop,
+  ShopType,
+  ShopOrderMode,
+  CreateShopPayload,
+  UpdateShopPayload,
+} from 'src/modules/shop_order/types';
 
 // ---- auth / store --------------------------------------------------
 
-const authStore = useAuthStore()
-const store = useShopOrderStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const store = useShopOrderStore();
+const router = useRouter();
 
-const tenantId = computed(() => authStore.tenantId as number)
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+const tenantId = computed(() => authStore.tenantId as number);
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 // ---- table columns -------------------------------------------------
 
 const columns = [
-  { name: 'name',          label: 'Name',        field: 'name',          align: 'left'  as const, sortable: true },
-  { name: 'slug',          label: 'Slug',        field: 'slug',          align: 'left'  as const, sortable: true },
-  { name: 'shop_type',     label: 'Type',        field: 'shop_type',     align: 'left'  as const },
-  { name: 'order_mode',    label: 'Order mode',  field: 'order_mode',    align: 'left'  as const },
-  { name: 'is_negotiable', label: 'Negotiable',  field: 'is_negotiable', align: 'center' as const },
-  { name: 'is_active',     label: 'Active',      field: 'is_active',     align: 'center' as const },
-  { name: 'actions',       label: '',            field: 'id',            align: 'right' as const },
-]
+  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, sortable: true },
+  { name: 'slug', label: 'Slug', field: 'slug', align: 'left' as const, sortable: true },
+  { name: 'shop_type', label: 'Type', field: 'shop_type', align: 'left' as const },
+  { name: 'order_mode', label: 'Order mode', field: 'order_mode', align: 'left' as const },
+  { name: 'is_negotiable', label: 'Negotiable', field: 'is_negotiable', align: 'center' as const },
+  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
+  { name: 'actions', label: '', field: 'id', align: 'right' as const },
+];
 
 // ---- filters -------------------------------------------------------
 
-const search      = ref<string>('')
-const activeFilter = ref<boolean | null>(null)
+const search = ref<string>('');
+const activeFilter = ref<boolean | null>(null);
 
 const load = () => {
-  if (!tenantId.value) return
+  if (!tenantId.value) return;
   void store.fetchShopsByTenant(tenantId.value, {
     search: search.value || null,
     active: activeFilter.value,
-  })
-}
+  });
+};
 
-const onSearchChange = () => load()
-const onFilterChange = () => load()
+const onSearchChange = () => load();
+const onFilterChange = () => load();
 
-onMounted(load)
-watch(tenantId, (v) => { if (v) load() })
+onMounted(load);
+watch(tenantId, (v) => {
+  if (v) load();
+});
 
 // ---- dialog --------------------------------------------------------
 
-const dialogOpen  = ref(false)
-const editingShop = ref<Shop | null>(null)
-const dialogError = ref<string | null>(null)
+const dialogOpen = ref(false);
+const editingShop = ref<Shop | null>(null);
+const dialogError = ref<string | null>(null);
 
 const openCreate = () => {
-  editingShop.value = null
-  dialogError.value = null
-  dialogOpen.value = true
-}
+  editingShop.value = null;
+  dialogError.value = null;
+  dialogOpen.value = true;
+};
 
 const openEdit = (shop: Shop) => {
-  editingShop.value = shop
-  dialogError.value = null
-  dialogOpen.value = true
-}
+  editingShop.value = shop;
+  dialogError.value = null;
+  dialogOpen.value = true;
+};
 
 const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
-  dialogError.value = null
+  dialogError.value = null;
 
-  const isEdit = 'id' in payload
+  const isEdit = 'id' in payload;
 
-  const result = isEdit
-    ? await store.updateShop(payload)
-    : await store.createShop(payload)
+  const result = isEdit ? await store.updateShop(payload) : await store.createShop(payload);
 
-  if (!result) return
+  if (!result) return;
 
   if (result.success) {
-    dialogOpen.value = false
+    dialogOpen.value = false;
   } else {
-    dialogError.value = result.error
+    dialogError.value = result.error;
   }
-}
+};
 
 const goToAccessMatrix = (shopId: number) => {
   void router.push({
@@ -278,8 +274,8 @@ const goToAccessMatrix = (shopId: number) => {
       tenantSlug: tenantSlug.value,
       shopId: String(shopId),
     },
-  })
-}
+  });
+};
 
 const goToPricing = (shopId: number) => {
   void router.push({
@@ -288,26 +284,29 @@ const goToPricing = (shopId: number) => {
       tenantSlug: tenantSlug.value,
       shopId: String(shopId),
     },
-  })
-}
+  });
+};
 
 // ---- label helpers -------------------------------------------------
 
-const shopTypeLabel = (t: ShopType) => ({
-  vendor_catalog: 'Vendor Catalog',
-  fixed_price: 'Fixed Price',
-  dropship: 'Dropship',
-}[t] ?? t)
+const shopTypeLabel = (t: ShopType) =>
+  ({
+    vendor_catalog: 'Vendor Catalog',
+    fixed_price: 'Fixed Price',
+    dropship: 'Dropship',
+  })[t] ?? t;
 
-const shopTypeColor = (t: ShopType) => ({
-  vendor_catalog: 'indigo',
-  fixed_price: 'teal',
-  dropship: 'deep-orange',
-}[t] ?? 'grey')
+const shopTypeColor = (t: ShopType) =>
+  ({
+    vendor_catalog: 'indigo',
+    fixed_price: 'teal',
+    dropship: 'deep-orange',
+  })[t] ?? 'grey';
 
-const orderModeLabel = (m: ShopOrderMode) => ({
-  procurement_intent: 'Procurement Intent',
-  checkout_fixed: 'Checkout Fixed',
-  checkout_wholesale: 'Checkout Wholesale',
-}[m] ?? m)
+const orderModeLabel = (m: ShopOrderMode) =>
+  ({
+    procurement_intent: 'Procurement Intent',
+    checkout_fixed: 'Checkout Fixed',
+    checkout_wholesale: 'Checkout Wholesale',
+  })[m] ?? m;
 </script>

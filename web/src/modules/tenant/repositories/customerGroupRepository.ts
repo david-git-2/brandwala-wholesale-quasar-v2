@@ -1,4 +1,4 @@
-import { supabase } from 'src/boot/supabase'
+import { supabase } from 'src/boot/supabase';
 
 import type {
   CustomerGroup,
@@ -9,27 +9,23 @@ import type {
   CustomerGroupMemberDeleteInput,
   CustomerGroupMemberUpdateInput,
   CustomerGroupUpdateInput,
-} from '../types'
+} from '../types';
 
-const listCustomerGroupsByTenant = async (
-  tenantId: number,
-): Promise<CustomerGroup[]> => {
+const listCustomerGroupsByTenant = async (tenantId: number): Promise<CustomerGroup[]> => {
   const { data, error } = await supabase
     .from('customer_groups')
     .select('*')
     .eq('tenant_id', tenantId)
-    .order('id', { ascending: true })
+    .order('id', { ascending: true });
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as CustomerGroup[] | null) ?? []
-}
+  return (data as CustomerGroup[] | null) ?? [];
+};
 
-const createCustomerGroup = async (
-  payload: CustomerGroupCreateInput,
-): Promise<CustomerGroup> => {
+const createCustomerGroup = async (payload: CustomerGroupCreateInput): Promise<CustomerGroup> => {
   const { data, error } = await supabase
     .from('customer_groups')
     .insert([
@@ -41,38 +37,36 @@ const createCustomerGroup = async (
       },
     ])
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw error
+    throw error;
   }
 
   if (!data) {
-    throw new Error('Customer group was not created.')
+    throw new Error('Customer group was not created.');
   }
 
-  return data as CustomerGroup
-}
+  return data as CustomerGroup;
+};
 
-const updateCustomerGroup = async (
-  payload: CustomerGroupUpdateInput,
-): Promise<CustomerGroup> => {
-  const updateData: Partial<CustomerGroup> = {}
+const updateCustomerGroup = async (payload: CustomerGroupUpdateInput): Promise<CustomerGroup> => {
+  const updateData: Partial<CustomerGroup> = {};
 
   if (payload.tenant_id !== undefined) {
-    updateData.tenant_id = payload.tenant_id
+    updateData.tenant_id = payload.tenant_id;
   }
 
   if (payload.name !== undefined) {
-    updateData.name = payload.name.trim()
+    updateData.name = payload.name.trim();
   }
 
   if (payload.is_active !== undefined) {
-    updateData.is_active = payload.is_active
+    updateData.is_active = payload.is_active;
   }
 
   if (payload.accent_color !== undefined) {
-    updateData.accent_color = payload.accent_color?.trim() || null
+    updateData.accent_color = payload.accent_color?.trim() || null;
   }
 
   const { data, error } = await supabase
@@ -80,31 +74,26 @@ const updateCustomerGroup = async (
     .update(updateData)
     .eq('id', payload.id)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw error
+    throw error;
   }
 
   if (!data) {
-    throw new Error('Customer group was not updated.')
+    throw new Error('Customer group was not updated.');
   }
 
-  return data as CustomerGroup
-}
+  return data as CustomerGroup;
+};
 
-const deleteCustomerGroup = async (
-  payload: CustomerGroupDeleteInput,
-): Promise<void> => {
-  const { error } = await supabase
-    .from('customer_groups')
-    .delete()
-    .eq('id', payload.id)
+const deleteCustomerGroup = async (payload: CustomerGroupDeleteInput): Promise<void> => {
+  const { error } = await supabase.from('customer_groups').delete().eq('id', payload.id);
 
   if (error) {
-    throw error
+    throw error;
   }
-}
+};
 
 const listCustomerGroupMembersByGroup = async (
   customerGroupId: number,
@@ -113,14 +102,14 @@ const listCustomerGroupMembersByGroup = async (
     .from('customer_group_members')
     .select('*')
     .eq('customer_group_id', customerGroupId)
-    .order('id', { ascending: true })
+    .order('id', { ascending: true });
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as CustomerGroupMember[] | null) ?? []
-}
+  return (data as CustomerGroupMember[] | null) ?? [];
+};
 
 const createCustomerGroupMember = async (
   payload: CustomerGroupMemberCreateInput,
@@ -138,46 +127,46 @@ const createCustomerGroupMember = async (
       },
     ])
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw error
+    throw error;
   }
 
   if (!data) {
-    throw new Error('Customer group member was not created.')
+    throw new Error('Customer group member was not created.');
   }
 
-  return data as CustomerGroupMember
-}
+  return data as CustomerGroupMember;
+};
 
 const updateCustomerGroupMember = async (
   payload: CustomerGroupMemberUpdateInput,
 ): Promise<CustomerGroupMember> => {
-  const updateData: Partial<CustomerGroupMember> = {}
+  const updateData: Partial<CustomerGroupMember> = {};
 
   if (payload.customer_group_id !== undefined) {
-    updateData.customer_group_id = payload.customer_group_id
+    updateData.customer_group_id = payload.customer_group_id;
   }
 
   if (payload.name !== undefined) {
-    updateData.name = payload.name.trim()
+    updateData.name = payload.name.trim();
   }
 
   if (payload.email !== undefined) {
-    updateData.email = payload.email.trim().toLowerCase()
+    updateData.email = payload.email.trim().toLowerCase();
   }
 
   if (payload.role !== undefined) {
-    updateData.role = payload.role
+    updateData.role = payload.role;
   }
 
   if (payload.is_active !== undefined) {
-    updateData.is_active = payload.is_active
+    updateData.is_active = payload.is_active;
   }
 
   if (payload.tenant_role_id !== undefined) {
-    updateData.tenant_role_id = payload.tenant_role_id
+    updateData.tenant_role_id = payload.tenant_role_id;
   }
 
   const { data, error } = await supabase
@@ -185,31 +174,28 @@ const updateCustomerGroupMember = async (
     .update(updateData)
     .eq('id', payload.id)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw error
+    throw error;
   }
 
   if (!data) {
-    throw new Error('Customer group member was not updated.')
+    throw new Error('Customer group member was not updated.');
   }
 
-  return data as CustomerGroupMember
-}
+  return data as CustomerGroupMember;
+};
 
 const deleteCustomerGroupMember = async (
   payload: CustomerGroupMemberDeleteInput,
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('customer_group_members')
-    .delete()
-    .eq('id', payload.id)
+  const { error } = await supabase.from('customer_group_members').delete().eq('id', payload.id);
 
   if (error) {
-    throw error
+    throw error;
   }
-}
+};
 
 export const customerGroupRepository = {
   listCustomerGroupsByTenant,
@@ -220,4 +206,4 @@ export const customerGroupRepository = {
   createCustomerGroupMember,
   updateCustomerGroupMember,
   deleteCustomerGroupMember,
-}
+};

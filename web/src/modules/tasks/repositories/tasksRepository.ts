@@ -27,7 +27,7 @@ export const tasksRepository = {
       dateTo?: string | null;
     },
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
   ): Promise<{ data: Item[]; total: number; statusCounts?: Record<string, number> }> {
     const { data, error } = await supabase.rpc('list_items_paginated', {
       p_tenant_id: tenantId,
@@ -118,7 +118,12 @@ export const tasksRepository = {
   },
 
   async updateItem(id: number, item: Partial<Item>): Promise<Item> {
-    const { data, error } = await supabase.from('items').update(item).eq('id', id).select().single();
+    const { data, error } = await supabase
+      .from('items')
+      .update(item)
+      .eq('id', id)
+      .select()
+      .single();
     if (error) throw error;
     return data as Item;
   },
@@ -135,10 +140,7 @@ export const tasksRepository = {
 
   // --- Assignees ---
   async fetchItemAssignees(itemId: number): Promise<ItemAssignee[]> {
-    const { data, error } = await supabase
-      .from('item_assignees')
-      .select('*')
-      .eq('item_id', itemId);
+    const { data, error } = await supabase.from('item_assignees').select('*').eq('item_id', itemId);
     if (error) throw error;
     return data as ItemAssignee[];
   },
@@ -204,9 +206,7 @@ export const tasksRepository = {
   },
 
   async linkTagToItem(itemId: number, tagId: number): Promise<void> {
-    const { error } = await supabase
-      .from('item_tags')
-      .insert({ item_id: itemId, tag_id: tagId });
+    const { error } = await supabase.from('item_tags').insert({ item_id: itemId, tag_id: tagId });
     if (error) throw error;
   },
 
@@ -263,11 +263,7 @@ export const tasksRepository = {
     return data as ItemPermission[];
   },
 
-  async savePermission(
-    itemId: number,
-    userEmail: string,
-    role: string,
-  ): Promise<ItemPermission> {
+  async savePermission(itemId: number, userEmail: string, role: string): Promise<ItemPermission> {
     const { data, error } = await supabase
       .from('item_permissions')
       .upsert({
@@ -311,11 +307,7 @@ export const tasksRepository = {
   },
 
   async createActivityLog(log: Partial<ActivityLog>): Promise<ActivityLog> {
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .insert(log)
-      .select()
-      .single();
+    const { data, error } = await supabase.from('activity_logs').insert(log).select().single();
     if (error) throw error;
     return data as ActivityLog;
   },

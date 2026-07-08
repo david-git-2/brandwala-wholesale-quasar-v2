@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createInvestorAccessGuard } from 'src/modules/investor_portal/guards/investorAccessGuard'
+import { createInvestorAccessGuard } from 'src/modules/investor_portal/guards/investorAccessGuard';
 
 const investorPortalRoutes: RouteRecordRaw[] = [
   {
@@ -56,6 +56,6 @@ const investorPortalRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default investorPortalRoutes
+export default investorPortalRoutes;

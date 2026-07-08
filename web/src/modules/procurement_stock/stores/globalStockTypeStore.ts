@@ -1,5 +1,8 @@
-import { defineStore } from 'pinia'
-import { globalStockTypeRepository, type GlobalStockType } from '../repositories/globalStockTypeRepository'
+import { defineStore } from 'pinia';
+import {
+  globalStockTypeRepository,
+  type GlobalStockType,
+} from '../repositories/globalStockTypeRepository';
 
 export const useGlobalStockTypeStore = defineStore('global_stock_type', {
   state: () => ({
@@ -11,84 +14,86 @@ export const useGlobalStockTypeStore = defineStore('global_stock_type', {
 
   actions: {
     async fetchStockTypes(parentTenantId: number | null) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
       try {
-        const data = await globalStockTypeRepository.listStockTypes(parentTenantId)
-        this.items = data
+        const data = await globalStockTypeRepository.listStockTypes(parentTenantId);
+        this.items = data;
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to load stock types'
+        this.error = (err as Error).message || 'Failed to load stock types';
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createStockType(
       parentTenantId: number | null,
       payload: {
-        description: string
-        is_sellable: boolean
-        sort_order: number
+        description: string;
+        is_sellable: boolean;
+        sort_order: number;
       },
     ) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
       try {
-        const newType = await globalStockTypeRepository.createStockType(parentTenantId, payload)
-        this.items.push(newType)
-        this.items.sort((a, b) => a.sort_order - b.sort_order)
-        return newType
+        const newType = await globalStockTypeRepository.createStockType(parentTenantId, payload);
+        this.items.push(newType);
+        this.items.sort((a, b) => a.sort_order - b.sort_order);
+        return newType;
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to create stock type'
-        throw err
+        this.error = (err as Error).message || 'Failed to create stock type';
+        throw err;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
 
     async updateStockType(
       id: number,
       payload: {
-        description: string
-        is_sellable: boolean
-        sort_order: number
+        description: string;
+        is_sellable: boolean;
+        sort_order: number;
       },
     ) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
       try {
-        const updated = await globalStockTypeRepository.updateStockType(id, payload)
-        const index = this.items.findIndex((item) => item.id === id)
+        const updated = await globalStockTypeRepository.updateStockType(id, payload);
+        const index = this.items.findIndex((item) => item.id === id);
         if (index !== -1) {
-          this.items[index] = updated
+          this.items[index] = updated;
         }
-        this.items.sort((a, b) => a.sort_order - b.sort_order)
-        return updated
+        this.items.sort((a, b) => a.sort_order - b.sort_order);
+        return updated;
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to update stock type'
-        throw err
+        this.error = (err as Error).message || 'Failed to update stock type';
+        throw err;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
 
     async deleteStockType(id: number) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
       try {
-        const isReferenced = await globalStockTypeRepository.checkStockTypeReferences(id)
+        const isReferenced = await globalStockTypeRepository.checkStockTypeReferences(id);
         if (isReferenced) {
-          throw new Error('Cannot delete stock type. It is currently referenced in Warehouse Stock.')
+          throw new Error(
+            'Cannot delete stock type. It is currently referenced in Warehouse Stock.',
+          );
         }
 
-        await globalStockTypeRepository.deleteStockType(id)
-        this.items = this.items.filter((item) => item.id !== id)
+        await globalStockTypeRepository.deleteStockType(id);
+        this.items = this.items.filter((item) => item.id !== id);
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to delete stock type'
-        throw err
+        this.error = (err as Error).message || 'Failed to delete stock type';
+        throw err;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
   },
-})
+});

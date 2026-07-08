@@ -7,7 +7,9 @@
           <q-icon name="delete_sweep" size="28px" color="negative" />
           <div>
             <div class="text-h6 text-weight-bold text-grey-9">Bulk Delete Items</div>
-            <div class="text-caption text-grey-6">Filter, select, and delete multiple items at once</div>
+            <div class="text-caption text-grey-6">
+              Filter, select, and delete multiple items at once
+            </div>
           </div>
         </div>
         <q-btn flat round dense icon="close" v-close-popup />
@@ -119,7 +121,9 @@
           <!-- ID Column -->
           <template #body-cell-id="cellProps">
             <q-td :props="cellProps">
-              <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold">#{{ cellProps.value }}</span>
+              <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold"
+                >#{{ cellProps.value }}</span
+              >
               <span v-else class="text-grey-7">#{{ cellProps.value }}</span>
             </q-td>
           </template>
@@ -240,9 +244,25 @@ const deleting = ref(false);
 const columns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true },
   { name: 'title', label: 'Title', field: 'title', align: 'left' as const, sortable: true },
-  { name: 'type', label: 'Type', field: 'type', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  {
+    name: 'type',
+    label: 'Type',
+    field: 'type',
+    align: 'left' as const,
+    sortable: true,
+    classes: 'gt-xs',
+    headerClasses: 'gt-xs',
+  },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const, sortable: true },
-  { name: 'priority', label: 'Priority', field: 'priority', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  {
+    name: 'priority',
+    label: 'Priority',
+    field: 'priority',
+    align: 'left' as const,
+    sortable: true,
+    classes: 'gt-xs',
+    headerClasses: 'gt-xs',
+  },
 ];
 
 const typeFilterOptions = [
@@ -273,7 +293,7 @@ const priorityFilterOptions = [
 ];
 
 const tagFilterOptions = computed(() =>
-  tasksStore.tags.map((t) => ({ label: t.name, value: t.id }))
+  tasksStore.tags.map((t) => ({ label: t.name, value: t.id })),
 );
 
 const typeChipStyle = (type: string) => {
@@ -347,7 +367,7 @@ const fetchMatchingItems = async () => {
         includeParents: false,
       },
       1,
-      1000
+      1000,
     );
     matchingItems.value = result.data;
   } catch (err: unknown) {
@@ -374,7 +394,7 @@ watch(
   () => {
     debouncedFetch();
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(isOpen, (newVal) => {

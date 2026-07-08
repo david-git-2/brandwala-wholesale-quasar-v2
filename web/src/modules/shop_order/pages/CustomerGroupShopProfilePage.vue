@@ -1,6 +1,6 @@
 <template>
   <q-page class="bw-page">
-    <section class="bw-page__stack" style="max-width: 800px;">
+    <section class="bw-page__stack" style="max-width: 800px">
       <!-- Header -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-auto">
@@ -39,7 +39,10 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>Profile Active</q-item-label>
-                <q-item-label caption>If disabled, all shops are immediately inaccessible to members of this group.</q-item-label>
+                <q-item-label caption
+                  >If disabled, all shops are immediately inaccessible to members of this
+                  group.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.is_active" color="primary" />
@@ -53,7 +56,9 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>Browse Shop Catalog</q-item-label>
-                <q-item-label caption>Allows group members to view the shop and its products.</q-item-label>
+                <q-item-label caption
+                  >Allows group members to view the shop and its products.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.default_can_browse" color="primary" />
@@ -75,7 +80,9 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>View Stock Quantities</q-item-label>
-                <q-item-label caption>Show exact stock quantities when the shop displays stock.</q-item-label>
+                <q-item-label caption
+                  >Show exact stock quantities when the shop displays stock.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.default_can_view_quantity" color="primary" />
@@ -97,7 +104,9 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>Place / Submit Order</q-item-label>
-                <q-item-label caption>Allows checking out and placing orders or procurement intents.</q-item-label>
+                <q-item-label caption
+                  >Allows checking out and placing orders or procurement intents.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.default_can_place_order" color="primary" />
@@ -108,7 +117,9 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>Can Negotiate</q-item-label>
-                <q-item-label caption>Permits making counter-offers on negotiable shops.</q-item-label>
+                <q-item-label caption
+                  >Permits making counter-offers on negotiable shops.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.default_can_negotiate" color="primary" />
@@ -119,7 +130,10 @@
             <q-item tag="label" v-ripple>
               <q-item-section>
                 <q-item-label>Set Dropship Price</q-item-label>
-                <q-item-label caption>Allows manual overrides on line-level dropship sell prices above the minimum.</q-item-label>
+                <q-item-label caption
+                  >Allows manual overrides on line-level dropship sell prices above the
+                  minimum.</q-item-label
+                >
               </q-item-section>
               <q-item-section avatar>
                 <q-toggle v-model="form.default_can_set_dropship_price" color="primary" />
@@ -145,20 +159,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShopPermissionsStore } from '../stores/shopPermissionsStore'
-import type { UpsertProfilePayload } from '../types'
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
+import type { UpsertProfilePayload } from '../types';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const store = useShopPermissionsStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const store = useShopPermissionsStore();
 
-const tenantId = computed(() => authStore.tenantId as number)
-const groupId = computed(() => Number(route.params.groupId))
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+const tenantId = computed(() => authStore.tenantId as number);
+const groupId = computed(() => Number(route.params.groupId));
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const form = ref<UpsertProfilePayload>({
   tenant_id: 0,
@@ -171,40 +185,40 @@ const form = ref<UpsertProfilePayload>({
   default_can_negotiate: false,
   default_can_view_quantity: true,
   default_can_set_dropship_price: false,
-})
+});
 
 const load = async () => {
-  if (!tenantId.value || !groupId.value) return
-  form.value.tenant_id = tenantId.value
-  form.value.customer_group_id = groupId.value
+  if (!tenantId.value || !groupId.value) return;
+  form.value.tenant_id = tenantId.value;
+  form.value.customer_group_id = groupId.value;
 
-  const res = await store.fetchProfile(tenantId.value, groupId.value)
+  const res = await store.fetchProfile(tenantId.value, groupId.value);
   if (res.success && store.activeProfile) {
-    const p = store.activeProfile
-    form.value.is_active = p.is_active
-    form.value.default_can_browse = p.default_can_browse
-    form.value.default_see_price = p.default_see_price
-    form.value.default_can_add_to_cart = p.default_can_add_to_cart
-    form.value.default_can_place_order = p.default_can_place_order
-    form.value.default_can_negotiate = p.default_can_negotiate
-    form.value.default_can_view_quantity = p.default_can_view_quantity
-    form.value.default_can_set_dropship_price = p.default_can_set_dropship_price
+    const p = store.activeProfile;
+    form.value.is_active = p.is_active;
+    form.value.default_can_browse = p.default_can_browse;
+    form.value.default_see_price = p.default_see_price;
+    form.value.default_can_add_to_cart = p.default_can_add_to_cart;
+    form.value.default_can_place_order = p.default_can_place_order;
+    form.value.default_can_negotiate = p.default_can_negotiate;
+    form.value.default_can_view_quantity = p.default_can_view_quantity;
+    form.value.default_can_set_dropship_price = p.default_can_set_dropship_price;
   }
-}
+};
 
 const onSave = async () => {
-  const res = await store.saveProfile(form.value)
+  const res = await store.saveProfile(form.value);
   if (res.success) {
-    goBack()
+    goBack();
   }
-}
+};
 
 const goBack = () => {
   void router.push({
     name: 'app-shop-customer-groups-page',
     params: { tenantSlug: tenantSlug.value },
-  })
-}
+  });
+};
 
-onMounted(load)
+onMounted(load);
 </script>

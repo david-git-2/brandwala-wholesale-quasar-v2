@@ -1,23 +1,18 @@
-import { supabase } from 'src/boot/supabase'
-import type {
-  Market,
-  MarketCreateInput,
-  MarketDeleteInput,
-  MarketUpdateInput,
-} from '../types'
+import { supabase } from 'src/boot/supabase';
+import type { Market, MarketCreateInput, MarketDeleteInput, MarketUpdateInput } from '../types';
 
 const listMarkets = async (): Promise<Market[]> => {
   const { data, error } = await supabase
     .from('markets')
     .select('*')
-    .order('id', { ascending: true })
+    .order('id', { ascending: true });
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as Market[] | null) ?? []
-}
+  return (data as Market[] | null) ?? [];
+};
 
 const createMarket = async (market: MarketCreateInput): Promise<Market> => {
   const { data, error } = await supabase
@@ -31,20 +26,20 @@ const createMarket = async (market: MarketCreateInput): Promise<Market> => {
         region: market.region.trim(),
       },
     ])
-    .select()
+    .select();
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const createdMarket = Array.isArray(data) ? data[0] : data
+  const createdMarket = Array.isArray(data) ? data[0] : data;
 
   if (!createdMarket) {
-    throw new Error('Market was not created.')
+    throw new Error('Market was not created.');
   }
 
-  return createdMarket as Market
-}
+  return createdMarket as Market;
+};
 
 const updateMarket = async (market: MarketUpdateInput): Promise<Market> => {
   const { data, error } = await supabase
@@ -57,44 +52,40 @@ const updateMarket = async (market: MarketUpdateInput): Promise<Market> => {
       region: market.region.trim(),
     })
     .eq('id', market.id)
-    .select()
+    .select();
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const updatedMarket = Array.isArray(data) ? data[0] : data
+  const updatedMarket = Array.isArray(data) ? data[0] : data;
 
   if (!updatedMarket) {
-    throw new Error('Market was not updated.')
+    throw new Error('Market was not updated.');
   }
 
-  return updatedMarket as Market
-}
+  return updatedMarket as Market;
+};
 
 const deleteMarket = async (market: MarketDeleteInput): Promise<Market> => {
-  const { data, error } = await supabase
-    .from('markets')
-    .delete()
-    .eq('id', market.id)
-    .select()
+  const { data, error } = await supabase.from('markets').delete().eq('id', market.id).select();
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const deletedMarket = Array.isArray(data) ? data[0] : data
+  const deletedMarket = Array.isArray(data) ? data[0] : data;
 
   if (!deletedMarket) {
-    throw new Error('Market was not deleted.')
+    throw new Error('Market was not deleted.');
   }
 
-  return deletedMarket as Market
-}
+  return deletedMarket as Market;
+};
 
 export const marketRepository = {
   listMarkets,
   createMarket,
   updateMarket,
   deleteMarket,
-}
+};

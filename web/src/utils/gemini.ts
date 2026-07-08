@@ -11,7 +11,7 @@ export async function fetchWeightsFromGemini(productName: string): Promise<Gemin
 
   if (!apiKey || !apiKey.trim()) {
     throw new Error(
-      'Gemini API Key is not configured. Please set VITE_GEMINI_API_KEY in your env file or configure it in the UI.'
+      'Gemini API Key is not configured. Please set VITE_GEMINI_API_KEY in your env file or configure it in the UI.',
     );
   }
 
@@ -37,7 +37,7 @@ Return ONLY the raw JSON object. Do not include markdown code block backticks (e
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-latest'
+    'gemini-1.5-flash-latest',
   ];
 
   let lastError: Error | null = null;
@@ -85,7 +85,7 @@ Return ONLY the raw JSON object. Do not include markdown code block backticks (e
 
       // Clean up response formatting to extract the JSON payload
       let cleanedText = textResponse.trim();
-      
+
       // Strip markdown code block wrappers if present
       if (cleanedText.includes('```')) {
         const jsonMatch = cleanedText.match(/```(?:json)?([\s\S]*?)```/);
@@ -93,7 +93,7 @@ Return ONLY the raw JSON object. Do not include markdown code block backticks (e
           cleanedText = jsonMatch[1].trim();
         }
       }
-      
+
       // Isolate the outermost JSON curly braces
       const firstBrace = cleanedText.indexOf('{');
       const lastBrace = cleanedText.lastIndexOf('}');
@@ -111,6 +111,7 @@ Return ONLY the raw JSON object. Do not include markdown code block backticks (e
   }
 
   throw new Error(
-    lastError?.message || 'Failed to fetch weights from Gemini API after trying all candidate models.'
+    lastError?.message ||
+      'Failed to fetch weights from Gemini API after trying all candidate models.',
   );
 }

@@ -8555,6 +8555,7 @@ export type Database = {
       }
       list_global_stocks_paginated: {
         Args: {
+          p_hide_zero_stock?: boolean
           p_is_sellable?: boolean
           p_page?: number
           p_page_size?: number

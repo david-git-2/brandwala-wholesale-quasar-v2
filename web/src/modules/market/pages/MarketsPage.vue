@@ -10,7 +10,13 @@
           </p>
         </div>
         <div class="col-auto">
-          <q-btn color="primary" unelevated icon="add" label="Add Market" @click="onClickAddMarket" />
+          <q-btn
+            color="primary"
+            unelevated
+            icon="add"
+            label="Add Market"
+            @click="onClickAddMarket"
+          />
         </div>
       </section>
 
@@ -27,18 +33,20 @@
 
         <q-card-section v-else-if="items.length === 0" class="text-center">
           <div class="text-subtitle1">No markets found</div>
-          <div class="text-body2 text-grey-7 q-mt-sm">Create the first market to start the catalog.</div>
-          <q-btn class="q-mt-md" color="primary" unelevated icon="add" label="Create Market" @click="onClickAddMarket" />
+          <div class="text-body2 text-grey-7 q-mt-sm">
+            Create the first market to start the catalog.
+          </div>
+          <q-btn
+            class="q-mt-md"
+            color="primary"
+            unelevated
+            icon="add"
+            label="Create Market"
+            @click="onClickAddMarket"
+          />
         </q-card-section>
 
-        <q-table
-          v-else
-          flat
-          row-key="id"
-          :rows="items"
-          :columns="columns"
-          :dense="$q.screen.lt.md"
-        >
+        <q-table v-else flat row-key="id" :rows="items" :columns="columns" :dense="$q.screen.lt.md">
           <template #body-cell-name="props">
             <q-td :props="props">
               <div class="text-weight-medium">{{ props.row.name }}</div>
@@ -109,7 +117,8 @@
 
         <q-card-section>
           Are you sure you want to delete
-          <strong>{{ marketToDelete?.name }}</strong>?
+          <strong>{{ marketToDelete?.name }}</strong
+          >?
         </q-card-section>
 
         <q-card-actions align="right">
@@ -122,31 +131,26 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import type { QTableColumn } from 'quasar'
+import { onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import type { QTableColumn } from 'quasar';
 
-import { showWarningDialog } from 'src/utils/appFeedback'
-import AddMarketDialog from '../components/AddMarketDialog.vue'
-import { useMarketStore } from '../stores/marketStore'
-import type {
-  Market,
-  MarketCreateInput,
-  MarketDeleteInput,
-  MarketUpdateInput,
-} from '../types'
+import { showWarningDialog } from 'src/utils/appFeedback';
+import AddMarketDialog from '../components/AddMarketDialog.vue';
+import { useMarketStore } from '../stores/marketStore';
+import type { Market, MarketCreateInput, MarketDeleteInput, MarketUpdateInput } from '../types';
 
 type MarketForm = {
-  id?: number
-  name: string
-  code: string
-  is_active: boolean
-  is_system: boolean
-  region: string
-}
+  id?: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+  is_system: boolean;
+  region: string;
+};
 
-const marketStore = useMarketStore()
-const { items, loading, error } = storeToRefs(marketStore)
+const marketStore = useMarketStore();
+const { items, loading, error } = storeToRefs(marketStore);
 
 const columns: QTableColumn[] = [
   {
@@ -197,39 +201,39 @@ const columns: QTableColumn[] = [
     field: 'id',
     align: 'right',
   },
-]
+];
 
-const openAddDialog = ref(false)
-const openDeleteDialog = ref(false)
-const selectedMarket = ref<MarketForm | null>(null)
-const marketToDelete = ref<Market | null>(null)
+const openAddDialog = ref(false);
+const openDeleteDialog = ref(false);
+const selectedMarket = ref<MarketForm | null>(null);
+const marketToDelete = ref<Market | null>(null);
 
 const onClickAddMarket = () => {
-  selectedMarket.value = null
-  openAddDialog.value = true
-}
+  selectedMarket.value = null;
+  openAddDialog.value = true;
+};
 
 const onClickEditMarket = (market: Market) => {
   if (market.is_system) {
-    showWarningDialog('System markets cannot be edited.', 'System market protected')
-    return
+    showWarningDialog('System markets cannot be edited.', 'System market protected');
+    return;
   }
 
-  selectedMarket.value = { ...market }
-  openAddDialog.value = true
-}
+  selectedMarket.value = { ...market };
+  openAddDialog.value = true;
+};
 
 const onClickDeleteMarket = (market: Market) => {
   if (market.is_system) {
-    showWarningDialog('System markets cannot be deleted.', 'System market protected')
-    return
+    showWarningDialog('System markets cannot be deleted.', 'System market protected');
+    return;
   }
 
-  marketToDelete.value = market
-  openDeleteDialog.value = true
-}
+  marketToDelete.value = market;
+  openDeleteDialog.value = true;
+};
 
-const refreshMarkets = () => marketStore.fetchMarkets()
+const refreshMarkets = () => marketStore.fetchMarkets();
 
 const handleSaveMarket = async (payload: MarketForm) => {
   if (payload.id !== undefined) {
@@ -240,10 +244,10 @@ const handleSaveMarket = async (payload: MarketForm) => {
       is_active: payload.is_active,
       is_system: payload.is_system,
       region: payload.region,
-    }
+    };
 
-    await marketStore.updateMarket(updatePayload)
-    return
+    await marketStore.updateMarket(updatePayload);
+    return;
   }
 
   const createPayload: MarketCreateInput = {
@@ -252,24 +256,24 @@ const handleSaveMarket = async (payload: MarketForm) => {
     is_active: payload.is_active,
     is_system: payload.is_system,
     region: payload.region,
-  }
+  };
 
-  await marketStore.createMarket(createPayload)
-}
+  await marketStore.createMarket(createPayload);
+};
 
 const confirmDeleteMarket = async () => {
   if (marketToDelete.value) {
     const deletePayload: MarketDeleteInput = {
       id: marketToDelete.value.id,
-    }
+    };
 
-    await marketStore.deleteMarket(deletePayload)
+    await marketStore.deleteMarket(deletePayload);
   }
 
-  openDeleteDialog.value = false
-}
+  openDeleteDialog.value = false;
+};
 
 onMounted(() => {
-  void refreshMarkets()
-})
+  void refreshMarkets();
+});
 </script>

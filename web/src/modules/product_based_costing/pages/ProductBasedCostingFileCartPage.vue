@@ -86,11 +86,7 @@
     </div>
 
     <div class="product-container">
-      <div
-        v-for="item in productStore.items"
-        :key="item.id"
-        class="product-item"
-      >
+      <div v-for="item in productStore.items" :key="item.id" class="product-item">
         <ProductCard :product="item" />
       </div>
     </div>
@@ -162,60 +158,60 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import ProductCard from '../components/ProductCard.vue'
-import { useProductStore } from 'src/modules/products/stores/productStore'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useRoute } from 'vue-router'
-import { useProductBasedCostingStore } from '../../product_based_costing/stores/productBasedCostingStore'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
-const costingFileStore = useProductBasedCostingStore()
-const route = useRoute()
-const authStore = useAuthStore()
+import ProductCard from '../components/ProductCard.vue';
+import { useProductStore } from 'src/modules/products/stores/productStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useRoute } from 'vue-router';
+import { useProductBasedCostingStore } from '../../product_based_costing/stores/productBasedCostingStore';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+const costingFileStore = useProductBasedCostingStore();
+const route = useRoute();
+const authStore = useAuthStore();
 
-const productStore = useProductStore()
-const vendorStore = useVendorStore()
+const productStore = useProductStore();
+const vendorStore = useVendorStore();
 
 type FilterOption = {
-  label: string
-  value: string | null
-}
+  label: string;
+  value: string | null;
+};
 
 type SearchFieldOption = {
-  label: string
-  value: 'name' | 'barcode' | 'product_code' | 'id'
-}
+  label: string;
+  value: 'name' | 'barcode' | 'product_code' | 'id';
+};
 
 const allBrandOption: FilterOption = {
   label: 'All brands',
   value: null,
-}
+};
 
 const allCategoryOption: FilterOption = {
   label: 'All categories',
   value: null,
-}
+};
 
-const search = ref('')
-const showSearchInput = ref(false)
-const searchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name')
-const category = ref<string | null>(null)
-const brand = ref<string | null>(null)
-const vendorCode = ref<string | null>('PC')
-const filterDrawerOpen = ref(false)
-let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
-const suppressFilterWatch = ref(false)
+const search = ref('');
+const showSearchInput = ref(false);
+const searchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name');
+const category = ref<string | null>(null);
+const brand = ref<string | null>(null);
+const vendorCode = ref<string | null>('PC');
+const filterDrawerOpen = ref(false);
+let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+const suppressFilterWatch = ref(false);
 
-const brandNames = ref<string[]>([])
-const categoryNames = ref<string[]>([])
+const brandNames = ref<string[]>([]);
+const categoryNames = ref<string[]>([]);
 
-const filteredBrandNames = ref<string[]>([])
-const filteredCategoryNames = ref<string[]>([])
+const filteredBrandNames = ref<string[]>([]);
+const filteredCategoryNames = ref<string[]>([]);
 
-const brandLoading = ref(false)
-const categoryLoading = ref(false)
+const brandLoading = ref(false);
+const categoryLoading = ref(false);
 
 const filteredBrandOptions = computed<FilterOption[]>(() => [
   allBrandOption,
@@ -223,7 +219,7 @@ const filteredBrandOptions = computed<FilterOption[]>(() => [
     label: item,
     value: item,
   })),
-])
+]);
 
 const filteredCategoryOptions = computed<FilterOption[]>(() => [
   allCategoryOption,
@@ -231,18 +227,18 @@ const filteredCategoryOptions = computed<FilterOption[]>(() => [
     label: item,
     value: item,
   })),
-])
+]);
 
 const searchFieldOptions: SearchFieldOption[] = [
   { label: 'Name', value: 'name' },
   { label: 'Barcode', value: 'barcode' },
   { label: 'Product Code', value: 'product_code' },
   { label: 'Product ID', value: 'id' },
-]
+];
 
 const searchInputLabel = computed(() =>
   searchField.value === 'id' ? 'Search by Product ID' : 'Search products',
-)
+);
 
 const vendorOptions = computed<FilterOption[]>(() => [
   { label: 'All vendors', value: null },
@@ -250,7 +246,7 @@ const vendorOptions = computed<FilterOption[]>(() => [
     label: `${item.name ?? item.code} (${item.code})`,
     value: item.code ?? null,
   })),
-])
+]);
 
 const loadProducts = async () => {
   await productStore.fetchProducts({
@@ -260,22 +256,22 @@ const loadProducts = async () => {
     category: category.value,
     brand: brand.value,
     vendorCode: vendorCode.value,
-  })
-}
+  });
+};
 
 const loadAvailableProducts = async (params: {
-  page: number
-  search?: string
-  append?: boolean
+  page: number;
+  search?: string;
+  append?: boolean;
 }) => {
   const fetchParams: {
-    page: number
-    search: string
-    searchField: 'name' | 'barcode' | 'product_code' | 'id'
-    category: string | null
-    brand: string | null
-    vendorCode: string | null
-    append?: boolean
+    page: number;
+    search: string;
+    searchField: 'name' | 'barcode' | 'product_code' | 'id';
+    category: string | null;
+    brand: string | null;
+    vendorCode: string | null;
+    append?: boolean;
   } = {
     page: params.page,
     search: params.search ?? search.value,
@@ -283,174 +279,174 @@ const loadAvailableProducts = async (params: {
     category: category.value,
     brand: brand.value,
     vendorCode: vendorCode.value,
-  }
+  };
 
   if (params.append !== undefined) {
-    fetchParams.append = params.append
+    fetchParams.append = params.append;
   }
 
-  await productStore.fetchProducts(fetchParams)
-}
+  await productStore.fetchProducts(fetchParams);
+};
 
 const loadBrands = async () => {
-  brandLoading.value = true
+  brandLoading.value = true;
 
   try {
     const result = await productStore.fetchBrandOptions({
       vendorCode: vendorCode.value,
-    })
+    });
 
     if (result.success) {
-      brandNames.value = productStore.brandOptions
-      filteredBrandNames.value = productStore.brandOptions
+      brandNames.value = productStore.brandOptions;
+      filteredBrandNames.value = productStore.brandOptions;
     }
   } finally {
-    brandLoading.value = false
+    brandLoading.value = false;
   }
-}
+};
 
 const loadCategories = async () => {
-  categoryLoading.value = true
+  categoryLoading.value = true;
 
   try {
     const result = await productStore.fetchCategoryOptions({
       vendorCode: vendorCode.value,
-    })
+    });
 
     if (result.success) {
-      categoryNames.value = productStore.categoryOptions
-      filteredCategoryNames.value = productStore.categoryOptions
+      categoryNames.value = productStore.categoryOptions;
+      filteredCategoryNames.value = productStore.categoryOptions;
     }
   } finally {
-    categoryLoading.value = false
+    categoryLoading.value = false;
   }
-}
+};
 
 const filterBrands = (val: string, update: (fn: () => void) => void) => {
   update(() => {
     if (val === '') {
-      filteredBrandNames.value = [...brandNames.value]
-      return
+      filteredBrandNames.value = [...brandNames.value];
+      return;
     }
 
-    const needle = val.toLowerCase()
+    const needle = val.toLowerCase();
     filteredBrandNames.value = brandNames.value.filter((item) =>
-      item.toLowerCase().includes(needle)
-    )
-  })
-}
+      item.toLowerCase().includes(needle),
+    );
+  });
+};
 
 const filterCategories = (val: string, update: (fn: () => void) => void) => {
   update(() => {
     if (val === '') {
-      filteredCategoryNames.value = [...categoryNames.value]
-      return
+      filteredCategoryNames.value = [...categoryNames.value];
+      return;
     }
 
-    const needle = val.toLowerCase()
+    const needle = val.toLowerCase();
     filteredCategoryNames.value = categoryNames.value.filter((item) =>
-      item.toLowerCase().includes(needle)
-    )
-  })
-}
+      item.toLowerCase().includes(needle),
+    );
+  });
+};
 
 const scheduleSearchLoad = () => {
   if (suppressFilterWatch.value) {
-    return
+    return;
   }
 
   if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
+    clearTimeout(searchDebounceTimer);
   }
 
   searchDebounceTimer = setTimeout(() => {
-    void loadProducts()
-  }, 400)
-}
+    void loadProducts();
+  }, 400);
+};
 
 watch(search, () => {
-  scheduleSearchLoad()
-})
+  scheduleSearchLoad();
+});
 
 watch([category, brand], () => {
   if (suppressFilterWatch.value) {
-    return
+    return;
   }
 
-  void loadProducts()
-})
+  void loadProducts();
+});
 
 watch(vendorCode, async () => {
-  brand.value = null
-  category.value = null
-  filteredBrandNames.value = []
-  filteredCategoryNames.value = []
+  brand.value = null;
+  category.value = null;
+  filteredBrandNames.value = [];
+  filteredCategoryNames.value = [];
 
-  await Promise.all([loadBrands(), loadCategories()])
-  await loadProducts()
-})
+  await Promise.all([loadBrands(), loadCategories()]);
+  await loadProducts();
+});
 
-const isLoadingMore = ref(false)
+const isLoadingMore = ref(false);
 
 const onPaginationClick = async () => {
-  isLoadingMore.value = true
+  isLoadingMore.value = true;
   try {
     await loadAvailableProducts({
       page: productStore.page + 1,
       append: true,
-    })
+    });
   } finally {
-    isLoadingMore.value = false
+    isLoadingMore.value = false;
   }
-}
+};
 
 const onResetFilters = async () => {
-  suppressFilterWatch.value = true
+  suppressFilterWatch.value = true;
 
   try {
-    search.value = ''
-    brand.value = null
-    category.value = null
+    search.value = '';
+    brand.value = null;
+    category.value = null;
 
-    filteredBrandNames.value = [...brandNames.value]
-    filteredCategoryNames.value = [...categoryNames.value]
+    filteredBrandNames.value = [...brandNames.value];
+    filteredCategoryNames.value = [...categoryNames.value];
 
     await loadAvailableProducts({
       page: 1,
       search: '',
-    })
+    });
   } finally {
-    suppressFilterWatch.value = false
-    filterDrawerOpen.value = false
+    suppressFilterWatch.value = false;
+    filterDrawerOpen.value = false;
   }
-}
+};
 
 const onSearchHide = () => {
-  search.value = ''
-  showSearchInput.value = false
-  void loadProducts()
-}
+  search.value = '';
+  showSearchInput.value = false;
+  void loadProducts();
+};
 
 watch(searchField, () => {
   if (!showSearchInput.value) {
-    return
+    return;
   }
 
-  void loadProducts()
-})
+  void loadProducts();
+});
 
 const fileId = computed(() => {
-  const parsed = Number(route.params.id)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
-})
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+});
 
 const loadCostingFileItems = async () => {
   if (!fileId.value) {
-    return
+    return;
   }
 
-  await costingFileStore.fetchProductBasedCostingItems(fileId.value)
-}
+  await costingFileStore.fetchProductBasedCostingItems(fileId.value);
+};
 
 onMounted(() => {
   void Promise.all([
@@ -459,14 +455,14 @@ onMounted(() => {
     loadCategories(),
     loadProducts(),
     loadCostingFileItems(),
-  ])
-})
+  ]);
+});
 
 onBeforeUnmount(() => {
   if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
+    clearTimeout(searchDebounceTimer);
   }
-})
+});
 </script>
 
 <style scoped>

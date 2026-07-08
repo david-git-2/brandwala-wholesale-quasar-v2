@@ -18,7 +18,9 @@
                 Created for {{ store?.item?.order_for ?? '-' }}
               </div>
             </div>
-            <div class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap">
+            <div
+              class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap"
+            >
               <q-chip
                 v-if="store.item"
                 dense
@@ -27,7 +29,10 @@
                 :style="statusChipStyle(status)"
                 class="costing-file-status-chip q-px-md q-py-sm header-status-chip"
               >
-                <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(status) }" />
+                <span
+                  class="status-chip-dot"
+                  :style="{ backgroundColor: statusDotColor(status) }"
+                />
                 {{ status }}
                 <q-menu>
                   <q-list dense style="min-width: 150px">
@@ -103,7 +108,12 @@
                 dropdown-icon="expand_more"
               >
                 <q-list dense>
-                  <q-item clickable v-close-popup :disable="status === 'pending'" @click="openPreview">
+                  <q-item
+                    clickable
+                    v-close-popup
+                    :disable="status === 'pending'"
+                    @click="openPreview"
+                  >
                     <q-item-section avatar>
                       <q-icon name="visibility" />
                     </q-item-section>
@@ -124,7 +134,12 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="router.push({ name: 'product-based-costing-file-cart-page', params: { id: fileId } })"
+                    @click="
+                      router.push({
+                        name: 'product-based-costing-file-cart-page',
+                        params: { id: fileId },
+                      })
+                    "
                   >
                     <q-item-section avatar>
                       <q-icon name="shopping_cart" />
@@ -162,10 +177,24 @@
               />
             </div>
             <div class="col-12 col-sm-3">
-              <q-input v-model.number="profit_rate" dense filled   type="number" class="soft-input" label="Profit Rate" />
+              <q-input
+                v-model.number="profit_rate"
+                dense
+                filled
+                type="number"
+                class="soft-input"
+                label="Profit Rate"
+              />
             </div>
             <div class="col-12 col-sm-auto row justify-end">
-              <q-btn color="primary" label="Save" no-caps size="sm" class="pill-btn slim-btn rates-save-btn full-width-xs" @click="onRateSave" />
+              <q-btn
+                color="primary"
+                label="Save"
+                no-caps
+                size="sm"
+                class="pill-btn slim-btn rates-save-btn full-width-xs"
+                @click="onRateSave"
+              />
             </div>
           </div>
         </q-card-section>
@@ -211,7 +240,9 @@
         :quantity="selectedQuantity"
         :price-gbp="selectedPriceGbp"
         :loading="shipmentStore.saving"
-        :default-shipment-id="(store.item?.default_shipment_id as number | null | undefined) ?? null"
+        :default-shipment-id="
+          (store.item?.default_shipment_id as number | null | undefined) ?? null
+        "
         @shipment-change="onDefaultShipmentChange"
         @save="onSaveShipment"
       />
@@ -219,9 +250,7 @@
       <q-dialog v-model="confirmRemoveShipmentOpen">
         <q-card style="min-width: 360px">
           <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
-          <q-card-section>
-            This will remove the selected item from its shipment.
-          </q-card-section>
+          <q-card-section> This will remove the selected item from its shipment. </q-card-section>
           <q-card-actions align="right">
             <q-btn flat label="Cancel" v-close-popup />
             <q-btn
@@ -275,19 +304,43 @@ const selectedShipItem = ref<ProductBasedCostingItem | null>(null);
 const shippedItemIds = ref<number[]>([]);
 const confirmRemoveShipmentOpen = ref(false);
 const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
-const alwaysVisibleColumns = ['select', 'sl', 'image', 'name']
+const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
 const allColumnNames = [
-  'select', 'sl', 'image', 'name', 'brand', 'note', 'qty', 'deliveredQty', 'barcodeText', 'website', 'priceGbp',
-  'totalPurchasePriceGbp', 'productWeight', 'packageWeight', 'totalWeight', 'cargoRate', 'cargoCostGbp', 'totalCostGbp',
-  'rowTotalCostGbp', 'costBdt', 'totalCostBdt', 'offerPriceBdt', 'totalBdt', 'profitPerUnitBdt',
-  'profitBdt', 'profitRate', 'status', 'action',
-]
+  'select',
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'note',
+  'qty',
+  'deliveredQty',
+  'barcodeText',
+  'website',
+  'priceGbp',
+  'totalPurchasePriceGbp',
+  'productWeight',
+  'packageWeight',
+  'totalWeight',
+  'cargoRate',
+  'cargoCostGbp',
+  'totalCostGbp',
+  'rowTotalCostGbp',
+  'costBdt',
+  'totalCostBdt',
+  'offerPriceBdt',
+  'totalBdt',
+  'profitPerUnitBdt',
+  'profitBdt',
+  'profitRate',
+  'status',
+  'action',
+];
 const { visibleColumns } = useMembershipColumnPreference({
   preferenceKey: 'ui.productBasedCosting.fileDetailsVisibleColumns',
   allColumnNames,
   alwaysVisibleColumns,
   defaultVisibleColumns: allColumnNames,
-})
+});
 const columnSelectorOptions = [
   { label: 'Brand', value: 'brand' },
   { label: 'Note', value: 'note' },
@@ -313,19 +366,19 @@ const columnSelectorOptions = [
   { label: 'Profit Rate (%)', value: 'profitRate' },
   { label: 'Status', value: 'status' },
   { label: 'Action', value: 'action' },
-]
-const selectableColumnValues = columnSelectorOptions.map((option) => option.value)
+];
+const selectableColumnValues = columnSelectorOptions.map((option) => option.value);
 const allSelectableColumnsSelected = computed({
   get: () => selectableColumnValues.every((value) => visibleColumns.value.includes(value)),
   set: (checked: boolean) => {
     visibleColumns.value = checked
       ? [...alwaysVisibleColumns, ...selectableColumnValues]
-      : [...alwaysVisibleColumns]
+      : [...alwaysVisibleColumns];
   },
-})
+});
 const onVisibleColumnsUpdate = (columns: string[]) => {
-  visibleColumns.value = columns
-}
+  visibleColumns.value = columns;
+};
 const cargoRateValue = computed(() => cargo_rate_kg_gbp.value ?? 0);
 const conversionRateValue = computed(() => conversion_rate.value ?? 140);
 const profitRateValue = computed(() => profit_rate.value ?? 25);
@@ -353,81 +406,81 @@ const onStatusChange = async () => {
 
 const onStatusMenuSelect = async (nextStatus: string) => {
   if (status.value === nextStatus) {
-    return
+    return;
   }
-  status.value = nextStatus
-  await onStatusChange()
-}
+  status.value = nextStatus;
+  await onStatusChange();
+};
 
 const statusChipStyle = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase()
+  const value = (currentStatus ?? '').toLowerCase();
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'processing') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'ordered') {
     return {
       backgroundColor: '#d7e7f6',
       color: '#1a4562',
       border: '1px solid #9ebfdc',
-    }
+    };
   }
   if (value === 'invoicing') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'invoiced') {
     return {
       backgroundColor: '#e0f2f1',
       color: '#00695c',
       border: '1px solid #b2dfdb',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#dbe5f3',
     color: '#3b4b66',
     border: '1px solid #b9c8dd',
-  }
-}
+  };
+};
 
 const statusDotColor = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase()
-  if (value === 'pending') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'processing') return '#2f8b5d'
-  if (value === 'ordered') return '#2f6e92'
-  if (value === 'invoicing') return '#3f51b5'
-  if (value === 'invoiced') return '#009688'
-  if (value === 'cancelled') return '#a64c62'
-  return '#66758c'
-}
+  const value = (currentStatus ?? '').toLowerCase();
+  if (value === 'pending') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'processing') return '#2f8b5d';
+  if (value === 'ordered') return '#2f6e92';
+  if (value === 'invoicing') return '#3f51b5';
+  if (value === 'invoiced') return '#009688';
+  if (value === 'cancelled') return '#a64c62';
+  return '#66758c';
+};
 
 const recalculateAndPersistOfferPrices = async () => {
   if (!fileId.value) {
@@ -469,7 +522,15 @@ const loadData = async () => {
   ]);
 };
 
-const statusOptions = ['pending', 'offered', 'processing', 'ordered', 'invoicing', 'invoiced', 'cancelled'];
+const statusOptions = [
+  'pending',
+  'offered',
+  'processing',
+  'ordered',
+  'invoicing',
+  'invoiced',
+  'cancelled',
+];
 
 const handleCreated = async () => {
   if (!fileId.value) {
@@ -499,7 +560,7 @@ watch(
   () => route.params.id,
   async (newId, oldId) => {
     if (newId === oldId) {
-      return
+      return;
     }
     await loadData();
     refreshShippedItemIndicators();
@@ -518,47 +579,46 @@ const onDelete = async (item: ProductBasedCostingItem) => {
 
 const onBulkDelete = async (ids: number[]) => {
   if (!ids.length) {
-    return
+    return;
   }
 
   const results = await Promise.allSettled(
     ids.map((id) => productBasedCostingService.deleteProductBasedCostingItem(id)),
-  )
+  );
 
   const failedCount = results.filter(
     (result) =>
-      result.status === 'rejected' ||
-      (result.status === 'fulfilled' && !result.value.success),
-  ).length
+      result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success),
+  ).length;
 
-  await store.fetchProductBasedCostingItems(fileId.value)
-  refreshShippedItemIndicators()
+  await store.fetchProductBasedCostingItems(fileId.value);
+  refreshShippedItemIndicators();
 
   if (failedCount > 0) {
     $q.notify({
       type: 'warning',
       message: `${ids.length - failedCount} item(s) deleted, ${failedCount} failed.`,
-    })
-    return
+    });
+    return;
   }
 
   $q.notify({
     type: 'positive',
     message: `${ids.length} item(s) deleted successfully.`,
-  })
-}
+  });
+};
 
 type RowChangePayload = {
-  item: ProductBasedCostingItem
-  row: unknown
-  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity'
-}
+  item: ProductBasedCostingItem;
+  row: unknown;
+  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity';
+};
 
 type WeightChangePayload = {
-  item: ProductBasedCostingItem
-  row: unknown
-  field: 'product_weight' | 'package_weight'
-}
+  item: ProductBasedCostingItem;
+  row: unknown;
+  field: 'product_weight' | 'package_weight';
+};
 
 const onRowChange = async (payload: RowChangePayload) => {
   await store.updateProductBasedCostingItem(payload.item);
@@ -576,65 +636,65 @@ const openCreateDialog = () => {
 
 const openPreview = () => {
   if (!fileId.value) {
-    return
+    return;
   }
 
   const previewRoute = router.resolve({
     name: 'product-based-costing-file-preview-page',
     params: { id: fileId.value },
-  })
+  });
 
-  window.open(previewRoute.href, '_blank', 'noopener')
-}
+  window.open(previewRoute.href, '_blank', 'noopener');
+};
 
 const openPrintPage = () => {
   if (!fileId.value) {
-    return
+    return;
   }
   const printRoute = router.resolve({
     name: 'product-based-costing-file-print-page',
     params: { id: fileId.value },
-  })
-  window.open(printRoute.href, '_blank', 'noopener')
-}
+  });
+  window.open(printRoute.href, '_blank', 'noopener');
+};
 
 const safeNamePart = (value: string) =>
-  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '')
+  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
 
 const downloadExcel = async () => {
   if (!store.item) {
-    $q.notify({ type: 'warning', message: 'No costing file selected.' })
-    return
+    $q.notify({ type: 'warning', message: 'No costing file selected.' });
+    return;
   }
 
-  const loading = $q.loading.show({ message: 'Generating Excel...' })
+  const loading = $q.loading.show({ message: 'Generating Excel...' });
 
   try {
     const workbook = await buildCostingExcelWorkbook({
       file: store.item,
       items: store.costingItems ?? [],
-    })
+    });
 
-    const buffer = await workbook.xlsx.writeBuffer()
+    const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    const fileTitle = safeNamePart(store.item.name ?? `costing_file_${store.item.id}`)
-    anchor.href = url
-    anchor.download = `${fileTitle || `costing_file_${store.item.id}`}.xlsx`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const fileTitle = safeNamePart(store.item.name ?? `costing_file_${store.item.id}`);
+    anchor.href = url;
+    anchor.download = `${fileTitle || `costing_file_${store.item.id}`}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   } catch (error) {
     $q.notify({
       type: 'negative',
       message: error instanceof Error ? error.message : 'Failed to generate Excel.',
-    })
+    });
   } finally {
-    loading()
+    loading();
   }
-}
+};
 
 const openEditDialog = (item: ProductBasedCostingItem) => {
   selectedItem.value = item;
@@ -657,9 +717,9 @@ const onRateSave = async () => {
   });
   const payload = {
     id: store.item.id,
-    conversion_rate: conversion_rate.value ||0,
-    cargo_rate_kg_gbp: cargo_rate_kg_gbp.value||0,
-    profit_rate: profit_rate.value ||0,
+    conversion_rate: conversion_rate.value || 0,
+    cargo_rate_kg_gbp: cargo_rate_kg_gbp.value || 0,
+    profit_rate: profit_rate.value || 0,
   };
 
   await store.updateProductBasedCostingFile(payload);
@@ -707,9 +767,11 @@ const normalizeText = (value: string | null | undefined) => (value ?? '').trim()
 
 const refreshShippedItemIndicators = () => {
   const productItems = store.costingItems ?? [];
-  shippedItemIds.value = Array.from(new Set(productItems
-    .filter((item) => item.assigned_shipment_id != null)
-    .map((item) => item.id)));
+  shippedItemIds.value = Array.from(
+    new Set(
+      productItems.filter((item) => item.assigned_shipment_id != null).map((item) => item.id),
+    ),
+  );
 };
 
 const onShip = (item: ProductBasedCostingItem) => {
@@ -733,17 +795,18 @@ const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => 
   const itemName = normalizeText(item.name);
   const itemBarcode = normalizeText(item.barcode);
   const itemProductCode = normalizeText(item.product_code);
-  const matched = shipmentItems.find((entry) => {
-    if (itemProductId != null && entry.product_id === itemProductId) {
-      return true;
-    }
+  const matched =
+    shipmentItems.find((entry) => {
+      if (itemProductId != null && entry.product_id === itemProductId) {
+        return true;
+      }
 
-    return (
-      normalizeText(entry.name) === itemName &&
-      normalizeText(entry.barcode) === itemBarcode &&
-      normalizeText(entry.product_code) === itemProductCode
-    );
-  }) ?? null;
+      return (
+        normalizeText(entry.name) === itemName &&
+        normalizeText(entry.barcode) === itemBarcode &&
+        normalizeText(entry.product_code) === itemProductCode
+      );
+    }) ?? null;
 
   if (matched) {
     return matched;
@@ -788,9 +851,9 @@ const onConfirmRemoveShipment = async () => {
 };
 
 const onSaveShipment = async (data: {
-  shipment_id: number
-  quantity: number
-  price_gbp: number | null
+  shipment_id: number;
+  quantity: number;
+  price_gbp: number | null;
 }) => {
   const rowItem = selectedShipItem.value;
   if (!rowItem) {
@@ -898,8 +961,6 @@ const onDefaultShipmentChange = async (shipmentId: number | null) => {
 .hero-surface {
   border-radius: 16px;
 }
-
-
 
 .slim-btn {
   min-height: 32px;

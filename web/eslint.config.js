@@ -15,9 +15,7 @@ export default defineConfigWithVueTs(
      *
      * ESLint requires "ignores" key to be the only one in this object
      */
-    ignores: [
-      'src/types/supabase.ts',
-    ],
+    ignores: ['src/types/supabase.ts'],
   },
 
   pluginQuasar.configs.recommended(),

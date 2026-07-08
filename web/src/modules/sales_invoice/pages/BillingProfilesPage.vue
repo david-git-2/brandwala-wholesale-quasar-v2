@@ -5,10 +5,19 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
             <div class="text-h6 text-weight-bold">Billing Profiles</div>
-            <div class="text-caption text-grey-8">Manage customer billing profiles used for sales invoicing</div>
+            <div class="text-caption text-grey-8">
+              Manage customer billing profiles used for sales invoicing
+            </div>
           </div>
           <div class="col-auto">
-            <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Create Billing Profile" @click="createOpen = true" />
+            <q-btn
+              color="primary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              label="Create Billing Profile"
+              @click="createOpen = true"
+            />
           </div>
         </div>
       </q-card-section>
@@ -44,7 +53,14 @@
           </template>
         </q-input>
 
-        <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="filterDrawerOpen = true">
+        <q-btn
+          flat
+          round
+          dense
+          icon="filter_alt"
+          aria-label="Filters"
+          @click="filterDrawerOpen = true"
+        >
           <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
             {{ activeFilterCount }}
           </q-badge>
@@ -74,12 +90,7 @@
               {{ row.name }}
             </td>
             <td>
-              <q-chip
-                v-if="row.customer_group_id"
-                dense
-                outline
-                size="sm"
-              >
+              <q-chip v-if="row.customer_group_id" dense outline size="sm">
                 {{ customerGroupNameMap[row.customer_group_id] ?? '-' }}
               </q-chip>
               <span v-else class="text-grey-6 text-caption">Others</span>
@@ -147,12 +158,16 @@
     <q-dialog v-model="deleteOpen">
       <q-card style="min-width: 320px">
         <q-card-section class="text-h6">Delete Billing Profile</q-card-section>
-        <q-card-section>
-          Are you sure you want to delete this billing profile?
-        </q-card-section>
+        <q-card-section> Are you sure you want to delete this billing profile? </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="negative" no-caps label="Delete" :loading="store.saving" @click="onDelete" />
+          <q-btn
+            color="negative"
+            no-caps
+            label="Delete"
+            :loading="store.saving"
+            @click="onDelete"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -160,64 +175,66 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
-import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue'
-import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue'
-import { useBillingProfileStore } from '../stores/billingProfileStore'
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
-import type { BillingProfile, CreateBillingProfileInput } from '../repositories/billingProfileRepository'
+import { computed, onMounted, ref } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue';
+import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue';
+import { useBillingProfileStore } from '../stores/billingProfileStore';
+import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
+import type {
+  BillingProfile,
+  CreateBillingProfileInput,
+} from '../repositories/billingProfileRepository';
 
-const authStore = useAuthStore()
-const store = useBillingProfileStore()
-const customerGroupStore = useCustomerGroupStore()
+const authStore = useAuthStore();
+const store = useBillingProfileStore();
+const customerGroupStore = useCustomerGroupStore();
 
-const createOpen = ref(false)
-const showSearchInput = ref(false)
-const filterDrawerOpen = ref(false)
-const searchText = ref('')
-const emailFilter = ref('')
-const phoneFilter = ref('')
-const editOpen = ref(false)
-const deleteOpen = ref(false)
-const selectedId = ref<number | null>(null)
+const createOpen = ref(false);
+const showSearchInput = ref(false);
+const filterDrawerOpen = ref(false);
+const searchText = ref('');
+const emailFilter = ref('');
+const phoneFilter = ref('');
+const editOpen = ref(false);
+const deleteOpen = ref(false);
+const selectedId = ref<number | null>(null);
 
-const selectedProfile = computed<BillingProfile | null>(() =>
-  store.items.find((row) => row.id === selectedId.value) ?? null,
-)
+const selectedProfile = computed<BillingProfile | null>(
+  () => store.items.find((row) => row.id === selectedId.value) ?? null,
+);
 const filteredItems = computed(() => {
-  const search = searchText.value.trim().toLowerCase()
-  const email = emailFilter.value.trim().toLowerCase()
-  const phone = phoneFilter.value.trim().toLowerCase()
+  const search = searchText.value.trim().toLowerCase();
+  const email = emailFilter.value.trim().toLowerCase();
+  const phone = phoneFilter.value.trim().toLowerCase();
   return store.items.filter((row) => {
-    const matchesSearch = !search || [
-      row.name,
-      row.email ?? '',
-      row.phone ?? '',
-      row.address ?? '',
-    ].some((value) => value.toLowerCase().includes(search))
-    const matchesEmail = !email || (row.email ?? '').toLowerCase().includes(email)
-    const matchesPhone = !phone || (row.phone ?? '').toLowerCase().includes(phone)
-    return matchesSearch && matchesEmail && matchesPhone
-  })
-})
+    const matchesSearch =
+      !search ||
+      [row.name, row.email ?? '', row.phone ?? '', row.address ?? ''].some((value) =>
+        value.toLowerCase().includes(search),
+      );
+    const matchesEmail = !email || (row.email ?? '').toLowerCase().includes(email);
+    const matchesPhone = !phone || (row.phone ?? '').toLowerCase().includes(phone);
+    return matchesSearch && matchesEmail && matchesPhone;
+  });
+});
 const activeFilterCount = computed(() => {
-  let count = 0
-  if (emailFilter.value.trim()) count += 1
-  if (phoneFilter.value.trim()) count += 1
-  return count
-})
+  let count = 0;
+  if (emailFilter.value.trim()) count += 1;
+  if (phoneFilter.value.trim()) count += 1;
+  return count;
+});
 
 const customerGroupNameMap = computed<Record<number, string>>(() =>
   customerGroupStore.groups.reduce<Record<number, string>>((acc, g) => {
-    acc[g.id] = g.name
-    return acc
+    acc[g.id] = g.name;
+    return acc;
   }, {}),
-)
+);
 
 const load = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   await Promise.all([
     store.fetchBillingProfiles({
       tenant_id: authStore.tenantId,
@@ -226,66 +243,66 @@ const load = async () => {
       sortBy: 'created_at',
       sortOrder: 'desc',
     }),
-    customerGroupStore.fetchCustomerGroupsByTenant(authStore.tenantId)
-  ])
-}
+    customerGroupStore.fetchCustomerGroupsByTenant(authStore.tenantId),
+  ]);
+};
 
 const onCreate = async (payload: CreateBillingProfileInput) => {
-  const result = await store.createBillingProfile(payload)
+  const result = await store.createBillingProfile(payload);
   if (result.success) {
-    createOpen.value = false
+    createOpen.value = false;
   }
-}
+};
 
 const onOpenEdit = (id: number) => {
-  selectedId.value = id
-  editOpen.value = true
-}
+  selectedId.value = id;
+  editOpen.value = true;
+};
 
 const onEdit = async (payload: {
-  id: number
+  id: number;
   patch: {
-    name: string
-    email: string | null
-    phone: string | null
-    address: string | null
-    customer_group_id: number | null
-    color: string | null
-  }
+    name: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    customer_group_id: number | null;
+    color: string | null;
+  };
 }) => {
-  const result = await store.updateBillingProfile(payload)
+  const result = await store.updateBillingProfile(payload);
   if (result.success) {
-    editOpen.value = false
+    editOpen.value = false;
   }
-}
+};
 
 const onOpenDelete = (id: number) => {
-  selectedId.value = id
-  deleteOpen.value = true
-}
+  selectedId.value = id;
+  deleteOpen.value = true;
+};
 
 const onDelete = async () => {
-  if (selectedId.value === null) return
-  const result = await store.deleteBillingProfile(selectedId.value)
+  if (selectedId.value === null) return;
+  const result = await store.deleteBillingProfile(selectedId.value);
   if (result.success) {
-    deleteOpen.value = false
-    selectedId.value = null
+    deleteOpen.value = false;
+    selectedId.value = null;
   }
-}
+};
 
-const onSearchChange = () => {}
+const onSearchChange = () => {};
 const onCloseSearch = () => {
-  showSearchInput.value = false
-  searchText.value = ''
-}
+  showSearchInput.value = false;
+  searchText.value = '';
+};
 const onResetFilters = () => {
-  emailFilter.value = ''
-  phoneFilter.value = ''
-}
+  emailFilter.value = '';
+  phoneFilter.value = '';
+};
 
 onMounted(() => {
-  void load()
-})
+  void load();
+});
 </script>
 
 <style scoped>

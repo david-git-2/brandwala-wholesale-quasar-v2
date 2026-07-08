@@ -11,21 +11,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import WorkspaceShell from 'src/components/WorkspaceShell.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import WorkspaceShell from 'src/components/WorkspaceShell.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
-const tenantName = computed(() => authStore.tenant?.name ?? '')
+const tenantName = computed(() => authStore.tenant?.name ?? '');
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/investor/login` : '/investor/login',
-)
+);
 
 const links = computed(() => {
-  const slug = authStore.tenantSlug
-  if (!slug) return []
+  const slug = authStore.tenantSlug;
+  if (!slug) return [];
 
   return [
     {
@@ -52,8 +52,8 @@ const links = computed(() => {
       icon: 'history',
       to: `/${slug}/investor/activity`,
     },
-  ]
-})
+  ];
+});
 </script>
 
 <style scoped>

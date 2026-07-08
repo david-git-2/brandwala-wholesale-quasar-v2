@@ -1,10 +1,12 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card style="width: 700px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+    <q-card style="width: 700px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div>
           <div class="text-h6 text-weight-bold">Garment Measurements</div>
-          <div class="text-caption text-grey-8">{{ stock.name || 'Thrift Item' }} ({{ stock.barcode }})</div>
+          <div class="text-caption text-grey-8">
+            {{ stock.name || 'Thrift Item' }} ({{ stock.barcode }})
+          </div>
         </div>
         <div class="row items-center q-gutter-xs">
           <q-btn flat round dense icon="info" color="primary" @click="openGuide">
@@ -15,7 +17,7 @@
       </q-card-section>
       <q-separator />
 
-      <q-card-section class="q-py-md scroll" style="max-height: 70vh;">
+      <q-card-section class="q-py-md scroll" style="max-height: 70vh">
         <q-form @submit="onSubmit" class="q-gutter-sm">
           <!-- Size field (updates thrift_stocks size directly) -->
           <div class="row q-col-gutter-sm items-center">
@@ -45,58 +47,184 @@
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Core Fit (inches)</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-3">
-              <q-input :model-value="numberFieldDisplay(form.bust_in)" type="number" step="0.1" min="0" outlined dense label="Bust (in)" class="soft-input" @update:model-value="form.bust_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.bust_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Bust (in)"
+                class="soft-input"
+                @update:model-value="form.bust_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input :model-value="numberFieldDisplay(form.waist_in)" type="number" step="0.1" min="0" outlined dense label="Waist (in)" class="soft-input" @update:model-value="form.waist_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.waist_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Waist (in)"
+                class="soft-input"
+                @update:model-value="form.waist_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input :model-value="numberFieldDisplay(form.hips_in)" type="number" step="0.1" min="0" outlined dense label="Hips (in)" class="soft-input" @update:model-value="form.hips_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.hips_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Hips (in)"
+                class="soft-input"
+                @update:model-value="form.hips_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-3">
-              <q-input :model-value="numberFieldDisplay(form.length_in)" type="number" step="0.1" min="0" outlined dense label="Length (in)" class="soft-input" @update:model-value="form.length_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.length_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Length (in)"
+                class="soft-input"
+                @update:model-value="form.length_in = parseNullableNumber($event)"
+              />
             </div>
           </div>
 
-          <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Sleeves & Structure (inches)</div>
+          <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">
+            Sleeves & Structure (inches)
+          </div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-4">
-              <q-input :model-value="numberFieldDisplay(form.shoulder_width_in)" type="number" step="0.1" min="0" outlined dense label="Shoulder Width (in)" class="soft-input" @update:model-value="form.shoulder_width_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.shoulder_width_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Shoulder Width (in)"
+                class="soft-input"
+                @update:model-value="form.shoulder_width_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-4">
-              <q-input :model-value="numberFieldDisplay(form.sleeve_length_in)" type="number" step="0.1" min="0" outlined dense label="Sleeve Length (in)" class="soft-input" @update:model-value="form.sleeve_length_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.sleeve_length_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Sleeve Length (in)"
+                class="soft-input"
+                @update:model-value="form.sleeve_length_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-4">
-              <q-input :model-value="numberFieldDisplay(form.arm_circumference_in)" type="number" step="0.1" min="0" outlined dense label="Arm Circum. (in)" class="soft-input" @update:model-value="form.arm_circumference_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.arm_circumference_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Arm Circum. (in)"
+                class="soft-input"
+                @update:model-value="form.arm_circumference_in = parseNullableNumber($event)"
+              />
             </div>
           </div>
 
-          <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Style-dependent Dimensions (inches)</div>
+          <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">
+            Style-dependent Dimensions (inches)
+          </div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-sm-6">
-              <q-input :model-value="numberFieldDisplay(form.hem_width_in)" type="number" step="0.1" min="0" outlined dense label="Hem Width (in)" class="soft-input" @update:model-value="form.hem_width_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.hem_width_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Hem Width (in)"
+                class="soft-input"
+                @update:model-value="form.hem_width_in = parseNullableNumber($event)"
+              />
             </div>
             <div class="col-6 col-sm-6">
-              <q-input :model-value="numberFieldDisplay(form.neck_opening_in)" type="number" step="0.1" min="0" outlined dense label="Neck Opening (in)" class="soft-input" @update:model-value="form.neck_opening_in = parseNullableNumber($event)" />
+              <q-input
+                :model-value="numberFieldDisplay(form.neck_opening_in)"
+                type="number"
+                step="0.1"
+                min="0"
+                outlined
+                dense
+                label="Neck Opening (in)"
+                class="soft-input"
+                @update:model-value="form.neck_opening_in = parseNullableNumber($event)"
+              />
             </div>
           </div>
 
           <div class="text-subtitle2 text-weight-bold q-mt-md text-primary">Style & Details</div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.sleeve_type" outlined dense label="Sleeve Type" class="soft-input" placeholder="e.g. Raglan, Sleeveless" clearable />
+              <q-input
+                v-model="form.sleeve_type"
+                outlined
+                dense
+                label="Sleeve Type"
+                class="soft-input"
+                placeholder="e.g. Raglan, Sleeveless"
+                clearable
+              />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.neckline" outlined dense label="Neckline" class="soft-input" placeholder="e.g. V-neck, Crew" clearable />
+              <q-input
+                v-model="form.neckline"
+                outlined
+                dense
+                label="Neckline"
+                class="soft-input"
+                placeholder="e.g. V-neck, Crew"
+                clearable
+              />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model="form.dress_style" outlined dense label="Dress/Garment Style" class="soft-input" placeholder="e.g. A-line, Bodycon" clearable />
+              <q-input
+                v-model="form.dress_style"
+                outlined
+                dense
+                label="Dress/Garment Style"
+                class="soft-input"
+                placeholder="e.g. A-line, Bodycon"
+                clearable
+              />
             </div>
           </div>
 
           <div class="row q-col-gutter-sm items-center q-mt-xs">
             <div class="col-12 col-sm-6">
-              <q-input v-model="form.closure_type" outlined dense label="Closure Type" class="soft-input" placeholder="e.g. Zipper, Button-down" clearable />
+              <q-input
+                v-model="form.closure_type"
+                outlined
+                dense
+                label="Closure Type"
+                class="soft-input"
+                placeholder="e.g. Zipper, Button-down"
+                clearable
+              />
             </div>
             <div class="col-12 col-sm-6">
               <q-checkbox
@@ -121,7 +249,14 @@
 
           <div class="row justify-end q-gutter-sm q-mt-lg">
             <q-btn flat no-caps label="Cancel" color="grey-7" v-close-popup />
-            <q-btn unelevated no-caps label="Save Measurements" color="primary" type="submit" :loading="saving" />
+            <q-btn
+              unelevated
+              no-caps
+              label="Save Measurements"
+              color="primary"
+              type="submit"
+              :loading="saving"
+            />
           </div>
         </q-form>
       </q-card-section>
@@ -183,9 +318,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: [
-    ...useDialogPluginComponent.emits,
-  ],
+  emits: [...useDialogPluginComponent.emits],
   setup(props) {
     const $q = useQuasar();
     const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
@@ -222,7 +355,7 @@ export default defineComponent({
         f.fabric_stretch !== null ||
         nullableText(f.closure_type) !== null ||
         nullableText(f.measurement_notes) !== null ||
-        f.lining !== null && f.lining !== undefined
+        (f.lining !== null && f.lining !== undefined)
       );
     });
 
@@ -235,13 +368,17 @@ export default defineComponent({
       try {
         // Update stock size first if modified
         if (form.value.size !== props.stock.size) {
-          await thriftStockRepository.updateStock(props.stock.id, { size: form.value.size }, {
-            cost_of_goods_sold: props.stock.pricing?.cost_of_goods_sold || 0,
-            target_price: props.stock.pricing?.target_price || 0,
-            listed_unit_price: props.stock.pricing?.listed_unit_price || 0,
-            is_listed_price_manual: props.stock.pricing?.is_listed_price_manual,
-            extra_expense_cost: props.stock.pricing?.extra_expense_cost,
-          });
+          await thriftStockRepository.updateStock(
+            props.stock.id,
+            { size: form.value.size },
+            {
+              cost_of_goods_sold: props.stock.pricing?.cost_of_goods_sold || 0,
+              target_price: props.stock.pricing?.target_price || 0,
+              listed_unit_price: props.stock.pricing?.listed_unit_price || 0,
+              is_listed_price_manual: props.stock.pricing?.is_listed_price_manual,
+              extra_expense_cost: props.stock.pricing?.extra_expense_cost,
+            },
+          );
         }
 
         let updatedMeasurements: ThriftStockMeasurements | null = null;
@@ -267,7 +404,7 @@ export default defineComponent({
               closure_type: nullableText(form.value.closure_type),
               measurement_notes: nullableText(form.value.measurement_notes),
             },
-            props.stock.tenant_id
+            props.stock.tenant_id,
           );
         } else {
           await thriftStockRepository.deleteStockMeasurements(props.stock.id);

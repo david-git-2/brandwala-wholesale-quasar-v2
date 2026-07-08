@@ -1,7 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card style="width: 750px; max-width: 95vw;">
-      
+    <q-card style="width: 750px; max-width: 95vw">
       <q-form @submit="onSubmitSingle">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-primary text-weight-bold">
@@ -21,11 +20,20 @@
           <div class="row q-col-gutter-md">
             <!-- Left Column: Image Preview & URL -->
             <div class="col-12 col-sm-4 column items-center q-gutter-y-md">
-              <div class="image-preview-container flex flex-center bg-grey-1" style="width: 1.5in; height: 1.5in; border: 1px dashed #cfd8dc; border-radius: 8px; overflow: hidden;">
+              <div
+                class="image-preview-container flex flex-center bg-grey-1"
+                style="
+                  width: 1.5in;
+                  height: 1.5in;
+                  border: 1px dashed #cfd8dc;
+                  border-radius: 8px;
+                  overflow: hidden;
+                "
+              >
                 <SmartImage
                   v-if="form.image_url"
                   :src="form.image_url"
-                  style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                  style="max-width: 100%; max-height: 100%; object-fit: contain"
                 />
                 <div v-else class="column items-center text-grey-6">
                   <q-icon name="image" size="32px" />
@@ -53,25 +61,18 @@
                 label="Product Name *"
                 filled
                 dense
-                :rules="[val => !!val || 'Product name is required', val => val.trim().length > 0 || 'Product name cannot be blank']"
+                :rules="[
+                  (val) => !!val || 'Product name is required',
+                  (val) => val.trim().length > 0 || 'Product name cannot be blank',
+                ]"
               />
 
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model="form.product_code"
-                    label="Product Code"
-                    filled
-                    dense
-                  />
+                  <q-input v-model="form.product_code" label="Product Code" filled dense />
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model="form.barcode"
-                    label="Barcode"
-                    filled
-                    dense
-                  />
+                  <q-input v-model="form.barcode" label="Barcode" filled dense />
                 </div>
               </div>
 
@@ -85,8 +86,8 @@
                     filled
                     dense
                     :rules="[
-                      val => val !== null && val !== undefined || 'Quantity is required',
-                      val => Number.isInteger(val) && val >= 1 || 'Must be an integer >= 1'
+                      (val) => (val !== null && val !== undefined) || 'Quantity is required',
+                      (val) => (Number.isInteger(val) && val >= 1) || 'Must be an integer >= 1',
                     ]"
                   />
                 </div>
@@ -99,8 +100,8 @@
                     filled
                     dense
                     :rules="[
-                      val => val !== null && val !== undefined || 'Price is required',
-                      val => val >= 0 || 'Must be >= 0'
+                      (val) => (val !== null && val !== undefined) || 'Price is required',
+                      (val) => val >= 0 || 'Must be >= 0',
                     ]"
                   />
                 </div>
@@ -116,7 +117,7 @@
                     label="Product Weight (g)"
                     filled
                     dense
-                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                    :rules="[(val) => val >= 0 || 'Must be >= 0']"
                   />
                 </div>
                 <div class="col-12 col-sm-6">
@@ -126,7 +127,7 @@
                     label="Package Weight (g)"
                     filled
                     dense
-                    :rules="[val => val >= 0 || 'Must be >= 0']"
+                    :rules="[(val) => val >= 0 || 'Must be >= 0']"
                   />
                 </div>
               </div>
@@ -146,39 +147,36 @@
           />
         </q-card-actions>
       </q-form>
-
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useDialogPluginComponent } from 'quasar'
-import SmartImage from 'src/components/SmartImage.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository'
-import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct'
+import { ref, onMounted, computed } from 'vue';
+import { useDialogPluginComponent } from 'quasar';
+import SmartImage from 'src/components/SmartImage.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 
 const props = defineProps<{
-  shipmentId: number
-  item?: GlobalShipmentItem
-}>()
+  shipmentId: number;
+  item?: GlobalShipmentItem;
+}>();
 
-defineEmits([
-  ...useDialogPluginComponent.emits
-])
+defineEmits([...useDialogPluginComponent.emits]);
 
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent()
+const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 
-const authStore = useAuthStore()
-const vendorStore = useVendorStore()
-const shipmentStore = useGlobalShipmentStore()
+const authStore = useAuthStore();
+const vendorStore = useVendorStore();
+const shipmentStore = useGlobalShipmentStore();
 
-const isEdit = computed(() => !!props.item)
-const submitting = ref(false)
-const error = ref<string | null>(null)
+const isEdit = computed(() => !!props.item);
+const submitting = ref(false);
+const error = ref<string | null>(null);
 
 const form = ref({
   shipment_id: props.shipmentId,
@@ -196,11 +194,11 @@ const form = ref({
   source_child_tenant_id: null as number | null,
   source_type: null as string | null,
   source_id: null as number | null,
-})
+});
 
 onMounted(() => {
   if (authStore.tenantId) {
-    void vendorStore.fetchVendors(authStore.tenantId)
+    void vendorStore.fetchVendors(authStore.tenantId);
   }
 
   if (props.item) {
@@ -220,39 +218,48 @@ onMounted(() => {
       source_child_tenant_id: props.item.source_child_tenant_id,
       source_type: props.item.source_type,
       source_id: props.item.source_id,
-    }
+    };
   }
-})
+});
 
 const onSubmitSingle = async () => {
-  submitting.value = true
-  error.value = null
+  submitting.value = true;
+  error.value = null;
 
   try {
     if (isEdit.value) {
-      const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value)
+      const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value);
       if (props.item!.product_id != null) {
-        const weightChanged = props.item!.product_weight !== form.value.product_weight ||
-                              props.item!.package_weight !== form.value.package_weight
+        const weightChanged =
+          props.item!.product_weight !== form.value.product_weight ||
+          props.item!.package_weight !== form.value.package_weight;
         if (weightChanged) {
-          await syncShipmentWeightToProduct(props.item!.product_id, 'product_weight', form.value.product_weight)
-          await syncShipmentWeightToProduct(props.item!.product_id, 'package_weight', form.value.package_weight)
+          await syncShipmentWeightToProduct(
+            props.item!.product_id,
+            'product_weight',
+            form.value.product_weight,
+          );
+          await syncShipmentWeightToProduct(
+            props.item!.product_id,
+            'package_weight',
+            form.value.package_weight,
+          );
         }
       }
-      onDialogOK(updated)
+      onDialogOK(updated);
     } else {
       const payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'> = {
         ...form.value,
         add_method: 'manual',
-      }
-      const created = await shipmentStore.addShipmentItem(payload)
-      onDialogOK(created)
+      };
+      const created = await shipmentStore.addShipmentItem(payload);
+      onDialogOK(created);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    error.value = msg || 'Failed to save item.'
+    const msg = err instanceof Error ? err.message : String(err);
+    error.value = msg || 'Failed to save item.';
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
 </script>

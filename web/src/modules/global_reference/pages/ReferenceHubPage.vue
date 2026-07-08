@@ -25,18 +25,38 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
+const router = useRouter();
 
 const cards = [
-  { title: 'Markets', caption: 'ISO country markets', icon: 'public', to: '/platform/reference/markets' },
-  { title: 'Currencies', caption: 'Global currencies', icon: 'payments', to: '/platform/reference/currencies' },
-  { title: 'Payment Methods', caption: 'BD and international', icon: 'account_balance_wallet', to: '/platform/reference/payment-methods' },
-  { title: 'Units of Measure', caption: 'Weight, count, volume', icon: 'straighten', to: '/platform/reference/units' },
-] as const
+  {
+    title: 'Markets',
+    caption: 'ISO country markets',
+    icon: 'public',
+    to: '/platform/reference/markets',
+  },
+  {
+    title: 'Currencies',
+    caption: 'Global currencies',
+    icon: 'payments',
+    to: '/platform/reference/currencies',
+  },
+  {
+    title: 'Payment Methods',
+    caption: 'BD and international',
+    icon: 'account_balance_wallet',
+    to: '/platform/reference/payment-methods',
+  },
+  {
+    title: 'Units of Measure',
+    caption: 'Weight, count, volume',
+    icon: 'straighten',
+    to: '/platform/reference/units',
+  },
+] as const;
 
 const go = (to: string) => {
-  void router.push(to)
-}
+  void router.push(to);
+};
 </script>

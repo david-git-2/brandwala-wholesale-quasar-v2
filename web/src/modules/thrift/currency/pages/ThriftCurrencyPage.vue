@@ -38,10 +38,38 @@ const currencyStore = useThriftCurrencyStore();
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
-  { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true, headerStyle: 'width: 70px' },
-  { name: 'code', align: 'left', label: 'Code', field: 'code', sortable: true, headerStyle: 'width: 80px' },
-  { name: 'symbol', align: 'left', label: 'Symbol', field: 'symbol', sortable: true, headerStyle: 'width: 80px' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    sortable: false,
+    headerStyle: 'width: 50px',
+  },
+  {
+    name: 'id',
+    align: 'left',
+    label: 'ID',
+    field: 'id',
+    sortable: true,
+    headerStyle: 'width: 70px',
+  },
+  {
+    name: 'code',
+    align: 'left',
+    label: 'Code',
+    field: 'code',
+    sortable: true,
+    headerStyle: 'width: 80px',
+  },
+  {
+    name: 'symbol',
+    align: 'left',
+    label: 'Symbol',
+    field: 'symbol',
+    sortable: true,
+    headerStyle: 'width: 80px',
+  },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'country', align: 'left', label: 'Country', field: 'country', sortable: true },
 ];

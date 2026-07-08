@@ -6,9 +6,7 @@
         <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: productsRouteName }" />
         <div>
           <div class="text-h5 text-weight-bold">Orders</div>
-          <div class="text-caption text-grey-7">
-            Manage your placed Koba retail orders
-          </div>
+          <div class="text-caption text-grey-7">Manage your placed Koba retail orders</div>
         </div>
       </div>
       <div>
@@ -26,14 +24,31 @@
     <!-- Filter status toolbar -->
     <div class="row items-center q-gutter-sm q-mb-md">
       <!-- Sidebar Toggle Button -->
-      <q-btn flat round dense icon="filter_alt" color="primary" aria-label="Filters" @click="filterDrawerOpen = true">
+      <q-btn
+        flat
+        round
+        dense
+        icon="filter_alt"
+        color="primary"
+        aria-label="Filters"
+        @click="filterDrawerOpen = true"
+      >
         <q-badge v-if="filterStatus" color="primary" rounded floating>1</q-badge>
       </q-btn>
 
       <!-- Active filter count + clear -->
       <div v-if="filterStatus" class="row items-center q-gutter-xs">
         <q-chip dense color="primary" text-color="white" label="1 filter" />
-        <q-btn flat dense no-caps size="sm" icon="close" label="Clear" color="grey-7" @click="onClearDrawerFilters" />
+        <q-btn
+          flat
+          dense
+          no-caps
+          size="sm"
+          icon="close"
+          label="Clear"
+          color="grey-7"
+          @click="onClearDrawerFilters"
+        />
       </div>
     </div>
 
@@ -42,7 +57,8 @@
       <q-select
         v-model="filterStatus"
         :options="statusOptions"
-        outlined dense
+        outlined
+        dense
         label="Status"
         class="soft-input q-mb-md"
         clearable
@@ -94,7 +110,10 @@
                 :style="statusChipStyle(sp.row.status)"
                 class="costing-file-status-chip"
               >
-                <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(sp.row.status) }" />
+                <span
+                  class="status-chip-dot"
+                  :style="{ backgroundColor: statusDotColor(sp.row.status) }"
+                />
                 {{ sp.row.status }}
               </q-chip>
             </q-td>
@@ -106,24 +125,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import type { QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
-import type { KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository'
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import type { QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore';
+import type { KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 
-const authStore = useAuthStore()
-const store = useKobaOrderStore()
+const authStore = useAuthStore();
+const store = useKobaOrderStore();
 
 const productsRouteName = computed(() => {
-  return authStore.scope === 'shop' ? 'shop-koba-retail-page' : 'app-koba-retail-page'
-})
+  return authStore.scope === 'shop' ? 'shop-koba-retail-page' : 'app-koba-retail-page';
+});
 
-const filterStatus = ref<KobaOrderStatus | null>(null)
-const filterDrawerOpen = ref(false)
+const filterStatus = ref<KobaOrderStatus | null>(null);
+const filterDrawerOpen = ref(false);
 
 const statusOptions = [
   { label: 'Pending', value: 'pending' },
@@ -132,113 +151,115 @@ const statusOptions = [
   { label: 'Shipped', value: 'shipped' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Cancelled', value: 'cancelled' },
-]
+];
 
 onMounted(async () => {
-  await store.fetchOrders(1)
-})
+  await store.fetchOrders(1);
+});
 
 const serverPagination = computed(() => ({
   page: store.meta.page,
   rowsPerPage: store.meta.page_size,
   rowsNumber: store.meta.total,
-}))
+}));
 
 async function onApplyDrawerFilters() {
-  filterDrawerOpen.value = false
-  await store.fetchOrders(1, filterStatus.value)
+  filterDrawerOpen.value = false;
+  await store.fetchOrders(1, filterStatus.value);
 }
 
 function onResetDrawerFilters() {
-  filterStatus.value = null
+  filterStatus.value = null;
 }
 
 async function onClearDrawerFilters() {
-  filterStatus.value = null
-  filterDrawerOpen.value = false
-  await store.fetchOrders(1, null)
+  filterStatus.value = null;
+  filterDrawerOpen.value = false;
+  await store.fetchOrders(1, null);
 }
 
 async function onTableRequest(payload: { pagination: { page: number; rowsPerPage: number } }) {
-  store.meta.page_size = payload.pagination.rowsPerPage
-  await store.fetchOrders(payload.pagination.page, filterStatus.value)
+  store.meta.page_size = payload.pagination.rowsPerPage;
+  await store.fetchOrders(payload.pagination.page, filterStatus.value);
 }
 
-const router = useRouter()
+const router = useRouter();
 
 function viewOrderDetails(orderId: number) {
-  const routeName = authStore.scope === 'shop' ? 'shop-koba-retail-order-detail-page' : 'app-koba-retail-order-detail-page'
-  void router.push({ name: routeName, params: { id: String(orderId) } })
+  const routeName =
+    authStore.scope === 'shop'
+      ? 'shop-koba-retail-order-detail-page'
+      : 'app-koba-retail-order-detail-page';
+  void router.push({ name: routeName, params: { id: String(orderId) } });
 }
 
-
 const statusChipStyle = (currentStatus: string | null) => {
-  const value = (currentStatus ?? '').toLowerCase()
+  const value = (currentStatus ?? '').toLowerCase();
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'confirmed') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'processing') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'shipped') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'delivered') {
     return {
       backgroundColor: '#e0f2f1',
       color: '#00695c',
       border: '1px solid #b2dfdb',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#dbe5f3',
     color: '#3b4b66',
     border: '1px solid #b9c8dd',
-  }
-}
+  };
+};
 
 const statusDotColor = (currentStatus: string | null) => {
-  const value = (currentStatus ?? '').toLowerCase()
-  if (value === 'pending') return '#9a6a24'
-  if (value === 'confirmed') return '#3f67b3'
-  if (value === 'processing') return '#3f51b5'
-  if (value === 'shipped') return '#2f8b5d'
-  if (value === 'delivered') return '#009688'
-  if (value === 'cancelled') return '#a64c62'
-  return '#66758c'
-}
+  const value = (currentStatus ?? '').toLowerCase();
+  if (value === 'pending') return '#9a6a24';
+  if (value === 'confirmed') return '#3f67b3';
+  if (value === 'processing') return '#3f51b5';
+  if (value === 'shipped') return '#2f8b5d';
+  if (value === 'delivered') return '#009688';
+  if (value === 'cancelled') return '#a64c62';
+  return '#66758c';
+};
 
 const tableColumns: QTableColumn[] = [
   { name: 'id', label: 'Order ID', field: 'id', align: 'left', sortable: false },
   { name: 'recipient', label: 'Recipient', field: 'shipping_name', align: 'left', sortable: false },
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
-]
+];
 </script>
 
 <style scoped>

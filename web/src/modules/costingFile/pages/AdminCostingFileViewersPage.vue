@@ -147,44 +147,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRoute, useRouter } from 'vue-router';
 
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { TenantViewer } from 'src/modules/costingFile/types'
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import type { TenantViewer } from 'src/modules/costingFile/types';
 
 type ViewerRow = TenantViewer & {
-  isAssigned: boolean
-}
+  isAssigned: boolean;
+};
 
-const route = useRoute()
-const router = useRouter()
-const costingFileStore = useCostingFileStore()
-const { selectedItem: selectedFile, costingFileViewers, tenantViewers, viewerLoading } =
-  storeToRefs(costingFileStore)
+const route = useRoute();
+const router = useRouter();
+const costingFileStore = useCostingFileStore();
+const {
+  selectedItem: selectedFile,
+  costingFileViewers,
+  tenantViewers,
+  viewerLoading,
+} = storeToRefs(costingFileStore);
 
-const pageLoading = ref(false)
-const savingMembershipId = ref<number | null>(null)
+const pageLoading = ref(false);
+const savingMembershipId = ref<number | null>(null);
 
 const subtitle = computed(() =>
   selectedFile.value
     ? `Assign viewers who can see ${selectedFile.value.name}.`
     : 'Loading costing file viewer access.',
-)
+);
 
 const assignedMembershipIds = computed(
   () => new Set(costingFileViewers.value.map((viewer) => viewer.membership_id)),
-)
+);
 
-const assignedCount = computed(() => assignedMembershipIds.value.size)
+const assignedCount = computed(() => assignedMembershipIds.value.size);
 
 const viewerRows = computed<ViewerRow[]>(() =>
   tenantViewers.value.map((viewer) => ({
     ...viewer,
     isAssigned: assignedMembershipIds.value.has(viewer.membership_id),
   })),
-)
+);
 
 const viewerColumns = [
   { name: 'name', label: 'Viewer', field: 'name', align: 'left' as const },
@@ -192,105 +196,103 @@ const viewerColumns = [
   { name: 'active', label: 'Status', field: 'is_active', align: 'left' as const },
   { name: 'assigned', label: 'Access', field: 'isAssigned', align: 'left' as const },
   { name: 'actions', label: 'Actions', field: 'membership_id', align: 'right' as const },
-]
+];
 
 const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
 const loadPage = async () => {
-  const fileId = Number(route.params.id)
+  const fileId = Number(route.params.id);
 
   if (!Number.isFinite(fileId) || fileId <= 0) {
-    await router.replace({ name: 'admin-costing-file-page' })
-    return
+    await router.replace({ name: 'admin-costing-file-page' });
+    return;
   }
 
-  pageLoading.value = true
+  pageLoading.value = true;
   try {
-    const fileResult = await costingFileStore.fetchCostingFileById(fileId)
+    const fileResult = await costingFileStore.fetchCostingFileById(fileId);
 
     if (!fileResult.success || !fileResult.data) {
-      await router.replace({ name: 'admin-costing-file-page' })
-      return
+      await router.replace({ name: 'admin-costing-file-page' });
+      return;
     }
 
     await Promise.all([
       costingFileStore.fetchCostingFileViewers(fileId),
       costingFileStore.fetchTenantViewers(fileResult.data.tenant_id),
-    ])
+    ]);
   } finally {
-    pageLoading.value = false
+    pageLoading.value = false;
   }
-}
+};
 
 const refreshViewers = async () => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
   await Promise.all([
     costingFileStore.fetchCostingFileViewers(selectedFile.value.id),
     costingFileStore.fetchTenantViewers(selectedFile.value.tenant_id),
-  ])
-}
+  ]);
+};
 
 const handleAddViewer = async (membershipId: number) => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  savingMembershipId.value = membershipId
+  savingMembershipId.value = membershipId;
   try {
     const result = await costingFileStore.grantCostingFileViewer({
       costingFileId: selectedFile.value.id,
       membershipId,
-    })
+    });
 
     if (result.success) {
-      await refreshViewers()
+      await refreshViewers();
     }
   } finally {
-    savingMembershipId.value = null
+    savingMembershipId.value = null;
   }
-}
+};
 
 const handleRemoveViewer = async (membershipId: number) => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  savingMembershipId.value = membershipId
+  savingMembershipId.value = membershipId;
   try {
     const result = await costingFileStore.revokeCostingFileViewer({
       costingFileId: selectedFile.value.id,
       membershipId,
-    })
+    });
 
     if (result.success) {
-      await refreshViewers()
+      await refreshViewers();
     }
   } finally {
-    savingMembershipId.value = null
+    savingMembershipId.value = null;
   }
-}
+};
 
 const goBackToFile = async () => {
   if (!selectedFile.value) {
-    await router.replace({ name: 'admin-costing-file-page' })
-    return
+    await router.replace({ name: 'admin-costing-file-page' });
+    return;
   }
 
   await router.push({
     name: 'admin-costing-file-details-page',
     params: { id: String(selectedFile.value.id) },
-  })
-}
+  });
+};
 
 onMounted(async () => {
-  await loadPage()
-})
+  await loadPage();
+});
 </script>
 
 <style scoped>

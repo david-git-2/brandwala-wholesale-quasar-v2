@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -8,15 +8,15 @@ const guard = (requiredModule: ModuleKey) =>
     requiredScope: 'app',
     requireTenantContext: true,
     requiredModule,
-  })
+  });
 
 const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
-  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : ''
-  return tenantSlug ? `/${tenantSlug}` : ''
-}
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : '';
+  return tenantSlug ? `/${tenantSlug}` : '';
+};
 
 const accountingRedirect = (to: { params: Record<string, string | string[]> }, suffix: string) =>
-  `${getTenantSlugPrefix(to.params)}/app/finance${suffix}`
+  `${getTenantSlugPrefix(to.params)}/app/finance${suffix}`;
 
 const reportingTreasuryRoutes: RouteRecordRaw[] = [
   {
@@ -38,9 +38,9 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/accounting/shipment/:id',
     redirect: (to) => {
-      const prefix = getTenantSlugPrefix(to.params)
-      const id = typeof to.params.id === 'string' ? to.params.id : ''
-      return `${prefix}/app/finance/shipments/${id}`
+      const prefix = getTenantSlugPrefix(to.params);
+      const id = typeof to.params.id === 'string' ? to.params.id : '';
+      return `${prefix}/app/finance/shipments/${id}`;
     },
   },
   {
@@ -107,6 +107,6 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default reportingTreasuryRoutes
+export default reportingTreasuryRoutes;

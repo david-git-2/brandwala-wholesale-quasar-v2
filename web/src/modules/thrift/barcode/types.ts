@@ -20,7 +20,9 @@ export interface ThriftBarcodeListMeta {
   latest_current_year_barcode_id: string | null;
 }
 
-export function isBarcodePrintEligible(barcode: Pick<ThriftBarcode, 'is_printed' | 'status'>): boolean {
+export function isBarcodePrintEligible(
+  barcode: Pick<ThriftBarcode, 'is_printed' | 'status'>,
+): boolean {
   return barcode.is_printed === 0 && barcode.status === 'AVAILABLE';
 }
 

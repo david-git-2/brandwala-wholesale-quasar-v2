@@ -38,11 +38,7 @@
 
       <!-- Main Image Display -->
       <div class="lightbox-content" @click.stop>
-        <img
-          :src="src"
-          :alt="alt"
-          class="lightbox-image"
-        />
+        <img :src="src" :alt="alt" class="lightbox-image" />
         <div v-if="alt" class="lightbox-caption">
           {{ alt }}
         </div>
@@ -52,61 +48,61 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = defineProps<{
-  modelValue: boolean
-  src: string
-  alt?: string
-}>()
+  modelValue: boolean;
+  src: string;
+  alt?: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', val: boolean): void
-}>()
+  (e: 'update:modelValue', val: boolean): void;
+}>();
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
-})
+  set: (val) => emit('update:modelValue', val),
+});
 
 const close = () => {
-  isOpen.value = false
-}
+  isOpen.value = false;
+};
 
 const downloadImage = async () => {
   try {
-    const response = await fetch(props.src)
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
+    const response = await fetch(props.src);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
     // Use alt text or filename from URL or default
-    let filename = 'image.jpg'
+    let filename = 'image.jpg';
     if (props.alt) {
-      filename = `${props.alt.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`
+      filename = `${props.alt.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`;
     } else {
       try {
-        const urlObj = new URL(props.src)
-        const pathname = urlObj.pathname
-        const base = pathname.substring(pathname.lastIndexOf('/') + 1)
+        const urlObj = new URL(props.src);
+        const pathname = urlObj.pathname;
+        const base = pathname.substring(pathname.lastIndexOf('/') + 1);
         if (base && base.includes('.')) {
-          filename = base
+          filename = base;
         }
       } catch {
         // Ignore URL parsing errors and use default filename
       }
     }
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   } catch (err) {
     // Fallback if fetch fails (CORS issues)
-    console.error('Failed to download image directly:', err)
-    window.open(props.src, '_blank')
+    console.error('Failed to download image directly:', err);
+    window.open(props.src, '_blank');
   }
-}
+};
 </script>
 
 <style scoped>

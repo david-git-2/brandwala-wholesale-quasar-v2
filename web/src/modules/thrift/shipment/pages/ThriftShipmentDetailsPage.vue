@@ -11,9 +11,7 @@
             <div class="text-h6 text-weight-bold">
               {{ shipment?.name || 'Shipment Details' }}
             </div>
-            <div class="text-caption text-grey-8">
-              Landed costing breakdown and item details
-            </div>
+            <div class="text-caption text-grey-8">Landed costing breakdown and item details</div>
           </div>
           <div class="col-auto row q-gutter-x-sm" v-if="shipment">
             <q-chip outline color="primary" text-color="white" dense>
@@ -28,12 +26,18 @@
     </q-card>
 
     <!-- Empty State when no stocks exist in the shipment -->
-    <q-banner v-if="!loading && stocks.length === 0" inline-actions class="bg-blue-1 text-blue-9 rounded-borders q-mb-md q-pa-md">
+    <q-banner
+      v-if="!loading && stocks.length === 0"
+      inline-actions
+      class="bg-blue-1 text-blue-9 rounded-borders q-mb-md q-pa-md"
+    >
       <template v-slot:avatar>
         <q-icon name="info" color="blue-8" size="24px" />
       </template>
       <div class="text-subtitle2 text-weight-bold">No stock in this shipment yet</div>
-      <div class="text-caption">Register items in the mobile app or catalog page to populate this shipment.</div>
+      <div class="text-caption">
+        Register items in the mobile app or catalog page to populate this shipment.
+      </div>
     </q-banner>
 
     <!-- Skeleton loader for the entire page body when first loading -->
@@ -68,7 +72,7 @@
               <q-skeleton type="QBtn" width="100px" height="32px" />
             </div>
           </q-card-section>
-          
+
           <thrift-shipment-items-table
             :stocks="[]"
             :visibleColumns="visibleColumns"
@@ -103,8 +107,10 @@
         <!-- Cost Inputs Editor -->
         <q-card flat class="floating-surface shadow-1">
           <q-card-section>
-            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">Landed Cost Inputs</div>
-            
+            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">
+              Landed Cost Inputs
+            </div>
+
             <div class="column q-gutter-y-sm">
               <div class="text-caption text-weight-bold text-grey-7 q-mb-none">CARGO</div>
               <q-input
@@ -202,11 +208,20 @@
                 suffix="%"
                 @change="saveShipmentCosts"
               />
-              <div class="text-caption text-grey-6 text-italic" style="font-size: 10px; line-height: 1.2;">
+              <div
+                class="text-caption text-grey-6 text-italic"
+                style="font-size: 10px; line-height: 1.2"
+              >
                 Suggested sell = landed × (1 + markup)
               </div>
-              <div class="q-pa-xs q-mt-xs bg-grey-2 rounded-borders text-caption text-grey-8" style="font-size: 11px;">
-                <div>Sample Preview (using Default Origin: {{ formatPurchase(settingsStore.settings?.default_origin_unit_price || 0) }}):</div>
+              <div
+                class="q-pa-xs q-mt-xs bg-grey-2 rounded-borders text-caption text-grey-8"
+                style="font-size: 11px"
+              >
+                <div>
+                  Sample Preview (using Default Origin:
+                  {{ formatPurchase(settingsStore.settings?.default_origin_unit_price || 0) }}):
+                </div>
                 <div class="row justify-between text-weight-bold text-grey-9 q-mt-xs">
                   <span>Suggested Sell:</span>
                   <span>{{ formatCost(sampleSuggestedPrice) }}</span>
@@ -227,10 +242,14 @@
                 round
                 dense
                 color="primary"
-                :icon="isLeftColumnVisible ? 'keyboard_double_arrow_left' : 'keyboard_double_arrow_right'"
+                :icon="
+                  isLeftColumnVisible ? 'keyboard_double_arrow_left' : 'keyboard_double_arrow_right'
+                "
                 @click="isLeftColumnVisible = !isLeftColumnVisible"
               >
-                <q-tooltip>{{ isLeftColumnVisible ? 'Collapse Sidebar' : 'Expand Sidebar' }}</q-tooltip>
+                <q-tooltip>{{
+                  isLeftColumnVisible ? 'Collapse Sidebar' : 'Expand Sidebar'
+                }}</q-tooltip>
               </q-btn>
               <div class="text-subtitle1 text-weight-bold text-grey-9">Shipment Items</div>
             </div>
@@ -242,7 +261,7 @@
                 dense
                 outlined
                 clearable
-                style="width: 250px;"
+                style="width: 250px"
                 class="soft-input"
               >
                 <template v-slot:append>
@@ -252,9 +271,19 @@
 
               <!-- Columns menu picker -->
               <q-btn-dropdown outline dense color="primary" icon="view_column" label="Columns">
-                <q-list class="q-pa-xs" style="min-width: 180px;">
-                  <div class="text-caption text-weight-bold text-grey-7 q-px-sm q-py-xs border-bottom-translucent">Visible Columns</div>
-                  <q-item v-for="col in columnsList" :key="col.name" clickable dense class="q-py-none">
+                <q-list class="q-pa-xs" style="min-width: 180px">
+                  <div
+                    class="text-caption text-weight-bold text-grey-7 q-px-sm q-py-xs border-bottom-translucent"
+                  >
+                    Visible Columns
+                  </div>
+                  <q-item
+                    v-for="col in columnsList"
+                    :key="col.name"
+                    clickable
+                    dense
+                    class="q-py-none"
+                  >
                     <q-item-section>
                       <q-checkbox
                         :model-value="visibleColumns.has(col.name)"
@@ -292,13 +321,20 @@
       <div class="col-12">
         <q-card flat class="floating-surface shadow-1">
           <q-card-section>
-            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">SHIPMENT COST OVERVIEW</div>
-            
+            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">
+              SHIPMENT COST OVERVIEW
+            </div>
+
             <div class="row q-col-gutter-md">
               <!-- Units Section -->
               <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">HOW COSTS ARE SPLIT</div>
-                <div class="q-pa-sm bg-grey-1 rounded-borders h-100 column justify-center" style="min-height: 120px;">
+                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                  HOW COSTS ARE SPLIT
+                </div>
+                <div
+                  class="q-pa-sm bg-grey-1 rounded-borders h-100 column justify-center"
+                  style="min-height: 120px"
+                >
                   <div class="row justify-between items-center">
                     <span class="text-body2 text-grey-8">Unit Count (U):</span>
                     <span class="text-subtitle1 text-weight-bold text-grey-9">{{ U }}</span>
@@ -311,7 +347,9 @@
 
               <!-- Shipment Bills Section -->
               <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">SHIPMENT TOTALS ({{ costCurrency?.code || '—' }})</div>
+                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                  SHIPMENT TOTALS ({{ costCurrency?.code || '—' }})
+                </div>
                 <div class="q-gutter-y-xs">
                   <div class="row justify-between text-body2">
                     <span class="text-grey-8">Cargo Total:</span>
@@ -347,23 +385,35 @@
 
               <!-- Per Unit Share Section -->
               <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">PER-UNIT SHARE ({{ costCurrency?.code || '—' }})</div>
+                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                  PER-UNIT SHARE ({{ costCurrency?.code || '—' }})
+                </div>
                 <div class="q-gutter-y-sm">
-                  <div class="q-pa-sm bg-blue-1 rounded-borders" style="border: 1px solid rgba(33, 150, 243, 0.12);">
+                  <div
+                    class="q-pa-sm bg-blue-1 rounded-borders"
+                    style="border: 1px solid rgba(33, 150, 243, 0.12)"
+                  >
                     <div class="row justify-between items-baseline">
                       <span class="text-caption text-blue-9">Cargo Share:</span>
-                      <span class="text-subtitle2 text-weight-bold text-blue-10">{{ formatCost(cargoSharePerUnit) }}</span>
+                      <span class="text-subtitle2 text-weight-bold text-blue-10">{{
+                        formatCost(cargoSharePerUnit)
+                      }}</span>
                     </div>
-                    <div class="text-caption text-grey-6" style="font-size: 10px;">
+                    <div class="text-caption text-grey-6" style="font-size: 10px">
                       {{ usesWeightBasedCargo ? 'By weight (avg shown)' : 'Cargo Total ÷ U' }}
                     </div>
                   </div>
-                  <div class="q-pa-sm bg-orange-1 rounded-borders" style="border: 1px solid rgba(255, 152, 0, 0.12);">
+                  <div
+                    class="q-pa-sm bg-orange-1 rounded-borders"
+                    style="border: 1px solid rgba(255, 152, 0, 0.12)"
+                  >
                     <div class="row justify-between items-baseline">
                       <span class="text-caption text-orange-9">Ops Share:</span>
-                      <span class="text-subtitle2 text-weight-bold text-orange-10">{{ formatCost(opsSharePerUnit) }}</span>
+                      <span class="text-subtitle2 text-weight-bold text-orange-10">{{
+                        formatCost(opsSharePerUnit)
+                      }}</span>
                     </div>
-                    <div class="text-caption text-grey-6" style="font-size: 10px;">
+                    <div class="text-caption text-grey-6" style="font-size: 10px">
                       Ops Total ÷ U
                     </div>
                   </div>
@@ -372,17 +422,25 @@
 
               <!-- Each Item Formula Section -->
               <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">PER-ITEM LANDED COST</div>
-                <div class="q-pa-sm bg-teal-1 rounded-borders h-100 column justify-center" style="border: 1px solid rgba(0, 150, 136, 0.12); min-height: 120px;">
-                  <div class="text-caption text-teal-9 text-weight-bold q-mb-xs">Landed Cost Formula</div>
-                  <div class="text-caption text-grey-8" style="line-height: 1.4; font-size: 11px;">
+                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                  PER-ITEM LANDED COST
+                </div>
+                <div
+                  class="q-pa-sm bg-teal-1 rounded-borders h-100 column justify-center"
+                  style="border: 1px solid rgba(0, 150, 136, 0.12); min-height: 120px"
+                >
+                  <div class="text-caption text-teal-9 text-weight-bold q-mb-xs">
+                    Landed Cost Formula
+                  </div>
+                  <div class="text-caption text-grey-8" style="line-height: 1.4; font-size: 11px">
                     <code>Product Cost</code> + <br />
                     <code>Cargo Share</code> + <br />
                     <code>Ops Share</code> + <br />
                     <code>Add'l Charges</code>
                   </div>
-                  <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 10px;">
-                    Computed per item from origin, weight-based cargo share, ops share, and add'l charges.
+                  <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 10px">
+                    Computed per item from origin, weight-based cargo share, ops share, and add'l
+                    charges.
                   </div>
                 </div>
               </div>
@@ -452,7 +510,10 @@ const costForm = ref({
 });
 
 const markupPercentage = computed({
-  get: () => costForm.value.default_markup_rate != null ? Math.round(costForm.value.default_markup_rate * 100) : null,
+  get: () =>
+    costForm.value.default_markup_rate != null
+      ? Math.round(costForm.value.default_markup_rate * 100)
+      : null,
   set: (val: number | null) => {
     costForm.value.default_markup_rate = val != null ? val / 100 : null;
   },
@@ -471,7 +532,9 @@ const sampleSuggestedPrice = computed(() => {
 
 // Currencies mapping helpers
 const purchaseCurrency = computed<ThriftCurrency | undefined>(() => {
-  return shipment.value ? currencyStore.currencyById(shipment.value.purchase_currency_id) : undefined;
+  return shipment.value
+    ? currencyStore.currencyById(shipment.value.purchase_currency_id)
+    : undefined;
 });
 
 const costCurrency = computed<ThriftCurrency | undefined>(() => {
@@ -521,7 +584,7 @@ const columnsList = [
   { name: 'product_unit_cost', label: 'Product Cost' },
   { name: 'cargo_share_per_unit', label: 'Cargo/Unit' },
   { name: 'ops_share_per_unit', label: 'Ops/Unit' },
-  { name: 'additional_charges_cost', label: 'Add\'l Charges' },
+  { name: 'additional_charges_cost', label: "Add'l Charges" },
   { name: 'landed_unit_cost', label: 'Landed Cost' },
   { name: 'item_markup_pct', label: 'Item Markup %' },
   { name: 'effective_markup_pct', label: 'Effective Markup %' },
@@ -540,7 +603,7 @@ const defaultVisibleColumns = [
   'listed_unit_price',
 ];
 
-const allColumnNames = columnsList.map(c => c.name);
+const allColumnNames = columnsList.map((c) => c.name);
 
 const { visibleColumns: visibleColumnsRaw } = useMembershipColumnPreference({
   preferenceKey: 'ui.thriftShipment.detailsVisibleColumns',
@@ -642,12 +705,12 @@ async function saveShipmentCosts() {
     };
     const updated = await thriftShipmentRepository.updateShipment(shipment.value.id, payload);
     shipment.value = updated;
-    
+
     // Wait for the cost calculations to propagate
     await nextTick();
-    
+
     // Batch update all non-locked stock prices
-    const autoStocks = stocks.value.filter(s => !s.pricing?.is_listed_price_manual);
+    const autoStocks = stocks.value.filter((s) => !s.pricing?.is_listed_price_manual);
     if (autoStocks.length > 0) {
       await Promise.all(
         autoStocks.map(async (stock) => {
@@ -658,14 +721,17 @@ async function saveShipmentCosts() {
           if (updatedStock.pricing) {
             stock.pricing = updatedStock.pricing;
           }
-        })
+        }),
       );
       stocks.value = [...stocks.value];
     }
-    
+
     $q.notify({ type: 'positive', message: 'Shipment costs and auto-prices saved successfully' });
   } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to update shipment costs' });
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Failed to update shipment costs',
+    });
   }
 }
 
@@ -701,9 +767,10 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
       pricingPatch.is_listed_price_manual = false;
     }
 
-    const isManual = pricingPatch.is_listed_price_manual !== undefined
-      ? !!pricingPatch.is_listed_price_manual
-      : !!row.pricing?.is_listed_price_manual;
+    const isManual =
+      pricingPatch.is_listed_price_manual !== undefined
+        ? !!pricingPatch.is_listed_price_manual
+        : !!row.pricing?.is_listed_price_manual;
 
     if (!isManual && shipment.value) {
       const currentPricing = {
@@ -715,12 +782,21 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
         extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
         ...pricingPatch,
       };
-      
+
       const settings = settingsStore.opsCostSettingsForEngine;
-      const mergedStocks = stocks.value.map(item => item.id === row.id ? { ...item, pricing: currentPricing } : item);
+      const mergedStocks = stocks.value.map((item) =>
+        item.id === row.id ? { ...item, pricing: currentPricing } : item,
+      );
       const U = mergedStocks.reduce((acc, s) => acc + (s.quantity || 0), 0);
-      const breakdown = computeThriftUnitCosts(row, shipment.value, settings, Math.max(U, 1), currentPricing, mergedStocks);
-      
+      const breakdown = computeThriftUnitCosts(
+        row,
+        shipment.value,
+        settings,
+        Math.max(U, 1),
+        currentPricing,
+        mergedStocks,
+      );
+
       pricingPatch.listed_unit_price = breakdown.suggested_sell_unit_price;
     }
 
@@ -737,7 +813,7 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
     if (updated.pricing) {
       row.pricing = updated.pricing;
-      const idx = stocks.value.findIndex(s => s.id === row.id);
+      const idx = stocks.value.findIndex((s) => s.id === row.id);
       if (idx !== -1) {
         stocks.value[idx]!.pricing = updated.pricing;
         stocks.value = [...stocks.value];
@@ -784,7 +860,10 @@ function openLandedBreakdownDialog(row: ThriftStock) {
   });
 }
 
-function onMeasurementsUpdated(payload: { size: string; measurements: ThriftStockMeasurements | null }) {
+function onMeasurementsUpdated(payload: {
+  size: string;
+  measurements: ThriftStockMeasurements | null;
+}) {
   if (selectedStock.value) {
     selectedStock.value.size = payload.size;
     selectedStock.value.measurements = payload.measurements;
@@ -796,7 +875,7 @@ watch(
     if (newVal && Number(newVal) !== shipmentId) {
       window.location.reload();
     }
-  }
+  },
 );
 </script>
 

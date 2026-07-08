@@ -23,12 +23,11 @@
 </template>
 
 <script setup lang="ts">
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 
 defineProps<{
-  title: string
-  subtitle?: string
-  error?: string | null
-}>()
+  title: string;
+  subtitle?: string;
+  error?: string | null;
+}>();
 </script>
-

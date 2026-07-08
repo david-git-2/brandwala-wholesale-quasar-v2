@@ -7,7 +7,9 @@
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-12 col-sm">
               <div class="text-h6 text-weight-bold text-grey-9">Inbound Shipments</div>
-              <div class="text-caption text-grey-7">Manage inbound supplier shipment batches, costing, and statuses</div>
+              <div class="text-caption text-grey-7">
+                Manage inbound supplier shipment batches, costing, and statuses
+              </div>
             </div>
             <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
               <q-btn
@@ -68,7 +70,13 @@
 
           <div class="row justify-end q-gutter-x-sm q-mt-md">
             <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
-            <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyDrawerFilters" />
+            <q-btn
+              unelevated
+              no-caps
+              label="Apply Filters"
+              color="primary"
+              @click="onApplyDrawerFilters"
+            />
           </div>
         </div>
       </FilterSidebar>
@@ -110,7 +118,10 @@
                   :style="statusChipStyle(props.row.status)"
                   class="shipment-status-chip"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(props.row.status) }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: statusDotColor(props.row.status) }"
+                  />
                   {{ props.row.status }}
                 </q-chip>
               </q-td>
@@ -133,26 +144,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useQuasar, type QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import type { GlobalShipment } from '../repositories/globalShipmentRepository'
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
-import ShipmentFormDialog from '../components/ShipmentFormDialog.vue'
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar, type QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import type { GlobalShipment } from '../repositories/globalShipmentRepository';
+import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
 
-const authStore = useAuthStore()
-const shipmentStore = useGlobalShipmentStore()
-const router = useRouter()
-const $q = useQuasar()
+const authStore = useAuthStore();
+const shipmentStore = useGlobalShipmentStore();
+const router = useRouter();
+const $q = useQuasar();
 
 // Filter State
-const searchText = ref('')
-const filterDrawerOpen = ref(false)
-const statusFilter = ref<string | null>(null)
-const draftStatusFilter = ref<string | null>(null)
+const searchText = ref('');
+const filterDrawerOpen = ref(false);
+const statusFilter = ref<string | null>(null);
+const draftStatusFilter = ref<string | null>(null);
 
 const statusOptions = [
   { label: 'All Statuses', value: '__all__' },
@@ -167,15 +178,21 @@ const statusOptions = [
   { label: 'Airport Released', value: 'Airport Released' },
   { label: 'Warehouse Received', value: 'Warehouse Received' },
   { label: 'Ready Stock', value: 'Ready Stock' },
-]
+];
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'tenant_shipment_id', align: 'left', sortable: false },
   { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: false },
   { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: false },
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
-  { name: 'received_date', label: 'Received Date', field: 'received_date', align: 'left', sortable: false },
-]
+  {
+    name: 'received_date',
+    label: 'Received Date',
+    field: 'received_date',
+    align: 'left',
+    sortable: false,
+  },
+];
 
 const pagination = computed({
   get: () => ({
@@ -184,84 +201,84 @@ const pagination = computed({
     rowsNumber: shipmentStore.total,
   }),
   set: (val) => {
-    shipmentStore.page = val.page
-    shipmentStore.pageSize = val.rowsPerPage
-  }
-})
+    shipmentStore.page = val.page;
+    shipmentStore.pageSize = val.rowsPerPage;
+  },
+});
 
 const activeFilterCount = computed(() => {
-  return statusFilter.value && statusFilter.value !== '__all__' ? 1 : 0
-})
+  return statusFilter.value && statusFilter.value !== '__all__' ? 1 : 0;
+});
 
 const loadShipments = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   await shipmentStore.fetchShipments(authStore.tenantId, {
     page: shipmentStore.page,
     pageSize: shipmentStore.pageSize,
     search: searchText.value.trim() || null,
     status: statusFilter.value === '__all__' ? null : statusFilter.value,
-  })
-}
+  });
+};
 
 const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  shipmentStore.page = props.pagination.page
-  shipmentStore.pageSize = props.pagination.rowsPerPage
-  await loadShipments()
-}
+  shipmentStore.page = props.pagination.page;
+  shipmentStore.pageSize = props.pagination.rowsPerPage;
+  await loadShipments();
+};
 
 const onSearch = () => {
-  shipmentStore.page = 1
-  void loadShipments()
-}
+  shipmentStore.page = 1;
+  void loadShipments();
+};
 
 // Filter Actions
 const openFilterDrawer = () => {
-  draftStatusFilter.value = statusFilter.value
-  filterDrawerOpen.value = true
-}
+  draftStatusFilter.value = statusFilter.value;
+  filterDrawerOpen.value = true;
+};
 
 const onApplyDrawerFilters = () => {
-  statusFilter.value = draftStatusFilter.value
-  filterDrawerOpen.value = false
-  shipmentStore.page = 1
-  void loadShipments()
-}
+  statusFilter.value = draftStatusFilter.value;
+  filterDrawerOpen.value = false;
+  shipmentStore.page = 1;
+  void loadShipments();
+};
 
 const onResetFilters = () => {
-  draftStatusFilter.value = null
-  statusFilter.value = null
-  filterDrawerOpen.value = false
-  shipmentStore.page = 1
-  void loadShipments()
-}
+  draftStatusFilter.value = null;
+  statusFilter.value = null;
+  filterDrawerOpen.value = false;
+  shipmentStore.page = 1;
+  void loadShipments();
+};
 
 const onRowClick = (_evt: Event, row: GlobalShipment) => {
-  viewDetails(row.id)
-}
+  viewDetails(row.id);
+};
 
 const viewDetails = (id: number) => {
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''
-  void router.push(`${tenantPrefix}/app/procurement/shipment/${id}`)
-}
+  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
+  void router.push(`${tenantPrefix}/app/procurement/shipment/${id}`);
+};
 
 const openCreateShipment = () => {
   $q.dialog({
     component: ShipmentFormDialog,
   }).onOk(() => {
-    void loadShipments()
-  })
-}
+    void loadShipments();
+  });
+};
 
 // Legacy Visual Styling Map
 type ShipmentStatusVisual = {
-  rowBackground: string
-  rowAccent: string
-  chipBackground: string
-  chipText: string
-  chipBorder: string
-  chipShadow: string
-  dot: string
-}
+  rowBackground: string;
+  rowAccent: string;
+  chipBackground: string;
+  chipText: string;
+  chipBorder: string;
+  chipShadow: string;
+  dot: string;
+};
 
 const defaultStatusVisual: ShipmentStatusVisual = {
   rowBackground: '#f8f9fb',
@@ -271,7 +288,7 @@ const defaultStatusVisual: ShipmentStatusVisual = {
   chipBorder: '#b9c8dd',
   chipShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
   dot: '#66758c',
-}
+};
 
 const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
   draft: {
@@ -373,39 +390,38 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     chipShadow: '0 1px 2px rgba(25, 79, 53, 0.18)',
     dot: '#25784d',
   },
-}
+};
 
 const getStatusVisual = (status: string | null | undefined): ShipmentStatusVisual => {
-  const key = (status ?? '').trim().toLowerCase()
-  return shipmentStatusVisualMap[key] ?? defaultStatusVisual
-}
+  const key = (status ?? '').trim().toLowerCase();
+  return shipmentStatusVisualMap[key] ?? defaultStatusVisual;
+};
 
 const statusSurfaceStyle = (status: string | null | undefined) => {
-  const style = getStatusVisual(status)
+  const style = getStatusVisual(status);
   return {
     backgroundColor: style.rowBackground,
     boxShadow: `inset 6px 0 0 ${style.rowAccent}`,
-  }
-}
+  };
+};
 
 const statusChipStyle = (status: string | null | undefined) => {
-  const style = getStatusVisual(status)
+  const style = getStatusVisual(status);
   return {
     backgroundColor: style.chipBackground,
     color: style.chipText,
     border: `1px solid ${style.chipBorder}`,
     boxShadow: style.chipShadow,
-  }
-}
+  };
+};
 
 const statusDotColor = (status: string | null | undefined) => {
-  return getStatusVisual(status).dot
-}
-
+  return getStatusVisual(status).dot;
+};
 
 onMounted(() => {
-  void loadShipments()
-})
+  void loadShipments();
+});
 </script>
 
 <style scoped>

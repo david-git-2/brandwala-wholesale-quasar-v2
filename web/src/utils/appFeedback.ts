@@ -1,11 +1,11 @@
-import { Dialog, Notify } from 'quasar'
+import { Dialog, Notify } from 'quasar';
 
 type ApiResultLike = {
-  success: boolean
-  error?: string
-}
+  success: boolean;
+  error?: string;
+};
 
-const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.'
+const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
 export const showSuccessNotification = (message: string) => {
   Notify.create({
@@ -14,8 +14,8 @@ export const showSuccessNotification = (message: string) => {
     position: 'top-right',
     timeout: 2200,
     progress: true,
-  })
-}
+  });
+};
 
 export const showErrorNotification = (message: string) => {
   Notify.create({
@@ -24,8 +24,8 @@ export const showErrorNotification = (message: string) => {
     position: 'top-right',
     timeout: 3000,
     progress: true,
-  })
-}
+  });
+};
 
 export const showWarningNotification = (message: string) => {
   Notify.create({
@@ -34,13 +34,10 @@ export const showWarningNotification = (message: string) => {
     position: 'top-right',
     timeout: 2500,
     progress: true,
-  })
-}
+  });
+};
 
-export const showWarningDialog = (
-  message: string,
-  title = 'Warning',
-) => {
+export const showWarningDialog = (message: string, title = 'Warning') => {
   Dialog.create({
     title,
     message,
@@ -50,8 +47,8 @@ export const showWarningDialog = (
       color: 'primary',
     },
     persistent: false,
-  })
-}
+  });
+};
 
 export const requestConfirmation = (
   message: string,
@@ -76,15 +73,15 @@ export const requestConfirmation = (
     })
       .onOk(() => resolve(true))
       .onCancel(() => resolve(false))
-      .onDismiss(() => resolve(false))
-  })
+      .onDismiss(() => resolve(false));
+  });
 
 export const handleApiFailure = (
   result: ApiResultLike,
   fallbackMessage = DEFAULT_ERROR_MESSAGE,
   title = 'Request failed',
 ) => {
-  if (result.success) return
+  if (result.success) return;
 
-  showWarningDialog(result.error ?? fallbackMessage, title)
-}
+  showWarningDialog(result.error ?? fallbackMessage, title);
+};

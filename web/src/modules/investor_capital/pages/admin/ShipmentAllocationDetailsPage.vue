@@ -1,7 +1,13 @@
 <template>
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <q-btn flat color="primary" icon="arrow_back" label="Back to Investor Shipments" @click="onBack" />
+      <q-btn
+        flat
+        color="primary"
+        icon="arrow_back"
+        label="Back to Investor Shipments"
+        @click="onBack"
+      />
       <q-btn
         color="secondary"
         icon="refresh"
@@ -14,10 +20,13 @@
 
     <div v-if="shipmentStore.currentShipment" class="q-mb-md">
       <div class="text-h6 text-weight-bold">
-        #{{ shipmentStore.currentShipment.tenant_shipment_id ?? shipmentStore.currentShipment.id }} {{ shipmentStore.currentShipment.name }}
+        #{{ shipmentStore.currentShipment.tenant_shipment_id ?? shipmentStore.currentShipment.id }}
+        {{ shipmentStore.currentShipment.name }}
       </div>
       <div class="text-body2 text-grey-8">Status: {{ shipmentStore.currentShipment.status }}</div>
-      <div class="text-body2 text-grey-8">Total Shipment Cost (BDT): {{ formatAmount(totalShipmentCost) }}</div>
+      <div class="text-body2 text-grey-8">
+        Total Shipment Cost (BDT): {{ formatAmount(totalShipmentCost) }}
+      </div>
     </div>
 
     <!-- Parent Remainder Banner -->
@@ -25,7 +34,8 @@
       <template #avatar>
         <q-icon name="warning" color="warning" size="md" class="q-mr-sm" />
       </template>
-      Parent company retains <strong>{{ parentRemainderPct.toFixed(2) }}%</strong> remainder cost share of this shipment batch.
+      Parent company retains <strong>{{ parentRemainderPct.toFixed(2) }}%</strong> remainder cost
+      share of this shipment batch.
     </q-banner>
 
     <q-tabs v-model="activeTab" dense class="text-primary q-mb-md" align="left">
@@ -101,7 +111,12 @@
                       <q-item clickable v-close-popup @click="openEditDialog(row)">
                         <q-item-section>Edit</q-item-section>
                       </q-item>
-                      <q-item clickable v-close-popup class="text-negative" @click="openDeleteDialog(row)">
+                      <q-item
+                        clickable
+                        v-close-popup
+                        class="text-negative"
+                        @click="openDeleteDialog(row)"
+                      >
                         <q-item-section>Delete</q-item-section>
                       </q-item>
                     </q-list>
@@ -142,39 +157,39 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
-import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
-import { calculateLineLandedCostBdt } from 'src/modules/procurement_stock/utils/landedCost'
-import type { ShipmentInvestment } from 'src/modules/investor_capital/types'
-import { formatAmountBdt } from 'src/utils/currency'
-import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
+import { calculateLineLandedCostBdt } from 'src/modules/procurement_stock/utils/landedCost';
+import type { ShipmentInvestment } from 'src/modules/investor_capital/types';
+import { formatAmountBdt } from 'src/utils/currency';
+import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const capitalStore = useInvestorCapitalStore()
-const shipmentStore = useGlobalShipmentStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const capitalStore = useInvestorCapitalStore();
+const shipmentStore = useGlobalShipmentStore();
 
-const activeTab = ref<'allocate' | 'investments'>('investments')
-const openDialog = ref(false)
-const openDeleteConfirmDialog = ref(false)
-const editingInvestment = ref<ShipmentInvestment | null>(null)
-const deletingInvestment = ref<ShipmentInvestment | null>(null)
+const activeTab = ref<'allocate' | 'investments'>('investments');
+const openDialog = ref(false);
+const openDeleteConfirmDialog = ref(false);
+const editingInvestment = ref<ShipmentInvestment | null>(null);
+const deletingInvestment = ref<ShipmentInvestment | null>(null);
 
-const resolvedTenantId = computed(() => authStore.tenantId ?? 0)
+const resolvedTenantId = computed(() => authStore.tenantId ?? 0);
 
 const shipmentId = computed(() => {
-  const parsed = Number(route.params.id)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-})
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
 
 const totalShipmentCost = computed(() => {
-  const shipment = shipmentStore.currentShipment
-  if (!shipment) return 0
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return 0;
   return shipmentStore.currentShipmentItems.reduce((sum, item) => {
     const unitCost = calculateLineLandedCostBdt(
       {
@@ -185,47 +200,51 @@ const totalShipmentCost = computed(() => {
       },
       shipment,
       shipmentStore.currentShipmentItems,
-    )
-    return sum + unitCost * Number(item.ordered_quantity ?? 0)
-  }, 0)
-})
+    );
+    return sum + unitCost * Number(item.ordered_quantity ?? 0);
+  }, 0);
+});
 
 // Calculate parent remainder percentage (100 - sum of cost share % of active allocations)
 const parentRemainderPct = computed(() => {
   const sum = capitalStore.shipmentInvestments.reduce(
     (acc, item) => acc + Number(item.cost_share_pct ?? 0),
-    0
-  )
+    0,
+  );
 
-  return Math.max(0, 100 - sum)
-})
+  return Math.max(0, 100 - sum);
+});
 
-const formatAmount = (value: number | null | undefined) => formatAmountBdt(value)
+const formatAmount = (value: number | null | undefined) => formatAmountBdt(value);
 
 const investorNameById = (investorId: number) =>
-  capitalStore.investors.find((item) => item.investor_id === investorId)?.name ?? `#${investorId}`
+  capitalStore.investors.find((item) => item.investor_id === investorId)?.name ?? `#${investorId}`;
 
 const hasExistingInvestment = (investorId: number) =>
-  capitalStore.shipmentInvestments.some((item) => item.investor_id === investorId)
+  capitalStore.shipmentInvestments.some((item) => item.investor_id === investorId);
 
 const openAddDialog = (investor?: any) => {
-  editingInvestment.value = investor ? { investor_id: investor.investor_id } as any : null
-  openDialog.value = true
-}
+  editingInvestment.value = investor ? ({ investor_id: investor.investor_id } as any) : null;
+  openDialog.value = true;
+};
 
 const openEditDialog = (row: ShipmentInvestment) => {
-  editingInvestment.value = row
-  openDialog.value = true
-}
+  editingInvestment.value = row;
+  openDialog.value = true;
+};
 
 const openDeleteDialog = (row: ShipmentInvestment) => {
-  deletingInvestment.value = row
-  openDeleteConfirmDialog.value = true
-}
+  deletingInvestment.value = row;
+  openDeleteConfirmDialog.value = true;
+};
 
-const saveInvestment = async (payload: { id: number | null; investor_id: number; cost_share_pct: number }) => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !shipmentId.value) return
+const saveInvestment = async (payload: {
+  id: number | null;
+  investor_id: number;
+  cost_share_pct: number;
+}) => {
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !shipmentId.value) return;
 
   await capitalStore.upsertShipmentInvestment({
     id: payload.id,
@@ -233,50 +252,50 @@ const saveInvestment = async (payload: { id: number | null; investor_id: number;
     global_shipment_id: shipmentId.value,
     investor_id: payload.investor_id,
     cost_share_pct: payload.cost_share_pct,
-  })
+  });
 
-  openDialog.value = false
-}
+  openDialog.value = false;
+};
 
 const deleteInvestment = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !deletingInvestment.value) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !deletingInvestment.value) return;
 
   await capitalStore.deleteShipmentInvestment({
     id: deletingInvestment.value.id,
     tenant_id: tenantId,
     global_shipment_id: shipmentId.value,
-  })
+  });
 
-  deletingInvestment.value = null
-  openDeleteConfirmDialog.value = false
-}
+  deletingInvestment.value = null;
+  openDeleteConfirmDialog.value = false;
+};
 
 const onRefreshProfits = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !shipmentId.value) return
-  await capitalStore.refreshProfits(tenantId, shipmentId.value)
-}
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !shipmentId.value) return;
+  await capitalStore.refreshProfits(tenantId, shipmentId.value);
+};
 
 const load = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !shipmentId.value) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !shipmentId.value) return;
 
   await Promise.all([
     shipmentStore.fetchShipmentDetails(shipmentId.value),
     capitalStore.fetchInvestorsByTenant(tenantId),
     capitalStore.fetchShipmentInvestmentsByShipment(tenantId, shipmentId.value),
-  ])
-}
+  ]);
+};
 
 const onBack = async () => {
   await router.push({
     name: 'app-capital-shipments-page',
     params: { tenantSlug: authStore.tenantSlug ?? undefined },
-  })
-}
+  });
+};
 
 onMounted(() => {
-  void load()
-})
+  void load();
+});
 </script>

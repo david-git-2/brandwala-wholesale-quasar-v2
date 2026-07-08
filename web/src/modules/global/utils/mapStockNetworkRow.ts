@@ -1,7 +1,7 @@
-import type { InventoryItemWithStock, Shipment } from '../types'
+import type { InventoryItemWithStock, Shipment } from '../types';
 
-import type { GlobalStockRow, StockNetworkRow } from '../types'
-import { mapGlobalStockToInventoryView } from './mapGlobalStockToInventoryView'
+import type { GlobalStockRow, StockNetworkRow } from '../types';
+import { mapGlobalStockToInventoryView } from './mapGlobalStockToInventoryView';
 
 export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalStockRow => ({
   id: row.global_stock_id,
@@ -21,32 +21,33 @@ export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalSto
   stolen_qty: row.stolen_qty,
   reserved_qty: row.reserved_qty,
   total_qty: row.total_qty,
-})
+});
 
 export const mapStockNetworkToInventoryView = (
   row: StockNetworkRow,
   shipment?: Shipment | null,
-): InventoryItemWithStock => mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment)
+): InventoryItemWithStock =>
+  mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment);
 
 export type StockNetworkProductGroup = {
-  key: string
-  product_id: number | null
-  name: string
-  image_url: string | null
-  barcode: string | null
-  product_code: string | null
-  cost: number
-  global_stock_id: number
-  shipment_id: number | null
-  contexts: StockNetworkRow[]
-}
+  key: string;
+  product_id: number | null;
+  name: string;
+  image_url: string | null;
+  barcode: string | null;
+  product_code: string | null;
+  cost: number;
+  global_stock_id: number;
+  shipment_id: number | null;
+  contexts: StockNetworkRow[];
+};
 
 export const groupStockNetworkRows = (rows: StockNetworkRow[]): StockNetworkProductGroup[] => {
-  const groups = new Map<string, StockNetworkProductGroup>()
+  const groups = new Map<string, StockNetworkProductGroup>();
 
   for (const row of rows) {
-    const key = row.product_group_key
-    let group = groups.get(key)
+    const key = row.product_group_key;
+    let group = groups.get(key);
     if (!group) {
       group = {
         key,
@@ -59,11 +60,11 @@ export const groupStockNetworkRows = (rows: StockNetworkRow[]): StockNetworkProd
         global_stock_id: row.global_stock_id,
         shipment_id: row.shipment_id,
         contexts: [],
-      }
-      groups.set(key, group)
+      };
+      groups.set(key, group);
     }
-    group.contexts.push(row)
+    group.contexts.push(row);
   }
 
-  return Array.from(groups.values())
-}
+  return Array.from(groups.values());
+};

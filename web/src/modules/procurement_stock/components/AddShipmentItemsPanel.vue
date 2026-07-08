@@ -1,5 +1,8 @@
 <template>
-  <div class="add-items-panel column no-wrap" :class="{ 'add-items-panel--drawer': layout === 'drawer' }">
+  <div
+    class="add-items-panel column no-wrap"
+    :class="{ 'add-items-panel--drawer': layout === 'drawer' }"
+  >
     <!-- Top compact toolbar -->
     <div class="q-pa-md toolbar-section column q-gutter-y-sm">
       <div class="row items-center q-col-gutter-sm">
@@ -62,14 +65,20 @@
         <q-list dense bordered separator class="rounded-borders browse-list">
           <q-item v-for="product in browseList" :key="product.id">
             <q-item-section avatar>
-              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in;">
-                <SmartImage :src="product.image_url" style="width: 1in; height: 1in; object-fit: contain;" :enable-edit="false" />
+              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
+                <SmartImage
+                  :src="product.image_url"
+                  style="width: 1in; height: 1in; object-fit: contain"
+                  :enable-edit="false"
+                />
               </q-avatar>
             </q-item-section>
             <q-item-section>
               <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
               <q-item-label caption>
-                {{ [product.product_code, product.barcode].filter(Boolean).join(' · ') || 'No code' }}
+                {{
+                  [product.product_code, product.barcode].filter(Boolean).join(' · ') || 'No code'
+                }}
               </q-item-label>
               <q-item-label v-if="product.list_price_amount != null" caption class="text-secondary">
                 £{{ product.list_price_amount.toFixed(2) }}
@@ -82,10 +91,12 @@
                 outlined
                 dense
                 placeholder="Qty"
-                style="width: 70px;"
+                style="width: 70px"
                 min="1"
                 step="1"
-                @update:model-value="(val) => setBrowseQty(product.id, val === '' ? null : Number(val))"
+                @update:model-value="
+                  (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
+                "
               />
               <q-btn
                 unelevated
@@ -100,11 +111,21 @@
             </q-item-section>
           </q-item>
           <q-item v-if="!browseLoading && browseList.length === 0">
-            <q-item-section class="text-grey-6 text-center q-pa-md">No products found</q-item-section>
+            <q-item-section class="text-grey-6 text-center q-pa-md"
+              >No products found</q-item-section
+            >
           </q-item>
         </q-list>
         <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
-          <q-btn flat dense no-caps color="primary" label="Load more" :loading="browseLoading" @click="loadMoreBrowse" />
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="Load more"
+            :loading="browseLoading"
+            @click="loadMoreBrowse"
+          />
         </div>
       </div>
     </div>
@@ -118,7 +139,15 @@
           Cart
           <q-badge v-if="cart.length" color="primary" :label="cart.length" class="q-ml-xs" />
         </div>
-        <q-btn v-if="cart.length" flat dense no-caps color="negative" label="Clear" @click="confirmClearCart" />
+        <q-btn
+          v-if="cart.length"
+          flat
+          dense
+          no-caps
+          color="negative"
+          label="Clear"
+          @click="confirmClearCart"
+        />
       </div>
 
       <div v-if="cart.length === 0" class="text-center text-grey-6 q-py-lg">
@@ -130,11 +159,15 @@
         <div v-for="item in cart" :key="item.key" class="cart-line q-mb-sm q-pa-sm rounded-borders">
           <div class="row items-start no-wrap q-col-gutter-sm">
             <div class="col-auto">
-              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in;">
-                <SmartImage :src="item.image_url" style="width: 1in; height: 1in; object-fit: contain;" :enable-edit="false" />
+              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
+                <SmartImage
+                  :src="item.image_url"
+                  style="width: 1in; height: 1in; object-fit: contain"
+                  :enable-edit="false"
+                />
               </q-avatar>
             </div>
-            <div class="col" style="min-width: 0;">
+            <div class="col" style="min-width: 0">
               <div class="text-weight-medium ellipsis-2-lines">
                 {{ item.name }}
                 <q-badge v-if="item.isNewProduct" color="orange" label="New" class="q-ml-xs" />
@@ -149,7 +182,15 @@
               </div>
             </div>
             <div class="col-auto">
-              <q-btn flat round dense size="sm" color="negative" icon="close" @click="removeFromCart(item)" />
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                color="negative"
+                icon="close"
+                @click="removeFromCart(item)"
+              />
             </div>
           </div>
           <div class="row q-col-gutter-xs q-mt-xs">
@@ -166,10 +207,20 @@
               />
             </div>
             <div class="col-6">
-              <q-input v-model.number="item.purchase_price" type="number" step="0.01" label="Price £" outlined dense min="0" />
+              <q-input
+                v-model.number="item.purchase_price"
+                type="number"
+                step="0.01"
+                label="Price £"
+                outlined
+                dense
+                min="0"
+              />
             </div>
           </div>
-          <div class="text-caption text-grey-7 text-right q-mt-xs">£{{ formatMoney(lineSubtotal(item)) }}</div>
+          <div class="text-caption text-grey-7 text-right q-mt-xs">
+            £{{ formatMoney(lineSubtotal(item)) }}
+          </div>
         </div>
       </div>
     </div>
@@ -177,11 +228,21 @@
     <!-- Footer -->
     <div class="panel-footer q-pa-md">
       <div v-if="cart.length" class="row justify-between text-body2 q-mb-xs">
-        <span class="text-grey-7">{{ totalCartUnits }} units · {{ totalCartWeightKg.toFixed(2) }} kg</span>
+        <span class="text-grey-7"
+          >{{ totalCartUnits }} units · {{ totalCartWeightKg.toFixed(2) }} kg</span
+        >
         <span class="text-weight-bold text-primary">£{{ formatMoney(totalCartPriceGbp) }}</span>
       </div>
       <div class="row q-gutter-sm">
-        <q-btn v-if="showCancel" flat no-caps color="grey-8" label="Cancel" class="col" @click="onCancel" />
+        <q-btn
+          v-if="showCancel"
+          flat
+          no-caps
+          color="grey-8"
+          label="Cancel"
+          class="col"
+          @click="onCancel"
+        />
         <q-btn
           unelevated
           no-caps
@@ -197,11 +258,7 @@
     </div>
 
     <!-- Catalog Filters Sidebar -->
-    <FilterSidebar
-      v-model="filterDrawerOpen"
-      title="Filters"
-      :z-index="7000"
-    >
+    <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
       <div class="q-gutter-y-md q-pa-sm">
         <!-- Vendor Filter -->
         <q-select
@@ -264,169 +321,172 @@
 </template>
 
 <script lang="ts">
-let cachedCurrencies: any[] | null = null
+let cachedCurrencies: any[] | null = null;
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useQuasar } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import { productRepository } from 'src/modules/products/repositories/productRepository'
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
-import { productService } from 'src/modules/products/services/productService'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
-import SmartImage from 'src/components/SmartImage.vue'
-import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue'
+import { ref, computed, onMounted, watch } from 'vue';
+import { useQuasar } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { productRepository } from 'src/modules/products/repositories/productRepository';
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { productService } from 'src/modules/products/services/productService';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import SmartImage from 'src/components/SmartImage.vue';
+import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';
 
 export interface ShipmentCartItem {
-  key: string
-  product_id: number | null
-  isNewProduct: boolean
-  vendor_id: number | null
-  name: string
-  ordered_quantity: number
-  purchase_price: number
-  product_weight: number
-  package_weight: number
-  barcode: string | null
-  product_code: string | null
-  image_url: string | null
-  category: string | null
-  brand: string | null
+  key: string;
+  product_id: number | null;
+  isNewProduct: boolean;
+  vendor_id: number | null;
+  name: string;
+  ordered_quantity: number;
+  purchase_price: number;
+  product_weight: number;
+  package_weight: number;
+  barcode: string | null;
+  product_code: string | null;
+  image_url: string | null;
+  category: string | null;
+  brand: string | null;
 }
 
 interface ProductItem {
-  id: number
-  name: string
-  product_code: string | null
-  barcode: string | null
-  list_price_amount: number | null
-  product_weight: number | null
-  package_weight: number | null
-  image_url: string | null
+  id: number;
+  name: string;
+  product_code: string | null;
+  barcode: string | null;
+  list_price_amount: number | null;
+  product_weight: number | null;
+  package_weight: number | null;
+  image_url: string | null;
 }
 
-const props = withDefaults(defineProps<{
-  shipmentId: number
-  layout?: 'drawer' | 'page'
-  showCancel?: boolean
-}>(), {
-  layout: 'drawer',
-  showCancel: true,
-})
+const props = withDefaults(
+  defineProps<{
+    shipmentId: number;
+    layout?: 'drawer' | 'page';
+    showCancel?: boolean;
+  }>(),
+  {
+    layout: 'drawer',
+    showCancel: true,
+  },
+);
 
 const emit = defineEmits<{
-  saved: []
-  cancel: []
-}>()
+  saved: [];
+  cancel: [];
+}>();
 
-const $q = useQuasar()
-const authStore = useAuthStore()
-const vendorStore = useVendorStore()
-const shipmentStore = useGlobalShipmentStore()
+const $q = useQuasar();
+const authStore = useAuthStore();
+const vendorStore = useVendorStore();
+const shipmentStore = useGlobalShipmentStore();
 
-const submitting = ref(false)
+const submitting = ref(false);
 
 // Catalog browse state
-const browseSearch = ref('')
-const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name')
-const browseList = ref<ProductItem[]>([])
-const browseLoading = ref(false)
-const browsePage = ref(1)
-const browseTotal = ref(0)
-const browseQtyById = ref<Record<number, number | null>>({})
+const browseSearch = ref('');
+const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
+const browseList = ref<ProductItem[]>([]);
+const browseLoading = ref(false);
+const browsePage = ref(1);
+const browseTotal = ref(0);
+const browseQtyById = ref<Record<number, number | null>>({});
 
 const searchFieldLabel = computed(() => {
-  if (browseSearchField.value === 'name') return 'Name'
-  if (browseSearchField.value === 'barcode') return 'Barcode'
-  if (browseSearchField.value === 'product_code') return 'Product Code'
-  return 'Name'
-})
+  if (browseSearchField.value === 'name') return 'Name';
+  if (browseSearchField.value === 'barcode') return 'Barcode';
+  if (browseSearchField.value === 'product_code') return 'Product Code';
+  return 'Name';
+});
 
 // Cart state
-const cart = ref<ShipmentCartItem[]>([])
-const cartStorageKey = computed(() => `shipment_cart_${props.shipmentId}`)
+const cart = ref<ShipmentCartItem[]>([]);
+const cartStorageKey = computed(() => `shipment_cart_${props.shipmentId}`);
 
 // Filters State
-const filterDrawerOpen = ref(false)
-const filterVendorId = ref<number | null>(null)
-const filterBrand = ref<string>('')
-const filterCategory = ref<string>('')
+const filterDrawerOpen = ref(false);
+const filterVendorId = ref<number | null>(null);
+const filterBrand = ref<string>('');
+const filterCategory = ref<string>('');
 
-const draftVendorId = ref<number | null>(null)
-const draftBrand = ref<string>('')
-const draftCategory = ref<string>('')
+const draftVendorId = ref<number | null>(null);
+const draftBrand = ref<string>('');
+const draftCategory = ref<string>('');
 
 // Brand & Category selections
-const allBrands = ref<string[]>([])
-const allCategories = ref<string[]>([])
-const brandOptions = ref<string[]>([])
-const categoryOptions = ref<string[]>([])
+const allBrands = ref<string[]>([]);
+const allCategories = ref<string[]>([]);
+const brandOptions = ref<string[]>([]);
+const categoryOptions = ref<string[]>([]);
 
 // New Product Sidebar State
-const showNewProductSidebar = ref(false)
+const showNewProductSidebar = ref(false);
 
 const vendorOptions = computed(() =>
   vendorStore.items.map((v) => ({ label: v.name, value: v.id })),
-)
+);
 
 const activeFilterCount = computed(() => {
-  let count = 0
-  if (filterVendorId.value) count++
-  if (filterBrand.value) count++
-  if (filterCategory.value) count++
-  return count
-})
+  let count = 0;
+  if (filterVendorId.value) count++;
+  if (filterBrand.value) count++;
+  if (filterCategory.value) count++;
+  return count;
+});
 
 const totalCartUnits = computed(() =>
   cart.value.reduce((sum, item) => sum + (item.ordered_quantity || 0), 0),
-)
+);
 
 const totalCartWeightKg = computed(() => {
-  let sum = 0
+  let sum = 0;
   for (const item of cart.value) {
-    sum += ((item.product_weight || 0) + (item.package_weight || 0)) * item.ordered_quantity
+    sum += ((item.product_weight || 0) + (item.package_weight || 0)) * item.ordered_quantity;
   }
-  return sum / 1000
-})
+  return sum / 1000;
+});
 
 const totalCartPriceGbp = computed(() =>
   cart.value.reduce((sum, item) => sum + (item.purchase_price || 0) * item.ordered_quantity, 0),
-)
+);
 
-const formatMoney = (val: number) => val.toFixed(2)
-const lineSubtotal = (item: ShipmentCartItem) => (item.purchase_price || 0) * item.ordered_quantity
+const formatMoney = (val: number) => val.toFixed(2);
+const lineSubtotal = (item: ShipmentCartItem) => (item.purchase_price || 0) * item.ordered_quantity;
 
-const getDefaultVendorId = () => filterVendorId.value
+const getDefaultVendorId = () => filterVendorId.value;
 
 const getVendorCode = (vendorId: number | null): string | null => {
-  if (!vendorId) return null
-  return vendorStore.items.find((v) => v.id === vendorId)?.code ?? null
-}
+  if (!vendorId) return null;
+  return vendorStore.items.find((v) => v.id === vendorId)?.code ?? null;
+};
 
 const saveCartToStorage = () => {
-  const key = cartStorageKey.value
+  const key = cartStorageKey.value;
   if (cart.value.length === 0) {
-    sessionStorage.removeItem(key)
+    sessionStorage.removeItem(key);
   } else {
-    sessionStorage.setItem(key, JSON.stringify(cart.value))
+    sessionStorage.setItem(key, JSON.stringify(cart.value));
   }
-}
+};
 
 const loadCartFromStorage = () => {
   try {
-    const raw = sessionStorage.getItem(cartStorageKey.value)
-    if (!raw) return
-    const parsed = JSON.parse(raw) as ShipmentCartItem[]
-    if (Array.isArray(parsed)) cart.value = parsed
+    const raw = sessionStorage.getItem(cartStorageKey.value);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as ShipmentCartItem[];
+    if (Array.isArray(parsed)) cart.value = parsed;
   } catch {
-    sessionStorage.removeItem(cartStorageKey.value)
+    sessionStorage.removeItem(cartStorageKey.value);
   }
-}
+};
 
-watch(cart, saveCartToStorage, { deep: true })
+watch(cart, saveCartToStorage, { deep: true });
 
 const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartItem => ({
   key: `catalog_${product.id}`,
@@ -443,67 +503,72 @@ const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartIt
   image_url: product.image_url,
   category: null,
   brand: null,
-})
+});
 
 const setBrowseQty = (productId: number, qty: number | null) => {
   if (qty === null || isNaN(qty) || qty < 1) {
-    browseQtyById.value[productId] = null
+    browseQtyById.value[productId] = null;
   } else {
-    browseQtyById.value[productId] = Math.floor(qty)
+    browseQtyById.value[productId] = Math.floor(qty);
   }
-}
+};
 
 const addProductToCart = (product: ProductItem, qty: number | null | undefined) => {
   if (!qty || isNaN(qty) || qty < 1) {
     $q.notify({
       type: 'warning',
-      message: 'Quantity is required to add product to cart.'
-    })
-    return
+      message: 'Quantity is required to add product to cart.',
+    });
+    return;
   }
 
-  const cleanQty = Math.floor(qty)
-  const key = `catalog_${product.id}`
-  const existing = cart.value.find((c) => c.key === key)
+  const cleanQty = Math.floor(qty);
+  const key = `catalog_${product.id}`;
+  const existing = cart.value.find((c) => c.key === key);
   if (existing) {
-    existing.ordered_quantity += cleanQty
+    existing.ordered_quantity += cleanQty;
     // Refresh weights from the latest catalog product record
-    existing.product_weight = product.product_weight ?? 0
-    existing.package_weight = product.package_weight ?? 0
-    
+    existing.product_weight = product.product_weight ?? 0;
+    existing.package_weight = product.package_weight ?? 0;
+
     // Move existing item to top of the cart since it's the last added/modified
-    const idx = cart.value.indexOf(existing)
+    const idx = cart.value.indexOf(existing);
     if (idx > -1) {
-      cart.value.splice(idx, 1)
-      cart.value.unshift(existing)
+      cart.value.splice(idx, 1);
+      cart.value.unshift(existing);
     }
   } else {
     // Unshift to put last added item first in the cart stack
-    cart.value.unshift(buildCatalogCartItem(product, cleanQty))
+    cart.value.unshift(buildCatalogCartItem(product, cleanQty));
   }
   // Reset row qty
-  browseQtyById.value[product.id] = null
+  browseQtyById.value[product.id] = null;
 
   // Clear search query
-  browseSearch.value = ''
-}
+  browseSearch.value = '';
+};
 
-let currentQuerySeq = 0
+let currentQuerySeq = 0;
 
 const loadBrowse = async (append = false) => {
-  if (!browseSearch.value.trim() && !filterBrand.value && !filterCategory.value && !filterVendorId.value) {
-    browseList.value = []
-    browseTotal.value = 0
-    return
+  if (
+    !browseSearch.value.trim() &&
+    !filterBrand.value &&
+    !filterCategory.value &&
+    !filterVendorId.value
+  ) {
+    browseList.value = [];
+    browseTotal.value = 0;
+    return;
   }
 
-  currentQuerySeq++
-  const seq = currentQuerySeq
-  browseLoading.value = true
+  currentQuerySeq++;
+  const seq = currentQuerySeq;
+  browseLoading.value = true;
   try {
     const vendorCode = filterVendorId.value
       ? vendorStore.items.find((v) => v.id === filterVendorId.value)?.code
-      : undefined
+      : undefined;
 
     const res = await productRepository.listProducts({
       page: browsePage.value,
@@ -514,172 +579,181 @@ const loadBrowse = async (append = false) => {
       brand: filterBrand.value || undefined,
       category: filterCategory.value || undefined,
       tenantId: authStore.tenantId,
-    })
+    });
 
-    if (seq !== currentQuerySeq) return
+    if (seq !== currentQuerySeq) return;
 
-    const items = res.data as ProductItem[]
-    browseList.value = append ? [...browseList.value, ...items] : items
-    browseTotal.value = res.meta.total
+    const items = res.data as ProductItem[];
+    browseList.value = append ? [...browseList.value, ...items] : items;
+    browseTotal.value = res.meta.total;
   } finally {
     if (seq === currentQuerySeq) {
-      browseLoading.value = false
+      browseLoading.value = false;
     }
   }
-}
+};
 
 const loadMoreBrowse = () => {
-  browsePage.value += 1
-  void loadBrowse(true)
-}
+  browsePage.value += 1;
+  void loadBrowse(true);
+};
 
 // Watcher to auto-detect search field type (e.g. numeric barcode vs name)
 watch(browseSearch, (newVal) => {
-  const query = (newVal || '').trim()
+  const query = (newVal || '').trim();
   if (query) {
-    let detectedField: 'name' | 'barcode' | 'product_code' | null = null
+    let detectedField: 'name' | 'barcode' | 'product_code' | null = null;
     if (/^\d{6,}$/.test(query)) {
-      detectedField = 'barcode'
+      detectedField = 'barcode';
     } else if (/^[A-Za-z0-9\-_]{3,}$/.test(query) && /\d/.test(query) && /[A-Za-z]/.test(query)) {
-      detectedField = 'product_code'
+      detectedField = 'product_code';
     }
 
     if (detectedField && browseSearchField.value !== detectedField) {
-      browseSearchField.value = detectedField
+      browseSearchField.value = detectedField;
       // Changing browseSearchField will trigger the browseSearchField watcher below,
       // which handles calling loadBrowse(). We return early to prevent a double API call.
-      browsePage.value = 1
-      return
+      browsePage.value = 1;
+      return;
     }
   }
 
-  browsePage.value = 1
-  void loadBrowse()
-})
+  browsePage.value = 1;
+  void loadBrowse();
+});
 
 watch(browseSearchField, () => {
-  browsePage.value = 1
-  void loadBrowse()
-})
+  browsePage.value = 1;
+  void loadBrowse();
+});
 
 const onCartQtyUpdated = (item: ShipmentCartItem, val: number) => {
-  const intVal = Math.floor(val)
-  item.ordered_quantity = intVal
-  if (intVal <= 0) cart.value = cart.value.filter((c) => c.key !== item.key)
-}
+  const intVal = Math.floor(val);
+  item.ordered_quantity = intVal;
+  if (intVal <= 0) cart.value = cart.value.filter((c) => c.key !== item.key);
+};
 
 const removeFromCart = (item: ShipmentCartItem) => {
-  cart.value = cart.value.filter((c) => c.key !== item.key)
-}
+  cart.value = cart.value.filter((c) => c.key !== item.key);
+};
 
 const confirmClearCart = () => {
-  $q.dialog({ title: 'Clear cart?', message: 'Remove all items?', cancel: true })
-    .onOk(() => { cart.value = [] })
-}
+  $q.dialog({ title: 'Clear cart?', message: 'Remove all items?', cancel: true }).onOk(() => {
+    cart.value = [];
+  });
+};
 
 const onNewProductAdd = (newProduct: Omit<ShipmentCartItem, 'key'>) => {
   // Unshift to put last added item first in the cart stack
   cart.value.unshift({
     ...newProduct,
     key: `new_${Date.now()}`,
-  })
-}
+  });
+};
 
 const openFilterSidebar = () => {
-  draftVendorId.value = filterVendorId.value
-  draftBrand.value = filterBrand.value
-  draftCategory.value = filterCategory.value
-  void onDraftVendorChange(filterVendorId.value)
-  filterDrawerOpen.value = true
-}
+  draftVendorId.value = filterVendorId.value;
+  draftBrand.value = filterBrand.value;
+  draftCategory.value = filterCategory.value;
+  void onDraftVendorChange(filterVendorId.value);
+  filterDrawerOpen.value = true;
+};
 
 const onDraftVendorChange = async (vendorId: number | null) => {
-  draftBrand.value = ''
-  draftCategory.value = ''
-  allBrands.value = []
-  allCategories.value = []
+  draftBrand.value = '';
+  draftCategory.value = '';
+  allBrands.value = [];
+  allCategories.value = [];
 
-  if (!vendorId) return
+  if (!vendorId) return;
 
-  const vendorCode = getVendorCode(vendorId)
-  const tenantId = authStore.tenantId
+  const vendorCode = getVendorCode(vendorId);
+  const tenantId = authStore.tenantId;
 
   const [brandsRes, catsRes] = await Promise.all([
     productService.listBrands({ vendorCode, tenantId }),
     productService.listCategories({ vendorCode, tenantId }),
-  ])
+  ]);
 
   if (brandsRes.success && brandsRes.data) {
-    allBrands.value = brandsRes.data
+    allBrands.value = brandsRes.data;
   }
   if (catsRes.success && catsRes.data) {
-    allCategories.value = catsRes.data
+    allCategories.value = catsRes.data;
   }
-}
+};
 
 const filterBrands = (val: string, update: (callback: () => void) => void) => {
   update(() => {
-    const needle = val.toLowerCase().trim()
+    const needle = val.toLowerCase().trim();
     brandOptions.value = needle
       ? allBrands.value.filter((v) => v.toLowerCase().includes(needle))
-      : allBrands.value
-  })
-}
+      : allBrands.value;
+  });
+};
 
 const filterCategories = (val: string, update: (callback: () => void) => void) => {
   update(() => {
-    const needle = val.toLowerCase().trim()
+    const needle = val.toLowerCase().trim();
     categoryOptions.value = needle
       ? allCategories.value.filter((v) => v.toLowerCase().includes(needle))
-      : allCategories.value
-  })
-}
+      : allCategories.value;
+  });
+};
 
 const onApplyFilters = () => {
-  filterVendorId.value = draftVendorId.value
-  filterBrand.value = draftBrand.value
-  filterCategory.value = draftCategory.value
-  filterDrawerOpen.value = false
-  browsePage.value = 1
-  void loadBrowse()
-}
+  filterVendorId.value = draftVendorId.value;
+  filterBrand.value = draftBrand.value;
+  filterCategory.value = draftCategory.value;
+  filterDrawerOpen.value = false;
+  browsePage.value = 1;
+  void loadBrowse();
+};
 
 const onResetFilters = () => {
-  draftVendorId.value = null
-  draftBrand.value = ''
-  draftCategory.value = ''
-  filterVendorId.value = null
-  filterBrand.value = ''
-  filterCategory.value = ''
-  filterDrawerOpen.value = false
-  browsePage.value = 1
-  void loadBrowse()
-}
+  draftVendorId.value = null;
+  draftBrand.value = '';
+  draftCategory.value = '';
+  filterVendorId.value = null;
+  filterBrand.value = '';
+  filterCategory.value = '';
+  filterDrawerOpen.value = false;
+  browsePage.value = 1;
+  void loadBrowse();
+};
 
 const findExistingProductId = async (item: ShipmentCartItem): Promise<number | null> => {
-  if (!authStore.tenantId) return null
-  const barcode = item.barcode?.trim()
+  if (!authStore.tenantId) return null;
+  const barcode = item.barcode?.trim();
   if (barcode) {
     const res = await productRepository.listProducts({
-      page: 1, pageSize: 1, search: barcode, searchField: 'barcode', tenantId: authStore.tenantId,
-    })
-    const [first] = res.data
-    if (first) return first.id
+      page: 1,
+      pageSize: 1,
+      search: barcode,
+      searchField: 'barcode',
+      tenantId: authStore.tenantId,
+    });
+    const [first] = res.data;
+    if (first) return first.id;
   }
-  const productCode = item.product_code?.trim()
+  const productCode = item.product_code?.trim();
   if (productCode) {
     const res = await productRepository.listProducts({
-      page: 1, pageSize: 1, search: productCode, searchField: 'product_code', tenantId: authStore.tenantId,
-    })
-    const [first] = res.data
-    if (first) return first.id
+      page: 1,
+      pageSize: 1,
+      search: productCode,
+      searchField: 'product_code',
+      tenantId: authStore.tenantId,
+    });
+    const [first] = res.data;
+    if (first) return first.id;
   }
-  return null
-}
+  return null;
+};
 
 const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
-  const existingId = await findExistingProductId(item)
-  if (existingId) return existingId
+  const existingId = await findExistingProductId(item);
+  if (existingId) return existingId;
 
   const created = await productRepository.createProduct({
     tenant_id: authStore.tenantId ?? null,
@@ -703,33 +777,33 @@ const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
     minimum_order_quantity: null,
     market_code: null,
     is_available: true,
-  })
-  return created.id
-}
+  });
+  return created.id;
+};
 
 const resolveProductId = async (item: ShipmentCartItem) => {
   if (item.product_id && !item.isNewProduct) {
-    return { productId: item.product_id, registered: false }
+    return { productId: item.product_id, registered: false };
   }
-  const existingId = await findExistingProductId(item)
-  if (existingId) return { productId: existingId, registered: false }
-  const productId = await registerProduct(item)
-  return { productId, registered: true }
-}
+  const existingId = await findExistingProductId(item);
+  if (existingId) return { productId: existingId, registered: false };
+  const productId = await registerProduct(item);
+  return { productId, registered: true };
+};
 
 const onCommitCart = async () => {
-  if (cart.value.length === 0) return
+  if (cart.value.length === 0) return;
 
-  submitting.value = true
-  let savedCount = 0
-  let registeredCount = 0
+  submitting.value = true;
+  let savedCount = 0;
+  let registeredCount = 0;
 
   try {
     // Reverse the cart array before entry so that the first added item (last in stack) is entered first
-    const reversedCart = [...cart.value].reverse()
+    const reversedCart = [...cart.value].reverse();
     for (const item of reversedCart) {
-      const { productId, registered } = await resolveProductId(item)
-      if (registered) registeredCount++
+      const { productId, registered } = await resolveProductId(item);
+      if (registered) registeredCount++;
 
       await shipmentStore.addShipmentItem({
         shipment_id: props.shipmentId,
@@ -747,61 +821,62 @@ const onCommitCart = async () => {
         source_child_tenant_id: null,
         source_type: null,
         source_id: null,
-      })
-      savedCount++
+      });
+      savedCount++;
     }
 
-    sessionStorage.removeItem(cartStorageKey.value)
-    cart.value = []
+    sessionStorage.removeItem(cartStorageKey.value);
+    cart.value = [];
 
-    let msg = `Added ${savedCount} item${savedCount === 1 ? '' : 's'}.`
-    if (registeredCount > 0) msg += ` ${registeredCount} new product${registeredCount === 1 ? '' : 's'} registered.`
-    $q.notify({ type: 'positive', message: msg })
-    emit('saved')
+    let msg = `Added ${savedCount} item${savedCount === 1 ? '' : 's'}.`;
+    if (registeredCount > 0)
+      msg += ` ${registeredCount} new product${registeredCount === 1 ? '' : 's'} registered.`;
+    $q.notify({ type: 'positive', message: msg });
+    emit('saved');
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    $q.notify({ type: 'negative', message: savedCount > 0 ? `${msg} (${savedCount} saved)` : msg })
+    const msg = err instanceof Error ? err.message : String(err);
+    $q.notify({ type: 'negative', message: savedCount > 0 ? `${msg} (${savedCount} saved)` : msg });
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
 
 const onCancel = () => {
   if (cart.value.length === 0) {
-    emit('cancel')
-    return
+    emit('cancel');
+    return;
   }
   $q.dialog({
     title: 'Discard cart?',
     message: 'Unsaved items will be lost.',
     cancel: true,
   }).onOk(() => {
-    sessionStorage.removeItem(cartStorageKey.value)
-    cart.value = []
-    emit('cancel')
-  })
-}
+    sessionStorage.removeItem(cartStorageKey.value);
+    cart.value = [];
+    emit('cancel');
+  });
+};
 
-const gbpCurrencyId = ref<number | null>(null)
+const gbpCurrencyId = ref<number | null>(null);
 
 onMounted(async () => {
-  loadCartFromStorage()
+  loadCartFromStorage();
   if (authStore.tenantId && vendorStore.items.length === 0) {
-    void vendorStore.fetchVendors(authStore.tenantId)
+    void vendorStore.fetchVendors(authStore.tenantId);
   }
-  void loadBrowse()
+  void loadBrowse();
   try {
     if (cachedCurrencies) {
-      gbpCurrencyId.value = cachedCurrencies.find(c => c.code === 'GBP')?.id ?? null
+      gbpCurrencyId.value = cachedCurrencies.find((c) => c.code === 'GBP')?.id ?? null;
     } else {
-      const currencyData = await globalReferenceRepository.listCurrencies()
-      cachedCurrencies = currencyData
-      gbpCurrencyId.value = currencyData.find(c => c.code === 'GBP')?.id ?? null
+      const currencyData = await globalReferenceRepository.listCurrencies();
+      cachedCurrencies = currencyData;
+      gbpCurrencyId.value = currencyData.find((c) => c.code === 'GBP')?.id ?? null;
     }
   } catch (e) {
-    console.error('Error fetching currencies:', e)
+    console.error('Error fetching currencies:', e);
   }
-})
+});
 </script>
 
 <style scoped>
@@ -878,14 +953,13 @@ onMounted(async () => {
   padding-right: 8px;
 }
 
-:deep(input[type="number"]::-webkit-outer-spin-button),
-:deep(input[type="number"]::-webkit-inner-spin-button) {
+:deep(input[type='number']::-webkit-outer-spin-button),
+:deep(input[type='number']::-webkit-inner-spin-button) {
   -webkit-appearance: none;
   margin: 0;
 }
 
-:deep(input[type="number"]) {
+:deep(input[type='number']) {
   -moz-appearance: textfield;
 }
 </style>
-

@@ -42,14 +42,7 @@
         </q-markup-table>
 
         <div class="row items-center justify-end q-mt-md q-gutter-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="chevron_left"
-            :disable="page === 1"
-            @click="prevPage"
-          />
+          <q-btn flat round dense icon="chevron_left" :disable="page === 1" @click="prevPage" />
           <span class="text-caption">Page {{ page }} of {{ totalPages }}</span>
           <q-btn
             flat
@@ -66,77 +59,84 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvestorPortalStore } from '../stores/investorPortalStore'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
+import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvestorPortalStore } from '../stores/investorPortalStore';
 
-const authStore = useAuthStore()
-const investorPortalStore = useInvestorPortalStore()
-const { transactions, totalTransactionsCount } = storeToRefs(investorPortalStore)
+const authStore = useAuthStore();
+const investorPortalStore = useInvestorPortalStore();
+const { transactions, totalTransactionsCount } = storeToRefs(investorPortalStore);
 
-const loading = ref(true)
-const error = ref<string | null>(null)
+const loading = ref(true);
+const error = ref<string | null>(null);
 
-const page = ref(1)
-const limit = 20
-const offset = computed(() => (page.value - 1) * limit)
-const totalPages = computed(() => Math.ceil(totalTransactionsCount.value / limit) || 1)
+const page = ref(1);
+const limit = 20;
+const offset = computed(() => (page.value - 1) * limit);
+const totalPages = computed(() => Math.ceil(totalTransactionsCount.value / limit) || 1);
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(
-    Number(value ?? 0),
-  )
+  new Intl.NumberFormat('en-BD', {
+    style: 'currency',
+    currency: 'BDT',
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
 
 const formatDate = (value: string) => {
-  if (!value) return '-'
-  return new Date(value).toLocaleDateString()
-}
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString();
+};
 
 const formatLabel = (value: string) => {
-  if (!value) return '-'
+  if (!value) return '-';
   return value
     .split('_')
     .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
-    .join(' ')
-}
+    .join(' ');
+};
 
 const loadData = async () => {
-  loading.value = true
-  const tenantId = authStore.tenantId
-  const investorId = authStore.member?.id
+  loading.value = true;
+  const tenantId = authStore.tenantId;
+  const investorId = authStore.member?.id;
 
   if (!tenantId || !investorId) {
-    error.value = 'Auth session context invalid.'
-    loading.value = false
-    return
+    error.value = 'Auth session context invalid.';
+    loading.value = false;
+    return;
   }
 
-  const result = await investorPortalStore.fetchTransactions(tenantId, investorId, limit, offset.value)
+  const result = await investorPortalStore.fetchTransactions(
+    tenantId,
+    investorId,
+    limit,
+    offset.value,
+  );
   if (!result.success) {
-    error.value = result.error ?? 'Failed to load transactions.'
+    error.value = result.error ?? 'Failed to load transactions.';
   }
-  loading.value = false
-}
+  loading.value = false;
+};
 
 const nextPage = () => {
   if (page.value < totalPages.value) {
-    page.value++
-    void loadData()
+    page.value++;
+    void loadData();
   }
-}
+};
 
 const prevPage = () => {
   if (page.value > 1) {
-    page.value--
-    void loadData()
+    page.value--;
+    void loadData();
   }
-}
+};
 
 onMounted(() => {
-  void loadData()
-})
+  void loadData();
+});
 </script>

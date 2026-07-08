@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia';
-import { thriftStockRepository, type ThriftStockPricingInput } from '../repositories/thriftStockRepository';
-import type { ThriftStock, ThriftSection, ThriftCondition, ThriftStockType, ThriftStockStatus } from '../types';
+import {
+  thriftStockRepository,
+  type ThriftStockPricingInput,
+} from '../repositories/thriftStockRepository';
+import type {
+  ThriftStock,
+  ThriftSection,
+  ThriftCondition,
+  ThriftStockType,
+  ThriftStockStatus,
+} from '../types';
 
 export const useThriftStockStore = defineStore('thrift_stock', {
   state: () => ({
@@ -34,7 +43,8 @@ export const useThriftStockStore = defineStore('thrift_stock', {
         const pageSize = options?.pageSize ?? this.pageSize;
         const search = options?.search ?? this.search;
         const status = options?.status !== undefined ? options.status : this.statusFilter;
-        const condition = options?.condition !== undefined ? options.condition : this.conditionFilter;
+        const condition =
+          options?.condition !== undefined ? options.condition : this.conditionFilter;
 
         const result = await thriftStockRepository.fetchStocksPaginated({
           tenantId,
@@ -114,7 +124,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
             inserted_by: userEmail,
           },
           pricing,
-          imageUrl
+          imageUrl,
         );
         this.stocks.unshift(stock);
         this.total += 1;
@@ -140,16 +150,15 @@ export const useThriftStockStore = defineStore('thrift_stock', {
           imageUrl,
           driveFileId,
         );
-        const idx = this.stocks.findIndex(s => s.id === id);
+        const idx = this.stocks.findIndex((s) => s.id === id);
         if (idx !== -1) {
           const currentStock = this.stocks[idx]!;
           this.stocks[idx] = {
             ...currentStock,
             ...updated,
-            image_url: imageUrl !== undefined ? (imageUrl || undefined) : currentStock.image_url,
-            drive_file_id: driveFileId !== undefined
-              ? (driveFileId || undefined)
-              : currentStock.drive_file_id,
+            image_url: imageUrl !== undefined ? imageUrl || undefined : currentStock.image_url,
+            drive_file_id:
+              driveFileId !== undefined ? driveFileId || undefined : currentStock.drive_file_id,
           };
         }
         return updated;
@@ -159,20 +168,10 @@ export const useThriftStockStore = defineStore('thrift_stock', {
       }
     },
 
-    async attachStockImage(
-      id: number,
-      imageUrl: string,
-      insertedBy: string,
-      driveFileId?: string,
-    ) {
+    async attachStockImage(id: number, imageUrl: string, insertedBy: string, driveFileId?: string) {
       try {
-        await thriftStockRepository.upsertPrimaryStockImage(
-          id,
-          imageUrl,
-          insertedBy,
-          driveFileId,
-        );
-        const idx = this.stocks.findIndex(s => s.id === id);
+        await thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, insertedBy, driveFileId);
+        const idx = this.stocks.findIndex((s) => s.id === id);
         if (idx !== -1) {
           const currentStock = this.stocks[idx]!;
           this.stocks[idx] = {
@@ -190,7 +189,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
     async updateStockStatus(id: number, status: string) {
       try {
         await thriftStockRepository.updateStockStatus(id, status);
-        const idx = this.stocks.findIndex(s => s.id === id);
+        const idx = this.stocks.findIndex((s) => s.id === id);
         const stock = this.stocks[idx];
         if (stock) {
           stock.status = status as ThriftStockStatus;
@@ -204,7 +203,7 @@ export const useThriftStockStore = defineStore('thrift_stock', {
     async deleteStock(id: number) {
       try {
         await thriftStockRepository.deleteStock(id);
-        this.stocks = this.stocks.filter(s => s.id !== id);
+        this.stocks = this.stocks.filter((s) => s.id !== id);
         this.total = Math.max(0, this.total - 1);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete stock';

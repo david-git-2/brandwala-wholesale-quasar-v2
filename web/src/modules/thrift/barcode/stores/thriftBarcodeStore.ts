@@ -89,11 +89,7 @@ export const useThriftBarcodeStore = defineStore('thriftBarcode', {
       return thriftBarcodeRepository.fetchBarcodesByIds(ids);
     },
 
-    async generateBarcodes(params: {
-      tenantId: number;
-      quantity: number;
-      insertedBy: string;
-    }) {
+    async generateBarcodes(params: { tenantId: number; quantity: number; insertedBy: string }) {
       this.loading = true;
       this.error = null;
       try {

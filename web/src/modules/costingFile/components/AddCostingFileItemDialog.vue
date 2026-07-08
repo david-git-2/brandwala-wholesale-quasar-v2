@@ -5,7 +5,9 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="costing-item-add-dialog">
-      <q-card-section class="costing-item-add-dialog__header row items-center justify-between q-pb-md">
+      <q-card-section
+        class="costing-item-add-dialog__header row items-center justify-between q-pb-md"
+      >
         <div class="row items-center q-gutter-md">
           <q-avatar icon="add_shopping_cart" color="primary" text-color="white" />
           <div>
@@ -35,7 +37,10 @@
               class="costing-item-add-dialog__preview-image"
             />
           </div>
-          <div v-else class="costing-item-add-dialog__preview costing-item-add-dialog__preview--empty">
+          <div
+            v-else
+            class="costing-item-add-dialog__preview costing-item-add-dialog__preview--empty"
+          >
             <q-icon name="image" size="32px" />
             <div class="text-caption q-mt-sm">Image preview</div>
           </div>
@@ -68,8 +73,7 @@
               min="1"
               :rules="[
                 (value) =>
-                  (value !== null && value !== '' && Number(value) > 0) ||
-                  'Quantity is required.',
+                  (value !== null && value !== '' && Number(value) > 0) || 'Quantity is required.',
               ]"
             >
               <template #prepend><q-icon name="inventory_2" /></template>
@@ -104,30 +108,21 @@
               </q-select>
             </div>
             <div class="col-12 col-sm-4">
-              <q-input
-                v-model="form.size"
-                label="Size"
-                outlined
-                dense
-                placeholder="XL, 250ml"
-              >
+              <q-input v-model="form.size" label="Size" outlined dense placeholder="XL, 250ml">
                 <template #prepend><q-icon name="straighten" /></template>
               </q-input>
             </div>
             <div class="col-12 col-sm-4">
-              <q-input
-                v-model="form.color"
-                label="Color"
-                outlined
-                dense
-              >
+              <q-input v-model="form.color" label="Color" outlined dense>
                 <template #prepend><q-icon name="palette" /></template>
               </q-input>
             </div>
           </div>
 
           <!-- Specifications & Logistics -->
-          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Specifications & Logistics</div>
+          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">
+            Specifications & Logistics
+          </div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
               <q-input
@@ -203,8 +198,10 @@
           </div>
 
           <!-- Description & Notes -->
-          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Description & Notes</div>
-          
+          <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">
+            Description & Notes
+          </div>
+
           <div class="q-mb-sm">
             <div class="text-caption text-grey-7 q-mb-xs">Extra Information 1</div>
             <q-editor
@@ -214,7 +211,7 @@
               bordered
               :toolbar="[
                 ['bold', 'italic', 'underline'],
-                ['unordered', 'ordered']
+                ['unordered', 'ordered'],
               ]"
             />
           </div>
@@ -228,7 +225,7 @@
               bordered
               :toolbar="[
                 ['bold', 'italic', 'underline'],
-                ['unordered', 'ordered']
+                ['unordered', 'ordered'],
               ]"
             />
           </div>
@@ -259,33 +256,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue';
 
 const props = defineProps<{
-  modelValue: boolean
-  loading?: boolean
-}>()
+  modelValue: boolean;
+  loading?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-      save: [
-        payload: {
-          websiteUrl: string
-          quantity: number
-          name: string
-          itemType: string | null
-          size: string | null
-          color: string | null
-          extraInformation1: string | null
-          extraInformation2: string | null
-      imageUrl: string
-      productWeight: number
-      packageWeight: number
-      priceInWebGbp: number
-      deliveryPriceGbp: number
+  'update:modelValue': [value: boolean];
+  save: [
+    payload: {
+      websiteUrl: string;
+      quantity: number;
+      name: string;
+      itemType: string | null;
+      size: string | null;
+      color: string | null;
+      extraInformation1: string | null;
+      extraInformation2: string | null;
+      imageUrl: string;
+      productWeight: number;
+      packageWeight: number;
+      priceInWebGbp: number;
+      deliveryPriceGbp: number;
     },
-  ]
-}>()
+  ];
+}>();
 
 const form = reactive({
   websiteUrl: '',
@@ -301,51 +298,52 @@ const form = reactive({
   packageWeight: null as number | null,
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
-})
+});
 
-const itemTypeOptions = ['Watch', 'Perfume', 'Others']
+const itemTypeOptions = ['Watch', 'Perfume', 'Others'];
 
 const normalizeExternalUrl = (value: string) =>
-  /^https?:\/\//i.test(value) ? value : `https://${value}`
+  /^https?:\/\//i.test(value) ? value : `https://${value}`;
 
 const previewImageUrl = computed(() => {
-  const value = form.imageUrl.trim()
-  return value ? normalizeExternalUrl(value) : ''
-})
+  const value = form.imageUrl.trim();
+  return value ? normalizeExternalUrl(value) : '';
+});
 
 const isFormInvalid = computed(() => {
-  if (!form.websiteUrl.trim()) return true
-  if (!form.imageUrl.trim()) return true
-  if (!form.name.trim()) return true
-  if (form.quantity == null || Number.isNaN(Number(form.quantity)) || Number(form.quantity) <= 0) return true
-  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true
-  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true
-  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true
-  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true
+  if (!form.websiteUrl.trim()) return true;
+  if (!form.imageUrl.trim()) return true;
+  if (!form.name.trim()) return true;
+  if (form.quantity == null || Number.isNaN(Number(form.quantity)) || Number(form.quantity) <= 0)
+    return true;
+  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true;
+  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true;
+  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true;
+  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true;
 
-  return false
-})
+  return false;
+});
 
 const resetForm = () => {
-  form.websiteUrl = ''
-  form.quantity = 1
-  form.name = ''
-  form.itemType = ''
-  form.size = ''
-  form.color = ''
-  form.extraInformation1 = ''
-  form.extraInformation2 = ''
-  form.imageUrl = ''
-  form.productWeight = null
-  form.packageWeight = null
-  form.priceInWebGbp = null
-  form.deliveryPriceGbp = null
-}
+  form.websiteUrl = '';
+  form.quantity = 1;
+  form.name = '';
+  form.itemType = '';
+  form.size = '';
+  form.color = '';
+  form.extraInformation1 = '';
+  form.extraInformation2 = '';
+  form.imageUrl = '';
+  form.productWeight = null;
+  form.packageWeight = null;
+  form.priceInWebGbp = null;
+  form.deliveryPriceGbp = null;
+};
 
 const cleanEditorHtml = (html: string) => {
-  const clean = html.replace(/<[^>]*>/g, '').trim()
-  return clean.length > 0 ? html.trim() : null
-}
+  const clean = html.replace(/<[^>]*>/g, '').trim();
+  return clean.length > 0 ? html.trim() : null;
+};
 
 const handleSave = () => {
   emit('save', {
@@ -362,17 +360,17 @@ const handleSave = () => {
     packageWeight: Number(form.packageWeight),
     priceInWebGbp: Number(form.priceInWebGbp),
     deliveryPriceGbp: Number(form.deliveryPriceGbp),
-  })
-}
+  });
+};
 
 watch(
   () => props.modelValue,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      resetForm();
     }
   },
-)
+);
 </script>
 
 <style scoped>

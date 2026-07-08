@@ -1,4 +1,4 @@
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
+import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 
 export type ModuleKey =
   | 'order_management'
@@ -50,28 +50,27 @@ export type ModuleKey =
   | 'shop_fulfillment'
   | 'sales_invoice'
   | 'billing_profile'
-  | 'recipient_profile'
+  | 'recipient_profile';
 
-
-export type ModuleAction = 'view'
-export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>
+export type ModuleAction = 'view';
+export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>;
 
 export interface ModuleRouteDefinition {
-  scope: InteractiveScope
-  title: string
-  caption: string
-  icon: string
-  routeSegment: string
-  requiredAction?: ModuleAction
+  scope: InteractiveScope;
+  title: string;
+  caption: string;
+  icon: string;
+  routeSegment: string;
+  requiredAction?: ModuleAction;
 }
 
 export interface ModuleDefinition {
-  key: ModuleKey
-  name: string
-  description: string
-  parentModuleKey?: ModuleKey
-  navIcon?: string
-  routes: ModuleRouteDefinition[]
+  key: ModuleKey;
+  name: string;
+  description: string;
+  parentModuleKey?: ModuleKey;
+  navIcon?: string;
+  routes: ModuleRouteDefinition[];
 }
 
 export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
@@ -526,7 +525,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'sales_invoice',
     name: 'Sales & Invoice',
-    description: 'Parent module for sales invoices, billing profiles, recipient profiles, and invoice brands.',
+    description:
+      'Parent module for sales invoices, billing profiles, recipient profiles, and invoice brands.',
     navIcon: 'receipt_long',
     routes: [],
   },
@@ -708,7 +708,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'procurement_stock',
     name: 'Procurement & Stock',
-    description: 'Parent module for inbound procurement, warehouse pools, and tenant stock allocations.',
+    description:
+      'Parent module for inbound procurement, warehouse pools, and tenant stock allocations.',
     navIcon: 'local_shipping',
     routes: [],
   },
@@ -722,7 +723,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'investor_capital',
     name: 'Investor Capital',
-    description: 'Parent module for investor profiles, capital ledger, shipment share allocations, and investor portal.',
+    description:
+      'Parent module for investor profiles, capital ledger, shipment share allocations, and investor portal.',
     navIcon: 'savings',
     routes: [],
   },
@@ -780,14 +782,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_order',
     name: 'Shop & Order',
-    description: 'Parent module for shop configuration, customer group permissions, product listings, storefront, carts, orders, and fulfillment.',
+    description:
+      'Parent module for shop configuration, customer group permissions, product listings, storefront, carts, orders, and fulfillment.',
     navIcon: 'storefront',
     routes: [],
   },
   {
     key: 'shop_config',
     name: 'Shops',
-    description: 'Create and manage shops — type, order mode, stock display defaults, and vendor link.',
+    description:
+      'Create and manage shops — type, order mode, stock display defaults, and vendor link.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -819,7 +823,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_pricing',
     name: 'Shop Pricing',
-    description: 'Manage product listings per shop, sell prices, minimum sell prices, and display quantity overrides.',
+    description:
+      'Manage product listings per shop, sell prices, minimum sell prices, and display quantity overrides.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -835,7 +840,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_storefront',
     name: 'Storefront',
-    description: 'Customer-facing browse surface — shows shops, products, and prices per group permission.',
+    description:
+      'Customer-facing browse surface — shows shops, products, and prices per group permission.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -891,7 +897,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_fulfillment',
     name: 'Fulfillment',
-    description: 'Convert placed vendor-catalog orders to procurement lines or stock-backed orders to global invoices.',
+    description:
+      'Convert placed vendor-catalog orders to procurement lines or stock-backed orders to global invoices.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -904,73 +911,69 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
     ],
   },
-] as const
+] as const;
 
-export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definition.key)
+export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definition.key);
 
 export const GLOBAL_MODULE_KEYS = [
   'global_shipment',
   'global_stock',
   'global_invoice',
-] as const satisfies readonly ModuleKey[]
+] as const satisfies readonly ModuleKey[];
 
 /** Top-level tenant modules — must never appear under the Global nav group. */
-export const TENANT_STOCK_MODULE_KEY = 'global_stock' as const satisfies ModuleKey
+export const TENANT_STOCK_MODULE_KEY = 'global_stock' as const satisfies ModuleKey;
 
 /**
  * Sidebar nav families for domain grouping only (Invoices, Commerce, …).
  * Global-prefixed modules (`global_*`) use flat top-level links — not a shared "Global" parent menu.
  */
-export type ModuleNavFamily =
-  | 'global'
-  | 'products'
-  | 'koba_retail'
-  | 'standalone'
+export type ModuleNavFamily = 'global' | 'products' | 'koba_retail' | 'standalone';
 
 export const getModuleNavFamily = (moduleKey: ModuleKey): ModuleNavFamily => {
-  if (isGlobalModuleKey(moduleKey)) return 'standalone'
-  if (moduleKey === 'products') return 'products'
-  if (moduleKey === 'koba_retail') return 'koba_retail'
-  return 'standalone'
-}
+  if (isGlobalModuleKey(moduleKey)) return 'standalone';
+  if (moduleKey === 'products') return 'products';
+  if (moduleKey === 'koba_retail') return 'koba_retail';
+  return 'standalone';
+};
 
-export const isGlobalModuleKey = (moduleKey: ModuleKey): moduleKey is (typeof GLOBAL_MODULE_KEYS)[number] =>
-  (GLOBAL_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey)
+export const isGlobalModuleKey = (
+  moduleKey: ModuleKey,
+): moduleKey is (typeof GLOBAL_MODULE_KEYS)[number] =>
+  (GLOBAL_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey);
 
-export const MODULE_REGISTRY_BY_KEY: Readonly<Record<ModuleKey, ModuleDefinition>> =
-  Object.freeze(
-    MODULE_REGISTRY.reduce(
-      (accumulator, definition) => {
-        accumulator[definition.key] = definition
-        return accumulator
-      },
-      {} as Record<ModuleKey, ModuleDefinition>,
-    ),
-  )
+export const MODULE_REGISTRY_BY_KEY: Readonly<Record<ModuleKey, ModuleDefinition>> = Object.freeze(
+  MODULE_REGISTRY.reduce(
+    (accumulator, definition) => {
+      accumulator[definition.key] = definition;
+      return accumulator;
+    },
+    {} as Record<ModuleKey, ModuleDefinition>,
+  ),
+);
 
-export const getModuleDefinition = (moduleKey: ModuleKey) =>
-  MODULE_REGISTRY_BY_KEY[moduleKey]
+export const getModuleDefinition = (moduleKey: ModuleKey) => MODULE_REGISTRY_BY_KEY[moduleKey];
 
 export const buildModuleRoutePath = ({
   scope,
   routeSegment,
   tenantSlug,
 }: {
-  scope: InteractiveScope
-  routeSegment: string
-  tenantSlug?: string | null | undefined
+  scope: InteractiveScope;
+  routeSegment: string;
+  tenantSlug?: string | null | undefined;
 }) => {
   if (scope === 'shop') {
-    return tenantSlug ? `/${tenantSlug}/shop/${routeSegment}` : `/shop/${routeSegment}`
+    return tenantSlug ? `/${tenantSlug}/shop/${routeSegment}` : `/shop/${routeSegment}`;
   }
 
-  return tenantSlug ? `/${tenantSlug}/app/${routeSegment}` : `/app/${routeSegment}`
-}
+  return tenantSlug ? `/${tenantSlug}/app/${routeSegment}` : `/app/${routeSegment}`;
+};
 
 export const getModuleRoutesForScope = (
   scope: InteractiveScope,
   options?: {
-    tenantSlug?: string | null | undefined
+    tenantSlug?: string | null | undefined;
   },
 ) =>
   MODULE_REGISTRY.flatMap((definition) =>
@@ -987,11 +990,11 @@ export const getModuleRoutesForScope = (
         ...routeDefinition,
       })),
   ).sort((a, b) => {
-    const aIsDashboard = a.title.trim().toLowerCase() === 'dashboard'
-    const bIsDashboard = b.title.trim().toLowerCase() === 'dashboard'
+    const aIsDashboard = a.title.trim().toLowerCase() === 'dashboard';
+    const bIsDashboard = b.title.trim().toLowerCase() === 'dashboard';
 
-    if (aIsDashboard && !bIsDashboard) return -1
-    if (!aIsDashboard && bIsDashboard) return 1
+    if (aIsDashboard && !bIsDashboard) return -1;
+    if (!aIsDashboard && bIsDashboard) return 1;
 
-    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
-  })
+    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+  });

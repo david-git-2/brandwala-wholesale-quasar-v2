@@ -37,7 +37,12 @@
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        background: linear-gradient(165deg, var(--splash-surface) 0%, var(--splash-bg) 55%, var(--splash-gradient-end) 100%);
+        background: linear-gradient(
+          165deg,
+          var(--splash-surface) 0%,
+          var(--splash-bg) 55%,
+          var(--splash-gradient-end) 100%
+        );
         color: var(--splash-ink);
         opacity: 1;
         transition: opacity 0.38s ease;
@@ -105,7 +110,12 @@
         left: 50%;
         top: 50%;
         transform: translate(-50%, -52%);
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
         font-size: clamp(5.5rem, 18vw, 13rem);
         font-weight: 900;
         line-height: 0.85;
@@ -113,7 +123,11 @@
         white-space: nowrap;
         color: transparent;
         -webkit-text-stroke: 1px rgb(var(--splash-accent-rgb) / 0.07);
-        background: linear-gradient(160deg, rgb(var(--splash-accent-rgb) / 0.04) 0%, rgb(var(--splash-accent-rgb) / 0.08) 100%);
+        background: linear-gradient(
+          160deg,
+          rgb(var(--splash-accent-rgb) / 0.04) 0%,
+          rgb(var(--splash-accent-rgb) / 0.08) 100%
+        );
         -webkit-background-clip: text;
         background-clip: text;
         user-select: none;
@@ -182,11 +196,21 @@
 
       .app-splash__name {
         display: block;
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
         font-size: clamp(1.35rem, 3.8vw, 1.75rem);
         font-weight: 700;
         letter-spacing: -0.03em;
-        background: linear-gradient(120deg, var(--splash-ink) 0%, var(--splash-accent-dark) 55%, var(--splash-accent) 100%);
+        background: linear-gradient(
+          120deg,
+          var(--splash-ink) 0%,
+          var(--splash-accent-dark) 55%,
+          var(--splash-accent) 100%
+        );
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -194,7 +218,12 @@
 
       .app-splash__tagline {
         margin: 0.45rem 0 0;
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
         font-size: 0.82rem;
         font-weight: 500;
         letter-spacing: 0.14em;
@@ -324,9 +353,9 @@
       </div>
     </div>
     <script>
-      ;(function initAppSplashTheme() {
-        var AUTH_KEY = 'brandwala.auth.access.v2'
-        var WORKSPACE_KEY = 'brandwala.tenant.workspace.v1'
+      (function initAppSplashTheme() {
+        var AUTH_KEY = 'brandwala.auth.access.v4';
+        var WORKSPACE_KEY = 'brandwala.tenant.workspace.v1';
 
         var SCOPE_THEMES = {
           platform: {
@@ -389,129 +418,149 @@
             ghost: 'Operations',
             tagline: 'Run your business',
           },
-        }
+        };
 
         function readJson(key) {
           try {
-            var raw = localStorage.getItem(key)
-            return raw ? JSON.parse(raw) : null
+            var raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : null;
           } catch (error) {
-            return null
+            return null;
           }
         }
 
         function detectScopeFromPath(path) {
-          if (/^\/platform(\/|$)/.test(path)) return 'platform'
-          if (/\/investor(\/|$)/.test(path)) return 'investor'
-          if (/\/(shop)(\/|$)/.test(path)) return 'shop'
-          if (/\/(app)(\/|$)/.test(path)) return 'app'
-          return null
+          if (/^\/platform(\/|$)/.test(path)) return 'platform';
+          if (/\/investor(\/|$)/.test(path)) return 'investor';
+          if (/\/(shop)(\/|$)/.test(path)) return 'shop';
+          if (/\/(app)(\/|$)/.test(path)) return 'app';
+          return null;
         }
 
         function resolveScope(path, auth) {
-          return detectScopeFromPath(path) || (auth && auth.scope) || 'default'
+          return detectScopeFromPath(path) || (auth && auth.scope) || 'default';
         }
 
         function findTenantBySlug(tenants, slug) {
-          if (!slug || !Array.isArray(tenants)) return null
+          if (!slug || !Array.isArray(tenants)) return null;
           for (var i = 0; i < tenants.length; i++) {
-            if (tenants[i] && tenants[i].slug === slug) return tenants[i]
+            if (tenants[i] && tenants[i].slug === slug) return tenants[i];
           }
-          return null
+          return null;
         }
 
         function findTenantById(tenants, id) {
-          if (id == null || !Array.isArray(tenants)) return null
+          if (id == null || !Array.isArray(tenants)) return null;
           for (var i = 0; i < tenants.length; i++) {
-            if (tenants[i] && tenants[i].id === id) return tenants[i]
+            if (tenants[i] && tenants[i].id === id) return tenants[i];
           }
-          return null
+          return null;
         }
 
         function resolveTenantName(scope, auth, workspace, path) {
-          var tenants = workspace && workspace.availableAdminTenants
-          var slugMatch = path.match(/^\/([^/]+)\/(app|shop|investor)/)
-          var slugTenant = slugMatch ? findTenantBySlug(tenants, slugMatch[1]) : null
+          var tenants = workspace && workspace.availableAdminTenants;
+          var slugMatch = path.match(/^\/([^/]+)\/(app|shop|investor)/);
+          var slugTenant = slugMatch ? findTenantBySlug(tenants, slugMatch[1]) : null;
 
-          if (slugTenant && slugTenant.name) return slugTenant.name
+          if (slugTenant && slugTenant.name) return slugTenant.name;
 
           if (scope === 'app' && workspace && workspace.selectedTenantId != null) {
-            var selected = findTenantById(tenants, workspace.selectedTenantId)
-            if (selected && selected.name) return selected.name
+            var selected = findTenantById(tenants, workspace.selectedTenantId);
+            if (selected && selected.name) return selected.name;
           }
 
           if (scope === 'shop' && auth && auth.customerGroup && auth.customerGroup.name) {
-            return auth.customerGroup.name
+            return auth.customerGroup.name;
           }
 
-          if (auth && auth.tenant && auth.tenant.name) return auth.tenant.name
+          if (auth && auth.tenant && auth.tenant.name) return auth.tenant.name;
 
-          return null
+          return null;
         }
 
         function buildIconMarkup(color) {
           return (
             '<svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-            '<rect width="28" height="28" rx="7" fill="' + color + '" fill-opacity="0.15" />' +
-            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' + color + '" />' +
-            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' + color + '" fill-opacity="0.7" />' +
-            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' + color + '" fill-opacity="0.7" />' +
-            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' + color + '" fill-opacity="0.45" />' +
+            '<rect width="28" height="28" rx="7" fill="' +
+            color +
+            '" fill-opacity="0.15" />' +
+            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' +
+            color +
+            '" />' +
+            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' +
+            color +
+            '" fill-opacity="0.7" />' +
+            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' +
+            color +
+            '" fill-opacity="0.7" />' +
+            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' +
+            color +
+            '" fill-opacity="0.45" />' +
             '</svg>'
-          )
+          );
         }
 
         function buildFaviconHref(color) {
           var svg =
             '<svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-            '<rect width="28" height="28" rx="7" fill="' + color + '" fill-opacity="0.18"/>' +
-            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' + color + '"/>' +
-            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' + color + '" fill-opacity="0.7"/>' +
-            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' + color + '" fill-opacity="0.7"/>' +
-            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' + color + '" fill-opacity="0.45"/>' +
-            '</svg>'
-          return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+            '<rect width="28" height="28" rx="7" fill="' +
+            color +
+            '" fill-opacity="0.18"/>' +
+            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' +
+            color +
+            '"/>' +
+            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' +
+            color +
+            '" fill-opacity="0.7"/>' +
+            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' +
+            color +
+            '" fill-opacity="0.7"/>' +
+            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' +
+            color +
+            '" fill-opacity="0.45"/>' +
+            '</svg>';
+          return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
         }
 
-        var splash = document.getElementById('app-splash')
-        if (!splash) return
+        var splash = document.getElementById('app-splash');
+        if (!splash) return;
 
-        var path = window.location.pathname || '/'
-        var auth = readJson(AUTH_KEY)
-        var workspace = readJson(WORKSPACE_KEY)
-        var scope = resolveScope(path, auth)
-        var theme = SCOPE_THEMES[scope] || SCOPE_THEMES.default
-        var tenantName = resolveTenantName(scope, auth, workspace, path)
+        var path = window.location.pathname || '/';
+        var auth = readJson(AUTH_KEY);
+        var workspace = readJson(WORKSPACE_KEY);
+        var scope = resolveScope(path, auth);
+        var theme = SCOPE_THEMES[scope] || SCOPE_THEMES.default;
+        var tenantName = resolveTenantName(scope, auth, workspace, path);
 
-        splash.dataset.scope = scope
-        splash.style.setProperty('--splash-accent', theme.accent)
-        splash.style.setProperty('--splash-accent-rgb', theme.accentRgb)
-        splash.style.setProperty('--splash-mid', theme.mid)
-        splash.style.setProperty('--splash-blob-1', theme.blob1)
-        splash.style.setProperty('--splash-blob-3', theme.blob3)
-        splash.style.setProperty('--splash-gradient-end', theme.gradientEnd)
-        splash.style.setProperty('--splash-accent-dark', theme.accentDark)
-        splash.style.setProperty('--splash-icon-tint', theme.iconTint)
-        splash.style.setProperty('--splash-glow', 'rgb(' + theme.accentRgb + ' / 0.35)')
+        splash.dataset.scope = scope;
+        splash.style.setProperty('--splash-accent', theme.accent);
+        splash.style.setProperty('--splash-accent-rgb', theme.accentRgb);
+        splash.style.setProperty('--splash-mid', theme.mid);
+        splash.style.setProperty('--splash-blob-1', theme.blob1);
+        splash.style.setProperty('--splash-blob-3', theme.blob3);
+        splash.style.setProperty('--splash-gradient-end', theme.gradientEnd);
+        splash.style.setProperty('--splash-accent-dark', theme.accentDark);
+        splash.style.setProperty('--splash-icon-tint', theme.iconTint);
+        splash.style.setProperty('--splash-glow', 'rgb(' + theme.accentRgb + ' / 0.35)');
 
-        var ghost = document.getElementById('app-splash-ghost')
-        if (ghost) ghost.textContent = theme.ghost
+        var ghost = document.getElementById('app-splash-ghost');
+        if (ghost) ghost.textContent = theme.ghost;
 
-        var name = document.getElementById('app-splash-name')
-        if (name) name.textContent = tenantName || 'TradeFlowBD'
+        var name = document.getElementById('app-splash-name');
+        if (name) name.textContent = tenantName || 'TradeFlowBD';
 
-        var tagline = document.getElementById('app-splash-tagline')
-        if (tagline) tagline.textContent = theme.tagline
+        var tagline = document.getElementById('app-splash-tagline');
+        if (tagline) tagline.textContent = theme.tagline;
 
-        var icon = document.getElementById('app-splash-icon')
-        if (icon) icon.innerHTML = buildIconMarkup(theme.accent)
+        var icon = document.getElementById('app-splash-icon');
+        if (icon) icon.innerHTML = buildIconMarkup(theme.accent);
 
-        var favicon = document.getElementById('dynamic-favicon')
+        var favicon = document.getElementById('dynamic-favicon');
         if (favicon) {
-          favicon.type = 'image/svg+xml'
-          favicon.href = buildFaviconHref(theme.accent)
+          favicon.type = 'image/svg+xml';
+          favicon.href = buildFaviconHref(theme.accent);
         }
-      })()
+      })();
     </script>
     <!-- quasar:entry-point -->
   </body>

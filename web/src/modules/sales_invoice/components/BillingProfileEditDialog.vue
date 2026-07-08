@@ -5,7 +5,7 @@
 
       <q-card-section class="column q-gutter-sm">
         <q-input v-model="form.name" outlined dense label="Name *" :rules="nameRules" lazy-rules />
-        
+
         <q-select
           v-model="form.customerGroupId"
           :options="customerGroupOptions"
@@ -75,33 +75,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { showWarningDialog } from 'src/utils/appFeedback'
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore'
-import type { BillingProfile } from '../repositories/billingProfileRepository'
+import { computed, reactive, watch } from 'vue';
+import { showWarningDialog } from 'src/utils/appFeedback';
+import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
+import type { BillingProfile } from '../repositories/billingProfileRepository';
 
 const props = defineProps<{
-  modelValue: boolean
-  profile: BillingProfile | null
-  saving?: boolean
-}>()
+  modelValue: boolean;
+  profile: BillingProfile | null;
+  saving?: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'submit', payload: {
-    id: number
-    patch: {
-      name: string
-      email: string | null
-      phone: string | null
-      address: string | null
-      customer_group_id: number | null
-      color: string | null
-    }
-  }): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (
+    e: 'submit',
+    payload: {
+      id: number;
+      patch: {
+        name: string;
+        email: string | null;
+        phone: string | null;
+        address: string | null;
+        customer_group_id: number | null;
+        color: string | null;
+      };
+    },
+  ): void;
+}>();
 
-const customerGroupStore = useCustomerGroupStore()
+const customerGroupStore = useCustomerGroupStore();
 
 const form = reactive({
   name: '',
@@ -110,7 +113,7 @@ const form = reactive({
   color: '',
   phone: '',
   address: '',
-})
+});
 
 const colorPresets = [
   '#B45F34', // Orange/Brown
@@ -122,7 +125,7 @@ const colorPresets = [
   '#2E7D32', // Green
   '#C62828', // Red
   '#1565C0', // Blue
-] as const
+] as const;
 
 const customerGroupOptions = computed(() => {
   const activeGroups = customerGroupStore.groups
@@ -130,41 +133,38 @@ const customerGroupOptions = computed(() => {
     .map((g) => ({
       label: g.name,
       value: g.id,
-    }))
-  return [
-    { label: 'Others (None)', value: null },
-    ...activeGroups,
-  ]
-})
+    }));
+  return [{ label: 'Others (None)', value: null }, ...activeGroups];
+});
 
 watch(
   () => props.profile,
   (profile) => {
-    form.name = profile?.name ?? ''
-    form.email = profile?.email ?? ''
-    form.customerGroupId = profile?.customer_group_id ?? null
-    form.color = profile?.color ?? ''
-    form.phone = profile?.phone ?? ''
-    form.address = profile?.address ?? ''
+    form.name = profile?.name ?? '';
+    form.email = profile?.email ?? '';
+    form.customerGroupId = profile?.customer_group_id ?? null;
+    form.color = profile?.color ?? '';
+    form.phone = profile?.phone ?? '';
+    form.address = profile?.address ?? '';
 
     if (profile?.tenant_id) {
-      void customerGroupStore.fetchCustomerGroupsByTenant(profile.tenant_id)
+      void customerGroupStore.fetchCustomerGroupsByTenant(profile.tenant_id);
     }
   },
   { immediate: true },
-)
+);
 
-const nameRules = [(value: string) => (value?.trim()?.length ? true : 'Name is required')]
+const nameRules = [(value: string) => (value?.trim()?.length ? true : 'Name is required')];
 
 const onSubmit = () => {
   if (!props.profile) {
-    showWarningDialog('Billing profile is missing.')
-    return
+    showWarningDialog('Billing profile is missing.');
+    return;
   }
 
   if (!form.name.trim()) {
-    showWarningDialog('Name is required.')
-    return
+    showWarningDialog('Name is required.');
+    return;
   }
 
   emit('submit', {
@@ -177,8 +177,8 @@ const onSubmit = () => {
       customer_group_id: form.customerGroupId,
       color: form.color.trim() || null,
     },
-  })
-}
+  });
+};
 </script>
 
 <style scoped>

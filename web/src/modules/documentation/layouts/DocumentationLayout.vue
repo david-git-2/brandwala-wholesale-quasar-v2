@@ -18,16 +18,19 @@
           <img src="/tradeflowbd-logo.png" alt="TradeflowBD Logo" />
         </q-avatar>
 
-        <q-toolbar-title class="text-weight-bold text-subtitle1 flex items-center no-wrap ink-color">
+        <q-toolbar-title
+          class="text-weight-bold text-subtitle1 flex items-center no-wrap ink-color"
+        >
           <span>TradeflowBD Wholesale Docs</span>
-          <q-badge :color="currentScope === 'platform' ? 'purple-7' : 'teal-7'" class="q-ml-sm text-caption uppercase text-weight-bold">
+          <q-badge
+            :color="currentScope === 'platform' ? 'purple-7' : 'teal-7'"
+            class="q-ml-sm text-caption uppercase text-weight-bold"
+          >
             {{ currentScope === 'platform' ? 'Platform Docs' : 'Workspace Docs' }}
           </q-badge>
         </q-toolbar-title>
 
         <q-space />
-
-
 
         <!-- Close Tab Action -->
         <q-btn
@@ -92,8 +95,14 @@
                   />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-subtitle2 text-weight-bold ellipsis">{{ doc.title }}</q-item-label>
-                  <q-item-label caption :class="activeDocKey === doc.key ? 'text-blue-1' : 'text-grey-7'" class="ellipsis-2-lines">
+                  <q-item-label class="text-subtitle2 text-weight-bold ellipsis">{{
+                    doc.title
+                  }}</q-item-label>
+                  <q-item-label
+                    caption
+                    :class="activeDocKey === doc.key ? 'text-blue-1' : 'text-grey-7'"
+                    class="ellipsis-2-lines"
+                  >
                     {{ doc.description }}
                   </q-item-label>
                 </q-item-section>
@@ -109,8 +118,6 @@
       </div>
     </q-drawer>
 
-
-
     <!-- Center Reading View Container -->
     <q-page-container class="bg-grey-2 doc-page-container">
       <div class="q-pa-lg flex flex-center">
@@ -123,99 +130,101 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { DOCUMENTATION_REGISTRY, type DocItem } from '../utils/docRegistry'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { DOCUMENTATION_REGISTRY, type DocItem } from '../utils/docRegistry';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
-const search = ref('')
-const leftDrawerOpen = ref(false)
+const search = ref('');
+const leftDrawerOpen = ref(false);
 
 const currentScope = computed<'app' | 'platform'>(() => {
-  return route.path.startsWith('/platform') ? 'platform' : 'app'
-})
+  return route.path.startsWith('/platform') ? 'platform' : 'app';
+});
 
 const activeDocKey = computed(() => {
-  return (route.params.docKey as string) || ''
-})
+  return (route.params.docKey as string) || '';
+});
 
 const availableDocs = computed(() => {
-  const scope = currentScope.value
+  const scope = currentScope.value;
   return DOCUMENTATION_REGISTRY.filter((doc) => {
     if (scope === 'platform') {
-      return doc.scope === 'platform' || doc.scope === 'both' || doc.scope === 'app'
+      return doc.scope === 'platform' || doc.scope === 'both' || doc.scope === 'app';
     }
-    
+
     // App Scope
     if (doc.scope === 'platform') {
-      return false
+      return false;
     }
 
     if (!doc.moduleKey) {
-      return true
+      return true;
     }
 
-    return authStore.activeModuleKeys.includes(doc.moduleKey)
-  })
-})
+    return authStore.activeModuleKeys.includes(doc.moduleKey);
+  });
+});
 
 const filteredDocs = computed(() => {
-  const term = search.value.trim().toLowerCase()
-  if (!term) return availableDocs.value
+  const term = search.value.trim().toLowerCase();
+  if (!term) return availableDocs.value;
 
   return availableDocs.value.filter(
-    (doc) =>
-      doc.title.toLowerCase().includes(term) ||
-      doc.description.toLowerCase().includes(term)
-  )
-})
+    (doc) => doc.title.toLowerCase().includes(term) || doc.description.toLowerCase().includes(term),
+  );
+});
 
 const navigateToDoc = (docKey: string) => {
-  const tenantSlug = authStore.tenantSlug
+  const tenantSlug = authStore.tenantSlug;
   if (currentScope.value === 'platform') {
-    void router.push(`/platform/documentation/${docKey}`)
+    void router.push(`/platform/documentation/${docKey}`);
   } else {
-    void router.push(tenantSlug ? `/${tenantSlug}/app/documentation/${docKey}` : `/app/documentation/${docKey}`)
+    void router.push(
+      tenantSlug ? `/${tenantSlug}/app/documentation/${docKey}` : `/app/documentation/${docKey}`,
+    );
   }
-}
+};
 
 const onSelectDoc = (doc: DocItem) => {
-  navigateToDoc(doc.key)
+  navigateToDoc(doc.key);
   // Close left drawer on mobile/tablet viewports after selecting
   if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-    leftDrawerOpen.value = false
+    leftDrawerOpen.value = false;
   }
-}
-
-
+};
 
 const closeTab = () => {
   if (typeof window !== 'undefined') {
-    window.close()
+    window.close();
   }
-}
+};
 
 const ensureSelectedDoc = () => {
   if (!activeDocKey.value && availableDocs.value.length > 0) {
-    const firstDoc = availableDocs.value[0]
+    const firstDoc = availableDocs.value[0];
     if (firstDoc) {
-      navigateToDoc(firstDoc.key)
+      navigateToDoc(firstDoc.key);
     }
   }
-}
+};
 
-watch(availableDocs, () => {
-  ensureSelectedDoc()
-}, { immediate: true })
+watch(
+  availableDocs,
+  () => {
+    ensureSelectedDoc();
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
-  ensureSelectedDoc()
-})
+  ensureSelectedDoc();
+});
 </script>
 
 <style lang="scss">
@@ -255,11 +264,11 @@ onMounted(() => {
 .doc-item {
   transition: all 0.2s ease;
   border-radius: 8px;
-  
+
   &:hover {
     background: var(--bw-theme-primary-soft);
   }
-  
+
   &.active-doc-item {
     background: var(--bw-theme-primary) !important;
     color: white !important;
@@ -283,6 +292,4 @@ onMounted(() => {
 .ink-color {
   color: var(--bw-theme-ink);
 }
-
-
 </style>

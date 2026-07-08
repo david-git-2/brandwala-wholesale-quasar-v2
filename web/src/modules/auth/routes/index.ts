@@ -1,4 +1,4 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
 const authRoutes: RouteRecordRaw[] = [
   {
@@ -71,6 +71,6 @@ const authRoutes: RouteRecordRaw[] = [
         ? `/${to.params.tenantSlug}/shop/login`
         : '/shop/login',
   },
-]
+];
 
-export default authRoutes
+export default authRoutes;

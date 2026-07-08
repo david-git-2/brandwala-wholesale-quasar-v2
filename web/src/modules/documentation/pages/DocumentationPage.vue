@@ -25,14 +25,21 @@
 
       <!-- Error Boundary: File Not Found -->
       <div v-if="loadError" class="q-pa-xl col-grow flex flex-center">
-        <div v-if="loadError === 'NOT_FOUND'" class="text-center error-container q-pa-lg rounded-borders">
+        <div
+          v-if="loadError === 'NOT_FOUND'"
+          class="text-center error-container q-pa-lg rounded-borders"
+        >
           <q-icon name="warning" color="warning" size="xl" class="q-mb-md" />
-          <div class="text-h6 text-weight-bold text-warning-dark">Documentation File Not Created Yet</div>
+          <div class="text-h6 text-weight-bold text-warning-dark">
+            Documentation File Not Created Yet
+          </div>
           <p class="text-grey-8 q-my-md text-body2 max-width-p">
-            The documentation file <code>{{ resolvedFilename }}</code> is not present in the workspace.
-            To provide documentation for this module, simply create a file at that path.
+            The documentation file <code>{{ resolvedFilename }}</code> is not present in the
+            workspace. To provide documentation for this module, simply create a file at that path.
           </p>
-          <div class="bg-grey-2 q-pa-sm rounded-borders text-left font-mono text-caption text-grey-9 inline-block border-grey-3">
+          <div
+            class="bg-grey-2 q-pa-sm rounded-borders text-left font-mono text-caption text-grey-9 inline-block border-grey-3"
+          >
             $ touch "{{ resolvedFilename }}"
           </div>
         </div>
@@ -60,123 +67,123 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import { marked } from 'src/utils/marked'
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import { marked } from 'src/utils/marked';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { DOCUMENTATION_REGISTRY } from '../utils/docRegistry'
-import { useDocToc, type TouchHeading } from '../composables/useDocToc'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { DOCUMENTATION_REGISTRY } from '../utils/docRegistry';
+import { useDocToc, type TouchHeading } from '../composables/useDocToc';
 
-const route = useRoute()
-const { setHeadings, clearHeadings } = useDocToc()
-const authStore = useAuthStore()
+const route = useRoute();
+const { setHeadings, clearHeadings } = useDocToc();
+const authStore = useAuthStore();
 
 const activeDocKey = computed(() => {
-  return (route.params.docKey as string) || ''
-})
+  return (route.params.docKey as string) || '';
+});
 
 const activeDoc = computed(() => {
-  if (!activeDocKey.value) return null
-  return DOCUMENTATION_REGISTRY.find(d => d.key === activeDocKey.value) || null
-})
+  if (!activeDocKey.value) return null;
+  return DOCUMENTATION_REGISTRY.find((d) => d.key === activeDocKey.value) || null;
+});
 
 const resolvedFilename = computed(() => {
-  const doc = activeDoc.value
-  if (!doc) return ''
-  let filename = doc.filename
+  const doc = activeDoc.value;
+  if (!doc) return '';
+  let filename = doc.filename;
   if (filename.includes('{tenantId}')) {
-    const tenantId = authStore.tenantId
-    filename = filename.replace('{tenantId}', String(tenantId ?? 0))
+    const tenantId = authStore.tenantId;
+    filename = filename.replace('{tenantId}', String(tenantId ?? 0));
   }
-  return filename
-})
+  return filename;
+});
 
-const loading = ref(false)
-const loadError = ref<string | null>(null)
-const markdownHtml = ref('')
+const loading = ref(false);
+const loadError = ref<string | null>(null);
+const markdownHtml = ref('');
 
 marked.setOptions({
   gfm: true,
   breaks: true,
-})
+});
 
 const generateTableOfContents = async () => {
-  await nextTick()
-  const contentEl = document.querySelector('.markdown-body')
+  await nextTick();
+  const contentEl = document.querySelector('.markdown-body');
   if (!contentEl) {
-    clearHeadings()
-    return
+    clearHeadings();
+    return;
   }
 
-  const list: TouchHeading[] = []
-  const headingElements = contentEl.querySelectorAll('h1, h2, h3')
-  
+  const list: TouchHeading[] = [];
+  const headingElements = contentEl.querySelectorAll('h1, h2, h3');
+
   headingElements.forEach((el) => {
-    const text = el.textContent || ''
+    const text = el.textContent || '';
     if (text.trim()) {
-      let id = el.id
+      let id = el.id;
       if (!id) {
         id = text
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-+|-+$)/g, '')
-        el.id = id
+          .replace(/(^-+|-+$)/g, '');
+        el.id = id;
       }
       list.push({
         id,
         text,
         level: parseInt(el.tagName.replace('H', ''), 10),
-      })
+      });
     }
-  })
-  setHeadings(list)
-}
+  });
+  setHeadings(list);
+};
 
 const loadDocContent = async () => {
-  const doc = activeDoc.value
+  const doc = activeDoc.value;
   if (!doc) {
-    markdownHtml.value = ''
-    clearHeadings()
-    return
+    markdownHtml.value = '';
+    clearHeadings();
+    return;
   }
 
-  loading.value = true
-  loadError.value = null
-  markdownHtml.value = ''
-  clearHeadings()
-  
+  loading.value = true;
+  loadError.value = null;
+  markdownHtml.value = '';
+  clearHeadings();
+
   try {
-    const response = await fetch(`/${resolvedFilename.value}`)
+    const response = await fetch(`/${resolvedFilename.value}`);
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('NOT_FOUND')
+        throw new Error('NOT_FOUND');
       }
-      throw new Error(`Server returned status: ${response.status}`)
+      throw new Error(`Server returned status: ${response.status}`);
     }
-    
-    const rawText = await response.text()
-    markdownHtml.value = marked.parse(rawText)
-    await generateTableOfContents()
+
+    const rawText = await response.text();
+    markdownHtml.value = marked.parse(rawText);
+    await generateTableOfContents();
   } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
+    const errorMsg = e instanceof Error ? e.message : String(e);
     if (errorMsg === 'NOT_FOUND') {
-      loadError.value = 'NOT_FOUND'
+      loadError.value = 'NOT_FOUND';
     } else {
-      loadError.value = errorMsg || 'An error occurred.'
+      loadError.value = errorMsg || 'An error occurred.';
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 watch(activeDoc, () => {
-  void loadDocContent()
-})
+  void loadDocContent();
+});
 
 onMounted(() => {
-  void loadDocContent()
-})
+  void loadDocContent();
+});
 </script>
 
 <style lang="scss">
@@ -186,7 +193,12 @@ onMounted(() => {
   font-size: 15px;
   line-height: 1.6;
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: var(--bw-theme-ink);
     font-weight: 700;
     margin-top: 1.8rem;
@@ -216,7 +228,8 @@ onMounted(() => {
     margin-bottom: 1.1rem;
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin-top: 0;
     margin-bottom: 1.1rem;
     padding-left: 1.8rem;
@@ -245,7 +258,7 @@ onMounted(() => {
     border-radius: 8px;
     margin-top: 0;
     margin-bottom: 1.1rem;
-    
+
     code {
       padding: 0;
       background-color: transparent;
@@ -262,7 +275,7 @@ onMounted(() => {
     background-color: var(--bw-theme-primary-soft);
     margin: 1.2rem 0;
     border-radius: 0 8px 8px 0;
-    
+
     p:last-child {
       margin-bottom: 0;
     }
@@ -274,17 +287,18 @@ onMounted(() => {
     margin-bottom: 1.1rem;
     border-collapse: collapse;
     border-spacing: 0;
-    
-    th, td {
+
+    th,
+    td {
       padding: 8px 14px;
       border: 1px solid var(--bw-theme-border);
     }
-    
+
     th {
       font-weight: 600;
       background-color: var(--bw-theme-primary-soft);
     }
-    
+
     tr:nth-child(2n) {
       background-color: rgba(var(--bw-theme-primary-rgb), 0.02);
     }

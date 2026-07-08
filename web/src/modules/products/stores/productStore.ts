@@ -1,57 +1,49 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import {
-  handleApiFailure,
-  showSuccessNotification,
-} from 'src/utils/appFeedback'
-import { productService } from '../services/productService'
-import type {
-  Product,
-  ProductCreateInput,
-  ProductDeleteInput,
-  ProductUpdateInput,
-} from '../types'
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { productService } from '../services/productService';
+import type { Product, ProductCreateInput, ProductDeleteInput, ProductUpdateInput } from '../types';
 
 type FetchProductsParams = {
-  page?: number
-  pageSize?: number
-  search?: string
-  searchField?: 'name' | 'barcode' | 'product_code' | 'id'
-  category?: string | null | undefined
-  brand?: string | null | undefined
-  sortPrice?: 'asc' | 'desc'
-  tenantId?: number | null | undefined
-  vendorCode?: string | null | undefined
-  marketCode?: string | null | undefined
-  isAvailable?: boolean | null | undefined
-  append?: boolean
-}
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  searchField?: 'name' | 'barcode' | 'product_code' | 'id';
+  category?: string | null | undefined;
+  brand?: string | null | undefined;
+  sortPrice?: 'asc' | 'desc';
+  tenantId?: number | null | undefined;
+  vendorCode?: string | null | undefined;
+  marketCode?: string | null | undefined;
+  isAvailable?: boolean | null | undefined;
+  append?: boolean;
+};
 
 type FetchProductLookupParams = {
-  vendorCode?: string | null | undefined
-  tenantId?: number | null | undefined
-}
+  vendorCode?: string | null | undefined;
+  tenantId?: number | null | undefined;
+};
 
 type ProductStoreState = {
-  items: Product[]
-  loading: boolean
-  saving: boolean
-  error: string | null
-  total: number
-  page: number
-  pageSize: number
-  search: string
-  searchField: 'name' | 'barcode' | 'product_code' | 'id'
-  category: string
-  brand: string
-  sortPrice: 'asc' | 'desc'
-  tenantId: number | undefined
-  vendorCode: string | undefined
-  marketCode: string | undefined
-  isAvailable: boolean | undefined
-  brandOptions: string[]
-  categoryOptions: string[]
-}
+  items: Product[];
+  loading: boolean;
+  saving: boolean;
+  error: string | null;
+  total: number;
+  page: number;
+  pageSize: number;
+  search: string;
+  searchField: 'name' | 'barcode' | 'product_code' | 'id';
+  category: string;
+  brand: string;
+  sortPrice: 'asc' | 'desc';
+  tenantId: number | undefined;
+  vendorCode: string | undefined;
+  marketCode: string | undefined;
+  isAvailable: boolean | undefined;
+  brandOptions: string[];
+  categoryOptions: string[];
+};
 
 export const useProductStore = defineStore('product', {
   state: (): ProductStoreState => ({
@@ -77,44 +69,44 @@ export const useProductStore = defineStore('product', {
 
   actions: {
     clearError() {
-      this.error = null
+      this.error = null;
     },
 
     setFilters(params: FetchProductsParams) {
-      if (params.page !== undefined) this.page = params.page
-      if (params.pageSize !== undefined) this.pageSize = params.pageSize
-      if (params.search !== undefined) this.search = params.search
-      if (params.searchField !== undefined) this.searchField = params.searchField
-      if (params.category !== undefined) this.category = params.category ?? ''
-      if (params.brand !== undefined) this.brand = params.brand ?? ''
-      if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice
-      if (params.tenantId !== undefined) this.tenantId = params.tenantId ?? undefined
-      if (params.vendorCode !== undefined) this.vendorCode = params.vendorCode ?? undefined
-      if (params.marketCode !== undefined) this.marketCode = params.marketCode ?? undefined
-      if (params.isAvailable !== undefined) this.isAvailable = params.isAvailable ?? undefined
+      if (params.page !== undefined) this.page = params.page;
+      if (params.pageSize !== undefined) this.pageSize = params.pageSize;
+      if (params.search !== undefined) this.search = params.search;
+      if (params.searchField !== undefined) this.searchField = params.searchField;
+      if (params.category !== undefined) this.category = params.category ?? '';
+      if (params.brand !== undefined) this.brand = params.brand ?? '';
+      if (params.sortPrice !== undefined) this.sortPrice = params.sortPrice;
+      if (params.tenantId !== undefined) this.tenantId = params.tenantId ?? undefined;
+      if (params.vendorCode !== undefined) this.vendorCode = params.vendorCode ?? undefined;
+      if (params.marketCode !== undefined) this.marketCode = params.marketCode ?? undefined;
+      if (params.isAvailable !== undefined) this.isAvailable = params.isAvailable ?? undefined;
     },
 
     resetFilters() {
-      this.page = 1
-      this.pageSize = 20
-      this.search = ''
-      this.searchField = 'name'
-      this.category = ''
-      this.brand = ''
-      this.sortPrice = 'asc'
-      this.tenantId = undefined
-      this.vendorCode = undefined
-      this.marketCode = undefined
-      this.isAvailable = undefined
+      this.page = 1;
+      this.pageSize = 20;
+      this.search = '';
+      this.searchField = 'name';
+      this.category = '';
+      this.brand = '';
+      this.sortPrice = 'asc';
+      this.tenantId = undefined;
+      this.vendorCode = undefined;
+      this.marketCode = undefined;
+      this.isAvailable = undefined;
     },
 
     async fetchProducts(params?: FetchProductsParams) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
         if (params) {
-          this.setFilters(params)
+          this.setFilters(params);
         }
 
         const result = await productService.listProducts({
@@ -129,63 +121,63 @@ export const useProductStore = defineStore('product', {
           vendorCode: this.vendorCode || null,
           marketCode: this.marketCode || null,
           isAvailable: this.isAvailable ?? null,
-        })
+        });
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load products.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load products.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const incomingItems = result.data ?? []
+        const incomingItems = result.data ?? [];
 
         if (params?.append) {
-          const existingById = new Set(this.items.map((item) => item.id))
-          const nextItems = [...this.items]
+          const existingById = new Set(this.items.map((item) => item.id));
+          const nextItems = [...this.items];
 
           for (const item of incomingItems) {
             if (!existingById.has(item.id)) {
-              nextItems.push(item)
+              nextItems.push(item);
             }
           }
 
-          this.items = nextItems
+          this.items = nextItems;
         } else {
-          this.items = incomingItems
+          this.items = incomingItems;
         }
-        this.total = result.meta?.total ?? 0
-        this.page = result.meta?.page ?? this.page
-        this.pageSize = result.meta?.page_size ?? this.pageSize
+        this.total = result.meta?.total ?? 0;
+        this.page = result.meta?.page ?? this.page;
+        this.pageSize = result.meta?.page_size ?? this.pageSize;
 
-        return result
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createProduct(payload: ProductCreateInput) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
 
       try {
-        const result = await productService.createProduct(payload)
+        const result = await productService.createProduct(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to create product.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to create product.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
         if (result.data) {
-          this.items.unshift(result.data)
-          this.total += 1
+          this.items.unshift(result.data);
+          this.total += 1;
         }
 
-        showSuccessNotification('Product created successfully.')
+        showSuccessNotification('Product created successfully.');
 
-        return result
+        return result;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
 
@@ -193,87 +185,87 @@ export const useProductStore = defineStore('product', {
       const result = await productService.listBrands({
         vendorCode: params?.vendorCode ?? null,
         tenantId: params?.tenantId ?? null,
-      })
+      });
 
       if (!result.success) {
-        this.error = result.error ?? 'Failed to load brands.'
-        handleApiFailure(result, this.error)
-        return result
+        this.error = result.error ?? 'Failed to load brands.';
+        handleApiFailure(result, this.error);
+        return result;
       }
 
-      this.brandOptions = result.data ?? []
-      return result
+      this.brandOptions = result.data ?? [];
+      return result;
     },
 
     async fetchCategoryOptions(params?: FetchProductLookupParams) {
       const result = await productService.listCategories({
         vendorCode: params?.vendorCode ?? null,
         tenantId: params?.tenantId ?? null,
-      })
+      });
 
       if (!result.success) {
-        this.error = result.error ?? 'Failed to load categories.'
-        handleApiFailure(result, this.error)
-        return result
+        this.error = result.error ?? 'Failed to load categories.';
+        handleApiFailure(result, this.error);
+        return result;
       }
 
-      this.categoryOptions = result.data ?? []
-      return result
+      this.categoryOptions = result.data ?? [];
+      return result;
     },
 
     async updateProduct(payload: ProductUpdateInput) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
 
       try {
-        const result = await productService.updateProduct(payload)
+        const result = await productService.updateProduct(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to update product.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to update product.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const updatedProduct = result.data
+        const updatedProduct = result.data;
 
         if (!updatedProduct) {
-          return result
+          return result;
         }
 
-        const index = this.items.findIndex((item) => item.id === updatedProduct.id)
+        const index = this.items.findIndex((item) => item.id === updatedProduct.id);
 
         if (index >= 0) {
-          this.items.splice(index, 1, updatedProduct)
+          this.items.splice(index, 1, updatedProduct);
         }
 
-        showSuccessNotification('Product updated successfully.')
-        return result
+        showSuccessNotification('Product updated successfully.');
+        return result;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
 
     async deleteProduct(payload: ProductDeleteInput) {
-      this.saving = true
-      this.error = null
+      this.saving = true;
+      this.error = null;
 
       try {
-        const result = await productService.deleteProduct(payload)
+        const result = await productService.deleteProduct(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to delete product.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to delete product.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = this.items.filter((item) => item.id !== payload.id)
-        this.total = Math.max(0, this.total - 1)
+        this.items = this.items.filter((item) => item.id !== payload.id);
+        this.total = Math.max(0, this.total - 1);
 
-        showSuccessNotification('Product deleted successfully.')
-        return result
+        showSuccessNotification('Product deleted successfully.');
+        return result;
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
   },
-})
+});

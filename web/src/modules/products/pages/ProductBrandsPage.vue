@@ -6,7 +6,14 @@
           <div class="text-h6 text-weight-bold">Brand Management</div>
           <div class="text-caption text-grey-8">Manage product brands</div>
         </div>
-        <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Add Brand" @click="openCreate" />
+        <q-btn
+          color="primary"
+          no-caps
+          size="sm"
+          class="pill-btn slim-btn"
+          label="Add Brand"
+          @click="openCreate"
+        />
       </q-card-section>
     </q-card>
 
@@ -37,10 +44,24 @@
                 <q-icon name="search" />
               </template>
               <template #append>
-                <q-btn flat round dense icon="close" aria-label="Hide search" @click="onCloseSearch" />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="close"
+                  aria-label="Hide search"
+                  @click="onCloseSearch"
+                />
               </template>
             </q-input>
-            <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="filterDrawerOpen = true">
+            <q-btn
+              flat
+              round
+              dense
+              icon="filter_alt"
+              aria-label="Filters"
+              @click="filterDrawerOpen = true"
+            >
               <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                 {{ activeFilterCount }}
               </q-badge>
@@ -65,8 +86,12 @@
               <q-btn flat round dense icon="more_vert">
                 <q-menu auto-close>
                   <q-list dense>
-                    <q-item clickable @click="openEdit(props.row)"><q-item-section>Edit</q-item-section></q-item>
-                    <q-item clickable @click="remove(props.row)"><q-item-section class="text-negative">Delete</q-item-section></q-item>
+                    <q-item clickable @click="openEdit(props.row)"
+                      ><q-item-section>Edit</q-item-section></q-item
+                    >
+                    <q-item clickable @click="remove(props.row)"
+                      ><q-item-section class="text-negative">Delete</q-item-section></q-item
+                    >
                   </q-list>
                 </q-menu>
               </q-btn>
@@ -95,11 +120,29 @@
 
     <q-dialog v-model="dialogOpen" persistent>
       <q-card style="min-width: 420px">
-        <q-card-section class="text-h6">{{ editingId ? 'Edit Brand' : 'Add Brand' }}</q-card-section>
+        <q-card-section class="text-h6">{{
+          editingId ? 'Edit Brand' : 'Add Brand'
+        }}</q-card-section>
         <q-card-section class="q-gutter-sm">
           <q-input v-model="form.name" outlined dense class="soft-input" label="Name" />
-          <q-input v-model="form.value" outlined dense class="soft-input" label="Value (lowercase)" />
-          <q-select v-model="form.vendor_code" :options="vendorOptions" emit-value map-options outlined dense class="soft-input" label="Vendor" clearable />
+          <q-input
+            v-model="form.value"
+            outlined
+            dense
+            class="soft-input"
+            label="Value (lowercase)"
+          />
+          <q-select
+            v-model="form.vendor_code"
+            :options="vendorOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            class="soft-input"
+            label="Vendor"
+            clearable
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" @click="dialogOpen = false" />
@@ -111,31 +154,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import type { QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { productService } from '../services/productService'
-import type { ProductBrand } from '../types'
-import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import type { QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { productService } from '../services/productService';
+import type { ProductBrand } from '../types';
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 
-const authStore = useAuthStore()
-const vendorStore = useVendorStore()
+const authStore = useAuthStore();
+const vendorStore = useVendorStore();
 
-const rows = ref<ProductBrand[]>([])
-const search = ref('')
-const showSearchInput = ref(false)
-const filterDrawerOpen = ref(false)
-const vendorCode = ref<string | null>(null)
-const dialogOpen = ref(false)
-const editingId = ref<number | null>(null)
-const form = reactive<{ name: string; value: string; vendor_code: string | null }>({ name: '', value: '', vendor_code: null })
+const rows = ref<ProductBrand[]>([]);
+const search = ref('');
+const showSearchInput = ref(false);
+const filterDrawerOpen = ref(false);
+const vendorCode = ref<string | null>(null);
+const dialogOpen = ref(false);
+const editingId = ref<number | null>(null);
+const form = reactive<{ name: string; value: string; vendor_code: string | null }>({
+  name: '',
+  value: '',
+  vendor_code: null,
+});
 
 const vendorOptions = computed(() => [
   { label: 'All vendors', value: null as string | null },
   ...vendorStore.items.map((v) => ({ label: `${v.name} (${v.code})`, value: v.code })),
-])
+]);
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
@@ -143,99 +190,105 @@ const columns: QTableColumn[] = [
   { name: 'value', label: 'Value', field: 'value', align: 'left' },
   { name: 'vendor_code', label: 'Vendor', field: 'vendor_code', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
-]
+];
 
 const filteredRows = computed(() => {
-  const term = search.value.trim().toLowerCase()
+  const term = search.value.trim().toLowerCase();
   return rows.value.filter((r) => {
-    const vendorMatch = !vendorCode.value || r.vendor_code === vendorCode.value
-    const searchMatch = !term || [r.name, r.value, r.vendor_code].filter(Boolean).some((x) => String(x).toLowerCase().includes(term))
-    return vendorMatch && searchMatch
-  })
-})
-const activeFilterCount = computed(() => (vendorCode.value ? 1 : 0))
+    const vendorMatch = !vendorCode.value || r.vendor_code === vendorCode.value;
+    const searchMatch =
+      !term ||
+      [r.name, r.value, r.vendor_code]
+        .filter(Boolean)
+        .some((x) => String(x).toLowerCase().includes(term));
+    return vendorMatch && searchMatch;
+  });
+});
+const activeFilterCount = computed(() => (vendorCode.value ? 1 : 0));
 
 const load = async () => {
   const result = await productService.listProductBrands({
     vendorCode: vendorCode.value,
     tenantId: authStore.tenantId ?? null,
-  })
+  });
   if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to load brands.')
-    return
+    handleApiFailure(result, result.error ?? 'Failed to load brands.');
+    return;
   }
-  rows.value = result.data ?? []
-}
+  rows.value = result.data ?? [];
+};
 
 const openCreate = () => {
-  editingId.value = null
-  form.name = ''
-  form.value = ''
-  form.vendor_code = vendorCode.value
-  dialogOpen.value = true
-}
+  editingId.value = null;
+  form.name = '';
+  form.value = '';
+  form.vendor_code = vendorCode.value;
+  dialogOpen.value = true;
+};
 
 const openEdit = (row: ProductBrand) => {
-  editingId.value = row.id
-  form.name = row.name
-  form.value = row.value ?? ''
-  form.vendor_code = row.vendor_code
-  dialogOpen.value = true
-}
+  editingId.value = row.id;
+  form.name = row.name;
+  form.value = row.value ?? '';
+  form.vendor_code = row.vendor_code;
+  dialogOpen.value = true;
+};
 
 const save = async () => {
-  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const payload = {
     name: form.name.trim(),
     value: (form.value.trim() || form.name.trim()).toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
-  }
+  };
 
-  if (!payload.name) return
+  if (!payload.name) return;
 
   const result = editingId.value
     ? await productService.updateProductBrand({ id: editingId.value, ...payload })
-    : await productService.createProductBrand(payload)
+    : await productService.createProductBrand(payload);
 
   if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to save brand.')
-    return
+    handleApiFailure(result, result.error ?? 'Failed to save brand.');
+    return;
   }
 
-  showSuccessNotification(editingId.value ? 'Brand updated successfully.' : 'Brand created successfully.')
-  dialogOpen.value = false
-  await load()
-}
+  showSuccessNotification(
+    editingId.value ? 'Brand updated successfully.' : 'Brand created successfully.',
+  );
+  dialogOpen.value = false;
+  await load();
+};
 
 const remove = async (row: ProductBrand) => {
-  const result = await productService.deleteProductBrand({ id: row.id })
+  const result = await productService.deleteProductBrand({ id: row.id });
   if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to delete brand.')
-    return
+    handleApiFailure(result, result.error ?? 'Failed to delete brand.');
+    return;
   }
-  showSuccessNotification('Brand deleted successfully.')
-  await load()
-}
+  showSuccessNotification('Brand deleted successfully.');
+  await load();
+};
 
 const onCloseSearch = () => {
-  showSearchInput.value = false
-  search.value = ''
-}
+  showSearchInput.value = false;
+  search.value = '';
+};
 
 const onResetFilters = () => {
-  vendorCode.value = null
-  filterDrawerOpen.value = false
-}
+  vendorCode.value = null;
+  filterDrawerOpen.value = false;
+};
 
 watch(vendorCode, () => {
-  void load()
-})
+  void load();
+});
 
 onMounted(async () => {
-  await vendorStore.fetchVendors(authStore.tenantId ?? null)
-  await load()
-})
+  await vendorStore.fetchVendors(authStore.tenantId ?? null);
+  await load();
+});
 </script>
 
 <style scoped>
@@ -248,12 +301,22 @@ onMounted(async () => {
 .hero-surface {
   border-radius: 16px;
 }
-.pill-btn { border-radius: 999px; }
-.slim-btn { min-height: 32px; padding-left: 10px; padding-right: 10px; }
+.pill-btn {
+  border-radius: 999px;
+}
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
 }
-.toolbar-left { min-width: 0; }
-.toolbar-search { width: min(320px, 75vw); }
+.toolbar-left {
+  min-width: 0;
+}
+.toolbar-search {
+  width: min(320px, 75vw);
+}
 </style>

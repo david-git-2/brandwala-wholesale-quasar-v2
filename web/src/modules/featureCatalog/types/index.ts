@@ -1,43 +1,43 @@
 export type Module = {
-  id: number
-  key: string
-  name: string
-  description: string
-  is_active: boolean
-  parent_module_key?: string | null
-  created_at?: string
-  updated_at?: string
-}
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  parent_module_key?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type ModuleCreateInput = {
-  key: string
-  name: string
-  description: string
-  is_active: boolean
-  parent_module_key?: string | null
-}
+  key: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  parent_module_key?: string | null;
+};
 
 export type ModuleUpdateInput = {
-  id: number
-  key: string
-  name: string
-  description: string
-  is_active: boolean
-  parent_module_key?: string | null
-}
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  parent_module_key?: string | null;
+};
 
 export type ModuleDeleteInput = {
-  id: number
-}
+  id: number;
+};
 
 export type ModuleServiceResult<T> = {
-  success: boolean
-  data?: T
-  error?: string
-}
+  success: boolean;
+  data?: T;
+  error?: string;
+};
 
 export type ModuleStoreState = {
-  items: Module[]
-  loading: boolean
-  error: string | null
-}
+  items: Module[];
+  loading: boolean;
+  error: string | null;
+};

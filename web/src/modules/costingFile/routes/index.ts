@@ -1,22 +1,26 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { getAppRouteLocation, getShopLoginRouteLocation, getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import {
+  getAppRouteLocation,
+  getShopLoginRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const resolveAppCostingLanding = () => {
-  const authStore = useAuthStore()
+  const authStore = useAuthStore();
 
   if (authStore.matchedRole === 'viewer') {
-    return { name: 'viewer-costing-file-page' }
+    return { name: 'viewer-costing-file-page' };
   }
 
   if (authStore.matchedRole === 'staff') {
-    return { name: 'staff-costing-file-page' }
+    return { name: 'staff-costing-file-page' };
   }
 
-  return { name: 'admin-costing-file-page' }
-}
+  return { name: 'admin-costing-file-page' };
+};
 
 const costingFileRoutes: RouteRecordRaw[] = [
   {
@@ -29,19 +33,19 @@ const costingFileRoutes: RouteRecordRaw[] = [
       requireTenantContext: true,
       requiredModule: 'costing_file',
       validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
         if (!selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        const routeTenantSlug = getTenantSlugFromRoute(to)
+        const routeTenantSlug = getTenantSlugFromRoute(to);
 
         if (routeTenantSlug === selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        return getAppRouteLocation(to, selectedTenantSlug)
+        return getAppRouteLocation(to, selectedTenantSlug);
       },
     }),
     children: [
@@ -151,11 +155,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
-          allowedRoles: [
-            'customer_admin',
-            'customer_negotiator',
-            'customer_staff',
-          ],
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
           requiredModule: 'costing_file',
         }),
       },
@@ -170,11 +170,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
-          allowedRoles: [
-            'customer_admin',
-            'customer_negotiator',
-            'customer_staff',
-          ],
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
           requiredModule: 'costing_file',
         }),
       },
@@ -195,11 +191,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
-          allowedRoles: [
-            'customer_admin',
-            'customer_negotiator',
-            'customer_staff',
-          ],
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
           requiredModule: 'costing_file',
         }),
       },
@@ -223,6 +215,6 @@ const costingFileRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default costingFileRoutes
+export default costingFileRoutes;

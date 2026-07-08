@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-py-sm q-px-md drawer-header text-white">
         <div class="col">
           <div class="text-subtitle1 text-weight-bold">Add Items</div>
-          <div class="text-caption" style="opacity: 0.85;">
+          <div class="text-caption" style="opacity: 0.85">
             {{ shipmentName }}
           </div>
         </div>
@@ -23,31 +23,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useDialogPluginComponent } from 'quasar'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue'
+import { computed } from 'vue';
+import { useDialogPluginComponent } from 'quasar';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue';
 
 const props = defineProps<{
-  shipmentId: number
-}>()
+  shipmentId: number;
+}>();
 
-defineEmits([...useDialogPluginComponent.emits])
+defineEmits([...useDialogPluginComponent.emits]);
 
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent()
-const shipmentStore = useGlobalShipmentStore()
+const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
+const shipmentStore = useGlobalShipmentStore();
 
-const shipmentName = computed(() =>
-  shipmentStore.currentShipment?.name ?? `Shipment #${props.shipmentId}`,
-)
+const shipmentName = computed(
+  () => shipmentStore.currentShipment?.name ?? `Shipment #${props.shipmentId}`,
+);
 
 const onSaved = () => {
-  onDialogOK()
-}
+  onDialogOK();
+};
 
 const onCancel = () => {
-  dialogRef.value?.hide()
-}
+  dialogRef.value?.hide();
+};
 </script>
 
 <style scoped>

@@ -108,7 +108,7 @@ export function computeShipmentOpsCost(
   const transport = shipment.transportation_total_cost ?? 0;
   const washing = shipment.washing_total_cost ?? 0;
 
-  return (handTagCost * U) + (stickerCost * U) + labor + transport + washing;
+  return handTagCost * U + stickerCost * U + labor + transport + washing;
 }
 
 export function resolveAppliedMarkupRate(
@@ -121,10 +121,7 @@ export function resolveAppliedMarkupRate(
   return { rate: shipment.default_markup_rate ?? 0, source: 'shipment' };
 }
 
-export function computeEffectiveMarkupPct(
-  landed: number,
-  listedPrice: number,
-): number | null {
+export function computeEffectiveMarkupPct(landed: number, listedPrice: number): number | null {
   if (landed <= 0) return null;
   return ((listedPrice - landed) / landed) * 100;
 }
@@ -178,9 +175,10 @@ export function computeThriftUnitCosts(
   const extraWeightG = stock.extra_weight ?? 0;
   const unitWeightKg = (productWeightG + extraWeightG) / 1000;
   const cargoLineAllocation = qty > 0 ? cargo_share_per_unit * qty : 0;
-  const cargoWeightSharePct = uses_weight_based_cargo && shipment_total_weight_kg > 0
-    ? (line_weight_kg / shipment_total_weight_kg) * 100
-    : null;
+  const cargoWeightSharePct =
+    uses_weight_based_cargo && shipment_total_weight_kg > 0
+      ? (line_weight_kg / shipment_total_weight_kg) * 100
+      : null;
 
   const handTagUnitCost = settings.hand_tag_unit_cost ?? 0;
   const stickerUnitCost = settings.sticker_unit_cost ?? 0;
@@ -189,10 +187,16 @@ export function computeThriftUnitCosts(
   const washingTotal = shipment.washing_total_cost ?? 0;
 
   const additionalCharges = stock.additional_charges_cost ?? 0;
-  const landed_unit_cost = product_unit_cost + cargo_share_per_unit + ops_share_per_unit + additionalCharges;
+  const landed_unit_cost =
+    product_unit_cost + cargo_share_per_unit + ops_share_per_unit + additionalCharges;
 
-  const { rate: applied_markup_rate, source: markup_source } = resolveAppliedMarkupRate(pricing, shipment);
-  const suggested_sell_unit_price = ceilThriftRetailPrice(landed_unit_cost * (1 + applied_markup_rate));
+  const { rate: applied_markup_rate, source: markup_source } = resolveAppliedMarkupRate(
+    pricing,
+    shipment,
+  );
+  const suggested_sell_unit_price = ceilThriftRetailPrice(
+    landed_unit_cost * (1 + applied_markup_rate),
+  );
 
   const isManual = !!pricing?.is_listed_price_manual;
   const listedPrice = isManual && pricing ? pricing.listed_unit_price : suggested_sell_unit_price;
@@ -266,11 +270,18 @@ export function computeThriftUnitCostsForShipment(
 }
 
 export function buildThriftCostBreakdownByStockId(
-  stocks: (ThriftStockCostInput & { id: number; shipment_id: number; pricing?: ThriftStockPricingInput | null })[],
+  stocks: (ThriftStockCostInput & {
+    id: number;
+    shipment_id: number;
+    pricing?: ThriftStockPricingInput | null;
+  })[],
   shipmentById: Map<number, ThriftShipmentCostInput>,
   settings: ThriftSettingsCostInput,
 ): Record<number, ThriftUnitCostBreakdown> {
-  const byShipment = new Map<number, (ThriftStockCostInput & { id: number; pricing?: ThriftStockPricingInput | null })[]>();
+  const byShipment = new Map<
+    number,
+    (ThriftStockCostInput & { id: number; pricing?: ThriftStockPricingInput | null })[]
+  >();
   for (const stock of stocks) {
     const list = byShipment.get(stock.shipment_id) ?? [];
     list.push(stock);
@@ -303,4 +314,3 @@ export function buildThriftCostBreakdownByStockId(
   }
   return breakdowns;
 }
-

@@ -1,10 +1,10 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const productBasedCostingRoutes: RouteRecordRaw[] = [
   {
@@ -17,19 +17,19 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       requireTenantContext: true,
       requiredModule: 'product_based_costing',
       validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
         if (!selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        const routeTenantSlug = getTenantSlugFromRoute(to)
+        const routeTenantSlug = getTenantSlugFromRoute(to);
 
         if (routeTenantSlug === selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        return getAppRouteLocation(to, selectedTenantSlug)
+        return getAppRouteLocation(to, selectedTenantSlug);
       },
     }),
     children: [
@@ -65,19 +65,19 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       requireTenantContext: true,
       requiredModule: 'product_based_costing',
       validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
         if (!selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        const routeTenantSlug = getTenantSlugFromRoute(to)
+        const routeTenantSlug = getTenantSlugFromRoute(to);
 
         if (routeTenantSlug === selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        return getAppRouteLocation(to, selectedTenantSlug)
+        return getAppRouteLocation(to, selectedTenantSlug);
       },
     }),
     children: [
@@ -99,19 +99,19 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       requireTenantContext: true,
       requiredModule: 'product_based_costing',
       validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
         if (!selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        const routeTenantSlug = getTenantSlugFromRoute(to)
+        const routeTenantSlug = getTenantSlugFromRoute(to);
 
         if (routeTenantSlug === selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        return getAppRouteLocation(to, selectedTenantSlug)
+        return getAppRouteLocation(to, selectedTenantSlug);
       },
     }),
     children: [
@@ -123,6 +123,6 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default productBasedCostingRoutes
+export default productBasedCostingRoutes;

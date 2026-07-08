@@ -6,7 +6,9 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Thrift Shipments</div>
-            <div class="text-caption text-grey-8">Open a shipment to set cargo, ops, and item-level landed costs</div>
+            <div class="text-caption text-grey-8">
+              Open a shipment to set cargo, ops, and item-level landed costs
+            </div>
           </div>
           <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
             <q-btn
@@ -45,7 +47,7 @@
             <router-link
               :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/shipments/${props.row.id}`"
               class="text-primary text-weight-bold"
-              style="text-decoration: none;"
+              style="text-decoration: none"
             >
               {{ props.row.name }}
             </router-link>
@@ -64,10 +66,26 @@
             >
               <q-tooltip>Download images from Cloudinary</q-tooltip>
             </q-btn>
-            <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
+            <q-btn
+              flat
+              round
+              dense
+              icon="o_edit"
+              color="warning"
+              size="sm"
+              @click.stop="openDialog(props.row)"
+            >
               <q-tooltip>Edit</q-tooltip>
             </q-btn>
-            <q-btn flat round dense icon="delete" color="negative" size="sm" @click.stop="confirmDelete(props.row)">
+            <q-btn
+              flat
+              round
+              dense
+              icon="delete"
+              color="negative"
+              size="sm"
+              @click.stop="confirmDelete(props.row)"
+            >
               <q-tooltip>Delete</q-tooltip>
             </q-btn>
           </q-td>
@@ -77,15 +95,24 @@
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 500px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 500px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Shipment' : 'New Shipment' }}</div>
+          <div class="text-h6 text-weight-bold">
+            {{ editingId ? 'Edit Shipment' : 'New Shipment' }}
+          </div>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-separator />
-        <q-card-section class="q-pt-md q-gutter-md scroll" style="max-height: 65vh;">
-          <q-input v-model="form.name" outlined dense label="Shipment Name *" class="soft-input" :rules="[val => !!val || 'Required']" />
-          
+        <q-card-section class="q-pt-md q-gutter-md scroll" style="max-height: 65vh">
+          <q-input
+            v-model="form.name"
+            outlined
+            dense
+            label="Shipment Name *"
+            class="soft-input"
+            :rules="[(val) => !!val || 'Required']"
+          />
+
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
               <q-select
@@ -99,7 +126,7 @@
                 emit-value
                 map-options
                 class="soft-input"
-                :rules="[val => !!val || 'Required']"
+                :rules="[(val) => !!val || 'Required']"
               />
             </div>
             <div class="col-12 col-sm-6">
@@ -114,59 +141,133 @@
                 emit-value
                 map-options
                 class="soft-input"
-                :rules="[val => !!val || 'Required']"
+                :rules="[(val) => !!val || 'Required']"
               />
             </div>
           </div>
 
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.product_conversion_rate" type="number" step="0.0001" outlined dense label="Product Conversion Rate" class="soft-input" />
+              <q-input
+                v-model.number="form.product_conversion_rate"
+                type="number"
+                step="0.0001"
+                outlined
+                dense
+                label="Product Conversion Rate"
+                class="soft-input"
+              />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.cargo_conversion_rate" type="number" step="0.0001" outlined dense label="Cargo Conversion Rate" class="soft-input" />
+              <q-input
+                v-model.number="form.cargo_conversion_rate"
+                type="number"
+                step="0.0001"
+                outlined
+                dense
+                label="Cargo Conversion Rate"
+                class="soft-input"
+              />
             </div>
           </div>
 
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.cargo_rate" type="number" step="0.01" outlined dense label="Cargo Rate" class="soft-input" />
+              <q-input
+                v-model.number="form.cargo_rate"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                label="Cargo Rate"
+                class="soft-input"
+              />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.total_cargo_weight_kg" type="number" step="0.1" outlined dense label="Total Cargo Weight (kg)" class="soft-input" />
+              <q-input
+                v-model.number="form.total_cargo_weight_kg"
+                type="number"
+                step="0.1"
+                outlined
+                dense
+                label="Total Cargo Weight (kg)"
+                class="soft-input"
+              />
             </div>
           </div>
 
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.labor_total_cost" type="number" step="0.01" outlined dense label="Labor Total Cost" class="soft-input" />
+              <q-input
+                v-model.number="form.labor_total_cost"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                label="Labor Total Cost"
+                class="soft-input"
+              />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.transportation_total_cost" type="number" step="0.01" outlined dense label="Transportation Total Cost" class="soft-input" />
+              <q-input
+                v-model.number="form.transportation_total_cost"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                label="Transportation Total Cost"
+                class="soft-input"
+              />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="form.washing_total_cost" type="number" step="0.01" outlined dense label="Washing Total Cost" class="soft-input" />
+              <q-input
+                v-model.number="form.washing_total_cost"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                label="Washing Total Cost"
+                class="soft-input"
+              />
             </div>
           </div>
 
-          <q-input v-model.number="markupPercentage" type="number" step="1" min="0" outlined dense label="Default Markup (%)" class="soft-input" suffix="%" />
+          <q-input
+            v-model.number="markupPercentage"
+            type="number"
+            step="1"
+            min="0"
+            outlined
+            dense
+            label="Default Markup (%)"
+            class="soft-input"
+            suffix="%"
+          />
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Save Shipment" @click="save" />
+          <q-btn
+            color="primary"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            label="Save Shipment"
+            @click="save"
+          />
         </q-card-section>
       </q-card>
     </q-dialog>
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="deleteConfirmOpen" persistent>
-      <q-card style="width: 350px; max-width: 90vw;">
+      <q-card style="width: 350px; max-width: 90vw">
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Shipment</span>
         </q-card-section>
         <q-card-section>
-          Are you sure you want to delete shipment <strong>{{ selectedRow?.name }}</strong>? This action cannot be undone.
+          Are you sure you want to delete shipment <strong>{{ selectedRow?.name }}</strong
+          >? This action cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -218,7 +319,10 @@ const form = ref({
 });
 
 const markupPercentage = computed({
-  get: () => form.value.default_markup_rate != null ? Math.round(form.value.default_markup_rate * 100) : null,
+  get: () =>
+    form.value.default_markup_rate != null
+      ? Math.round(form.value.default_markup_rate * 100)
+      : null,
   set: (val: number | null) => {
     form.value.default_markup_rate = val != null ? val / 100 : null;
   },
@@ -231,7 +335,14 @@ const shipmentRows = computed(() => {
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    sortable: false,
+    headerStyle: 'width: 50px',
+  },
   { name: 'name', align: 'left', label: 'Shipment Name', field: 'name', sortable: true },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
@@ -271,18 +382,12 @@ function downloadShipmentImages(row: ThriftShipment) {
 
 function defaultPurchaseCurrencyId(): number | null {
   const activeIds = currencyStore.currencies.map((currency) => currency.id);
-  return resolveActiveCurrencyId(
-    preferenceStore.thriftDefaultPurchaseCurrencyId,
-    activeIds,
-  );
+  return resolveActiveCurrencyId(preferenceStore.thriftDefaultPurchaseCurrencyId, activeIds);
 }
 
 function defaultCostCurrencyId(): number | null {
   const activeIds = currencyStore.currencies.map((currency) => currency.id);
-  return resolveActiveCurrencyId(
-    preferenceStore.thriftDefaultCostCurrencyId,
-    activeIds,
-  );
+  return resolveActiveCurrencyId(preferenceStore.thriftDefaultCostCurrencyId, activeIds);
 }
 
 // Dialog open & edit setups

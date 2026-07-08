@@ -8,7 +8,11 @@
             <div class="col">
               <div class="text-h6 text-weight-bold">Costing file details</div>
               <div class="text-caption text-grey-8">
-                {{ selectedFile ? `${selectedFile.name} | ${selectedFile.market || 'Not set'}` : 'Loading details...' }}
+                {{
+                  selectedFile
+                    ? `${selectedFile.name} | ${selectedFile.market || 'Not set'}`
+                    : 'Loading details...'
+                }}
               </div>
             </div>
             <div class="col-auto row items-center q-gutter-sm">
@@ -19,7 +23,10 @@
                 :style="statusChipStyle(selectedFile.status)"
                 class="costing-status-chip q-px-md q-py-sm"
               >
-                <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedFile.status) }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: statusDotColor(selectedFile.status) }"
+                />
                 {{ formatStatusLabel(selectedFile.status) }}
               </q-chip>
               <q-btn
@@ -60,7 +67,12 @@
                 </q-menu>
               </q-btn>
               <q-btn
-                v-if="selectedFile && (selectedFile.status === 'offered' || selectedFile.status === 'accepted' || selectedFile.status === 'po_placed')"
+                v-if="
+                  selectedFile &&
+                  (selectedFile.status === 'offered' ||
+                    selectedFile.status === 'accepted' ||
+                    selectedFile.status === 'po_placed')
+                "
                 outline
                 color="primary"
                 icon="visibility"
@@ -81,7 +93,9 @@
                 @click="acceptOfferDialogOpen = true"
               />
               <q-btn
-                v-if="selectedFile && selectedFile.status === 'draft' && canCustomerMaintainDraftItems"
+                v-if="
+                  selectedFile && selectedFile.status === 'draft' && canCustomerMaintainDraftItems
+                "
                 color="primary"
                 no-caps
                 size="sm"
@@ -95,7 +109,11 @@
       </q-card>
 
       <div v-if="selectedFile">
-        <q-banner v-if="selectedFile.status === 'draft' && !canCustomerMaintainDraftItems" rounded class="bg-blue-1 text-blue-10 q-mb-md">
+        <q-banner
+          v-if="selectedFile.status === 'draft' && !canCustomerMaintainDraftItems"
+          rounded
+          class="bg-blue-1 text-blue-10 q-mb-md"
+        >
           Item details are maintained by staff/admin for this file.
         </q-banner>
 
@@ -236,9 +254,7 @@
                 </q-tr>
               </template>
             </q-table>
-            <q-card-section v-else class="text-center text-grey-7">
-              No items yet.
-            </q-card-section>
+            <q-card-section v-else class="text-center text-grey-7"> No items yet. </q-card-section>
           </q-card>
         </div>
 
@@ -255,7 +271,9 @@
         </div>
 
         <div
-          v-else-if="selectedFile.status === 'customer_submitted' || selectedFile.status === 'in_review'"
+          v-else-if="
+            selectedFile.status === 'customer_submitted' || selectedFile.status === 'in_review'
+          "
           class="costing-page__customer-submitted-section"
         >
           <div class="costing-page__table-section">
@@ -339,7 +357,10 @@
                 </template>
 
                 <template #body-cell-offerPriceBdt="props">
-                  <q-td :props="props" class="costing-page__numeric-cell costing-page__tone-emerald">
+                  <q-td
+                    :props="props"
+                    class="costing-page__numeric-cell costing-page__tone-emerald"
+                  >
                     {{ props.row.offerPriceBdt }}
                   </q-td>
                 </template>
@@ -375,7 +396,6 @@
                   </q-td>
                 </template>
 
-
                 <template #bottom-row>
                   <q-tr class="costing-page__totals-row">
                     <q-td
@@ -397,13 +417,21 @@
         </div>
 
         <div
-          v-else-if="selectedFile.status === 'offered' || selectedFile.status === 'accepted' || selectedFile.status === 'po_placed'"
+          v-else-if="
+            selectedFile.status === 'offered' ||
+            selectedFile.status === 'accepted' ||
+            selectedFile.status === 'po_placed'
+          "
           class="costing-page__table-section"
         >
-          <q-card v-if="selectedFile.status === 'offered'" flat class="q-mb-md floating-surface shadow-1">
+          <q-card
+            v-if="selectedFile.status === 'offered'"
+            flat
+            class="q-mb-md floating-surface shadow-1"
+          >
             <q-card-section class="q-py-sm">
               <div class="row items-center q-col-gutter-sm">
-                <div style="max-width: 140px;" class="col-auto">
+                <div style="max-width: 140px" class="col-auto">
                   <q-input
                     v-model.number="sharedProfitRate"
                     type="number"
@@ -423,7 +451,7 @@
                     unelevated
                     label="Save"
                     class="q-px-md pill-btn"
-                    style="min-height: 40px;"
+                    style="min-height: 40px"
                     :loading="savingProfitAll"
                     @click="handleSaveSharedProfitRate"
                   />
@@ -456,190 +484,195 @@
                 </q-td>
               </template>
 
-            <template #body-cell-image="props">
-              <q-td
-                :props="props"
-                class="costing-page__image-table-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <div class="costing-page__image-cell">
-                  <q-img
-                    v-if="props.row.imageUrl"
-                    :src="props.row.imageUrl"
-                    fit="contain"
-                    class="costing-page__image"
-                  />
-                  <div v-else class="costing-page__image costing-page__image--placeholder">
-                    No image
-                  </div>
-                </div>
-              </q-td>
-            </template>
-
-            <template #body-cell-name="props">
-              <q-td
-                :props="props"
-                class="costing-page__name-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <span class="costing-page__name-text" :title="props.row.name">
-                  {{ props.row.name }}
-                </span>
-              </q-td>
-            </template>
-
-            <template #body-cell-websiteUrl="props">
-              <q-td
-                :props="props"
-                class="costing-page__url-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <q-btn
-                  v-if="props.row.websiteUrl"
-                  flat
-                  dense
-                  no-caps
-                  size="sm"
-                  color="primary"
-                  icon="open_in_new"
-                  label="Open link"
-                  class="pill-btn slim-btn costing-page__open-link-btn"
-                  :href="toExternalUrl(props.row.websiteUrl)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              </q-td>
-            </template>
-
-            <template #body-cell-extraInformation1="props">
-              <q-td :props="props" :class="getOfferedCellClass(props.row)">
-                <div v-html="props.value" class="costing-table__rich-text-cell" />
-              </q-td>
-            </template>
-
-            <template #body-cell-extraInformation2="props">
-              <q-td :props="props" :class="getOfferedCellClass(props.row)">
-                <div v-html="props.value" class="costing-table__rich-text-cell" />
-              </q-td>
-            </template>
-
-
-            <template #body-cell-quantity="props">
-              <q-td
-                :props="props"
-                class="costing-page__numeric-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.quantity }}
-              </q-td>
-            </template>
-
-            <template #body-cell-offerPriceBdt="props">
-              <q-td
-                :props="props"
-                class="costing-page__numeric-cell costing-page__tone-emerald"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.offerPriceBdt }}
-              </q-td>
-            </template>
-
-            <template #body-cell-buyerSellingPriceBdt="props">
-              <q-td
-                :props="props"
-                class="costing-page__numeric-cell costing-page__tone-amber"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.buyerSellingPriceBdt }}
-              </q-td>
-            </template>
-
-            <template #body-cell-customerProfitAmountBdt="props">
-              <q-td
-                :props="props"
-                class="costing-page__numeric-cell costing-page__tone-amber"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.customerProfitAmountBdt }}
-              </q-td>
-            </template>
-
-            <template #body-cell-customerProfitRateDisplay="props">
-              <q-td
-                :props="props"
-                class="costing-page__numeric-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                {{ props.row.customerProfitRateDisplay }}
-              </q-td>
-            </template>
-
-            <template #body-cell-status="props">
-              <q-td
-                :props="props"
-                class="costing-page__status-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <span
-                  class="costing-page__status-pill"
-                  :class="{
-                    'costing-page__status-pill--rejected': props.row.status === 'rejected',
-                  }"
-                >
-                  {{ props.row.status }}
-                </span>
-              </q-td>
-            </template>
-
-            <template #body-cell-actions="props">
-              <q-td
-                :props="props"
-                class="costing-page__actions-cell"
-                :class="getOfferedCellClass(props.row)"
-              >
-                <template v-if="selectedFile.status === 'offered'">
-                  <q-btn
-                    unelevated
-                    size="sm"
-                    dense
-                    color="positive"
-                    label="Accept"
-                    class="costing-page__decision-btn costing-page__decision-btn--accept"
-                    :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
-                    :disable="props.row.status === 'accepted' || savingDecisionItemId === props.row.id"
-                    @click="handleDecision(props.row.id, 'accepted')"
-                  />
-                  <q-btn
-                    unelevated
-                    size="sm"
-                    dense
-                    color="negative"
-                    label="Reject"
-                    class="costing-page__decision-btn costing-page__decision-btn--reject"
-                    :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
-                    :disable="props.row.status === 'rejected' || savingDecisionItemId === props.row.id"
-                    @click="handleDecision(props.row.id, 'rejected')"
-                  />
-                </template>
-              </q-td>
-            </template>
-
-            <template #bottom-row>
-              <q-tr class="costing-page__totals-row">
+              <template #body-cell-image="props">
                 <q-td
-                  v-for="column in visibleColumns"
-                  :key="column.name"
-                  class="costing-page__totals-cell"
-                  :class="getTotalsCellClass(column.name)"
+                  :props="props"
+                  class="costing-page__image-table-cell"
+                  :class="getOfferedCellClass(props.row)"
                 >
-                  {{ getTotalsValue(column.name) }}
+                  <div class="costing-page__image-cell">
+                    <q-img
+                      v-if="props.row.imageUrl"
+                      :src="props.row.imageUrl"
+                      fit="contain"
+                      class="costing-page__image"
+                    />
+                    <div v-else class="costing-page__image costing-page__image--placeholder">
+                      No image
+                    </div>
+                  </div>
                 </q-td>
-              </q-tr>
-            </template>
+              </template>
+
+              <template #body-cell-name="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__name-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-websiteUrl="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__url-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <q-btn
+                    v-if="props.row.websiteUrl"
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="open_in_new"
+                    label="Open link"
+                    class="pill-btn slim-btn costing-page__open-link-btn"
+                    :href="toExternalUrl(props.row.websiteUrl)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation1="props">
+                <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation2="props">
+                <q-td :props="props" :class="getOfferedCellClass(props.row)">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__numeric-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  {{ props.row.quantity }}
+                </q-td>
+              </template>
+
+              <template #body-cell-offerPriceBdt="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__numeric-cell costing-page__tone-emerald"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  {{ props.row.offerPriceBdt }}
+                </q-td>
+              </template>
+
+              <template #body-cell-buyerSellingPriceBdt="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__numeric-cell costing-page__tone-amber"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  {{ props.row.buyerSellingPriceBdt }}
+                </q-td>
+              </template>
+
+              <template #body-cell-customerProfitAmountBdt="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__numeric-cell costing-page__tone-amber"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  {{ props.row.customerProfitAmountBdt }}
+                </q-td>
+              </template>
+
+              <template #body-cell-customerProfitRateDisplay="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__numeric-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  {{ props.row.customerProfitRateDisplay }}
+                </q-td>
+              </template>
+
+              <template #body-cell-status="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__status-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <span
+                    class="costing-page__status-pill"
+                    :class="{
+                      'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                    }"
+                  >
+                    {{ props.row.status }}
+                  </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-actions="props">
+                <q-td
+                  :props="props"
+                  class="costing-page__actions-cell"
+                  :class="getOfferedCellClass(props.row)"
+                >
+                  <template v-if="selectedFile.status === 'offered'">
+                    <q-btn
+                      unelevated
+                      size="sm"
+                      dense
+                      color="positive"
+                      label="Accept"
+                      class="costing-page__decision-btn costing-page__decision-btn--accept"
+                      :loading="
+                        savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'
+                      "
+                      :disable="
+                        props.row.status === 'accepted' || savingDecisionItemId === props.row.id
+                      "
+                      @click="handleDecision(props.row.id, 'accepted')"
+                    />
+                    <q-btn
+                      unelevated
+                      size="sm"
+                      dense
+                      color="negative"
+                      label="Reject"
+                      class="costing-page__decision-btn costing-page__decision-btn--reject"
+                      :loading="
+                        savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'
+                      "
+                      :disable="
+                        props.row.status === 'rejected' || savingDecisionItemId === props.row.id
+                      "
+                      @click="handleDecision(props.row.id, 'rejected')"
+                    />
+                  </template>
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="costing-page__totals-row">
+                  <q-td
+                    v-for="column in visibleColumns"
+                    :key="column.name"
+                    class="costing-page__totals-cell"
+                    :class="getTotalsCellClass(column.name)"
+                  >
+                    {{ getTotalsValue(column.name) }}
+                  </q-td>
+                </q-tr>
+              </template>
             </q-table>
-            <q-card-section v-else class="text-center text-grey-7">
-              No items yet.
-            </q-card-section>
+            <q-card-section v-else class="text-center text-grey-7"> No items yet. </q-card-section>
           </q-card>
         </div>
 
@@ -656,90 +689,87 @@
               hide-bottom
               class="costing-page__table"
             >
-            <template #body-cell-sl="props">
-              <q-td :props="props" class="costing-page__sl-cell">
-                {{ props.row.sl }}
-              </q-td>
-            </template>
-
-            <template #body-cell-image="props">
-              <q-td :props="props" class="costing-page__image-table-cell">
-                <div class="costing-page__image-cell">
-                  <q-img
-                    v-if="props.row.imageUrl"
-                    :src="props.row.imageUrl"
-                    fit="contain"
-                    class="costing-page__image"
-                  />
-                  <div v-else class="costing-page__image costing-page__image--placeholder">
-                    No image
-                  </div>
-                </div>
-              </q-td>
-            </template>
-
-            <template #body-cell-quantity="props">
-              <q-td :props="props" class="costing-page__numeric-cell">
-                {{ props.row.quantity }}
-              </q-td>
-            </template>
-
-            <template #body-cell-name="props">
-              <q-td :props="props" class="costing-page__name-cell">
-                <span class="costing-page__name-text" :title="props.row.name">
-                  {{ props.row.name }}
-                </span>
-              </q-td>
-            </template>
-
-            <template #body-cell-websiteUrl="props">
-              <q-td :props="props" class="costing-page__url-cell">
-                <q-btn
-                  v-if="props.row.websiteUrl"
-                  flat
-                  dense
-                  no-caps
-                  size="sm"
-                  color="primary"
-                  icon="open_in_new"
-                  label="Open link"
-                  class="pill-btn slim-btn costing-page__open-link-btn"
-                  :href="toExternalUrl(props.row.websiteUrl)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              </q-td>
-            </template>
-
-            <template #body-cell-extraInformation1="props">
-              <q-td :props="props">
-                <div v-html="props.value" class="costing-table__rich-text-cell" />
-              </q-td>
-            </template>
-
-            <template #body-cell-extraInformation2="props">
-              <q-td :props="props">
-                <div v-html="props.value" class="costing-table__rich-text-cell" />
-              </q-td>
-            </template>
-
-
-            <template #bottom-row>
-              <q-tr class="costing-page__totals-row">
-                <q-td
-                  v-for="column in visibleColumns"
-                  :key="column.name"
-                  class="costing-page__totals-cell"
-                  :class="getTotalsCellClass(column.name)"
-                >
-                  {{ getTotalsValue(column.name) }}
+              <template #body-cell-sl="props">
+                <q-td :props="props" class="costing-page__sl-cell">
+                  {{ props.row.sl }}
                 </q-td>
-              </q-tr>
-            </template>
+              </template>
+
+              <template #body-cell-image="props">
+                <q-td :props="props" class="costing-page__image-table-cell">
+                  <div class="costing-page__image-cell">
+                    <q-img
+                      v-if="props.row.imageUrl"
+                      :src="props.row.imageUrl"
+                      fit="contain"
+                      class="costing-page__image"
+                    />
+                    <div v-else class="costing-page__image costing-page__image--placeholder">
+                      No image
+                    </div>
+                  </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-quantity="props">
+                <q-td :props="props" class="costing-page__numeric-cell">
+                  {{ props.row.quantity }}
+                </q-td>
+              </template>
+
+              <template #body-cell-name="props">
+                <q-td :props="props" class="costing-page__name-cell">
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                </q-td>
+              </template>
+
+              <template #body-cell-websiteUrl="props">
+                <q-td :props="props" class="costing-page__url-cell">
+                  <q-btn
+                    v-if="props.row.websiteUrl"
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="open_in_new"
+                    label="Open link"
+                    class="pill-btn slim-btn costing-page__open-link-btn"
+                    :href="toExternalUrl(props.row.websiteUrl)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation1="props">
+                <q-td :props="props">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #body-cell-extraInformation2="props">
+                <q-td :props="props">
+                  <div v-html="props.value" class="costing-table__rich-text-cell" />
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="costing-page__totals-row">
+                  <q-td
+                    v-for="column in visibleColumns"
+                    :key="column.name"
+                    class="costing-page__totals-cell"
+                    :class="getTotalsCellClass(column.name)"
+                  >
+                    {{ getTotalsValue(column.name) }}
+                  </q-td>
+                </q-tr>
+              </template>
             </q-table>
-            <q-card-section v-else class="text-center text-grey-7">
-              No items yet.
-            </q-card-section>
+            <q-card-section v-else class="text-center text-grey-7"> No items yet. </q-card-section>
           </q-card>
         </div>
       </div>
@@ -751,9 +781,7 @@
           </q-card-section>
 
           <q-card-section>
-            <div class="text-body2">
-              Submit this costing file for review?
-            </div>
+            <div class="text-body2">Submit this costing file for review?</div>
           </q-card-section>
 
           <q-card-actions align="right">
@@ -777,7 +805,8 @@
 
           <q-card-section>
             <div class="text-body2">
-              Are you sure you want to accept this offer? This will update the costing file status to <strong>Accepted</strong>.
+              Are you sure you want to accept this offer? This will update the costing file status
+              to <strong>Accepted</strong>.
             </div>
           </q-card-section>
 
@@ -794,18 +823,27 @@
         </q-card>
       </q-dialog>
 
-      <q-dialog
-        v-model="addItemDialogOpen"
-        persistent
-      >
+      <q-dialog v-model="addItemDialogOpen" persistent>
         <q-card class="costing-page__dialog costing-page__dialog--wide">
-          <q-card-section class="costing-item-add-dialog__header row items-center justify-between q-pb-md">
+          <q-card-section
+            class="costing-item-add-dialog__header row items-center justify-between q-pb-md"
+          >
             <div class="row items-center q-gutter-md">
-              <q-avatar :icon="editingItemId ? 'o_edit' : 'add_shopping_cart'" color="primary" text-color="white" />
+              <q-avatar
+                :icon="editingItemId ? 'o_edit' : 'add_shopping_cart'"
+                color="primary"
+                text-color="white"
+              />
               <div>
-                <div class="text-h6 text-weight-bold">{{ editingItemId ? 'Edit Item' : 'Add Item' }}</div>
+                <div class="text-h6 text-weight-bold">
+                  {{ editingItemId ? 'Edit Item' : 'Add Item' }}
+                </div>
                 <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                  {{ editingItemId ? 'Update product details for this costing item.' : 'Add a new item for this costing file.' }}
+                  {{
+                    editingItemId
+                      ? 'Update product details for this costing item.'
+                      : 'Add a new item for this costing file.'
+                  }}
                 </p>
               </div>
             </div>
@@ -824,7 +862,7 @@
             <q-card-section class="q-gutter-md">
               <!-- Basic Details -->
               <div class="text-subtitle2 text-weight-bold text-primary q-mb-xs">Basic Details</div>
-              
+
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-8">
                   <q-input
@@ -846,7 +884,8 @@
                     dense
                     min="1"
                     :rules="[
-                      (value) => (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
+                      (value) =>
+                        (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
                     ]"
                   >
                     <template #prepend><q-icon name="inventory_2" /></template>
@@ -872,29 +911,21 @@
                   </q-select>
                 </div>
                 <div class="col-12 col-sm-4">
-                  <q-input
-                    v-model="requestForm.size"
-                    label="Size"
-                    outlined
-                    dense
-                  >
+                  <q-input v-model="requestForm.size" label="Size" outlined dense>
                     <template #prepend><q-icon name="straighten" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-4">
-                  <q-input
-                    v-model="requestForm.color"
-                    label="Color"
-                    outlined
-                    dense
-                  >
+                  <q-input v-model="requestForm.color" label="Color" outlined dense>
                     <template #prepend><q-icon name="palette" /></template>
                   </q-input>
                 </div>
               </div>
 
               <!-- Description & Notes -->
-              <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">Description & Notes</div>
+              <div class="text-subtitle2 text-weight-bold text-primary q-mt-md q-mb-xs">
+                Description & Notes
+              </div>
 
               <div class="q-mb-sm">
                 <div class="text-caption text-grey-7 q-mb-xs">Extra Information 1</div>
@@ -905,7 +936,7 @@
                   bordered
                   :toolbar="[
                     ['bold', 'italic', 'underline'],
-                    ['unordered', 'ordered']
+                    ['unordered', 'ordered'],
                   ]"
                 />
               </div>
@@ -919,7 +950,7 @@
                   bordered
                   :toolbar="[
                     ['bold', 'italic', 'underline'],
-                    ['unordered', 'ordered']
+                    ['unordered', 'ordered'],
                   ]"
                 />
               </div>
@@ -936,7 +967,6 @@
                 class="pill-btn"
                 :loading="submittingRequest"
               />
-
             </q-card-actions>
           </q-form>
         </q-card>
@@ -946,126 +976,121 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, reactive, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRoute, useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   buildCustomerProductRows,
   summarizeCustomerProductRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import type { CostingFileItemStatus } from 'src/modules/costingFile/types'
-import { showSuccessNotification } from 'src/utils/appFeedback'
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import type { CostingFileItemStatus } from 'src/modules/costingFile/types';
+import { showSuccessNotification } from 'src/utils/appFeedback';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const costingFileStore = useCostingFileStore()
-const {
-  selectedItem: selectedFile,
-  costingFileItems: itemForms,
-} = storeToRefs(costingFileStore)
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const costingFileStore = useCostingFileStore();
+const { selectedItem: selectedFile, costingFileItems: itemForms } = storeToRefs(costingFileStore);
 
-const submitDialog = ref(false)
-const addItemDialogOpen = ref(false)
-const acceptOfferDialogOpen = ref(false)
-const initialLoading = ref(true)
-const submittingRequest = ref(false)
-const submittingOrder = ref(false)
-const acceptingOffer = ref(false)
-const deletingItemId = ref<number | null>(null)
-const editingItemId = ref<number | null>(null)
-const savingDecisionItemId = ref<number | null>(null)
+const submitDialog = ref(false);
+const addItemDialogOpen = ref(false);
+const acceptOfferDialogOpen = ref(false);
+const initialLoading = ref(true);
+const submittingRequest = ref(false);
+const submittingOrder = ref(false);
+const acceptingOffer = ref(false);
+const deletingItemId = ref<number | null>(null);
+const editingItemId = ref<number | null>(null);
+const savingDecisionItemId = ref<number | null>(null);
 
-const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
+const savingDecisionStatus = ref<CostingFileItemStatus | null>(null);
 
 const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
 const statusChipStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 const statusDotColor = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
-const savingProfitAll = ref(false)
-const sharedProfitRate = ref<number | null>(null)
-const originalSharedProfitRate = ref<number | null>(null)
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
+const savingProfitAll = ref(false);
+const sharedProfitRate = ref<number | null>(null);
+const originalSharedProfitRate = ref<number | null>(null);
 const isSharedProfitRateDirty = computed(() => {
-  return sharedProfitRate.value !== originalSharedProfitRate.value
-})
+  return sharedProfitRate.value !== originalSharedProfitRate.value;
+});
 
 const fileForm = reactive({
   name: '',
   market: '',
-})
+});
 
 const requestForm = reactive({
   websiteUrl: '',
@@ -1075,34 +1100,34 @@ const requestForm = reactive({
   itemType: '',
   extraInformation1: '',
   extraInformation2: '',
-})
+});
 
-const itemTypeOptions = ['Watch', 'Perfume', 'Others']
+const itemTypeOptions = ['Watch', 'Perfume', 'Others'];
 
 const formatWhole = (value: number | null | undefined) =>
-  value == null ? '' : String(Math.round(Number(value)))
+  value == null ? '' : String(Math.round(Number(value)));
 
 const formatPercent = (value: number | null | undefined) =>
-  value == null ? '' : `${Number(value).toFixed(2)}%`
+  value == null ? '' : `${Number(value).toFixed(2)}%`;
 
 const canCustomerMaintainDraftItems = computed(() => {
   if (!selectedFile.value || selectedFile.value.status !== 'draft') {
-    return false
+    return false;
   }
 
-  return selectedFile.value.customer_group_id === authStore.customerGroupId
-})
+  return selectedFile.value.customer_group_id === authStore.customerGroupId;
+});
 
 const productRows = computed(() =>
   buildCustomerProductRows(itemForms.value, sharedProfitRate.value),
-)
-const productTotals = computed(() => summarizeCustomerProductRows(productRows.value))
+);
+const productTotals = computed(() => summarizeCustomerProductRows(productRows.value));
 
 const getOfferedRowClass = (row: { status?: string | null }) =>
-  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
+  row.status === 'rejected' ? 'costing-page__rejected-row' : '';
 
 const getOfferedCellClass = (row: { status?: string | null }) =>
-  row.status === 'rejected' ? 'costing-page__rejected-cell' : ''
+  row.status === 'rejected' ? 'costing-page__rejected-cell' : '';
 
 const allColumns = [
   {
@@ -1230,11 +1255,11 @@ const allColumns = [
     headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
   },
   { name: 'actions', label: '', field: 'actions', align: 'center' as const },
-]
+];
 
 const statusColumns = computed(() => {
   if (!selectedFile.value) {
-    return []
+    return [];
   }
 
   if (selectedFile.value.status === 'draft') {
@@ -1250,7 +1275,7 @@ const statusColumns = computed(() => {
         'extraInformation2',
         'actions',
       ].includes(column.name),
-    )
+    );
   }
 
   if (
@@ -1268,7 +1293,7 @@ const statusColumns = computed(() => {
         'extraInformation1',
         'extraInformation2',
       ].includes(column.name),
-    )
+    );
   }
 
   if (selectedFile.value.status === 'accepted' || selectedFile.value.status === 'po_placed') {
@@ -1290,7 +1315,7 @@ const statusColumns = computed(() => {
         'customerProfitRateDisplay',
         'status',
       ].includes(column.name),
-    )
+    );
   }
 
   if (selectedFile.value.status === 'offered') {
@@ -1313,10 +1338,8 @@ const statusColumns = computed(() => {
         'status',
         'actions',
       ].includes(column.name),
-    )
+    );
   }
-
-
 
   return allColumns.filter((column) =>
     [
@@ -1332,119 +1355,128 @@ const statusColumns = computed(() => {
       'status',
       'offerPriceBdt',
     ].includes(column.name),
-  )
-})
+  );
+});
 
-const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name', 'status'] as const
+const alwaysVisibleColumns = ['actions', 'sl', 'image', 'name', 'status'] as const;
 
 const selectableColumns = computed(() =>
-  statusColumns.value.filter((column) => !alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]))
-)
+  statusColumns.value.filter(
+    (column) =>
+      !alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]),
+  ),
+);
 
-const selectedColumnNames = ref<string[]>(allColumns.map(c => c.name))
+const selectedColumnNames = ref<string[]>(allColumns.map((c) => c.name));
 
 const columnSelectorOptions = computed(() =>
-  selectableColumns.value.map((column) => ({ label: column.label, value: column.name }))
-)
+  selectableColumns.value.map((column) => ({ label: column.label, value: column.name })),
+);
 
 const allSelectableColumnsSelected = computed({
   get: () => selectableColumns.value.every((col) => selectedColumnNames.value.includes(col.name)),
   set: (checked: boolean) => {
-    const selectableNames = selectableColumns.value.map(c => c.name)
+    const selectableNames = selectableColumns.value.map((c) => c.name);
     if (checked) {
-      selectedColumnNames.value = Array.from(new Set([...selectedColumnNames.value, ...selectableNames]))
+      selectedColumnNames.value = Array.from(
+        new Set([...selectedColumnNames.value, ...selectableNames]),
+      );
     } else {
-      selectedColumnNames.value = selectedColumnNames.value.filter(name => !selectableNames.includes(name))
+      selectedColumnNames.value = selectedColumnNames.value.filter(
+        (name) => !selectableNames.includes(name),
+      );
     }
-  }
-})
+  },
+});
 
 const visibleColumns = computed(() => {
-  return statusColumns.value.filter((column) =>
-    alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]) || selectedColumnNames.value.includes(column.name)
-  )
-})
+  return statusColumns.value.filter(
+    (column) =>
+      alwaysVisibleColumns.includes(column.name as (typeof alwaysVisibleColumns)[number]) ||
+      selectedColumnNames.value.includes(column.name),
+  );
+});
 
 const getTotalsValue = (columnName: string) => {
   switch (columnName) {
     case 'sl':
-      return 'Total'
+      return 'Total';
     case 'name':
-      return `${productRows.value.length} Items`
+      return `${productRows.value.length} Items`;
     case 'quantity':
-      return formatWhole(productTotals.value.quantity)
+      return formatWhole(productTotals.value.quantity);
     case 'offerPriceBdt':
-      return formatWhole(productTotals.value.offerPriceBdt)
+      return formatWhole(productTotals.value.offerPriceBdt);
     case 'buyerSellingPriceBdt':
-      return formatWhole(productTotals.value.buyerSellingPriceBdt)
+      return formatWhole(productTotals.value.buyerSellingPriceBdt);
     case 'customerProfitAmountBdt':
-      return formatWhole(productTotals.value.customerProfitAmountBdt)
+      return formatWhole(productTotals.value.customerProfitAmountBdt);
     case 'customerProfitRateDisplay':
-      return formatPercent(productTotals.value.customerProfitRate)
+      return formatPercent(productTotals.value.customerProfitRate);
     default:
-      return ''
+      return '';
   }
-}
+};
 
 const getTotalsCellClass = (columnName: string) => {
   if (columnName === 'offerPriceBdt') {
-    return 'costing-page__tone-emerald'
+    return 'costing-page__tone-emerald';
   }
 
   if (columnName === 'buyerSellingPriceBdt') {
-    return 'costing-page__tone-orange'
+    return 'costing-page__tone-orange';
   }
 
   if (columnName === 'customerProfitAmountBdt') {
-    return 'costing-page__tone-amber'
+    return 'costing-page__tone-amber';
   }
 
-  return ''
-}
+  return '';
+};
 
-const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
+const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
 const syncFileForm = () => {
-  fileForm.name = selectedFile.value?.name ?? ''
-  fileForm.market = selectedFile.value?.market ?? ''
-}
+  fileForm.name = selectedFile.value?.name ?? '';
+  fileForm.market = selectedFile.value?.market ?? '';
+};
 
 const loadFile = async () => {
-  const fileId = Number(route.params.id)
-  if (!fileId) return
-  await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId)
-}
+  const fileId = Number(route.params.id);
+  if (!fileId) return;
+  await costingFileStore.fetchCostingFileWithItemsForCustomer(fileId);
+};
 
 const resetRequestForm = () => {
-  requestForm.websiteUrl = ''
-  requestForm.quantity = 1
-  requestForm.size = ''
-  requestForm.color = ''
-  requestForm.itemType = ''
-  requestForm.extraInformation1 = ''
-  requestForm.extraInformation2 = ''
-}
+  requestForm.websiteUrl = '';
+  requestForm.quantity = 1;
+  requestForm.size = '';
+  requestForm.color = '';
+  requestForm.itemType = '';
+  requestForm.extraInformation1 = '';
+  requestForm.extraInformation2 = '';
+};
 
 const cleanEditorHtml = (html: string) => {
-  const clean = html.replace(/<[^>]*>/g, '').trim()
-  return clean.length > 0 ? html.trim() : null
-}
+  const clean = html.replace(/<[^>]*>/g, '').trim();
+  return clean.length > 0 ? html.trim() : null;
+};
 
 const handleSubmitRequest = async () => {
   if (!selectedFile.value || !canCustomerMaintainDraftItems.value) {
-    return
+    return;
   }
 
-  const websiteUrl = requestForm.websiteUrl.trim()
-  const quantity = Number(requestForm.quantity)
+  const websiteUrl = requestForm.websiteUrl.trim();
+  const quantity = Number(requestForm.quantity);
 
   if (!websiteUrl || Number.isNaN(quantity) || quantity <= 0) {
-    return
+    return;
   }
 
-  submittingRequest.value = true
+  submittingRequest.value = true;
   try {
-    let result
+    let result;
     if (editingItemId.value) {
       result = await costingFileStore.updateCostingFileItem({
         id: editingItemId.value,
@@ -1455,7 +1487,7 @@ const handleSubmitRequest = async () => {
         color: requestForm.color.trim() || null,
         extraInformation1: cleanEditorHtml(requestForm.extraInformation1),
         extraInformation2: cleanEditorHtml(requestForm.extraInformation2),
-      })
+      });
     } else {
       result = await costingFileStore.createCostingFileItem({
         costingFileId: selectedFile.value.id,
@@ -1467,148 +1499,151 @@ const handleSubmitRequest = async () => {
         extraInformation1: cleanEditorHtml(requestForm.extraInformation1),
         extraInformation2: cleanEditorHtml(requestForm.extraInformation2),
         status: 'pending',
-      })
+      });
     }
 
     if (!result.success) {
-      return
+      return;
     }
 
-    addItemDialogOpen.value = false
+    addItemDialogOpen.value = false;
   } finally {
-    submittingRequest.value = false
+    submittingRequest.value = false;
   }
-}
+};
 
 const handleEditDraftItem = (row: { id: number }) => {
-  const item = itemForms.value.find((i) => i.id === row.id)
+  const item = itemForms.value.find((i) => i.id === row.id);
 
-  if (!item) return
+  if (!item) return;
 
-  editingItemId.value = item.id
-  requestForm.websiteUrl = item.website_url ?? ''
-  requestForm.quantity = item.quantity ?? 1
-  requestForm.itemType = item.item_type ?? ''
-  requestForm.size = item.size ?? ''
-  requestForm.color = item.color ?? ''
-  requestForm.extraInformation1 = item.extra_information_1 ?? ''
-  requestForm.extraInformation2 = item.extra_information_2 ?? ''
+  editingItemId.value = item.id;
+  requestForm.websiteUrl = item.website_url ?? '';
+  requestForm.quantity = item.quantity ?? 1;
+  requestForm.itemType = item.item_type ?? '';
+  requestForm.size = item.size ?? '';
+  requestForm.color = item.color ?? '';
+  requestForm.extraInformation1 = item.extra_information_1 ?? '';
+  requestForm.extraInformation2 = item.extra_information_2 ?? '';
 
-  addItemDialogOpen.value = true
-}
+  addItemDialogOpen.value = true;
+};
 
 watch(addItemDialogOpen, (isOpen) => {
   if (!isOpen) {
-    resetRequestForm()
-    editingItemId.value = null
+    resetRequestForm();
+    editingItemId.value = null;
   }
-})
+});
 
 const handleDeleteDraftItem = async (itemId: number) => {
-  if (!selectedFile.value || selectedFile.value.status !== 'draft' || !canCustomerMaintainDraftItems.value) {
-    return
+  if (
+    !selectedFile.value ||
+    selectedFile.value.status !== 'draft' ||
+    !canCustomerMaintainDraftItems.value
+  ) {
+    return;
   }
 
-  deletingItemId.value = itemId
+  deletingItemId.value = itemId;
   try {
-    const result = await costingFileStore.deleteCostingFileItem({ id: itemId })
+    const result = await costingFileStore.deleteCostingFileItem({ id: itemId });
 
     if (!result.success) {
-      return
+      return;
     }
   } finally {
-    deletingItemId.value = null
+    deletingItemId.value = null;
   }
-}
-
+};
 
 const handleDecision = async (id: number, status: CostingFileItemStatus) => {
-  savingDecisionItemId.value = id
-  savingDecisionStatus.value = status
+  savingDecisionItemId.value = id;
+  savingDecisionStatus.value = status;
   try {
-    const result = await costingFileStore.updateCostingFileItemStatus({ id, status })
+    const result = await costingFileStore.updateCostingFileItemStatus({ id, status });
 
     if (!result.success) {
-      return
+      return;
     }
 
-    showSuccessNotification(`Item ${status}.`)
+    showSuccessNotification(`Item ${status}.`);
   } finally {
-    savingDecisionItemId.value = null
-    savingDecisionStatus.value = null
+    savingDecisionItemId.value = null;
+    savingDecisionStatus.value = null;
   }
-}
+};
 
 const handleSaveSharedProfitRate = async () => {
-  if (!itemForms.value.length || !selectedFile.value) return
+  if (!itemForms.value.length || !selectedFile.value) return;
 
-  savingProfitAll.value = true
+  savingProfitAll.value = true;
   try {
     const normalized =
       sharedProfitRate.value == null || Number.isNaN(Number(sharedProfitRate.value))
         ? null
-        : Number(sharedProfitRate.value)
+        : Number(sharedProfitRate.value);
 
     const result = await costingFileStore.updateCostingFileItemsCustomerProfit({
       costingFileId: selectedFile.value.id,
       customerProfitRate: normalized,
-    })
+    });
 
     if (result.success) {
-      originalSharedProfitRate.value = normalized
-      sharedProfitRate.value = normalized
-      await loadFile()
+      originalSharedProfitRate.value = normalized;
+      sharedProfitRate.value = normalized;
+      await loadFile();
     }
   } finally {
-    savingProfitAll.value = false
+    savingProfitAll.value = false;
   }
-}
+};
 
 const handleSubmitOrder = async () => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  submittingOrder.value = true
+  submittingOrder.value = true;
   try {
     const result = await costingFileStore.updateCostingFileStatus({
       id: selectedFile.value.id,
       status: 'customer_submitted',
-    })
+    });
 
     if (!result.success) {
-      return
+      return;
     }
 
-    submitDialog.value = false
-    showSuccessNotification('Order submitted.')
+    submitDialog.value = false;
+    showSuccessNotification('Order submitted.');
   } finally {
-    submittingOrder.value = false
+    submittingOrder.value = false;
   }
-}
+};
 
 const handleAcceptOffer = async () => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  acceptingOffer.value = true
+  acceptingOffer.value = true;
   try {
     const result = await costingFileStore.updateCostingFileStatus({
       id: selectedFile.value.id,
       status: 'accepted',
-    })
+    });
 
     if (!result.success) {
-      return
+      return;
     }
 
-    acceptOfferDialogOpen.value = false
-    showSuccessNotification('Offer accepted.')
+    acceptOfferDialogOpen.value = false;
+    showSuccessNotification('Offer accepted.');
   } finally {
-    acceptingOffer.value = false
+    acceptingOffer.value = false;
   }
-}
+};
 
 const openPreview = () => {
   if (
@@ -1617,49 +1652,53 @@ const openPreview = () => {
       selectedFile.value.status !== 'accepted' &&
       selectedFile.value.status !== 'po_placed')
   ) {
-    return
+    return;
   }
 
   const targetRoute = router.resolve({
     name: 'customer-costing-file-preview-page',
     params: { id: String(selectedFile.value.id) },
-  })
+  });
 
-  window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
-}
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer');
+};
 
-watch(selectedFile, () => {
-  syncFileForm()
-}, { immediate: true })
+watch(
+  selectedFile,
+  () => {
+    syncFileForm();
+  },
+  { immediate: true },
+);
 
 watch(
   () => route.params.id,
   async () => {
     try {
-      addItemDialogOpen.value = false
-      submitDialog.value = false
-      sharedProfitRate.value = null
-      originalSharedProfitRate.value = null
-      await loadFile()
+      addItemDialogOpen.value = false;
+      submitDialog.value = false;
+      sharedProfitRate.value = null;
+      originalSharedProfitRate.value = null;
+      await loadFile();
     } finally {
-      initialLoading.value = false
+      initialLoading.value = false;
     }
   },
   { immediate: true },
-)
+);
 
 watch(
   itemForms,
   (items) => {
-    const val = items[0]?.customer_profit_rate ?? null
-    const wasDirty = sharedProfitRate.value !== originalSharedProfitRate.value
-    originalSharedProfitRate.value = val
+    const val = items[0]?.customer_profit_rate ?? null;
+    const wasDirty = sharedProfitRate.value !== originalSharedProfitRate.value;
+    originalSharedProfitRate.value = val;
     if (!wasDirty) {
-      sharedProfitRate.value = val
+      sharedProfitRate.value = val;
     }
   },
   { immediate: true, deep: true },
-)
+);
 </script>
 
 <style scoped>
@@ -1739,8 +1778,7 @@ watch(
   padding: 0.85rem;
   border: 1px solid var(--bw-theme-border);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bw-theme-primary) 4%, white), white);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bw-theme-primary) 4%, white), white);
 }
 
 .costing-page__link-preview-head {

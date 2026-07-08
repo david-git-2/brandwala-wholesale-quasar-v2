@@ -16,7 +16,9 @@
         <q-card-section class="preview-page__meta-section">
           <div class="preview-page__meta-line">
             <div class="preview-page__meta-value">{{ fileLabel }}</div>
-            <div class="preview-page__meta-value preview-page__meta-value--compact">{{ fileName }}</div>
+            <div class="preview-page__meta-value preview-page__meta-value--compact">
+              {{ fileName }}
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -35,18 +37,42 @@
         >
           <template #header="props">
             <q-tr :props="props" class="preview-page__header-row">
-              <q-th key="sl" :props="props" class="text-center preview-page__header-cell preview-page__sl-cell">SL</q-th>
-              <q-th key="image" :props="props" class="text-center preview-page__header-cell preview-page__header-cell--image">Image</q-th>
+              <q-th
+                key="sl"
+                :props="props"
+                class="text-center preview-page__header-cell preview-page__sl-cell"
+                >SL</q-th
+              >
+              <q-th
+                key="image"
+                :props="props"
+                class="text-center preview-page__header-cell preview-page__header-cell--image"
+                >Image</q-th
+              >
               <q-th key="name" :props="props" class="preview-page__header-cell">Name</q-th>
-              <q-th key="quantity" :props="props" class="text-center preview-page__header-cell">Quantity</q-th>
-              <q-th key="unitOfferPrice" :props="props" class="text-center preview-page__header-cell">Unit Offer Price</q-th>
-              <q-th key="totalOfferPrice" :props="props" class="text-center preview-page__header-cell">Total Offer Price</q-th>
+              <q-th key="quantity" :props="props" class="text-center preview-page__header-cell"
+                >Quantity</q-th
+              >
+              <q-th
+                key="unitOfferPrice"
+                :props="props"
+                class="text-center preview-page__header-cell"
+                >Unit Offer Price</q-th
+              >
+              <q-th
+                key="totalOfferPrice"
+                :props="props"
+                class="text-center preview-page__header-cell"
+                >Total Offer Price</q-th
+              >
             </q-tr>
           </template>
 
           <template #body="slotProps">
             <q-tr :props="slotProps">
-              <q-td key="sl" :props="slotProps" class="text-center preview-page__sl-cell">{{ slotProps.row.sl }}</q-td>
+              <q-td key="sl" :props="slotProps" class="text-center preview-page__sl-cell">{{
+                slotProps.row.sl
+              }}</q-td>
               <q-td key="image" :props="slotProps" class="text-center">
                 <SmartImage
                   :src="slotProps.row.imageUrl"
@@ -59,11 +85,19 @@
               <q-td key="name" :props="slotProps" class="preview-page__name-cell">
                 <div class="preview-page__name-text">{{ slotProps.row.name }}</div>
               </q-td>
-              <q-td key="quantity" :props="slotProps" class="text-center">{{ slotProps.row.quantity }}</q-td>
-              <q-td key="unitOfferPrice" :props="slotProps" class="text-center preview-page__unit-offer-cell">
+              <q-td key="quantity" :props="slotProps" class="text-center">{{
+                slotProps.row.quantity
+              }}</q-td>
+              <q-td
+                key="unitOfferPrice"
+                :props="slotProps"
+                class="text-center preview-page__unit-offer-cell"
+              >
                 {{ formatMoney(slotProps.row.unitOfferPrice) }}
               </q-td>
-              <q-td key="totalOfferPrice" :props="slotProps" class="text-center">{{ formatMoney(slotProps.row.totalOfferPrice) }}</q-td>
+              <q-td key="totalOfferPrice" :props="slotProps" class="text-center">{{
+                formatMoney(slotProps.row.totalOfferPrice)
+              }}</q-td>
             </q-tr>
           </template>
         </q-table>
@@ -78,42 +112,42 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import type { QTableColumn } from 'quasar'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue';
+import type { QTableColumn } from 'quasar';
+import { useRoute } from 'vue-router';
 
-import SmartImage from 'src/components/SmartImage.vue'
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
-import type { ProductBasedCostingItem } from '../types'
-import { toNumberSafe } from '../utils/pricing'
+import SmartImage from 'src/components/SmartImage.vue';
+import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import type { ProductBasedCostingItem } from '../types';
+import { toNumberSafe } from '../utils/pricing';
 
 type PdfRow = {
-  id: number
-  sl: number
-  imageUrl: string | null
-  name: string
-  quantity: number
-  unitOfferPrice: number
-  totalOfferPrice: number
-  raw: ProductBasedCostingItem
-}
+  id: number;
+  sl: number;
+  imageUrl: string | null;
+  name: string;
+  quantity: number;
+  unitOfferPrice: number;
+  totalOfferPrice: number;
+  raw: ProductBasedCostingItem;
+};
 
-const route = useRoute()
-const store = useProductBasedCostingStore()
-const loading = ref(false)
+const route = useRoute();
+const store = useProductBasedCostingStore();
+const loading = ref(false);
 
 const fileId = computed(() => {
-  const parsed = Number(route.params.id)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-})
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
 
-const fileLabel = computed(() => `#${store.item?.id ?? fileId.value ?? '-'}`)
-const fileName = computed(() => store.item?.name?.trim() || 'Items')
+const fileLabel = computed(() => `#${store.item?.id ?? fileId.value ?? '-'}`);
+const fileName = computed(() => store.item?.name?.trim() || 'Items');
 
 const tableRows = computed<PdfRow[]>(() =>
   (store.costingItems ?? []).map((item, index) => {
-    const quantity = toNumberSafe(item.quantity)
-    const unitOfferPrice = toNumberSafe(item.offer_price)
+    const quantity = toNumberSafe(item.quantity);
+    const unitOfferPrice = toNumberSafe(item.offer_price);
     return {
       id: item.id,
       sl: index + 1,
@@ -123,9 +157,9 @@ const tableRows = computed<PdfRow[]>(() =>
       unitOfferPrice,
       totalOfferPrice: quantity * unitOfferPrice,
       raw: item,
-    }
+    };
   }),
-)
+);
 
 const columns = computed<QTableColumn<PdfRow>[]>(() => [
   { name: 'sl', label: 'SL', field: 'sl', align: 'center' },
@@ -133,29 +167,34 @@ const columns = computed<QTableColumn<PdfRow>[]>(() => [
   { name: 'name', label: 'Name', field: 'name', align: 'left' },
   { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center' },
   { name: 'unitOfferPrice', label: 'Unit Offer Price', field: 'unitOfferPrice', align: 'center' },
-  { name: 'totalOfferPrice', label: 'Total Offer Price', field: 'totalOfferPrice', align: 'center' },
-])
+  {
+    name: 'totalOfferPrice',
+    label: 'Total Offer Price',
+    field: 'totalOfferPrice',
+    align: 'center',
+  },
+]);
 
 const grandTotal = computed(() =>
   tableRows.value.reduce((sum, row) => sum + row.totalOfferPrice, 0),
-)
+);
 
 const formatMoney = (value: number) =>
-  value.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  value.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const printPage = () => window.print()
+const printPage = () => window.print();
 
 onMounted(async () => {
   if (!fileId.value) {
-    return
+    return;
   }
-  loading.value = true
+  loading.value = true;
   await Promise.all([
     store.fetchProductBasedCostingFileById(fileId.value),
     store.fetchProductBasedCostingItems(fileId.value),
-  ])
-  loading.value = false
-})
+  ]);
+  loading.value = false;
+});
 </script>
 
 <style scoped>

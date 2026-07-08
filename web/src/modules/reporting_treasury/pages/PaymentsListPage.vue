@@ -46,11 +46,7 @@
             />
           </div>
           <div class="col-12 col-md-3">
-            <q-toggle
-              v-model="unallocatedOnly"
-              label="Show Unallocated Only"
-              color="primary"
-            />
+            <q-toggle v-model="unallocatedOnly" label="Show Unallocated Only" color="primary" />
           </div>
         </div>
       </TreasuryFilterBar>
@@ -102,7 +98,13 @@
 
             <template #body-cell-unallocated_amount="props">
               <q-td :props="props" class="text-right font-semibold">
-                <span :class="props.row.unallocated_amount > 0 ? 'text-warning text-weight-bold' : 'text-grey-5'">
+                <span
+                  :class="
+                    props.row.unallocated_amount > 0
+                      ? 'text-warning text-weight-bold'
+                      : 'text-grey-5'
+                  "
+                >
                   {{ formatAmountBdt(props.row.unallocated_amount) }}
                 </span>
               </q-td>
@@ -129,7 +131,7 @@
 
     <!-- Create Payment Dialog -->
     <q-dialog v-model="createDialogOpen" persistent>
-      <q-card style="width: 500px; max-width: 90vw;">
+      <q-card style="width: 500px; max-width: 90vw">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">Record Customer Payment</div>
           <q-btn flat round dense icon="close" v-close-popup />
@@ -145,7 +147,7 @@
               dense
               emit-value
               map-options
-              :rules="[val => !!val || 'Billing profile is required']"
+              :rules="[(val) => !!val || 'Billing profile is required']"
             />
 
             <div class="row q-col-gutter-sm">
@@ -158,7 +160,7 @@
                   label="Amount (BDT)"
                   outlined
                   dense
-                  :rules="[val => val > 0 || 'Amount must be positive']"
+                  :rules="[(val) => val > 0 || 'Amount must be positive']"
                 />
               </div>
               <div class="col-12 col-sm-6">
@@ -171,8 +173,17 @@
                 >
                   <template #append>
                     <q-icon name="event" class="cursor-pointer">
-                      <q-popup-proxy ref="qDateProxy" cover transition-show="scale" transition-hide="scale">
-                        <q-date v-model="newPayment.payment_date" mask="YYYY-MM-DD" @update:model-value="closeDatePopup" />
+                      <q-popup-proxy
+                        ref="qDateProxy"
+                        cover
+                        transition-show="scale"
+                        transition-hide="scale"
+                      >
+                        <q-date
+                          v-model="newPayment.payment_date"
+                          mask="YYYY-MM-DD"
+                          @update:model-value="closeDatePopup"
+                        />
                       </q-popup-proxy>
                     </q-icon>
                   </template>
@@ -191,12 +202,7 @@
                 />
               </div>
               <div class="col-12 col-sm-6">
-                <q-input
-                  v-model="newPayment.reference"
-                  label="Reference ID"
-                  outlined
-                  dense
-                />
+                <q-input v-model="newPayment.reference" label="Reference ID" outlined dense />
               </div>
             </div>
 
@@ -228,50 +234,62 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
-import type { QTableColumn } from 'quasar'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore'
-import { formatAmountBdt } from 'src/utils/currency'
-import TreasuryPageShell from '../components/TreasuryPageShell.vue'
-import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
-import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import type { QTableColumn } from 'quasar';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import TreasuryPageShell from '../components/TreasuryPageShell.vue';
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
+import TreasuryFilterBar from '../components/TreasuryFilterBar.vue';
 
-const router = useRouter()
-const $q = useQuasar()
-const authStore = useAuthStore()
-const billingProfileStore = useBillingProfileStore()
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
+const billingProfileStore = useBillingProfileStore();
 
-const loading = ref(false)
-const saving = ref(false)
-const error = ref<string | null>(null)
-const payments = ref<any[]>([])
-const qDateProxy = ref<any>(null)
+const loading = ref(false);
+const saving = ref(false);
+const error = ref<string | null>(null);
+const payments = ref<any[]>([]);
+const qDateProxy = ref<any>(null);
 
 const closeDatePopup = () => {
   if (qDateProxy.value) {
-    qDateProxy.value.hide()
+    qDateProxy.value.hide();
   }
-}
+};
 
 // Filters
-const search = ref('')
-const methodFilter = ref('__all__')
-const unallocatedOnly = ref(false)
+const search = ref('');
+const methodFilter = ref('__all__');
+const unallocatedOnly = ref(false);
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Payment ID', field: 'id', align: 'left', sortable: true },
   { name: 'payment_date', label: 'Date', field: 'payment_date', align: 'left', sortable: true },
-  { name: 'billing_profile', label: 'Customer / Profile', field: 'billing_profile_id', align: 'left', sortable: true },
+  {
+    name: 'billing_profile',
+    label: 'Customer / Profile',
+    field: 'billing_profile_id',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'method', label: 'Method', field: 'method', align: 'left', sortable: true },
   { name: 'reference', label: 'Reference', field: 'reference', align: 'left' },
   { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true },
-  { name: 'unallocated_amount', label: 'Unallocated', field: 'unallocated_amount', align: 'right', sortable: true },
+  {
+    name: 'unallocated_amount',
+    label: 'Unallocated',
+    field: 'unallocated_amount',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
-]
+];
 
 const methodOptions = [
   { label: 'All Methods', value: '__all__' },
@@ -279,12 +297,12 @@ const methodOptions = [
   { label: 'Bkash', value: 'bkash' },
   { label: 'Bank Transfer', value: 'bank_transfer' },
   { label: 'Nagad', value: 'nagad' },
-]
+];
 
-const methodSelectOptions = ['cash', 'bkash', 'bank_transfer', 'nagad']
+const methodSelectOptions = ['cash', 'bkash', 'bank_transfer', 'nagad'];
 
 // Dialog Model
-const createDialogOpen = ref(false)
+const createDialogOpen = ref(false);
 const newPayment = ref({
   billing_profile_id: null as number | null,
   amount: 0,
@@ -292,51 +310,53 @@ const newPayment = ref({
   method: 'cash',
   reference: '',
   note: '',
-})
+});
 
 // Load Payments
 const fetchPayments = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
     const { data, error: err } = await supabase
       .from('global_payments')
-      .select(`
+      .select(
+        `
         *,
         billing_profile:billing_profiles(name)
-      `)
+      `,
+      )
       .eq('tenant_id', tenantId)
-      .order('payment_date', { ascending: false })
+      .order('payment_date', { ascending: false });
 
-    if (err) throw err
-    payments.value = data || []
+    if (err) throw err;
+    payments.value = data || [];
   } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load payments: ${err.message}` })
+    error.value = err.message;
+    $q.notify({ type: 'negative', message: `Failed to load payments: ${err.message}` });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Profile Options
 const profileOptions = computed(() => {
   return billingProfileStore.items.map((p) => ({
     label: p.name,
     value: p.id,
-  }))
-})
+  }));
+});
 
 // Sums
 const totalPaymentsSum = computed(() => {
-  return filteredPayments.value.reduce((sum, p) => sum + p.amount, 0)
-})
+  return filteredPayments.value.reduce((sum, p) => sum + p.amount, 0);
+});
 
 const totalUnallocatedSum = computed(() => {
-  return filteredPayments.value.reduce((sum, p) => sum + p.unallocated_amount, 0)
-})
+  return filteredPayments.value.reduce((sum, p) => sum + p.unallocated_amount, 0);
+});
 
 const statCards = computed(() => [
   {
@@ -356,28 +376,27 @@ const statCards = computed(() => [
     caption: 'Directly cleared against liabilities',
     valueClass: 'text-positive',
   },
-])
+]);
 
 // Filtered payments
 const filteredPayments = computed(() => {
   return payments.value.filter((p) => {
-    const custName = p.billing_profile?.name || ''
-    const refText = p.reference || ''
-    const noteText = p.note || ''
+    const custName = p.billing_profile?.name || '';
+    const refText = p.reference || '';
+    const noteText = p.note || '';
     const matchesSearch =
       !search.value ||
       custName.toLowerCase().includes(search.value.toLowerCase()) ||
       refText.toLowerCase().includes(search.value.toLowerCase()) ||
-      noteText.toLowerCase().includes(search.value.toLowerCase())
+      noteText.toLowerCase().includes(search.value.toLowerCase());
 
-    const matchesMethod =
-      methodFilter.value === '__all__' || p.method === methodFilter.value
+    const matchesMethod = methodFilter.value === '__all__' || p.method === methodFilter.value;
 
-    const matchesAlloc = !unallocatedOnly.value || p.unallocated_amount > 0
+    const matchesAlloc = !unallocatedOnly.value || p.unallocated_amount > 0;
 
-    return matchesSearch && matchesMethod && matchesAlloc
-  })
-})
+    return matchesSearch && matchesMethod && matchesAlloc;
+  });
+});
 
 const openCreateDialog = () => {
   newPayment.value = {
@@ -387,15 +406,15 @@ const openCreateDialog = () => {
     method: 'cash',
     reference: '',
     note: '',
-  }
-  createDialogOpen.value = true
-}
+  };
+  createDialogOpen.value = true;
+};
 
 const submitPayment = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !newPayment.value.billing_profile_id) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !newPayment.value.billing_profile_id) return;
 
-  saving.value = true
+  saving.value = true;
   try {
     const { error: err } = await supabase.rpc('create_billing_profile_payment_with_allocations', {
       p_tenant_id: tenantId,
@@ -406,19 +425,19 @@ const submitPayment = async () => {
       p_reference: newPayment.value.reference || null,
       p_note: newPayment.value.note || null,
       p_allocations: [],
-    })
+    });
 
-    if (err) throw err
+    if (err) throw err;
 
-    $q.notify({ type: 'positive', message: 'Payment recorded successfully.' })
-    createDialogOpen.value = false
-    await fetchPayments()
+    $q.notify({ type: 'positive', message: 'Payment recorded successfully.' });
+    createDialogOpen.value = false;
+    await fetchPayments();
   } catch (err: any) {
-    $q.notify({ type: 'negative', message: `Error creating payment: ${err.message}` })
+    $q.notify({ type: 'negative', message: `Error creating payment: ${err.message}` });
   } finally {
-    saving.value = false
+    saving.value = false;
   }
-}
+};
 
 const navigateToDetails = (id: number) => {
   void router.push({
@@ -427,11 +446,11 @@ const navigateToDetails = (id: number) => {
       tenantSlug: authStore.tenantSlug ?? undefined,
       id,
     },
-  })
-}
+  });
+};
 
 onMounted(async () => {
-  await fetchPayments()
+  await fetchPayments();
   if (authStore.tenantId && !billingProfileStore.items.length) {
     await billingProfileStore.fetchBillingProfiles({
       tenant_id: authStore.tenantId,
@@ -439,7 +458,7 @@ onMounted(async () => {
       page_size: 500,
       sortBy: 'name',
       sortOrder: 'asc',
-    })
+    });
   }
-})
+});
 </script>

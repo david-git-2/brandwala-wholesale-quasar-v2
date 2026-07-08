@@ -1,65 +1,416 @@
 <template>
   <q-dialog v-model="isOpen" backdrop-filter="blur(4px)">
-    <q-card class="details-card floating-surface shadow-2" style="min-height: 250px;">
+    <q-card class="details-card floating-surface shadow-2" style="min-height: 250px">
       <PageInitialLoader v-if="loadingDetails" />
-      <div v-else-if="!item" class="row justify-center items-center q-pa-xl text-grey-6 absolute-center full-width text-center" style="height: 250px;">
+      <div
+        v-else-if="!item"
+        class="row justify-center items-center q-pa-xl text-grey-6 absolute-center full-width text-center"
+        style="height: 250px"
+      >
         <div>
           <q-icon name="warning" size="40px" color="negative" class="q-mb-md" />
           <div class="text-subtitle1 text-weight-bold">Failed to Load Item</div>
-          <div class="text-caption">The item may have been deleted, or you might not have permissions to view it.</div>
+          <div class="text-caption">
+            The item may have been deleted, or you might not have permissions to view it.
+          </div>
         </div>
       </div>
       <div v-if="item">
         <!-- Header -->
         <q-card-section class="q-py-md row items-center justify-between border-bottom bg-light">
-        <div class="row items-center q-gutter-sm col">
-          <q-avatar :color="getTypeColor(item.type)" text-color="white" size="32px">
-            <q-icon :name="getTypeIcon(item.type)" size="18px" />
-          </q-avatar>
-          <div class="col">
-            <!-- Parent Breadcrumb Link -->
-            <div v-if="parentItem" class="row items-center q-gutter-x-xs text-caption text-primary cursor-pointer q-mb-xs hover-underline" @click="onNavigateToParent">
-              <q-icon name="arrow_back" size="14px" />
-              <span>Parent: [{{ parentItem.type.toUpperCase() }}] {{ parentItem.title }}</span>
+          <div class="row items-center q-gutter-sm col">
+            <q-avatar :color="getTypeColor(item.type)" text-color="white" size="32px">
+              <q-icon :name="getTypeIcon(item.type)" size="18px" />
+            </q-avatar>
+            <div class="col">
+              <!-- Parent Breadcrumb Link -->
+              <div
+                v-if="parentItem"
+                class="row items-center q-gutter-x-xs text-caption text-primary cursor-pointer q-mb-xs hover-underline"
+                @click="onNavigateToParent"
+              >
+                <q-icon name="arrow_back" size="14px" />
+                <span>Parent: [{{ parentItem.type.toUpperCase() }}] {{ parentItem.title }}</span>
+              </div>
+              <div class="row items-center no-wrap full-width">
+                <span
+                  v-if="item.type === 'task'"
+                  class="text-h6 text-weight-bold text-primary q-mr-xs"
+                  >#{{ item.id }}</span
+                >
+                <q-input
+                  v-model="item.title"
+                  type="textarea"
+                  autogrow
+                  borderless
+                  dense
+                  input-class="text-h6 text-weight-bold text-grey-9 q-pa-none"
+                  class="q-pa-none full-width col"
+                  input-style="white-space: normal; word-break: break-word;"
+                  @blur="onSaveTitle"
+                  @keydown.enter.prevent="onSaveTitle"
+                />
+              </div>
+              <div class="row items-center q-gutter-x-sm text-caption text-grey-7 q-mt-xs">
+                <span>Type:</span>
+                <q-btn-dropdown
+                  unelevated
+                  rounded
+                  dense
+                  no-caps
+                  class="status-chip text-weight-bold"
+                  :style="typeChipStyle(item.type)"
+                >
+                  <template #label>
+                    <div class="row items-center no-wrap">
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: typeDotColor(item.type) }"
+                      ></span>
+                      <span class="text-caption text-weight-bold">{{
+                        item.type.toUpperCase()
+                      }}</span>
+                    </div>
+                  </template>
+                  <q-list>
+                    <q-item
+                      v-for="opt in typeOptions"
+                      :key="opt.value"
+                      clickable
+                      v-close-popup
+                      @click="onSaveType(opt.value)"
+                    >
+                      <q-item-section>
+                        <q-item-label>{{ opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-btn-dropdown>
+              </div>
             </div>
-            <div class="row items-center no-wrap full-width">
-              <span v-if="item.type === 'task'" class="text-h6 text-weight-bold text-primary q-mr-xs">#{{ item.id }}</span>
-              <q-input
-                v-model="item.title"
-                type="textarea"
-                autogrow
-                borderless
-                dense
-                input-class="text-h6 text-weight-bold text-grey-9 q-pa-none"
-                class="q-pa-none full-width col"
-                input-style="white-space: normal; word-break: break-word;"
-                @blur="onSaveTitle"
-                @keydown.enter.prevent="onSaveTitle"
+          </div>
+          <div class="row items-center q-gutter-xs">
+            <q-btn
+              flat
+              round
+              dense
+              icon="o_delete"
+              color="negative"
+              size="sm"
+              @click="onClickDelete"
+            />
+            <q-btn flat round dense icon="close" v-close-popup />
+          </div>
+        </q-card-section>
+
+        <!-- Content Stack -->
+        <q-card-section class="q-pa-none dialog-layout">
+          <!-- Main Body -->
+          <div class="dialog-body scroll-body q-pa-md">
+            <div class="description-shell">
+              <div class="row items-center justify-between q-mb-sm">
+                <div>
+                  <div class="text-overline text-grey-8 text-weight-bold">Description</div>
+                  <div class="text-caption text-grey-5">Double click to edit</div>
+                </div>
+              </div>
+
+              <div
+                v-if="!isEditMode"
+                @dblclick="onStartEdit"
+                class="description-view-area bg-grey-1 q-pa-md rounded-borders border cursor-pointer"
+              >
+                <div
+                  v-if="item.is_markdown"
+                  v-html="parsedDescription || 'No description provided. Double click to add one.'"
+                  class="markdown-body"
+                ></div>
+                <div
+                  v-else
+                  v-html="item.content || 'No description provided. Double click to add one.'"
+                  class="rich-text-body text-body2 text-grey-9"
+                ></div>
+              </div>
+
+              <div v-else class="q-gutter-y-sm">
+                <div class="row items-center justify-between">
+                  <q-checkbox v-model="isMarkdownMode" label="Use Markdown" dense />
+                  <div class="row q-gutter-xs">
+                    <q-btn
+                      label="Cancel"
+                      color="grey"
+                      flat
+                      dense
+                      size="sm"
+                      no-caps
+                      @click="onCancelDescription"
+                    />
+                    <q-btn
+                      label="Save"
+                      color="primary"
+                      unelevated
+                      dense
+                      size="sm"
+                      no-caps
+                      @click="onSaveDescription"
+                      class="q-px-sm"
+                    />
+                  </div>
+                </div>
+                <q-input
+                  v-if="isMarkdownMode"
+                  v-model="editedDescription"
+                  type="textarea"
+                  outlined
+                  dense
+                  rows="18"
+                  class="bg-grey-1"
+                  placeholder="Write description in Markdown..."
+                  :input-style="{ fontFamily: 'monospace' }"
+                />
+                <q-editor
+                  v-else
+                  v-model="editedDescription"
+                  min-height="18rem"
+                  max-height="40rem"
+                  :toolbar="[
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['unordered', 'ordered', 'outdent', 'indent'],
+                    ['quote', 'link', 'hr'],
+                    ['undo', 'redo'],
+                    ['fullscreen'],
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="q-mt-lg border-top q-pt-md row items-center justify-between">
+              <div class="text-overline text-grey-8 text-weight-bold">Discussions & Comments</div>
+              <q-btn
+                :label="showDiscussion ? 'Hide Discussions' : 'Show Discussions'"
+                :icon="showDiscussion ? 'forum' : 'chat_bubble_outline'"
+                color="primary"
+                outline
+                no-caps
+                size="sm"
+                class="pill-btn"
+                @click="showDiscussion = !showDiscussion"
               />
             </div>
-            <div class="row items-center q-gutter-x-sm text-caption text-grey-7 q-mt-xs">
-              <span>Type:</span>
+
+            <div v-if="showDiscussion" class="q-mb-lg">
+              <q-form
+                @submit.prevent="onAddComment(null)"
+                class="row q-col-gutter-xs items-start q-mt-md q-mb-md"
+              >
+                <div class="col">
+                  <q-input
+                    v-model="commentText"
+                    placeholder="Ask a question or post an update..."
+                    outlined
+                    dense
+                    autogrow
+                  />
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    type="submit"
+                    label="Post"
+                    color="primary"
+                    unelevated
+                    no-caps
+                    dense
+                    class="q-px-sm"
+                    style="min-height: 40px"
+                  />
+                </div>
+              </q-form>
+
+              <div class="q-gutter-y-sm" v-if="commentsTree.length">
+                <div v-for="c in commentsTree" :key="c.id" class="comment-wrapper">
+                  <div class="comment-box q-pa-sm rounded-borders">
+                    <div class="row justify-between items-center q-mb-xs">
+                      <span class="text-caption text-weight-bold text-primary">{{
+                        c.user_email
+                      }}</span>
+                      <span class="text-caption text-grey-6">{{
+                        formatDateShort(c.created_at)
+                      }}</span>
+                    </div>
+                    <div class="text-body2 text-grey-9">{{ c.body }}</div>
+                    <div class="row items-center justify-between q-mt-xs">
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        label="Reply"
+                        color="grey-7"
+                        size="xs"
+                        icon="reply"
+                        @click="activeReplyId = c.id"
+                      />
+                      <q-btn
+                        v-if="c.user_email === authStore.user?.email"
+                        flat
+                        dense
+                        round
+                        color="red"
+                        icon="o_delete"
+                        size="xs"
+                        @click="onDeleteComment(c.id)"
+                      />
+                    </div>
+                  </div>
+
+                  <q-form
+                    v-if="activeReplyId === c.id"
+                    @submit.prevent="onAddComment(c.id)"
+                    class="row q-col-gutter-xs q-mt-xs q-ml-md items-start"
+                  >
+                    <div class="col">
+                      <q-input
+                        v-model="replyText"
+                        placeholder="Write a reply…"
+                        outlined
+                        dense
+                        autogrow
+                      />
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        type="submit"
+                        label="Reply"
+                        color="primary"
+                        unelevated
+                        no-caps
+                        dense
+                        size="sm"
+                        class="q-px-sm"
+                        style="min-height: 40px"
+                      />
+                    </div>
+                  </q-form>
+                </div>
+              </div>
+
+              <div v-else class="text-caption text-grey-5 q-mt-sm">No discussions yet.</div>
+            </div>
+
+            <div class="q-mt-lg border-top q-pt-md">
+              <div class="row items-center justify-between q-mb-sm">
+                <div class="text-overline text-grey-8 text-weight-bold">
+                  Child Items / Sub-items
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="add"
+                  size="sm"
+                  color="primary"
+                  @click="createChildOpen = true"
+                />
+              </div>
+
+              <q-list
+                dense
+                separator
+                v-if="childItems.length"
+                class="bg-grey-1 rounded-borders q-pa-xs"
+              >
+                <q-item
+                  v-for="child in childItems"
+                  :key="child.id"
+                  clickable
+                  @click="onNavigateToChild(child.id)"
+                >
+                  <q-item-section avatar>
+                    <q-icon
+                      :name="getTypeIcon(child.type)"
+                      :color="getTypeColor(child.type)"
+                      size="sm"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-caption text-weight-medium">{{
+                      child.title
+                    }}</q-item-label>
+                    <q-item-label caption
+                      >{{ child.type.toUpperCase() }} •
+                      {{ child.status.toUpperCase() }}</q-item-label
+                    >
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-btn flat round dense icon="open_in_new" size="xs" color="grey" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="text-caption text-grey-5 q-pl-md">No child items linked.</div>
+            </div>
+
+            <div class="border-top q-pt-md q-mt-lg">
+              <q-expansion-item
+                label="Activity Log"
+                icon="history"
+                dense
+                header-class="text-weight-bold text-grey-8 text-overline q-px-none"
+              >
+                <q-list
+                  dense
+                  separator
+                  v-if="activityLogs.length"
+                  class="bg-grey-1 rounded-borders q-pa-sm q-mt-sm"
+                >
+                  <q-item v-for="log in activityLogs" :key="log.id" class="q-px-none">
+                    <q-item-section>
+                      <q-item-label class="text-caption text-grey-9">
+                        <span class="text-weight-bold">{{ log.user_email }}</span>
+                        {{ getActionDescription(log) }}
+                      </q-item-label>
+                      <q-item-label caption class="text-grey-5">
+                        {{ formatDateShort(log.created_at) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+                <div v-else class="text-caption text-grey-5 q-mt-xs q-pl-md">
+                  No activity recorded.
+                </div>
+              </q-expansion-item>
+            </div>
+          </div>
+
+          <!-- Sidebar Controls -->
+          <div class="dialog-sidebar border-left q-pa-md q-gutter-y-md">
+            <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Quick Controls</div>
+            <div>
+              <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Status</div>
               <q-btn-dropdown
                 unelevated
                 rounded
                 dense
                 no-caps
-                class="status-chip text-weight-bold"
-                :style="typeChipStyle(item.type)"
+                class="status-chip text-weight-bold full-width"
+                :style="statusChipStyle(item.status)"
               >
                 <template #label>
                   <div class="row items-center no-wrap">
-                    <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(item.type) }"></span>
-                    <span class="text-caption text-weight-bold">{{ item.type.toUpperCase() }}</span>
+                    <span
+                      class="status-chip-dot"
+                      :style="{ backgroundColor: statusDotColor(item.status) }"
+                    ></span>
+                    <span class="text-caption text-weight-bold">{{
+                      statusLabel.toUpperCase()
+                    }}</span>
                   </div>
                 </template>
                 <q-list>
                   <q-item
-                    v-for="opt in typeOptions"
+                    v-for="opt in statusOptions"
                     :key="opt.value"
                     clickable
                     v-close-popup
-                    @click="onSaveType(opt.value)"
+                    @click="onStatusUpdate(opt.value)"
                   >
                     <q-item-section>
                       <q-item-label>{{ opt.label }}</q-item-label>
@@ -68,439 +419,314 @@
                 </q-list>
               </q-btn-dropdown>
             </div>
-          </div>
-        </div>
-        <div class="row items-center q-gutter-xs">
-          <q-btn flat round dense icon="o_delete" color="negative" size="sm" @click="onClickDelete" />
-          <q-btn flat round dense icon="close" v-close-popup />
-        </div>
-      </q-card-section>
-
-      <!-- Content Stack -->
-      <q-card-section class="q-pa-none dialog-layout">
-        <!-- Main Body -->
-        <div class="dialog-body scroll-body q-pa-md">
-          <div class="description-shell">
-            <div class="row items-center justify-between q-mb-sm">
-              <div>
-                <div class="text-overline text-grey-8 text-weight-bold">Description</div>
-                <div class="text-caption text-grey-5">Double click to edit</div>
-              </div>
-            </div>
-
-            <div v-if="!isEditMode" @dblclick="onStartEdit" class="description-view-area bg-grey-1 q-pa-md rounded-borders border cursor-pointer">
-              <div v-if="item.is_markdown" v-html="parsedDescription || 'No description provided. Double click to add one.'" class="markdown-body"></div>
-              <div v-else v-html="item.content || 'No description provided. Double click to add one.'" class="rich-text-body text-body2 text-grey-9"></div>
-            </div>
-
-            <div v-else class="q-gutter-y-sm">
-              <div class="row items-center justify-between">
-                <q-checkbox v-model="isMarkdownMode" label="Use Markdown" dense />
-                <div class="row q-gutter-xs">
-                  <q-btn label="Cancel" color="grey" flat dense size="sm" no-caps @click="onCancelDescription" />
-                  <q-btn label="Save" color="primary" unelevated dense size="sm" no-caps @click="onSaveDescription" class="q-px-sm" />
-                </div>
-              </div>
-              <q-input
-                v-if="isMarkdownMode"
-                v-model="editedDescription"
-                type="textarea"
-                outlined
+            <div>
+              <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Priority</div>
+              <q-btn-dropdown
+                unelevated
+                rounded
                 dense
-                rows="18"
-                class="bg-grey-1"
-                placeholder="Write description in Markdown..."
-                :input-style="{ fontFamily: 'monospace' }"
-              />
-              <q-editor
-                v-else
-                v-model="editedDescription"
-                min-height="18rem"
-                max-height="40rem"
-                :toolbar="[
-                  ['bold', 'italic', 'underline', 'strike'],
-                  ['unordered', 'ordered', 'outdent', 'indent'],
-                  ['quote', 'link', 'hr'],
-                  ['undo', 'redo'],
-                  ['fullscreen']
-                ]"
-              />
-            </div>
-          </div>
-
-          <div class="q-mt-lg border-top q-pt-md row items-center justify-between">
-            <div class="text-overline text-grey-8 text-weight-bold">Discussions & Comments</div>
-            <q-btn
-              :label="showDiscussion ? 'Hide Discussions' : 'Show Discussions'"
-              :icon="showDiscussion ? 'forum' : 'chat_bubble_outline'"
-              color="primary"
-              outline
-              no-caps
-              size="sm"
-              class="pill-btn"
-              @click="showDiscussion = !showDiscussion"
-            />
-          </div>
-
-          <div v-if="showDiscussion" class="q-mb-lg">
-            <q-form @submit.prevent="onAddComment(null)" class="row q-col-gutter-xs items-start q-mt-md q-mb-md">
-              <div class="col">
-                <q-input
-                  v-model="commentText"
-                  placeholder="Ask a question or post an update..."
-                  outlined
-                  dense
-                  autogrow
-                />
-              </div>
-              <div class="col-auto">
-                <q-btn type="submit" label="Post" color="primary" unelevated no-caps dense class="q-px-sm" style="min-height: 40px" />
-              </div>
-            </q-form>
-
-            <div class="q-gutter-y-sm" v-if="commentsTree.length">
-              <div v-for="c in commentsTree" :key="c.id" class="comment-wrapper">
-                <div class="comment-box q-pa-sm rounded-borders">
-                  <div class="row justify-between items-center q-mb-xs">
-                    <span class="text-caption text-weight-bold text-primary">{{ c.user_email }}</span>
-                    <span class="text-caption text-grey-6">{{ formatDateShort(c.created_at) }}</span>
-                  </div>
-                  <div class="text-body2 text-grey-9">{{ c.body }}</div>
-                  <div class="row items-center justify-between q-mt-xs">
-                    <q-btn flat dense no-caps label="Reply" color="grey-7" size="xs" icon="reply" @click="activeReplyId = c.id" />
-                    <q-btn
-                      v-if="c.user_email === authStore.user?.email"
-                      flat
-                      dense
-                      round
-                      color="red"
-                      icon="o_delete"
-                      size="xs"
-                      @click="onDeleteComment(c.id)"
-                    />
-                  </div>
-                </div>
-
-                <q-form v-if="activeReplyId === c.id" @submit.prevent="onAddComment(c.id)" class="row q-col-gutter-xs q-mt-xs q-ml-md items-start">
-                  <div class="col">
-                    <q-input v-model="replyText" placeholder="Write a reply…" outlined dense autogrow />
-                  </div>
-                  <div class="col-auto">
-                    <q-btn type="submit" label="Reply" color="primary" unelevated no-caps dense size="sm" class="q-px-sm" style="min-height: 40px" />
-                  </div>
-                </q-form>
-              </div>
-            </div>
-
-            <div v-else class="text-caption text-grey-5 q-mt-sm">No discussions yet.</div>
-          </div>
-
-          <div class="q-mt-lg border-top q-pt-md">
-            <div class="row items-center justify-between q-mb-sm">
-              <div class="text-overline text-grey-8 text-weight-bold">Child Items / Sub-items</div>
-              <q-btn flat round dense icon="add" size="sm" color="primary" @click="createChildOpen = true" />
-            </div>
-
-            <q-list dense separator v-if="childItems.length" class="bg-grey-1 rounded-borders q-pa-xs">
-              <q-item
-                v-for="child in childItems"
-                :key="child.id"
-                clickable
-                @click="onNavigateToChild(child.id)"
+                no-caps
+                class="status-chip text-weight-bold full-width"
+                :style="priorityChipStyle(item.priority)"
               >
-                <q-item-section avatar>
-                  <q-icon :name="getTypeIcon(child.type)" :color="getTypeColor(child.type)" size="sm" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-caption text-weight-medium">{{ child.title }}</q-item-label>
-                  <q-item-label caption>{{ child.type.toUpperCase() }} • {{ child.status.toUpperCase() }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-btn flat round dense icon="open_in_new" size="xs" color="grey" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="text-caption text-grey-5 q-pl-md">No child items linked.</div>
-          </div>
-
-          <div class="border-top q-pt-md q-mt-lg">
+                <template #label>
+                  <div class="row items-center no-wrap">
+                    <span
+                      class="status-chip-dot"
+                      :style="{ backgroundColor: priorityDotColor(item.priority) }"
+                    ></span>
+                    <span class="text-caption text-weight-bold">{{
+                      priorityLabel.toUpperCase()
+                    }}</span>
+                  </div>
+                </template>
+                <q-list>
+                  <q-item
+                    v-for="opt in priorityOptions"
+                    :key="opt.value"
+                    clickable
+                    v-close-popup
+                    @click="onPriorityUpdate(opt.value)"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
+            <div v-if="item.type === 'note'">
+              <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Accessibility</div>
+              <q-btn-dropdown
+                unelevated
+                rounded
+                dense
+                no-caps
+                class="status-chip text-weight-bold full-width"
+                :style="accessibilityChipStyle(item.accessibility)"
+              >
+                <template #label>
+                  <div class="row items-center no-wrap">
+                    <q-icon
+                      :name="accessibilityIcon(item.accessibility)"
+                      size="14px"
+                      class="q-mr-xs"
+                    />
+                    <span class="text-caption text-weight-bold">{{
+                      (item.accessibility || 'public').toUpperCase()
+                    }}</span>
+                  </div>
+                </template>
+                <q-list>
+                  <q-item
+                    v-for="opt in accessibilityOptions"
+                    :key="opt.value"
+                    clickable
+                    v-close-popup
+                    @click="onAccessibilityUpdate(opt.value)"
+                  >
+                    <q-item-section avatar>
+                      <q-icon :name="opt.icon" size="18px" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                      <q-item-label caption class="text-caption text-grey-6">{{
+                        opt.caption
+                      }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
             <q-expansion-item
-              label="Activity Log"
-              icon="history"
               dense
-              header-class="text-weight-bold text-grey-8 text-overline q-px-none"
+              expand-separator
+              icon="tune"
+              label="More details"
+              default-opened
+              header-class="text-overline text-grey-8 text-weight-bold"
             >
-              <q-list dense separator v-if="activityLogs.length" class="bg-grey-1 rounded-borders q-pa-sm q-mt-sm">
-                <q-item v-for="log in activityLogs" :key="log.id" class="q-px-none">
-                  <q-item-section>
-                    <q-item-label class="text-caption text-grey-9">
-                      <span class="text-weight-bold">{{ log.user_email }}</span>
-                      {{ getActionDescription(log) }}
-                    </q-item-label>
-                    <q-item-label caption class="text-grey-5">
-                      {{ formatDateShort(log.created_at) }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-              <div v-else class="text-caption text-grey-5 q-mt-xs q-pl-md">No activity recorded.</div>
-            </q-expansion-item>
-          </div>
-        </div>
-
-        <!-- Sidebar Controls -->
-        <div class="dialog-sidebar border-left q-pa-md q-gutter-y-md">
-          <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Quick Controls</div>
-          <div>
-            <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Status</div>
-            <q-btn-dropdown
-              unelevated
-              rounded
-              dense
-              no-caps
-              class="status-chip text-weight-bold full-width"
-              :style="statusChipStyle(item.status)"
-            >
-              <template #label>
-                <div class="row items-center no-wrap">
-                  <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(item.status) }"></span>
-                  <span class="text-caption text-weight-bold">{{ statusLabel.toUpperCase() }}</span>
-                </div>
-              </template>
-              <q-list>
-                <q-item
-                  v-for="opt in statusOptions"
-                  :key="opt.value"
-                  clickable
-                  v-close-popup
-                  @click="onStatusUpdate(opt.value)"
-                >
-                  <q-item-section>
-                    <q-item-label>{{ opt.label }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-          </div>
-          <div>
-            <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Priority</div>
-            <q-btn-dropdown
-              unelevated
-              rounded
-              dense
-              no-caps
-              class="status-chip text-weight-bold full-width"
-              :style="priorityChipStyle(item.priority)"
-            >
-              <template #label>
-                <div class="row items-center no-wrap">
-                  <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(item.priority) }"></span>
-                  <span class="text-caption text-weight-bold">{{ priorityLabel.toUpperCase() }}</span>
-                </div>
-              </template>
-              <q-list>
-                <q-item
-                  v-for="opt in priorityOptions"
-                  :key="opt.value"
-                  clickable
-                  v-close-popup
-                  @click="onPriorityUpdate(opt.value)"
-                >
-                  <q-item-section>
-                    <q-item-label>{{ opt.label }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-          </div>
-          <div v-if="item.type === 'note'">
-            <div class="text-overline text-grey-8 text-weight-bold q-mb-xs">Accessibility</div>
-            <q-btn-dropdown
-              unelevated
-              rounded
-              dense
-              no-caps
-              class="status-chip text-weight-bold full-width"
-              :style="accessibilityChipStyle(item.accessibility)"
-            >
-              <template #label>
-                <div class="row items-center no-wrap">
-                  <q-icon :name="accessibilityIcon(item.accessibility)" size="14px" class="q-mr-xs" />
-                  <span class="text-caption text-weight-bold">{{ (item.accessibility || 'public').toUpperCase() }}</span>
-                </div>
-              </template>
-              <q-list>
-                <q-item
-                  v-for="opt in accessibilityOptions"
-                  :key="opt.value"
-                  clickable
-                  v-close-popup
-                  @click="onAccessibilityUpdate(opt.value)"
-                >
-                  <q-item-section avatar>
-                    <q-icon :name="opt.icon" size="18px" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>{{ opt.label }}</q-item-label>
-                    <q-item-label caption class="text-caption text-grey-6">{{ opt.caption }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-          </div>
-          <q-expansion-item
-            dense
-            expand-separator
-            icon="tune"
-            label="More details"
-            default-opened
-            header-class="text-overline text-grey-8 text-weight-bold"
-          >
-            <div class="q-pt-sm q-gutter-y-md">
-              <div>
-                <div class="text-overline text-grey-8 text-weight-bold">Parent Item</div>
-                <q-select
-                  v-model="item.parent_id"
-                  :options="parentOptions"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  clearable
-                  placeholder="No Parent (Root)"
-                  @update:model-value="onParentUpdate"
-                />
-              </div>
-              <div>
-                <div class="text-overline text-grey-8 text-weight-bold">Dates</div>
-                <div class="row items-center justify-between q-mb-xs">
-                  <span class="text-caption text-grey-7">Start: {{ formatDate(item.start_date) }}</span>
-                  <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="startDateProxy" mask="YYYY-MM-DD" @update:model-value="onUpdateStartDate">
-                        <div class="row items-center justify-end q-gutter-sm">
-                          <q-btn v-close-popup label="Clear" color="negative" flat @click="onClearStartDate" />
-                          <q-btn v-close-popup label="Close" color="primary" flat />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy>
-                  </q-btn>
-                </div>
-                <div class="row items-center justify-between">
-                  <span class="text-caption text-grey-7">Due: {{ formatDate(item.due_date) }}</span>
-                  <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="dueDateProxy" mask="YYYY-MM-DD" @update:model-value="onUpdateDueDate">
-                        <div class="row items-center justify-end q-gutter-sm">
-                          <q-btn v-close-popup label="Clear" color="negative" flat @click="onClearDueDate" />
-                          <q-btn v-close-popup label="Close" color="primary" flat />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy>
-                  </q-btn>
-                </div>
-              </div>
-              <div>
-                <div class="row items-center justify-between">
-                  <span class="text-overline text-grey-8 text-weight-bold">Assignees</span>
-                  <q-btn flat round dense icon="add" size="xs" color="primary" @click="showAddAssignee = !showAddAssignee" />
-                </div>
-                <q-select
-                  v-if="showAddAssignee"
-                  v-model="selectedAssigneeEmail"
-                  :options="memberEmails"
-                  label="Add Assignee"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  @update:model-value="onAddAssignee"
-                  class="q-mb-xs"
-                />
-                <div class="q-gutter-xs q-mt-xs">
-                  <q-chip
-                    v-for="a in assignees"
-                    :key="a.id"
-                    dense
-                    removable
-                    @remove="onRemoveAssignee(a.user_email)"
-                    color="blue-1"
-                    text-color="blue-8"
-                  >
-                    {{ a.user_email }}
-                  </q-chip>
-                  <div v-if="!assignees.length" class="text-caption text-grey-5">Unassigned</div>
-                </div>
-              </div>
-              <div>
-                <div class="row items-center justify-between">
-                  <span class="text-overline text-grey-8 text-weight-bold">Tags</span>
-                  <q-btn flat round dense icon="add" size="xs" color="primary" @click="showAddTag = !showAddTag" />
-                </div>
-                <q-select
-                  v-if="showAddTag"
-                  v-model="selectedTagId"
-                  :options="tagOptions"
-                  label="Add Tag"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  @update:model-value="onAddTag"
-                  class="q-mb-xs"
-                />
-                <div class="q-gutter-xs q-mt-xs">
-                  <q-chip
-                    v-for="tag in itemTags"
-                    :key="tag.id"
-                    dense
-                    square
-                    removable
-                    @remove="onRemoveTag(tag.id)"
-                    text-color="white"
-                    :style="{ backgroundColor: tag.color || '#6366f1' }"
-                    class="square-chip"
-                  >
-                    {{ tag.name }}
-                  </q-chip>
-                  <div v-if="!itemTags.length" class="text-caption text-grey-5">No tags linked</div>
-                </div>
-              </div>
-              <div>
-                <div class="row items-center justify-between">
-                  <span class="text-overline text-grey-8 text-weight-bold">Collaborators</span>
-                  <q-btn flat round dense icon="add" size="xs" color="primary" @click="showAddPerm = !showAddPerm" />
-                </div>
-                <div v-if="showAddPerm" class="q-gutter-y-xs q-mb-sm">
-                  <q-select v-model="newPerm.email" :options="memberEmails" label="User Email" outlined dense />
+              <div class="q-pt-sm q-gutter-y-md">
+                <div>
+                  <div class="text-overline text-grey-8 text-weight-bold">Parent Item</div>
                   <q-select
-                    v-model="newPerm.role"
-                    :options="roleOptions"
-                    label="Role"
+                    v-model="item.parent_id"
+                    :options="parentOptions"
                     outlined
                     dense
                     emit-value
                     map-options
+                    clearable
+                    placeholder="No Parent (Root)"
+                    @update:model-value="onParentUpdate"
                   />
-                  <q-btn label="Grant" color="primary" dense size="sm" @click="onSavePermission" class="full-width" unelevated />
                 </div>
-                <div class="q-mt-xs q-gutter-y-xs">
-                  <q-item v-for="p in permissions" :key="p.id" class="q-pa-xs border-bottom">
-                    <q-item-section>
-                      <q-item-label class="text-caption ellipsis">{{ p.user_email }}</q-item-label>
-                      <q-item-label caption class="text-overline">{{ p.role }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-btn flat round dense icon="o_delete" size="xs" color="red" @click="onDeletePermission(p.user_email)" />
-                    </q-item-section>
-                  </q-item>
-                  <div v-if="!permissions.length" class="text-caption text-grey-5">No explicit overrides</div>
+                <div>
+                  <div class="text-overline text-grey-8 text-weight-bold">Dates</div>
+                  <div class="row items-center justify-between q-mb-xs">
+                    <span class="text-caption text-grey-7"
+                      >Start: {{ formatDate(item.start_date) }}</span
+                    >
+                    <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date
+                          v-model="startDateProxy"
+                          mask="YYYY-MM-DD"
+                          @update:model-value="onUpdateStartDate"
+                        >
+                          <div class="row items-center justify-end q-gutter-sm">
+                            <q-btn
+                              v-close-popup
+                              label="Clear"
+                              color="negative"
+                              flat
+                              @click="onClearStartDate"
+                            />
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-btn>
+                  </div>
+                  <div class="row items-center justify-between">
+                    <span class="text-caption text-grey-7"
+                      >Due: {{ formatDate(item.due_date) }}</span
+                    >
+                    <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date
+                          v-model="dueDateProxy"
+                          mask="YYYY-MM-DD"
+                          @update:model-value="onUpdateDueDate"
+                        >
+                          <div class="row items-center justify-end q-gutter-sm">
+                            <q-btn
+                              v-close-popup
+                              label="Clear"
+                              color="negative"
+                              flat
+                              @click="onClearDueDate"
+                            />
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-btn>
+                  </div>
+                </div>
+                <div>
+                  <div class="row items-center justify-between">
+                    <span class="text-overline text-grey-8 text-weight-bold">Assignees</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="add"
+                      size="xs"
+                      color="primary"
+                      @click="showAddAssignee = !showAddAssignee"
+                    />
+                  </div>
+                  <q-select
+                    v-if="showAddAssignee"
+                    v-model="selectedAssigneeEmail"
+                    :options="memberEmails"
+                    label="Add Assignee"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    @update:model-value="onAddAssignee"
+                    class="q-mb-xs"
+                  />
+                  <div class="q-gutter-xs q-mt-xs">
+                    <q-chip
+                      v-for="a in assignees"
+                      :key="a.id"
+                      dense
+                      removable
+                      @remove="onRemoveAssignee(a.user_email)"
+                      color="blue-1"
+                      text-color="blue-8"
+                    >
+                      {{ a.user_email }}
+                    </q-chip>
+                    <div v-if="!assignees.length" class="text-caption text-grey-5">Unassigned</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="row items-center justify-between">
+                    <span class="text-overline text-grey-8 text-weight-bold">Tags</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="add"
+                      size="xs"
+                      color="primary"
+                      @click="showAddTag = !showAddTag"
+                    />
+                  </div>
+                  <q-select
+                    v-if="showAddTag"
+                    v-model="selectedTagId"
+                    :options="tagOptions"
+                    label="Add Tag"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    @update:model-value="onAddTag"
+                    class="q-mb-xs"
+                  />
+                  <div class="q-gutter-xs q-mt-xs">
+                    <q-chip
+                      v-for="tag in itemTags"
+                      :key="tag.id"
+                      dense
+                      square
+                      removable
+                      @remove="onRemoveTag(tag.id)"
+                      text-color="white"
+                      :style="{ backgroundColor: tag.color || '#6366f1' }"
+                      class="square-chip"
+                    >
+                      {{ tag.name }}
+                    </q-chip>
+                    <div v-if="!itemTags.length" class="text-caption text-grey-5">
+                      No tags linked
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div class="row items-center justify-between">
+                    <span class="text-overline text-grey-8 text-weight-bold">Collaborators</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="add"
+                      size="xs"
+                      color="primary"
+                      @click="showAddPerm = !showAddPerm"
+                    />
+                  </div>
+                  <div v-if="showAddPerm" class="q-gutter-y-xs q-mb-sm">
+                    <q-select
+                      v-model="newPerm.email"
+                      :options="memberEmails"
+                      label="User Email"
+                      outlined
+                      dense
+                    />
+                    <q-select
+                      v-model="newPerm.role"
+                      :options="roleOptions"
+                      label="Role"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                    />
+                    <q-btn
+                      label="Grant"
+                      color="primary"
+                      dense
+                      size="sm"
+                      @click="onSavePermission"
+                      class="full-width"
+                      unelevated
+                    />
+                  </div>
+                  <div class="q-mt-xs q-gutter-y-xs">
+                    <q-item v-for="p in permissions" :key="p.id" class="q-pa-xs border-bottom">
+                      <q-item-section>
+                        <q-item-label class="text-caption ellipsis">{{
+                          p.user_email
+                        }}</q-item-label>
+                        <q-item-label caption class="text-overline">{{ p.role }}</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          icon="o_delete"
+                          size="xs"
+                          color="red"
+                          @click="onDeletePermission(p.user_email)"
+                        />
+                      </q-item-section>
+                    </q-item>
+                    <div v-if="!permissions.length" class="text-caption text-grey-5">
+                      No explicit overrides
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </q-expansion-item>
-        </div>
-      </q-card-section>
+            </q-expansion-item>
+          </div>
+        </q-card-section>
       </div>
     </q-card>
   </q-dialog>
@@ -519,7 +745,18 @@ import { computed, ref, watch } from 'vue';
 import { useTasksStore } from '../stores/tasksStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { tasksRepository } from '../repositories/tasksRepository';
-import type { Item, Tag, Comment, ItemAssignee, ItemPermission, ActivityLog, ItemStatus, ItemPriority, ItemType, ItemAccessibility } from '../types';
+import type {
+  Item,
+  Tag,
+  Comment,
+  ItemAssignee,
+  ItemPermission,
+  ActivityLog,
+  ItemStatus,
+  ItemPriority,
+  ItemType,
+  ItemAccessibility,
+} from '../types';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import TaskFormDialog from './TaskFormDialog.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
@@ -602,8 +839,8 @@ const suggestedChildType = computed<ItemType>(() => {
 });
 
 // Dropdowns
-const memberEmails = computed(() => tasksStore.members.map(m => m.email));
-const tagOptions = computed(() => tasksStore.tags.map(t => ({ label: t.name, value: t.id })));
+const memberEmails = computed(() => tasksStore.members.map((m) => m.email));
+const tagOptions = computed(() => tasksStore.tags.map((t) => ({ label: t.name, value: t.id })));
 
 const typeOptions = [
   { label: 'Project', value: 'project' },
@@ -706,7 +943,7 @@ const onSaveDescription = async () => {
   try {
     await tasksStore.updateItem(item.value.id, {
       content: editedDescription.value,
-      is_markdown: isMarkdownMode.value
+      is_markdown: isMarkdownMode.value,
     });
     isEditMode.value = false;
     await loadDetails(true);
@@ -803,12 +1040,12 @@ const parentOptions = computed(() => {
 });
 
 const statusLabel = computed(() => {
-  const opt = statusOptions.find(o => o.value === item.value?.status);
+  const opt = statusOptions.find((o) => o.value === item.value?.status);
   return opt ? opt.label : item.value?.status || '';
 });
 
 const priorityLabel = computed(() => {
-  const opt = priorityOptions.find(o => o.value === item.value?.priority);
+  const opt = priorityOptions.find((o) => o.value === item.value?.priority);
   return opt ? opt.label : item.value?.priority || '';
 });
 
@@ -833,13 +1070,20 @@ const statusChipStyle = (status: string) => {
 
 const statusDotColor = (status: string) => {
   switch (status) {
-    case 'todo': return '#64748b';
-    case 'in_progress': return '#3b82f6';
-    case 'review': return '#f97316';
-    case 'done': return '#22c55e';
-    case 'blocked': return '#ef4444';
-    case 'archived': return '#8c857b';
-    default: return '#9ca3af';
+    case 'todo':
+      return '#64748b';
+    case 'in_progress':
+      return '#3b82f6';
+    case 'review':
+      return '#f97316';
+    case 'done':
+      return '#22c55e';
+    case 'blocked':
+      return '#ef4444';
+    case 'archived':
+      return '#8c857b';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -860,11 +1104,16 @@ const priorityChipStyle = (priority: string) => {
 
 const priorityDotColor = (priority: string) => {
   switch (priority) {
-    case 'low': return '#22c55e';
-    case 'medium': return '#3b82f6';
-    case 'high': return '#f97316';
-    case 'urgent': return '#ef4444';
-    default: return '#9ca3af';
+    case 'low':
+      return '#22c55e';
+    case 'medium':
+      return '#3b82f6';
+    case 'high':
+      return '#f97316';
+    case 'urgent':
+      return '#ef4444';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -893,15 +1142,24 @@ const typeChipStyle = (type: string) => {
 
 const typeDotColor = (type: string) => {
   switch (type) {
-    case 'project': return '#8b5cf6';
-    case 'module': return '#10b981';
-    case 'submodule': return '#06b6d4';
-    case 'task': return '#3b82f6';
-    case 'note': return '#f59e0b';
-    case 'discussion': return '#14b8a6';
-    case 'bug': return '#ef4444';
-    case 'feature': return '#ec4899';
-    default: return '#9ca3af';
+    case 'project':
+      return '#8b5cf6';
+    case 'module':
+      return '#10b981';
+    case 'submodule':
+      return '#06b6d4';
+    case 'task':
+      return '#3b82f6';
+    case 'note':
+      return '#f59e0b';
+    case 'discussion':
+      return '#14b8a6';
+    case 'bug':
+      return '#ef4444';
+    case 'feature':
+      return '#ec4899';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -911,12 +1169,17 @@ watch(
     if (newId && newIsOpen) {
       const oldId = oldVal ? oldVal[0] : undefined;
       const oldIsOpen = oldVal ? oldVal[1] : undefined;
-      if (oldId === undefined || newId !== oldId || oldIsOpen === undefined || newIsOpen !== oldIsOpen) {
+      if (
+        oldId === undefined ||
+        newId !== oldId ||
+        oldIsOpen === undefined ||
+        newIsOpen !== oldIsOpen
+      ) {
         isEditMode.value = false;
         await loadDetails();
       }
     }
-  }
+  },
 );
 
 const onStatusUpdate = async (status: ItemStatus) => {
@@ -1056,7 +1319,7 @@ watch(
       dueDateProxy.value = '';
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const onUpdateStartDate = async (val: string | null) => {
@@ -1088,10 +1351,25 @@ const onClearDueDate = async () => {
 };
 
 // Accessibility options and helpers (only for Notes)
-const accessibilityOptions: { label: string; value: ItemAccessibility; icon: string; caption: string }[] = [
-  { label: 'Public', value: 'public', icon: 'lock_open', caption: 'Visible to all workspace members' },
+const accessibilityOptions: {
+  label: string;
+  value: ItemAccessibility;
+  icon: string;
+  caption: string;
+}[] = [
+  {
+    label: 'Public',
+    value: 'public',
+    icon: 'lock_open',
+    caption: 'Visible to all workspace members',
+  },
   { label: 'Private', value: 'private', icon: 'lock', caption: 'Only visible to you (creator)' },
-  { label: 'Restricted', value: 'restricted', icon: 'lock_person', caption: 'Only visible to creator, assignees, and collaborators' },
+  {
+    label: 'Restricted',
+    value: 'restricted',
+    icon: 'lock_person',
+    caption: 'Only visible to creator, assignees, and collaborators',
+  },
 ];
 
 const accessibilityChipStyle = (acc: string | undefined) => {
@@ -1109,10 +1387,14 @@ const accessibilityChipStyle = (acc: string | undefined) => {
 
 const accessibilityIcon = (acc: string | undefined) => {
   switch (acc || 'public') {
-    case 'public': return 'lock_open';
-    case 'private': return 'lock';
-    case 'restricted': return 'lock_person';
-    default: return 'help_outline';
+    case 'public':
+      return 'lock_open';
+    case 'private':
+      return 'lock';
+    case 'restricted':
+      return 'lock_person';
+    default:
+      return 'help_outline';
   }
 };
 
@@ -1137,41 +1419,66 @@ const formatDateShort = (d: string) => {
 
 const getActionDescription = (log: ActivityLog) => {
   switch (log.action) {
-    case 'created': return `created the item: "${log.new_value}"`;
-    case 'assigned': return `assigned the task to ${log.new_value}`;
-    case 'status_changed': return `changed status from "${log.old_value}" to "${log.new_value}"`;
-    case 'priority_changed': return `updated priority from "${log.old_value}" to "${log.new_value}"`;
-    case 'tag_added': return 'added a tag';
-    case 'tag_removed': return 'removed a tag';
-    default: return `performed action: ${log.action}`;
+    case 'created':
+      return `created the item: "${log.new_value}"`;
+    case 'assigned':
+      return `assigned the task to ${log.new_value}`;
+    case 'status_changed':
+      return `changed status from "${log.old_value}" to "${log.new_value}"`;
+    case 'priority_changed':
+      return `updated priority from "${log.old_value}" to "${log.new_value}"`;
+    case 'tag_added':
+      return 'added a tag';
+    case 'tag_removed':
+      return 'removed a tag';
+    default:
+      return `performed action: ${log.action}`;
   }
 };
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case 'project': return 'folder';
-    case 'module': return 'view_module';
-    case 'submodule': return 'layers';
-    case 'task': return 'assignment';
-    case 'note': return 'note';
-    case 'discussion': return 'forum';
-    case 'bug': return 'bug_report';
-    case 'feature': return 'star';
-    default: return 'help_outline';
+    case 'project':
+      return 'folder';
+    case 'module':
+      return 'view_module';
+    case 'submodule':
+      return 'layers';
+    case 'task':
+      return 'assignment';
+    case 'note':
+      return 'note';
+    case 'discussion':
+      return 'forum';
+    case 'bug':
+      return 'bug_report';
+    case 'feature':
+      return 'star';
+    default:
+      return 'help_outline';
   }
 };
 
 const getTypeColor = (type: string) => {
   switch (type) {
-    case 'project': return 'indigo';
-    case 'module': return 'blue';
-    case 'submodule': return 'cyan';
-    case 'task': return 'green';
-    case 'note': return 'orange';
-    case 'discussion': return 'teal';
-    case 'bug': return 'red';
-    case 'feature': return 'purple';
-    default: return 'grey';
+    case 'project':
+      return 'indigo';
+    case 'module':
+      return 'blue';
+    case 'submodule':
+      return 'cyan';
+    case 'task':
+      return 'green';
+    case 'note':
+      return 'orange';
+    case 'discussion':
+      return 'teal';
+    case 'bug':
+      return 'red';
+    case 'feature':
+      return 'purple';
+    default:
+      return 'grey';
   }
 };
 </script>
@@ -1211,7 +1518,7 @@ const getTypeColor = (type: string) => {
   background: #f8fafc;
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   white-space: pre-wrap;
 }
 
@@ -1225,7 +1532,7 @@ const getTypeColor = (type: string) => {
 }
 
 .reply-box {
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .border-bottom {
@@ -1259,16 +1566,24 @@ const getTypeColor = (type: string) => {
   font-weight: 700;
   line-height: 1.25;
 }
-.markdown-body :deep(h1) { font-size: 1.35rem; border-bottom: 1px solid #eaecef; padding-bottom: 0.2em; }
-.markdown-body :deep(h2) { font-size: 1.15rem; }
-.markdown-body :deep(h3) { font-size: 1.05rem; }
+.markdown-body :deep(h1) {
+  font-size: 1.35rem;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 0.2em;
+}
+.markdown-body :deep(h2) {
+  font-size: 1.15rem;
+}
+.markdown-body :deep(h3) {
+  font-size: 1.05rem;
+}
 .markdown-body :deep(p) {
   margin-top: 0;
   margin-bottom: 8px;
   line-height: 1.5;
 }
 .markdown-body :deep(code) {
-  background-color: rgba(27,31,35,0.05);
+  background-color: rgba(27, 31, 35, 0.05);
   font-family: monospace;
   padding: 0.15em 0.3em;
   border-radius: 3px;
@@ -1314,7 +1629,6 @@ const getTypeColor = (type: string) => {
   padding: 0 1em;
   margin: 0 0 8px 0;
 }
-
 
 .whitespace-pre-wrap {
   white-space: pre-wrap;

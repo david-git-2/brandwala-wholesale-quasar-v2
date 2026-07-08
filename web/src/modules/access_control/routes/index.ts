@@ -1,5 +1,5 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const accessControlRoutes: RouteRecordRaw[] = [
   {
@@ -11,8 +11,10 @@ const accessControlRoutes: RouteRecordRaw[] = [
         redirect: (to) => {
           const tenantSlug = Array.isArray(to.params.tenantSlug)
             ? to.params.tenantSlug[0]
-            : to.params.tenantSlug
-          return tenantSlug ? `/${tenantSlug}/app/access-control/modules` : '/app/access-control/modules'
+            : to.params.tenantSlug;
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/modules`
+            : '/app/access-control/modules';
         },
       },
       {
@@ -40,6 +42,6 @@ const accessControlRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default accessControlRoutes
+export default accessControlRoutes;

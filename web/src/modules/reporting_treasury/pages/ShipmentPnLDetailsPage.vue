@@ -96,7 +96,11 @@
           <div class="text-subtitle1 text-weight-bold text-primary">
             Stock Disposition &amp; Shrinkage
           </div>
-          <q-badge v-if="!totals.disposition_available" color="warning" label="Stock not received — disposition unavailable" />
+          <q-badge
+            v-if="!totals.disposition_available"
+            color="warning"
+            label="Stock not received — disposition unavailable"
+          />
         </div>
 
         <TreasuryTableWrap>
@@ -188,7 +192,10 @@
         </TreasuryTableWrap>
 
         <!-- Reconciliation Gap Warning Banner -->
-        <q-banner v-if="reconciliationSummary.hasGap" class="bg-warning text-black rounded-borders q-mt-md">
+        <q-banner
+          v-if="reconciliationSummary.hasGap"
+          class="bg-warning text-black rounded-borders q-mt-md"
+        >
           <template #avatar>
             <q-icon name="warning" color="black" />
           </template>
@@ -197,15 +204,21 @@
           <div class="row q-col-gutter-md q-mb-sm text-body2">
             <div class="col-auto">
               <span class="text-grey-8">Received:</span>
-              <span class="text-weight-medium q-ml-xs">{{ reconciliationSummary.received.toLocaleString() }} units</span>
+              <span class="text-weight-medium q-ml-xs"
+                >{{ reconciliationSummary.received.toLocaleString() }} units</span
+              >
             </div>
             <div class="col-auto">
               <span class="text-grey-8">Sold + stock:</span>
-              <span class="text-weight-medium q-ml-xs">{{ reconciliationSummary.accounted.toLocaleString() }} units</span>
+              <span class="text-weight-medium q-ml-xs"
+                >{{ reconciliationSummary.accounted.toLocaleString() }} units</span
+              >
             </div>
             <div class="col-auto">
               <span class="text-grey-8">Difference:</span>
-              <span class="text-weight-bold q-ml-xs">{{ formatGapQty(reconciliationSummary.gap) }} units</span>
+              <span class="text-weight-bold q-ml-xs"
+                >{{ formatGapQty(reconciliationSummary.gap) }} units</span
+              >
             </div>
           </div>
           <div class="text-caption text-grey-9">{{ reconciliationSummary.actionHint }}</div>
@@ -224,28 +237,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
-import type { QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { formatAmountBdt } from 'src/utils/currency'
-import { treasuryRepository } from '../repositories/treasuryRepository'
-import TreasuryPageShell from '../components/TreasuryPageShell.vue'
-import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
-import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import type { QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import { treasuryRepository } from '../repositories/treasuryRepository';
+import TreasuryPageShell from '../components/TreasuryPageShell.vue';
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue';
 
-const route = useRoute()
-const router = useRouter()
-const $q = useQuasar()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
 
-const id = Number(route.params.id)
-const loading = ref(false)
-const error = ref<string | null>(null)
+const id = Number(route.params.id);
+const loading = ref(false);
+const error = ref<string | null>(null);
 
-const shipment = ref<any>(null)
-const items = ref<any[]>([])
+const shipment = ref<any>(null);
+const items = ref<any[]>([]);
 const totals = ref({
   landed_cost: 0,
   sold_cost: 0,
@@ -259,60 +272,126 @@ const totals = ref({
   unsold_value: 0,
   disposition_available: false,
   reconciliation_gap: 0,
-})
+});
 
 const tradingColumns: QTableColumn[] = [
   { name: 'id', label: 'Item ID', field: 'id', align: 'left', sortable: true },
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
-  { name: 'ordered_quantity', label: 'Received Qty', field: 'ordered_quantity', align: 'right', sortable: true },
-  { name: 'landed_unit_cost', label: 'Landed Unit Cost', field: 'landed_unit_cost', align: 'right', sortable: true },
+  {
+    name: 'ordered_quantity',
+    label: 'Received Qty',
+    field: 'ordered_quantity',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'landed_unit_cost',
+    label: 'Landed Unit Cost',
+    field: 'landed_unit_cost',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'total_landed_cost', label: 'Total Landed Cost', field: 'id', align: 'right' },
   { name: 'sold_qty', label: 'Sold Qty', field: 'sold_qty', align: 'right', sortable: true },
   { name: 'sold_cost', label: 'Sold Cost', field: 'sold_cost', align: 'right', sortable: true },
   { name: 'revenue', label: 'Revenue', field: 'revenue', align: 'right', sortable: true },
   { name: 'gross_profit', label: 'Gross Profit', field: 'id', align: 'right' },
-]
+];
 
 const dispositionColumns: QTableColumn[] = [
   { name: 'id', label: 'Item ID', field: 'id', align: 'left', sortable: true },
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
-  { name: 'sellable_qty', label: 'Sellable Qty', field: 'sellable_qty', align: 'right', sortable: true },
-  { name: 'sellable_value', label: 'Sellable Value', field: 'sellable_value', align: 'right', sortable: true },
-  { name: 'box_damage_qty', label: 'Box Damage Qty', field: 'box_damage_qty', align: 'right', sortable: true },
-  { name: 'box_damage_value', label: 'Box Damage Value', field: 'box_damage_value', align: 'right', sortable: true },
+  {
+    name: 'sellable_qty',
+    label: 'Sellable Qty',
+    field: 'sellable_qty',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'sellable_value',
+    label: 'Sellable Value',
+    field: 'sellable_value',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'box_damage_qty',
+    label: 'Box Damage Qty',
+    field: 'box_damage_qty',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'box_damage_value',
+    label: 'Box Damage Value',
+    field: 'box_damage_value',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'stolen_qty', label: 'Stolen Qty', field: 'stolen_qty', align: 'right', sortable: true },
-  { name: 'stolen_value', label: 'Stolen Value', field: 'stolen_value', align: 'right', sortable: true },
-  { name: 'expired_qty', label: 'Expired Qty', field: 'expired_qty', align: 'right', sortable: true },
-  { name: 'expired_value', label: 'Expired Value', field: 'expired_value', align: 'right', sortable: true },
-  { name: 'shrinkage_value', label: 'Shrinkage Total', field: 'shrinkage_value', align: 'right', sortable: true },
-  { name: 'reconciliation_gap', label: 'Unit Gap', field: 'reconciliation_gap', align: 'right', sortable: true },
-]
+  {
+    name: 'stolen_value',
+    label: 'Stolen Value',
+    field: 'stolen_value',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'expired_qty',
+    label: 'Expired Qty',
+    field: 'expired_qty',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'expired_value',
+    label: 'Expired Value',
+    field: 'expired_value',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'shrinkage_value',
+    label: 'Shrinkage Total',
+    field: 'shrinkage_value',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'reconciliation_gap',
+    label: 'Unit Gap',
+    field: 'reconciliation_gap',
+    align: 'right',
+    sortable: true,
+  },
+];
 
 const itemAccountedQty = (row: {
-  sold_qty?: number
-  sellable_qty?: number
-  stolen_qty?: number
-  box_damage_qty?: number
-  expired_qty?: number
-  reserved_qty?: number
+  sold_qty?: number;
+  sellable_qty?: number;
+  stolen_qty?: number;
+  box_damage_qty?: number;
+  expired_qty?: number;
+  reserved_qty?: number;
 }) =>
   Number(row.sold_qty || 0) +
   Number(row.sellable_qty || 0) +
   Number(row.stolen_qty || 0) +
   Number(row.box_damage_qty || 0) +
   Number(row.expired_qty || 0) +
-  Number(row.reserved_qty || 0)
+  Number(row.reserved_qty || 0);
 
-const formatGapQty = (gap: number) => (gap > 0 ? `+${gap.toLocaleString()}` : gap.toLocaleString())
+const formatGapQty = (gap: number) => (gap > 0 ? `+${gap.toLocaleString()}` : gap.toLocaleString());
 
 const reconciliationSummary = computed(() => {
-  const received = items.value.reduce((sum, row) => sum + Number(row.ordered_quantity || 0), 0)
-  const accounted = items.value.reduce((sum, row) => sum + itemAccountedQty(row), 0)
-  const gap = totals.value.reconciliation_gap
-  const absGap = Math.abs(gap).toLocaleString()
+  const received = items.value.reduce((sum, row) => sum + Number(row.ordered_quantity || 0), 0);
+  const accounted = items.value.reduce((sum, row) => sum + itemAccountedQty(row), 0);
+  const gap = totals.value.reconciliation_gap;
+  const absGap = Math.abs(gap).toLocaleString();
 
   if (gap === 0) {
-    return { hasGap: false, received, accounted, gap, message: '', actionHint: '' }
+    return { hasGap: false, received, accounted, gap, message: '', actionHint: '' };
   }
 
   if (gap < 0) {
@@ -322,8 +401,9 @@ const reconciliationSummary = computed(() => {
       accounted,
       gap,
       message: `${absGap} more units are recorded as sold or in stock than were marked received on this shipment.`,
-      actionHint: 'Check shipment received quantities, invoice quantities, and stock split or adjustment records.',
-    }
+      actionHint:
+        'Check shipment received quantities, invoice quantities, and stock split or adjustment records.',
+    };
   }
 
   return {
@@ -332,16 +412,17 @@ const reconciliationSummary = computed(() => {
     accounted,
     gap,
     message: `${absGap} received units are not showing as sold or in any stock bucket (sellable, stolen, damage, expired, reserved).`,
-    actionHint: 'Complete warehouse receive or split, link sales to this batch, or record missing disposition.',
-  }
-})
+    actionHint:
+      'Complete warehouse receive or split, link sales to this batch, or record missing disposition.',
+  };
+});
 
 const gapOffenders = computed(() =>
   [...items.value]
     .filter((row) => Number(row.reconciliation_gap || 0) !== 0)
     .sort((a, b) => Math.abs(Number(b.reconciliation_gap)) - Math.abs(Number(a.reconciliation_gap)))
     .slice(0, 5),
-)
+);
 
 const statCards = computed(() => [
   {
@@ -385,36 +466,35 @@ const statCards = computed(() => [
     valueClass: 'text-negative',
     class: 'col-12 col-sm-6 col-md-4 col-lg-2',
   },
-])
+]);
 
 const loadPnL = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    const res = await treasuryRepository.getShipmentPnL(tenantId, id)
-    shipment.value = res.shipment
-    items.value = res.items || []
-    totals.value = res.totals
+    const res = await treasuryRepository.getShipmentPnL(tenantId, id);
+    shipment.value = res.shipment;
+    items.value = res.items || [];
+    totals.value = res.totals;
   } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load shipment details: ${err.message}` })
+    error.value = err.message;
+    $q.notify({ type: 'negative', message: `Failed to load shipment details: ${err.message}` });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const goBack = () => {
   void router.push({
     name: 'app-finance-shipments-page',
     params: { tenantSlug: authStore.tenantSlug ?? undefined },
-  })
-}
+  });
+};
 
 onMounted(() => {
-  void loadPnL()
-})
+  void loadPnL();
+});
 </script>
-

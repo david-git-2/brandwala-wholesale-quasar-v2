@@ -1,22 +1,19 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import {
-  handleApiFailure,
-  showSuccessNotification,
-} from 'src/utils/appFeedback'
-import { moduleService } from '../services/moduleService'
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { moduleService } from '../services/moduleService';
 import {
   buildModuleTree,
   getAssignableModules,
   getSubmodulesForParent,
-} from '../utils/moduleHierarchy'
+} from '../utils/moduleHierarchy';
 import type {
   Module,
   ModuleCreateInput,
   ModuleDeleteInput,
   ModuleStoreState,
   ModuleUpdateInput,
-} from '../types'
+} from '../types';
 
 export const useModuleStore = defineStore('module', {
   state: (): ModuleStoreState => ({
@@ -33,96 +30,96 @@ export const useModuleStore = defineStore('module', {
 
   actions: {
     clearError() {
-      this.error = null
+      this.error = null;
     },
 
     async fetchModules() {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await moduleService.listModules()
+        const result = await moduleService.listModules();
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load modules.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load modules.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = result.data ?? []
-        return result
+        this.items = result.data ?? [];
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createModule(module: ModuleCreateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await moduleService.createModule(module)
+        const result = await moduleService.createModule(module);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to create module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to create module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items.push(result.data!)
-        showSuccessNotification('Module created successfully.')
-        return result
+        this.items.push(result.data!);
+        showSuccessNotification('Module created successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async updateModule(module: ModuleUpdateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await moduleService.updateModule(module)
+        const result = await moduleService.updateModule(module);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to update module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to update module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const updatedModule = result.data!
-        const index = this.items.findIndex((item) => item.id === updatedModule.id)
+        const updatedModule = result.data!;
+        const index = this.items.findIndex((item) => item.id === updatedModule.id);
 
         if (index >= 0) {
-          this.items.splice(index, 1, updatedModule)
+          this.items.splice(index, 1, updatedModule);
         }
 
-        showSuccessNotification('Module updated successfully.')
-        return result
+        showSuccessNotification('Module updated successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async deleteModule(module: ModuleDeleteInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await moduleService.deleteModule(module)
+        const result = await moduleService.deleteModule(module);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to delete module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to delete module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = this.items.filter((item: Module) => item.id !== module.id)
-        showSuccessNotification('Module deleted successfully.')
-        return result
+        this.items = this.items.filter((item: Module) => item.id !== module.id);
+        showSuccessNotification('Module deleted successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
   },
-})
+});

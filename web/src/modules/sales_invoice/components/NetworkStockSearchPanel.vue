@@ -46,7 +46,7 @@
               <img
                 :src="group.image_url || 'https://placehold.co/48x48?text=No+Image'"
                 alt="product image"
-                style="object-fit: contain;"
+                style="object-fit: contain"
               />
             </q-avatar>
           </q-item-section>
@@ -64,7 +64,10 @@
             </q-item-label>
 
             <div class="row items-center q-gutter-xs q-mt-xs flex-wrap">
-              <template v-for="ctx in group.contexts" :key="`${ctx.global_stock_id}-${ctx.holding_tenant_id}`">
+              <template
+                v-for="ctx in group.contexts"
+                :key="`${ctx.global_stock_id}-${ctx.holding_tenant_id}`"
+              >
                 <q-chip
                   v-if="ctx.excellent_qty > 0 || ctx.allocated_qty > 0 || mode === 'invoice'"
                   dense
@@ -80,7 +83,12 @@
                   :
                   {{ ctx.allocated_qty > 0 ? ctx.allocated_qty : ctx.excellent_qty }}
                   <span
-                    v-if="mode === 'invoice' && ctx.is_own_tenant && ctx.allocated_qty === 0 && ctx.global_qty > 0"
+                    v-if="
+                      mode === 'invoice' &&
+                      ctx.is_own_tenant &&
+                      ctx.allocated_qty === 0 &&
+                      ctx.global_qty > 0
+                    "
                     class="q-ml-xs text-orange-9"
                   >
                     (via network)
@@ -118,74 +126,81 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue';
 
-import { globalRepository } from 'src/modules/global/repositories/globalRepository'
-import type { GlobalStockSearchField, StockNetworkMode, StockNetworkRow } from 'src/modules/global/types'
-import { groupStockNetworkRows, type StockNetworkProductGroup } from 'src/modules/global/utils/mapStockNetworkRow'
-import { formatAmountBdt } from 'src/utils/currency'
+import { globalRepository } from 'src/modules/global/repositories/globalRepository';
+import type {
+  GlobalStockSearchField,
+  StockNetworkMode,
+  StockNetworkRow,
+} from 'src/modules/global/types';
+import {
+  groupStockNetworkRows,
+  type StockNetworkProductGroup,
+} from 'src/modules/global/utils/mapStockNetworkRow';
+import { formatAmountBdt } from 'src/utils/currency';
 
-const formatCost = (val: number) => formatAmountBdt(val)
+const formatCost = (val: number) => formatAmountBdt(val);
 
 const props = withDefaults(
   defineProps<{
-    mode: StockNetworkMode
-    contextTenantId: number
-    selectable?: boolean
-    showSearchControls?: boolean
-    initialSearch?: string
+    mode: StockNetworkMode;
+    contextTenantId: number;
+    selectable?: boolean;
+    showSearchControls?: boolean;
+    initialSearch?: string;
   }>(),
   {
     selectable: false,
     showSearchControls: true,
     initialSearch: '',
   },
-)
+);
 
 const emit = defineEmits<{
-  (e: 'select', row: StockNetworkRow): void
-  (e: 'view', row: StockNetworkRow): void
-}>()
+  (e: 'select', row: StockNetworkRow): void;
+  (e: 'view', row: StockNetworkRow): void;
+}>();
 
-const searchField = ref<GlobalStockSearchField>('name')
-const searchQuery = ref(props.initialSearch)
-const results = ref<StockNetworkRow[]>([])
-const loading = ref(false)
+const searchField = ref<GlobalStockSearchField>('name');
+const searchQuery = ref(props.initialSearch);
+const results = ref<StockNetworkRow[]>([]);
+const loading = ref(false);
 
 const searchFieldOptions = [
   { label: 'Name', value: 'name' as const },
   { label: 'Barcode', value: 'barcode' as const },
   { label: 'Product Code', value: 'product_code' as const },
-]
+];
 
 const searchPlaceholder = computed(() => {
   switch (searchField.value) {
     case 'barcode':
-      return 'Search by barcode...'
+      return 'Search by barcode...';
     case 'product_code':
-      return 'Search by product code...'
+      return 'Search by product code...';
     default:
-      return 'Search by product name...'
+      return 'Search by product name...';
   }
-})
+});
 
-const groupedResults = computed(() => groupStockNetworkRows(results.value))
+const groupedResults = computed(() => groupStockNetworkRows(results.value));
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const runSearch = async () => {
   if (!props.contextTenantId) {
-    results.value = []
-    return
+    results.value = [];
+    return;
   }
 
-  const query = searchQuery.value.trim()
+  const query = searchQuery.value.trim();
   if (!query) {
-    results.value = []
-    return
+    results.value = [];
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   try {
     const result = await globalRepository.searchStockNetwork({
       context_tenant_id: props.contextTenantId,
@@ -194,55 +209,54 @@ const runSearch = async () => {
       search_field: searchField.value,
       page_size: 50,
       skip_count: true,
-    })
-    results.value = props.mode === 'invoice'
-      ? result.data.filter((row) => row.is_pickable)
-      : result.data
+    });
+    results.value =
+      props.mode === 'invoice' ? result.data.filter((row) => row.is_pickable) : result.data;
   } catch {
-    results.value = []
+    results.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const onSearchInput = () => {
-  if (debounceTimer) clearTimeout(debounceTimer)
+  if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
-    void runSearch()
-  }, 350)
-}
+    void runSearch();
+  }, 350);
+};
 
 const onCriteriaChange = () => {
   if (searchQuery.value.trim()) {
-    void runSearch()
+    void runSearch();
   }
-}
+};
 
 const pickableContext = (group: StockNetworkProductGroup) =>
-  group.contexts.find((ctx) => ctx.is_pickable) ?? group.contexts[0] ?? null
+  group.contexts.find((ctx) => ctx.is_pickable) ?? group.contexts[0] ?? null;
 
 const onSelectRow = (row: StockNetworkRow) => {
-  if (!row.is_pickable && props.mode === 'invoice') return
-  emit('select', row)
-}
+  if (!row.is_pickable && props.mode === 'invoice') return;
+  emit('select', row);
+};
 
 const onSelectGroup = (group: StockNetworkProductGroup) => {
-  const row = pickableContext(group)
-  if (!row) return
-  onSelectRow(row)
-}
+  const row = pickableContext(group);
+  if (!row) return;
+  onSelectRow(row);
+};
 
 watch(
   () => [props.contextTenantId, props.mode] as const,
   () => {
     if (searchQuery.value.trim()) {
-      void runSearch()
+      void runSearch();
     }
   },
   { immediate: true },
-)
+);
 
-defineExpose({ refresh: runSearch })
+defineExpose({ refresh: runSearch });
 </script>
 
 <style scoped>

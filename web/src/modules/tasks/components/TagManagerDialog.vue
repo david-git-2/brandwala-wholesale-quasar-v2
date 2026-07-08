@@ -10,7 +10,9 @@
       </q-card-section>
 
       <q-card-section class="q-pb-none">
-        <div class="text-subtitle2 text-weight-bold q-mb-xs">{{ editingTagId !== null ? 'Edit Tag' : 'Create New Tag' }}</div>
+        <div class="text-subtitle2 text-weight-bold q-mb-xs">
+          {{ editingTagId !== null ? 'Edit Tag' : 'Create New Tag' }}
+        </div>
         <q-form @submit.prevent="onCreateOrUpdateTag" class="row q-col-gutter-sm items-center">
           <div class="col-12 col-sm-4">
             <q-input
@@ -19,7 +21,7 @@
               outlined
               dense
               hide-bottom-space
-              :rules="[val => !!val || 'Required']"
+              :rules="[(val) => !!val || 'Required']"
               @update:model-value="onNameChange"
             />
           </div>
@@ -35,13 +37,7 @@
             />
           </div>
           <div class="col-12 col-sm-3">
-            <q-input
-              v-model="newTag.color"
-              label="Color"
-              outlined
-              dense
-              class="color-input"
-            >
+            <q-input v-model="newTag.color" label="Color" outlined dense class="color-input">
               <template #append>
                 <q-icon name="colorize" class="cursor-pointer" color="grey-8">
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -51,7 +47,9 @@
               </template>
             </q-input>
           </div>
-          <div class="col-12 col-sm-2 text-right row justify-end items-center q-gutter-x-xs no-wrap">
+          <div
+            class="col-12 col-sm-2 text-right row justify-end items-center q-gutter-x-xs no-wrap"
+          >
             <q-btn
               v-if="editingTagId !== null"
               flat
@@ -305,4 +303,3 @@ const onDeleteTag = async (tagId: number) => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 </style>
-

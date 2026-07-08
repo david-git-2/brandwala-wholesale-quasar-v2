@@ -22,8 +22,6 @@ import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/admi
 import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 
-
-
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -36,19 +34,17 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/app/:tenantSlug/:after(app|tenants|costing|products|product-based-costing)/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug =
-        typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
-      const after =
-        typeof to.params.after === 'string' ? to.params.after : null
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+      const after = typeof to.params.after === 'string' ? to.params.after : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
-          : ''
+          : '';
 
       return tenantSlug && after
         ? `/${tenantSlug}/app/${after}${rest ? `/${rest}` : ''}`
-        : '/app/dashboard'
+        : '/app/dashboard';
     },
   },
   {
@@ -60,23 +56,21 @@ const routes: RouteRecordRaw[] = [
     redirect: (to) => ({
       name: 'customer-dashboard',
       params: {
-        tenantSlug:
-          typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
+        tenantSlug: typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
       },
     }),
   },
   {
     path: '/shop/:tenantSlug/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug =
-        typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
-          : ''
+          : '';
 
-      return tenantSlug ? `/${tenantSlug}/shop/${rest}` : '/shop/dashboard'
+      return tenantSlug ? `/${tenantSlug}/shop/${rest}` : '/shop/dashboard';
     },
   },
   ...dashboardRoutes,
@@ -101,7 +95,6 @@ const routes: RouteRecordRaw[] = [
   ...reportingTreasuryRoutes,
   ...investorCapitalAdminRoutes,
   ...accessControlRoutes,
-
 
   // Always leave this as last one
   {

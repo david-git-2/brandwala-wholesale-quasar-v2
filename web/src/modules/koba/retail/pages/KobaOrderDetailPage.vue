@@ -7,7 +7,9 @@
           <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: ordersRouteName }" />
           <div>
             <div class="text-h5 text-weight-bold text-grey-9">Order details #{{ orderId }}</div>
-            <div class="text-caption text-grey-7">Placed on {{ formatDate(order?.created_at) }}</div>
+            <div class="text-caption text-grey-7">
+              Placed on {{ formatDate(order?.created_at) }}
+            </div>
           </div>
         </div>
 
@@ -16,7 +18,7 @@
           <q-chip
             v-if="order && !isAdmin"
             square
-                        :style="statusChipStyle(pendingStatusChange)"
+            :style="statusChipStyle(pendingStatusChange)"
             class="costing-file-status-chip q-px-md q-py-sm"
           >
             {{ order.status }}
@@ -31,7 +33,10 @@
             :style="statusChipStyle(pendingStatusChange)"
             class="costing-file-status-chip q-px-md q-py-sm"
           >
-            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(pendingStatusChange) }" />
+            <span
+              class="status-chip-dot"
+              :style="{ backgroundColor: statusDotColor(pendingStatusChange) }"
+            />
             {{ pendingStatusChange }}
             <q-menu :disable="savingStatus || isDeliveredLocked">
               <q-list dense style="min-width: 150px">
@@ -49,7 +54,6 @@
           </q-chip>
 
           <!-- Refresh button (admin) -->
-         
 
           <!-- Soft delete button (admin) -->
           <q-btn
@@ -74,9 +78,14 @@
     <div v-else-if="error" class="text-negative text-center q-pa-md empty-state-card">
       <q-icon name="error_outline" size="48px" color="negative" class="q-mb-sm" />
       <div class="text-h6">{{ error }}</div>
-      <q-btn label="Back to Orders" color="primary" flat :to="{ name: ordersRouteName }" class="q-mt-sm" />
+      <q-btn
+        label="Back to Orders"
+        color="primary"
+        flat
+        :to="{ name: ordersRouteName }"
+        class="q-mt-sm"
+      />
     </div>
-
 
     <div v-if="order" class="row q-col-gutter-md">
       <!-- Left Column: Items -->
@@ -84,7 +93,9 @@
         <!-- Shipping Card -->
         <q-card flat class="detail-card q-mb-md">
           <q-card-section class="q-pb-none">
-            <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center justify-between">
+            <div
+              class="text-subtitle1 text-weight-bold text-grey-9 row items-center justify-between"
+            >
               <div class="row items-center">
                 <q-icon name="local_shipping" color="primary" size="20px" class="q-mr-xs" />
                 Shipping Information
@@ -113,7 +124,12 @@
                     <span>{{ order.shipping_name || '—' }}</span>
                     <q-btn
                       v-if="isAdmin && order.shipping_name"
-                      flat dense round icon="content_copy" size="xs" color="grey-6"
+                      flat
+                      dense
+                      round
+                      icon="content_copy"
+                      size="xs"
+                      color="grey-6"
                       @click="copyToClipboard(order.shipping_name!, 'Name copied')"
                     />
                   </div>
@@ -126,7 +142,12 @@
                     <span>{{ order.shipping_phone || '—' }}</span>
                     <q-btn
                       v-if="isAdmin && order.shipping_phone"
-                      flat dense round icon="content_copy" size="xs" color="grey-6"
+                      flat
+                      dense
+                      round
+                      icon="content_copy"
+                      size="xs"
+                      color="grey-6"
                       @click="copyToClipboard(order.shipping_phone!, 'Phone copied')"
                     />
                   </div>
@@ -136,11 +157,24 @@
                 <div class="info-item">
                   <div class="info-lbl">District / Thana</div>
                   <div class="info-val text-weight-medium row items-center q-gutter-xs">
-                    <span>{{ order.shipping_district || '—' }} / {{ order.shipping_thana || '—' }}</span>
+                    <span
+                      >{{ order.shipping_district || '—' }} /
+                      {{ order.shipping_thana || '—' }}</span
+                    >
                     <q-btn
                       v-if="isAdmin && order.shipping_district"
-                      flat dense round icon="content_copy" size="xs" color="grey-6"
-                      @click="copyToClipboard((order.shipping_district ?? '') + ' / ' + (order.shipping_thana ?? ''), 'District copied')"
+                      flat
+                      dense
+                      round
+                      icon="content_copy"
+                      size="xs"
+                      color="grey-6"
+                      @click="
+                        copyToClipboard(
+                          (order.shipping_district ?? '') + ' / ' + (order.shipping_thana ?? ''),
+                          'District copied',
+                        )
+                      "
                     />
                   </div>
                 </div>
@@ -152,147 +186,222 @@
                     <span>{{ order.shipping_address || '—' }}</span>
                     <q-btn
                       v-if="isAdmin && order.shipping_address"
-                      flat dense round icon="content_copy" size="xs" color="grey-6"
+                      flat
+                      dense
+                      round
+                      icon="content_copy"
+                      size="xs"
+                      color="grey-6"
                       @click="copyToClipboard(order.shipping_address!, 'Address copied')"
                     />
                   </div>
                 </div>
               </div>
               <div class="col-12" v-if="order.free_delivery">
-                <q-chip outline color="primary" icon="check_circle" dense>Free Delivery Requested</q-chip>
+                <q-chip outline color="primary" icon="check_circle" dense
+                  >Free Delivery Requested</q-chip
+                >
               </div>
             </div>
           </q-card-section>
         </q-card>
 
         <!-- Items Card -->
-      <q-card flat class="detail-card">
-  <q-card-section class="q-pb-none">
-    <div class="row items-center justify-between">
-      <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center">
-        <q-icon name="shopping_bag" color="primary" size="20px" class="q-mr-xs" />
-        Order Items ({{ filteredItems.length }}<span v-if="isAdmin"> / {{ items.length }}</span> variant{{ items.length === 1 ? '' : 's' }})
-      </div>
-
-      <q-select
-        v-if="isAdmin"
-        v-model="confirmFilter"
-        :options="itemFilterOptions"
-        outlined
-        dense
-        emit-value
-        map-options
-        label="Filter"
-        style="min-width: 150px"
-        class="soft-input"
-      />
-    </div>
-  </q-card-section>
-
-  <q-card-section v-if="qtyError" class="q-pt-sm q-pb-none">
-    <q-banner rounded dense class="bg-negative-soft text-negative text-caption">
-      {{ qtyError }}
-    </q-banner>
-  </q-card-section>
-
-  <q-card-section class="q-pa-none q-mt-sm">
-    <q-table
-      :rows="filteredItems"
-      :columns="tableColumns"
-      row-key="id"
-      flat
-      bordered
-      wrap-cells
-      :pagination="{ rowsPerPage: 0 }"
-      hide-bottom
-      class="item-table"
-    >
-      <template #body="props">
-        <q-tr :props="props">
-          <q-td key="item" :props="props">
-            <div class="row no-wrap items-center q-gutter-sm">
-              <q-avatar square size="48px" class="bg-grey-2 item-avatar-frame">
-                <img v-if="props.row.image_url" :src="toDirectGoogleImageUrl(props.row.image_url)" referrerpolicy="no-referrer" />
-                <q-icon v-else name="image_not_supported" color="grey-5" />
-              </q-avatar>
-              <div>
-                <div class="text-caption text-primary text-uppercase text-weight-bold" v-if="props.row.brand">{{ props.row.brand }}</div>
-                <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">{{ props.row.name }}</div>
-                <div class="text-caption text-grey-6">Case Size: {{ props.row.case_size }}</div>
-                <div class="text-caption text-positive text-weight-medium" v-if="props.row.commission">
-                  Commission: ৳{{ Number(Math.max(0, (props.row.commission || 0) - gatewayChargeFlat)).toFixed(2) }} / unit
-                </div>
+        <q-card flat class="detail-card">
+          <q-card-section class="q-pb-none">
+            <div class="row items-center justify-between">
+              <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center">
+                <q-icon name="shopping_bag" color="primary" size="20px" class="q-mr-xs" />
+                Order Items ({{ filteredItems.length
+                }}<span v-if="isAdmin"> / {{ items.length }}</span> variant{{
+                  items.length === 1 ? '' : 's'
+                }})
               </div>
-            </div>
-          </q-td>
 
-          <q-td key="price" :props="props" class="text-right">
-            <div class="text-subtitle2 text-primary text-weight-bold">
-              ৳{{ Number((props.row.custom_price_gbp || props.row.unit_price_gbp || 0) * props.row.quantity).toFixed(2) }}
-            </div>
-            <div class="text-caption text-grey-6">৳{{ Number(props.row.custom_price_gbp || props.row.unit_price_gbp || 0).toFixed(2) }} each</div>
-            <div v-if="props.row.custom_price_gbp && props.row.custom_price_gbp > (props.row.unit_price_gbp || 0)" class="text-caption text-grey-5 text-strike">
-              Orig: ৳{{ Number(props.row.unit_price_gbp || 0).toFixed(2) }}
-            </div>
-          </q-td>
-
-          <q-td key="qty_ordered" :props="props" class="text-center">
-            <span class="text-weight-bold">{{ props.row.quantity }}</span>
-          </q-td>
-
-          <q-td key="qty_confirmed" :props="props" class="text-center" :class="{ 'cursor-pointer editable-cell': isAdmin && showConfirmedInput }">
-            <span class="text-weight-bold text-blue-9">{{ props.row.confirmed_quantity ?? '—' }}</span>
-            <q-icon v-if="isAdmin && showConfirmedInput" name="edit" size="xs" color="blue-4" class="q-ml-xs show-on-hover" />
-            
-            <q-popup-edit
-              v-if="isAdmin && showConfirmedInput && qtyDraft[props.row.id]"
-              v-slot="scope"
-              v-model.number="qtyDraft[props.row.id]!.confirmed"
-              auto-save
-              @save="(val) => onSaveConfirmedQty(props.row, val)"
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                min="0"
+              <q-select
+                v-if="isAdmin"
+                v-model="confirmFilter"
+                :options="itemFilterOptions"
+                outlined
                 dense
-                autofocus
-                counter
-                @keyup.enter="scope.set"
-                label="Confirmed Quantity"
+                emit-value
+                map-options
+                label="Filter"
+                style="min-width: 150px"
+                class="soft-input"
               />
-            </q-popup-edit>
-          </q-td>
+            </div>
+          </q-card-section>
 
-          <q-td key="qty_delivered" :props="props" class="text-center" :class="{ 'cursor-pointer editable-cell': isAdmin && showDeliveredInput }">
-            <span class="text-weight-bold text-teal-9">{{ props.row.delivered_quantity }}</span>
-            <q-icon v-if="isAdmin && showDeliveredInput" name="edit" size="xs" color="teal-4" class="q-ml-xs show-on-hover" />
+          <q-card-section v-if="qtyError" class="q-pt-sm q-pb-none">
+            <q-banner rounded dense class="bg-negative-soft text-negative text-caption">
+              {{ qtyError }}
+            </q-banner>
+          </q-card-section>
 
-            <q-popup-edit
-              v-if="isAdmin && showDeliveredInput && qtyDraft[props.row.id]"
-              v-slot="scope"
-              v-model.number="qtyDraft[props.row.id]!.delivered"
-              auto-save
-              @save="(val) => onSaveDeliveredQty(props.row, val)"
+          <q-card-section class="q-pa-none q-mt-sm">
+            <q-table
+              :rows="filteredItems"
+              :columns="tableColumns"
+              row-key="id"
+              flat
+              bordered
+              wrap-cells
+              :pagination="{ rowsPerPage: 0 }"
+              hide-bottom
+              class="item-table"
             >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                min="0"
-                :max="props.row.confirmed_quantity ?? props.row.quantity"
-                dense
-                autofocus
-                counter
-                @keyup.enter="scope.set"
-                label="Delivered Quantity"
-              />
-            </q-popup-edit>
-          </q-td>
-        </q-tr>
-      </template>
-    </q-table>
-  </q-card-section>
-</q-card>
+              <template #body="props">
+                <q-tr :props="props">
+                  <q-td key="item" :props="props">
+                    <div class="row no-wrap items-center q-gutter-sm">
+                      <q-avatar square size="48px" class="bg-grey-2 item-avatar-frame">
+                        <img
+                          v-if="props.row.image_url"
+                          :src="toDirectGoogleImageUrl(props.row.image_url)"
+                          referrerpolicy="no-referrer"
+                        />
+                        <q-icon v-else name="image_not_supported" color="grey-5" />
+                      </q-avatar>
+                      <div>
+                        <div
+                          class="text-caption text-primary text-uppercase text-weight-bold"
+                          v-if="props.row.brand"
+                        >
+                          {{ props.row.brand }}
+                        </div>
+                        <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">
+                          {{ props.row.name }}
+                        </div>
+                        <div class="text-caption text-grey-6">
+                          Case Size: {{ props.row.case_size }}
+                        </div>
+                        <div
+                          class="text-caption text-positive text-weight-medium"
+                          v-if="props.row.commission"
+                        >
+                          Commission: ৳{{
+                            Number(
+                              Math.max(0, (props.row.commission || 0) - gatewayChargeFlat),
+                            ).toFixed(2)
+                          }}
+                          / unit
+                        </div>
+                      </div>
+                    </div>
+                  </q-td>
+
+                  <q-td key="price" :props="props" class="text-right">
+                    <div class="text-subtitle2 text-primary text-weight-bold">
+                      ৳{{
+                        Number(
+                          (props.row.custom_price_gbp || props.row.unit_price_gbp || 0) *
+                            props.row.quantity,
+                        ).toFixed(2)
+                      }}
+                    </div>
+                    <div class="text-caption text-grey-6">
+                      ৳{{
+                        Number(props.row.custom_price_gbp || props.row.unit_price_gbp || 0).toFixed(
+                          2,
+                        )
+                      }}
+                      each
+                    </div>
+                    <div
+                      v-if="
+                        props.row.custom_price_gbp &&
+                        props.row.custom_price_gbp > (props.row.unit_price_gbp || 0)
+                      "
+                      class="text-caption text-grey-5 text-strike"
+                    >
+                      Orig: ৳{{ Number(props.row.unit_price_gbp || 0).toFixed(2) }}
+                    </div>
+                  </q-td>
+
+                  <q-td key="qty_ordered" :props="props" class="text-center">
+                    <span class="text-weight-bold">{{ props.row.quantity }}</span>
+                  </q-td>
+
+                  <q-td
+                    key="qty_confirmed"
+                    :props="props"
+                    class="text-center"
+                    :class="{ 'cursor-pointer editable-cell': isAdmin && showConfirmedInput }"
+                  >
+                    <span class="text-weight-bold text-blue-9">{{
+                      props.row.confirmed_quantity ?? '—'
+                    }}</span>
+                    <q-icon
+                      v-if="isAdmin && showConfirmedInput"
+                      name="edit"
+                      size="xs"
+                      color="blue-4"
+                      class="q-ml-xs show-on-hover"
+                    />
+
+                    <q-popup-edit
+                      v-if="isAdmin && showConfirmedInput && qtyDraft[props.row.id]"
+                      v-slot="scope"
+                      v-model.number="qtyDraft[props.row.id]!.confirmed"
+                      auto-save
+                      @save="(val) => onSaveConfirmedQty(props.row, val)"
+                    >
+                      <q-input
+                        v-model.number="scope.value"
+                        type="number"
+                        min="0"
+                        dense
+                        autofocus
+                        counter
+                        @keyup.enter="scope.set"
+                        label="Confirmed Quantity"
+                      />
+                    </q-popup-edit>
+                  </q-td>
+
+                  <q-td
+                    key="qty_delivered"
+                    :props="props"
+                    class="text-center"
+                    :class="{ 'cursor-pointer editable-cell': isAdmin && showDeliveredInput }"
+                  >
+                    <span class="text-weight-bold text-teal-9">{{
+                      props.row.delivered_quantity
+                    }}</span>
+                    <q-icon
+                      v-if="isAdmin && showDeliveredInput"
+                      name="edit"
+                      size="xs"
+                      color="teal-4"
+                      class="q-ml-xs show-on-hover"
+                    />
+
+                    <q-popup-edit
+                      v-if="isAdmin && showDeliveredInput && qtyDraft[props.row.id]"
+                      v-slot="scope"
+                      v-model.number="qtyDraft[props.row.id]!.delivered"
+                      auto-save
+                      @save="(val) => onSaveDeliveredQty(props.row, val)"
+                    >
+                      <q-input
+                        v-model.number="scope.value"
+                        type="number"
+                        min="0"
+                        :max="props.row.confirmed_quantity ?? props.row.quantity"
+                        dense
+                        autofocus
+                        counter
+                        @keyup.enter="scope.set"
+                        label="Delivered Quantity"
+                      />
+                    </q-popup-edit>
+                  </q-td>
+                </q-tr>
+              </template>
+            </q-table>
+          </q-card-section>
+        </q-card>
       </div>
 
       <!-- Right Column: Order Summary & Commission -->
@@ -357,32 +466,51 @@
 
           <div class="row justify-between q-py-xs text-grey-8">
             <div>Products Commission</div>
-            <div class="text-weight-bold text-positive">৳{{ productsCommissionDisplay.toFixed(2) }}</div>
+            <div class="text-weight-bold text-positive">
+              ৳{{ productsCommissionDisplay.toFixed(2) }}
+            </div>
           </div>
-          <div class="row justify-between q-py-xs text-grey-8" v-if="order.extra_profit_user || order.extra_profit_company">
+          <div
+            class="row justify-between q-py-xs text-grey-8"
+            v-if="order.extra_profit_user || order.extra_profit_company"
+          >
             <div>Extra Profit Share (You 90% | Company 10%)</div>
-            <div class="text-weight-bold text-positive">+৳{{ Number(order.extra_profit_user || 0).toFixed(2) }} | +৳{{ Number(order.extra_profit_company || 0).toFixed(2) }}</div>
+            <div class="text-weight-bold text-positive">
+              +৳{{ Number(order.extra_profit_user || 0).toFixed(2) }} | +৳{{
+                Number(order.extra_profit_company || 0).toFixed(2)
+              }}
+            </div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="order.delivery_adjustment">
             <div>Delivery Adjustment</div>
-            <div class="text-weight-bold text-positive">+৳{{ Number(order.delivery_adjustment || 0).toFixed(2) }}</div>
+            <div class="text-weight-bold text-positive">
+              +৳{{ Number(order.delivery_adjustment || 0).toFixed(2) }}
+            </div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="order.cod_charge">
             <div>COD Charge (1.00%)</div>
-            <div class="text-weight-bold text-negative">-৳{{ Number(order.cod_charge || 0).toFixed(2) }}</div>
+            <div class="text-weight-bold text-negative">
+              -৳{{ Number(order.cod_charge || 0).toFixed(2) }}
+            </div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="order.packing_charge">
             <div>Packing Charge</div>
-            <div class="text-weight-bold text-negative">-৳{{ Number(order.packing_charge || 0).toFixed(2) }}</div>
+            <div class="text-weight-bold text-negative">
+              -৳{{ Number(order.packing_charge || 0).toFixed(2) }}
+            </div>
           </div>
           <div class="row justify-between q-py-xs text-grey-8" v-if="order.invoice_charge">
             <div>Invoice Charge</div>
-            <div class="text-weight-bold text-negative">-৳{{ Number(order.invoice_charge || 0).toFixed(2) }}</div>
+            <div class="text-weight-bold text-negative">
+              -৳{{ Number(order.invoice_charge || 0).toFixed(2) }}
+            </div>
           </div>
 
           <q-separator class="q-my-sm" />
 
-          <div class="row justify-between q-py-sm text-subtitle1 text-weight-bold text-positive q-mt-sm bg-positive-soft q-px-sm rounded-borders">
+          <div
+            class="row justify-between q-py-sm text-subtitle1 text-weight-bold text-positive q-mt-sm bg-positive-soft q-px-sm rounded-borders"
+          >
             <div class="row items-center">
               <q-icon name="monetization_on" class="q-mr-xs" size="20px" />
               Net Earnings
@@ -403,7 +531,10 @@
             no-caps
             class="full-width cta-btn"
             :loading="savingStatus"
-            @click="confirmStatusDialogTarget = 'confirmed'; statusDialogOpen = true"
+            @click="
+              confirmStatusDialogTarget = 'confirmed';
+              statusDialogOpen = true;
+            "
           />
 
           <!-- Mark as Processing -->
@@ -416,7 +547,10 @@
             no-caps
             class="full-width cta-btn"
             :loading="savingStatus"
-            @click="confirmStatusDialogTarget = 'processing'; statusDialogOpen = true"
+            @click="
+              confirmStatusDialogTarget = 'processing';
+              statusDialogOpen = true;
+            "
           />
 
           <!-- Mark as Shipped -->
@@ -429,12 +563,19 @@
             no-caps
             class="full-width cta-btn"
             :loading="savingStatus"
-            @click="confirmStatusDialogTarget = 'shipped'; statusDialogOpen = true"
+            @click="
+              confirmStatusDialogTarget = 'shipped';
+              statusDialogOpen = true;
+            "
           />
 
           <!-- Mark as Delivered -->
           <q-btn
-            v-if="order.status === 'shipped' || order.status === 'confirmed' || order.status === 'processing'"
+            v-if="
+              order.status === 'shipped' ||
+              order.status === 'confirmed' ||
+              order.status === 'processing'
+            "
             unelevated
             color="positive"
             icon="task_alt"
@@ -442,7 +583,10 @@
             no-caps
             class="full-width cta-btn"
             :loading="savingStatus"
-            @click="confirmStatusDialogTarget = 'delivered'; statusDialogOpen = true"
+            @click="
+              confirmStatusDialogTarget = 'delivered';
+              statusDialogOpen = true;
+            "
           />
 
           <!-- Cancel -->
@@ -455,7 +599,10 @@
             no-caps
             class="full-width"
             :loading="savingStatus"
-            @click="confirmStatusDialogTarget = 'cancelled'; statusDialogOpen = true"
+            @click="
+              confirmStatusDialogTarget = 'cancelled';
+              statusDialogOpen = true;
+            "
           />
         </div>
       </div>
@@ -470,7 +617,8 @@
         </q-card-section>
         <q-card-section class="text-grey-8">
           Are you sure you want to set this order to
-          <span class="text-weight-bold text-grey-9">{{ confirmStatusDialogTarget }}</span>?
+          <span class="text-weight-bold text-grey-9">{{ confirmStatusDialogTarget }}</span
+          >?
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps label="Cancel" v-close-popup />
@@ -511,115 +659,124 @@
     </q-dialog>
 
     <!-- ── Copy snackbar ── -->
-    <q-snackbar v-model="copySnackbar" :message="copyMessage" timeout="1500" color="dark" position="bottom" />
+    <q-snackbar
+      v-model="copySnackbar"
+      :message="copyMessage"
+      timeout="1500"
+      color="dark"
+      position="bottom"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { date, useQuasar } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore'
-import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
-import type { KobaOrderItem, KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository'
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { date, useQuasar } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore';
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
+import type {
+  KobaOrderItem,
+  KobaOrderStatus,
+} from 'src/modules/koba/retail/repositories/kobaOrderRepository';
 
-const $q = useQuasar()
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const orderStore = useKobaOrderStore()
-const settingsStore = useKobaSettingsStore()
+const $q = useQuasar();
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const orderStore = useKobaOrderStore();
+const settingsStore = useKobaSettingsStore();
 
-const orderId = computed(() => Number(route.params.id))
-const loading = ref(true)
-const error = ref<string | null>(null)
+const orderId = computed(() => Number(route.params.id));
+const loading = ref(true);
+const error = ref<string | null>(null);
 
-const order = computed(() => orderStore.orderDetail?.order || null)
-const items = computed(() => orderStore.orderDetail?.items || [])
+const order = computed(() => orderStore.orderDetail?.order || null);
+const items = computed(() => orderStore.orderDetail?.items || []);
 
 // ─── Role / permission ──────────────────────────────────────────────────────
 
-const ADMIN_ROLES: string[] = ['superadmin', 'admin', 'staff']
-const isAdmin = computed(() =>
-  ADMIN_ROLES.includes(authStore.matchedRole ?? '')
-)
+const ADMIN_ROLES: string[] = ['superadmin', 'admin', 'staff'];
+const isAdmin = computed(() => ADMIN_ROLES.includes(authStore.matchedRole ?? ''));
 
 const ordersRouteName = computed(() => {
-  return authStore.scope === 'shop' ? 'shop-koba-retail-orders-page' : 'app-koba-retail-orders-page'
-})
+  return authStore.scope === 'shop'
+    ? 'shop-koba-retail-orders-page'
+    : 'app-koba-retail-orders-page';
+});
 
-const gatewayChargeFlat = computed(() => settingsStore.settings?.gateway_charge_flat ?? 20)
+const gatewayChargeFlat = computed(() => settingsStore.settings?.gateway_charge_flat ?? 20);
 
 // ─── Status helpers ─────────────────────────────────────────────────────────
 
 const statusChipStyle = (currentStatus: string | null) => {
-  const value = (currentStatus ?? '').toLowerCase()
+  const value = (currentStatus ?? '').toLowerCase();
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'confirmed') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'processing') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'shipped') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'delivered') {
     return {
       backgroundColor: '#e0f2f1',
       color: '#00695c',
       border: '1px solid #b2dfdb',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#dbe5f3',
     color: '#3b4b66',
     border: '1px solid #b9c8dd',
-  }
-}
+  };
+};
 
 const statusDotColor = (currentStatus: string | null) => {
-  const value = (currentStatus ?? '').toLowerCase()
-  if (value === 'pending') return '#9a6a24'
-  if (value === 'confirmed') return '#3f67b3'
-  if (value === 'processing') return '#3f51b5'
-  if (value === 'shipped') return '#2f8b5d'
-  if (value === 'delivered') return '#009688'
-  if (value === 'cancelled') return '#a64c62'
-  return '#66758c'
-}
+  const value = (currentStatus ?? '').toLowerCase();
+  if (value === 'pending') return '#9a6a24';
+  if (value === 'confirmed') return '#3f67b3';
+  if (value === 'processing') return '#3f51b5';
+  if (value === 'shipped') return '#2f8b5d';
+  if (value === 'delivered') return '#009688';
+  if (value === 'cancelled') return '#a64c62';
+  return '#66758c';
+};
 
 function onStatusMenuSelect(nextStatus: KobaOrderStatus) {
   if (savingStatus.value || isDeliveredLocked.value) {
-    return
+    return;
   }
-  onStatusSelectChange(nextStatus)
+  onStatusSelectChange(nextStatus);
 }
 
 const statusOptions = [
@@ -629,96 +786,121 @@ const statusOptions = [
   { label: 'Shipped', value: 'shipped' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Cancelled', value: 'cancelled' },
-]
+];
 
-const isDeliveredLocked = computed(() => order.value?.status === 'delivered')
-const canEditQuantities = computed(() =>
-  isAdmin.value && !isDeliveredLocked.value && order.value?.status !== 'cancelled'
-)
-const showConfirmedInput = computed(() =>
-  canEditQuantities.value && order.value?.status === 'pending'
-)
-const showDeliveredInput = computed(() =>
-  canEditQuantities.value && order.value?.status !== 'pending'
-)
+const isDeliveredLocked = computed(() => order.value?.status === 'delivered');
+const canEditQuantities = computed(
+  () => isAdmin.value && !isDeliveredLocked.value && order.value?.status !== 'cancelled',
+);
+const showConfirmedInput = computed(
+  () => canEditQuantities.value && order.value?.status === 'pending',
+);
+const showDeliveredInput = computed(
+  () => canEditQuantities.value && order.value?.status !== 'pending',
+);
 
 // ─── Status change (dropdown + dialog) ─────────────────────────────────────
 
-const pendingStatusChange = ref<KobaOrderStatus | null>(null)
-const savingStatus = ref(false)
-const statusDialogOpen = ref(false)
-const confirmStatusDialogTarget = ref<KobaOrderStatus | null>(null)
+const pendingStatusChange = ref<KobaOrderStatus | null>(null);
+const savingStatus = ref(false);
+const statusDialogOpen = ref(false);
+const confirmStatusDialogTarget = ref<KobaOrderStatus | null>(null);
 
 // Keep dropdown in sync with the order status
 watch(
   () => order.value?.status,
-  (s) => { pendingStatusChange.value = s ?? null },
-  { immediate: true }
-)
+  (s) => {
+    pendingStatusChange.value = s ?? null;
+  },
+  { immediate: true },
+);
 
 function onStatusSelectChange(newStatus: KobaOrderStatus) {
   if (!newStatus || newStatus === order.value?.status || savingStatus.value) {
     // revert
-    pendingStatusChange.value = order.value?.status ?? null
-    return
+    pendingStatusChange.value = order.value?.status ?? null;
+    return;
   }
-  confirmStatusDialogTarget.value = newStatus
-  statusDialogOpen.value = true
+  confirmStatusDialogTarget.value = newStatus;
+  statusDialogOpen.value = true;
   // revert dropdown optimistically until confirmed
-  pendingStatusChange.value = order.value?.status ?? null
+  pendingStatusChange.value = order.value?.status ?? null;
 }
 
 async function onConfirmStatusChange() {
-  if (!confirmStatusDialogTarget.value || !orderId.value) return
-  savingStatus.value = true
+  if (!confirmStatusDialogTarget.value || !orderId.value) return;
+  savingStatus.value = true;
   try {
-    const result = await orderStore.updateOrderStatus(orderId.value, confirmStatusDialogTarget.value)
+    const result = await orderStore.updateOrderStatus(
+      orderId.value,
+      confirmStatusDialogTarget.value,
+    );
     if (result?.success) {
-      $q.notify({ message: 'Order status updated', color: 'positive', icon: 'check_circle', timeout: 1500 })
+      $q.notify({
+        message: 'Order status updated',
+        color: 'positive',
+        icon: 'check_circle',
+        timeout: 1500,
+      });
     } else {
-      $q.notify({ message: result?.error ?? 'Failed to update status', color: 'negative', icon: 'error', timeout: 2500 })
-      pendingStatusChange.value = order.value?.status ?? null
+      $q.notify({
+        message: result?.error ?? 'Failed to update status',
+        color: 'negative',
+        icon: 'error',
+        timeout: 2500,
+      });
+      pendingStatusChange.value = order.value?.status ?? null;
     }
   } finally {
-    savingStatus.value = false
-    statusDialogOpen.value = false
-    confirmStatusDialogTarget.value = null
+    savingStatus.value = false;
+    statusDialogOpen.value = false;
+    confirmStatusDialogTarget.value = null;
   }
 }
 
 // ─── Soft delete ────────────────────────────────────────────────────────────
 
-const savingDelete = ref(false)
-const deleteDialogOpen = ref(false)
+const savingDelete = ref(false);
+const deleteDialogOpen = ref(false);
 
 async function onConfirmDelete() {
-  if (!orderId.value) return
-  savingDelete.value = true
+  if (!orderId.value) return;
+  savingDelete.value = true;
   try {
-    const result = await orderStore.softDeleteOrder(orderId.value)
+    const result = await orderStore.softDeleteOrder(orderId.value);
     if (result?.success) {
-      $q.notify({ message: 'Order deleted successfully', color: 'dark', icon: 'delete', timeout: 1500 })
-      void router.push({ name: ordersRouteName.value })
+      $q.notify({
+        message: 'Order deleted successfully',
+        color: 'dark',
+        icon: 'delete',
+        timeout: 1500,
+      });
+      void router.push({ name: ordersRouteName.value });
     } else {
-      $q.notify({ message: result?.error ?? 'Failed to delete order', color: 'negative', icon: 'error', timeout: 2500 })
+      $q.notify({
+        message: result?.error ?? 'Failed to delete order',
+        color: 'negative',
+        icon: 'error',
+        timeout: 2500,
+      });
     }
   } finally {
-    savingDelete.value = false
-    deleteDialogOpen.value = false
+    savingDelete.value = false;
+    deleteDialogOpen.value = false;
   }
 }
 
 // ─── Quantity draft state ───────────────────────────────────────────────────
 
 interface QtyDraft {
-  confirmed: number | null
-  delivered: number | null
+  confirmed: number | null;
+  delivered: number | null;
 }
 
-const qtyDraft = reactive<Record<number, QtyDraft>>({})
-const qtyError = ref<string | null>(null)
-const savingConfirmedId = ref<number | null>(null)
-const savingDeliveredId = ref<number | null>(null)
+const qtyDraft = reactive<Record<number, QtyDraft>>({});
+const qtyError = ref<string | null>(null);
+const savingConfirmedId = ref<number | null>(null);
+const savingDeliveredId = ref<number | null>(null);
 
 function initDraftForItems(itemList: KobaOrderItem[]) {
   for (const item of itemList) {
@@ -726,75 +908,75 @@ function initDraftForItems(itemList: KobaOrderItem[]) {
       qtyDraft[item.id] = {
         confirmed: item.confirmed_quantity ?? null,
         delivered: item.delivered_quantity ?? 0,
-      }
+      };
     }
   }
 }
 
-watch(items, (newItems) => { initDraftForItems(newItems) }, { immediate: true })
-
-
-
-
-
-
+watch(
+  items,
+  (newItems) => {
+    initDraftForItems(newItems);
+  },
+  { immediate: true },
+);
 
 // ─── Item filter ─────────────────────────────────────────────────────────────
 
-const confirmFilter = ref<'all' | 'confirmed' | 'not_confirmed'>('all')
+const confirmFilter = ref<'all' | 'confirmed' | 'not_confirmed'>('all');
 
 const itemFilterOptions = [
   { label: 'All Items', value: 'all' },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Not Confirmed', value: 'not_confirmed' },
-]
+];
 
 const filteredItems = computed(() => {
-  if (!isAdmin.value || confirmFilter.value === 'all') return items.value
+  if (!isAdmin.value || confirmFilter.value === 'all') return items.value;
   if (confirmFilter.value === 'confirmed') {
-    return items.value.filter((i) => (i.confirmed_quantity ?? 0) > 0)
+    return items.value.filter((i) => (i.confirmed_quantity ?? 0) > 0);
   }
-  return items.value.filter((i) => (i.confirmed_quantity ?? 0) === 0)
-})
+  return items.value.filter((i) => (i.confirmed_quantity ?? 0) === 0);
+});
 
 // ─── Totals ──────────────────────────────────────────────────────────────────
 
 const totalQuantity = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.quantity || 0), 0)
-)
+  items.value.reduce((sum, item) => sum + (item.quantity || 0), 0),
+);
 
 const totalOrdered = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.quantity || 0), 0)
-)
+  items.value.reduce((sum, item) => sum + (item.quantity || 0), 0),
+);
 
 const totalConfirmed = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.confirmed_quantity || 0), 0)
-)
+  items.value.reduce((sum, item) => sum + (item.confirmed_quantity || 0), 0),
+);
 
 const totalDelivered = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.delivered_quantity || 0), 0)
-)
+  items.value.reduce((sum, item) => sum + (item.delivered_quantity || 0), 0),
+);
 
 const productsCommissionDisplay = computed(() => {
-  if (!order.value) return 0
-  return Number(order.value.total_commission || 0) + Number(order.value.extra_profit_user || 0)
-})
+  if (!order.value) return 0;
+  return Number(order.value.total_commission || 0) + Number(order.value.extra_profit_user || 0);
+});
 
 const deliveryCharge = computed(() => {
-  if (!order.value || order.value.free_delivery || !order.value.shipping_district) return 0
-  const rates = settingsStore.settings?.delivery_rates || { default: 110, Dhaka: 100 }
-  return rates[order.value.shipping_district] ?? rates['default'] ?? 110
-})
+  if (!order.value || order.value.free_delivery || !order.value.shipping_district) return 0;
+  const rates = settingsStore.settings?.delivery_rates || { default: 110, Dhaka: 100 };
+  return rates[order.value.shipping_district] ?? rates['default'] ?? 110;
+});
 
 const finalTotal = computed(() => {
-  if (!order.value) return 0
-  return Number(order.value.subtotal_gbp || 0) + deliveryCharge.value
-})
+  if (!order.value) return 0;
+  return Number(order.value.subtotal_gbp || 0) + deliveryCharge.value;
+});
 
 const netOrderCommission = computed(() => {
-  if (!order.value) return 0
+  if (!order.value) return 0;
   if (order.value.net_order_commission) {
-    return Number(order.value.net_order_commission)
+    return Number(order.value.net_order_commission);
   }
   return (
     productsCommissionDisplay.value +
@@ -802,40 +984,40 @@ const netOrderCommission = computed(() => {
     Number(order.value.cod_charge || 0) -
     Number(order.value.packing_charge || 0) -
     Number(order.value.invoice_charge || 0)
-  )
-})
+  );
+});
 
 // ─── Copy to clipboard ────────────────────────────────────────────────────────
 
-const copySnackbar = ref(false)
-const copyMessage = ref('')
+const copySnackbar = ref(false);
+const copyMessage = ref('');
 
 async function copyToClipboard(text: string, successMsg = 'Copied') {
-  const value = String(text || '').trim()
-  if (!value) return
+  const value = String(text || '').trim();
+  if (!value) return;
   try {
     if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value)
+      await navigator.clipboard.writeText(value);
     } else {
-      const area = document.createElement('textarea')
-      area.value = value
-      area.setAttribute('readonly', '')
-      area.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
-      document.body.appendChild(area)
-      area.focus()
-      area.select()
-      document.execCommand('copy')
-      document.body.removeChild(area)
+      const area = document.createElement('textarea');
+      area.value = value;
+      area.setAttribute('readonly', '');
+      area.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
     }
-    copyMessage.value = successMsg
-    copySnackbar.value = true
+    copyMessage.value = successMsg;
+    copySnackbar.value = true;
   } catch {
-    $q.notify({ message: 'Could not copy to clipboard', color: 'warning', timeout: 1500 })
+    $q.notify({ message: 'Could not copy to clipboard', color: 'warning', timeout: 1500 });
   }
 }
 
 function copyAllShipping() {
-  if (!order.value) return
+  if (!order.value) return;
   const lines = [
     order.value.shipping_name,
     order.value.shipping_phone,
@@ -843,45 +1025,40 @@ function copyAllShipping() {
     order.value.shipping_address,
   ]
     .filter(Boolean)
-    .join('\n')
-  void copyToClipboard(lines, 'Shipping info copied')
+    .join('\n');
+  void copyToClipboard(lines, 'Shipping info copied');
 }
 
 // ─── Refresh ─────────────────────────────────────────────────────────────────
 
-
-
 // ─── Mount ────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    await Promise.all([
-      orderStore.fetchOrderDetails(orderId.value),
-      settingsStore.fetchSettings(),
-    ])
-    initDraftForItems(items.value)
+    await Promise.all([orderStore.fetchOrderDetails(orderId.value), settingsStore.fetchSettings()]);
+    initDraftForItems(items.value);
   } catch (err: unknown) {
-    error.value = (err as Error)?.message || 'Failed to load order details'
+    error.value = (err as Error)?.message || 'Failed to load order details';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function formatDate(isoString: string | undefined) {
-  if (!isoString) return '—'
-  return date.formatDate(new Date(isoString), 'YYYY-MM-DD HH:mm')
+  if (!isoString) return '—';
+  return date.formatDate(new Date(isoString), 'YYYY-MM-DD HH:mm');
 }
 
 function toDirectGoogleImageUrl(url: string | null) {
-  if (!url) return ''
-  const m1 = url.match(/[?&]id=([^&]+)/)
-  const m2 = url.match(/\/file\/d\/([^/]+)/)
-  const fileId = m1?.[1] || m2?.[1]
-  if (!fileId) return url
-  return `https://lh3.googleusercontent.com/d/${fileId}`
+  if (!url) return '';
+  const m1 = url.match(/[?&]id=([^&]+)/);
+  const m2 = url.match(/\/file\/d\/([^/]+)/);
+  const fileId = m1?.[1] || m2?.[1];
+  if (!fileId) return url;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
 }
 
 // ─── Table Configuration ───────────────────────────────────────────────────
@@ -889,48 +1066,63 @@ const tableColumns = [
   { name: 'item', label: 'Item Details', align: 'left' as const, field: 'name' },
   { name: 'price', label: 'Price Total', align: 'right' as const, field: 'unit_price_gbp' },
   { name: 'qty_ordered', label: 'Ordered', align: 'center' as const, field: 'quantity' },
-  { name: 'qty_confirmed', label: 'Confirmed', align: 'center' as const, field: 'confirmed_quantity' },
-  { name: 'qty_delivered', label: 'Delivered', align: 'center' as const, field: 'delivered_quantity' },
-]
+  {
+    name: 'qty_confirmed',
+    label: 'Confirmed',
+    align: 'center' as const,
+    field: 'confirmed_quantity',
+  },
+  {
+    name: 'qty_delivered',
+    label: 'Delivered',
+    align: 'center' as const,
+    field: 'delivered_quantity',
+  },
+];
 
 // ─── Quantity Updates via Popup Edit ─────────────────────────────────────────
 
 async function onSaveConfirmedQty(item: KobaOrderItem, newValue: unknown) {
-  const qty = Math.max(0, Math.round(Number(newValue)))
-  savingConfirmedId.value = item.id
-  qtyError.value = null
+  const qty = Math.max(0, Math.round(Number(newValue)));
+  savingConfirmedId.value = item.id;
+  qtyError.value = null;
   try {
-    const result = await orderStore.updateItemConfirmedQty(item.id, qty)
+    const result = await orderStore.updateItemConfirmedQty(item.id, qty);
     if (result?.success) {
-      $q.notify({ message: 'Confirmed qty saved', color: 'positive', icon: 'check', timeout: 1200 })
+      $q.notify({
+        message: 'Confirmed qty saved',
+        color: 'positive',
+        icon: 'check',
+        timeout: 1200,
+      });
     } else {
-      qtyError.value = result?.error ?? 'Failed to save confirmed quantity.'
+      qtyError.value = result?.error ?? 'Failed to save confirmed quantity.';
       // Revert if API failed
-      const draft = qtyDraft[item.id]
-      if (draft) draft.confirmed = item.confirmed_quantity ?? null
+      const draft = qtyDraft[item.id];
+      if (draft) draft.confirmed = item.confirmed_quantity ?? null;
     }
   } finally {
-    savingConfirmedId.value = null
+    savingConfirmedId.value = null;
   }
 }
 
 async function onSaveDeliveredQty(item: KobaOrderItem, newValue: unknown) {
-  const maxQty = item.confirmed_quantity ?? item.quantity
-  const qty = Math.max(0, Math.min(maxQty, Math.round(Number(newValue))))
-  savingDeliveredId.value = item.id
-  qtyError.value = null
+  const maxQty = item.confirmed_quantity ?? item.quantity;
+  const qty = Math.max(0, Math.min(maxQty, Math.round(Number(newValue))));
+  savingDeliveredId.value = item.id;
+  qtyError.value = null;
   try {
-    const result = await orderStore.updateItemDeliveredQty(item.id, qty)
+    const result = await orderStore.updateItemDeliveredQty(item.id, qty);
     if (result?.success) {
-      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'check', timeout: 1200 })
+      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'check', timeout: 1200 });
     } else {
-      qtyError.value = result?.error ?? 'Failed to save delivered quantity.'
+      qtyError.value = result?.error ?? 'Failed to save delivered quantity.';
       // Revert if API failed
-      const draft = qtyDraft[item.id]
-      if (draft) draft.delivered = item.delivered_quantity ?? 0
+      const draft = qtyDraft[item.id];
+      if (draft) draft.delivered = item.delivered_quantity ?? 0;
     }
   } finally {
-    savingDeliveredId.value = null
+    savingDeliveredId.value = null;
   }
 }
 </script>

@@ -98,11 +98,7 @@ export const thriftRepository = {
   },
 
   async createBox(box: Partial<ThriftBox>): Promise<ThriftBox> {
-    const { data, error } = await supabase
-      .from('thrift_boxes')
-      .insert(box)
-      .select()
-      .single();
+    const { data, error } = await supabase.from('thrift_boxes').insert(box).select().single();
     if (error) throw error;
     return data as ThriftBox;
   },
@@ -119,10 +115,7 @@ export const thriftRepository = {
   },
 
   async deleteBox(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_boxes')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('thrift_boxes').delete().eq('id', id);
     if (error) throw error;
   },
 
@@ -137,11 +130,7 @@ export const thriftRepository = {
   },
 
   async createShelf(shelf: Partial<ThriftShelf>): Promise<ThriftShelf> {
-    const { data, error } = await supabase
-      .from('thrift_shelves')
-      .insert(shelf)
-      .select()
-      .single();
+    const { data, error } = await supabase.from('thrift_shelves').insert(shelf).select().single();
     if (error) throw error;
     return data as ThriftShelf;
   },
@@ -158,10 +147,7 @@ export const thriftRepository = {
   },
 
   async deleteShelf(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_shelves')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('thrift_shelves').delete().eq('id', id);
     if (error) throw error;
   },
 };

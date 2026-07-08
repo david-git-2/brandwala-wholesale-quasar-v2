@@ -13,15 +13,15 @@
 </template>
 
 <script setup lang="ts">
-import type { QTableColumn } from 'quasar'
+import type { QTableColumn } from 'quasar';
 
 defineProps<{
-  title: string
-  caption: string
-  columns: QTableColumn[]
-  rows: Record<string, unknown>[]
-  loading: boolean
-}>()
+  title: string;
+  caption: string;
+  columns: QTableColumn[];
+  rows: Record<string, unknown>[];
+  loading: boolean;
+}>();
 </script>
 
 <style scoped>
@@ -30,5 +30,7 @@ defineProps<{
   border-radius: 14px;
   border: 1px solid rgba(34, 56, 101, 0.08);
 }
-.hero-surface { border-radius: 16px; }
+.hero-surface {
+  border-radius: 16px;
+}
 </style>

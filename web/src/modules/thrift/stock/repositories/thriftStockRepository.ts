@@ -149,17 +149,11 @@ function shouldFallbackToDirectQuery(error: {
 }): boolean {
   const message = error.message ?? '';
 
-  if (
-    error.code === 'PGRST202' ||
-    /could not find the function/i.test(message)
-  ) {
+  if (error.code === 'PGRST202' || /could not find the function/i.test(message)) {
     return true;
   }
 
-  if (
-    error.code === '57014' ||
-    /statement timeout|canceling statement/i.test(message)
-  ) {
+  if (error.code === '57014' || /statement timeout|canceling statement/i.test(message)) {
     return true;
   }
 
@@ -190,19 +184,20 @@ function mapPricingRow(pricing: {
 
 function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
   return rows.map((stock) => {
-    const pricing = stock.pricing ?? stock.thrift_pricings?.[0] ?? {
-      cost_of_goods_sold: 0,
-      target_price: 0,
-      listed_unit_price: 0,
-      is_listed_price_manual: false,
-      markup_rate_override: null,
-      extra_expense_cost: 0,
-    };
+    const pricing = stock.pricing ??
+      stock.thrift_pricings?.[0] ?? {
+        cost_of_goods_sold: 0,
+        target_price: 0,
+        listed_unit_price: 0,
+        is_listed_price_manual: false,
+        markup_rate_override: null,
+        extra_expense_cost: 0,
+      };
     const primaryImage =
-      stock.thrift_stock_images?.find((img) => img.is_primary) ||
-      stock.thrift_stock_images?.[0];
+      stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
 
-    const measurements = stock.measurements ??
+    const measurements =
+      stock.measurements ??
       (Array.isArray(stock.thrift_stock_measurements)
         ? stock.thrift_stock_measurements[0]
         : stock.thrift_stock_measurements) ??
@@ -326,14 +321,13 @@ export const thriftStockRepository = {
     try {
       return await fetchStocksPaginatedViaRpc(params);
     } catch (error) {
-      if (!shouldFallbackToDirectQuery(error as { code?: string; message?: string; status?: number })) {
+      if (
+        !shouldFallbackToDirectQuery(error as { code?: string; message?: string; status?: number })
+      ) {
         throw error;
       }
 
-      console.warn(
-        'list_thrift_stocks_paginated RPC failed; falling back to direct query.',
-        error,
-      );
+      console.warn('list_thrift_stocks_paginated RPC failed; falling back to direct query.', error);
       return fetchStocksPaginatedDirect(params);
     }
   },
@@ -347,7 +341,8 @@ export const thriftStockRepository = {
     if (error) throw error;
 
     return ((data || []) as unknown as ThriftStockDbRow[]).map((stock) => {
-      const primaryImage = stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
+      const primaryImage =
+        stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
       const measurements = Array.isArray(stock.thrift_stock_measurements)
         ? stock.thrift_stock_measurements[0]
         : stock.thrift_stock_measurements;
@@ -375,22 +370,16 @@ export const thriftStockRepository = {
       .single();
     if (stockError) throw stockError;
 
-    const pricingData = await upsertStockPricing(
-      stockData.id,
-      pricing,
-      stockData.inserted_by,
-    );
+    const pricingData = await upsertStockPricing(stockData.id, pricing, stockData.inserted_by);
 
     if (imageUrl) {
-      const { error: imageError } = await supabase
-        .from('thrift_stock_images')
-        .insert({
-          stock_id: stockData.id,
-          image_url: imageUrl,
-          drive_file_id: driveFileId || null,
-          is_primary: true,
-          inserted_by: stockData.inserted_by,
-        });
+      const { error: imageError } = await supabase.from('thrift_stock_images').insert({
+        stock_id: stockData.id,
+        image_url: imageUrl,
+        drive_file_id: driveFileId || null,
+        is_primary: true,
+        inserted_by: stockData.inserted_by,
+      });
       if (imageError) console.error('Failed to link image to stock:', imageError);
     }
 
@@ -487,15 +476,13 @@ export const thriftStockRepository = {
       return;
     }
 
-    const { error } = await supabase
-      .from('thrift_stock_images')
-      .insert({
-        stock_id: stockId,
-        image_url: imageUrl,
-        drive_file_id: driveFileId ?? null,
-        is_primary: true,
-        inserted_by: insertedBy,
-      });
+    const { error } = await supabase.from('thrift_stock_images').insert({
+      stock_id: stockId,
+      image_url: imageUrl,
+      drive_file_id: driveFileId ?? null,
+      is_primary: true,
+      inserted_by: insertedBy,
+    });
     if (error) throw error;
   },
 
@@ -509,27 +496,18 @@ export const thriftStockRepository = {
   },
 
   async updateStockStatus(id: number, status: string): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_stocks')
-      .update({ status })
-      .eq('id', id);
+    const { error } = await supabase.from('thrift_stocks').update({ status }).eq('id', id);
     if (error) throw error;
   },
 
   async deleteStock(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_stocks')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('thrift_stocks').delete().eq('id', id);
     if (error) throw error;
   },
 
   async deleteStocks(ids: number[]): Promise<void> {
     if (!ids.length) return;
-    const { error } = await supabase
-      .from('thrift_stocks')
-      .delete()
-      .in('id', ids);
+    const { error } = await supabase.from('thrift_stocks').delete().in('id', ids);
     if (error) throw error;
   },
 
@@ -538,24 +516,27 @@ export const thriftStockRepository = {
 
     const { data, error } = await supabase
       .from('thrift_stocks')
-      .select(`
+      .select(
+        `
         id,
         thrift_stock_images (
           image_url,
           drive_file_id,
           is_primary
         )
-      `)
+      `,
+      )
       .in('id', ids);
 
     if (error) throw error;
 
     return (data || []).map((row) => {
-      const images = (row.thrift_stock_images as Array<{
-        image_url: string;
-        drive_file_id: string | null;
-        is_primary: boolean;
-      }>) || [];
+      const images =
+        (row.thrift_stock_images as Array<{
+          image_url: string;
+          drive_file_id: string | null;
+          is_primary: boolean;
+        }>) || [];
       const primary = images.find((img) => img.is_primary) || images[0];
 
       return {
@@ -617,7 +598,8 @@ export const thriftStockRepository = {
     if (error) throw error;
 
     return ((data || []) as unknown as ThriftStockDbRow[]).map((stock) => {
-      const primaryImage = stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
+      const primaryImage =
+        stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
       const measurements = Array.isArray(stock.thrift_stock_measurements)
         ? stock.thrift_stock_measurements[0]
         : stock.thrift_stock_measurements;

@@ -201,6 +201,7 @@ Follow the Compact Design pattern to maximize screen space:
 ## Treasury Layout and Overflow Rules
 
 For treasury and reporting pages under the `reporting_treasury` module, follow these layout guidelines to avoid table overflow and maintain high visual consistency:
+
 - **TreasuryPageShell Flow**: Standard treasury detail and list pages follow a strict top-to-bottom layout flow:
   1. **Page Header / Hero**: Title, status chips, search input/filters.
   2. **TreasuryStatGrid**: 4 to 6 metric cards displaying high-level totals.

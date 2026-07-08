@@ -1,17 +1,16 @@
 <template>
   <q-page class="dashboard-page theme-app">
-    <div style="margin: auto;" class="text-bold text-h4" > {{ selectedTenantName }} Dashboard</div>
-
+    <div style="margin: auto" class="text-bold text-h4">{{ selectedTenantName }} Dashboard</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 
-const tenantStore = useTenantStore()
-const selectedTenantName = computed(() => tenantStore.selectedTenant?.name ?? '')
+const tenantStore = useTenantStore();
+const selectedTenantName = computed(() => tenantStore.selectedTenant?.name ?? '');
 </script>
 
 <style scoped>

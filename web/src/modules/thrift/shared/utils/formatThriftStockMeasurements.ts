@@ -26,7 +26,7 @@ export function formatThriftStockMeasurements(stock: ThriftStock): string {
         parts.push(`${item.label}: ${item.val}"`);
       }
     }
-    
+
     if (m.fabric_stretch && m.fabric_stretch !== 'none') {
       parts.push(`Stretch: ${m.fabric_stretch}`);
     }

@@ -1,9 +1,9 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 import {
   globalStockAllocationRepository,
   type AllocatableStock,
   type GlobalStockAllocation,
-} from '../repositories/globalStockAllocationRepository'
+} from '../repositories/globalStockAllocationRepository';
 
 export const useGlobalStockAllocationStore = defineStore('global_stock_allocation', {
   state: () => ({
@@ -34,21 +34,25 @@ export const useGlobalStockAllocationStore = defineStore('global_stock_allocatio
     async fetchAllocatableStocks(
       tenantId: number,
       options?: {
-        page?: number
-        pageSize?: number
-        search?: string | null
-        shipmentId?: number | null
-        stockTypeId?: number | null
+        page?: number;
+        pageSize?: number;
+        search?: string | null;
+        shipmentId?: number | null;
+        stockTypeId?: number | null;
       },
     ) {
-      this.loadingAllocatable = true
-      this.error = null
+      this.loadingAllocatable = true;
+      this.error = null;
       try {
-        const page = options?.page ?? this.allocatablePage
-        const pageSize = options?.pageSize ?? this.allocatablePageSize
-        const search = options?.search !== undefined ? options.search : this.allocatableSearch
-        const shipmentId = options?.shipmentId !== undefined ? options.shipmentId : this.allocatableShipmentFilter
-        const stockTypeId = options?.stockTypeId !== undefined ? options.stockTypeId : this.allocatableStockTypeFilter
+        const page = options?.page ?? this.allocatablePage;
+        const pageSize = options?.pageSize ?? this.allocatablePageSize;
+        const search = options?.search !== undefined ? options.search : this.allocatableSearch;
+        const shipmentId =
+          options?.shipmentId !== undefined ? options.shipmentId : this.allocatableShipmentFilter;
+        const stockTypeId =
+          options?.stockTypeId !== undefined
+            ? options.stockTypeId
+            : this.allocatableStockTypeFilter;
 
         const result = await globalStockAllocationRepository.listAllocatableStockPaginated(
           tenantId,
@@ -57,55 +61,55 @@ export const useGlobalStockAllocationStore = defineStore('global_stock_allocatio
           search || null,
           shipmentId || null,
           stockTypeId || null,
-        )
+        );
 
-        this.allocatableStocks = result.data
-        this.allocatablePage = result.meta.page
-        this.allocatablePageSize = result.meta.pageSize
-        this.allocatableTotal = result.meta.total
-        this.allocatableTotalPages = result.meta.totalPages
-        this.allocatableSearch = search || ''
-        this.allocatableShipmentFilter = shipmentId
-        this.allocatableStockTypeFilter = stockTypeId
+        this.allocatableStocks = result.data;
+        this.allocatablePage = result.meta.page;
+        this.allocatablePageSize = result.meta.pageSize;
+        this.allocatableTotal = result.meta.total;
+        this.allocatableTotalPages = result.meta.totalPages;
+        this.allocatableSearch = search || '';
+        this.allocatableShipmentFilter = shipmentId;
+        this.allocatableStockTypeFilter = stockTypeId;
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to load allocatable stock'
+        this.error = (err as Error).message || 'Failed to load allocatable stock';
       } finally {
-        this.loadingAllocatable = false
+        this.loadingAllocatable = false;
       }
     },
 
     async fetchAllocations(
       tenantId: number,
       options?: {
-        page?: number
-        pageSize?: number
-        search?: string | null
+        page?: number;
+        pageSize?: number;
+        search?: string | null;
       },
     ) {
-      this.loadingAllocations = true
-      this.error = null
+      this.loadingAllocations = true;
+      this.error = null;
       try {
-        const page = options?.page ?? this.allocationPage
-        const pageSize = options?.pageSize ?? this.allocationPageSize
-        const search = options?.search !== undefined ? options.search : this.allocationSearch
+        const page = options?.page ?? this.allocationPage;
+        const pageSize = options?.pageSize ?? this.allocationPageSize;
+        const search = options?.search !== undefined ? options.search : this.allocationSearch;
 
         const result = await globalStockAllocationRepository.listPaginated(
           tenantId,
           page,
           pageSize,
           search || null,
-        )
+        );
 
-        this.allocations = result.data
-        this.allocationPage = result.meta.page
-        this.allocationPageSize = result.meta.pageSize
-        this.allocationTotal = result.meta.total
-        this.allocationTotalPages = result.meta.totalPages
-        this.allocationSearch = search || ''
+        this.allocations = result.data;
+        this.allocationPage = result.meta.page;
+        this.allocationPageSize = result.meta.pageSize;
+        this.allocationTotal = result.meta.total;
+        this.allocationTotalPages = result.meta.totalPages;
+        this.allocationSearch = search || '';
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to load active allocations'
+        this.error = (err as Error).message || 'Failed to load active allocations';
       } finally {
-        this.loadingAllocations = false
+        this.loadingAllocations = false;
       }
     },
 
@@ -115,28 +119,28 @@ export const useGlobalStockAllocationStore = defineStore('global_stock_allocatio
       stockId: number,
       quantity: number,
     ) {
-      this.error = null
+      this.error = null;
       try {
         await globalStockAllocationRepository.upsertGlobalStockAllocation(
           parentTenantId,
           childTenantId,
           stockId,
           quantity,
-        )
+        );
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to allocate stock'
-        throw err
+        this.error = (err as Error).message || 'Failed to allocate stock';
+        throw err;
       }
     },
 
     async deleteAllocation(allocationId: number) {
-      this.error = null
+      this.error = null;
       try {
-        await globalStockAllocationRepository.deleteGlobalStockAllocation(allocationId)
+        await globalStockAllocationRepository.deleteGlobalStockAllocation(allocationId);
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to delete allocation'
-        throw err
+        this.error = (err as Error).message || 'Failed to delete allocation';
+        throw err;
       }
     },
   },
-})
+});

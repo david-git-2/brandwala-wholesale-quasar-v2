@@ -20,14 +20,7 @@
           :disable="loading"
         >
           <template #after>
-            <q-btn
-              round
-              dense
-              flat
-              icon="add"
-              color="primary"
-              @click="onCreateShipment"
-            >
+            <q-btn round dense flat icon="add" color="primary" @click="onCreateShipment">
               <q-tooltip>Create new shipment</q-tooltip>
             </q-btn>
           </template>
@@ -63,87 +56,87 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
+import { computed, reactive, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 type Shipment = {
-  id: number
-  name: string
-  status?: string | null
-  tenant_shipment_id?: number | null
-}
+  id: number;
+  name: string;
+  status?: string | null;
+  tenant_shipment_id?: number | null;
+};
 
-const router = useRouter()
+const router = useRouter();
 
 const props = defineProps<{
-  modelValue: boolean
-  quantity?: number | null
-  priceGbp?: number | null
-  defaultShipmentId?: number | null
-  loading?: boolean
-}>()
+  modelValue: boolean;
+  quantity?: number | null;
+  priceGbp?: number | null;
+  defaultShipmentId?: number | null;
+  loading?: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'save', payload: { shipment_id: number; quantity: number; price_gbp: number | null }): void
-  (e: 'shipment-change', shipmentId: number | null): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'save', payload: { shipment_id: number; quantity: number; price_gbp: number | null }): void;
+  (e: 'shipment-change', shipmentId: number | null): void;
+}>();
 
-const shipmentStore = useGlobalShipmentStore()
+const shipmentStore = useGlobalShipmentStore();
 
 const localOpen = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
-})
+});
 
 const form = reactive<{
-  shipment_id: number | null
-  quantity: number | null
-  price_gbp: number | null
+  shipment_id: number | null;
+  quantity: number | null;
+  price_gbp: number | null;
 }>({
   shipment_id: null,
   quantity: props.quantity ?? null,
   price_gbp: props.priceGbp ?? null,
-})
+});
 
 watch(
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   () => props.modelValue as boolean,
   (opened) => {
     if (opened) {
-      form.shipment_id = props.defaultShipmentId ?? null
-      form.quantity = props.quantity ?? null
-      form.price_gbp = props.priceGbp ?? null
+      form.shipment_id = props.defaultShipmentId ?? null;
+      form.quantity = props.quantity ?? null;
+      form.price_gbp = props.priceGbp ?? null;
     }
-  }
-)
+  },
+);
 
 watch(
   () => props.defaultShipmentId,
   (value) => {
     if (localOpen.value) {
-      form.shipment_id = value ?? null
+      form.shipment_id = value ?? null;
     }
   },
-)
+);
 
 watch(
   () => props.quantity,
   (value) => {
     if (localOpen.value) {
-      form.quantity = value ?? null
+      form.quantity = value ?? null;
     }
-  }
-)
+  },
+);
 
 watch(
   () => props.priceGbp,
   (value) => {
     if (localOpen.value) {
-      form.price_gbp = value ?? null
+      form.price_gbp = value ?? null;
     }
-  }
-)
+  },
+);
 
 const shipmentOptions = computed(() =>
   (shipmentStore.rows ?? [])
@@ -151,46 +144,43 @@ const shipmentOptions = computed(() =>
     .map((shipment: Shipment) => ({
       label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
       value: shipment.id,
-    }))
-)
+    })),
+);
 
 const requiredRule = (value: unknown) =>
-  value !== null && value !== undefined && value !== '' || 'This field is required'
+  (value !== null && value !== undefined && value !== '') || 'This field is required';
 
 const onCancel = () => {
-  localOpen.value = false
-}
+  localOpen.value = false;
+};
 
 const onCreateShipment = () => {
-  localOpen.value = false
-  void router.push({ name: 'app-procurement-shipment-list' })
-}
+  localOpen.value = false;
+  void router.push({ name: 'app-procurement-shipment-list' });
+};
 
 const onSave = () => {
   if (props.loading) {
-    return
+    return;
   }
   if (form.shipment_id == null || form.quantity == null) {
-    return
+    return;
   }
 
   emit('save', {
     shipment_id: form.shipment_id,
     quantity: Number(form.quantity),
     price_gbp:
-      form.price_gbp === null || form.price_gbp === undefined
-        ? null
-        : Number(form.price_gbp),
-  })
-
-}
+      form.price_gbp === null || form.price_gbp === undefined ? null : Number(form.price_gbp),
+  });
+};
 
 watch(
   () => form.shipment_id,
   (value) => {
     if (localOpen.value) {
-      emit('shipment-change', value ?? null)
+      emit('shipment-change', value ?? null);
     }
   },
-)
+);
 </script>

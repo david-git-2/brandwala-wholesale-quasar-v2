@@ -1,4 +1,4 @@
-import type { PreferenceFieldDefinition } from '../types/preferenceFields'
+import type { PreferenceFieldDefinition } from '../types/preferenceFields';
 
 export const TENANT_PREFERENCE_FIELDS: PreferenceFieldDefinition[] = [
   {
@@ -19,4 +19,4 @@ export const TENANT_PREFERENCE_FIELDS: PreferenceFieldDefinition[] = [
     section: 'Thrift',
     required: true,
   },
-]
+];

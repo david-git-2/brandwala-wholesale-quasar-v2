@@ -14,7 +14,7 @@ export default defineConfig((ctx) => {
       },
     },
     { server: false },
-  ]
+  ];
 
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
@@ -23,7 +23,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['supabase', 'currency', 'global-components', 'splash'],
+    boot: ['supabase', 'appearance', 'currency', 'global-components', 'splash'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -45,17 +45,17 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
     build: {
-         env: {
-          SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-          SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
-          GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,
-          VITE_CLOUDINARY_CLOUD_NAME: process.env.VITE_CLOUDINARY_CLOUD_NAME,
-          VITE_CLOUDINARY_UPLOAD_PRESET: process.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-          VITE_CLOUDINARY_THRIFT_FOLDER: process.env.VITE_CLOUDINARY_THRIFT_FOLDER,
-          VITE_GOOGLE_DRIVE_UPLOAD_ENABLED: process.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED,
-          VITE_GOOGLE_DRIVE_THRIFT_FOLDER: process.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER,
-          VITE_GOOGLE_DRIVE_ADMIN_EMAIL: process.env.VITE_GOOGLE_DRIVE_ADMIN_EMAIL,
-          VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID: process.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID,
+      env: {
+        SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+        GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,
+        VITE_CLOUDINARY_CLOUD_NAME: process.env.VITE_CLOUDINARY_CLOUD_NAME,
+        VITE_CLOUDINARY_UPLOAD_PRESET: process.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        VITE_CLOUDINARY_THRIFT_FOLDER: process.env.VITE_CLOUDINARY_THRIFT_FOLDER,
+        VITE_GOOGLE_DRIVE_UPLOAD_ENABLED: process.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED,
+        VITE_GOOGLE_DRIVE_THRIFT_FOLDER: process.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER,
+        VITE_GOOGLE_DRIVE_ADMIN_EMAIL: process.env.VITE_GOOGLE_DRIVE_ADMIN_EMAIL,
+        VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID: process.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID,
       },
       target: {
         browser: 'baseline-widely-available',
@@ -65,9 +65,9 @@ export default defineConfig((ctx) => {
       typescript: {
         strict: true,
         vueShim: true,
-        extendTsConfig (tsConfig) {
+        extendTsConfig(tsConfig) {
           if (tsConfig.compilerOptions) {
-            tsConfig.compilerOptions.noImplicitAny = false
+            tsConfig.compilerOptions.noImplicitAny = false;
           }
         },
       },
@@ -100,7 +100,7 @@ export default defineConfig((ctx) => {
             cssCodeSplit: false,
             assetsInlineLimit: 8192,
           },
-        }
+        };
       },
     },
 

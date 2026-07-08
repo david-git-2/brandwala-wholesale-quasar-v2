@@ -1,17 +1,14 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import {
-  handleApiFailure,
-  showSuccessNotification,
-} from 'src/utils/appFeedback'
-import { tenantService } from '../services/tenantService'
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { tenantService } from '../services/tenantService';
 import type {
   TenantModule,
   TenantModuleCreateInput,
   TenantModuleDeleteInput,
   TenantModuleUpdateInput,
   TenantModuleSubmoduleSetInput,
-} from '../types'
+} from '../types';
 
 export const useTenantModuleStore = defineStore('tenantModule', {
   state: () => ({
@@ -22,116 +19,116 @@ export const useTenantModuleStore = defineStore('tenantModule', {
 
   actions: {
     clearError() {
-      this.error = null
+      this.error = null;
     },
 
     async fetchTenantModules(tenantId?: number) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.listTenantModules(tenantId)
+        const result = await tenantService.listTenantModules(tenantId);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to load modules.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to load modules.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = result.data ?? []
-        return result
+        this.items = result.data ?? [];
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createTenantModule(payload: TenantModuleCreateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.createTenantModule(payload)
+        const result = await tenantService.createTenantModule(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to create module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to create module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
         if (result.data) {
-          this.items.push(result.data)
+          this.items.push(result.data);
         }
 
-        showSuccessNotification('Feature added successfully.')
-        return result
+        showSuccessNotification('Feature added successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async updateTenantModule(payload: TenantModuleUpdateInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.updateTenantModule(payload)
+        const result = await tenantService.updateTenantModule(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to update module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to update module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        const updated = result.data
+        const updated = result.data;
 
         if (updated) {
-          const index = this.items.findIndex((item) => item.id === updated.id)
+          const index = this.items.findIndex((item) => item.id === updated.id);
 
           if (index >= 0) {
-            this.items.splice(index, 1, updated)
+            this.items.splice(index, 1, updated);
           }
         }
 
-        showSuccessNotification('Feature updated successfully.')
-        return result
+        showSuccessNotification('Feature updated successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async deleteTenantModule(payload: TenantModuleDeleteInput) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const result = await tenantService.deleteTenantModule(payload)
+        const result = await tenantService.deleteTenantModule(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to delete module.'
-          handleApiFailure(result, this.error)
-          return result
+          this.error = result.error ?? 'Failed to delete module.';
+          handleApiFailure(result, this.error);
+          return result;
         }
 
-        this.items = this.items.filter((item) => item.id !== payload.id)
-        showSuccessNotification('Feature removed successfully.')
-        return result
+        this.items = this.items.filter((item) => item.id !== payload.id);
+        showSuccessNotification('Feature removed successfully.');
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async listSubmoduleOverrides(tenantId: number, parentModuleKey: string) {
-      return tenantService.listTenantModuleSubmodules(tenantId, parentModuleKey)
+      return tenantService.listTenantModuleSubmodules(tenantId, parentModuleKey);
     },
 
     async setSubmoduleOverride(payload: TenantModuleSubmoduleSetInput) {
-      this.error = null
-      const result = await tenantService.setTenantModuleSubmodule(payload)
+      this.error = null;
+      const result = await tenantService.setTenantModuleSubmodule(payload);
       if (!result.success) {
-        this.error = result.error ?? 'Failed to update submodule access.'
-        handleApiFailure(result, this.error)
+        this.error = result.error ?? 'Failed to update submodule access.';
+        handleApiFailure(result, this.error);
       }
-      return result
+      return result;
     },
   },
-})
+});

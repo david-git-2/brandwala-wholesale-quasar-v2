@@ -1,18 +1,12 @@
 <template>
   <q-dialog v-model="dialogModel" persistent>
-    <q-card style="width: 960px; max-width: 95vw;">
+    <q-card style="width: 960px; max-width: 95vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6 text-weight-bold">
           {{ isEditMode ? 'Edit Product Based Costing Item' : 'Add Product Based Costing Item' }}
         </div>
 
-        <q-btn
-          icon="close"
-          flat
-          round
-          dense
-          v-close-popup
-        />
+        <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
       <q-separator />
@@ -22,11 +16,20 @@
           <div class="row q-col-gutter-lg">
             <!-- Left Column (Image & Identification) -->
             <div class="col-12 col-md-5 q-gutter-y-md">
-              <div class="image-preview-container border rounded-borders q-pa-sm bg-grey-1 text-center">
+              <div
+                class="image-preview-container border rounded-borders q-pa-sm bg-grey-1 text-center"
+              >
                 <div v-if="form.image_url" class="image-preview-box">
-                  <SmartImage :src="form.image_url" style="max-height: 200px; max-width: 100%; object-fit: contain; margin: 0 auto;" />
+                  <SmartImage
+                    :src="form.image_url"
+                    style="max-height: 200px; max-width: 100%; object-fit: contain; margin: 0 auto"
+                  />
                 </div>
-                <div v-else class="image-preview-placeholder flex flex-center text-grey-6" style="height: 200px;">
+                <div
+                  v-else
+                  class="image-preview-placeholder flex flex-center text-grey-6"
+                  style="height: 200px"
+                >
                   <div class="column items-center">
                     <q-icon name="image" size="48px" />
                     <div class="text-caption q-mt-sm">No Image Preview</div>
@@ -46,14 +49,7 @@
                 </template>
               </q-input>
 
-              <q-input
-                v-model="form.name"
-                label="Name"
-                type="textarea"
-                autogrow
-                outlined
-                dense
-              >
+              <q-input v-model="form.name" label="Name" type="textarea" autogrow outlined dense>
                 <template #prepend>
                   <q-icon name="inventory_2" />
                 </template>
@@ -83,12 +79,7 @@
                 </template>
               </q-input>
 
-              <q-input
-                v-model="form.web_link"
-                label="Web Link"
-                outlined
-                dense
-              >
+              <q-input v-model="form.web_link" label="Web Link" outlined dense>
                 <template #prepend>
                   <q-icon name="link" />
                 </template>
@@ -172,7 +163,7 @@
                         label="Add"
                         :disable="isProductListInputType || !canAddBrand"
                         @click="addBrandOption"
-                        style="height: 40px;"
+                        style="height: 40px"
                       />
                     </div>
                   </div>
@@ -211,7 +202,7 @@
                         label="Add"
                         :disable="isProductListInputType || !canAddCategory"
                         @click="addCategoryOption"
-                        style="height: 40px;"
+                        style="height: 40px"
                       />
                     </div>
                   </div>
@@ -312,11 +303,7 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn
-          flat
-          label="Cancel"
-          v-close-popup
-        />
+        <q-btn flat label="Cancel" v-close-popup />
         <q-btn
           color="primary"
           :label="isEditMode ? 'Update' : 'Save'"
@@ -329,70 +316,70 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, reactive, ref } from 'vue'
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
-import SmartImage from 'src/components/SmartImage.vue'
-import { useProductStore } from 'src/modules/products/stores/productStore'
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore'
-import { useMarketStore } from 'src/modules/market/stores/marketStore'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { productService } from 'src/modules/products/services/productService'
-import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback'
-import { useQuasar } from 'quasar'
-import { fetchWeightsFromGemini } from 'src/utils/gemini'
+import { computed, watch, reactive, ref } from 'vue';
+import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import SmartImage from 'src/components/SmartImage.vue';
+import { useProductStore } from 'src/modules/products/stores/productStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useMarketStore } from 'src/modules/market/stores/marketStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { productService } from 'src/modules/products/services/productService';
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { useQuasar } from 'quasar';
+import { fetchWeightsFromGemini } from 'src/utils/gemini';
 
 interface ProductBasedCostingItemFormData {
-  id?: number
-  product_based_costing_file_id?: number | null
-  product_id?: number | null
-  name?: string | null
-  image_url?: string | null
-  note?: string | null
-  barcode?: string | null
-  product_code?: string | null
-  brand?: string | null
-  category?: string | null
-  vendor_code?: string | null
-  market_code?: string | null
-  quantity?: number | null
-  web_link?: string | null
-  price_gbp?: number | null
-  product_weight?: number | null
-  package_weight?: number | null
-  status?: string | null
-  input_type?: 'manual' | 'product_list' | null
+  id?: number;
+  product_based_costing_file_id?: number | null;
+  product_id?: number | null;
+  name?: string | null;
+  image_url?: string | null;
+  note?: string | null;
+  barcode?: string | null;
+  product_code?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  vendor_code?: string | null;
+  market_code?: string | null;
+  quantity?: number | null;
+  web_link?: string | null;
+  price_gbp?: number | null;
+  product_weight?: number | null;
+  package_weight?: number | null;
+  status?: string | null;
+  input_type?: 'manual' | 'product_list' | null;
 }
 
 const props = defineProps<{
-  modelValue: boolean
-  productBasedCostingFileId: number
-  itemData?: ProductBasedCostingItemFormData | null
-  defaultVendorCode?: string | null
-  defaultMarketCode?: string | null
-}>()
+  modelValue: boolean;
+  productBasedCostingFileId: number;
+  itemData?: ProductBasedCostingItemFormData | null;
+  defaultVendorCode?: string | null;
+  defaultMarketCode?: string | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'created'): void
-  (e: 'updated'): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'created'): void;
+  (e: 'updated'): void;
+}>();
 
-const store = useProductBasedCostingStore()
-const productStore = useProductStore()
-const vendorStore = useVendorStore()
-const marketStore = useMarketStore()
-const authStore = useAuthStore()
-const $q = useQuasar()
+const store = useProductBasedCostingStore();
+const productStore = useProductStore();
+const vendorStore = useVendorStore();
+const marketStore = useMarketStore();
+const authStore = useAuthStore();
+const $q = useQuasar();
 
-const aiLoading = ref(false)
+const aiLoading = ref(false);
 
 const autofillWeights = async () => {
   if (!form.name || !form.name.trim()) {
     $q.notify({
       type: 'negative',
       message: 'Please enter a product name first to find its weights.',
-    })
-    return
+    });
+    return;
   }
 
   const apiKey =
@@ -403,7 +390,8 @@ const autofillWeights = async () => {
   if (!apiKey || !apiKey.trim()) {
     $q.dialog({
       title: 'Configure Gemini API Key',
-      message: 'To use the AI autofill feature for free, please enter your Gemini API Key from Google AI Studio:',
+      message:
+        'To use the AI autofill feature for free, please enter your Gemini API Key from Google AI Studio:',
       prompt: {
         model: '',
         type: 'text',
@@ -412,75 +400,75 @@ const autofillWeights = async () => {
       cancel: true,
       persistent: true,
     }).onOk((key: string) => {
-      localStorage.setItem('gemini_api_key', key.trim())
+      localStorage.setItem('gemini_api_key', key.trim());
       $q.notify({
         type: 'positive',
         message: 'Gemini API Key saved locally! Retrying...',
-      })
-      void runAIFill()
-    })
-    return
+      });
+      void runAIFill();
+    });
+    return;
   }
 
-  await runAIFill()
-}
+  await runAIFill();
+};
 
 const runAIFill = async () => {
-  aiLoading.value = true
+  aiLoading.value = true;
   try {
-    const name = form.name || ''
-    const mlRegex = /\b(\d+(?:\.\d+)?)\s*ml\b/i
-    const mlMatch = name.match(mlRegex)
+    const name = form.name || '';
+    const mlRegex = /\b(\d+(?:\.\d+)?)\s*ml\b/i;
+    const mlMatch = name.match(mlRegex);
 
-    let productWeight: number | null = null
-    let packageWeight: number | null = null
+    let productWeight: number | null = null;
+    let packageWeight: number | null = null;
 
     if (mlMatch && typeof mlMatch[1] === 'string') {
-      productWeight = parseFloat(mlMatch[1])
+      productWeight = parseFloat(mlMatch[1]);
     }
 
-    const result = await fetchWeightsFromGemini(name)
+    const result = await fetchWeightsFromGemini(name);
 
     if (productWeight === null && result.product_weight_g !== null) {
-      productWeight = result.product_weight_g
+      productWeight = result.product_weight_g;
     }
 
     if (result.package_weight_g !== null) {
-      packageWeight = result.package_weight_g + 20
+      packageWeight = result.package_weight_g + 20;
     } else {
-      packageWeight = 20
+      packageWeight = 20;
     }
 
     if (productWeight !== null) {
-      form.product_weight = productWeight
+      form.product_weight = productWeight;
     }
     if (packageWeight !== null) {
-      form.package_weight = packageWeight
+      form.package_weight = packageWeight;
     }
 
     $q.notify({
       type: 'positive',
       message: 'Weights successfully auto-filled!',
-    })
+    });
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error)
-    console.error('Gemini error:', error)
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Gemini error:', error);
     $q.notify({
       type: 'negative',
       message: errMsg || 'Failed to fetch weights.',
-    })
+    });
   } finally {
-    aiLoading.value = false
+    aiLoading.value = false;
   }
-}
+};
 
 const dialogModel = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
-})
+});
 
-const isEditMode = computed(() => Boolean(props.itemData?.id))
-const isProductListInputType = computed(() => props.itemData?.input_type === 'product_list')
+const isEditMode = computed(() => Boolean(props.itemData?.id));
+const isProductListInputType = computed(() => props.itemData?.input_type === 'product_list');
 
 const getInitialForm = () => ({
   product_based_costing_file_id: props.productBasedCostingFileId,
@@ -499,9 +487,9 @@ const getInitialForm = () => ({
   product_weight: null as number | null,
   package_weight: null as number | null,
   status: 'pending',
-})
+});
 
-const form = reactive(getInitialForm())
+const form = reactive(getInitialForm());
 
 const fillForm = () => {
   if (props.itemData?.id) {
@@ -523,15 +511,15 @@ const fillForm = () => {
       product_weight: props.itemData.product_weight ?? null,
       package_weight: props.itemData.package_weight ?? null,
       status: props.itemData.status ?? 'pending',
-    })
+    });
   } else {
-    Object.assign(form, getInitialForm())
+    Object.assign(form, getInitialForm());
   }
-}
+};
 
 const resetForm = () => {
-  Object.assign(form, getInitialForm())
-}
+  Object.assign(form, getInitialForm());
+};
 
 const vendorOptions = computed(() => [
   { label: 'Other', value: null as string | null },
@@ -539,7 +527,7 @@ const vendorOptions = computed(() => [
     label: `${vendor.name} (${vendor.code})`,
     value: vendor.code,
   })),
-])
+]);
 
 const marketOptions = computed(() => [
   { label: 'Other', value: null as string | null },
@@ -547,209 +535,214 @@ const marketOptions = computed(() => [
     label: `${market.name} (${market.code})`,
     value: market.code,
   })),
-])
+]);
 
-const brandNames = ref<string[]>([])
-const categoryNames = ref<string[]>([])
-const filteredBrandNames = ref<string[]>([])
-const filteredCategoryNames = ref<string[]>([])
-const brandInputValue = ref('')
-const categoryInputValue = ref('')
+const brandNames = ref<string[]>([]);
+const categoryNames = ref<string[]>([]);
+const filteredBrandNames = ref<string[]>([]);
+const filteredCategoryNames = ref<string[]>([]);
+const brandInputValue = ref('');
+const categoryInputValue = ref('');
 
 const filteredBrandOptions = computed(() => {
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   const options = filteredBrandNames.value
     .map((item) => (item ?? '').trim())
     .filter((item) => item.length > 0)
     .filter((item) => item.toLowerCase() !== 'other')
     .filter((item) => {
-      const key = item.toLowerCase()
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     })
     .map((item) => ({
       label: item,
       value: item,
-    }))
+    }));
 
-  return [{ label: 'Other', value: null as string | null }, ...options]
-})
+  return [{ label: 'Other', value: null as string | null }, ...options];
+});
 
 const filteredCategoryOptions = computed(() => {
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   const options = filteredCategoryNames.value
     .map((item) => (item ?? '').trim())
     .filter((item) => item.length > 0)
     .filter((item) => item.toLowerCase() !== 'other')
     .filter((item) => {
-      const key = item.toLowerCase()
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     })
     .map((item) => ({
       label: item,
       value: item,
-    }))
+    }));
 
-  return [{ label: 'Other', value: null as string | null }, ...options]
-})
+  return [{ label: 'Other', value: null as string | null }, ...options];
+});
 
-const canPickBrandCategory = computed(
-  () => Boolean(form.vendor_code) && Boolean(form.market_code),
-)
+const canPickBrandCategory = computed(() => Boolean(form.vendor_code) && Boolean(form.market_code));
 
-const normalized = (value: string | null | undefined) => (value ?? '').trim()
+const normalized = (value: string | null | undefined) => (value ?? '').trim();
 
-const normalizeKey = (value: string | null | undefined) =>
-  normalized(value).toLowerCase()
+const normalizeKey = (value: string | null | undefined) => normalized(value).toLowerCase();
 
-const lastTypedBrand = ref('')
-const lastTypedCategory = ref('')
+const lastTypedBrand = ref('');
+const lastTypedCategory = ref('');
 
 const canAddBrand = computed(() => {
-  if (!canPickBrandCategory.value || !form.vendor_code) return false
-  const candidate = normalized(lastTypedBrand.value || brandInputValue.value || form.brand)
-  if (!candidate || candidate.toLowerCase() === 'other') return false
-  return !brandNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
-})
+  if (!canPickBrandCategory.value || !form.vendor_code) return false;
+  const candidate = normalized(lastTypedBrand.value || brandInputValue.value || form.brand);
+  if (!candidate || candidate.toLowerCase() === 'other') return false;
+  return !brandNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate));
+});
 
 const canAddCategory = computed(() => {
-  if (!canPickBrandCategory.value || !form.vendor_code) return false
-  const candidate = normalized(lastTypedCategory.value || categoryInputValue.value || form.category)
-  if (!candidate || candidate.toLowerCase() === 'other') return false
-  return !categoryNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate))
-})
+  if (!canPickBrandCategory.value || !form.vendor_code) return false;
+  const candidate = normalized(
+    lastTypedCategory.value || categoryInputValue.value || form.category,
+  );
+  if (!candidate || candidate.toLowerCase() === 'other') return false;
+  return !categoryNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate));
+});
 
 const loadBrandCategoryOptions = async () => {
   if (!form.vendor_code || !form.market_code) {
-    brandNames.value = []
-    categoryNames.value = []
-    filteredBrandNames.value = []
-    filteredCategoryNames.value = []
-    return
+    brandNames.value = [];
+    categoryNames.value = [];
+    filteredBrandNames.value = [];
+    filteredCategoryNames.value = [];
+    return;
   }
 
   const [brandResult, categoryResult] = await Promise.all([
-    productService.listBrands({ vendorCode: form.vendor_code, tenantId: authStore.tenantId ?? null }),
-    productService.listCategories({ vendorCode: form.vendor_code, tenantId: authStore.tenantId ?? null }),
-  ])
+    productService.listBrands({
+      vendorCode: form.vendor_code,
+      tenantId: authStore.tenantId ?? null,
+    }),
+    productService.listCategories({
+      vendorCode: form.vendor_code,
+      tenantId: authStore.tenantId ?? null,
+    }),
+  ]);
 
   if (brandResult.success) {
-    brandNames.value = brandResult.data ?? []
-    filteredBrandNames.value = [...brandNames.value]
+    brandNames.value = brandResult.data ?? [];
+    filteredBrandNames.value = [...brandNames.value];
   } else {
-    handleApiFailure(brandResult, brandResult.error ?? 'Failed to load brands.')
+    handleApiFailure(brandResult, brandResult.error ?? 'Failed to load brands.');
   }
 
   if (categoryResult.success) {
-    categoryNames.value = categoryResult.data ?? []
-    filteredCategoryNames.value = [...categoryNames.value]
+    categoryNames.value = categoryResult.data ?? [];
+    filteredCategoryNames.value = [...categoryNames.value];
   } else {
-    handleApiFailure(categoryResult, categoryResult.error ?? 'Failed to load categories.')
+    handleApiFailure(categoryResult, categoryResult.error ?? 'Failed to load categories.');
   }
-}
+};
 
 const filterBrandOptions = (val: string, update: (callback: () => void) => void) => {
-  const needle = normalizeKey(val)
+  const needle = normalizeKey(val);
   update(() => {
     if (!needle) {
-      filteredBrandNames.value = [...brandNames.value]
-      return
+      filteredBrandNames.value = [...brandNames.value];
+      return;
     }
-    filteredBrandNames.value = brandNames.value.filter(
-      (item) => normalizeKey(item).includes(needle),
-    )
-  })
-}
+    filteredBrandNames.value = brandNames.value.filter((item) =>
+      normalizeKey(item).includes(needle),
+    );
+  });
+};
 
 const filterCategoryOptions = (val: string, update: (callback: () => void) => void) => {
-  const needle = normalizeKey(val)
+  const needle = normalizeKey(val);
   update(() => {
     if (!needle) {
-      filteredCategoryNames.value = [...categoryNames.value]
-      return
+      filteredCategoryNames.value = [...categoryNames.value];
+      return;
     }
-    filteredCategoryNames.value = categoryNames.value.filter(
-      (item) => normalizeKey(item).includes(needle),
-    )
-  })
-}
+    filteredCategoryNames.value = categoryNames.value.filter((item) =>
+      normalizeKey(item).includes(needle),
+    );
+  });
+};
 
 const onBrandInputValue = (value: string) => {
-  const cleaned = (value || '').trim()
+  const cleaned = (value || '').trim();
   if (cleaned && cleaned.toLowerCase() !== 'other') {
-    lastTypedBrand.value = cleaned
+    lastTypedBrand.value = cleaned;
   }
-  brandInputValue.value = value
-}
+  brandInputValue.value = value;
+};
 
 const onCategoryInputValue = (value: string) => {
-  const cleaned = (value || '').trim()
+  const cleaned = (value || '').trim();
   if (cleaned && cleaned.toLowerCase() !== 'other') {
-    lastTypedCategory.value = cleaned
+    lastTypedCategory.value = cleaned;
   }
-  categoryInputValue.value = value
-}
+  categoryInputValue.value = value;
+};
 
 const addBrandOption = async () => {
-  const name = normalized(lastTypedBrand.value || brandInputValue.value || form.brand)
-  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return
+  const name = normalized(lastTypedBrand.value || brandInputValue.value || form.brand);
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return;
 
-  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const result = await productService.createProductBrand({
     name,
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
     tenant_id: authStore.tenantId ?? null,
-  })
+  });
 
   if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to add brand.')
-    return
+    handleApiFailure(result, result.error ?? 'Failed to add brand.');
+    return;
   }
 
-  showSuccessNotification('Brand added successfully.')
-  await loadBrandCategoryOptions()
-  form.brand = result.data?.name || name.toUpperCase()
-  brandInputValue.value = ''
-  lastTypedBrand.value = ''
-}
+  showSuccessNotification('Brand added successfully.');
+  await loadBrandCategoryOptions();
+  form.brand = result.data?.name || name.toUpperCase();
+  brandInputValue.value = '';
+  lastTypedBrand.value = '';
+};
 
 const addCategoryOption = async () => {
-  const name = normalized(lastTypedCategory.value || categoryInputValue.value || form.category)
-  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return
+  const name = normalized(lastTypedCategory.value || categoryInputValue.value || form.category);
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return;
 
-  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code)
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const result = await productService.createProductCategory({
     name,
     value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
     tenant_id: authStore.tenantId ?? null,
-  })
+  });
 
   if (!result.success) {
-    handleApiFailure(result, result.error ?? 'Failed to add category.')
-    return
+    handleApiFailure(result, result.error ?? 'Failed to add category.');
+    return;
   }
 
-  showSuccessNotification('Category added successfully.')
-  await loadBrandCategoryOptions()
-  form.category = result.data?.name || name
-  categoryInputValue.value = ''
-  lastTypedCategory.value = ''
-}
+  showSuccessNotification('Category added successfully.');
+  await loadBrandCategoryOptions();
+  form.category = result.data?.name || name;
+  categoryInputValue.value = '';
+  lastTypedCategory.value = '';
+};
 
 const submitForm = async () => {
   if (!form.vendor_code || !form.market_code) {
     handleApiFailure(
       { success: false, error: 'Please select vendor and market first.' },
       'Please select vendor and market first.',
-    )
-    return
+    );
+    return;
   }
 
   if (isEditMode.value && props.itemData?.id) {
@@ -770,10 +763,10 @@ const submitForm = async () => {
       product_weight: form.product_weight,
       package_weight: form.package_weight,
       status: form.status || 'pending',
-    })
+    });
 
     if (!result.success) {
-      return
+      return;
     }
 
     if (props.itemData.product_id != null) {
@@ -781,13 +774,13 @@ const submitForm = async () => {
         id: props.itemData.product_id,
         brand: form.brand || null,
         category: form.category || null,
-      })
+      });
     }
 
-    emit('updated')
-    emit('update:modelValue', false)
-    resetForm()
-    return
+    emit('updated');
+    emit('update:modelValue', false);
+    resetForm();
+    return;
   }
 
   const createProductResult = await productStore.createProduct({
@@ -811,10 +804,10 @@ const submitForm = async () => {
     vendor_code: form.vendor_code,
     market_code: form.market_code,
     is_available: true,
-  })
+  });
 
   if (!createProductResult.success || !createProductResult.data?.id) {
-    return
+    return;
   }
 
   const result = await store.createProductBasedCostingItem({
@@ -835,71 +828,71 @@ const submitForm = async () => {
     product_weight: form.product_weight,
     package_weight: form.package_weight,
     status: 'pending',
-  })
+  });
 
   if (!result.success) {
-    return
+    return;
   }
 
-  emit('created')
-  emit('update:modelValue', false)
-  resetForm()
-}
+  emit('created');
+  emit('update:modelValue', false);
+  resetForm();
+};
 
 watch(
   () => [props.modelValue, props.itemData],
   async ([value]) => {
     if (value) {
-      fillForm()
+      fillForm();
       if (!vendorStore.items.length) {
-        await vendorStore.fetchVendors(authStore.tenantId ?? null)
+        await vendorStore.fetchVendors(authStore.tenantId ?? null);
       }
       if (!marketStore.items.length) {
-        await marketStore.fetchMarkets()
+        await marketStore.fetchMarkets();
       }
-      await loadBrandCategoryOptions()
+      await loadBrandCategoryOptions();
     }
   },
   { immediate: true, deep: true },
-)
+);
 
 watch(
   () => [props.defaultVendorCode, props.defaultMarketCode, props.modelValue, props.itemData],
   (values) => {
-    const vendorCode = (values[0] ?? null) as string | null
-    const marketCode = (values[1] ?? null) as string | null
-    const isOpen = Boolean(values[2])
-    const itemData = (values[3] ?? null) as ProductBasedCostingItemFormData | null
+    const vendorCode = (values[0] ?? null) as string | null;
+    const marketCode = (values[1] ?? null) as string | null;
+    const isOpen = Boolean(values[2]);
+    const itemData = (values[3] ?? null) as ProductBasedCostingItemFormData | null;
 
     if (!isOpen) {
-      return
+      return;
     }
     if (itemData?.id) {
-      return
+      return;
     }
-    form.vendor_code = vendorCode ?? null
-    form.market_code = marketCode ?? null
-    void loadBrandCategoryOptions()
+    form.vendor_code = vendorCode ?? null;
+    form.market_code = marketCode ?? null;
+    void loadBrandCategoryOptions();
   },
-)
+);
 
-  const onVendorOrMarketChange = async () => {
+const onVendorOrMarketChange = async () => {
   if (!isEditMode.value) {
-    form.brand = null
-    form.category = null
+    form.brand = null;
+    form.category = null;
   }
-  await loadBrandCategoryOptions()
+  await loadBrandCategoryOptions();
 
   const result = await store.updateProductBasedCostingFile({
     id: props.productBasedCostingFileId,
     vendor_code: form.vendor_code,
     market_code: form.market_code,
-  })
+  });
 
   if (!result.success) {
-    return
+    return;
   }
-}
+};
 </script>
 
 <style scoped>
