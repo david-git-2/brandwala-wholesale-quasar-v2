@@ -33,46 +33,46 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin'
+import { onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
 
-const route = useRoute()
-const scope = (route.query.scope as AuthScope | undefined) ?? 'app'
-const { processLoginResult } = useOAuthLogin(scope)
+const route = useRoute();
+const scope = (route.query.scope as AuthScope | undefined) ?? 'app';
+const { processLoginResult } = useOAuthLogin(scope);
 
-const isRedirectingToApp = ref(false)
-const appRedirectUrl = ref('')
+const isRedirectingToApp = ref(false);
+const appRedirectUrl = ref('');
 
 onMounted(() => {
-  const appRedirect = route.query.app_redirect
-  
+  const appRedirect = route.query.app_redirect;
+
   if (appRedirect === 'thrift') {
-    isRedirectingToApp.value = true
-    
+    isRedirectingToApp.value = true;
+
     // ── PKCE code passthrough ──────────────────────────────────────────
     // The native app called signInWithOAuth({ skipBrowserRedirect: true })
     // which stored the PKCE code_verifier in the app's WebView storage.
     // We must NOT exchange the code here (the web page doesn't have the
     // code_verifier). Instead, pass the raw `code` straight back to the
     // app so IT can call exchangeCodeForSession().
-    const code = route.query.code as string | undefined
-    const tenantSlug = (route.query.tenant_slug as string) || 'thrift'
-    
+    const code = route.query.code as string | undefined;
+    const tenantSlug = (route.query.tenant_slug as string) || 'thrift';
+
     if (code) {
-      const isAndroid = /Android/i.test(navigator.userAgent)
+      const isAndroid = /Android/i.test(navigator.userAgent);
       if (isAndroid) {
-        appRedirectUrl.value = `intent://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`
+        appRedirectUrl.value = `intent://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`;
       } else {
-        appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}`
+        appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}`;
       }
-      window.location.href = appRedirectUrl.value
-      return
+      window.location.href = appRedirectUrl.value;
+      return;
     }
   }
 
-  void processLoginResult()
-})
+  void processLoginResult();
+});
 </script>
 
 <style scoped>

@@ -42,7 +42,11 @@
           </template>
 
           <template #body-cell-remainder="props">
-            <q-td :props="props" class="text-right text-weight-bold" :class="Number(getRemainder(props.row.id)) > 0 ? 'text-warning' : 'text-grey-6'">
+            <q-td
+              :props="props"
+              class="text-right text-weight-bold"
+              :class="Number(getRemainder(props.row.id)) > 0 ? 'text-warning' : 'text-grey-6'"
+            >
               {{ getRemainder(props.row.id) }}%
             </q-td>
           </template>
@@ -59,21 +63,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { QTableColumn } from 'quasar'
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { QTableColumn } from 'quasar';
 
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
 
-const authStore = useAuthStore()
-const shipmentStore = useGlobalShipmentStore()
-const router = useRouter()
-const route = useRoute()
+const authStore = useAuthStore();
+const shipmentStore = useGlobalShipmentStore();
+const router = useRouter();
+const route = useRoute();
 
-const loadingShares = ref(false)
-const shipmentShares = ref<Record<number, number>>({})
+const loadingShares = ref(false);
+const shipmentShares = ref<Record<number, number>>({});
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Shipment ID', field: 'tenant_shipment_id', align: 'left', sortable: true },
@@ -82,51 +86,48 @@ const columns: QTableColumn[] = [
   { name: 'coverage', label: 'Investor Coverage %', field: 'id', align: 'right' },
   { name: 'remainder', label: 'Parent Remainder %', field: 'id', align: 'right' },
   { name: 'created_at', label: 'Created At', field: 'created_at', align: 'left', sortable: true },
-]
+];
 
 const loadData = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loadingShares.value = true
-  await Promise.all([
-    shipmentStore.fetchShipments(tenantId),
-    fetchShares(tenantId),
-  ])
-  loadingShares.value = false
-}
+  loadingShares.value = true;
+  await Promise.all([shipmentStore.fetchShipments(tenantId), fetchShares(tenantId)]);
+  loadingShares.value = false;
+};
 
 const fetchShares = async (tenantId: number) => {
   const { data, error } = await supabase
     .from('shipment_investments')
     .select('global_shipment_id, cost_share_pct')
     .eq('tenant_id', tenantId)
-    .eq('status', 'active')
+    .eq('status', 'active');
 
   if (!error && data) {
-    const next: Record<number, number> = {}
+    const next: Record<number, number> = {};
     for (const item of data) {
-      const sId = item.global_shipment_id
-      const pct = Number(item.cost_share_pct ?? 0)
-      next[sId] = (next[sId] || 0) + pct
+      const sId = item.global_shipment_id;
+      const pct = Number(item.cost_share_pct ?? 0);
+      next[sId] = (next[sId] || 0) + pct;
     }
-    shipmentShares.value = next
+    shipmentShares.value = next;
   }
-}
+};
 
 const getCoverage = (shipmentId: number) => {
-  return (shipmentShares.value[shipmentId] || 0).toFixed(2)
-}
+  return (shipmentShares.value[shipmentId] || 0).toFixed(2);
+};
 
 const getRemainder = (shipmentId: number) => {
-  const cov = shipmentShares.value[shipmentId] || 0
-  return Math.max(0, 100 - cov).toFixed(2)
-}
+  const cov = shipmentShares.value[shipmentId] || 0;
+  return Math.max(0, 100 - cov).toFixed(2);
+};
 
 const formatDate = (val: string | null | undefined) => {
-  if (!val) return '—'
-  return new Date(val).toLocaleDateString()
-}
+  if (!val) return '—';
+  return new Date(val).toLocaleDateString();
+};
 
 const onSelectShipment = async (shipmentId: number) => {
   await router.push({
@@ -135,10 +136,10 @@ const onSelectShipment = async (shipmentId: number) => {
       tenantSlug: route.params.tenantSlug,
       id: shipmentId,
     },
-  })
-}
+  });
+};
 
 onMounted(() => {
-  void loadData()
-})
+  void loadData();
+});
 </script>

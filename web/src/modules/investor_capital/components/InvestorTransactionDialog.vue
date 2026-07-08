@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="localModelValue" persistent>
-    <q-card style="min-width: 560px; max-width: 95vw;">
+    <q-card style="min-width: 560px; max-width: 95vw">
       <q-card-section>
         <div class="text-h6">Record Capital Ledger Entry</div>
       </q-card-section>
@@ -16,7 +16,15 @@
           :options="investorOptions"
         />
 
-        <q-input v-model.number="form.amount" type="number" min="0.01" step="0.01" label="Amount" outlined dense />
+        <q-input
+          v-model.number="form.amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          label="Amount"
+          outlined
+          dense
+        />
 
         <q-input v-model="form.date" label="Date" outlined dense readonly>
           <template #append>
@@ -27,11 +35,7 @@
                 transition-show="scale"
                 transition-hide="scale"
               >
-                <q-date
-                  v-model="form.date"
-                  mask="YYYY-MM-DD"
-                  @update:model-value="onDateSelected"
-                >
+                <q-date v-model="form.date" mask="YYYY-MM-DD" @update:model-value="onDateSelected">
                   <div class="row items-center justify-end">
                     <q-btn v-close-popup label="Close" color="primary" flat />
                   </div>
@@ -73,35 +77,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import type { QPopupProxy } from 'quasar'
+import { computed, reactive, ref, watch } from 'vue';
+import type { QPopupProxy } from 'quasar';
 
 import type {
   Investor,
   InvestorTransactionCreateInput,
   InvestorTransactionMethod,
-} from 'src/modules/investor_capital/types'
+} from 'src/modules/investor_capital/types';
 
 const props = defineProps<{
-  modelValue: boolean
-  tenantId: number
-  investors: Investor[]
-}>()
+  modelValue: boolean;
+  tenantId: number;
+  investors: Investor[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'save', value: InvestorTransactionCreateInput): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'save', value: InvestorTransactionCreateInput): void;
+}>();
 
 const localModelValue = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
-})
-const datePopupRef = ref<QPopupProxy | null>(null)
+});
+const datePopupRef = ref<QPopupProxy | null>(null);
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => new Date().toISOString().slice(0, 10);
 
-const form = reactive<Omit<InvestorTransactionCreateInput, 'amount' | 'type'> & { amount: number | null; type: string }>({
+const form = reactive<
+  Omit<InvestorTransactionCreateInput, 'amount' | 'type'> & { amount: number | null; type: string }
+>({
   tenant_id: props.tenantId,
   investor_id: 0,
   amount: null,
@@ -109,56 +115,57 @@ const form = reactive<Omit<InvestorTransactionCreateInput, 'amount' | 'type'> & 
   method: 'cash',
   type: 'capital_in',
   note: null,
-})
+});
 
 const investorOptions = computed(() =>
   props.investors.map((item) => ({
     label: item.name,
     value: item.id,
   })),
-)
+);
 
 const transactionTypeOptions = [
   { label: 'Capital In (Deposit)', value: 'capital_in' },
   { label: 'Withdrawal Paid', value: 'withdrawal_paid' },
   { label: 'Capital Adjustment', value: 'capital_adjustment' },
-]
+];
 
 const transactionMethodOptions: { label: string; value: InvestorTransactionMethod }[] = [
   { label: 'Cash', value: 'cash' },
   { label: 'Bank', value: 'bank' },
   { label: 'Mobile Banking', value: 'mobile_banking' },
   { label: 'Other', value: 'other' },
-]
+];
 
-const canSave = computed(() =>
-  form.tenant_id > 0 &&
-  form.investor_id > 0 &&
-  Number(form.amount ?? 0) > 0 &&
-  Boolean(form.date),
-)
+const canSave = computed(
+  () =>
+    form.tenant_id > 0 &&
+    form.investor_id > 0 &&
+    Number(form.amount ?? 0) > 0 &&
+    Boolean(form.date),
+);
 
 watch(
   [() => props.modelValue, () => props.tenantId],
   ([opened, tenantId]) => {
     if (!opened) {
-      return
+      return;
     }
 
-    form.tenant_id = tenantId
-    form.investor_id = props.investors[0]?.id ?? 0
-    form.amount = null
-    form.date = today()
-    form.method = 'cash'
-    form.type = 'capital_in'
-    form.note = null
+    form.tenant_id = tenantId;
+    form.investor_id = props.investors[0]?.id ?? 0;
+    form.amount = null;
+    form.date = today();
+    form.method = 'cash';
+    form.type = 'capital_in';
+    form.note = null;
   },
   { immediate: true },
-)
+);
 
 const onSave = () => {
   if (!canSave.value) {
-    return
+    return;
   }
 
   emit('save', {
@@ -169,12 +176,12 @@ const onSave = () => {
     method: form.method,
     type: form.type as any,
     note: form.note?.trim() || null,
-  })
+  });
 
-  localModelValue.value = false
-}
+  localModelValue.value = false;
+};
 
 const onDateSelected = () => {
-  datePopupRef.value?.hide()
-}
+  datePopupRef.value?.hide();
+};
 </script>

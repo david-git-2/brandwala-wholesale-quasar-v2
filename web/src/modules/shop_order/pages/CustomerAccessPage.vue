@@ -7,7 +7,8 @@
           <div class="text-overline">Shop &amp; Order</div>
           <h1 class="text-h5 q-my-none">Customer Access</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Define default shop capabilities per customer group. Use shop-specific access matrix for overrides.
+            Define default shop capabilities per customer group. Use shop-specific access matrix for
+            overrides.
           </p>
         </div>
       </section>
@@ -27,7 +28,10 @@
           Loading customer groups…
         </q-card-section>
 
-        <q-card-section v-else-if="store.customerGroups.length === 0" class="text-grey-6 text-center q-pa-xl">
+        <q-card-section
+          v-else-if="store.customerGroups.length === 0"
+          class="text-grey-6 text-center q-pa-xl"
+        >
           <q-icon name="group" size="48px" class="q-mb-sm block" />
           No customer groups found for this tenant.
         </q-card-section>
@@ -74,29 +78,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShopPermissionsStore } from '../stores/shopPermissionsStore'
+import { computed, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
 
-const authStore = useAuthStore()
-const store = useShopPermissionsStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const store = useShopPermissionsStore();
+const router = useRouter();
 
-const tenantId = computed(() => authStore.tenantId as number)
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+const tenantId = computed(() => authStore.tenantId as number);
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const columns = [
   { name: 'name', label: 'Group Name', field: 'name', align: 'left' as const, sortable: true },
   { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
-]
+];
 
 const load = () => {
   if (tenantId.value) {
-    void store.fetchCustomerGroups(tenantId.value)
+    void store.fetchCustomerGroups(tenantId.value);
   }
-}
+};
 
 const goToPermissions = (groupId: number) => {
   void router.push({
@@ -105,9 +109,11 @@ const goToPermissions = (groupId: number) => {
       tenantSlug: tenantSlug.value,
       groupId: String(groupId),
     },
-  })
-}
+  });
+};
 
-onMounted(load)
-watch(tenantId, (v) => { if (v) load() })
+onMounted(load);
+watch(tenantId, (v) => {
+  if (v) load();
+});
 </script>

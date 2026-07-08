@@ -1,12 +1,13 @@
 <template>
   <q-card flat class="product-card">
-
     <!-- Image Area -->
     <div class="product-image-wrap">
       <!-- Details Info Button -->
       <q-btn
         v-if="isAdminOrSuper"
-        flat round dense
+        flat
+        round
+        dense
         color="grey-7"
         icon="info"
         size="sm"
@@ -34,7 +35,6 @@
 
     <!-- Content -->
     <q-card-section class="product-body">
-
       <!-- Name -->
       <div class="product-name ellipsis-2-lines q-mb-sm">{{ product.name }}</div>
 
@@ -48,7 +48,9 @@
           <q-badge
             dense
             :color="product.stock_quantity && product.stock_quantity > 0 ? 'positive' : 'negative'"
-            :label="product.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'"
+            :label="
+              product.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'
+            "
           />
         </div>
       </div>
@@ -59,19 +61,16 @@
           <!-- Qty stepper -->
           <div class="qty-stepper">
             <q-btn
-              flat dense round
+              flat
+              dense
+              round
               icon="remove"
               size="xs"
               :disable="qty <= step"
               @click.stop="qty = Math.max(step, qty - step)"
             />
             <span class="qty-value">{{ qty }}</span>
-            <q-btn
-              flat dense round
-              icon="add"
-              size="xs"
-              @click.stop="qty += step"
-            />
+            <q-btn flat dense round icon="add" size="xs" @click.stop="qty += step" />
           </div>
 
           <q-btn
@@ -93,7 +92,9 @@
             <span class="text-caption text-positive q-ml-xs">In cart</span>
           </div>
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             color="negative"
             icon="o_delete"
             size="sm"
@@ -102,7 +103,6 @@
           />
         </template>
       </div>
-
     </q-card-section>
   </q-card>
 
@@ -160,8 +160,12 @@
           <div class="detail-label">Stock Status</div>
           <div class="detail-value">
             <q-badge
-              :color="product.stock_quantity && product.stock_quantity > 0 ? 'positive' : 'negative'"
-              :label="product.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'"
+              :color="
+                product.stock_quantity && product.stock_quantity > 0 ? 'positive' : 'negative'
+              "
+              :label="
+                product.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'
+              "
             />
             <span class="q-ml-sm text-weight-medium" v-if="product.stock_quantity != null">
               ({{ product.stock_quantity }} units)
@@ -178,21 +182,34 @@
           <div class="detail-label">Commission (BDT)</div>
           <div class="detail-value text-weight-semibold text-secondary">
             ৳{{ formattedCommission }}
-            <span v-if="product.commission_percentage != null" class="text-caption text-grey-6 text-weight-regular q-ml-xs">
+            <span
+              v-if="product.commission_percentage != null"
+              class="text-caption text-grey-6 text-weight-regular q-ml-xs"
+            >
               ({{ product.commission_percentage }}%)
             </span>
           </div>
         </div>
 
-        <div v-if="product.regular_price != null && Number(product.regular_price) !== Number(product.price || product.price_gbp)" class="detail-item">
+        <div
+          v-if="
+            product.regular_price != null &&
+            Number(product.regular_price) !== Number(product.price || product.price_gbp)
+          "
+          class="detail-item"
+        >
           <div class="detail-label">Regular Price</div>
-          <div class="detail-value text-strike text-grey-5">৳{{ Number(product.regular_price).toFixed(2) }}</div>
+          <div class="detail-value text-strike text-grey-5">
+            ৳{{ Number(product.regular_price).toFixed(2) }}
+          </div>
         </div>
 
         <div v-if="product.description" class="detail-item detail-item-full q-mt-xs">
           <div class="detail-label">Description</div>
-          <div class="detail-value text-grey-8 text-weight-regular details-desc" v-html="parsedDescription">
-          </div>
+          <div
+            class="detail-value text-grey-8 text-weight-regular details-desc"
+            v-html="parsedDescription"
+          ></div>
         </div>
       </q-card-section>
     </q-card>
@@ -200,131 +217,135 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { marked } from 'src/utils/marked'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
-import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
+import { computed, ref, watch } from 'vue';
+import { marked } from 'src/utils/marked';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
 
-const authStore = useAuthStore()
-const settingsStore = useKobaSettingsStore()
+const authStore = useAuthStore();
+const settingsStore = useKobaSettingsStore();
 
 const isAdminOrSuper = computed(() => {
-  const role = authStore.matchedRole
-  return role === 'admin' || role === 'superadmin'
-})
+  const role = authStore.matchedRole;
+  return role === 'admin' || role === 'superadmin';
+});
 
 interface KobaProduct {
-  id: string
-  name: string
-  image_url?: string | null
-  price_gbp?: number | null
-  price?: number | null
-  commission?: number | null
-  commission_percentage?: number | null
-  brand?: string | null
-  category?: string | null
-  case_size?: number | null
-  minimum_quantity?: number | null
-  sku?: string | null
-  barcode?: string | null
-  description?: string | null
-  stock_quantity?: number | null
-  in_stock?: boolean | null
-  regular_price?: number | null
-  sale_price?: number | null
+  id: string;
+  name: string;
+  image_url?: string | null;
+  price_gbp?: number | null;
+  price?: number | null;
+  commission?: number | null;
+  commission_percentage?: number | null;
+  brand?: string | null;
+  category?: string | null;
+  case_size?: number | null;
+  minimum_quantity?: number | null;
+  sku?: string | null;
+  barcode?: string | null;
+  description?: string | null;
+  stock_quantity?: number | null;
+  in_stock?: boolean | null;
+  regular_price?: number | null;
+  sale_price?: number | null;
 }
 
-const props = defineProps<{ product: KobaProduct }>()
+const props = defineProps<{ product: KobaProduct }>();
 
-const detailsOpen = ref(false)
+const detailsOpen = ref(false);
 
-const cartStore = useKobaCartStore()
+const cartStore = useKobaCartStore();
 
 // --- image ---
-const imageFailed = ref(false)
+const imageFailed = ref(false);
 
 function toGoogleDirectUrl(url: string | null | undefined): string {
-  if (!url) return ''
-  const m1 = url.match(/[?&]id=([^&]+)/)
-  const m2 = url.match(/\/file\/d\/([^/]+)/)
-  const fileId = m1?.[1] || m2?.[1]
-  if (!fileId) return url
-  return `https://lh3.googleusercontent.com/d/${fileId}`
+  if (!url) return '';
+  const m1 = url.match(/[?&]id=([^&]+)/);
+  const m2 = url.match(/\/file\/d\/([^/]+)/);
+  const fileId = m1?.[1] || m2?.[1];
+  if (!fileId) return url;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
 }
 
 const imageUrl = computed(() => {
-  if (imageFailed.value || !props.product.image_url) return ''
-  return toGoogleDirectUrl(props.product.image_url)
-})
+  if (imageFailed.value || !props.product.image_url) return '';
+  return toGoogleDirectUrl(props.product.image_url);
+});
 
 function onImageError() {
-  imageFailed.value = true
+  imageFailed.value = true;
 }
 
 // --- labels ---
-const brandLabel = computed(() => props.product.brand?.trim() ?? '')
+const brandLabel = computed(() => props.product.brand?.trim() ?? '');
 
 const formattedPrice = computed(() => {
-  const price = props.product.price_gbp ?? props.product.price ?? 0
-  return Number(price).toFixed(2)
-})
+  const price = props.product.price_gbp ?? props.product.price ?? 0;
+  return Number(price).toFixed(2);
+});
 
 const formattedCommission = computed(() => {
-  const gatewayChargeFlat = settingsStore.settings?.gateway_charge_flat ?? 20
-  return (Number(props.product.commission ?? 0) - gatewayChargeFlat).toFixed(2)
-})
+  const gatewayChargeFlat = settingsStore.settings?.gateway_charge_flat ?? 20;
+  return (Number(props.product.commission ?? 0) - gatewayChargeFlat).toFixed(2);
+});
 // --- qty stepper ---
-const step = computed(() => Math.max(1, props.product.case_size ?? props.product.minimum_quantity ?? 1))
-const qty = ref(step.value)
+const step = computed(() =>
+  Math.max(1, props.product.case_size ?? props.product.minimum_quantity ?? 1),
+);
+const qty = ref(step.value);
 
 // --- parsed description ---
-const parsedDescription = ref('')
+const parsedDescription = ref('');
 
 watch(
   () => props.product.description,
   (newVal) => {
     if (!newVal) {
-      parsedDescription.value = ''
-      return
+      parsedDescription.value = '';
+      return;
     }
     try {
-      parsedDescription.value = marked.parse(newVal)
+      parsedDescription.value = marked.parse(newVal);
     } catch {
-      parsedDescription.value = newVal
+      parsedDescription.value = newVal;
     }
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 // --- cart state ---
 const inCart = computed(() => {
-  if (isAdminOrSuper.value) return false
-  return cartStore.items.some((item) => String(item.koba_product_id) === String(props.product.id))
-})
+  if (isAdminOrSuper.value) return false;
+  return cartStore.items.some((item) => String(item.koba_product_id) === String(props.product.id));
+});
 
 // --- actions ---
-const addBusy = ref(false)
-const removeBusy = ref(false)
+const addBusy = ref(false);
+const removeBusy = ref(false);
 
 async function onAdd() {
-  addBusy.value = true
+  addBusy.value = true;
   try {
-    await cartStore.addToCart(props.product, qty.value)
+    await cartStore.addToCart(props.product, qty.value);
   } finally {
-    addBusy.value = false
+    addBusy.value = false;
   }
 }
 
 async function onRemove() {
-  removeBusy.value = true
+  removeBusy.value = true;
   try {
-    const cartItem = cartStore.items.find((item) => String(item.koba_product_id) === String(props.product.id))
+    const cartItem = cartStore.items.find(
+      (item) => String(item.koba_product_id) === String(props.product.id),
+    );
     if (cartItem) {
-      await cartStore.removeItem(cartItem.id)
+      await cartStore.removeItem(cartItem.id);
     }
   } finally {
-    removeBusy.value = false
+    removeBusy.value = false;
   }
 }
 </script>
@@ -341,7 +362,9 @@ async function onRemove() {
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: rgba(255, 255, 255, 0.95);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .product-card:hover {
@@ -471,7 +494,9 @@ async function onRemove() {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.9);
   color: var(--bw-theme-primary, #1b4d3e) !important;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .info-btn:hover {
@@ -484,7 +509,9 @@ async function onRemove() {
   min-width: 600px;
   max-width: 92vw;
   border-radius: 16px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .details-image-wrap {

@@ -51,14 +51,14 @@ export const useThriftStore = defineStore('thrift', {
 
     async updateCategory(id: number, name: string, description: string) {
       const cat = await thriftRepository.updateCategory(id, { name, description });
-      const idx = this.categories.findIndex(c => c.id === id);
+      const idx = this.categories.findIndex((c) => c.id === id);
       if (idx !== -1) this.categories[idx] = cat;
       return cat;
     },
 
     async deleteCategory(id: number) {
       await thriftRepository.deleteCategory(id);
-      this.categories = this.categories.filter(c => c.id !== id);
+      this.categories = this.categories.filter((c) => c.id !== id);
     },
 
     async createType(
@@ -85,14 +85,14 @@ export const useThriftStore = defineStore('thrift', {
         description,
         icon: icon?.trim() || null,
       });
-      const idx = this.types.findIndex(t => t.id === id);
+      const idx = this.types.findIndex((t) => t.id === id);
       if (idx !== -1) this.types[idx] = typ;
       return typ;
     },
 
     async deleteType(id: number) {
       await thriftRepository.deleteType(id);
-      this.types = this.types.filter(t => t.id !== id);
+      this.types = this.types.filter((t) => t.id !== id);
     },
 
     async createShelf(
@@ -119,14 +119,14 @@ export const useThriftStore = defineStore('thrift', {
         location_bay: locationBay || null,
         shelf_code: shelfCode,
       });
-      const idx = this.shelves.findIndex(s => s.id === id);
+      const idx = this.shelves.findIndex((s) => s.id === id);
       if (idx !== -1) this.shelves[idx] = shelf;
       return shelf;
     },
 
     async deleteShelf(id: number) {
       await thriftRepository.deleteShelf(id);
-      this.shelves = this.shelves.filter(s => s.id !== id);
+      this.shelves = this.shelves.filter((s) => s.id !== id);
     },
   },
 });

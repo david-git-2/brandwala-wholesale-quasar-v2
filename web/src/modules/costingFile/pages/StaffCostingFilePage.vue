@@ -24,7 +24,6 @@
         </q-card-section>
       </q-card>
 
-
       <section class="row items-end q-col-gutter-md">
         <div class="col-12 col-sm-5 col-md-4">
           <q-select
@@ -52,7 +51,9 @@
             bordered
             class="costing-page__card"
             :class="{ 'cursor-pointer': canOpenFile(file.status) }"
-            :style="{ '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id) }"
+            :style="{
+              '--costing-card-accent': customerGroupAccentColorById(file.customer_group_id),
+            }"
             @click="canOpenFile(file.status) && openFile(file.id)"
           >
             <q-card-section>
@@ -63,7 +64,10 @@
                   :style="statusChipStyle(file.status)"
                   class="costing-status-chip"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(file.status) }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: statusDotColor(file.status) }"
+                  />
                   {{ formatStatusLabel(file.status) }}
                 </q-chip>
               </div>
@@ -128,7 +132,14 @@
 
           <q-card-actions align="right">
             <q-btn flat label="Cancel" @click="createDialog = false" />
-            <q-btn color="primary" unelevated label="Create" :loading="creating" :disable="!canCreate" @click="handleCreate" />
+            <q-btn
+              color="primary"
+              unelevated
+              label="Create"
+              :loading="creating"
+              :disable="!canCreate"
+              @click="handleCreate"
+            />
           </q-card-actions>
         </q-card>
       </q-dialog>
@@ -137,46 +148,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import { customerGroupService } from 'src/modules/tenant/services/customerGroupService'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { customerGroupService } from 'src/modules/tenant/services/customerGroupService';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { formatCurrentDateTimeForName } from 'src/utils/dateTime';
 
-const router = useRouter()
-const tenantStore = useTenantStore()
-const costingFileStore = useCostingFileStore()
-const { items: files, totalItems, listLoading: loadingFiles } = storeToRefs(costingFileStore)
+const router = useRouter();
+const tenantStore = useTenantStore();
+const costingFileStore = useCostingFileStore();
+const { items: files, totalItems, listLoading: loadingFiles } = storeToRefs(costingFileStore);
 
-const selectedCustomerGroupId = ref<number | null>(null)
-const page = ref(1)
-const pageSize = 20
-const createDialog = ref(false)
-const creating = ref(false)
-const initialLoading = ref(true)
+const selectedCustomerGroupId = ref<number | null>(null);
+const page = ref(1);
+const pageSize = 20;
+const createDialog = ref(false);
+const creating = ref(false);
+const initialLoading = ref(true);
 
-const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>([])
+const customerGroupOptions = ref<{ label: string; value: number; accentColor: string | null }[]>(
+  [],
+);
 const createForm = reactive({
   name: '',
   market: '',
   customerGroupId: null as number | null,
-})
+});
 
 const subtitle = computed(() =>
   tenantStore.selectedTenant?.name
     ? `${tenantStore.selectedTenant.name} staff can create costing files and send them to review here.`
     : 'Select a tenant to browse costing files.',
-)
+);
 
-const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))
+const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)));
 const customerGroupFilterOptions = computed(() => [
   { label: 'All customer groups', value: null },
   ...customerGroupOptions.value,
-])
+]);
 
 const canCreate = computed(
   () =>
@@ -184,114 +197,115 @@ const canCreate = computed(
     Boolean(createForm.customerGroupId) &&
     createForm.name.trim().length > 0 &&
     createForm.market.trim().length > 0,
-)
+);
 
 const customerGroupNameById = (customerGroupId: number) =>
-  customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? `#${customerGroupId}`
+  customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ??
+  `#${customerGroupId}`;
 const customerGroupAccentColorById = (customerGroupId: number) =>
-  customerGroupOptions.value.find((option) => option.value === customerGroupId)?.accentColor?.trim() ||
-  'var(--bw-theme-primary)'
+  customerGroupOptions.value
+    .find((option) => option.value === customerGroupId)
+    ?.accentColor?.trim() || 'var(--bw-theme-primary)';
 const buildCreateFileName = (customerGroupId: number | null) => {
   const customerGroupName =
-    customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ?? 'Costing File'
-  return formatCurrentDateTimeForName(customerGroupName)
-}
+    customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ??
+    'Costing File';
+  return formatCurrentDateTimeForName(customerGroupName);
+};
 const statusChipStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 const statusDotColor = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
 const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
 const loadFiles = async () => {
-  const tenantId = tenantStore.selectedTenant?.id
+  const tenantId = tenantStore.selectedTenant?.id;
 
   if (!tenantId) {
-    costingFileStore.items = []
-    costingFileStore.totalItems = 0
-    return
+    costingFileStore.items = [];
+    costingFileStore.totalItems = 0;
+    return;
   }
 
   await costingFileStore.fetchCostingFilesByTenant(tenantId, {
     customerGroupId: selectedCustomerGroupId.value,
     page: page.value,
     pageSize,
-  })
-}
+  });
+};
 
 const getStaffListStateKey = (tenantId: number) =>
-  `costingFile.staff.listState.v1.tenant.${tenantId}`
+  `costingFile.staff.listState.v1.tenant.${tenantId}`;
 
 const saveStaffListState = () => {
-  const tenantId = tenantStore.selectedTenant?.id
+  const tenantId = tenantStore.selectedTenant?.id;
   if (!tenantId || typeof window === 'undefined') {
-    return
+    return;
   }
 
   window.localStorage.setItem(
@@ -300,89 +314,87 @@ const saveStaffListState = () => {
       selectedCustomerGroupId: selectedCustomerGroupId.value,
       page: page.value,
     }),
-  )
-}
+  );
+};
 
 const loadStaffListState = () => {
-  const tenantId = tenantStore.selectedTenant?.id
+  const tenantId = tenantStore.selectedTenant?.id;
   if (!tenantId || typeof window === 'undefined') {
-    selectedCustomerGroupId.value = null
-    page.value = 1
-    return
+    selectedCustomerGroupId.value = null;
+    page.value = 1;
+    return;
   }
 
-  const raw = window.localStorage.getItem(getStaffListStateKey(tenantId))
+  const raw = window.localStorage.getItem(getStaffListStateKey(tenantId));
   if (!raw) {
-    selectedCustomerGroupId.value = null
-    page.value = 1
-    return
+    selectedCustomerGroupId.value = null;
+    page.value = 1;
+    return;
   }
 
   try {
     const parsed = JSON.parse(raw) as {
-      selectedCustomerGroupId?: number | null
-      page?: number
-    }
+      selectedCustomerGroupId?: number | null;
+      page?: number;
+    };
     selectedCustomerGroupId.value =
-      typeof parsed.selectedCustomerGroupId === 'number'
-        ? parsed.selectedCustomerGroupId
-        : null
-    page.value = Number.isFinite(parsed.page) && Number(parsed.page) > 0 ? Number(parsed.page) : 1
+      typeof parsed.selectedCustomerGroupId === 'number' ? parsed.selectedCustomerGroupId : null;
+    page.value = Number.isFinite(parsed.page) && Number(parsed.page) > 0 ? Number(parsed.page) : 1;
   } catch {
-    selectedCustomerGroupId.value = null
-    page.value = 1
+    selectedCustomerGroupId.value = null;
+    page.value = 1;
   }
-}
+};
 
 const loadCustomerGroups = async () => {
-  const tenantId = tenantStore.selectedTenant?.id
+  const tenantId = tenantStore.selectedTenant?.id;
 
   if (!tenantId) {
-    customerGroupOptions.value = []
-    createForm.customerGroupId = null
-    return
+    customerGroupOptions.value = [];
+    createForm.customerGroupId = null;
+    return;
   }
 
-  const result = await customerGroupService.listCustomerGroupsByTenant(tenantId)
+  const result = await customerGroupService.listCustomerGroupsByTenant(tenantId);
 
   if (!result.success) {
-    customerGroupOptions.value = []
-    createForm.customerGroupId = null
-    return
+    customerGroupOptions.value = [];
+    createForm.customerGroupId = null;
+    return;
   }
 
   customerGroupOptions.value = (result.data ?? []).map((group) => ({
     label: group.name,
     value: group.id,
     accentColor: group.accent_color ?? null,
-  }))
+  }));
 
   if (!createForm.customerGroupId) {
-    createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null
+    createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null;
   }
-}
+};
 
 const resetCreateForm = () => {
-  createForm.name = buildCreateFileName(createForm.customerGroupId)
-  createForm.market = ''
-  createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null
-  createForm.name = buildCreateFileName(createForm.customerGroupId)
-}
+  createForm.name = buildCreateFileName(createForm.customerGroupId);
+  createForm.market = '';
+  createForm.customerGroupId = customerGroupOptions.value[0]?.value ?? null;
+  createForm.name = buildCreateFileName(createForm.customerGroupId);
+};
 
 const openCreateDialog = () => {
-  resetCreateForm()
-  createDialog.value = true
-}
+  resetCreateForm();
+  createDialog.value = true;
+};
 
 const handleCreate = async () => {
-  const tenantId = tenantStore.selectedTenant?.id
-  const customerGroupId = createForm.customerGroupId
+  const tenantId = tenantStore.selectedTenant?.id;
+  const customerGroupId = createForm.customerGroupId;
 
   if (!tenantId || !customerGroupId) {
-    return
+    return;
   }
 
-  creating.value = true
+  creating.value = true;
   try {
     const result = await costingFileStore.createCostingFile({
       tenantId,
@@ -390,66 +402,66 @@ const handleCreate = async () => {
       name: createForm.name.trim(),
       market: createForm.market.trim(),
       status: 'customer_submitted',
-    })
+    });
 
     if (result.success && result.data) {
-      resetCreateForm()
-      createDialog.value = false
+      resetCreateForm();
+      createDialog.value = false;
       await router.push({
         name: 'staff-costing-file-details-page',
         params: { id: String(result.data.id) },
-      })
+      });
     }
   } finally {
-    creating.value = false
+    creating.value = false;
   }
-}
+};
 
-const canOpenFile = (status: string) => status === 'customer_submitted'
+const canOpenFile = (status: string) => status === 'customer_submitted';
 
 const openFile = async (id: number) => {
   await router.push({
     name: 'staff-costing-file-details-page',
     params: { id: String(id) },
-  })
-}
+  });
+};
 
 const handleFilterChange = async () => {
-  page.value = 1
-  saveStaffListState()
-  await loadFiles()
-}
+  page.value = 1;
+  saveStaffListState();
+  await loadFiles();
+};
 
 const handlePageChange = async () => {
-  saveStaffListState()
-  await loadFiles()
-}
+  saveStaffListState();
+  await loadFiles();
+};
 
 watch(createDialog, (isOpen) => {
   if (!isOpen) {
-    resetCreateForm()
+    resetCreateForm();
   }
-})
+});
 
 watch(
   () => tenantStore.selectedTenant?.id ?? null,
   async () => {
-    loadStaffListState()
-    await loadCustomerGroups()
-    await loadFiles()
-    createDialog.value = false
+    loadStaffListState();
+    await loadCustomerGroups();
+    await loadFiles();
+    createDialog.value = false;
   },
-)
+);
 
 onMounted(async () => {
   try {
-    loadStaffListState()
-    await loadCustomerGroups()
-    await loadFiles()
+    loadStaffListState();
+    await loadCustomerGroups();
+    await loadFiles();
   } finally {
-    initialLoading.value = false
+    initialLoading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>

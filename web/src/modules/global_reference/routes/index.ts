@@ -1,24 +1,26 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const platformGuard = createAccessGuard({
   loginRoute: 'superadmin-login-page',
   requiredScope: 'platform',
   allowedRoles: ['superadmin'],
-})
+});
 
-const appGuard = (requiredModule:
-  | 'global_reference_currency'
-  | 'global_reference_market'
-  | 'global_reference_payment_method'
-  | 'global_reference_unit_of_measure') =>
+const appGuard = (
+  requiredModule:
+    | 'global_reference_currency'
+    | 'global_reference_market'
+    | 'global_reference_payment_method'
+    | 'global_reference_unit_of_measure',
+) =>
   createAccessGuard({
     loginRoute: 'admin-login-page',
     requiredScope: 'app',
     allowedRoles: ['admin', 'staff'],
     requireTenantContext: true,
     requiredModule,
-  })
+  });
 
 const globalReferenceRoutes: RouteRecordRaw[] = [
   {
@@ -60,8 +62,8 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/thrift/currencies',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
-      return tenantSlug ? `/${tenantSlug}/app/reference/currencies` : '/app/reference/currencies'
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+      return tenantSlug ? `/${tenantSlug}/app/reference/currencies` : '/app/reference/currencies';
     },
   },
   {
@@ -116,6 +118,6 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default globalReferenceRoutes
+export default globalReferenceRoutes;

@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -8,50 +8,50 @@ const guard = (requiredModule: ModuleKey) =>
     requiredScope: 'app',
     requireTenantContext: true,
     requiredModule,
-  })
+  });
 
 const procurementStockRoutes: RouteRecordRaw[] = [
   // Legacy Redirects
   {
     path: '/:tenantSlug?/app/global/shipment/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
-          : ''
+          : '';
       return tenantSlug
         ? `/${tenantSlug}/app/procurement/shipment${rest ? `/${rest}` : ''}`
-        : `/app/procurement/shipment${rest ? `/${rest}` : ''}`
+        : `/app/procurement/shipment${rest ? `/${rest}` : ''}`;
     },
   },
   {
     path: '/:tenantSlug?/app/global/stock/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
-          : ''
+          : '';
       return tenantSlug
         ? `/${tenantSlug}/app/procurement/stock${rest ? `/${rest}` : ''}`
-        : `/app/procurement/stock${rest ? `/${rest}` : ''}`
+        : `/app/procurement/stock${rest ? `/${rest}` : ''}`;
     },
   },
   {
     path: '/:tenantSlug?/app/stock/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
-          : ''
+          : '';
       return tenantSlug
         ? `/${tenantSlug}/app/procurement/tenant-stock${rest ? `/${rest}` : ''}`
-        : `/app/procurement/tenant-stock${rest ? `/${rest}` : ''}`
+        : `/app/procurement/tenant-stock${rest ? `/${rest}` : ''}`;
     },
   },
 
@@ -110,6 +110,6 @@ const procurementStockRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default procurementStockRoutes
+export default procurementStockRoutes;

@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const marketRoutes: RouteRecordRaw[] = [
   {
@@ -19,6 +19,6 @@ const marketRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default marketRoutes
+export default marketRoutes;

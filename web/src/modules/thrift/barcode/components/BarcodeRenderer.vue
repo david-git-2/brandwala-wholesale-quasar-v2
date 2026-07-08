@@ -3,20 +3,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import JsBarcode from 'jsbarcode'
+import { ref, onMounted, watch } from 'vue';
+import JsBarcode from 'jsbarcode';
 
 const props = defineProps<{
-  value: string
-  height?: number
-  width?: number
-  displayValue?: boolean
-}>()
+  value: string;
+  height?: number;
+  width?: number;
+  displayValue?: boolean;
+}>();
 
-const svgRef = ref<SVGElement | null>(null)
+const svgRef = ref<SVGElement | null>(null);
 
 const renderBarcode = () => {
-  if (!svgRef.value || !props.value) return
+  if (!svgRef.value || !props.value) return;
   try {
     JsBarcode(svgRef.value, props.value, {
       format: 'CODE128',
@@ -24,20 +24,23 @@ const renderBarcode = () => {
       width: props.width ?? 1.5,
       height: props.height ?? 40,
       displayValue: props.displayValue ?? false,
-      margin: 10
-    })
+      margin: 10,
+    });
   } catch (err) {
-    console.error('JsBarcode rendering error:', err)
+    console.error('JsBarcode rendering error:', err);
   }
-}
+};
 
 onMounted(() => {
-  renderBarcode()
-})
+  renderBarcode();
+});
 
-watch(() => props.value, () => {
-  renderBarcode()
-})
+watch(
+  () => props.value,
+  () => {
+    renderBarcode();
+  },
+);
 </script>
 
 <style scoped>

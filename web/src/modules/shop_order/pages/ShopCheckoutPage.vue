@@ -39,7 +39,14 @@
                     <q-input v-model="recipientPhone" outlined dense label="Recipient Phone" />
                   </div>
                 </div>
-                <q-input v-model="shippingAddress" outlined dense type="textarea" label="Shipping Address" rows="3" />
+                <q-input
+                  v-model="shippingAddress"
+                  outlined
+                  dense
+                  type="textarea"
+                  label="Shipping Address"
+                  rows="3"
+                />
               </q-card-section>
             </q-card>
 
@@ -85,7 +92,9 @@
                   </q-avatar>
                 </q-item-section>
                 <q-item-section>
-                  <div class="text-caption text-weight-bold text-grey-9 item-name">{{ item.name }}</div>
+                  <div class="text-caption text-weight-bold text-grey-9 item-name">
+                    {{ item.name }}
+                  </div>
                   <div class="text-caption text-grey-6">Qty: {{ item.quantity }}</div>
                 </q-item-section>
                 <q-item-section side v-if="cartStore.cart?.see_price_snapshot">
@@ -101,12 +110,13 @@
             <q-card-section class="q-py-md">
               <div class="row justify-between items-baseline q-mb-lg">
                 <span class="text-subtitle1 text-weight-bold text-grey-9">Estimated Total</span>
-                <span v-if="cartStore.cart?.see_price_snapshot" class="text-h6 text-weight-bold text-primary">
+                <span
+                  v-if="cartStore.cart?.see_price_snapshot"
+                  class="text-h6 text-weight-bold text-primary"
+                >
                   {{ formatCartTotal() }}
                 </span>
-                <span v-else class="text-subtitle1 text-grey-5 italic">
-                  Prices Hidden
-                </span>
+                <span v-else class="text-subtitle1 text-grey-5 italic"> Prices Hidden </span>
               </div>
 
               <!-- PLACE ORDER -->
@@ -129,68 +139,72 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useShopCartStore } from '../stores/shopCartStore'
-import { useShopOrderStore } from '../stores/shopOrderStore'
+import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useShopCartStore } from '../stores/shopCartStore';
+import { useShopOrderStore } from '../stores/shopOrderStore';
 
-const route = useRoute()
-const router = useRouter()
-const cartStore = useShopCartStore()
-const orderStore = useShopOrderStore()
+const route = useRoute();
+const router = useRouter();
+const cartStore = useShopCartStore();
+const orderStore = useShopOrderStore();
 
-const recipientName = ref('')
-const recipientPhone = ref('')
-const shippingAddress = ref('')
-const billingProfile = ref(null)
+const recipientName = ref('');
+const recipientPhone = ref('');
+const shippingAddress = ref('');
+const billingProfile = ref(null);
 
 const billingOptions = ref([
   { label: 'Default Term Account (Net 30)', value: 'default' },
-  { label: 'Proforma Invoice (Pre-pay)', value: 'proforma' }
-])
+  { label: 'Proforma Invoice (Pre-pay)', value: 'proforma' },
+]);
 
 const goBack = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
-  void router.push(`${tenantSlug}/shop/cart`)
-}
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
+  void router.push(`${tenantSlug}/shop/cart`);
+};
 
 const submitOrder = async () => {
-  if (!cartStore.cart?.id) return
+  if (!cartStore.cart?.id) return;
   const res = await orderStore.submitOrder(
     cartStore.cart.id,
     recipientName.value,
     recipientPhone.value,
     shippingAddress.value,
-    null
-  )
+    null,
+  );
   if (res.success) {
-    cartStore.clearCart()
-    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : ''
-    void router.push(`${tenantSlug}/shop/orders`)
+    cartStore.clearCart();
+    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
+    void router.push(`${tenantSlug}/shop/orders`);
   }
-}
+};
 
 // Formatting helpers
 const formatItemTotal = (item: any) => {
-  const price = item.customer_sell_price_amount ?? item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0
-  const total = price * item.quantity
-  return `£${total.toFixed(2)}`
-}
+  const price =
+    item.customer_sell_price_amount ??
+    item.unit_sell_price_amount ??
+    item.unit_list_price_amount ??
+    0;
+  const total = price * item.quantity;
+  return `£${total.toFixed(2)}`;
+};
 
 const formatCartTotal = () => {
-  return `£${cartStore.cartTotal.toFixed(2)}`
-}
+  return `£${cartStore.cartTotal.toFixed(2)}`;
+};
 </script>
-
 
 <script lang="ts">
 export default {
-  name: 'ShopCheckoutPage'
-}
+  name: 'ShopCheckoutPage',
+};
 </script>
 
 <style scoped>
-.form-card, .summary-card {
+.form-card,
+.summary-card {
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);

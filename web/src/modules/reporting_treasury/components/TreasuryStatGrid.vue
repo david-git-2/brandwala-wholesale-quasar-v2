@@ -1,10 +1,6 @@
 <template>
   <div class="row q-col-gutter-md">
-    <div
-      v-for="card in items"
-      :key="card.label"
-      :class="card.class || 'col-12 col-sm-6 col-md-3'"
-    >
+    <div v-for="card in items" :key="card.label" :class="card.class || 'col-12 col-sm-6 col-md-3'">
       <q-card flat bordered class="q-pa-md h-full bg-white text-black">
         <div class="text-caption text-grey-7 text-uppercase tracking-wider">
           {{ card.label }}
@@ -21,32 +17,35 @@
 </template>
 
 <script setup lang="ts">
-import { formatAmountBdt } from 'src/utils/currency'
+import { formatAmountBdt } from 'src/utils/currency';
 
 defineProps<{
   items: Array<{
-    label: string
-    value: number | string
-    caption?: string
-    class?: string
-    valueClass?: string
-    format?: 'currency' | 'percent' | 'number' | 'text'
-  }>
-}>()
+    label: string;
+    value: number | string;
+    caption?: string;
+    class?: string;
+    valueClass?: string;
+    format?: 'currency' | 'percent' | 'number' | 'text';
+  }>;
+}>();
 
-const formatCardValue = (val: number | string, format?: 'currency' | 'percent' | 'number' | 'text') => {
+const formatCardValue = (
+  val: number | string,
+  format?: 'currency' | 'percent' | 'number' | 'text',
+) => {
   if (format === 'percent') {
-    const num = Number(val)
-    return `${Number.isFinite(num) ? num.toFixed(2) : val}%`
+    const num = Number(val);
+    return `${Number.isFinite(num) ? num.toFixed(2) : val}%`;
   }
   if (format === 'number') {
-    const num = Number(val)
-    return Number.isFinite(num) ? num.toLocaleString() : String(val)
+    const num = Number(val);
+    return Number.isFinite(num) ? num.toLocaleString() : String(val);
   }
   if (format === 'text') {
-    return String(val)
+    return String(val);
   }
   // Default: currency
-  return formatAmountBdt(val)
-}
+  return formatAmountBdt(val);
+};
 </script>

@@ -1,7 +1,13 @@
 <template>
-  <q-dialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
+  <q-dialog
+    :model-value="modelValue"
+    persistent
+    @update:model-value="emit('update:modelValue', $event)"
+  >
     <q-card style="min-width: 440px; max-width: 95vw" class="floating-surface shadow-2 q-pa-sm">
-      <q-card-section class="text-h6 text-weight-bold text-black">Create Wholesale Invoice</q-card-section>
+      <q-card-section class="text-h6 text-weight-bold text-black"
+        >Create Wholesale Invoice</q-card-section
+      >
 
       <q-card-section>
         <q-form class="q-gutter-y-md" @submit.prevent="onSubmit">
@@ -74,11 +80,18 @@
           />
 
           <div class="text-caption text-grey-7">
-            Wholesale invoices bill the selected profile. Recipient details are copied from the profile.
+            Wholesale invoices bill the selected profile. Recipient details are copied from the
+            profile.
           </div>
 
           <div class="row justify-end q-gutter-sm q-mt-lg">
-            <q-btn flat no-caps label="Cancel" class="text-black text-weight-bold" @click="onCancel" />
+            <q-btn
+              flat
+              no-caps
+              label="Cancel"
+              class="text-black text-weight-bold"
+              @click="onCancel"
+            />
             <q-btn
               color="primary"
               class="pill-btn slim-btn"
@@ -96,30 +109,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue';
 
-import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { showWarningDialog } from 'src/utils/appFeedback'
+import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { showWarningDialog } from 'src/utils/appFeedback';
 
-import { useInvoiceStore } from '../stores/invoiceStore'
-import type { GlobalInvoiceCreated } from '../types'
+import { useInvoiceStore } from '../stores/invoiceStore';
+import type { GlobalInvoiceCreated } from '../types';
 
 const props = defineProps<{
-  modelValue: boolean
-  parentTenantId: number | null
-}>()
+  modelValue: boolean;
+  parentTenantId: number | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'created', invoice: GlobalInvoiceCreated): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'created', invoice: GlobalInvoiceCreated): void;
+}>();
 
-const globalInvoiceStore = useInvoiceStore()
-const billingProfileStore = useBillingProfileStore()
-const tenantStore = useTenantStore()
+const globalInvoiceStore = useInvoiceStore();
+const billingProfileStore = useBillingProfileStore();
+const tenantStore = useTenantStore();
 
-const loadingProfiles = ref(false)
+const loadingProfiles = ref(false);
 
 const form = reactive({
   tenant_id: null as number | null,
@@ -127,123 +140,125 @@ const form = reactive({
   invoice_no: '',
   invoice_date: new Date().toISOString().slice(0, 10),
   note: '',
-})
+});
 
 /** Sister concerns only — parent company cannot issue for itself. */
 const issuingTenantOptions = computed(() => {
-  const parentId = props.parentTenantId
-  if (!parentId) return []
+  const parentId = props.parentTenantId;
+  if (!parentId) return [];
 
   const tenants =
     tenantStore.availableAdminTenants.length > 0
       ? tenantStore.availableAdminTenants
-      : tenantStore.items
+      : tenantStore.items;
 
   return tenants
     .filter((tenant) => tenant.parent_id === parentId)
     .map((tenant) => ({
       label: `${tenant.name} (Sister concern)`,
       value: tenant.id,
-    }))
-})
+    }));
+});
 
 const selfIssuingOption = computed(() => {
-  const parentId = props.parentTenantId
-  if (!parentId) return null
+  const parentId = props.parentTenantId;
+  if (!parentId) return null;
   const current =
     tenantStore.selectedTenant ??
     tenantStore.items.find((tenant) => tenant.id === tenantStore.selectedTenantId) ??
-    null
-  if (!current || current.parent_id !== parentId) return null
-  return { label: current.name, value: current.id }
-})
+    null;
+  if (!current || current.parent_id !== parentId) return null;
+  return { label: current.name, value: current.id };
+});
 
 const allIssuingOptions = computed(() => {
-  if (issuingTenantOptions.value.length > 0) return issuingTenantOptions.value
-  if (selfIssuingOption.value) return [selfIssuingOption.value]
-  return []
-})
+  if (issuingTenantOptions.value.length > 0) return issuingTenantOptions.value;
+  if (selfIssuingOption.value) return [selfIssuingOption.value];
+  return [];
+});
 
-const resolveDefaultIssuingTenantId = () => allIssuingOptions.value[0]?.value ?? null
+const resolveDefaultIssuingTenantId = () => allIssuingOptions.value[0]?.value ?? null;
 
 const billingProfileOptions = computed(() =>
   billingProfileStore.items.map((profile) => ({
     label: profile.name,
     value: profile.id,
   })),
-)
+);
 
 const canSubmit = computed(
   () =>
     Boolean(form.tenant_id && form.billing_profile_id && form.invoice_no.trim()) &&
     !globalInvoiceStore.saving,
-)
+);
 
 const getMonthYear = (dateStr: string) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return ''
-  return d.toLocaleString('en-GB', { month: 'short', year: 'numeric' })
-}
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-GB', { month: 'short', year: 'numeric' });
+};
 
-let lastAutoGeneratedInvoiceNo = ''
+let lastAutoGeneratedInvoiceNo = '';
 
 const updateInvoiceNoPrefill = () => {
   if (form.invoice_no && form.invoice_no !== lastAutoGeneratedInvoiceNo) {
-    return
+    return;
   }
-  const profile = billingProfileStore.items.find((p) => p.id === form.billing_profile_id)
-  const profileName = profile ? profile.name : ''
-  const monthYear = getMonthYear(form.invoice_date)
-  const newName = profileName ? `Invoice - ${profileName} - ${monthYear}` : `Invoice - ${monthYear}`
-  form.invoice_no = newName
-  lastAutoGeneratedInvoiceNo = newName
-}
+  const profile = billingProfileStore.items.find((p) => p.id === form.billing_profile_id);
+  const profileName = profile ? profile.name : '';
+  const monthYear = getMonthYear(form.invoice_date);
+  const newName = profileName
+    ? `Invoice - ${profileName} - ${monthYear}`
+    : `Invoice - ${monthYear}`;
+  form.invoice_no = newName;
+  lastAutoGeneratedInvoiceNo = newName;
+};
 
 watch(
   () => [form.billing_profile_id, form.invoice_date],
   () => {
-    updateInvoiceNoPrefill()
-  }
-)
+    updateInvoiceNoPrefill();
+  },
+);
 
 const resetForm = (tenantId: number | null) => {
-  form.tenant_id = tenantId
-  form.billing_profile_id = null
-  form.invoice_date = new Date().toISOString().slice(0, 10)
-  form.invoice_no = ''
-  lastAutoGeneratedInvoiceNo = ''
-  updateInvoiceNoPrefill()
-  form.note = ''
-}
+  form.tenant_id = tenantId;
+  form.billing_profile_id = null;
+  form.invoice_date = new Date().toISOString().slice(0, 10);
+  form.invoice_no = '';
+  lastAutoGeneratedInvoiceNo = '';
+  updateInvoiceNoPrefill();
+  form.note = '';
+};
 
 const loadBillingProfiles = async (tenantId: number | null) => {
   if (!tenantId) {
-    billingProfileStore.items = []
-    return
+    billingProfileStore.items = [];
+    return;
   }
 
-  loadingProfiles.value = true
+  loadingProfiles.value = true;
   try {
-    await billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId, page_size: 200 })
-    updateInvoiceNoPrefill()
+    await billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId, page_size: 200 });
+    updateInvoiceNoPrefill();
   } finally {
-    loadingProfiles.value = false
+    loadingProfiles.value = false;
   }
-}
+};
 
 const onIssuingTenantChange = async (tenantId: number | null) => {
-  form.billing_profile_id = null
-  await loadBillingProfiles(tenantId)
-  updateInvoiceNoPrefill()
-}
+  form.billing_profile_id = null;
+  await loadBillingProfiles(tenantId);
+  updateInvoiceNoPrefill();
+};
 
 const onCancel = () => {
-  emit('update:modelValue', false)
-}
+  emit('update:modelValue', false);
+};
 
 const onSubmit = async () => {
-  if (!form.tenant_id || !form.billing_profile_id || !form.invoice_no.trim()) return
+  if (!form.tenant_id || !form.billing_profile_id || !form.invoice_no.trim()) return;
 
   const result = await globalInvoiceStore.createInvoice({
     tenant_id: form.tenant_id,
@@ -252,26 +267,26 @@ const onSubmit = async () => {
     invoice_type: 'wholesale',
     invoice_date: form.invoice_date,
     note: form.note.trim() || null,
-  })
+  });
 
   if (!result.success || !result.data) {
-    showWarningDialog(result.error ?? 'Failed to create invoice.')
-    return
+    showWarningDialog(result.error ?? 'Failed to create invoice.');
+    return;
   }
 
-  emit('created', result.data)
-  emit('update:modelValue', false)
-}
+  emit('created', result.data);
+  emit('update:modelValue', false);
+};
 
 watch(
   () => props.modelValue,
   async (open) => {
-    if (!open) return
+    if (!open) return;
 
-    const defaultTenantId = resolveDefaultIssuingTenantId()
+    const defaultTenantId = resolveDefaultIssuingTenantId();
 
-    resetForm(defaultTenantId)
-    await loadBillingProfiles(defaultTenantId)
+    resetForm(defaultTenantId);
+    await loadBillingProfiles(defaultTenantId);
   },
-)
+);
 </script>

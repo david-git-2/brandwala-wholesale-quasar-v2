@@ -7,7 +7,10 @@
         subtitle="Your allocated stock slices ready for invoicing and sales"
       />
 
-      <q-banner v-if="allocationStore.error" class="bw-status-banner bg-negative text-white q-mb-md">
+      <q-banner
+        v-if="allocationStore.error"
+        class="bw-status-banner bg-negative text-white q-mb-md"
+      >
         {{ allocationStore.error }}
       </q-banner>
 
@@ -64,7 +67,13 @@
 
           <div class="row justify-end q-gutter-x-sm q-mt-md">
             <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
-            <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyDrawerFilters" />
+            <q-btn
+              unelevated
+              no-caps
+              label="Apply Filters"
+              color="primary"
+              @click="onApplyDrawerFilters"
+            />
           </div>
         </div>
       </FilterSidebar>
@@ -89,7 +98,7 @@
                 <img
                   :src="props.row.image_url || 'https://placehold.co/56x56?text=No+Image'"
                   alt="Product Image"
-                  style="object-fit: contain;"
+                  style="object-fit: contain"
                 />
               </q-avatar>
             </q-td>
@@ -136,62 +145,92 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import type { QTableColumn } from 'quasar'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { useTenantStockStore } from '../stores/tenantStockStore'
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore'
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
-import { calculateLineLandedCostBdt } from '../utils/landedCost'
+import { computed, onMounted, ref, watch } from 'vue';
+import type { QTableColumn } from 'quasar';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useTenantStockStore } from '../stores/tenantStockStore';
+import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import { calculateLineLandedCostBdt } from '../utils/landedCost';
 
-const authStore = useAuthStore()
-const tenantStore = useTenantStore()
-const allocationStore = useTenantStockStore()
-const stockTypeStore = useGlobalStockTypeStore()
+const authStore = useAuthStore();
+const tenantStore = useTenantStore();
+const allocationStore = useTenantStockStore();
+const stockTypeStore = useGlobalStockTypeStore();
 
 // Filter State
-const searchText = ref('')
-const filterDrawerOpen = ref(false)
-const childTenantFilter = ref<number | null>(null)
-const stockTypeFilter = ref<number | null>(null)
+const searchText = ref('');
+const filterDrawerOpen = ref(false);
+const childTenantFilter = ref<number | null>(null);
+const stockTypeFilter = ref<number | null>(null);
 
-const draftChildTenantFilter = ref<number | null>(null)
-const draftStockTypeFilter = ref<number | null>(null)
+const draftChildTenantFilter = ref<number | null>(null);
+const draftStockTypeFilter = ref<number | null>(null);
 
-const childTenants = ref<{ id: number; name: string }[]>([])
+const childTenants = ref<{ id: number; name: string }[]>([]);
 
 const columns: QTableColumn[] = [
-  { name: 'child_tenant', label: 'Sister Concern', field: 'child_tenant_name', align: 'left', sortable: false },
+  {
+    name: 'child_tenant',
+    label: 'Sister Concern',
+    field: 'child_tenant_name',
+    align: 'left',
+    sortable: false,
+  },
   { name: 'image', label: 'Image', field: 'image_url', align: 'left', sortable: false },
   { name: 'product', label: 'Product Details', field: 'item_name', align: 'left', sortable: false },
   { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left', sortable: false },
-  { name: 'stock_type', label: 'Stock Type', field: 'stock_type_description', align: 'left', sortable: false },
-  { name: 'unit_cost', label: 'Unit Cost (Est. BDT)', field: 'id', align: 'right', sortable: false },
-  { name: 'total_cost', label: 'Total Value (Est. BDT)', field: 'id', align: 'right', sortable: false },
-  { name: 'quantity', label: 'Allocated Quantity', field: 'quantity', align: 'right', sortable: false },
-]
+  {
+    name: 'stock_type',
+    label: 'Stock Type',
+    field: 'stock_type_description',
+    align: 'left',
+    sortable: false,
+  },
+  {
+    name: 'unit_cost',
+    label: 'Unit Cost (Est. BDT)',
+    field: 'id',
+    align: 'right',
+    sortable: false,
+  },
+  {
+    name: 'total_cost',
+    label: 'Total Value (Est. BDT)',
+    field: 'id',
+    align: 'right',
+    sortable: false,
+  },
+  {
+    name: 'quantity',
+    label: 'Allocated Quantity',
+    field: 'quantity',
+    align: 'right',
+    sortable: false,
+  },
+];
 
 // Computed properties for Context Verification
-const contextTenantId = computed(() => tenantStore.selectedTenantId ?? authStore.tenantId ?? null)
+const contextTenantId = computed(() => tenantStore.selectedTenantId ?? authStore.tenantId ?? null);
 const effectiveParentTenantId = computed(() => {
   const current =
     tenantStore.selectedTenant ??
     tenantStore.items.find((tenant) => tenant.id === authStore.tenantId) ??
-    null
-  if (!current) return authStore.tenantId
-  return current.parent_id ?? current.id
-})
+    null;
+  if (!current) return authStore.tenantId;
+  return current.parent_id ?? current.id;
+});
 const isParentContext = computed(() => {
   return (
     contextTenantId.value !== null &&
     effectiveParentTenantId.value !== null &&
     contextTenantId.value === effectiveParentTenantId.value
-  )
-})
+  );
+});
 
 const pagination = computed({
   get: () => ({
@@ -200,121 +239,121 @@ const pagination = computed({
     rowsNumber: allocationStore.total,
   }),
   set: (val) => {
-    allocationStore.page = val.page
-    allocationStore.pageSize = val.rowsPerPage
-  }
-})
+    allocationStore.page = val.page;
+    allocationStore.pageSize = val.rowsPerPage;
+  },
+});
 
 const activeFilterCount = computed(() => {
-  let count = 0
-  if (childTenantFilter.value !== null) count++
-  if (stockTypeFilter.value !== null) count++
-  return count
-})
+  let count = 0;
+  if (childTenantFilter.value !== null) count++;
+  if (stockTypeFilter.value !== null) count++;
+  return count;
+});
 
 const stockTypeOptions = computed(() => {
-  return stockTypeStore.items.map((t) => ({ label: t.description, value: t.id }))
-})
+  return stockTypeStore.items.map((t) => ({ label: t.description, value: t.id }));
+});
 
 const childTenantOptions = computed(() => {
-  return childTenants.value.map((t) => ({ label: t.name, value: t.id }))
-})
+  return childTenants.value.map((t) => ({ label: t.name, value: t.id }));
+});
 
 const getUnitCost = (row: any): number => {
   return calculateLineLandedCostBdt(row, {
     ...row,
     type: row.shipment_type,
-  })
-}
+  });
+};
 
 const formatCost = (val: number): string => {
-  return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+  return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 const loadAllocations = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   await allocationStore.fetchAllocations(authStore.tenantId, {
     page: allocationStore.page,
     pageSize: allocationStore.pageSize,
     search: searchText.value.trim() || null,
     childTenantId: isParentContext.value ? childTenantFilter.value : null,
     stockTypeId: stockTypeFilter.value,
-  })
-}
+  });
+};
 
 const onTableRequest = async (props: any) => {
-  allocationStore.page = props.pagination.page
-  allocationStore.pageSize = props.pagination.rowsPerPage
-  await loadAllocations()
-}
+  allocationStore.page = props.pagination.page;
+  allocationStore.pageSize = props.pagination.rowsPerPage;
+  await loadAllocations();
+};
 
 const onSearch = () => {
-  allocationStore.page = 1
-  void loadAllocations()
-}
+  allocationStore.page = 1;
+  void loadAllocations();
+};
 
 // Filter Actions
 const openFilterDrawer = () => {
-  draftChildTenantFilter.value = childTenantFilter.value
-  draftStockTypeFilter.value = stockTypeFilter.value
-  filterDrawerOpen.value = true
-}
+  draftChildTenantFilter.value = childTenantFilter.value;
+  draftStockTypeFilter.value = stockTypeFilter.value;
+  filterDrawerOpen.value = true;
+};
 
 const onApplyDrawerFilters = () => {
-  childTenantFilter.value = draftChildTenantFilter.value
-  stockTypeFilter.value = draftStockTypeFilter.value
-  filterDrawerOpen.value = false
-  allocationStore.page = 1
-  void loadAllocations()
-}
+  childTenantFilter.value = draftChildTenantFilter.value;
+  stockTypeFilter.value = draftStockTypeFilter.value;
+  filterDrawerOpen.value = false;
+  allocationStore.page = 1;
+  void loadAllocations();
+};
 
 const onResetFilters = () => {
-  draftChildTenantFilter.value = null
-  draftStockTypeFilter.value = null
-  childTenantFilter.value = null
-  stockTypeFilter.value = null
-  filterDrawerOpen.value = false
-  allocationStore.page = 1
-  void loadAllocations()
-}
+  draftChildTenantFilter.value = null;
+  draftStockTypeFilter.value = null;
+  childTenantFilter.value = null;
+  stockTypeFilter.value = null;
+  filterDrawerOpen.value = false;
+  allocationStore.page = 1;
+  void loadAllocations();
+};
 
 const loadChildren = async () => {
-  if (!authStore.tenantId) return
+  if (!authStore.tenantId) return;
   try {
     const { data, error: err } = await supabase
       .from('tenants')
       .select('id, name')
-      .eq('parent_id', authStore.tenantId)
-    if (err) throw err
-    childTenants.value = data || []
+      .eq('parent_id', authStore.tenantId);
+    if (err) throw err;
+    childTenants.value = data || [];
   } catch (err: any) {
-    console.error('Failed to load child concerns', err)
+    console.error('Failed to load child concerns', err);
   }
-}
+};
 
 onMounted(async () => {
   if (authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId)
+    await stockTypeStore.fetchStockTypes(authStore.tenantId);
     if (isParentContext.value) {
-      await loadChildren()
+      await loadChildren();
     }
   }
-  void loadAllocations()
-})
+  void loadAllocations();
+});
 
 watch(
   () => [contextTenantId.value, isParentContext.value] as const,
   async ([newTenantId, parentCtx]) => {
     if (newTenantId) {
-      await stockTypeStore.fetchStockTypes(newTenantId)
+      await stockTypeStore.fetchStockTypes(newTenantId);
       if (parentCtx) {
-        await loadChildren()
+        await loadChildren();
       } else {
-        childTenants.value = []
+        childTenants.value = [];
       }
-      allocationStore.page = 1
-      void loadAllocations()
+      allocationStore.page = 1;
+      void loadAllocations();
     }
-  }
-)
+  },
+);
 </script>

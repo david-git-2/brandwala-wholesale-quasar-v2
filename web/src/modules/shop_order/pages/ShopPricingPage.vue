@@ -10,7 +10,8 @@
               <div class="text-overline">Shops</div>
               <h1 class="text-h5 q-my-none">Shop Pricing: {{ shopName }}</h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Manage product listings, set sell/dropship pricing, and configure display quantities.
+                Manage product listings, set sell/dropship pricing, and configure display
+                quantities.
               </p>
             </div>
           </div>
@@ -29,13 +30,7 @@
       <!-- Toolbar / Search -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-12 col-sm-5">
-          <q-input
-            v-model="search"
-            clearable
-            dense
-            outlined
-            placeholder="Search listed products…"
-          >
+          <q-input v-model="search" clearable dense outlined placeholder="Search listed products…">
             <template #prepend>
               <q-icon name="search" />
             </template>
@@ -58,7 +53,10 @@
           Loading product listings…
         </q-card-section>
 
-        <q-card-section v-else-if="filteredListings.length === 0" class="text-grey-6 text-center q-pa-xl">
+        <q-card-section
+          v-else-if="filteredListings.length === 0"
+          class="text-grey-6 text-center q-pa-xl"
+        >
           <q-icon name="list_alt" size="48px" class="q-mb-sm block" />
           No products listed on this shop. Click "Add Product Listing" to start.
         </q-card-section>
@@ -80,9 +78,11 @@
                   <q-img v-if="props.row.product_image_url" :src="props.row.product_image_url" />
                   <q-icon v-else name="image" color="grey-6" />
                 </q-avatar>
-                <div class="ellipsis" style="max-width: 250px;">
+                <div class="ellipsis" style="max-width: 250px">
                   <div class="text-weight-bold text-grey-9">{{ props.row.product_name }}</div>
-                  <div class="text-caption text-grey-6">{{ props.row.product_brand }} | {{ props.row.product_category }}</div>
+                  <div class="text-caption text-grey-6">
+                    {{ props.row.product_brand }} | {{ props.row.product_category }}
+                  </div>
                 </div>
               </div>
             </q-td>
@@ -101,7 +101,12 @@
           <template #body-cell-min_sell_price="props">
             <q-td :props="props">
               <div v-if="shopType === 'dropship'" class="text-grey-8">
-                {{ formatMoney(props.row.minimum_sell_price_amount, props.row.minimum_sell_price_currency_id) }}
+                {{
+                  formatMoney(
+                    props.row.minimum_sell_price_amount,
+                    props.row.minimum_sell_price_currency_id,
+                  )
+                }}
               </div>
               <div v-else class="text-grey-4">—</div>
             </q-td>
@@ -110,9 +115,14 @@
           <!-- Display Qty -->
           <template #body-cell-display_quantity="props">
             <q-td :props="props" class="text-center">
-              <div v-if="props.row.display_quantity_override !== null" class="text-primary text-weight-bold">
+              <div
+                v-if="props.row.display_quantity_override !== null"
+                class="text-primary text-weight-bold"
+              >
                 {{ props.row.display_quantity_override }}
-                <q-tooltip>Marketing override (Actual: {{ props.row.available_to_sell }})</q-tooltip>
+                <q-tooltip
+                  >Marketing override (Actual: {{ props.row.available_to_sell }})</q-tooltip
+                >
               </div>
               <div v-else class="text-grey-8">
                 {{ props.row.available_to_sell }}
@@ -123,8 +133,22 @@
           <!-- Visibility -->
           <template #body-cell-show_quantity="props">
             <q-td :props="props" class="text-center">
-              <q-badge :color="props.row.show_quantity === null ? 'grey-5' : (props.row.show_quantity ? 'positive' : 'negative')">
-                {{ props.row.show_quantity === null ? 'Inherit' : (props.row.show_quantity ? 'Show' : 'Hide') }}
+              <q-badge
+                :color="
+                  props.row.show_quantity === null
+                    ? 'grey-5'
+                    : props.row.show_quantity
+                      ? 'positive'
+                      : 'negative'
+                "
+              >
+                {{
+                  props.row.show_quantity === null
+                    ? 'Inherit'
+                    : props.row.show_quantity
+                      ? 'Show'
+                      : 'Hide'
+                }}
               </q-badge>
             </q-td>
           </template>
@@ -168,7 +192,7 @@
 
     <!-- Create / Edit Listing Form Dialog -->
     <q-dialog v-model="editDialogOpen">
-      <q-card style="width: 500px; max-width: 90vw;">
+      <q-card style="width: 500px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ form.id ? 'Edit Listing' : 'Add Listing' }}</div>
           <q-space />
@@ -191,7 +215,7 @@
                 label="Sell Price Amount"
                 outlined
                 dense
-                :rules="[val => !!val || 'Amount is required']"
+                :rules="[(val) => !!val || 'Amount is required']"
               />
             </div>
             <div class="col-5">
@@ -205,7 +229,7 @@
                 option-value="id"
                 option-label="code"
                 :options="store.currencies"
-                :rules="[val => !!val || 'Currency is required']"
+                :rules="[(val) => !!val || 'Currency is required']"
               />
             </div>
           </div>
@@ -220,7 +244,7 @@
                 label="Minimum Dropship Price"
                 outlined
                 dense
-                :rules="[val => !!val || 'Min dropship floor amount is required']"
+                :rules="[(val) => !!val || 'Min dropship floor amount is required']"
               />
             </div>
             <div class="col-5">
@@ -234,7 +258,7 @@
                 option-value="id"
                 option-label="code"
                 :options="store.currencies"
-                :rules="[val => !!val || 'Currency is required']"
+                :rules="[(val) => !!val || 'Currency is required']"
               />
             </div>
           </div>
@@ -267,18 +291,14 @@
                 :options="[
                   { label: 'Inherit Shop Settings', value: null },
                   { label: 'Force Show', value: true },
-                  { label: 'Force Hide', value: false }
+                  { label: 'Force Hide', value: false },
                 ]"
               />
             </div>
           </div>
 
           <!-- Active Switch -->
-          <q-toggle
-            v-model="form.is_active"
-            label="Listing Active"
-            color="primary"
-          />
+          <q-toggle v-model="form.is_active" label="Listing Active" color="primary" />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md border-top bg-grey-1">
@@ -297,32 +317,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShopPricingStore } from '../stores/shopPricingStore'
-import AllocationPickDialog from '../components/AllocationPickDialog.vue'
-import type { ShopProductListing, CandidateAllocation, UpsertListingPayload } from '../types'
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useShopPricingStore } from '../stores/shopPricingStore';
+import AllocationPickDialog from '../components/AllocationPickDialog.vue';
+import type { ShopProductListing, CandidateAllocation, UpsertListingPayload } from '../types';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const store = useShopPricingStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const store = useShopPricingStore();
 
-const tenantId = computed(() => authStore.tenantId as number)
-const shopId = computed(() => Number(route.params.shopId))
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+const tenantId = computed(() => authStore.tenantId as number);
+const shopId = computed(() => Number(route.params.shopId));
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
-const shopName = ref<string>('')
-const shopType = ref<string>('')
-const search = ref<string>('')
+const shopName = ref<string>('');
+const shopType = ref<string>('');
+const search = ref<string>('');
 
 // Form & Dialog controls
-const pickDialogOpen = ref(false)
-const editDialogOpen = ref(false)
-const selectedProductName = ref('')
-const selectedProductDetails = ref('')
+const pickDialogOpen = ref(false);
+const editDialogOpen = ref(false);
+const selectedProductName = ref('');
+const selectedProductDetails = ref('');
 
 const form = ref<UpsertListingPayload>({
   tenant_id: 0,
@@ -336,30 +356,57 @@ const form = ref<UpsertListingPayload>({
   display_quantity_override: null,
   is_active: true,
   id: null,
-})
+});
 
 const columns = [
-  { name: 'product_name', label: 'Product', field: 'product_name', align: 'left' as const, sortable: true },
-  { name: 'product_code', label: 'Code', field: 'product_code', align: 'left' as const, sortable: true },
+  {
+    name: 'product_name',
+    label: 'Product',
+    field: 'product_name',
+    align: 'left' as const,
+    sortable: true,
+  },
+  {
+    name: 'product_code',
+    label: 'Code',
+    field: 'product_code',
+    align: 'left' as const,
+    sortable: true,
+  },
   { name: 'product_barcode', label: 'Barcode', field: 'product_barcode', align: 'left' as const },
   { name: 'sell_price', label: 'Sell Price', field: 'sell_price_amount', align: 'left' as const },
-  { name: 'min_sell_price', label: 'Dropship Floor', field: 'minimum_sell_price_amount', align: 'left' as const },
-  { name: 'display_quantity', label: 'Display Qty', field: 'display_quantity_override', align: 'center' as const },
-  { name: 'show_quantity', label: 'Quantity Visibility', field: 'show_quantity', align: 'center' as const },
+  {
+    name: 'min_sell_price',
+    label: 'Dropship Floor',
+    field: 'minimum_sell_price_amount',
+    align: 'left' as const,
+  },
+  {
+    name: 'display_quantity',
+    label: 'Display Qty',
+    field: 'display_quantity_override',
+    align: 'center' as const,
+  },
+  {
+    name: 'show_quantity',
+    label: 'Quantity Visibility',
+    field: 'show_quantity',
+    align: 'center' as const,
+  },
   { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
-]
+];
 
 const formatMoney = (amount: number | null, currencyId: number | null): string => {
-  if (amount === null || currencyId === null) return '—'
-  const curr = store.currencies.find(c => c.id === currencyId)
-  const code = curr ? curr.code : ''
-  return `${Number(amount).toFixed(2)} ${code}`
-}
+  if (amount === null || currencyId === null) return '—';
+  const curr = store.currencies.find((c) => c.id === currencyId);
+  const code = curr ? curr.code : '';
+  return `${Number(amount).toFixed(2)} ${code}`;
+};
 
 const filteredListings = computed(() => {
-  const query = search.value.trim().toLowerCase()
-  if (!query) return store.listings
+  const query = search.value.trim().toLowerCase();
+  if (!query) return store.listings;
 
   return store.listings.filter((l) => {
     return (
@@ -368,39 +415,39 @@ const filteredListings = computed(() => {
       (l.product_barcode && l.product_barcode.toLowerCase().includes(query)) ||
       (l.product_brand && l.product_brand.toLowerCase().includes(query)) ||
       (l.product_category && l.product_category.toLowerCase().includes(query))
-    )
-  })
-})
+    );
+  });
+});
 
 const load = async () => {
-  if (!tenantId.value || !shopId.value) return
+  if (!tenantId.value || !shopId.value) return;
 
   // Fetch shop metadata
   const { data: shopData } = await supabase
     .from('shops')
     .select('name, shop_type, default_currency_id')
     .eq('id', shopId.value)
-    .single()
+    .single();
   if (shopData) {
-    shopName.value = shopData.name
-    shopType.value = shopData.shop_type
-    form.value.sell_price_currency_id = shopData.default_currency_id || 0
-    form.value.minimum_sell_price_currency_id = shopData.default_currency_id || null
+    shopName.value = shopData.name;
+    shopType.value = shopData.shop_type;
+    form.value.sell_price_currency_id = shopData.default_currency_id || 0;
+    form.value.minimum_sell_price_currency_id = shopData.default_currency_id || null;
   }
 
-  void store.fetchListings(shopId.value)
-  void store.fetchCurrencies()
-}
+  void store.fetchListings(shopId.value);
+  void store.fetchCurrencies();
+};
 
 const openPickDialog = async () => {
-  if (!tenantId.value || !shopId.value) return
-  await store.fetchCandidates(tenantId.value, shopId.value)
-  pickDialogOpen.value = true
-}
+  if (!tenantId.value || !shopId.value) return;
+  await store.fetchCandidates(tenantId.value, shopId.value);
+  pickDialogOpen.value = true;
+};
 
 const onAllocationPicked = (alloc: CandidateAllocation) => {
-  selectedProductName.value = alloc.product_name
-  selectedProductDetails.value = `${alloc.product_brand} | ${alloc.product_category} | Allocated: ${alloc.allocated_quantity}`
+  selectedProductName.value = alloc.product_name;
+  selectedProductDetails.value = `${alloc.product_brand} | ${alloc.product_category} | Allocated: ${alloc.allocated_quantity}`;
 
   form.value = {
     tenant_id: tenantId.value,
@@ -414,13 +461,13 @@ const onAllocationPicked = (alloc: CandidateAllocation) => {
     display_quantity_override: null,
     is_active: true,
     id: null,
-  }
-  editDialogOpen.value = true
-}
+  };
+  editDialogOpen.value = true;
+};
 
 const openEditListing = (listing: ShopProductListing) => {
-  selectedProductName.value = listing.product_name
-  selectedProductDetails.value = `${listing.product_brand} | ${listing.product_category} | Allocated: ${listing.allocated_quantity}`
+  selectedProductName.value = listing.product_name;
+  selectedProductDetails.value = `${listing.product_brand} | ${listing.product_category} | Allocated: ${listing.allocated_quantity}`;
 
   form.value = {
     id: listing.id,
@@ -429,38 +476,40 @@ const openEditListing = (listing: ShopProductListing) => {
     global_stock_allocation_id: listing.global_stock_allocation_id,
     sell_price_amount: Number(listing.sell_price_amount),
     sell_price_currency_id: listing.sell_price_currency_id,
-    minimum_sell_price_amount: listing.minimum_sell_price_amount ? Number(listing.minimum_sell_price_amount) : null,
+    minimum_sell_price_amount: listing.minimum_sell_price_amount
+      ? Number(listing.minimum_sell_price_amount)
+      : null,
     minimum_sell_price_currency_id: listing.minimum_sell_price_currency_id,
     show_quantity: listing.show_quantity,
     display_quantity_override: listing.display_quantity_override,
     is_active: listing.is_active,
-  }
-  editDialogOpen.value = true
-}
+  };
+  editDialogOpen.value = true;
+};
 
 const onSaveListing = async () => {
   // Guard dropship currency rules
   if (shopType.value === 'dropship' && form.value.minimum_sell_price_amount) {
     if (!form.value.minimum_sell_price_currency_id) {
-      form.value.minimum_sell_price_currency_id = form.value.sell_price_currency_id
+      form.value.minimum_sell_price_currency_id = form.value.sell_price_currency_id;
     }
   } else {
-    form.value.minimum_sell_price_amount = null
-    form.value.minimum_sell_price_currency_id = null
+    form.value.minimum_sell_price_amount = null;
+    form.value.minimum_sell_price_currency_id = null;
   }
 
-  const res = await store.saveListing(form.value)
+  const res = await store.saveListing(form.value);
   if (res.success) {
-    editDialogOpen.value = false
+    editDialogOpen.value = false;
   }
-}
+};
 
 const goBack = () => {
   void router.push({
     name: 'app-shop-shops-page',
     params: { tenantSlug: tenantSlug.value },
-  })
-}
+  });
+};
 
-onMounted(load)
+onMounted(load);
 </script>

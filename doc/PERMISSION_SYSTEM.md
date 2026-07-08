@@ -544,7 +544,7 @@ Login / tenant switch
   → check_login_membership (enum gate — scope admission only)
   → get_*_bootstrap_context (DB: activeModuleKeys + effectiveGrants)
   → authStore.saveAccess({ matchedRole, activeModuleKeys, effectiveGrants, tenantRoleId, isAdmin, ... })
-  → persisted to localStorage (brandwala.auth.access.v2)
+  → persisted to localStorage (brandwala.auth.access.v4)
 
 Every route / nav / button
   → beforeEnter guard or useModulePermissions()

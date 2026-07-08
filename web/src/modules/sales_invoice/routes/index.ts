@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -8,12 +8,12 @@ const guard = (requiredModule: ModuleKey) =>
     requiredScope: 'app',
     requireTenantContext: true,
     requiredModule,
-  })
+  });
 
 const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
-  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : ''
-  return tenantSlug ? `/${tenantSlug}` : ''
-}
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : '';
+  return tenantSlug ? `/${tenantSlug}` : '';
+};
 
 const salesInvoiceRoutes: RouteRecordRaw[] = [
   {
@@ -35,17 +35,17 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/invoices/:id',
     redirect: (to) => {
-      const prefix = getTenantSlugPrefix(to.params)
-      const id = typeof to.params.id === 'string' ? to.params.id : ''
-      return `${prefix}/app/sales/invoices/${id}`
+      const prefix = getTenantSlugPrefix(to.params);
+      const id = typeof to.params.id === 'string' ? to.params.id : '';
+      return `${prefix}/app/sales/invoices/${id}`;
     },
   },
   {
     path: '/:tenantSlug?/app/invoices/:id/preview',
     redirect: (to) => {
-      const prefix = getTenantSlugPrefix(to.params)
-      const id = typeof to.params.id === 'string' ? to.params.id : ''
-      return `${prefix}/app/sales/invoices/${id}/preview`
+      const prefix = getTenantSlugPrefix(to.params);
+      const id = typeof to.params.id === 'string' ? to.params.id : '';
+      return `${prefix}/app/sales/invoices/${id}/preview`;
     },
   },
   {
@@ -56,13 +56,15 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-global-invoices-page',
         component: () => import('../pages/InvoicesListPage.vue'),
+        meta: {
+          hasPageToolbar: true,
+        },
         beforeEnter: guard('global_invoice'),
       },
       {
         path: 'billing-profiles',
         name: 'app-global-billing-profiles',
-        component: () =>
-          import('../pages/BillingProfilesPage.vue'),
+        component: () => import('../pages/BillingProfilesPage.vue'),
         beforeEnter: guard('billing_profile'),
       },
       {
@@ -97,6 +99,6 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default salesInvoiceRoutes
+export default salesInvoiceRoutes;

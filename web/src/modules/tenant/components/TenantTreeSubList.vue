@@ -18,13 +18,20 @@
             class="costing-status-chip"
             :style="node.tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
           >
-            <span class="status-dot" :style="{ backgroundColor: node.tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+            <span
+              class="status-dot"
+              :style="{ backgroundColor: node.tenant.is_active ? '#2f8b5d' : '#66758c' }"
+            />
             {{ node.tenant.is_active ? 'Active' : 'Inactive' }}
           </q-chip>
         </div>
         <div class="text-subtitle1 text-weight-bold text-grey-9">{{ node.tenant.name }}</div>
         <div class="text-body2 text-grey-7 q-mt-xs">
-          {{ node.tenant.public_domain ? `${node.tenant.slug} | ${node.tenant.public_domain}` : node.tenant.slug }}
+          {{
+            node.tenant.public_domain
+              ? `${node.tenant.slug} | ${node.tenant.public_domain}`
+              : node.tenant.slug
+          }}
         </div>
       </div>
 
@@ -40,41 +47,41 @@
 </template>
 
 <script setup lang="ts">
-import type { Tenant } from '../types'
+import type { Tenant } from '../types';
 
 interface TenantNode {
-  tenant: Tenant
-  children: TenantNode[]
+  tenant: Tenant;
+  children: TenantNode[];
 }
 
 defineProps<{
-  nodes: TenantNode[]
-}>()
+  nodes: TenantNode[];
+}>();
 
 defineEmits<{
-  (e: 'click-tenant', tenantId: number): void
-}>()
+  (e: 'click-tenant', tenantId: number): void;
+}>();
 
 const activeStatusStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
   border: '1px solid #9fd4b7',
   boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
+};
 
 const inactiveStatusStyle = {
   backgroundColor: '#dbe5f3',
   color: '#3b4b66',
   border: '1px solid #b9c8dd',
   boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
+};
 </script>
 
 <script lang="ts">
 // Explicitly name the component to enable recursive calls in SFC
 export default {
-  name: 'TenantTreeSubList'
-}
+  name: 'TenantTreeSubList',
+};
 </script>
 
 <style scoped>
@@ -116,7 +123,9 @@ export default {
 }
 
 .tenant-tree-sublist__card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .tenant-tree-sublist__card:hover {

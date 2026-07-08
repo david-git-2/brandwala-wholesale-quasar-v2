@@ -2,26 +2,24 @@ import {
   globalShipmentRepository,
   type GlobalShipment,
   type GlobalShipmentItem,
-} from '../repositories/globalShipmentRepository'
-import {
-  computePackageWeightAdjustments,
-} from './weightBalance'
-import { calculateTransactionRate } from './landedCost'
+} from '../repositories/globalShipmentRepository';
+import { computePackageWeightAdjustments } from './weightBalance';
+import { calculateTransactionRate } from './landedCost';
 
 export interface ApplyWeightBalanceResult {
-  estimatedKg: number
-  actualKg: number
-  deltaKg: number
+  estimatedKg: number;
+  actualKg: number;
+  deltaKg: number;
   adjustments: {
-    itemId: number
-    newPackageWeight: number
-    perUnitDelta: number
-  }[]
+    itemId: number;
+    newPackageWeight: number;
+    perUnitDelta: number;
+  }[];
 }
 
 export interface ApplyWeightBalancePreload {
-  shipment: GlobalShipment
-  items: GlobalShipmentItem[]
+  shipment: GlobalShipment;
+  items: GlobalShipmentItem[];
 }
 
 /**
@@ -32,22 +30,22 @@ export async function applyShipmentWeightBalance(
   shipmentId: number,
   preload?: ApplyWeightBalancePreload,
 ): Promise<ApplyWeightBalanceResult> {
-  const shipment = preload?.shipment ?? await globalShipmentRepository.getById(shipmentId)
-  const items = preload?.items ?? await globalShipmentRepository.listShipmentItems(shipmentId)
+  const shipment = preload?.shipment ?? (await globalShipmentRepository.getById(shipmentId));
+  const items = preload?.items ?? (await globalShipmentRepository.listShipmentItems(shipmentId));
 
-  const actualKg = Math.round((shipment.received_weight || 0) * 100) / 100
+  const actualKg = Math.round((shipment.received_weight || 0) * 100) / 100;
   if (actualKg <= 0) {
-    throw new Error('Cargo Invoice Weight must be saved before applying weight balance.')
+    throw new Error('Cargo Invoice Weight must be saved before applying weight balance.');
   }
 
-  const adjustments = computePackageWeightAdjustments(items, actualKg)
+  const adjustments = computePackageWeightAdjustments(items, actualKg);
 
   const updatedItems = items.map((item) => {
-    const adj = adjustments.find((a) => a.itemId === item.id)
-    return adj ? { ...item, package_weight: adj.newPackageWeight } : item
-  })
+    const adj = adjustments.find((a) => a.itemId === item.id);
+    return adj ? { ...item, package_weight: adj.newPackageWeight } : item;
+  });
 
-  let transactionRate: number | null = null
+  let transactionRate: number | null = null;
   if (shipment.type === 'international') {
     transactionRate = calculateTransactionRate(
       {
@@ -64,7 +62,7 @@ export async function applyShipmentWeightBalance(
         package_weight: item.package_weight,
         ordered_quantity: item.ordered_quantity,
       })),
-    )
+    );
   }
 
   const rpcResult = await globalShipmentRepository.applyWeightBalance(
@@ -74,12 +72,12 @@ export async function applyShipmentWeightBalance(
       package_weight: adj.newPackageWeight,
     })),
     transactionRate,
-  )
+  );
 
   return {
     estimatedKg: rpcResult.estimated_kg,
     actualKg: rpcResult.actual_kg,
     deltaKg: rpcResult.delta_kg,
     adjustments,
-  }
+  };
 }

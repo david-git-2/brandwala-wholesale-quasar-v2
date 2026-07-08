@@ -66,9 +66,7 @@
               >
                 Image
               </q-th>
-              <q-th key="name" :props="props" class="preview-page__header-cell">
-                Name
-              </q-th>
+              <q-th key="name" :props="props" class="preview-page__header-cell"> Name </q-th>
               <q-th
                 key="offerPriceBdt"
                 :props="props"
@@ -117,9 +115,7 @@
           </template>
 
           <template #no-data>
-            <div class="full-width row flex-center q-pa-lg text-grey-7">
-              No preview items found
-            </div>
+            <div class="full-width row flex-center q-pa-lg text-grey-7">No preview items found</div>
           </template>
         </q-table>
       </q-card>
@@ -159,90 +155,90 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import type { QTableColumn } from 'quasar'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { QTableColumn } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
 
-import SmartImage from 'src/components/SmartImage.vue'
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
-import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types'
-import { calculateOfferPriceBdt, normalizeOfferPriceBdt, toNumberSafe } from '../utils/pricing'
+import SmartImage from 'src/components/SmartImage.vue';
+import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types';
+import { calculateOfferPriceBdt, normalizeOfferPriceBdt, toNumberSafe } from '../utils/pricing';
 
 type PreviewRow = {
-  id: number
-  sl: number
-  name: string
-  imageUrl: string | null
-  offerPriceBdt: number
-  raw: ProductBasedCostingItem
-}
+  id: number;
+  sl: number;
+  name: string;
+  imageUrl: string | null;
+  offerPriceBdt: number;
+  raw: ProductBasedCostingItem;
+};
 
-const route = useRoute()
-const router = useRouter()
-const store = useProductBasedCostingStore()
+const route = useRoute();
+const router = useRouter();
+const store = useProductBasedCostingStore();
 
-const loading = ref(false)
-const isPrintMode = ref(false)
-const currentPage = ref(1)
-const errorMessage = ref('')
-const fileInfo = ref<ProductBasedCostingFile | null>(null)
-const items = ref<ProductBasedCostingItem[]>([])
-const VIEW_ROWS_PER_PAGE = 6
+const loading = ref(false);
+const isPrintMode = ref(false);
+const currentPage = ref(1);
+const errorMessage = ref('');
+const fileInfo = ref<ProductBasedCostingFile | null>(null);
+const items = ref<ProductBasedCostingItem[]>([]);
+const VIEW_ROWS_PER_PAGE = 6;
 
 const fileId = computed(() => {
-  const parsed = Number(route.params.id)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-})
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
 
-const cargoRate = computed(() => Number(fileInfo.value?.cargo_rate_kg_gbp ?? 0))
-const conversionRate = computed(() => Number(fileInfo.value?.conversion_rate ?? 140))
-const profitRate = computed(() => Number(fileInfo.value?.profit_rate ?? 25))
+const cargoRate = computed(() => Number(fileInfo.value?.cargo_rate_kg_gbp ?? 0));
+const conversionRate = computed(() => Number(fileInfo.value?.conversion_rate ?? 140));
+const profitRate = computed(() => Number(fileInfo.value?.profit_rate ?? 25));
 
-const fileLabel = computed(() => `#${fileInfo.value?.id ?? fileId.value ?? '-'}`)
+const fileLabel = computed(() => `#${fileInfo.value?.id ?? fileId.value ?? '-'}`);
 
-const fileName = computed(() => fileInfo.value?.name?.trim() || '-')
+const fileName = computed(() => fileInfo.value?.name?.trim() || '-');
 
-const createdFor = computed(() => fileInfo.value?.order_for?.trim() || '-')
+const createdFor = computed(() => fileInfo.value?.order_for?.trim() || '-');
 
-const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
+const toExternalUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
 const getDriveFileId = (url: string) => {
-  const byQuery = url.match(/[?&]id=([^&]+)/)
-  const byPath = url.match(/\/file\/d\/([^/]+)/)
-  return byQuery?.[1] || byPath?.[1] || null
-}
+  const byQuery = url.match(/[?&]id=([^&]+)/);
+  const byPath = url.match(/\/file\/d\/([^/]+)/);
+  return byQuery?.[1] || byPath?.[1] || null;
+};
 
 const resolvePreviewImageUrl = (value: string | null) => {
   if (!value) {
-    return null
+    return null;
   }
 
-  const normalized = toExternalUrl(value)
-  const driveId = getDriveFileId(normalized)
+  const normalized = toExternalUrl(value);
+  const driveId = getDriveFileId(normalized);
   if (driveId) {
-    return `https://lh3.googleusercontent.com/d/${driveId}`
+    return `https://lh3.googleusercontent.com/d/${driveId}`;
   }
 
-  return normalized
-}
+  return normalized;
+};
 
 const formatNumber = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '-'
+    return '-';
   }
 
-  return Number(value).toFixed(2)
-}
+  return Number(value).toFixed(2);
+};
 
 const toNumber = (value: unknown) => {
-  return toNumberSafe(value)
-}
+  return toNumberSafe(value);
+};
 
 const getOfferPriceBdt = (item: ProductBasedCostingItem) => {
   // Always prefer saved cell value from offer_price, then round to nearest upper 0/5.
-  const rawOffer = toNumber(item.offer_price)
+  const rawOffer = toNumber(item.offer_price);
   if (rawOffer > 0) {
-    return normalizeOfferPriceBdt(rawOffer)
+    return normalizeOfferPriceBdt(rawOffer);
   }
 
   return calculateOfferPriceBdt({
@@ -252,8 +248,8 @@ const getOfferPriceBdt = (item: ProductBasedCostingItem) => {
     cargoRate: cargoRate.value,
     conversionRate: conversionRate.value,
     profitRate: profitRate.value,
-  })
-}
+  });
+};
 
 const rows = computed<PreviewRow[]>(() =>
   items.value.map((item, index) => ({
@@ -264,21 +260,21 @@ const rows = computed<PreviewRow[]>(() =>
     offerPriceBdt: getOfferPriceBdt(item),
     raw: item,
   })),
-)
+);
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(rows.value.length / VIEW_ROWS_PER_PAGE)),
-)
+const totalPages = computed(() => Math.max(1, Math.ceil(rows.value.length / VIEW_ROWS_PER_PAGE)));
 
 const pagedRows = computed<PreviewRow[]>(() => {
-  const start = (currentPage.value - 1) * VIEW_ROWS_PER_PAGE
-  return rows.value.slice(start, start + VIEW_ROWS_PER_PAGE)
-})
-const tableRows = computed<PreviewRow[]>(() => (isPrintMode.value ? rows.value : pagedRows.value))
-const pageStartIndex = computed(() => (rows.value.length ? (currentPage.value - 1) * VIEW_ROWS_PER_PAGE + 1 : 0))
+  const start = (currentPage.value - 1) * VIEW_ROWS_PER_PAGE;
+  return rows.value.slice(start, start + VIEW_ROWS_PER_PAGE);
+});
+const tableRows = computed<PreviewRow[]>(() => (isPrintMode.value ? rows.value : pagedRows.value));
+const pageStartIndex = computed(() =>
+  rows.value.length ? (currentPage.value - 1) * VIEW_ROWS_PER_PAGE + 1 : 0,
+);
 const pageEndIndex = computed(() =>
   rows.value.length ? Math.min(currentPage.value * VIEW_ROWS_PER_PAGE, rows.value.length) : 0,
-)
+);
 
 const columns = computed((): QTableColumn[] => [
   {
@@ -313,140 +309,138 @@ const columns = computed((): QTableColumn[] => [
     style: 'width: 82px; min-width: 82px;',
     headerStyle: 'width: 82px; min-width: 82px;',
   },
-])
+]);
 
 const loadPreviewData = async () => {
   if (!fileId.value) {
-    errorMessage.value = 'Invalid file id.'
-    fileInfo.value = null
-    items.value = []
-    return
+    errorMessage.value = 'Invalid file id.';
+    fileInfo.value = null;
+    items.value = [];
+    return;
   }
 
-  loading.value = true
-  errorMessage.value = ''
-  fileInfo.value = null
-  items.value = []
+  loading.value = true;
+  errorMessage.value = '';
+  fileInfo.value = null;
+  items.value = [];
 
   try {
     const [fileResult, itemsResult] = await Promise.all([
       store.fetchProductBasedCostingFileById(fileId.value),
       store.fetchProductBasedCostingItems(fileId.value),
-    ])
+    ]);
 
     if (!fileResult.success) {
-      errorMessage.value = fileResult.error ?? 'Failed to load preview data.'
-      return
+      errorMessage.value = fileResult.error ?? 'Failed to load preview data.';
+      return;
     }
 
-    fileInfo.value = fileResult.data ?? null
+    fileInfo.value = fileResult.data ?? null;
 
     if (!itemsResult.success) {
-      errorMessage.value = itemsResult.error ?? 'Failed to load preview items.'
-      return
+      errorMessage.value = itemsResult.error ?? 'Failed to load preview items.';
+      return;
     }
 
-    items.value = itemsResult.data ?? []
+    items.value = itemsResult.data ?? [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const goBack = () => {
   if (fileId.value) {
     void router.push({
       name: 'product-based-costing-file-details-page',
       params: { id: fileId.value },
-    })
-    return
+    });
+    return;
   }
 
-  router.back()
-}
+  router.back();
+};
 
 const printPage = () => {
-  isPrintMode.value = true
+  isPrintMode.value = true;
   void nextTick(async () => {
     // Ensure full list is rendered and visible images are loaded before opening print dialog.
-    const root = document.querySelector<HTMLElement>('.preview-page__table-card')
+    const root = document.querySelector<HTMLElement>('.preview-page__table-card');
     if (root) {
-      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'))
+      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'));
       await Promise.all(
         images.map(
           (img) =>
             new Promise<void>((resolve) => {
               if (img.complete && img.naturalWidth > 0) {
-                resolve()
-                return
+                resolve();
+                return;
               }
 
               const done = () => {
-                img.removeEventListener('load', done)
-                img.removeEventListener('error', done)
-                resolve()
-              }
+                img.removeEventListener('load', done);
+                img.removeEventListener('error', done);
+                resolve();
+              };
 
-              img.addEventListener('load', done, { once: true })
-              img.addEventListener('error', done, { once: true })
-              setTimeout(done, 7000)
+              img.addEventListener('load', done, { once: true });
+              img.addEventListener('error', done, { once: true });
+              setTimeout(done, 7000);
             }),
         ),
-      )
+      );
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 120))
-    window.print()
-  })
-}
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    window.print();
+  });
+};
 
 const resetPrintMode = () => {
-  isPrintMode.value = false
-}
+  isPrintMode.value = false;
+};
 
 const activatePrintMode = () => {
-  isPrintMode.value = true
-}
+  isPrintMode.value = true;
+};
 
 const goPrevPage = () => {
   if (currentPage.value > 1) {
-    currentPage.value -= 1
+    currentPage.value -= 1;
   }
-}
+};
 
 const goNextPage = () => {
   if (currentPage.value < totalPages.value) {
-    currentPage.value += 1
+    currentPage.value += 1;
   }
-}
+};
 
 watch(fileId, () => {
-  void loadPreviewData()
-})
+  void loadPreviewData();
+});
 
 watch(
   () => rows.value.length,
   () => {
     if (currentPage.value > totalPages.value) {
-      currentPage.value = totalPages.value
+      currentPage.value = totalPages.value;
     }
   },
-)
+);
 
 onMounted(() => {
-  window.addEventListener('beforeprint', activatePrintMode)
-  window.addEventListener('afterprint', resetPrintMode)
-  void loadPreviewData()
-})
+  window.addEventListener('beforeprint', activatePrintMode);
+  window.addEventListener('afterprint', resetPrintMode);
+  void loadPreviewData();
+});
 
 onUnmounted(() => {
-  window.removeEventListener('beforeprint', activatePrintMode)
-  window.removeEventListener('afterprint', resetPrintMode)
-})
+  window.removeEventListener('beforeprint', activatePrintMode);
+  window.removeEventListener('afterprint', resetPrintMode);
+});
 </script>
 
 <style scoped>
-
-
 .preview-page__shell {
   width: 320px;
   max-width: calc(100vw - 1rem);

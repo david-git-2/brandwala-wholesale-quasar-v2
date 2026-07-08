@@ -1,6 +1,10 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="workspace-shell" :class="[...themeClasses, { 'workspace-shell--has-secondary': hasSecondaryHeader }]">
-    <q-header class="workspace-shell__header">
+  <q-layout
+    view="hHh lpR fFf"
+    class="workspace-shell"
+    :class="[...themeClasses, { 'workspace-shell--mini': isMini }]"
+  >
+    <q-header :reveal="$q.screen.lt.md" class="workspace-shell__header">
       <q-toolbar class="workspace-shell__toolbar">
         <q-btn
           flat
@@ -8,10 +12,9 @@
           dense
           icon="menu"
           class="workspace-shell__menu"
-          @click="drawerOpen = !drawerOpen"
+          @click="toggleDrawerOrPin"
         />
 
-       
         <div class="workspace-shell__context">
           <slot name="header-left" />
         </div>
@@ -22,22 +25,47 @@
           <slot name="header-extra" />
         </div>
       </q-toolbar>
-
-      <q-toolbar v-if="hasSecondaryHeader" class="workspace-shell__secondary-toolbar">
-        <slot name="header-secondary" />
-      </q-toolbar>
     </q-header>
 
     <q-drawer
       v-model="drawerOpen"
+      :mini="isMini"
+      mini-to-overlay
+      :mini-width="64"
+      :width="300"
       show-if-above
       bordered
-      :width="300"
       class="workspace-shell__drawer"
+      @mouseenter="drawerHovered = true"
+      @mouseleave="drawerHovered = false"
     >
       <div class="workspace-shell__drawer-inner">
         <div class="workspace-shell__drawer-top">
-          <div class="row items-center no-wrap q-gutter-sm q-pa-sm rounded-borders profile-card">
+          <!-- Pin/Unpin Toggle Button -->
+          <div v-if="!isMini" class="row justify-end q-mb-xs">
+            <q-btn
+              flat
+              round
+              dense
+              icon="push_pin"
+              size="sm"
+              :color="navPinned ? 'primary' : 'grey-7'"
+              :style="
+                !navPinned
+                  ? 'transform: rotate(45deg); transition: transform 0.2s;'
+                  : 'transition: transform 0.2s;'
+              "
+              @click="togglePin"
+            >
+              <q-tooltip>{{ navPinned ? 'Collapse sidebar' : 'Pin sidebar' }}</q-tooltip>
+            </q-btn>
+          </div>
+
+          <div
+            class="row items-center no-wrap rounded-borders profile-card"
+            :class="isMini ? 'justify-center q-pa-xs cursor-pointer' : 'q-gutter-sm q-pa-sm'"
+            :style="isMini ? 'border-color: transparent; background: transparent;' : ''"
+          >
             <q-avatar size="36px" class="workspace-shell__avatar">
               <img
                 v-if="userAvatarUrl"
@@ -45,20 +73,27 @@
                 class="workspace-shell__avatar-image"
                 referrerpolicy="no-referrer"
                 alt=""
-              >
+              />
               <span v-else class="workspace-shell__avatar-fallback">{{ userInitials }}</span>
             </q-avatar>
-            <div class="col ellipsis">
-              <div class="text-subtitle2 text-weight-bold ellipsis text-black leading-tight">{{ userName }}</div>
+            <div v-if="!isMini" class="col ellipsis">
+              <div class="text-subtitle2 text-weight-bold ellipsis text-black leading-tight">
+                {{ userName }}
+              </div>
               <div class="text-caption text-grey-7 ellipsis leading-tight">{{ userEmail }}</div>
             </div>
-            
-            <q-btn flat round dense icon="more_vert" size="sm" color="grey-7">
+
+            <q-btn v-if="!isMini" flat round dense icon="more_vert" size="sm" color="grey-7">
               <q-menu style="min-width: 200px">
                 <q-list dense class="q-py-xs">
-                  <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 10px; letter-spacing: 0.1em;">Session Info</q-item-label>
+                  <q-item-label
+                    header
+                    class="text-uppercase text-weight-bold text-grey-7"
+                    style="font-size: 10px; letter-spacing: 0.1em"
+                    >Session Info</q-item-label
+                  >
                   <q-item v-if="currentRoleLabel">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
                       <q-icon name="shield" size="xs" color="grey-6" />
                     </q-item-section>
                     <q-item-section>
@@ -67,30 +102,145 @@
                     </q-item-section>
                   </q-item>
                   <q-item v-if="contextLabel && contextValue">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
                       <q-icon name="apartment" size="xs" color="grey-6" />
                     </q-item-section>
                     <q-item-section>
-                      <q-item-label class="text-caption text-weight-medium">{{ contextLabel }}</q-item-label>
+                      <q-item-label class="text-caption text-weight-medium">{{
+                        contextLabel
+                      }}</q-item-label>
                       <q-item-label caption>{{ contextValue }}</q-item-label>
                     </q-item-section>
                   </q-item>
+
+                  <q-separator class="q-my-xs" />
+                  <q-item-label
+                    header
+                    class="text-uppercase text-weight-bold text-grey-7"
+                    style="font-size: 10px; letter-spacing: 0.1em"
+                    >Appearance</q-item-label
+                  >
+                  <q-item clickable @click="toggleDarkMode">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                      <q-icon
+                        :name="darkMode ? 'dark_mode' : 'light_mode'"
+                        size="xs"
+                        color="grey-6"
+                      />
+                    </q-item-section>
+                    <q-item-section>Dark Mode</q-item-section>
+                    <q-item-section side>
+                      <q-toggle
+                        :model-value="darkMode"
+                        @update:model-value="toggleDarkMode"
+                        dense
+                      />
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable @click="toggleDensity">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                      <q-icon name="density_medium" size="xs" color="grey-6" />
+                    </q-item-section>
+                    <q-item-section>Compact Rows</q-item-section>
+                    <q-item-section side>
+                      <q-toggle
+                        :model-value="density === 'compact'"
+                        @update:model-value="toggleDensity"
+                        dense
+                      />
+                    </q-item-section>
+                  </q-item>
+
                   <q-separator class="q-my-xs" />
                   <q-item clickable v-close-popup @click="handleLogout">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px;">
+                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
                       <q-icon name="logout" size="xs" color="negative" />
                     </q-item-section>
-                    <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                    <q-item-section class="text-negative text-weight-medium"
+                      >Sign out</q-item-section
+                    >
                   </q-item>
                 </q-list>
               </q-menu>
             </q-btn>
+            <q-menu v-if="isMini" style="min-width: 200px">
+              <q-list dense class="q-py-xs">
+                <q-item-label
+                  header
+                  class="text-uppercase text-weight-bold text-grey-7"
+                  style="font-size: 10px; letter-spacing: 0.1em"
+                  >Session Info</q-item-label
+                >
+                <q-item v-if="currentRoleLabel">
+                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                    <q-icon name="shield" size="xs" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
+                    <q-item-label caption>{{ currentRoleLabel }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item v-if="contextLabel && contextValue">
+                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                    <q-icon name="apartment" size="xs" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-caption text-weight-medium">{{
+                      contextLabel
+                    }}</q-item-label>
+                    <q-item-label caption>{{ contextValue }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-separator class="q-my-xs" />
+                <q-item-label
+                  header
+                  class="text-uppercase text-weight-bold text-grey-7"
+                  style="font-size: 10px; letter-spacing: 0.1em"
+                  >Appearance</q-item-label
+                >
+                <q-item clickable @click="toggleDarkMode">
+                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                    <q-icon
+                      :name="darkMode ? 'dark_mode' : 'light_mode'"
+                      size="xs"
+                      color="grey-6"
+                    />
+                  </q-item-section>
+                  <q-item-section>Dark Mode</q-item-section>
+                  <q-item-section side>
+                    <q-toggle :model-value="darkMode" @update:model-value="toggleDarkMode" dense />
+                  </q-item-section>
+                </q-item>
+                <q-item clickable @click="toggleDensity">
+                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                    <q-icon name="density_medium" size="xs" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>Compact Rows</q-item-section>
+                  <q-item-section side>
+                    <q-toggle
+                      :model-value="density === 'compact'"
+                      @update:model-value="toggleDensity"
+                      dense
+                    />
+                  </q-item-section>
+                </q-item>
+
+                <q-separator class="q-my-xs" />
+                <q-item clickable v-close-popup @click="handleLogout">
+                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                    <q-icon name="logout" size="xs" color="negative" />
+                  </q-item-section>
+                  <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
           </div>
         </div>
 
         <q-scroll-area class="workspace-shell__drawer-scroll">
           <div class="workspace-shell__nav">
-            <div class="workspace-shell__drawer-search q-mb-md">
+            <div v-if="!isMini" class="workspace-shell__drawer-search q-mb-md">
               <q-input
                 filled
                 dense
@@ -109,12 +259,60 @@
               </q-input>
             </div>
 
-            <div class="workspace-shell__nav-label">Workspace</div>
+            <div v-if="!isMini" class="workspace-shell__nav-label">Workspace</div>
 
             <q-list class="workspace-shell__nav-list">
               <template v-for="link in links" :key="link.to || link.title">
+                <!-- Group with children in mini mode (flyout menu) -->
+                <q-item
+                  v-if="link.children?.length && isMini"
+                  clickable
+                  class="workspace-shell__nav-item"
+                >
+                  <q-item-section avatar>
+                    <q-icon :name="link.icon" />
+                  </q-item-section>
+
+                  <q-tooltip anchor="center right" self="center left" :offset="[10, 10]">
+                    {{ link.title }}
+                  </q-tooltip>
+
+                  <q-menu
+                    anchor="top right"
+                    self="top left"
+                    :offset="[8, 0]"
+                    class="workspace-shell__flyout-menu"
+                  >
+                    <q-list dense class="q-py-xs" style="min-width: 180px">
+                      <q-item-label
+                        header
+                        class="text-uppercase text-weight-bold text-grey-7 q-py-xs"
+                        style="font-size: 10px; letter-spacing: 0.05em"
+                      >
+                        {{ link.title }}
+                      </q-item-label>
+                      <q-separator class="q-mb-xs" />
+                      <q-item
+                        v-for="child in link.children"
+                        :key="child.to ?? child.title"
+                        clickable
+                        :to="child.to!"
+                        exact
+                        v-close-popup
+                        class="workspace-shell__flyout-sub-item q-mx-xs q-my-xs rounded-borders"
+                        active-class="workspace-shell__nav-item--active"
+                      >
+                        <q-item-section>
+                          <q-item-label>{{ child.title }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-item>
+
+                <!-- Group with children in standard mode (expansion item) -->
                 <q-expansion-item
-                  v-if="link.children?.length"
+                  v-else-if="link.children?.length"
                   :icon="link.icon"
                   :label="link.title"
                   class="workspace-shell__nav-item workspace-shell__nav-group"
@@ -137,6 +335,7 @@
                   </div>
                 </q-expansion-item>
 
+                <!-- Single link item -->
                 <q-item
                   v-else-if="link.to"
                   clickable
@@ -150,9 +349,18 @@
                     <q-icon :name="link.icon" />
                   </q-item-section>
 
-                  <q-item-section>
+                  <q-item-section v-if="!isMini">
                     <q-item-label>{{ link.title }}</q-item-label>
                   </q-item-section>
+
+                  <q-tooltip
+                    v-if="isMini"
+                    anchor="center right"
+                    self="center left"
+                    :offset="[10, 10]"
+                  >
+                    {{ link.title }}
+                  </q-tooltip>
                 </q-item>
               </template>
             </q-list>
@@ -165,11 +373,15 @@
             dense
             no-caps
             icon="logout"
-            label="Sign out"
+            :label="isMini ? '' : 'Sign out'"
             color="negative"
             class="workspace-shell__logout"
             @click="handleLogout"
-          />
+          >
+            <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 10]">
+              Sign out
+            </q-tooltip>
+          </q-btn>
         </div>
       </div>
     </q-drawer>
@@ -186,7 +398,10 @@
       @show="onPaletteShow"
       @hide="onPaletteHide"
     >
-      <q-card style="width: 600px; max-width: 90vw; margin-top: 10vh;" class="floating-surface shadow-5 command-palette-card">
+      <q-card
+        style="width: 600px; max-width: 90vw; margin-top: 10vh"
+        class="floating-surface shadow-5 command-palette-card"
+      >
         <q-card-section class="q-pa-sm">
           <q-input
             ref="searchInputRef"
@@ -218,7 +433,7 @@
 
         <q-separator />
 
-        <q-scroll-area style="height: 300px;">
+        <q-scroll-area style="height: 300px">
           <q-list v-if="filteredLinks.length" class="q-py-xs">
             <q-item
               v-for="(link, idx) in filteredLinks"
@@ -257,16 +472,10 @@
     <!-- ── Sign-out confirmation dialog ───────────────────── -->
     <q-dialog v-model="showLogoutDialog" persistent class="signout-dialog">
       <div class="signout-card">
-
         <!-- Avatar + identity -->
         <div class="signout-card__identity">
           <div class="signout-card__avatar">
-            <img
-              v-if="userAvatarUrl"
-              :src="userAvatarUrl"
-              referrerpolicy="no-referrer"
-              alt=""
-            />
+            <img v-if="userAvatarUrl" :src="userAvatarUrl" referrerpolicy="no-referrer" alt="" />
             <span v-else>{{ userInitials }}</span>
           </div>
           <div class="signout-card__user">
@@ -297,7 +506,10 @@
 
         <!-- Actions -->
         <div class="signout-card__actions">
-          <button class="signout-card__btn signout-card__btn--cancel" @click="showLogoutDialog = false">
+          <button
+            class="signout-card__btn signout-card__btn--cancel"
+            @click="showLogoutDialog = false"
+          >
             Stay signed in
           </button>
           <button class="signout-card__btn signout-card__btn--confirm" @click="confirmLogout">
@@ -305,67 +517,91 @@
             Sign out
           </button>
         </div>
-
       </div>
     </q-dialog>
-
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch, useSlots } from 'vue'
-import { useRouter } from 'vue-router'
-import type { QInput } from 'quasar'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import type { QInput } from 'quasar';
 
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAppearance } from 'src/composables/useAppearance';
 
 export interface WorkspaceLink {
-  title: string
-  caption: string
-  icon: string
-  to?: string
-  target?: string
-  children?: WorkspaceLink[]
+  title: string;
+  caption: string;
+  icon: string;
+  to?: string;
+  target?: string;
+  children?: WorkspaceLink[];
 }
 
 const props = defineProps<{
-  logoutTo: string
-  theme: 'platform' | 'app' | 'shop' | 'investor'
-  links: WorkspaceLink[]
-}>()
+  logoutTo: string;
+  theme: 'platform' | 'app' | 'shop' | 'investor';
+  links: WorkspaceLink[];
+}>();
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor']
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
 
-const drawerOpen = ref(false)
-const showLogoutDialog = ref(false)
-const router = useRouter()
-const authStore = useAuthStore()
-const slots = useSlots()
+const drawerOpen = ref(false);
+const showLogoutDialog = ref(false);
+const router = useRouter();
+const authStore = useAuthStore();
 
-const hasSecondaryHeader = computed(() => !!slots['header-secondary'])
+const $q = useQuasar();
+const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();
+const drawerHovered = ref(false);
 
-const showCommandPalette = ref(false)
-const searchQuery = ref('')
-const activeIndex = ref(0)
-const searchInputRef = ref<QInput | null>(null)
+const isMini = computed(() => !navPinned.value && !drawerHovered.value && !$q.screen.lt.md);
+
+const togglePin = () => {
+  void setNavPinned(!navPinned.value, authStore.membershipId);
+};
+
+const toggleDrawerOrPin = () => {
+  if ($q.screen.lt.md) {
+    drawerOpen.value = !drawerOpen.value;
+  } else {
+    void setNavPinned(!navPinned.value, authStore.membershipId);
+  }
+};
+
+const toggleDarkMode = () => {
+  void setDarkMode(!darkMode.value, authStore.membershipId);
+};
+
+const toggleDensity = () => {
+  const nextDensity = density.value === 'compact' ? 'comfortable' : 'compact';
+  void setDensity(nextDensity, authStore.membershipId);
+};
+
+const showCommandPalette = ref(false);
+const searchQuery = ref('');
+const activeIndex = ref(0);
+const searchInputRef = ref<QInput | null>(null);
 
 interface FlattenedLink {
-  title: string
-  caption: string
-  icon: string
-  to?: string
-  target?: string | undefined
-  parentTitle?: string | undefined
+  title: string;
+  caption: string;
+  icon: string;
+  to?: string;
+  target?: string | undefined;
+  parentTitle?: string | undefined;
 }
 
 const flattenedLinks = computed(() => {
-  const result: FlattenedLink[] = []
+  const result: FlattenedLink[] = [];
 
   const traverse = (items: WorkspaceLink[], parentTitle?: string) => {
     for (const item of items) {
       if (item.children && item.children.length > 0) {
-        traverse(item.children, item.title)
+        traverse(item.children, item.title);
       } else if (item.to) {
         result.push({
           title: item.title,
@@ -374,188 +610,185 @@ const flattenedLinks = computed(() => {
           to: item.to,
           target: item.target,
           parentTitle,
-        })
+        });
       }
     }
-  }
+  };
 
-  traverse(props.links)
-  return result
-})
+  traverse(props.links);
+  return result;
+});
 
 const filteredLinks = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchQuery.value.trim().toLowerCase();
   if (!query) {
-    return flattenedLinks.value
+    return flattenedLinks.value;
   }
   return flattenedLinks.value.filter((link) => {
     return (
       link.title.toLowerCase().includes(query) ||
       (link.caption && link.caption.toLowerCase().includes(query)) ||
       (link.parentTitle && link.parentTitle.toLowerCase().includes(query))
-    )
-  })
-})
+    );
+  });
+});
 
 watch(searchQuery, () => {
-  activeIndex.value = 0
-})
+  activeIndex.value = 0;
+});
 
 const onPaletteShow = () => {
   setTimeout(() => {
-    searchInputRef.value?.focus()
-  }, 50)
-}
+    searchInputRef.value?.focus();
+  }, 50);
+};
 
 const onPaletteHide = () => {
-  searchQuery.value = ''
-  activeIndex.value = 0
-}
+  searchQuery.value = '';
+  activeIndex.value = 0;
+};
 
 const onInputKeydown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    activeIndex.value = (activeIndex.value + 1) % filteredLinks.value.length
+    e.preventDefault();
+    activeIndex.value = (activeIndex.value + 1) % filteredLinks.value.length;
   } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
+    e.preventDefault();
     activeIndex.value =
-      (activeIndex.value - 1 + filteredLinks.value.length) % filteredLinks.value.length
+      (activeIndex.value - 1 + filteredLinks.value.length) % filteredLinks.value.length;
   } else if (e.key === 'Enter') {
-    e.preventDefault()
-    const selectedLink = filteredLinks.value[activeIndex.value]
+    e.preventDefault();
+    const selectedLink = filteredLinks.value[activeIndex.value];
     if (selectedLink) {
-      navigate(selectedLink)
+      navigate(selectedLink);
     }
   } else if (e.key === 'Escape') {
-    showCommandPalette.value = false
+    showCommandPalette.value = false;
   }
-}
+};
 
 const navigate = (link: FlattenedLink) => {
-  showCommandPalette.value = false
+  showCommandPalette.value = false;
   if (link.target === '_blank' && link.to) {
-    window.open(link.to, '_blank')
+    window.open(link.to, '_blank');
   } else if (link.to) {
-    void router.push(link.to)
+    void router.push(link.to);
   }
-}
+};
 
 const handleKeyDown = (e: KeyboardEvent) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault()
-    showCommandPalette.value = !showCommandPalette.value
+    e.preventDefault();
+    showCommandPalette.value = !showCommandPalette.value;
   }
-}
+};
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
+  window.addEventListener('keydown', handleKeyDown);
+});
 
-const themeClasses = computed(() => [
-  `workspace-shell--${props.theme}`,
-  `theme-${props.theme}`,
-])
+const themeClasses = computed(() => [`workspace-shell--${props.theme}`, `theme-${props.theme}`]);
 
 const applyBodyThemeClass = (theme: 'platform' | 'app' | 'shop' | 'investor') => {
   if (typeof document === 'undefined') {
-    return
+    return;
   }
 
-  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
-  document.body.classList.add(`theme-${theme}`)
-}
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES);
+  document.body.classList.add(`theme-${theme}`);
+};
 
 watch(
   () => props.theme,
   (theme) => {
-    applyBodyThemeClass(theme)
+    applyBodyThemeClass(theme);
   },
   { immediate: true },
-)
+);
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keydown', handleKeyDown);
 
   if (typeof document === 'undefined') {
-    return
+    return;
   }
 
-  document.body.classList.remove(...WORKSPACE_THEME_CLASSES)
-})
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES);
+});
 const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
-)
-const userEmail = computed(() => authStore.user?.email ?? 'No active session')
-const userAvatarUrl = computed(() => authStore.user?.avatarUrl ?? null)
+);
+const userEmail = computed(() => authStore.user?.email ?? 'No active session');
+const userAvatarUrl = computed(() => authStore.user?.avatarUrl ?? null);
 const currentRoleLabel = computed(() => {
-  const role = authStore.matchedRole
+  const role = authStore.matchedRole;
   if (!role) {
-    return ''
+    return '';
   }
 
   return role
     .split('_')
     .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : ''))
-    .join(' ')
-})
+    .join(' ');
+});
 const contextLabel = computed(() => {
   if (authStore.scope === 'shop') {
-    return 'Customer group'
+    return 'Customer group';
   }
 
   if (authStore.scope === 'app') {
-    return 'Tenant'
+    return 'Tenant';
   }
 
-  return ''
-})
+  return '';
+});
 const contextValue = computed(() => {
   if (authStore.scope === 'shop') {
-    return authStore.customerGroup?.name ?? ''
+    return authStore.customerGroup?.name ?? '';
   }
 
   if (authStore.scope === 'app') {
-    return authStore.selectedTenant?.name ?? authStore.tenant?.name ?? ''
+    return authStore.selectedTenant?.name ?? authStore.tenant?.name ?? '';
   }
 
-  return ''
-})
+  return '';
+});
 const userInitials = computed(() => {
-  const source = userName.value?.trim() || userEmail.value?.trim()
-  if (!source) return '?'
+  const source = userName.value?.trim() || userEmail.value?.trim();
+  if (!source) return '?';
 
-  const parts = source.split(/\s+/).filter(Boolean)
+  const parts = source.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase()
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
   }
 
-  return source.slice(0, 2).toUpperCase()
-})
+  return source.slice(0, 2).toUpperCase();
+});
 
 const handleLogout = () => {
-  showLogoutDialog.value = true
-}
+  showLogoutDialog.value = true;
+};
 
-defineExpose({ openSignOutDialog: handleLogout })
+defineExpose({ openSignOutDialog: handleLogout });
 
 const confirmLogout = async () => {
-  showLogoutDialog.value = false
-  drawerOpen.value = false
+  showLogoutDialog.value = false;
+  drawerOpen.value = false;
 
   try {
-    await supabase.auth.signOut()
+    await supabase.auth.signOut();
   } catch (error) {
-    console.error('[auth] Failed to sign out from Supabase session', error)
+    console.error('[auth] Failed to sign out from Supabase session', error);
   } finally {
-    authStore.clearAccess()
+    authStore.clearAccess();
 
     try {
-      await router.replace(props.logoutTo)
+      await router.replace(props.logoutTo);
     } catch (error) {
-      console.error('[auth] Failed to redirect after sign out', error)
+      console.error('[auth] Failed to redirect after sign out', error);
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -574,26 +807,8 @@ const confirmLogout = async () => {
   color: var(--shell-ink);
 }
 
-@media (min-width: 600px) {
-  .workspace-shell--has-secondary {
-    --workspace-header-offset: 94px;
-  }
-}
-@media (max-width: 599px) {
-  .workspace-shell--has-secondary {
-    --workspace-header-offset: 90px;
-  }
-}
-
-.workspace-shell__secondary-toolbar {
-  border-top: 1px solid var(--shell-border);
-  padding: 0.2rem 0.75rem;
-  min-height: 36px;
-  background: color-mix(in srgb, var(--shell-surface) 95%, white 5%);
-}
-
 .workspace-shell__header {
-  background: color-mix(in srgb, var(--shell-surface) 90%, white 10%);
+  background: color-mix(in srgb, var(--shell-surface) 90%, var(--color-mix-tint, white) 10%);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--shell-border);
 }
@@ -658,7 +873,7 @@ const confirmLogout = async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
+  background: color-mix(in srgb, var(--shell-surface) 94%, var(--color-mix-tint, white) 6%);
   border-right: 1px solid var(--shell-border);
 }
 
@@ -668,13 +883,13 @@ const confirmLogout = async () => {
 }
 
 .profile-card {
-  background: rgba(255, 255, 255, 0.5);
+  background: color-mix(in srgb, var(--shell-surface) 50%, transparent);
   border: 1px solid var(--shell-border);
   transition: background-color 0.2s ease;
 }
 
 .profile-card:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--shell-surface) 85%, transparent);
 }
 
 .leading-tight {
@@ -684,7 +899,7 @@ const confirmLogout = async () => {
 .workspace-shell__avatar {
   overflow: hidden;
   border: 1px solid var(--shell-border);
-  background: #ffffff;
+  background: var(--shell-surface);
 }
 
 .workspace-shell__avatar-image {
@@ -756,12 +971,9 @@ const confirmLogout = async () => {
   color: var(--shell-ink);
 }
 
-
-
 .workspace-shell__page-container {
   padding: clamp(0.5rem, 1.2vw, 0.9rem);
 }
-
 
 @media (max-width: 599px) {
   .workspace-shell {
@@ -840,7 +1052,7 @@ const confirmLogout = async () => {
   bottom: 0;
   z-index: 1;
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in srgb, var(--shell-surface) 94%, white 6%);
+  background: color-mix(in srgb, var(--shell-surface) 94%, var(--color-mix-tint, white) 6%);
   border-top: 1px solid var(--shell-border);
 }
 
@@ -858,12 +1070,12 @@ const confirmLogout = async () => {
   width: min(92vw, 26rem);
   border-radius: 1.5rem;
   padding: 1.75rem;
-  background: rgb(255 255 255 / 0.72);
+  background: color-mix(in srgb, var(--shell-surface) 96%, transparent);
   backdrop-filter: blur(28px) saturate(1.6);
   -webkit-backdrop-filter: blur(28px) saturate(1.6);
-  border: 1px solid rgb(255 255 255 / 0.55);
+  border: 1px solid color-mix(in srgb, var(--color-mix-tint, white) 30%, transparent);
   box-shadow:
-    0 2px 0 rgb(255 255 255 / 0.6) inset,
+    0 2px 0 color-mix(in srgb, var(--color-mix-tint, white) 60%, transparent) inset,
     0 20px 60px rgb(0 0 0 / 0.14),
     0 4px 16px rgb(0 0 0 / 0.08);
   display: flex;
@@ -997,5 +1209,52 @@ const confirmLogout = async () => {
   background: #b91c1c;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgb(220 38 38 / 0.35);
+}
+
+/* Mini Mode Specific Styles */
+.workspace-shell--mini .workspace-shell__drawer-top,
+.workspace-shell--mini .workspace-shell__drawer-bottom {
+  padding: 0.5rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-shell--mini .workspace-shell__nav {
+  padding: 0 0.25rem 0.75rem;
+}
+
+.workspace-shell--mini .profile-card {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.workspace-shell--mini .workspace-shell__nav-item {
+  display: flex;
+  justify-content: center;
+}
+
+.workspace-shell--mini .workspace-shell__nav-item :deep(.q-item__section--avatar) {
+  min-width: unset;
+  padding: 0;
+}
+
+.workspace-shell__flyout-sub-item {
+  border-radius: 6px;
+}
+
+.workspace-shell__flyout-menu {
+  background: color-mix(
+    in srgb,
+    var(--shell-surface) 95%,
+    var(--color-mix-tint, white) 5%
+  ) !important;
+  border: 1px solid var(--shell-border);
+  box-shadow: var(--shell-shadow);
 }
 </style>

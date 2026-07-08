@@ -20,51 +20,46 @@
     </q-card>
   </q-dialog>
 
-  <GlobalStockDetailsDialog
-    v-model="detailsOpen"
-    :item="selectedItem"
-  />
+  <GlobalStockDetailsDialog v-model="detailsOpen" :item="selectedItem" />
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref } from 'vue';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import type { InventoryItemWithStock } from '../types'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import type { InventoryItemWithStock } from '../types';
 
-import GlobalStockDetailsDialog from './GlobalStockDetailsDialog.vue'
-import NetworkStockSearchPanel from 'src/modules/sales_invoice/components/NetworkStockSearchPanel.vue'
-import type { StockNetworkRow } from '../types'
-import { mapStockNetworkToInventoryView } from '../utils/mapStockNetworkRow'
+import GlobalStockDetailsDialog from './GlobalStockDetailsDialog.vue';
+import NetworkStockSearchPanel from 'src/modules/sales_invoice/components/NetworkStockSearchPanel.vue';
+import type { StockNetworkRow } from '../types';
+import { mapStockNetworkToInventoryView } from '../utils/mapStockNetworkRow';
 
 const props = defineProps<{
-  modelValue: boolean
-}>()
+  modelValue: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', val: boolean): void
-}>()
+  (e: 'update:modelValue', val: boolean): void;
+}>();
 
-const authStore = useAuthStore()
-const tenantStore = useTenantStore()
+const authStore = useAuthStore();
+const tenantStore = useTenantStore();
 
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
-})
+});
 
-const contextTenantId = computed(
-  () => tenantStore.selectedTenantId ?? authStore.tenantId ?? 0,
-)
+const contextTenantId = computed(() => tenantStore.selectedTenantId ?? authStore.tenantId ?? 0);
 
-const detailsOpen = ref(false)
-const selectedItem = ref<InventoryItemWithStock | null>(null)
+const detailsOpen = ref(false);
+const selectedItem = ref<InventoryItemWithStock | null>(null);
 
 const onSelectResult = (row: StockNetworkRow) => {
-  selectedItem.value = mapStockNetworkToInventoryView(row)
-  detailsOpen.value = true
-}
+  selectedItem.value = mapStockNetworkToInventoryView(row);
+  detailsOpen.value = true;
+};
 </script>
 
 <style scoped>

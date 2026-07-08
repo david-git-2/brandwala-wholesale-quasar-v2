@@ -73,13 +73,7 @@
         <template #body-cell-actions="props">
           <q-td :props="props">
             <div class="row items-center q-gutter-xs no-wrap">
-              <q-btn
-                flat
-                round
-                dense
-                icon="o_edit"
-                @click="onClickEditSuperadmin(props.row)"
-              />
+              <q-btn flat round dense icon="o_edit" @click="onClickEditSuperadmin(props.row)" />
               <q-btn
                 flat
                 round
@@ -97,7 +91,7 @@
   </q-page>
 
   <q-dialog v-model="openEditDialog" persistent>
-    <q-card style="min-width: 420px; max-width: 92vw;">
+    <q-card style="min-width: 420px; max-width: 92vw">
       <q-card-section>
         <div class="text-h6">{{ editMode ? 'Update Super Admin' : 'Add Super Admin' }}</div>
       </q-card-section>
@@ -113,7 +107,7 @@
             (value) => !!String(value ?? '').trim() || 'Email is required',
             (value) =>
               /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(value ?? '').trim()) ||
-              'Enter a valid email address'
+              'Enter a valid email address',
           ]"
         />
 
@@ -133,14 +127,15 @@
   </q-dialog>
 
   <q-dialog v-model="openDeleteDialog" persistent>
-    <q-card style="min-width: 350px; max-width: 92vw;">
+    <q-card style="min-width: 350px; max-width: 92vw">
       <q-card-section>
         <div class="text-h6">Delete Super Admin</div>
       </q-card-section>
 
       <q-card-section>
         Are you sure you want to delete
-        <strong>{{ selectedSuperadmin?.email }}</strong>?
+        <strong>{{ selectedSuperadmin?.email }}</strong
+        >?
       </q-card-section>
 
       <q-card-actions align="right">
@@ -152,35 +147,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import type { QTableColumn } from 'quasar'
+import { computed, onMounted, reactive, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import type { QTableColumn } from 'quasar';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { formatAppDateTime } from 'src/utils/dateTime'
-import { useMembershipStore } from '../stores/membershipStore'
-import type { Membership } from '../types'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatAppDateTime } from 'src/utils/dateTime';
+import { useMembershipStore } from '../stores/membershipStore';
+import type { Membership } from '../types';
 
 type SuperadminForm = {
-  id: number | null
-  email: string
-  is_active: boolean
-}
+  id: number | null;
+  email: string;
+  is_active: boolean;
+};
 
-const membershipStore = useMembershipStore()
-const authStore = useAuthStore()
-const { items, loading, error } = storeToRefs(membershipStore)
+const membershipStore = useMembershipStore();
+const authStore = useAuthStore();
+const { items, loading, error } = storeToRefs(membershipStore);
 
-const openEditDialog = ref(false)
-const openDeleteDialog = ref(false)
-const selectedSuperadmin = ref<Membership | null>(null)
-const editMode = ref(false)
+const openEditDialog = ref(false);
+const openDeleteDialog = ref(false);
+const selectedSuperadmin = ref<Membership | null>(null);
+const editMode = ref(false);
 
 const form = reactive<SuperadminForm>({
   id: null,
   email: '',
   is_active: true,
-})
+});
 
 const columns: QTableColumn[] = [
   {
@@ -210,50 +205,48 @@ const columns: QTableColumn[] = [
     field: 'id',
     align: 'right',
   },
-]
+];
 
-const normalizeEmail = (email: string) => email.trim().toLowerCase()
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const superadmins = computed(() =>
-  items.value.filter((item) => item.role === 'superadmin'),
-)
+const superadmins = computed(() => items.value.filter((item) => item.role === 'superadmin'));
 
 const isCurrentUser = (email: string) =>
-  normalizeEmail(authStore.user?.email ?? '') === normalizeEmail(email)
+  normalizeEmail(authStore.user?.email ?? '') === normalizeEmail(email);
 
 const formatDate = (value?: string) => {
-  return formatAppDateTime(value, 'N/A')
-}
+  return formatAppDateTime(value, 'N/A');
+};
 
 const resetForm = () => {
-  form.id = null
-  form.email = ''
-  form.is_active = true
-}
+  form.id = null;
+  form.email = '';
+  form.is_active = true;
+};
 
 const refreshSuperadmins = async () => {
-  await membershipStore.fetchSuperadmins()
-}
+  await membershipStore.fetchSuperadmins();
+};
 
 const onClickAddSuperadmin = () => {
-  editMode.value = false
-  selectedSuperadmin.value = null
-  resetForm()
-  openEditDialog.value = true
-}
+  editMode.value = false;
+  selectedSuperadmin.value = null;
+  resetForm();
+  openEditDialog.value = true;
+};
 
 const onClickEditSuperadmin = (membership: Membership) => {
-  editMode.value = true
-  selectedSuperadmin.value = membership
-  form.id = membership.id
-  form.email = membership.email
-  form.is_active = membership.is_active
-  openEditDialog.value = true
-}
+  editMode.value = true;
+  selectedSuperadmin.value = membership;
+  form.id = membership.id;
+  form.email = membership.email;
+  form.is_active = membership.is_active;
+  openEditDialog.value = true;
+};
 
 const handleSave = async () => {
-  const email = normalizeEmail(form.email)
-  if (!email) return
+  const email = normalizeEmail(form.email);
+  if (!email) return;
 
   if (editMode.value && form.id !== null) {
     await membershipStore.updateMembership({
@@ -262,41 +255,41 @@ const handleSave = async () => {
       is_active: form.is_active,
       role: 'superadmin',
       tenant_id: null,
-    })
+    });
   } else {
     await membershipStore.createMembership({
       email,
       is_active: form.is_active,
       role: 'superadmin',
       tenant_id: null,
-    })
+    });
   }
 
-  openEditDialog.value = false
-  await refreshSuperadmins()
-}
+  openEditDialog.value = false;
+  await refreshSuperadmins();
+};
 
 const onClickDeleteSuperadmin = (membership: Membership) => {
   if (isCurrentUser(membership.email)) {
-    return
+    return;
   }
 
-  selectedSuperadmin.value = membership
-  openDeleteDialog.value = true
-}
+  selectedSuperadmin.value = membership;
+  openDeleteDialog.value = true;
+};
 
 const confirmDelete = async () => {
   if (!selectedSuperadmin.value) {
-    return
+    return;
   }
 
-  await membershipStore.deleteMembership({ id: selectedSuperadmin.value.id })
-  openDeleteDialog.value = false
-  selectedSuperadmin.value = null
-  await refreshSuperadmins()
-}
+  await membershipStore.deleteMembership({ id: selectedSuperadmin.value.id });
+  openDeleteDialog.value = false;
+  selectedSuperadmin.value = null;
+  await refreshSuperadmins();
+};
 
 onMounted(() => {
-  void refreshSuperadmins()
-})
+  void refreshSuperadmins();
+});
 </script>

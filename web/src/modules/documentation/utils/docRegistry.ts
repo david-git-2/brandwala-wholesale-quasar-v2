@@ -1,12 +1,12 @@
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 export interface DocItem {
-  key: string
-  title: string
-  description: string
-  filename: string
-  scope: 'app' | 'platform' | 'both'
-  moduleKey?: ModuleKey
+  key: string;
+  title: string;
+  description: string;
+  filename: string;
+  scope: 'app' | 'platform' | 'both';
+  moduleKey?: ModuleKey;
 }
 
 export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
@@ -14,21 +14,24 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   {
     key: 'app_scopes_and_access',
     title: 'Application Scopes and Access',
-    description: 'Platform, App, Shop, and Investor scopes — redirects, route guards, and access control.',
+    description:
+      'Platform, App, Shop, and Investor scopes — redirects, route guards, and access control.',
     filename: 'doc/APP_SCOPES_AND_ACCESS.md',
     scope: 'both',
   },
   {
     key: 'tenant_model_and_access',
     title: 'Tenant Model and Access',
-    description: 'Parent, child, and standalone tenants — hierarchy, URL resolution, modules, and data ownership.',
+    description:
+      'Parent, child, and standalone tenants — hierarchy, URL resolution, modules, and data ownership.',
     filename: 'doc/TENANT_MODEL_AND_ACCESS.md',
     scope: 'both',
   },
   {
     key: 'global_reference_data',
     title: 'Global Reference Data',
-    description: 'Platform-wide catalogs — currencies, markets, payment methods, units, and submodule assignment.',
+    description:
+      'Platform-wide catalogs — currencies, markets, payment methods, units, and submodule assignment.',
     filename: 'doc/GLOBAL_REFERENCE_DATA.md',
     scope: 'both',
     moduleKey: 'global_reference',
@@ -36,7 +39,8 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   {
     key: 'procurement_stock',
     title: 'Procurement & Stock',
-    description: 'Inbound shipments, warehouse stock, tenant allocation, hardcoded landed-cost formulas, and drop-recreate schema.',
+    description:
+      'Inbound shipments, warehouse stock, tenant allocation, hardcoded landed-cost formulas, and drop-recreate schema.',
     filename: 'doc/PROCUREMENT_STOCK.md',
     scope: 'app',
     moduleKey: 'global_shipment',
@@ -44,7 +48,8 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   {
     key: 'sales_invoice',
     title: 'Sales & Invoice',
-    description: 'Desk invoices, billing/recipient profiles, returns, charges, and print — unified sales model.',
+    description:
+      'Desk invoices, billing/recipient profiles, returns, charges, and print — unified sales model.',
     filename: 'doc/SALES_INVOICE.md',
     scope: 'app',
     moduleKey: 'global_invoice',
@@ -70,7 +75,8 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   {
     key: 'package_commands',
     title: 'Automation & Script Commands',
-    description: 'Detailed walkthrough and descriptions of package.json automation commands, scrapers, and database sync scripts.',
+    description:
+      'Detailed walkthrough and descriptions of package.json automation commands, scrapers, and database sync scripts.',
     filename: 'doc/package_commands.md',
     scope: 'both',
   },
@@ -105,7 +111,8 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
   {
     key: 'tenant_documentation',
     title: 'Tenant Guide',
-    description: 'Custom guidelines, contact details, and workspace instructions specific to this tenant.',
+    description:
+      'Custom guidelines, contact details, and workspace instructions specific to this tenant.',
     filename: 'doc/tenant_{tenantId}.md',
     scope: 'app',
   },
@@ -231,4 +238,4 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     scope: 'app',
     moduleKey: 'sales_invoice',
   },
-]
+];

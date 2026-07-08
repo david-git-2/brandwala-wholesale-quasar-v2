@@ -86,15 +86,23 @@
             table-style="min-width: 1000px;"
           >
             <template #body-cell-invoice_no="props">
-              <q-td :props="props" class="text-weight-bold text-primary cursor-pointer" @click="navigateToDetails(props.row.id)">
+              <q-td
+                :props="props"
+                class="text-weight-bold text-primary cursor-pointer"
+                @click="navigateToDetails(props.row.id)"
+              >
                 {{ props.row.invoice_no }}
               </q-td>
             </template>
 
             <template #body-cell-recipient="props">
               <q-td :props="props">
-                <div class="text-weight-medium">{{ props.row.recipient_name || 'Walk-in / Direct' }}</div>
-                <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
+                <div class="text-weight-medium">
+                  {{ props.row.recipient_name || 'Walk-in / Direct' }}
+                </div>
+                <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">
+                  {{ props.row.recipient_phone }}
+                </div>
               </q-td>
             </template>
 
@@ -137,7 +145,11 @@
             </template>
 
             <template #body-cell-margin_pct="props">
-              <q-td :props="props" class="text-right text-weight-bold" :class="getMarginClass(props.row.gross_profit, props.row.total_amount)">
+              <q-td
+                :props="props"
+                class="text-right text-weight-bold"
+                :class="getMarginClass(props.row.gross_profit, props.row.total_amount)"
+              >
                 {{ formatPercent(props.row.gross_profit, props.row.total_amount) }}
               </q-td>
             </template>
@@ -165,76 +177,100 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
-import type { QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { formatAmountBdt } from 'src/utils/currency'
-import { treasuryRepository } from '../repositories/treasuryRepository'
-import TreasuryPageShell from '../components/TreasuryPageShell.vue'
-import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
-import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import type { QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import { treasuryRepository } from '../repositories/treasuryRepository';
+import TreasuryPageShell from '../components/TreasuryPageShell.vue';
+import TreasuryFilterBar from '../components/TreasuryFilterBar.vue';
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue';
 
-const router = useRouter()
+const router = useRouter();
 
-const $q = useQuasar()
-const authStore = useAuthStore()
+const $q = useQuasar();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const invoices = ref<any[]>([])
+const loading = ref(false);
+const error = ref<string | null>(null);
+const invoices = ref<any[]>([]);
 
 // Query Filters
-const search = ref('')
-const typeFilter = ref('__all__')
-const startDate = ref('')
-const endDate = ref('')
+const search = ref('');
+const typeFilter = ref('__all__');
+const startDate = ref('');
+const endDate = ref('');
 
 // Pagination
-const page = ref(1)
-const pageSize = ref(20)
-const totalCount = ref(0)
-const totalPages = ref(0)
+const page = ref(1);
+const pageSize = ref(20);
+const totalCount = ref(0);
+const totalPages = ref(0);
 
 const columns: QTableColumn[] = [
   { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', sortable: true },
   { name: 'invoice_date', label: 'Date', field: 'invoice_date', align: 'left', sortable: true },
-  { name: 'recipient', label: 'Customer / Recipient', field: 'recipient_name', align: 'left', sortable: true },
+  {
+    name: 'recipient',
+    label: 'Customer / Recipient',
+    field: 'recipient_name',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'invoice_type', label: 'Type', field: 'invoice_type', align: 'left', sortable: true },
-  { name: 'total_amount', label: 'Total Amount', field: 'total_amount', align: 'right', sortable: true },
-  { name: 'paid_amount', label: 'Paid Amount', field: 'paid_amount', align: 'right', sortable: true },
+  {
+    name: 'total_amount',
+    label: 'Total Amount',
+    field: 'total_amount',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'paid_amount',
+    label: 'Paid Amount',
+    field: 'paid_amount',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'due_amount', label: 'Due Amount', field: 'due_amount', align: 'right', sortable: true },
-  { name: 'gross_profit', label: 'Gross Profit', field: 'gross_profit', align: 'right', sortable: true },
+  {
+    name: 'gross_profit',
+    label: 'Gross Profit',
+    field: 'gross_profit',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'margin_pct', label: 'GP %', field: 'gross_profit', align: 'right' },
-]
+];
 
 const typeOptions = [
   { label: 'All Types', value: '__all__' },
   { label: 'Wholesale', value: 'wholesale' },
   { label: 'Retail', value: 'retail' },
   { label: 'Dropship', value: 'dropship' },
-]
+];
 
 const resetFilters = () => {
-  search.value = ''
-  typeFilter.value = '__all__'
-  startDate.value = ''
-  endDate.value = ''
-  resetAndFetch()
-}
+  search.value = '';
+  typeFilter.value = '__all__';
+  startDate.value = '';
+  endDate.value = '';
+  resetAndFetch();
+};
 
 const resetAndFetch = () => {
-  page.value = 1
-  void fetchReport()
-}
+  page.value = 1;
+  void fetchReport();
+};
 
 const fetchReport = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
     const res = await treasuryRepository.listInvoiceMarginReport({
       tenantId,
@@ -244,33 +280,33 @@ const fetchReport = async () => {
       invoiceType: typeFilter.value === '__all__' ? undefined : typeFilter.value,
       startDate: startDate.value || undefined,
       endDate: endDate.value || undefined,
-    } as any)
+    } as any);
 
-    invoices.value = res.data || []
-    totalCount.value = res.meta.total
-    totalPages.value = res.meta.total_pages
+    invoices.value = res.data || [];
+    totalCount.value = res.meta.total;
+    totalPages.value = res.meta.total_pages;
   } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load margins report: ${err.message}` })
+    error.value = err.message;
+    $q.notify({ type: 'negative', message: `Failed to load margins report: ${err.message}` });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const getMarginClass = (profit: number, total: number) => {
-  if (total <= 0) return 'text-grey-6'
-  const pct = (profit / total) * 100
-  if (pct >= 40) return 'text-positive'
-  if (pct >= 20) return 'text-primary'
-  if (pct >= 0) return 'text-warning'
-  return 'text-negative'
-}
+  if (total <= 0) return 'text-grey-6';
+  const pct = (profit / total) * 100;
+  if (pct >= 40) return 'text-positive';
+  if (pct >= 20) return 'text-primary';
+  if (pct >= 0) return 'text-warning';
+  return 'text-negative';
+};
 
 const formatPercent = (profit: number, total: number) => {
-  if (total <= 0) return '0.0%'
-  const pct = (profit / total) * 100
-  return `${pct.toFixed(1)}%`
-}
+  if (total <= 0) return '0.0%';
+  const pct = (profit / total) * 100;
+  return `${pct.toFixed(1)}%`;
+};
 
 const navigateToDetails = (id: number) => {
   void router.push({
@@ -279,10 +315,10 @@ const navigateToDetails = (id: number) => {
       tenantSlug: authStore.tenantSlug ?? undefined,
       id,
     },
-  })
-}
+  });
+};
 
 onMounted(() => {
-  void fetchReport()
-})
+  void fetchReport();
+});
 </script>

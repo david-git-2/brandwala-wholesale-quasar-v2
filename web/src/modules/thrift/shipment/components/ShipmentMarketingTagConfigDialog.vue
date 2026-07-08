@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card style="width: 640px; max-width: 95vw;" class="floating-surface shadow-2">
+    <q-card style="width: 640px; max-width: 95vw" class="floating-surface shadow-2">
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div>
           <div class="text-h6 text-weight-bold">Marketing Tag Layout</div>
@@ -23,13 +23,23 @@
             <q-checkbox v-model="form.show_logo" label="Show BAS Logo" dense />
             <q-checkbox v-model="form.show_brand_name" label="Show Brand Name" dense />
             <q-checkbox v-model="form.show_listed_sell" label="Show Listed Sell Price" dense />
-            <q-checkbox v-model="form.show_core_sizes" label="Show Size (core measurements)" dense />
-            <q-checkbox v-model="form.show_additional_sizes" label="Show Additional measurements" dense />
+            <q-checkbox
+              v-model="form.show_core_sizes"
+              label="Show Size (core measurements)"
+              dense
+            />
+            <q-checkbox
+              v-model="form.show_additional_sizes"
+              label="Show Additional measurements"
+              dense
+            />
             <q-checkbox v-model="form.show_barcode_text" label="Show Barcode Text" dense />
           </div>
           <div class="col-12 col-md-6 flex justify-center items-center">
-            <div style="width: 70mm;">
-              <div class="text-caption text-weight-bold text-grey-7 q-mb-xs text-center">Preview</div>
+            <div style="width: 70mm">
+              <div class="text-caption text-weight-bold text-grey-7 q-mb-xs text-center">
+                Preview
+              </div>
               <StockMarketingTag
                 :stock="mockStock"
                 :tag-config="form"
@@ -131,6 +141,10 @@ async function onSave() {
   background: rgba(255, 255, 255, 0.96);
   border-radius: 14px;
 }
-.pill-btn { border-radius: 999px; }
-.soft-input :deep(.q-field__control) { border-radius: 12px; }
+.pill-btn {
+  border-radius: 999px;
+}
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+}
 </style>

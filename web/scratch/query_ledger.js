@@ -8,7 +8,7 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const secretKey = process.env.SUPABASE_SECRET_KEY;
 
 const supabase = createClient(supabaseUrl, secretKey, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
 async function run() {

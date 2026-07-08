@@ -1,14 +1,10 @@
 <template>
   <q-page class="dashboard-page theme-platform">
-    <div style="margin: auto;" class="text-bold text-h4" > Dashboard</div>
-
+    <div style="margin: auto" class="text-bold text-h4">Dashboard</div>
   </q-page>
 </template>
 
-<script setup lang="ts">
-
-
-</script>
+<script setup lang="ts"></script>
 
 <style scoped>
 .dashboard-page {

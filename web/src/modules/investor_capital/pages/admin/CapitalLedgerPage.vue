@@ -10,7 +10,13 @@
           </p>
         </div>
         <div class="col-auto">
-          <q-btn color="primary" icon="add" label="Add Transaction" unelevated @click="onClickAddTransaction" />
+          <q-btn
+            color="primary"
+            icon="add"
+            label="Add Transaction"
+            unelevated
+            @click="onClickAddTransaction"
+          />
         </div>
       </section>
 
@@ -98,9 +104,7 @@
           :dense="$q.screen.lt.md"
         >
           <template #body-cell-id="props">
-            <q-td :props="props" class="text-weight-bold text-primary">
-              #{{ props.row.id }}
-            </q-td>
+            <q-td :props="props" class="text-weight-bold text-primary"> #{{ props.row.id }} </q-td>
           </template>
 
           <template #body-cell-investor_id="props">
@@ -141,35 +145,35 @@
     <InvestorTransactionDialog
       v-model="openDialog"
       :tenant-id="resolvedTenantId"
-      :investors="(legacyInvestors as any)"
+      :investors="legacyInvestors as any"
       @save="handleSaveTransaction"
     />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import type { QTableColumn } from 'quasar'
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import type { QTableColumn } from 'quasar';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import InvestorTransactionDialog from '../../components/InvestorTransactionDialog.vue'
-import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore'
-import type { InvestorTransactionCreateInput } from 'src/modules/investor_capital/types'
-import { formatAmountBdt } from 'src/utils/currency'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import InvestorTransactionDialog from '../../components/InvestorTransactionDialog.vue';
+import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
+import type { InvestorTransactionCreateInput } from 'src/modules/investor_capital/types';
+import { formatAmountBdt } from 'src/utils/currency';
 
-const authStore = useAuthStore()
-const capitalStore = useInvestorCapitalStore()
-const { investors, transactions, loadingTransactions, error } = storeToRefs(capitalStore)
+const authStore = useAuthStore();
+const capitalStore = useInvestorCapitalStore();
+const { investors, transactions, loadingTransactions, error } = storeToRefs(capitalStore);
 
-const openDialog = ref(false)
-const resolvedTenantId = computed(() => authStore.tenantId ?? 0)
+const openDialog = ref(false);
+const resolvedTenantId = computed(() => authStore.tenantId ?? 0);
 
 // Filters
-const investorFilter = ref<number | null>(null)
-const typeFilter = ref<string | null>(null)
-const startDate = ref<string | null>(null)
-const endDate = ref<string | null>(null)
+const investorFilter = ref<number | null>(null);
+const typeFilter = ref<string | null>(null);
+const startDate = ref<string | null>(null);
+const endDate = ref<string | null>(null);
 
 const investorFilterOptions = computed(() => [
   { label: 'All Investors', value: null },
@@ -177,14 +181,14 @@ const investorFilterOptions = computed(() => [
     label: item.name,
     value: item.investor_id,
   })),
-])
+]);
 
 const typeFilterOptions = [
   { label: 'All Types', value: null },
   { label: 'Capital In', value: 'capital_in' },
   { label: 'Withdrawal Paid', value: 'withdrawal_paid' },
   { label: 'Capital Adjustment', value: 'capital_adjustment' },
-]
+];
 
 // Dialogue compatibility helper
 const legacyInvestors = computed(() =>
@@ -197,8 +201,8 @@ const legacyInvestors = computed(() =>
     address: item.address,
     created_at: '',
     updated_at: '',
-  }))
-)
+  })),
+);
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
@@ -208,18 +212,18 @@ const columns: QTableColumn[] = [
   { name: 'method', label: 'Method', field: 'method', align: 'left', sortable: true },
   { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true },
   { name: 'note', label: 'Note', field: 'note', align: 'left' },
-]
+];
 
 const refresh = async () => {
   if (!resolvedTenantId.value) {
-    return
+    return;
   }
 
   await Promise.all([
     capitalStore.fetchInvestorsByTenant(resolvedTenantId.value),
     fetchTransactions(),
-  ])
-}
+  ]);
+};
 
 const fetchTransactions = async () => {
   await capitalStore.fetchTransactionsByTenant(
@@ -229,50 +233,50 @@ const fetchTransactions = async () => {
     investorFilter.value,
     typeFilter.value,
     startDate.value,
-    endDate.value
-  )
-}
+    endDate.value,
+  );
+};
 
 const onFilterChange = async () => {
-  await fetchTransactions()
-}
+  await fetchTransactions();
+};
 
 const resetFilters = async () => {
-  investorFilter.value = null
-  typeFilter.value = null
-  startDate.value = null
-  endDate.value = null
-  await fetchTransactions()
-}
+  investorFilter.value = null;
+  typeFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
+  await fetchTransactions();
+};
 
 const investorNameById = (id: number) => {
-  return investors.value.find((item) => item.investor_id === id)?.name ?? `#${id}`
-}
+  return investors.value.find((item) => item.investor_id === id)?.name ?? `#${id}`;
+};
 
 const getTypeColor = (type: string) => {
-  if (type === 'capital_in') return { bg: 'green-1', text: 'green-9' }
-  if (type === 'withdrawal_paid') return { bg: 'red-1', text: 'red-9' }
-  return { bg: 'blue-1', text: 'blue-9' }
-}
+  if (type === 'capital_in') return { bg: 'green-1', text: 'green-9' };
+  if (type === 'withdrawal_paid') return { bg: 'red-1', text: 'red-9' };
+  return { bg: 'blue-1', text: 'blue-9' };
+};
 
 const formatLabel = (value: string) =>
   (value || '')
     .split('_')
     .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
-    .join(' ')
+    .join(' ');
 
 const onClickAddTransaction = () => {
-  openDialog.value = true
-}
+  openDialog.value = true;
+};
 
 const handleSaveTransaction = async (payload: InvestorTransactionCreateInput) => {
   await capitalStore.createTransaction({
     ...payload,
     tenant_id: resolvedTenantId.value,
-  })
-}
+  });
+};
 
 onMounted(() => {
-  void refresh()
-})
+  void refresh();
+});
 </script>

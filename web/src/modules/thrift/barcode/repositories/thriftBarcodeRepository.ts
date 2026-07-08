@@ -49,10 +49,7 @@ export const thriftBarcodeRepository = {
   async fetchBarcodesByIds(ids: number[]): Promise<ThriftBarcode[]> {
     if (!ids.length) return [];
 
-    const { data, error } = await supabase
-      .from('thrift_barcodes')
-      .select('*')
-      .in('id', ids);
+    const { data, error } = await supabase.from('thrift_barcodes').select('*').in('id', ids);
 
     if (error) throw error;
 

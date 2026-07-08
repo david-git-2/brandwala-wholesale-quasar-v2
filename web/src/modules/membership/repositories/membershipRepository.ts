@@ -1,54 +1,47 @@
-import { supabase } from 'src/boot/supabase'
+import { supabase } from 'src/boot/supabase';
 import type {
   Membership,
   MembershipCreateInput,
   MembershipDeleteInput,
   MembershipUpdateInput,
-} from '../types'
-import type { MembershipPreferenceSchema } from '../types/preferences'
+} from '../types';
+import type { MembershipPreferenceSchema } from '../types/preferences';
 
 const listMemberships = async (): Promise<Membership[]> => {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('*')
+  const { data, error } = await supabase.from('memberships').select('*');
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as Membership[] | null) ?? []
-}
+  return (data as Membership[] | null) ?? [];
+};
 
 const listSuperadmins = async (): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from('memberships')
     .select('*')
     .eq('role', 'superadmin')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as Membership[] | null) ?? []
-}
+  return (data as Membership[] | null) ?? [];
+};
 
 const fetchMembershipsByTenantId = async (tenantId: number): Promise<Membership[]> => {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('*')
-    .eq('tenant_id', tenantId)
+  const { data, error } = await supabase.from('memberships').select('*').eq('tenant_id', tenantId);
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  return (data as Membership[] | null) ?? []
-}
+  return (data as Membership[] | null) ?? [];
+};
 
-const createMembership = async (
-  membership: MembershipCreateInput
-): Promise<Membership> => {
+const createMembership = async (membership: MembershipCreateInput): Promise<Membership> => {
   const { data, error } = await supabase
     .from('memberships')
     .insert([
@@ -61,117 +54,113 @@ const createMembership = async (
         tenant_role_id: membership.tenant_role_id || null,
       },
     ])
-    .select()
+    .select();
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const createdMembership = Array.isArray(data) ? data[0] : data
+  const createdMembership = Array.isArray(data) ? data[0] : data;
 
   if (!createdMembership) {
-    throw new Error('Membership was not created.')
+    throw new Error('Membership was not created.');
   }
 
-  return createdMembership as Membership
-}
+  return createdMembership as Membership;
+};
 
-const updateMembership = async (
-  membership: MembershipUpdateInput
-): Promise<Membership> => {
+const updateMembership = async (membership: MembershipUpdateInput): Promise<Membership> => {
   const updatePayload: Partial<
-    Pick<MembershipUpdateInput, 'tenant_id' | 'email' | 'role' | 'is_active' | 'investor_id' | 'tenant_role_id'>
-  > = {}
+    Pick<
+      MembershipUpdateInput,
+      'tenant_id' | 'email' | 'role' | 'is_active' | 'investor_id' | 'tenant_role_id'
+    >
+  > = {};
 
   if (membership.tenant_id !== undefined) {
-    updatePayload.tenant_id = membership.tenant_id
+    updatePayload.tenant_id = membership.tenant_id;
   }
 
   if (membership.email !== undefined) {
-    updatePayload.email = membership.email
+    updatePayload.email = membership.email;
   }
 
   if (membership.role !== undefined) {
-    updatePayload.role = membership.role
+    updatePayload.role = membership.role;
   }
 
   if (membership.is_active !== undefined) {
-    updatePayload.is_active = membership.is_active
+    updatePayload.is_active = membership.is_active;
   }
 
   if (membership.investor_id !== undefined) {
-    updatePayload.investor_id = membership.investor_id
+    updatePayload.investor_id = membership.investor_id;
   }
 
   if (membership.tenant_role_id !== undefined) {
-    updatePayload.tenant_role_id = membership.tenant_role_id
+    updatePayload.tenant_role_id = membership.tenant_role_id;
   }
 
   const { data, error } = await supabase
     .from('memberships')
     .update(updatePayload)
     .eq('id', membership.id)
-    .select()
+    .select();
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const updatedMembership = Array.isArray(data) ? data[0] : data
+  const updatedMembership = Array.isArray(data) ? data[0] : data;
   if (!updatedMembership) {
-    throw new Error('Membership was not updated.')
+    throw new Error('Membership was not updated.');
   }
 
-  return updatedMembership as Membership
-}
+  return updatedMembership as Membership;
+};
 
-const deleteMembership = async (
-  membership: MembershipDeleteInput
-): Promise<void> => {
-  const { error } = await supabase
-    .from('memberships')
-    .delete()
-    .eq('id', membership.id)
+const deleteMembership = async (membership: MembershipDeleteInput): Promise<void> => {
+  const { error } = await supabase.from('memberships').delete().eq('id', membership.id);
 
   if (error) {
-    throw error
+    throw error;
   }
-}
+};
 
 const getTenantAdmins = async (tenantId: number): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from('memberships')
     .select('*')
     .eq('tenant_id', tenantId)
-    .eq('role', 'admin')
+    .eq('role', 'admin');
 
-   if (error) {
-    throw error
+  if (error) {
+    throw error;
   }
 
-  return (data as Membership[] | null) ?? []
-}
+  return (data as Membership[] | null) ?? [];
+};
 
 const updateMembershipPreference = async (payload: {
-  membershipId: number
-  preference: MembershipPreferenceSchema
+  membershipId: number;
+  preference: MembershipPreferenceSchema;
 }) => {
   const { data, error } = await supabase.rpc('update_membership_preference_for_self', {
     p_membership_id: payload.membershipId,
     p_preference: payload.preference as any,
-  })
+  });
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const updatedMembership = Array.isArray(data) ? data[0] : data
+  const updatedMembership = Array.isArray(data) ? data[0] : data;
   if (!updatedMembership) {
-    throw new Error('Membership preference was not updated.')
+    throw new Error('Membership preference was not updated.');
   }
 
-  return updatedMembership
-}
+  return updatedMembership;
+};
 
 export const membershipRepository = {
   listMemberships,
@@ -182,4 +171,4 @@ export const membershipRepository = {
   getTenantAdmins,
   fetchMembershipsByTenantId,
   updateMembershipPreference,
-}
+};

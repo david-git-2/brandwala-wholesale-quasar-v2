@@ -8,24 +8,62 @@
             <th class="text-right shipment-sl-col">SL</th>
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
-            <th v-if="props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col" style="width: 80px; min-width: 80px; max-width: 80px;">Split Qty</th>
-            <th v-if="isColumnVisible('product_id')" class="text-center shipment-product-id-col">Product ID</th>
-            <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">Barcode</th>
-            <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">Product Code</th>
-            <th v-if="isColumnVisible('add_method')" class="text-left shipment-method-col">Method</th>
-            <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">Price {{ purchaseCurrencySymbol }}</th>
-            <th v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">Cost {{ costCurrencySymbol }}</th>
-            <th v-if="isColumnVisible('ordered_quantity')" class="text-center shipment-qty-col shipment-qty-col--quantity">Quantity</th>
-            <th v-if="isColumnVisible('product_weight')" class="text-center shipment-product-weight-col">Product Wt</th>
-            <th v-if="isColumnVisible('package_weight')" class="text-center shipment-package-weight-col">Package Wt</th>
-            <th v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">Actions</th>
+            <th
+              v-if="props.shipment?.status === 'Warehouse Received'"
+              class="text-center shipment-split-col"
+              style="width: 80px; min-width: 80px; max-width: 80px"
+            >
+              Split Qty
+            </th>
+            <th v-if="isColumnVisible('product_id')" class="text-center shipment-product-id-col">
+              Product ID
+            </th>
+            <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">
+              Barcode
+            </th>
+            <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">
+              Product Code
+            </th>
+            <th v-if="isColumnVisible('add_method')" class="text-left shipment-method-col">
+              Method
+            </th>
+            <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
+              Price {{ purchaseCurrencySymbol }}
+            </th>
+            <th v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
+              Cost {{ costCurrencySymbol }}
+            </th>
+            <th
+              v-if="isColumnVisible('ordered_quantity')"
+              class="text-center shipment-qty-col shipment-qty-col--quantity"
+            >
+              Quantity
+            </th>
+            <th
+              v-if="isColumnVisible('product_weight')"
+              class="text-center shipment-product-weight-col"
+            >
+              Product Wt
+            </th>
+            <th
+              v-if="isColumnVisible('package_weight')"
+              class="text-center shipment-package-weight-col"
+            >
+              Package Wt
+            </th>
+            <th v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(item, index) in items" :key="item.id">
             <td class="text-right shipment-sl-col">
               <div class="row items-center justify-end no-wrap">
-                <span :class="{ 'cursor-pointer': isEditable, 'text-underline-dashed': isEditable }">{{ index + 1 }}</span>
+                <span
+                  :class="{ 'cursor-pointer': isEditable, 'text-underline-dashed': isEditable }"
+                  >{{ index + 1 }}</span
+                >
                 <q-popup-edit
                   v-if="isEditable"
                   :model-value="index + 1"
@@ -58,7 +96,7 @@
                     icon="keyboard_arrow_up"
                     :disable="index === 0"
                     class="q-my-none"
-                    style="height: 14px; min-height: 14px;"
+                    style="height: 14px; min-height: 14px"
                     @click="moveItem(index, 'up')"
                   >
                     <q-tooltip>Move Up</q-tooltip>
@@ -71,7 +109,7 @@
                     icon="keyboard_arrow_down"
                     :disable="index === items.length - 1"
                     class="q-my-none"
-                    style="height: 14px; min-height: 14px;"
+                    style="height: 14px; min-height: 14px"
                     @click="moveItem(index, 'down')"
                   >
                     <q-tooltip>Move Down</q-tooltip>
@@ -98,7 +136,10 @@
             >
               {{ item.name ?? '-' }}
             </td>
-            <td v-if="props.shipment?.status === 'Warehouse Received'" class="text-center shipment-split-col">
+            <td
+              v-if="props.shipment?.status === 'Warehouse Received'"
+              class="text-center shipment-split-col"
+            >
               <div class="column items-center q-gutter-y-xs q-py-xs">
                 <q-btn
                   flat
@@ -110,25 +151,39 @@
                   @click="openSplitDialog(item)"
                 >
                   <q-tooltip>
-                    {{ isItemSplitsCompleteInDb(item) ? 'Quantity splits complete.' : 'Configure quantity splits.' }}
+                    {{
+                      isItemSplitsCompleteInDb(item)
+                        ? 'Quantity splits complete.'
+                        : 'Configure quantity splits.'
+                    }}
                   </q-tooltip>
                 </q-btn>
                 <span
                   class="text-weight-bold"
-                  style="font-size: 11px; line-height: 1;"
+                  style="font-size: 11px; line-height: 1"
                   :class="isItemSplitsCompleteInDb(item) ? 'text-green-7' : 'text-orange-7'"
                 >
                   {{ isItemSplitsCompleteInDb(item) ? 'Done' : 'Pending' }}
                 </span>
               </div>
             </td>
-            <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">{{ item.product_id ?? '-' }}</td>
-            <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">{{ item.barcode ?? '-' }}</td>
-            <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">{{ item.product_code ?? '-' }}</td>
-            <td v-if="isColumnVisible('add_method')" class="text-uppercase shipment-method-col">{{ item.add_method ?? '-' }}</td>
+            <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">
+              {{ item.product_id ?? '-' }}
+            </td>
+            <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">
+              {{ item.barcode ?? '-' }}
+            </td>
+            <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">
+              {{ item.product_code ?? '-' }}
+            </td>
+            <td v-if="isColumnVisible('add_method')" class="text-uppercase shipment-method-col">
+              {{ item.add_method ?? '-' }}
+            </td>
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{ formatFixed2(item.purchase_price) }}</span>
+                <span :class="{ 'cursor-pointer': isEditable }">{{
+                  formatFixed2(item.purchase_price)
+                }}</span>
                 <q-popup-edit
                   v-if="isEditable"
                   :model-value="item.purchase_price"
@@ -151,13 +206,13 @@
                   />
                 </q-popup-edit>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px;">
+              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
                 T: {{ formatFixed2((item.purchase_price || 0) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
             <td v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
               <div>{{ formatFixed2(lineCostBdt(item)) }}</div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px;">
+              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
                 T: {{ formatFixed2(lineCostBdt(item) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
@@ -189,9 +244,14 @@
                 />
               </q-popup-edit>
             </td>
-            <td v-if="isColumnVisible('product_weight')" class="text-center shipment-product-weight-col">
+            <td
+              v-if="isColumnVisible('product_weight')"
+              class="text-center shipment-product-weight-col"
+            >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{ formatDecimal(item.product_weight) }}</span>
+                <span :class="{ 'cursor-pointer': isEditable }">{{
+                  formatDecimal(item.product_weight)
+                }}</span>
                 <q-popup-edit
                   v-if="isEditable"
                   :model-value="item.product_weight"
@@ -214,13 +274,18 @@
                   />
                 </q-popup-edit>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px;">
+              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
                 T: {{ formatFixed2((item.product_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
-            <td v-if="isColumnVisible('package_weight')" class="text-center shipment-package-weight-col">
+            <td
+              v-if="isColumnVisible('package_weight')"
+              class="text-center shipment-package-weight-col"
+            >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{ formatDecimal(item.package_weight) }}</span>
+                <span :class="{ 'cursor-pointer': isEditable }">{{
+                  formatDecimal(item.package_weight)
+                }}</span>
                 <q-popup-edit
                   v-if="isEditable"
                   :model-value="item.package_weight"
@@ -243,7 +308,7 @@
                   />
                 </q-popup-edit>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px;">
+              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
                 T: {{ formatFixed2((item.package_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
@@ -272,10 +337,16 @@
             <td v-if="isColumnVisible('barcode')" />
             <td v-if="isColumnVisible('product_code')" />
             <td v-if="isColumnVisible('add_method')" />
-            <td v-if="isColumnVisible('purchase_price')" class="text-center text-weight-bold shipment-price-col">
+            <td
+              v-if="isColumnVisible('purchase_price')"
+              class="text-center text-weight-bold shipment-price-col"
+            >
               {{ formatFixed2(tableTotals.price_gbp) }}
             </td>
-            <td v-if="isColumnVisible('cost_bdt')" class="text-center text-weight-bold shipment-cost-col">
+            <td
+              v-if="isColumnVisible('cost_bdt')"
+              class="text-center text-weight-bold shipment-cost-col"
+            >
               {{ formatFixed2(tableTotals.cost_bdt) }}
             </td>
             <td
@@ -284,10 +355,16 @@
             >
               {{ tableTotals.quantity }}
             </td>
-            <td v-if="isColumnVisible('product_weight')" class="text-center text-weight-bold shipment-product-weight-col">
+            <td
+              v-if="isColumnVisible('product_weight')"
+              class="text-center text-weight-bold shipment-product-weight-col"
+            >
               {{ formatFixed2(tableTotals.product_weight) }} gm
             </td>
-            <td v-if="isColumnVisible('package_weight')" class="text-center text-weight-bold shipment-package-weight-col">
+            <td
+              v-if="isColumnVisible('package_weight')"
+              class="text-center text-weight-bold shipment-package-weight-col"
+            >
               {{ formatFixed2(tableTotals.package_weight) }} gm
             </td>
             <td v-if="isColumnVisible('actions')" />
@@ -305,22 +382,30 @@
 
   <!-- Centered Quantity Split Dialog -->
   <q-dialog v-model="splitDialogActive" persistent>
-    <q-card v-if="activeSplitItem" style="width: 450px; max-width: 95vw;" class="q-pa-md rounded-borders">
+    <q-card
+      v-if="activeSplitItem"
+      style="width: 450px; max-width: 95vw"
+      class="q-pa-md rounded-borders"
+    >
       <q-card-section class="row items-start no-wrap q-pb-none q-mb-sm">
         <q-avatar rounded size="48px" class="bg-grey-2 q-mr-md shadow-1 flex-shrink-0">
           <img
             v-if="activeSplitItem.image_url"
             :src="activeSplitItem.image_url"
-            style="object-fit: cover; width: 100%; height: 100%;"
+            style="object-fit: cover; width: 100%; height: 100%"
           />
           <q-icon v-else name="image" color="grey-6" />
         </q-avatar>
         <div class="col column justify-center text-left">
-          <div class="text-subtitle1 text-weight-bold text-grey-9 text-wrap" style="line-height: 1.2; word-break: break-word;">
+          <div
+            class="text-subtitle1 text-weight-bold text-grey-9 text-wrap"
+            style="line-height: 1.2; word-break: break-word"
+          >
             {{ activeSplitItem.name }}
           </div>
-          <div class="text-caption text-grey-6 text-weight-medium q-mt-xs" style="font-size: 11px;">
-            Qty: {{ activeSplitItem.ordered_quantity }} pcs | Code: {{ activeSplitItem.product_code || '-' }}
+          <div class="text-caption text-grey-6 text-weight-medium q-mt-xs" style="font-size: 11px">
+            Qty: {{ activeSplitItem.ordered_quantity }} pcs | Code:
+            {{ activeSplitItem.product_code || '-' }}
           </div>
         </div>
         <q-btn icon="close" flat round dense v-close-popup class="q-ml-md self-start" />
@@ -337,8 +422,10 @@
             class="row items-center justify-between no-wrap q-py-xs"
           >
             <div class="column text-left">
-              <span class="text-weight-bold text-grey-9 text-subtitle2" style="line-height: 1.1;">{{ t.description }}</span>
-              <span class="text-caption text-grey-6" style="font-size: 11px;">
+              <span class="text-weight-bold text-grey-9 text-subtitle2" style="line-height: 1.1">{{
+                t.description
+              }}</span>
+              <span class="text-caption text-grey-6" style="font-size: 11px">
                 {{ t.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
               </span>
             </div>
@@ -347,10 +434,10 @@
               type="number"
               dense
               outlined
-              style="width: 130px;"
+              style="width: 130px"
               min="0"
               class="text-right"
-              :rules="[val => val >= 0 || 'Must be >= 0']"
+              :rules="[(val) => val >= 0 || 'Must be >= 0']"
               hide-bottom-space
             />
           </div>
@@ -365,9 +452,10 @@
           class="text-subtitle2 text-weight-bolder"
           :class="isItemSplitsCompleteLocal(activeSplitItem) ? 'text-positive' : 'text-negative'"
         >
-          Allocated: {{ getSumOfSplits(activeSplitItem.id) }} / {{ activeSplitItem.ordered_quantity }}
+          Allocated: {{ getSumOfSplits(activeSplitItem.id) }} /
+          {{ activeSplitItem.ordered_quantity }}
         </div>
-        
+
         <div class="row q-gutter-sm">
           <q-btn label="Cancel" color="grey-7" flat v-close-popup no-caps />
           <q-btn
@@ -386,38 +474,42 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
-import SmartImage from 'src/components/SmartImage.vue'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository'
-import { calculateLineLandedCostBdt } from '../utils/landedCost'
-import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct'
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { supabase } from 'src/boot/supabase'
-import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback'
+import { computed, ref, onMounted, watch } from 'vue';
+import SmartImage from 'src/components/SmartImage.vue';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import { calculateLineLandedCostBdt } from '../utils/landedCost';
+import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
+import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { supabase } from 'src/boot/supabase';
+import {
+  showSuccessNotification,
+  showErrorNotification,
+  showWarningNotification,
+} from 'src/utils/appFeedback';
 
 const props = withDefaults(
   defineProps<{
-    items: GlobalShipmentItem[]
-    shipment: GlobalShipment | null
-    loading?: boolean
-    visibleColumns?: ColumnKey[]
-    purchaseCurrencySymbol?: string
-    costCurrencySymbol?: string
+    items: GlobalShipmentItem[];
+    shipment: GlobalShipment | null;
+    loading?: boolean;
+    visibleColumns?: ColumnKey[];
+    purchaseCurrencySymbol?: string;
+    costCurrencySymbol?: string;
   }>(),
   {
     purchaseCurrencySymbol: '£',
     costCurrencySymbol: '৳',
   },
-)
+);
 
 const emit = defineEmits<{
-  'edit-details': [item: GlobalShipmentItem]
-  delete: [id: number]
-}>()
+  'edit-details': [item: GlobalShipmentItem];
+  delete: [id: number];
+}>();
 
-const shipmentStore = useGlobalShipmentStore()
+const shipmentStore = useGlobalShipmentStore();
 
 const baseColumnOptions = [
   { label: 'Name', value: 'name' },
@@ -431,9 +523,9 @@ const baseColumnOptions = [
   { label: 'Product Wt', value: 'product_weight' },
   { label: 'Package Wt', value: 'package_weight' },
   { label: 'Actions', value: 'actions' },
-] as const
+] as const;
 
-export type ColumnKey = (typeof baseColumnOptions)[number]['value']
+export type ColumnKey = (typeof baseColumnOptions)[number]['value'];
 
 const internalVisibleColumns = ref<ColumnKey[]>([
   'name',
@@ -447,199 +539,202 @@ const internalVisibleColumns = ref<ColumnKey[]>([
   'product_weight',
   'package_weight',
   'actions',
-])
+]);
 
-const activeVisibleColumns = computed(() => props.visibleColumns ?? internalVisibleColumns.value)
+const activeVisibleColumns = computed(() => props.visibleColumns ?? internalVisibleColumns.value);
 
-const isInternational = computed(() => props.shipment?.type === 'international')
+const isInternational = computed(() => props.shipment?.type === 'international');
 
 const columnOptions = computed(() =>
   baseColumnOptions
     .filter((opt) => {
       if (!isInternational.value) {
-        return !['purchase_price', 'product_weight', 'package_weight'].includes(opt.value)
+        return !['purchase_price', 'product_weight', 'package_weight'].includes(opt.value);
       }
-      return true
+      return true;
     })
     .map((opt) => {
       if (opt.value === 'purchase_price') {
-        return { label: `Price ${props.purchaseCurrencySymbol}`, value: 'purchase_price' as ColumnKey }
+        return {
+          label: `Price ${props.purchaseCurrencySymbol}`,
+          value: 'purchase_price' as ColumnKey,
+        };
       }
       if (opt.value === 'cost_bdt') {
-        return { label: `Cost ${props.costCurrencySymbol}`, value: 'cost_bdt' as ColumnKey }
+        return { label: `Cost ${props.costCurrencySymbol}`, value: 'cost_bdt' as ColumnKey };
       }
-      return opt
+      return opt;
     }),
-)
+);
 
 const isEditable = computed(() => {
-  if (!props.shipment) return false
-  return !props.shipment.stock_ready && props.shipment.status !== 'Ready Stock'
-})
+  if (!props.shipment) return false;
+  return !props.shipment.stock_ready && props.shipment.status !== 'Ready Stock';
+});
 
-const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column)
+const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);
 
 const tableColspan = computed(() => {
-  let count = 2
+  let count = 2;
   for (const opt of columnOptions.value) {
-    if (isColumnVisible(opt.value)) count++
+    if (isColumnVisible(opt.value)) count++;
   }
-  if (props.shipment?.status === 'Warehouse Received') count++
-  return count
-})
+  if (props.shipment?.status === 'Warehouse Received') count++;
+  return count;
+});
 
-const stockTypeStore = useGlobalStockTypeStore()
-const authStore = useAuthStore()
+const stockTypeStore = useGlobalStockTypeStore();
+const authStore = useAuthStore();
 
-const localSplits = ref<Record<number, Record<number, number>>>({})
-const savingSplits = ref<Record<number, boolean>>({})
+const localSplits = ref<Record<number, Record<number, number>>>({});
+const savingSplits = ref<Record<number, boolean>>({});
 
-const splitDialogActive = ref(false)
-const activeSplitItem = ref<GlobalShipmentItem | null>(null)
+const splitDialogActive = ref(false);
+const activeSplitItem = ref<GlobalShipmentItem | null>(null);
 
 const openSplitDialog = (item: GlobalShipmentItem) => {
-  activeSplitItem.value = item
-  splitDialogActive.value = true
-}
+  activeSplitItem.value = item;
+  splitDialogActive.value = true;
+};
 
 onMounted(async () => {
   if (stockTypeStore.items.length === 0 && authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId)
+    await stockTypeStore.fetchStockTypes(authStore.tenantId);
   }
-})
+});
 
 const initLocalSplits = () => {
-  const stocks = shipmentStore.currentShipmentStocks || []
-  const items = props.items || []
-  const defaultType = stockTypeStore.items.find(t => t.description === 'Standard Sellable') || stockTypeStore.items[0]
-  const defaultTypeId = defaultType?.id || 0
+  const stocks = shipmentStore.currentShipmentStocks || [];
+  const items = props.items || [];
+  const defaultType =
+    stockTypeStore.items.find((t) => t.description === 'Standard Sellable') ||
+    stockTypeStore.items[0];
+  const defaultTypeId = defaultType?.id || 0;
 
-  const newSplits: Record<number, Record<number, number>> = {}
+  const newSplits: Record<number, Record<number, number>> = {};
   for (const item of items) {
-    const itemStocks = stocks.filter(s => s.shipment_item_id === item.id)
-    const splits: Record<number, number> = {}
-    newSplits[item.id] = splits
-    
+    const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
+    const splits: Record<number, number> = {};
+    newSplits[item.id] = splits;
+
     for (const t of stockTypeStore.items) {
-      splits[t.id] = 0
+      splits[t.id] = 0;
     }
 
     if (itemStocks.length > 0) {
       for (const s of itemStocks) {
-        splits[s.stock_type_id] = s.quantity || 0
+        splits[s.stock_type_id] = s.quantity || 0;
       }
     } else {
       if (defaultTypeId > 0) {
-        splits[defaultTypeId] = item.ordered_quantity
+        splits[defaultTypeId] = item.ordered_quantity;
       }
     }
   }
-  localSplits.value = newSplits
-}
+  localSplits.value = newSplits;
+};
 
 watch(
   [() => shipmentStore.currentShipmentStocks, () => props.items, () => stockTypeStore.items],
   () => {
-    initLocalSplits()
+    initLocalSplits();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 const getSumOfSplits = (itemId: number): number => {
-  const itemSplits = localSplits.value[itemId] || {}
-  return Object.values(itemSplits).reduce((sum, qty) => sum + (qty || 0), 0)
-}
+  const itemSplits = localSplits.value[itemId] || {};
+  return Object.values(itemSplits).reduce((sum, qty) => sum + (qty || 0), 0);
+};
 
 const isItemSplitsCompleteInDb = (item: GlobalShipmentItem): boolean => {
-  const stocks = shipmentStore.currentShipmentStocks || []
-  const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id)
-  if (itemStocks.length === 0) return false
-  const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0)
-  return sum === item.ordered_quantity
-}
+  const stocks = shipmentStore.currentShipmentStocks || [];
+  const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
+  if (itemStocks.length === 0) return false;
+  const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0);
+  return sum === item.ordered_quantity;
+};
 
 const isItemSplitsCompleteLocal = (item: GlobalShipmentItem): boolean => {
-  return getSumOfSplits(item.id) === item.ordered_quantity
-}
+  return getSumOfSplits(item.id) === item.ordered_quantity;
+};
 
 const saveItemSplits = async () => {
-  const item = activeSplitItem.value
-  if (!item || !isItemSplitsCompleteLocal(item) || !authStore.tenantId) return
-  
-  savingSplits.value[item.id] = true
+  const item = activeSplitItem.value;
+  if (!item || !isItemSplitsCompleteLocal(item) || !authStore.tenantId) return;
+
+  savingSplits.value[item.id] = true;
   try {
-    const itemSplits = localSplits.value[item.id] || {}
+    const itemSplits = localSplits.value[item.id] || {};
     const stockRows = Object.entries(itemSplits)
       .map(([stockTypeIdStr, qty]) => {
-        const stockTypeId = Number(stockTypeIdStr)
-        const stockType = stockTypeStore.items.find(t => t.id === stockTypeId)
+        const stockTypeId = Number(stockTypeIdStr);
+        const stockType = stockTypeStore.items.find((t) => t.id === stockTypeId);
         return {
           parent_tenant_id: authStore.tenantId,
           shipment_item_id: item.id,
           stock_type_id: stockTypeId,
           quantity: qty,
           is_usable: stockType?.is_sellable ?? true,
-        }
+        };
       })
-      .filter(row => row.quantity > 0)
+      .filter((row) => row.quantity > 0);
 
     const { error: deleteError } = await supabase
       .from('global_stocks')
       .delete()
-      .eq('shipment_item_id', item.id)
-    if (deleteError) throw deleteError
+      .eq('shipment_item_id', item.id);
+    if (deleteError) throw deleteError;
 
     if (stockRows.length > 0) {
-      const { error: insertError } = await supabase
-        .from('global_stocks')
-        .insert(stockRows)
-      if (insertError) throw insertError
+      const { error: insertError } = await supabase.from('global_stocks').insert(stockRows);
+      if (insertError) throw insertError;
     }
 
-    showSuccessNotification(`Stock splits saved successfully for ${item.name}.`)
+    showSuccessNotification(`Stock splits saved successfully for ${item.name}.`);
 
-    splitDialogActive.value = false
-    await shipmentStore.fetchShipmentDetails(props.shipment!.id)
+    splitDialogActive.value = false;
+    await shipmentStore.fetchShipmentDetails(props.shipment!.id);
   } catch (error: any) {
-    showErrorNotification(error.message || 'Failed to save splits.')
+    showErrorNotification(error.message || 'Failed to save splits.');
   } finally {
-    savingSplits.value[item.id] = false
+    savingSplits.value[item.id] = false;
   }
-}
+};
 
 const formatDecimal = (value: number | null | undefined) =>
-  value == null ? '-' : String(Number(value))
+  value == null ? '-' : String(Number(value));
 
 const formatFixed2 = (value: number | null | undefined) =>
-  value == null ? '-' : Number(value).toFixed(2)
+  value == null ? '-' : Number(value).toFixed(2);
 
 const lineCostBdt = (item: GlobalShipmentItem) => {
-  if (!props.shipment) return 0
-  return calculateLineLandedCostBdt(item, props.shipment, props.items)
-}
+  if (!props.shipment) return 0;
+  return calculateLineLandedCostBdt(item, props.shipment, props.items);
+};
 
 const tableTotals = computed(() =>
   props.items.reduce(
     (acc, item) => {
-      const qty = Number(item.ordered_quantity ?? 0)
-      const unitCost = lineCostBdt(item)
-      acc.price_gbp += Number(item.purchase_price ?? 0) * qty
-      acc.cost_bdt += unitCost * qty
-      acc.quantity += qty
-      acc.product_weight += Number(item.product_weight ?? 0) * qty
-      acc.package_weight += Number(item.package_weight ?? 0) * qty
-      return acc
+      const qty = Number(item.ordered_quantity ?? 0);
+      const unitCost = lineCostBdt(item);
+      acc.price_gbp += Number(item.purchase_price ?? 0) * qty;
+      acc.cost_bdt += unitCost * qty;
+      acc.quantity += qty;
+      acc.product_weight += Number(item.product_weight ?? 0) * qty;
+      acc.package_weight += Number(item.package_weight ?? 0) * qty;
+      return acc;
     },
     { price_gbp: 0, cost_bdt: 0, quantity: 0, product_weight: 0, package_weight: 0 },
   ),
-)
+);
 
-type EditableField = 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight'
+type EditableField = 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight';
 
 const roundTo = (value: number, decimals = 0) => {
-  const factor = 10 ** decimals
-  return Math.round(value * factor) / factor
-}
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
 
 const onNumericSave = async (
   item: GlobalShipmentItem,
@@ -647,92 +742,93 @@ const onNumericSave = async (
   value: string | number | null,
   options?: { decimals?: number },
 ) => {
-  const parsed = Number(value)
+  const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    showWarningNotification('Value must be 0 or greater.')
-    return
+    showWarningNotification('Value must be 0 or greater.');
+    return;
   }
 
-  let normalized = options?.decimals != null ? roundTo(parsed, options.decimals) : Math.floor(parsed)
+  let normalized =
+    options?.decimals != null ? roundTo(parsed, options.decimals) : Math.floor(parsed);
   if (field === 'ordered_quantity') {
-    normalized = Math.max(1, Math.floor(parsed))
+    normalized = Math.max(1, Math.floor(parsed));
   }
 
   try {
-    await shipmentStore.updateShipmentItem(item.id, { [field]: normalized })
+    await shipmentStore.updateShipmentItem(item.id, { [field]: normalized });
     if ((field === 'product_weight' || field === 'package_weight') && item.product_id != null) {
-      await syncShipmentWeightToProduct(item.product_id, field, normalized)
+      await syncShipmentWeightToProduct(item.product_id, field, normalized);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to update item.'
-    showErrorNotification(msg)
+    const msg = err instanceof Error ? err.message : 'Failed to update item.';
+    showErrorNotification(msg);
   }
-}
+};
 
 const moveItem = async (index: number, direction: 'up' | 'down') => {
-  const targetIndex = direction === 'up' ? index - 1 : index + 1
-  if (targetIndex < 0 || targetIndex >= props.items.length) return
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= props.items.length) return;
 
-  const updatedItems = [...props.items]
-  const temp = updatedItems[index]
-  const targetItem = updatedItems[targetIndex]
-  if (!temp || !targetItem) return
+  const updatedItems = [...props.items];
+  const temp = updatedItems[index];
+  const targetItem = updatedItems[targetIndex];
+  if (!temp || !targetItem) return;
 
-  updatedItems[index] = targetItem
-  updatedItems[targetIndex] = temp
+  updatedItems[index] = targetItem;
+  updatedItems[targetIndex] = temp;
 
   const itemsOrder = updatedItems.map((item, idx) => ({
     id: item.id,
     sort_order: idx * 10,
-  }))
+  }));
 
   try {
     if (props.shipment) {
-      await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder)
-      showSuccessNotification('Items reordered successfully.')
+      await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder);
+      showSuccessNotification('Items reordered successfully.');
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to reorder items.'
-    showErrorNotification(msg)
+    const msg = err instanceof Error ? err.message : 'Failed to reorder items.';
+    showErrorNotification(msg);
   }
-}
+};
 
 const moveItemToPosition = async (currentIndex: number, newPosition: string | number | null) => {
-  const parsed = Number(newPosition)
+  const parsed = Number(newPosition);
   if (!Number.isFinite(parsed) || parsed < 1 || parsed > props.items.length) {
-    showWarningNotification(`Position must be between 1 and ${props.items.length}.`)
-    return
+    showWarningNotification(`Position must be between 1 and ${props.items.length}.`);
+    return;
   }
 
-  const targetIndex = parsed - 1
-  if (currentIndex === targetIndex) return
+  const targetIndex = parsed - 1;
+  if (currentIndex === targetIndex) return;
 
-  const updatedItems = [...props.items]
-  const [removedItem] = updatedItems.splice(currentIndex, 1)
-  if (!removedItem) return
+  const updatedItems = [...props.items];
+  const [removedItem] = updatedItems.splice(currentIndex, 1);
+  if (!removedItem) return;
 
-  updatedItems.splice(targetIndex, 0, removedItem)
+  updatedItems.splice(targetIndex, 0, removedItem);
 
   const itemsOrder = updatedItems.map((item, idx) => ({
     id: item.id,
     sort_order: idx * 10,
-  }))
+  }));
 
   try {
     if (props.shipment) {
-      await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder)
-      showSuccessNotification(`Item moved to position ${parsed} successfully.`)
+      await shipmentStore.reorderShipmentItems(props.shipment.id, itemsOrder);
+      showSuccessNotification(`Item moved to position ${parsed} successfully.`);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to move item.'
-    showErrorNotification(msg)
+    const msg = err instanceof Error ? err.message : 'Failed to move item.';
+    showErrorNotification(msg);
   }
-}
+};
 
 defineExpose({
   columnOptions,
   internalVisibleColumns,
-})
+});
 </script>
 
 <style scoped>
@@ -967,13 +1063,13 @@ defineExpose({
   }
 }
 
-:deep(input[type="number"]::-webkit-outer-spin-button),
-:deep(input[type="number"]::-webkit-inner-spin-button) {
+:deep(input[type='number']::-webkit-outer-spin-button),
+:deep(input[type='number']::-webkit-inner-spin-button) {
   -webkit-appearance: none;
   margin: 0;
 }
 
-:deep(input[type="number"]) {
+:deep(input[type='number']) {
   -moz-appearance: textfield;
 }
 </style>

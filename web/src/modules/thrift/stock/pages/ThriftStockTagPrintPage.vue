@@ -21,14 +21,7 @@
       >
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn
-              flat
-              round
-              dense
-              icon="settings"
-              color="grey-7"
-              @click="openConfig(props.row)"
-            >
+            <q-btn flat round dense icon="settings" color="grey-7" @click="openConfig(props.row)">
               <q-tooltip>Configure tag layout</q-tooltip>
             </q-btn>
             <q-btn
@@ -70,9 +63,27 @@ const shipments = ref<ThriftShipment[]>([]);
 const countsMap = ref<Map<number, PrintableTagCounts>>(new Map());
 
 const columns: QTableColumn[] = [
-  { name: 'shipmentName', label: 'Shipment Name', field: 'shipmentName', align: 'left', sortable: true },
-  { name: 'itemCount', label: 'Eligible Items', field: 'itemCount', align: 'right', sortable: true },
-  { name: 'stickerCount', label: 'Sticker Copies', field: 'stickerCount', align: 'right', sortable: true },
+  {
+    name: 'shipmentName',
+    label: 'Shipment Name',
+    field: 'shipmentName',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'itemCount',
+    label: 'Eligible Items',
+    field: 'itemCount',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'stickerCount',
+    label: 'Sticker Copies',
+    field: 'stickerCount',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ];
 
@@ -146,8 +157,12 @@ onMounted(() => {
   border-radius: 14px;
   border: 1px solid rgba(34, 56, 101, 0.08);
 }
-.hero-surface { border-radius: 16px; }
-.pill-btn { border-radius: 999px; }
+.hero-surface {
+  border-radius: 16px;
+}
+.pill-btn {
+  border-radius: 999px;
+}
 
 .thrift-table--loading {
   opacity: 0.6;

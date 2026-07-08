@@ -18,7 +18,10 @@
             :style="statusChipStyle(statusForm)"
             class="costing-file-status-chip q-px-md q-py-sm"
           >
-            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(statusForm) }" />
+            <span
+              class="status-chip-dot"
+              :style="{ backgroundColor: statusDotColor(statusForm) }"
+            />
             {{ statusForm }}
             <q-menu>
               <q-list dense style="min-width: 180px">
@@ -104,7 +107,6 @@
             @click="goToViewerManagement"
           />
         </div>
-
       </q-card>
       <section v-if="selectedFile?.status === 'draft'" class="costing-page__draft-state">
         <div class="text-subtitle1">Items not added yet</div>
@@ -133,262 +135,297 @@
             hide-bottom
             class="costing-page__table costing-page__table--product"
           >
-          <template #body-cell-sl="props">
-            <q-td :props="props" class="costing-page__sl-cell">
-              {{ props.row.sl }}
-            </q-td>
-          </template>
-
-          <template #body-cell-image="props">
-            <q-td :props="props">
-              <div class="costing-page__image-cell">
-                <q-img
-                  v-if="props.row.imageUrl"
-                  :src="props.row.imageUrl"
-                  fit="contain"
-                  class="costing-page__image"
-                />
-                <div v-else class="costing-page__image costing-page__image--placeholder">
-                  No image
-                </div>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-websiteUrl="props">
-            <q-td :props="props" class="costing-page__link-cell">
-              <q-btn
-                v-if="props.row.websiteUrl"
-                flat
-                dense
-                no-caps
-                size="sm"
-                color="primary"
-                icon="open_in_new"
-                label="Open link"
-                class="pill-btn slim-btn costing-page__open-link-btn"
-                :href="props.row.websiteUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-extraInformation1="props">
-            <q-td :props="props">
-              <div v-html="props.value" class="costing-table__rich-text-cell" />
-            </q-td>
-          </template>
-
-          <template #body-cell-extraInformation2="props">
-            <q-td :props="props">
-              <div v-html="props.value" class="costing-table__rich-text-cell" />
-            </q-td>
-          </template>
-
-
-          <template #body-cell-name="props">
-            <q-td :props="props" class="costing-page__name-cell">
-              <span class="costing-page__name-text" :title="props.row.name">
-                {{ props.row.name }}
-              </span>
-            </q-td>
-          </template>
-
-          <template #body-cell-status="props">
-            <q-td :props="props" class="costing-page__status-cell">
-              <span
-                class="costing-page__status-pill"
-                :class="{
-                  'costing-page__status-pill--rejected': props.row.status === 'rejected',
-                }"
-              >
-                {{ props.row.status }}
-              </span>
-            </q-td>
-          </template>
-
-          <template #body-cell-priceInWebGbp="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'priceInWebGbp', props.row.priceInWebGbpValue)"
-                >
-                  {{ props.row.priceInWebGbp }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'priceInWebGbp', props.row.priceInWebGbpValue)"
-                  @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="0.01"
-                    label="Web price (GBP)"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-productWeight="props">
-            <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `productWeight:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'productWeight', props.row.productWeightValue)"
-                >
-                  {{ props.row.productWeight }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'productWeight', props.row.productWeightValue)"
-                  @save="saveItemField(props.row.id, 'productWeight', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="1"
-                    label="Product wt"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-packageWeight="props">
-            <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'packageWeight', props.row.packageWeightValue)"
-                >
-                  {{ props.row.packageWeight }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'packageWeight', props.row.packageWeightValue)"
-                  @save="saveItemField(props.row.id, 'packageWeight', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="1"
-                    label="Package wt"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-quantity="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__quantity-cell">
-                <button
-                  type="button"
-                  class="costing-page__quantity-trigger"
-                  :disabled="savingQuantityItemId === props.row.id"
-                  @click="primeQuantityEditor(props.row.id, props.row.quantity)"
-                >
-                  {{ props.row.quantity }}
-                </button>
-
-                <q-popup-edit
-                  v-model="quantityDrafts[props.row.id]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateQuantity"
-                  @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
-                  @save="saveQuantity(props.row.id, $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="1"
-                    step="1"
-                    label="Quantity"
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" auto-width>
-              <q-btn
-                flat
-                dense
-                color="primary"
-                icon="o_edit"
-                round
-                aria-label="Edit item"
-                :disable="savingItemId === props.row.id"
-                @click="openEditDialog(props.row.id)"
-              />
-            </q-td>
-          </template>
-
-          <template #bottom-row>
-            <q-tr class="costing-page__totals-row">
-              <q-td
-                v-for="column in visibleProductColumns"
-                :key="column.name"
-                class="costing-page__totals-cell"
-                :class="getProductTotalsCellClass(column.name)"
-              >
-                {{ getProductTotalsValue(column.name) }}
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
               </q-td>
-            </q-tr>
-          </template>
-        </q-table>
-      </q-card>
-    </section>
+            </template>
+
+            <template #body-cell-image="props">
+              <q-td :props="props">
+                <div class="costing-page__image-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="contain"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-websiteUrl="props">
+              <q-td :props="props" class="costing-page__link-cell">
+                <q-btn
+                  v-if="props.row.websiteUrl"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="open_in_new"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
+                  :href="props.row.websiteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
+              </q-td>
+            </template>
+
+            <template #body-cell-status="props">
+              <q-td :props="props" class="costing-page__status-cell">
+                <span
+                  class="costing-page__status-pill"
+                  :class="{
+                    'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                  }"
+                >
+                  {{ props.row.status }}
+                </span>
+              </q-td>
+            </template>
+
+            <template #body-cell-priceInWebGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.priceInWebGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Web price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-productWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `productWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.productWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'productWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Product wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-packageWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.packageWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'packageWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Package wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__quantity-cell">
+                  <button
+                    type="button"
+                    class="costing-page__quantity-trigger"
+                    :disabled="savingQuantityItemId === props.row.id"
+                    @click="primeQuantityEditor(props.row.id, props.row.quantity)"
+                  >
+                    {{ props.row.quantity }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="quantityDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateQuantity"
+                    @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
+                    @save="saveQuantity(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="1"
+                      step="1"
+                      label="Quantity"
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-actions="props">
+              <q-td :props="props" auto-width>
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  icon="o_edit"
+                  round
+                  aria-label="Edit item"
+                  :disable="savingItemId === props.row.id"
+                  @click="openEditDialog(props.row.id)"
+                />
+              </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleProductColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getProductTotalsCellClass(column.name)"
+                >
+                  {{ getProductTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card>
+      </section>
 
       <section
         v-else-if="
@@ -399,7 +436,6 @@
         "
         class="costing-page__pricing-section"
       >
-
         <q-card flat class="floating-surface shadow-1 q-mb-sm">
           <q-card-section class="q-py-xs">
             <div class="row items-end justify-between q-col-gutter-sm">
@@ -472,422 +508,482 @@
             hide-bottom
             class="costing-page__table costing-page__table--review"
           >
-          <template #body-cell-sl="props">
-            <q-td :props="props" class="costing-page__sl-cell">
-              {{ props.row.sl }}
-            </q-td>
-          </template>
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
 
-          <template #body-cell-image="props">
-            <q-td :props="props">
-              <div class="costing-page__image-cell">
-                <q-img
-                  v-if="props.row.imageUrl"
-                  :src="props.row.imageUrl"
-                  fit="contain"
-                  class="costing-page__image"
-                />
-                <div v-else class="costing-page__image costing-page__image--placeholder">
-                  No image
+            <template #body-cell-image="props">
+              <q-td :props="props">
+                <div class="costing-page__image-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="contain"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
                 </div>
-              </div>
-            </q-td>
-          </template>
+              </q-td>
+            </template>
 
-          <template #body-cell-websiteUrl="props">
-            <q-td :props="props" class="costing-page__link-cell">
-              <q-btn
-                v-if="props.row.websiteUrl"
-                flat
-                dense
-                no-caps
-                size="sm"
-                color="primary"
-                icon="open_in_new"
-                label="Open link"
-                class="pill-btn slim-btn costing-page__open-link-btn"
-                :href="props.row.websiteUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-extraInformation1="props">
-            <q-td :props="props">
-              <div v-html="props.value" class="costing-table__rich-text-cell" />
-            </q-td>
-          </template>
-
-          <template #body-cell-extraInformation2="props">
-            <q-td :props="props">
-              <div v-html="props.value" class="costing-table__rich-text-cell" />
-            </q-td>
-          </template>
-
-
-          <template #body-cell-name="props">
-            <q-td :props="props" class="costing-page__name-cell">
-              <div class="row items-center no-wrap justify-between">
-                <span class="costing-page__name-text" :title="props.row.name">
-                  {{ props.row.name }}
-                </span>
+            <template #body-cell-websiteUrl="props">
+              <q-td :props="props" class="costing-page__link-cell">
                 <q-btn
-                  v-if="selectedFile?.status === 'accepted' || selectedFile?.status === 'po_placed'"
-                  icon="local_shipping"
-                  :color="shippedItemIds.includes(props.row.id) ? 'negative' : 'primary'"
+                  v-if="props.row.websiteUrl"
                   flat
-                  round
                   dense
+                  no-caps
                   size="sm"
-                  class="q-ml-sm"
-                  @click="onShip(props.row)"
-                >
-                  <q-tooltip>{{ shippedItemIds.includes(props.row.id) ? 'Added in shipment' : 'Add Shipment' }}</q-tooltip>
-                </q-btn>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-priceInWebGbp="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'priceInWebGbp', props.row.priceInWebGbpValue)"
-                >
-                  {{ props.row.priceInWebGbp }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'priceInWebGbp', props.row.priceInWebGbpValue)"
-                  @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="0.01"
-                    label="Web price (GBP)"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-productWeight="props">
-            <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `productWeight:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'productWeight', props.row.productWeightValue)"
-                >
-                  {{ props.row.productWeight }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'productWeight', props.row.productWeightValue)"
-                  @save="saveItemField(props.row.id, 'productWeight', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="1"
-                    label="Product wt"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-packageWeight="props">
-            <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'packageWeight', props.row.packageWeightValue)"
-                >
-                  {{ props.row.packageWeight }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'packageWeight', props.row.packageWeightValue)"
-                  @save="saveItemField(props.row.id, 'packageWeight', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="1"
-                    label="Package wt"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-deliveryPriceGbp="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `deliveryPriceGbp:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'deliveryPriceGbp', props.row.deliveryPriceGbpValue)"
-                >
-                  {{ props.row.deliveryPriceGbp }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`deliveryPriceGbp:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'deliveryPriceGbp', props.row.deliveryPriceGbpValue)"
-                  @save="saveItemField(props.row.id, 'deliveryPriceGbp', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="0.01"
-                    label="Delivery price (GBP)"
-                    hint="Leave empty to clear."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-cargoRateGbp="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__inline-edit-cell">
-                <button
-                  type="button"
-                  class="costing-page__inline-edit-trigger"
-                  :disabled="savingFieldKey === `cargoRate:${props.row.id}`"
-                  @click="primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)"
-                >
-                  {{ props.row.cargoRateGbp }}
-                </button>
-
-                <q-popup-edit
-                  v-model="itemFieldDrafts[`cargoRate:${props.row.id}`]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateNullableNumber"
-                  @before-show="primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)"
-                  @save="saveItemField(props.row.id, 'cargoRate', $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    step="0.01"
-                    label="Cargo per KG (GBP)"
-                    hint="Leave empty to use auto rate."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-quantity="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__quantity-cell">
-                <button
-                  type="button"
-                  class="costing-page__quantity-trigger"
-                  :disabled="savingQuantityItemId === props.row.id"
-                  @click="primeQuantityEditor(props.row.id, props.row.quantity)"
-                >
-                  {{ props.row.quantity }}
-                </button>
-
-                <q-popup-edit
-                  v-model="quantityDrafts[props.row.id]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateQuantity"
-                  @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
-                  @save="saveQuantity(props.row.id, $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="1"
-                    step="1"
-                    label="Quantity"
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-offerPriceBdt="props">
-            <q-td :props="props" class="costing-page__numeric-cell">
-              <div class="costing-page__offer-cell">
-                <button
-                  type="button"
-                  class="costing-page__offer-trigger"
-                  :disabled="savingOfferItemId === props.row.id"
-                  @click="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
-                >
-                  {{ props.row.offerPriceBdt }}
-
-                </button>
-
-                <q-popup-edit
-                  v-model="offerDrafts[props.row.id]"
-                  buttons
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  :validate="validateOfferPrice"
-                  @before-show="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
-                  @save="saveOfferPrice(props.row.id, $event)"
-                  v-slot="scope"
-                >
-                  <q-input
-                    v-model.number="scope.value"
-                    type="number"
-                    dense
-                    autofocus
-                    outlined
-                    min="0"
-                    label="Offer price (BDT)"
-                    hint="Leave empty to use the calculated offer price."
-                  />
-                </q-popup-edit>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="costing-page__actions-cell">
-              <q-btn
-                flat
-                dense
-                color="primary"
-                icon="o_edit"
-                round
-                aria-label="Edit item"
-                :disable="savingItemId === props.row.id"
-                @click="openEditDialog(props.row.id)"
-              />
-
-              <template
-                v-if="
-                  selectedFile?.status === 'offered' ||
-                  selectedFile?.status === 'accepted' ||
-                  selectedFile?.status === 'po_placed'
-                "
-              >
-                <q-btn
-                  unelevated
-                  size="sm"
-                  dense
-                  color="positive"
-                  label="Accept"
-                  class="costing-page__decision-btn costing-page__decision-btn--accept"
-                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'"
-                  :disable="savingDecisionItemId === props.row.id"
-                  @click="handleDecision(props.row.id, 'accepted')"
+                  color="primary"
+                  icon="open_in_new"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
+                  :href="props.row.websiteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <div class="row items-center no-wrap justify-between">
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                  <q-btn
+                    v-if="
+                      selectedFile?.status === 'accepted' || selectedFile?.status === 'po_placed'
+                    "
+                    icon="local_shipping"
+                    :color="shippedItemIds.includes(props.row.id) ? 'negative' : 'primary'"
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    class="q-ml-sm"
+                    @click="onShip(props.row)"
+                  >
+                    <q-tooltip>{{
+                      shippedItemIds.includes(props.row.id) ? 'Added in shipment' : 'Add Shipment'
+                    }}</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-priceInWebGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.priceInWebGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Web price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-productWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `productWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.productWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'productWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Product wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-packageWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.packageWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'packageWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Package wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-deliveryPriceGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `deliveryPriceGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'deliveryPriceGbp',
+                        props.row.deliveryPriceGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.deliveryPriceGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`deliveryPriceGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'deliveryPriceGbp',
+                        props.row.deliveryPriceGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'deliveryPriceGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Delivery price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-cargoRateGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `cargoRate:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)
+                    "
+                  >
+                    {{ props.row.cargoRateGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`cargoRate:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)
+                    "
+                    @save="saveItemField(props.row.id, 'cargoRate', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Cargo per KG (GBP)"
+                      hint="Leave empty to use auto rate."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__quantity-cell">
+                  <button
+                    type="button"
+                    class="costing-page__quantity-trigger"
+                    :disabled="savingQuantityItemId === props.row.id"
+                    @click="primeQuantityEditor(props.row.id, props.row.quantity)"
+                  >
+                    {{ props.row.quantity }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="quantityDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateQuantity"
+                    @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
+                    @save="saveQuantity(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="1"
+                      step="1"
+                      label="Quantity"
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-offerPriceBdt="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__offer-cell">
+                  <button
+                    type="button"
+                    class="costing-page__offer-trigger"
+                    :disabled="savingOfferItemId === props.row.id"
+                    @click="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
+                  >
+                    {{ props.row.offerPriceBdt }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="offerDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateOfferPrice"
+                    @before-show="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
+                    @save="saveOfferPrice(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      label="Offer price (BDT)"
+                      hint="Leave empty to use the calculated offer price."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="costing-page__actions-cell">
                 <q-btn
-                  unelevated
-                  size="sm"
+                  flat
+                  dense
+                  color="primary"
+                  icon="o_edit"
+                  round
+                  aria-label="Edit item"
+                  :disable="savingItemId === props.row.id"
+                  @click="openEditDialog(props.row.id)"
+                />
+
+                <template
+                  v-if="
+                    selectedFile?.status === 'offered' ||
+                    selectedFile?.status === 'accepted' ||
+                    selectedFile?.status === 'po_placed'
+                  "
+                >
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="positive"
+                    label="Accept"
+                    class="costing-page__decision-btn costing-page__decision-btn--accept"
+                    :loading="
+                      savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'
+                    "
+                    :disable="savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'accepted')"
+                  />
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="negative"
+                    label="Reject"
+                    class="costing-page__decision-btn costing-page__decision-btn--reject"
+                    :loading="
+                      savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'
+                    "
+                    :disable="savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'rejected')"
+                  />
+                </template>
+
+                <q-btn
+                  v-else
+                  flat
                   dense
                   color="negative"
-                  label="Reject"
-                  class="costing-page__decision-btn costing-page__decision-btn--reject"
-                  :loading="savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'"
-                  :disable="savingDecisionItemId === props.row.id"
-                  @click="handleDecision(props.row.id, 'rejected')"
+                  icon="o_delete"
+                  round
+                  aria-label="Delete item"
+                  :loading="deletingReviewItemId === props.row.id"
+                  :disable="
+                    selectedFile?.status !== 'in_review' || deletingReviewItemId === props.row.id
+                  "
+                  @click="openDeleteReviewItemDialog(props.row.id)"
                 />
-              </template>
-
-              <q-btn
-                v-else
-                flat
-                dense
-                color="negative"
-                icon="o_delete"
-                round
-                aria-label="Delete item"
-                :loading="deletingReviewItemId === props.row.id"
-                :disable="selectedFile?.status !== 'in_review' || deletingReviewItemId === props.row.id"
-                @click="openDeleteReviewItemDialog(props.row.id)"
-              />
-            </q-td>
-          </template>
-
-          <template #bottom-row>
-            <q-tr class="costing-page__totals-row">
-              <q-td
-                v-for="column in visibleReviewColumns"
-                :key="column.name"
-                class="costing-page__totals-cell"
-                :class="getReviewTotalsCellClass(column.name)"
-              >
-                {{ getReviewTotalsValue(column.name) }}
               </q-td>
-            </q-tr>
-          </template>
-        </q-table>
-      </q-card>
-    </section>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleReviewColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getReviewTotalsCellClass(column.name)"
+                >
+                  {{ getReviewTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card>
+      </section>
 
       <q-dialog v-model="deleteReviewItemDialogOpen" persistent>
         <q-card style="min-width: 360px">
@@ -895,9 +991,7 @@
             <div class="text-h6">Delete item</div>
           </q-card-section>
 
-          <q-card-section>
-            Delete this costing item from the review table?
-          </q-card-section>
+          <q-card-section> Delete this costing item from the review table? </q-card-section>
 
           <q-card-actions align="right">
             <q-btn flat label="Cancel" @click="deleteReviewItemDialogOpen = false" />
@@ -930,7 +1024,9 @@
         :quantity="selectedQuantity"
         :price-gbp="selectedPriceGbp"
         :loading="shipmentStore.saving"
-        :default-shipment-id="(selectedFile?.default_shipment_id as number | null | undefined) ?? null"
+        :default-shipment-id="
+          (selectedFile?.default_shipment_id as number | null | undefined) ?? null
+        "
         @shipment-change="onDefaultShipmentChange"
         @save="onSaveShipment"
       />
@@ -938,9 +1034,7 @@
       <q-dialog v-model="confirmRemoveShipmentOpen">
         <q-card style="min-width: 360px">
           <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
-          <q-card-section>
-            This will remove the selected item from its shipment.
-          </q-card-section>
+          <q-card-section> This will remove the selected item from its shipment. </q-card-section>
           <q-card-actions align="right">
             <q-btn flat label="Cancel" v-close-popup />
             <q-btn
@@ -957,102 +1051,112 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue'
-import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue'
-import { useQuasar } from 'quasar'
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore'
-import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore'
-import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository'
-import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue';
+import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue';
+import { useQuasar } from 'quasar';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
+import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
+import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
 import {
   buildAdminProductRows,
   buildAdminReviewRows,
   summarizeAdminProductRows,
   summarizeAdminReviewRows,
   type AdminProductRow,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
+} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
 import type {
   CostingFileDetails,
   CostingFileItem,
   CostingFileItemStatus,
   CostingFileStatus,
-} from 'src/modules/costingFile/types'
-import { showSuccessNotification } from 'src/utils/appFeedback'
-import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations'
+} from 'src/modules/costingFile/types';
+import { showSuccessNotification } from 'src/utils/appFeedback';
+import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations';
 
-const route = useRoute()
-const router = useRouter()
-const $q = useQuasar()
-const authStore = useAuthStore()
-const tenantStore = useTenantStore()
-const shipmentStore = useGlobalShipmentStore()
-const costingFileStore = useCostingFileStore()
-const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem)
-const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems)
-const loadingItems = computed(() => costingFileStore.itemLoading)
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
+const tenantStore = useTenantStore();
+const shipmentStore = useGlobalShipmentStore();
+const costingFileStore = useCostingFileStore();
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem);
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems);
+const loadingItems = computed(() => costingFileStore.itemLoading);
 
-const savingStatus = ref(false)
-const savingItemId = ref<number | null>(null)
-const savingPricing = ref(false)
-const savingOfferItemId = ref<number | null>(null)
-const savingQuantityItemId = ref<number | null>(null)
-const savingFieldKey = ref<string | null>(null)
-const savingDecisionItemId = ref<number | null>(null)
-const savingDecisionStatus = ref<CostingFileItemStatus | null>(null)
-const deletingReviewItemId = ref<number | null>(null)
-const deleteReviewItemDialogOpen = ref(false)
-const reviewItemPendingDeleteId = ref<number | null>(null)
-const statusForm = ref<CostingFileStatus>('draft')
-const editDialogOpen = ref(false)
-const addItemDialogOpen = ref(false)
-const initialLoading = ref(true)
-const creatingItem = ref(false)
-const editingItemId = ref<number | null>(null)
+const savingStatus = ref(false);
+const savingItemId = ref<number | null>(null);
+const savingPricing = ref(false);
+const savingOfferItemId = ref<number | null>(null);
+const savingQuantityItemId = ref<number | null>(null);
+const savingFieldKey = ref<string | null>(null);
+const savingDecisionItemId = ref<number | null>(null);
+const savingDecisionStatus = ref<CostingFileItemStatus | null>(null);
+const deletingReviewItemId = ref<number | null>(null);
+const deleteReviewItemDialogOpen = ref(false);
+const reviewItemPendingDeleteId = ref<number | null>(null);
+const statusForm = ref<CostingFileStatus>('draft');
+const editDialogOpen = ref(false);
+const addItemDialogOpen = ref(false);
+const initialLoading = ref(true);
+const creatingItem = ref(false);
+const editingItemId = ref<number | null>(null);
 
-const showAddShipmentDialog = ref(false)
-const selectedQuantity = ref<number | null>(null)
-const selectedPriceGbp = ref<number | null>(null)
-const selectedShipItem = ref<CostingFileItem | null>(null)
-const shippedItemIds = ref<number[]>([])
-const confirmRemoveShipmentOpen = ref(false)
-const pendingRemoveShipItem = ref<CostingFileItem | null>(null)
-const offerDrafts = reactive<Record<number, number | null>>({})
-const quantityDrafts = reactive<Record<number, number | null>>({})
-const itemFieldDrafts = reactive<Record<string, number | null>>({})
+const showAddShipmentDialog = ref(false);
+const selectedQuantity = ref<number | null>(null);
+const selectedPriceGbp = ref<number | null>(null);
+const selectedShipItem = ref<CostingFileItem | null>(null);
+const shippedItemIds = ref<number[]>([]);
+const confirmRemoveShipmentOpen = ref(false);
+const pendingRemoveShipItem = ref<CostingFileItem | null>(null);
+const offerDrafts = reactive<Record<number, number | null>>({});
+const quantityDrafts = reactive<Record<number, number | null>>({});
+const itemFieldDrafts = reactive<Record<string, number | null>>({});
 const pricingForm = reactive({
   cargoRate1Kg: null as number | null,
   cargoRate2Kg: null as number | null,
   conversionRate: null as number | null,
   adminProfitRate: null as number | null,
-})
+});
 
 const fileStatuses = computed<CostingFileStatus[]>(() => {
   if (authStore.matchedRole === 'staff') {
-    const currentStatus = selectedFile.value?.status
+    const currentStatus = selectedFile.value?.status;
 
     if (!currentStatus) {
-      return ['draft', 'in_review']
+      return ['draft', 'in_review'];
     }
 
     if (currentStatus === 'draft') {
-      return ['draft', 'in_review']
+      return ['draft', 'in_review'];
     }
 
-    return [currentStatus]
+    return [currentStatus];
   }
 
-  return ['draft', 'customer_submitted', 'in_review', 'offered', 'accepted', 'po_placed', 'cancelled']
-})
+  return [
+    'draft',
+    'customer_submitted',
+    'in_review',
+    'offered',
+    'accepted',
+    'po_placed',
+    'cancelled',
+  ];
+});
 
 const subtitle = computed(() =>
-  selectedFile.value ? `${selectedFile.value.name} items and pricing.` : 'Loading costing file details.'
-)
+  selectedFile.value
+    ? `${selectedFile.value.name} items and pricing.`
+    : 'Loading costing file details.',
+);
 
 const openPreview = () => {
   if (
@@ -1061,105 +1165,112 @@ const openPreview = () => {
       selectedFile.value.status !== 'accepted' &&
       selectedFile.value.status !== 'po_placed')
   ) {
-    return
+    return;
   }
 
   const targetRoute = router.resolve({
     name: 'admin-costing-file-preview-page',
     params: { id: String(selectedFile.value.id) },
-  })
+  });
 
-  window.open(targetRoute.href, '_blank', 'noopener,noreferrer')
-}
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer');
+};
 
 const statusChipStyle = (currentStatus: string) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 
 const statusDotColor = (currentStatus: string) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
 
 const editingItem = computed<CostingFileItem | null>(
   () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
-)
+);
 
 const formatFixed = (value: number | null | undefined) =>
-  value == null ? '' : Number(value).toFixed(2)
+  value == null ? '' : Number(value).toFixed(2);
 
 const formatWhole = (value: number | null | undefined) =>
-  value == null ? '' : String(Math.round(Number(value)))
+  value == null ? '' : String(Math.round(Number(value)));
 
 const formatPercent = (value: number | null | undefined) =>
-  value == null ? '' : `${Number(value).toFixed(2)}%`
+  value == null ? '' : `${Number(value).toFixed(2)}%`;
 
-const productRows = computed(() => buildAdminProductRows(costingFileItems.value))
-const productTotals = computed(() => summarizeAdminProductRows(productRows.value))
+const productRows = computed(() => buildAdminProductRows(costingFileItems.value));
+const productTotals = computed(() => summarizeAdminProductRows(productRows.value));
 
 const productColumns = [
-  { name: 'actions', label: '', field: 'actions', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  {
+    name: 'actions',
+    label: '',
+    field: 'actions',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
   {
     name: 'sl',
     label: 'SL',
@@ -1184,12 +1295,54 @@ const productColumns = [
     style: 'width: 280px; min-width: 280px; max-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
   },
-  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
-  { name: 'websiteUrl', label: 'Web link', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
-  { name: 'extraInformation2', label: 'Extra info 2', field: 'extraInformation2', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'left' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+  },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
 
   {
     name: 'priceInWebGbp',
@@ -1201,8 +1354,22 @@ const productColumns = [
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
-  { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-  { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
+  {
+    name: 'productWeight',
+    label: 'Product wt',
+    field: 'productWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package wt',
+    field: 'packageWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
   {
     name: 'quantity',
     label: 'Quantity',
@@ -1211,33 +1378,33 @@ const productColumns = [
     style: 'width: 72px; min-width: 72px;',
     headerStyle: 'width: 72px; min-width: 72px;',
   },
-]
+];
 
-const alwaysVisibleProductColumns = ['actions', 'sl', 'image', 'name'] as const
+const alwaysVisibleProductColumns = ['actions', 'sl', 'image', 'name'] as const;
 const selectableProductColumnNames = productColumns
   .map((column) => column.name)
   .filter(
-    (name) => !alwaysVisibleProductColumns.includes(name as (typeof alwaysVisibleProductColumns)[number]),
-  )
-const selectedProductColumnNames = ref<string[]>([...selectableProductColumnNames])
+    (name) =>
+      !alwaysVisibleProductColumns.includes(name as (typeof alwaysVisibleProductColumns)[number]),
+  );
+const selectedProductColumnNames = ref<string[]>([...selectableProductColumnNames]);
 const productColumnSelectorOptions = productColumns
   .filter((column) => selectableProductColumnNames.includes(column.name))
-  .map((column) => ({ label: column.label, value: column.name }))
+  .map((column) => ({ label: column.label, value: column.name }));
 const allSelectableProductColumnsSelected = computed({
-  get: () => selectableProductColumnNames.every((name) => selectedProductColumnNames.value.includes(name)),
+  get: () =>
+    selectableProductColumnNames.every((name) => selectedProductColumnNames.value.includes(name)),
   set: (checked: boolean) => {
-    selectedProductColumnNames.value = checked
-      ? [...selectableProductColumnNames]
-      : []
+    selectedProductColumnNames.value = checked ? [...selectableProductColumnNames] : [];
   },
-})
+});
 const visibleProductColumnNames = computed<string[]>(() => [
   ...alwaysVisibleProductColumns,
   ...selectedProductColumnNames.value,
-])
+]);
 const visibleProductColumns = computed(() =>
   productColumns.filter((column) => visibleProductColumnNames.value.includes(column.name)),
-)
+);
 
 const reviewRows = computed(() =>
   buildAdminReviewRows(costingFileItems.value, {
@@ -1246,8 +1413,8 @@ const reviewRows = computed(() =>
     conversionRate: pricingForm.conversionRate,
     adminProfitRate: pricingForm.adminProfitRate,
   }),
-)
-const reviewTotals = computed(() => summarizeAdminReviewRows(reviewRows.value))
+);
+const reviewTotals = computed(() => summarizeAdminReviewRows(reviewRows.value));
 
 const reviewColumns = [
   {
@@ -1275,11 +1442,46 @@ const reviewColumns = [
     style: 'width: 280px; min-width: 280px; max-width: 280px;',
     headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
   },
-  { name: 'itemType', label: 'Type', field: 'itemType', align: 'left' as const, style: 'width: 110px; min-width: 110px;', headerStyle: 'width: 110px; min-width: 110px;' },
-  { name: 'size', label: 'Size', field: 'size', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'color', label: 'Color', field: 'color', align: 'left' as const, style: 'width: 96px; min-width: 96px;', headerStyle: 'width: 96px; min-width: 96px;' },
-  { name: 'extraInformation1', label: 'Extra info 1', field: 'extraInformation1', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
-  { name: 'extraInformation2', label: 'Extra info 2', field: 'extraInformation2', align: 'left' as const, style: 'width: 180px; min-width: 180px;', headerStyle: 'width: 180px; min-width: 180px;' },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
   {
     name: 'quantity',
     label: 'Qty',
@@ -1297,10 +1499,38 @@ const reviewColumns = [
     headerStyle: 'width: 96px; min-width: 96px;',
   },
 
-  { name: 'websiteUrl', label: 'Web URL', field: 'websiteUrl', align: 'left' as const, style: 'width: 144px; min-width: 144px; max-width: 144px;', headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;' },
-  { name: 'productWeight', label: 'Product wt', field: 'productWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
-  { name: 'packageWeight', label: 'Package wt', field: 'packageWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
-  { name: 'totalWeight', label: 'Total wt', field: 'totalWeight', align: 'left' as const, style: 'width: 60px; min-width: 60px;', headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;' },
+  {
+    name: 'websiteUrl',
+    label: 'Web URL',
+    field: 'websiteUrl',
+    align: 'left' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+  },
+  {
+    name: 'productWeight',
+    label: 'Product wt',
+    field: 'productWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package wt',
+    field: 'packageWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'totalWeight',
+    label: 'Total wt',
+    field: 'totalWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
   {
     name: 'priceInWebGbp',
     label: 'Web price (GBP)',
@@ -1341,7 +1571,14 @@ const reviewColumns = [
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
-  { name: 'cargoRateGbp', label: 'Cargo per KG (GBP)', field: 'cargoRateGbp', align: 'left' as const, style: 'width: 92px; min-width: 92px;', headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;' },
+  {
+    name: 'cargoRateGbp',
+    label: 'Cargo per KG (GBP)',
+    field: 'cargoRateGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+  },
   {
     name: 'costingPriceGbp',
     label: 'Cost (GBP) per unit',
@@ -1352,7 +1589,7 @@ const reviewColumns = [
     classes: 'costing-page__tone-indigo',
     headerClasses: 'costing-page__tone-indigo',
   },
-   {
+  {
     name: 'totalCostGbp',
     label: 'Total cost (GBP)',
     field: 'totalCostGbp',
@@ -1404,7 +1641,14 @@ const reviewColumns = [
     classes: 'costing-page__tone-emerald',
     headerClasses: 'costing-page__tone-emerald',
   },
-  { name: 'profitRate', label: 'Profit rate', field: 'profitRate', align: 'left' as const, style: 'width: 74px; min-width: 74px;', headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;' },
+  {
+    name: 'profitRate',
+    label: 'Profit rate',
+    field: 'profitRate',
+    align: 'left' as const,
+    style: 'width: 74px; min-width: 74px;',
+    headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;',
+  },
   {
     name: 'profitAmount',
     label: 'Profit amount (BDT) per unit',
@@ -1425,283 +1669,294 @@ const reviewColumns = [
     classes: 'costing-page__tone-amber',
     headerClasses: 'costing-page__tone-amber',
   },
-  { name: 'averageProfitRate', label: 'Avg profit rate', field: 'averageProfitRate', align: 'left' as const, style: 'width: 88px; min-width: 88px;', headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;' },
-  { name: 'actions', label: '', field: 'actions', align: 'right' as const, style: 'width: 72px; min-width: 72px;', headerStyle: 'width: 72px; min-width: 72px;' },
-]
+  {
+    name: 'averageProfitRate',
+    label: 'Avg profit rate',
+    field: 'averageProfitRate',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'actions',
+    label: '',
+    field: 'actions',
+    align: 'right' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+];
 
 const visibleReviewColumns = computed(() => {
-  const selectedNames = new Set(visibleProductColumnNames.value)
+  const selectedNames = new Set(visibleProductColumnNames.value);
   return reviewColumns.filter((column) => {
     if (column.name === 'actions') {
-      return selectedFile.value?.status === 'in_review'
+      return selectedFile.value?.status === 'in_review';
     }
-    const isShared = productColumns.some((col) => col.name === column.name)
+    const isShared = productColumns.some((col) => col.name === column.name);
     if (!isShared) {
-      return true
+      return true;
     }
-    return selectedNames.has(column.name)
-  })
-})
+    return selectedNames.has(column.name);
+  });
+});
 
 const getProductTotalsValue = (columnName: string) => {
   switch (columnName) {
     case 'actions':
     case 'image':
-      return ''
+      return '';
     case 'sl':
-      return 'Total'
+      return 'Total';
     case 'name':
-      return `${productRows.value.length} Items`
+      return `${productRows.value.length} Items`;
     case 'priceInWebGbp':
-      return formatFixed(productTotals.value.priceInWebGbp)
+      return formatFixed(productTotals.value.priceInWebGbp);
     case 'productWeight':
-      return formatWhole(productTotals.value.productWeight)
+      return formatWhole(productTotals.value.productWeight);
     case 'packageWeight':
-      return formatWhole(productTotals.value.packageWeight)
+      return formatWhole(productTotals.value.packageWeight);
     case 'quantity':
-      return formatWhole(productTotals.value.quantity)
+      return formatWhole(productTotals.value.quantity);
     default:
-      return ''
+      return '';
   }
-}
+};
 
 const getReviewTotalsValue = (columnName: string) => {
   switch (columnName) {
     case 'sl':
-      return 'Total'
+      return 'Total';
     case 'name':
-      return `${reviewRows.value.length} Items`
+      return `${reviewRows.value.length} Items`;
     case 'quantity':
-      return formatWhole(reviewTotals.value.quantity)
+      return formatWhole(reviewTotals.value.quantity);
     case 'productWeight':
-      return formatWhole(reviewTotals.value.productWeight)
+      return formatWhole(reviewTotals.value.productWeight);
     case 'packageWeight':
-      return formatWhole(reviewTotals.value.packageWeight)
+      return formatWhole(reviewTotals.value.packageWeight);
     case 'totalWeight':
-      return formatWhole(reviewTotals.value.totalWeight)
+      return formatWhole(reviewTotals.value.totalWeight);
     case 'priceInWebGbp':
-      return formatFixed(reviewTotals.value.priceInWebGbp)
+      return formatFixed(reviewTotals.value.priceInWebGbp);
     case 'deliveryPriceGbp':
-      return formatFixed(reviewTotals.value.deliveryPriceGbp)
+      return formatFixed(reviewTotals.value.deliveryPriceGbp);
     case 'auxiliaryPriceGbp':
-      return formatFixed(reviewTotals.value.auxiliaryPriceGbp)
+      return formatFixed(reviewTotals.value.auxiliaryPriceGbp);
     case 'purchasePriceGbp':
-      return formatFixed(reviewTotals.value.purchasePriceGbp)
+      return formatFixed(reviewTotals.value.purchasePriceGbp);
     case 'cargoRateGbp':
-      return formatFixed(reviewTotals.value.cargoRateGbp)
+      return formatFixed(reviewTotals.value.cargoRateGbp);
     case 'costingPriceGbp':
-      return formatFixed(reviewTotals.value.costingPriceGbp)
+      return formatFixed(reviewTotals.value.costingPriceGbp);
     case 'costingPriceBdt':
-      return formatWhole(reviewTotals.value.costingPriceBdt)
+      return formatWhole(reviewTotals.value.costingPriceBdt);
     case 'offerPriceBdt':
-      return formatWhole(reviewTotals.value.offerPriceBdt)
+      return formatWhole(reviewTotals.value.offerPriceBdt);
     case 'totalCostGbp':
-      return formatFixed(reviewTotals.value.totalCostGbp)
+      return formatFixed(reviewTotals.value.totalCostGbp);
     case 'totalCostBdt':
-      return formatWhole(reviewTotals.value.totalCostBdt)
+      return formatWhole(reviewTotals.value.totalCostBdt);
     case 'totalOfferPriceBdt':
-      return formatWhole(reviewTotals.value.totalOfferPriceBdt)
+      return formatWhole(reviewTotals.value.totalOfferPriceBdt);
     case 'profitRate':
-      return formatPercent(reviewTotals.value.profitRate)
+      return formatPercent(reviewTotals.value.profitRate);
     case 'profitAmount':
-      return formatWhole(reviewTotals.value.profitAmount)
+      return formatWhole(reviewTotals.value.profitAmount);
     case 'totalProfitBdt':
-      return formatWhole(reviewTotals.value.totalProfitBdt)
+      return formatWhole(reviewTotals.value.totalProfitBdt);
     case 'averageProfitRate':
-      return formatPercent(reviewTotals.value.averageProfitRate)
+      return formatPercent(reviewTotals.value.averageProfitRate);
     default:
-      return ''
+      return '';
   }
-}
+};
 
 const getProductTotalsCellClass = (columnName: string) => {
   if (columnName === 'priceInWebGbp') {
-    return 'costing-page__tone-indigo'
+    return 'costing-page__tone-indigo';
   }
 
-  return ''
-}
+  return '';
+};
 
 const getReviewTotalsCellClass = (columnName: string) => {
   if (
-    ['priceInWebGbp', 'deliveryPriceGbp', 'auxiliaryPriceGbp', 'purchasePriceGbp', 'costingPriceGbp', 'totalCostGbp'].includes(
-      columnName,
-    )
+    [
+      'priceInWebGbp',
+      'deliveryPriceGbp',
+      'auxiliaryPriceGbp',
+      'purchasePriceGbp',
+      'costingPriceGbp',
+      'totalCostGbp',
+    ].includes(columnName)
   ) {
-    return 'costing-page__tone-indigo'
+    return 'costing-page__tone-indigo';
   }
 
   if (['costingPriceBdt', 'totalCostBdt', 'profitAmount', 'totalProfitBdt'].includes(columnName)) {
-    return 'costing-page__tone-amber'
+    return 'costing-page__tone-amber';
   }
 
   if (['offerPriceBdt', 'totalOfferPriceBdt'].includes(columnName)) {
-    return 'costing-page__tone-emerald'
+    return 'costing-page__tone-emerald';
   }
 
-  return ''
-}
+  return '';
+};
 
 const getReviewRowClass = (row: { status?: string | null }) =>
-  row.status === 'rejected' ? 'costing-page__rejected-row' : ''
+  row.status === 'rejected' ? 'costing-page__rejected-row' : '';
 
 const loadFile = async () => {
-  const fileId = Number(route.params.id)
-  if (!fileId) return
+  const fileId = Number(route.params.id);
+  if (!fileId) return;
 
-  await costingFileStore.fetchCostingFileWithItems(fileId)
-}
+  await costingFileStore.fetchCostingFileWithItems(fileId);
+};
 
 const goToViewerManagement = async () => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
   await router.push({
     name: 'admin-costing-file-viewers-page',
     params: { id: String(selectedFile.value.id) },
-  })
-}
+  });
+};
 
 const handleSaveStatus = async (value: CostingFileStatus | null = statusForm.value) => {
-  if (!selectedFile.value || !value || value === selectedFile.value.status) return
+  if (!selectedFile.value || !value || value === selectedFile.value.status) return;
 
-  savingStatus.value = true
+  savingStatus.value = true;
   try {
-    statusForm.value = value
-    const result = await costingFileStore.updateCostingFileStatus({ id: selectedFile.value.id, status: value })
+    statusForm.value = value;
+    const result = await costingFileStore.updateCostingFileStatus({
+      id: selectedFile.value.id,
+      status: value,
+    });
 
     if (!result.success) {
-      statusForm.value = selectedFile.value.status
+      statusForm.value = selectedFile.value.status;
     }
   } finally {
-    savingStatus.value = false
+    savingStatus.value = false;
   }
-}
+};
 
 const openEditDialog = (itemId: number) => {
-  editingItemId.value = itemId
-  editDialogOpen.value = true
-}
+  editingItemId.value = itemId;
+  editDialogOpen.value = true;
+};
 
 const primeOfferEditor = (itemId: number, fallbackValue: number | null) => {
-  if (offerDrafts[itemId] !== undefined) return
+  if (offerDrafts[itemId] !== undefined) return;
 
-  const item = costingFileItems.value.find((entry) => entry.id === itemId)
-  offerDrafts[itemId] = item?.offer_price_override_bdt ?? fallbackValue ?? null
-}
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  offerDrafts[itemId] = item?.offer_price_override_bdt ?? fallbackValue ?? null;
+};
 
 const primeQuantityEditor = (itemId: number, fallbackValue: number | string) => {
-  if (quantityDrafts[itemId] !== undefined) return
+  if (quantityDrafts[itemId] !== undefined) return;
 
-  const item = costingFileItems.value.find((entry) => entry.id === itemId)
-  quantityDrafts[itemId] = item?.quantity ?? Number(fallbackValue)
-}
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  quantityDrafts[itemId] = item?.quantity ?? Number(fallbackValue);
+};
 
 const itemFieldKey = (
   itemId: number,
-  field:
-    | 'productWeight'
-    | 'packageWeight'
-    | 'priceInWebGbp'
-    | 'deliveryPriceGbp'
-    | 'cargoRate',
-) => `${field}:${itemId}`
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
+) => `${field}:${itemId}`;
 
 const primeItemFieldEditor = (
   itemId: number,
-  field:
-    | 'productWeight'
-    | 'packageWeight'
-    | 'priceInWebGbp'
-    | 'deliveryPriceGbp'
-    | 'cargoRate',
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
   fallbackValue: number | null,
 ) => {
-  const key = itemFieldKey(itemId, field)
-  if (itemFieldDrafts[key] !== undefined) return
+  const key = itemFieldKey(itemId, field);
+  if (itemFieldDrafts[key] !== undefined) return;
 
-  const item = costingFileItems.value.find((entry) => entry.id === itemId)
-  if (field === 'productWeight') itemFieldDrafts[key] = item?.product_weight ?? fallbackValue ?? null
-  if (field === 'packageWeight') itemFieldDrafts[key] = item?.package_weight ?? fallbackValue ?? null
-  if (field === 'priceInWebGbp') itemFieldDrafts[key] = item?.price_in_web_gbp ?? fallbackValue ?? null
-  if (field === 'deliveryPriceGbp') itemFieldDrafts[key] = item?.delivery_price_gbp ?? fallbackValue ?? null
-  if (field === 'cargoRate') itemFieldDrafts[key] = item?.cargo_rate ?? fallbackValue ?? null
-}
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  if (field === 'productWeight')
+    itemFieldDrafts[key] = item?.product_weight ?? fallbackValue ?? null;
+  if (field === 'packageWeight')
+    itemFieldDrafts[key] = item?.package_weight ?? fallbackValue ?? null;
+  if (field === 'priceInWebGbp')
+    itemFieldDrafts[key] = item?.price_in_web_gbp ?? fallbackValue ?? null;
+  if (field === 'deliveryPriceGbp')
+    itemFieldDrafts[key] = item?.delivery_price_gbp ?? fallbackValue ?? null;
+  if (field === 'cargoRate') itemFieldDrafts[key] = item?.cargo_rate ?? fallbackValue ?? null;
+};
 
 const validateQuantity = (value: number | string | null) => {
-  const normalized = Number(value)
-  return Number.isInteger(normalized) && normalized >= 1
-}
+  const normalized = Number(value);
+  return Number.isInteger(normalized) && normalized >= 1;
+};
 
-const validateNullableNumber = (value: number | null) => value == null || value >= 0
+const validateNullableNumber = (value: number | null) => value == null || value >= 0;
 
 const saveQuantity = async (itemId: number, value: number | string | null) => {
-  const normalized = Number(value)
-  if (!Number.isInteger(normalized) || normalized < 1) return
+  const normalized = Number(value);
+  if (!Number.isInteger(normalized) || normalized < 1) return;
 
-  savingQuantityItemId.value = itemId
+  savingQuantityItemId.value = itemId;
   try {
     await costingFileStore.updateCostingFileItem({
       id: itemId,
       quantity: normalized,
-    })
+    });
   } finally {
-    savingQuantityItemId.value = null
-    delete quantityDrafts[itemId]
+    savingQuantityItemId.value = null;
+    delete quantityDrafts[itemId];
   }
-}
+};
 
 const saveItemField = async (
   itemId: number,
-  field:
-    | 'productWeight'
-    | 'packageWeight'
-    | 'priceInWebGbp'
-    | 'deliveryPriceGbp'
-    | 'cargoRate',
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
   value: number | null,
 ) => {
-  const key = itemFieldKey(itemId, field)
-  savingFieldKey.value = key
+  const key = itemFieldKey(itemId, field);
+  savingFieldKey.value = key;
   try {
-    const normalizedValue = value == null ? null : Number(value)
+    const normalizedValue = value == null ? null : Number(value);
     await costingFileStore.updateCostingFileItem({
       id: itemId,
       [field]: normalizedValue,
-    })
+    });
   } finally {
-    savingFieldKey.value = null
-    delete itemFieldDrafts[key]
+    savingFieldKey.value = null;
+    delete itemFieldDrafts[key];
   }
-}
+};
 
-const validateOfferPrice = (value: number | null) => value == null || value >= 0
+const validateOfferPrice = (value: number | null) => value == null || value >= 0;
 
 const saveOfferPrice = async (itemId: number, value: number | null) => {
-  savingOfferItemId.value = itemId
+  savingOfferItemId.value = itemId;
   try {
     await costingFileStore.updateCostingFileItemOffer({
       id: itemId,
       offerPriceOverrideBdt: value == null ? null : Number(value),
-    })
+    });
   } finally {
-    savingOfferItemId.value = null
-    delete offerDrafts[itemId]
+    savingOfferItemId.value = null;
+    delete offerDrafts[itemId];
   }
-}
+};
 
 const handleSaveEnrichment = async (payload: {
-  id: number
-  name: string | null
-  itemType: string | null
-  productWeight: number | null
-  packageWeight: number | null
-  imageUrl: string | null
-  priceInWebGbp: number | null
-  deliveryPriceGbp: number | null
+  id: number;
+  name: string | null;
+  itemType: string | null;
+  productWeight: number | null;
+  packageWeight: number | null;
+  imageUrl: string | null;
+  priceInWebGbp: number | null;
+  deliveryPriceGbp: number | null;
 }) => {
-  savingItemId.value = payload.id
+  savingItemId.value = payload.id;
   try {
     const result = await costingFileStore.updateCostingFileItem({
       id: payload.id,
@@ -1712,36 +1967,36 @@ const handleSaveEnrichment = async (payload: {
       imageUrl: payload.imageUrl,
       priceInWebGbp: payload.priceInWebGbp,
       deliveryPriceGbp: payload.deliveryPriceGbp,
-    })
+    });
 
     if (result.success) {
-      editDialogOpen.value = false
+      editDialogOpen.value = false;
     }
   } finally {
-    savingItemId.value = null
+    savingItemId.value = null;
   }
-}
+};
 
 const handleCreateItem = async (payload: {
-  websiteUrl: string
-  quantity: number
-  name: string
-  itemType: string | null
-  size: string | null
-  color: string | null
-  extraInformation1: string | null
-  extraInformation2: string | null
-  imageUrl: string
-  productWeight: number
-  packageWeight: number
-  priceInWebGbp: number
-  deliveryPriceGbp: number
+  websiteUrl: string;
+  quantity: number;
+  name: string;
+  itemType: string | null;
+  size: string | null;
+  color: string | null;
+  extraInformation1: string | null;
+  extraInformation2: string | null;
+  imageUrl: string;
+  productWeight: number;
+  packageWeight: number;
+  priceInWebGbp: number;
+  deliveryPriceGbp: number;
 }) => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  creatingItem.value = true
+  creatingItem.value = true;
   try {
     const result = await costingFileStore.createCostingFileItem({
       costingFileId: selectedFile.value.id,
@@ -1759,74 +2014,71 @@ const handleCreateItem = async (payload: {
       priceInWebGbp: payload.priceInWebGbp,
       deliveryPriceGbp: payload.deliveryPriceGbp,
       status: 'pending',
-    })
+    });
 
     if (result.success) {
-      addItemDialogOpen.value = false
+      addItemDialogOpen.value = false;
     }
   } finally {
-    creatingItem.value = false
+    creatingItem.value = false;
   }
-}
+};
 
 const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
-  if (
-    selectedFile.value?.status !== 'offered' &&
-    selectedFile.value?.status !== 'po_placed'
-  ) {
-    return
+  if (selectedFile.value?.status !== 'offered' && selectedFile.value?.status !== 'po_placed') {
+    return;
   }
 
-  savingDecisionItemId.value = itemId
-  savingDecisionStatus.value = status
+  savingDecisionItemId.value = itemId;
+  savingDecisionStatus.value = status;
   try {
-    const result = await costingFileStore.updateCostingFileItemStatus({ id: itemId, status })
+    const result = await costingFileStore.updateCostingFileItemStatus({ id: itemId, status });
 
     if (!result.success) {
-      return
+      return;
     }
 
-    showSuccessNotification(`Item ${status}.`)
+    showSuccessNotification(`Item ${status}.`);
   } finally {
-    savingDecisionItemId.value = null
-    savingDecisionStatus.value = null
+    savingDecisionItemId.value = null;
+    savingDecisionStatus.value = null;
   }
-}
+};
 
 const openDeleteReviewItemDialog = (itemId: number) => {
   if (selectedFile.value?.status !== 'in_review') {
-    return
+    return;
   }
 
-  reviewItemPendingDeleteId.value = itemId
-  deleteReviewItemDialogOpen.value = true
-}
+  reviewItemPendingDeleteId.value = itemId;
+  deleteReviewItemDialogOpen.value = true;
+};
 
 const confirmDeleteReviewItem = async () => {
-  const itemId = reviewItemPendingDeleteId.value
+  const itemId = reviewItemPendingDeleteId.value;
 
   if (selectedFile.value?.status !== 'in_review' || itemId == null) {
-    return
+    return;
   }
 
   if (selectedFile.value?.status !== 'in_review') {
-    return
+    return;
   }
 
-  deletingReviewItemId.value = itemId
+  deletingReviewItemId.value = itemId;
   try {
-    await costingFileStore.deleteCostingFileItem({ id: itemId })
-    deleteReviewItemDialogOpen.value = false
-    reviewItemPendingDeleteId.value = null
+    await costingFileStore.deleteCostingFileItem({ id: itemId });
+    deleteReviewItemDialogOpen.value = false;
+    reviewItemPendingDeleteId.value = null;
   } finally {
-    deletingReviewItemId.value = null
+    deletingReviewItemId.value = null;
   }
-}
+};
 
 const handleSavePricing = async () => {
-  if (!selectedFile.value) return
+  if (!selectedFile.value) return;
 
-  savingPricing.value = true
+  savingPricing.value = true;
   try {
     await costingFileStore.updateCostingFilePricing({
       id: selectedFile.value.id,
@@ -1834,57 +2086,57 @@ const handleSavePricing = async () => {
       cargoRate2Kg: pricingForm.cargoRate2Kg,
       conversionRate: pricingForm.conversionRate,
       adminProfitRate: pricingForm.adminProfitRate,
-    })
+    });
   } finally {
-    savingPricing.value = false
+    savingPricing.value = false;
   }
-}
+};
 
 watch(
   selectedFile,
   (file) => {
     if (file) {
-      statusForm.value = file.status
-      pricingForm.cargoRate1Kg = file.cargo_rate_1kg
-      pricingForm.cargoRate2Kg = file.cargo_rate_2kg
-      pricingForm.conversionRate = file.conversion_rate
-      pricingForm.adminProfitRate = file.admin_profit_rate
+      statusForm.value = file.status;
+      pricingForm.cargoRate1Kg = file.cargo_rate_1kg;
+      pricingForm.cargoRate2Kg = file.cargo_rate_2kg;
+      pricingForm.conversionRate = file.conversion_rate;
+      pricingForm.adminProfitRate = file.admin_profit_rate;
     }
   },
   { immediate: true },
-)
+);
 
 watch(editDialogOpen, (isOpen) => {
   if (!isOpen) {
-    editingItemId.value = null
+    editingItemId.value = null;
   }
-})
+});
 
 watch(addItemDialogOpen, (isOpen) => {
   if (!isOpen) {
-    creatingItem.value = false
+    creatingItem.value = false;
   }
-})
+});
 
 const refreshShippedItemIndicators = () => {
   shippedItemIds.value = costingFileItems.value
     .filter((item) => item.assigned_shipment_id != null)
-    .map((item) => item.id)
-}
+    .map((item) => item.id);
+};
 
 watch(
   costingFileItems,
   () => {
-    refreshShippedItemIndicators()
+    refreshShippedItemIndicators();
   },
-  { immediate: true, deep: true }
-)
+  { immediate: true, deep: true },
+);
 
 const openShipmentDialog = (row: AdminProductRow) => {
-  const item = costingFileItems.value.find((i) => i.id === row.id)
-  if (!item) return
-  selectedShipItem.value = item
-  selectedQuantity.value = item.quantity ?? null
+  const item = costingFileItems.value.find((i) => i.id === row.id);
+  if (!item) return;
+  selectedShipItem.value = item;
+  selectedQuantity.value = item.quantity ?? null;
 
   const calculated = calculateCostingItem(
     {
@@ -1904,100 +2156,101 @@ const openShipmentDialog = (row: AdminProductRow) => {
       customerProfitRate: item.customer_profit_rate,
       itemType: item.item_type,
     },
-  )
+  );
 
-  selectedPriceGbp.value = calculated.itemPriceGbp ?? null
-  showAddShipmentDialog.value = true
-}
+  selectedPriceGbp.value = calculated.itemPriceGbp ?? null;
+  showAddShipmentDialog.value = true;
+};
 
 const onShip = (row: AdminProductRow) => {
-  const item = costingFileItems.value.find((i) => i.id === row.id)
-  if (!item) return
+  const item = costingFileItems.value.find((i) => i.id === row.id);
+  if (!item) return;
 
   if (shippedItemIds.value.includes(item.id)) {
-    pendingRemoveShipItem.value = item
-    confirmRemoveShipmentOpen.value = true
-    return
+    pendingRemoveShipItem.value = item;
+    confirmRemoveShipmentOpen.value = true;
+    return;
   }
 
-  openShipmentDialog(row)
-}
+  openShipmentDialog(row);
+};
 
-const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase()
+const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
 
 const findShipmentItemForCostingItem = async (item: CostingFileItem) => {
   if (item.assigned_shipment_id == null) {
-    return null
+    return null;
   }
 
-  const items = await globalShipmentRepository.listShipmentItems(item.assigned_shipment_id)
-  const shipmentItems = (items ?? []).filter((entry) => entry.add_method === 'costing')
-  const itemName = normalizeText(item.name)
-  const matched = shipmentItems.find((entry) => {
-    return (
-      normalizeText(entry.name) === itemName ||
-      normalizeText(entry.image_url) === normalizeText(item.image_url)
-    )
-  }) ?? null
+  const items = await globalShipmentRepository.listShipmentItems(item.assigned_shipment_id);
+  const shipmentItems = (items ?? []).filter((entry) => entry.add_method === 'costing');
+  const itemName = normalizeText(item.name);
+  const matched =
+    shipmentItems.find((entry) => {
+      return (
+        normalizeText(entry.name) === itemName ||
+        normalizeText(entry.image_url) === normalizeText(item.image_url)
+      );
+    }) ?? null;
 
-  return matched
-}
+  return matched;
+};
 
 const onConfirmRemoveShipment = async () => {
-  const item = pendingRemoveShipItem.value
+  const item = pendingRemoveShipItem.value;
   if (!item) {
-    confirmRemoveShipmentOpen.value = false
-    return
+    confirmRemoveShipmentOpen.value = false;
+    return;
   }
 
-  const shipmentItem = await findShipmentItemForCostingItem(item)
+  const shipmentItem = await findShipmentItemForCostingItem(item);
   if (!shipmentItem) {
     $q.notify({
       type: 'warning',
       message: 'No linked shipment item found.',
-    })
+    });
     await costingFileStore.updateCostingFileItem({
       id: item.id,
       assigned_shipment_id: null,
-    })
-    confirmRemoveShipmentOpen.value = false
-    pendingRemoveShipItem.value = null
-    refreshShippedItemIndicators()
-    return
+    });
+    confirmRemoveShipmentOpen.value = false;
+    pendingRemoveShipItem.value = null;
+    refreshShippedItemIndicators();
+    return;
   }
 
   try {
-    await shipmentStore.deleteShipmentItem(shipmentItem.id)
+    await shipmentStore.deleteShipmentItem(shipmentItem.id);
   } catch {
-    return
+    return;
   }
 
   await costingFileStore.updateCostingFileItem({
     id: item.id,
     assigned_shipment_id: null,
-  })
+  });
 
-  confirmRemoveShipmentOpen.value = false
-  pendingRemoveShipItem.value = null
-  refreshShippedItemIndicators()
-}
+  confirmRemoveShipmentOpen.value = false;
+  pendingRemoveShipItem.value = null;
+  refreshShippedItemIndicators();
+};
 
 const onSaveShipment = async (data: {
-  shipment_id: number
-  quantity: number
-  price_gbp: number | null
+  shipment_id: number;
+  quantity: number;
+  price_gbp: number | null;
 }) => {
-  const rowItem = selectedShipItem.value
+  const rowItem = selectedShipItem.value;
   if (!rowItem) {
-    return
+    return;
   }
 
-  const quantity = Math.max(0, Number(data.quantity) || 0)
+  const quantity = Math.max(0, Number(data.quantity) || 0);
   if (quantity <= 0) {
-    return
+    return;
   }
 
-  let newItem
+  let newItem;
   try {
     newItem = await shipmentStore.addShipmentItem({
       shipment_id: data.shipment_id,
@@ -2015,53 +2268,53 @@ const onSaveShipment = async (data: {
       source_child_tenant_id: null,
       source_type: null,
       source_id: null,
-    })
+    });
   } catch {
-    return
+    return;
   }
 
   if (!newItem) {
-    return
+    return;
   }
 
   await costingFileStore.updateCostingFileItem({
     id: rowItem.id,
     assigned_shipment_id: data.shipment_id,
-  })
+  });
 
-  showAddShipmentDialog.value = false
-  selectedShipItem.value = null
-  selectedQuantity.value = null
-  selectedPriceGbp.value = null
-}
+  showAddShipmentDialog.value = false;
+  selectedShipItem.value = null;
+  selectedQuantity.value = null;
+  selectedPriceGbp.value = null;
+};
 
 const onDefaultShipmentChange = async (shipmentId: number | null) => {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  const currentDefault = selectedFile.value.default_shipment_id ?? null
+  const currentDefault = selectedFile.value.default_shipment_id ?? null;
   if (currentDefault === shipmentId) {
-    return
+    return;
   }
 
   await costingFileStore.updateCostingFile({
     id: selectedFile.value.id,
     default_shipment_id: shipmentId,
-  })
-}
+  });
+};
 
 onMounted(async () => {
   try {
-    await loadFile()
-    const tenantId = tenantStore.selectedTenant?.id
+    await loadFile();
+    const tenantId = tenantStore.selectedTenant?.id;
     if (tenantId) {
-      await shipmentStore.fetchShipments(tenantId)
+      await shipmentStore.fetchShipments(tenantId);
     }
   } finally {
-    initialLoading.value = false
+    initialLoading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>

@@ -57,10 +57,26 @@
         </template>
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn flat round dense icon="o_edit" color="warning" size="sm" @click.stop="openDialog(props.row)">
+            <q-btn
+              flat
+              round
+              dense
+              icon="o_edit"
+              color="warning"
+              size="sm"
+              @click.stop="openDialog(props.row)"
+            >
               <q-tooltip>Edit</q-tooltip>
             </q-btn>
-            <q-btn flat round dense icon="delete" color="negative" size="sm" @click.stop="confirmDelete(props.row)">
+            <q-btn
+              flat
+              round
+              dense
+              icon="delete"
+              color="negative"
+              size="sm"
+              @click.stop="confirmDelete(props.row)"
+            >
               <q-tooltip>Delete</q-tooltip>
             </q-btn>
           </q-td>
@@ -70,15 +86,22 @@
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 420px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Box' : 'New Box' }}</div>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-separator />
         <q-card-section class="q-pt-md q-gutter-md">
-          <q-input v-model="form.name" outlined dense label="Box Name / Number *" class="soft-input" :rules="[val => !!val || 'Required']" />
-          
+          <q-input
+            v-model="form.name"
+            outlined
+            dense
+            label="Box Name / Number *"
+            class="soft-input"
+            :rules="[(val) => !!val || 'Required']"
+          />
+
           <q-select
             v-model="form.shipment_id"
             outlined
@@ -90,28 +113,52 @@
             emit-value
             map-options
             class="soft-input"
-            :rules="[val => !!val || 'Required']"
+            :rules="[(val) => !!val || 'Required']"
           />
 
-          <q-input v-model.number="form.weight" type="number" step="0.001" outlined dense label="Weight (kg)" class="soft-input" />
-          <q-input v-model.number="form.received_weight" type="number" step="0.001" outlined dense label="Received Weight (kg)" class="soft-input" />
+          <q-input
+            v-model.number="form.weight"
+            type="number"
+            step="0.001"
+            outlined
+            dense
+            label="Weight (kg)"
+            class="soft-input"
+          />
+          <q-input
+            v-model.number="form.received_weight"
+            type="number"
+            step="0.001"
+            outlined
+            dense
+            label="Received Weight (kg)"
+            class="soft-input"
+          />
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Save Box" @click="save" />
+          <q-btn
+            color="primary"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            label="Save Box"
+            @click="save"
+          />
         </q-card-section>
       </q-card>
     </q-dialog>
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="deleteConfirmOpen" persistent>
-      <q-card style="width: 350px; max-width: 90vw;">
+      <q-card style="width: 350px; max-width: 90vw">
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Box</span>
         </q-card-section>
         <q-card-section>
-          Are you sure you want to delete box <strong>{{ selectedRow?.name }}</strong>? This action cannot be undone.
+          Are you sure you want to delete box <strong>{{ selectedRow?.name }}</strong
+          >? This action cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -149,12 +196,32 @@ const form = ref({
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    sortable: false,
+    headerStyle: 'width: 50px',
+  },
+  {
+    name: 'id',
+    label: 'ID',
+    field: 'id',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 70px',
+  },
   { name: 'name', align: 'left', label: 'Box Name / Number', field: 'name', sortable: true },
   { name: 'shipment', align: 'left', label: 'Shipment', field: 'shipment' },
   { name: 'weight', align: 'right', label: 'Weight', field: 'weight', sortable: true },
-  { name: 'received_weight', align: 'right', label: 'Received Weight', field: 'received_weight', sortable: true },
+  {
+    name: 'received_weight',
+    align: 'right',
+    label: 'Received Weight',
+    field: 'received_weight',
+    sortable: true,
+  },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
 
@@ -165,7 +232,7 @@ async function loadShipments() {
     .select('id, name')
     .eq('tenant_id', authStore.tenantId)
     .order('name', { ascending: true });
-  shipments.value = (data || []);
+  shipments.value = data || [];
 }
 
 async function loadBoxes() {
@@ -187,15 +254,12 @@ async function loadBoxes() {
 }
 
 function getShipmentName(shipmentId: number) {
-  const sh = shipments.value.find(s => s.id === shipmentId);
+  const sh = shipments.value.find((s) => s.id === shipmentId);
   return sh ? (sh.name as string) : `Shipment #${shipmentId}`;
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadShipments(),
-    loadBoxes(),
-  ]);
+  await Promise.all([loadShipments(), loadBoxes()]);
 });
 
 function openDialog(row?: Record<string, unknown>) {
@@ -239,12 +303,10 @@ async function save() {
       if (error) throw error;
       $q.notify({ type: 'positive', message: 'Box updated successfully' });
     } else {
-      const { error } = await supabase
-        .from('thrift_boxes')
-        .insert({
-          ...payload,
-          inserted_by: authStore.user?.email || '',
-        });
+      const { error } = await supabase.from('thrift_boxes').insert({
+        ...payload,
+        inserted_by: authStore.user?.email || '',
+      });
       if (error) throw error;
       $q.notify({ type: 'positive', message: 'Box created successfully' });
     }
@@ -266,10 +328,7 @@ async function deleteItem() {
   if (!selectedRow.value) return;
   $q.loading.show();
   try {
-    const { error } = await supabase
-      .from('thrift_boxes')
-      .delete()
-      .eq('id', selectedRow.value.id);
+    const { error } = await supabase.from('thrift_boxes').delete().eq('id', selectedRow.value.id);
     if (error) throw error;
     $q.notify({ type: 'positive', message: 'Box deleted successfully' });
     deleteConfirmOpen.value = false;

@@ -151,7 +151,9 @@ describe('Thrift P2 Cost Engine', () => {
     const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
     expect(result.markup_source).toBe('item_override');
     expect(result.applied_markup_rate).toBe(0.8);
-    expect(result.suggested_sell_unit_price).toBe(ceilThriftRetailPrice(result.landed_unit_cost * 1.8));
+    expect(result.suggested_sell_unit_price).toBe(
+      ceilThriftRetailPrice(result.landed_unit_cost * 1.8),
+    );
   });
 
   test('effective markup pct reflects manual listed price', () => {
@@ -167,7 +169,9 @@ describe('Thrift P2 Cost Engine', () => {
     const result = computeThriftUnitCosts(stock, mockShipment, mockSettings, 1, pricing);
     expect(result.display_listed_unit_price).toBe(300.0);
     expect(result.effective_markup_pct).not.toBeNull();
-    expect(result.suggested_sell_unit_price).toBe(ceilThriftRetailPrice(result.landed_unit_cost * 1.5));
+    expect(result.suggested_sell_unit_price).toBe(
+      ceilThriftRetailPrice(result.landed_unit_cost * 1.5),
+    );
   });
 
   test('computeThriftUnitCostsForShipment batches calculation correctly', () => {
@@ -201,4 +205,3 @@ describe('Thrift P2 Cost Engine', () => {
     expect(results[103]!.shipment_unit_count).toBe(10); // shipment 2 total qty
   });
 });
-

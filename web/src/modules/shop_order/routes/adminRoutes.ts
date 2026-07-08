@@ -1,10 +1,10 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -13,21 +13,21 @@ const guard = (requiredModule: ModuleKey) =>
     requireTenantContext: true,
     requiredModule,
     validateAccess: ({ authStore, to }) => {
-      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
       if (!selectedTenantSlug) {
-        return true
+        return true;
       }
 
-      const routeTenantSlug = getTenantSlugFromRoute(to)
+      const routeTenantSlug = getTenantSlugFromRoute(to);
 
       if (routeTenantSlug === selectedTenantSlug) {
-        return true
+        return true;
       }
 
-      return getAppRouteLocation(to, selectedTenantSlug)
+      return getAppRouteLocation(to, selectedTenantSlug);
     },
-  })
+  });
 
 const adminRoutes: RouteRecordRaw[] = [
   // shop_config — Shops
@@ -122,31 +122,31 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/commerce/shop',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
-      return `${tenantSlug}/app/shop/shops`
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      return `${tenantSlug}/app/shop/shops`;
     },
   },
   {
     path: '/:tenantSlug?/app/commerce/orders',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
-      return `${tenantSlug}/app/shop/orders`
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      return `${tenantSlug}/app/shop/orders`;
     },
   },
   {
     path: '/:tenantSlug?/app/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
-      return `${tenantSlug}/app/shop/shops`
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      return `${tenantSlug}/app/shop/shops`;
     },
   },
   {
     path: '/:tenantSlug?/app/stores/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
-      return `${tenantSlug}/app/shop/shops`
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      return `${tenantSlug}/app/shop/shops`;
     },
   },
-]
+];
 
-export default adminRoutes
+export default adminRoutes;

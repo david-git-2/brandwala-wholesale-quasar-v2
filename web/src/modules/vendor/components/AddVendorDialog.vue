@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="localModelValue" persistent>
-    <q-card style="min-width: 560px; max-width: 95vw;">
+    <q-card style="min-width: 560px; max-width: 95vw">
       <q-card-section>
         <div class="text-h6">{{ isEdit ? 'Edit Vendor' : 'Add Vendor' }}</div>
       </q-card-section>
@@ -97,39 +97,39 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue';
 
-import type { Vendor, VendorMarket } from '../types'
+import type { Vendor, VendorMarket } from '../types';
 
 type VendorForm = {
-  id?: number
-  name: string
-  code: string
-  market_code: string
-  tenant_id: number | null
-  email: string | null
-  phone: string | null
-  address: string | null
-  website: string | null
-}
+  id?: number;
+  name: string;
+  code: string;
+  market_code: string;
+  tenant_id: number | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+};
 
 const props = defineProps<{
-  modelValue: boolean
-  initialData?: Vendor | null
-  markets: VendorMarket[]
-  tenantId: number | null
-  checkCodeAvailability: (code: string, excludeId?: number | null) => Promise<boolean>
-}>()
+  modelValue: boolean;
+  initialData?: Vendor | null;
+  markets: VendorMarket[];
+  tenantId: number | null;
+  checkCodeAvailability: (code: string, excludeId?: number | null) => Promise<boolean>;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'save', value: VendorForm): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'save', value: VendorForm): void;
+}>();
 
 const localModelValue = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
-})
+});
 
 const getDefaultForm = (): VendorForm => ({
   name: '',
@@ -140,83 +140,83 @@ const getDefaultForm = (): VendorForm => ({
   phone: null,
   address: null,
   website: null,
-})
+});
 
-const form = reactive<VendorForm>(getDefaultForm())
-const checkingCode = ref(false)
-const codeAvailable = ref<boolean | null>(null)
-const originalNormalizedCode = ref('')
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+const form = reactive<VendorForm>(getDefaultForm());
+const checkingCode = ref(false);
+const codeAvailable = ref<boolean | null>(null);
+const originalNormalizedCode = ref('');
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-const isEdit = computed(() => typeof form.id === 'number')
-const normalizedCode = computed(() => form.code.trim().toUpperCase())
+const isEdit = computed(() => typeof form.id === 'number');
+const normalizedCode = computed(() => form.code.trim().toUpperCase());
 
 const marketOptions = computed(() =>
   props.markets.map((market) => ({
     label: `${market.name} (${market.code})`,
     value: market.code,
   })),
-)
+);
 
 const validationMessage = computed(() => {
-  if (!form.name.trim()) return 'Name is required.'
-  if (!normalizedCode.value) return 'Code is required.'
-  if (!form.market_code.trim()) return 'Market is required.'
-  return ''
-})
+  if (!form.name.trim()) return 'Name is required.';
+  if (!normalizedCode.value) return 'Code is required.';
+  if (!form.market_code.trim()) return 'Market is required.';
+  return '';
+});
 
 const normalizeCode = (value: string) =>
   value
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z0-9_-]/g, '')
+    .replace(/[^A-Z0-9_-]/g, '');
 
 const onCodeInput = () => {
-  form.code = normalizeCode(form.code)
-}
+  form.code = normalizeCode(form.code);
+};
 
 const runCodeCheck = () => {
   if (!normalizedCode.value) {
-    codeAvailable.value = null
-    return
+    codeAvailable.value = null;
+    return;
   }
 
   if (isEdit.value && normalizedCode.value === originalNormalizedCode.value) {
-    codeAvailable.value = true
-    return
+    codeAvailable.value = true;
+    return;
   }
 
   if (debounceTimer) {
-    clearTimeout(debounceTimer)
+    clearTimeout(debounceTimer);
   }
 
   debounceTimer = setTimeout(() => {
     void (async () => {
-      checkingCode.value = true
+      checkingCode.value = true;
       try {
         codeAvailable.value = await props.checkCodeAvailability(
           normalizedCode.value,
           form.id ?? null,
-        )
+        );
       } finally {
-        checkingCode.value = false
+        checkingCode.value = false;
       }
-    })()
-  }, 320)
-}
+    })();
+  }, 320);
+};
 
 watch(
   () => form.code,
   () => {
-    runCodeCheck()
+    runCodeCheck();
   },
-)
+);
 
 watch(
   [() => props.modelValue, () => props.initialData, () => props.tenantId],
   ([opened, initialData, tenantId]) => {
     if (!opened) {
-      return
+      return;
     }
 
     const next = initialData
@@ -227,19 +227,19 @@ watch(
       : {
           ...getDefaultForm(),
           tenant_id: tenantId,
-        }
+        };
 
-    Object.assign(form, next)
-    originalNormalizedCode.value = normalizeCode(initialData?.code ?? '')
-    codeAvailable.value = null
-    runCodeCheck()
+    Object.assign(form, next);
+    originalNormalizedCode.value = normalizeCode(initialData?.code ?? '');
+    codeAvailable.value = null;
+    runCodeCheck();
   },
   { immediate: true },
-)
+);
 
 const onSave = () => {
   if (validationMessage.value || checkingCode.value || codeAvailable.value === false) {
-    return
+    return;
   }
 
   const payload: VendorForm = {
@@ -251,13 +251,13 @@ const onSave = () => {
     phone: form.phone?.trim() || null,
     address: form.address?.trim() || null,
     website: form.website?.trim() || null,
-  }
+  };
 
   if (typeof form.id === 'number') {
-    payload.id = form.id
+    payload.id = form.id;
   }
 
-  emit('save', payload)
-  localModelValue.value = false
-}
+  emit('save', payload);
+  localModelValue.value = false;
+};
 </script>

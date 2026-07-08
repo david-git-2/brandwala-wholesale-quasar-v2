@@ -46,7 +46,9 @@
       :hint="field.hint"
       class="soft-input"
       :rules="field.required ? [requiredRule] : undefined"
-      @update:model-value="emit('update:modelValue', $event === '' || $event === null ? null : Number($event))"
+      @update:model-value="
+        emit('update:modelValue', $event === '' || $event === null ? null : Number($event))
+      "
     />
 
     <q-select
@@ -69,36 +71,36 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed } from 'vue';
 
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore'
-import type { ThriftCurrency } from 'src/modules/thrift/currency/types'
-import type { PreferenceFieldDefinition } from '../types/preferenceFields'
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
+import type { PreferenceFieldDefinition } from '../types/preferenceFields';
 
 const props = defineProps<{
-  field: PreferenceFieldDefinition
-  modelValue: unknown
-}>()
+  field: PreferenceFieldDefinition;
+  modelValue: unknown;
+}>();
 
-const numberValue = computed(() => props.modelValue as number | null)
+const numberValue = computed(() => props.modelValue as number | null);
 
 const emit = defineEmits<{
-  'update:modelValue': [value: unknown]
-}>()
+  'update:modelValue': [value: unknown];
+}>();
 
-const currencyStore = useThriftCurrencyStore()
+const currencyStore = useThriftCurrencyStore();
 
 function currencyOptionLabel(option: ThriftCurrency) {
-  return `${option.code} (${option.symbol}) — ${option.name}`
+  return `${option.code} (${option.symbol}) — ${option.name}`;
 }
 
 function requiredRule(value: unknown) {
-  return value !== null && value !== undefined && value !== '' ? true : 'Required'
+  return value !== null && value !== undefined && value !== '' ? true : 'Required';
 }
 
 onMounted(async () => {
-  await currencyStore.loadCurrencies()
-})
+  await currencyStore.loadCurrencies();
+});
 </script>
 
 <style scoped>

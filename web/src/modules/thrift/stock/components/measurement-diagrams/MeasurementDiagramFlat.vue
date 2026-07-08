@@ -17,55 +17,27 @@
 
     <!-- Measurement guides -->
     <g class="measure-lines">
-      <line
-        x1="52" y1="72" x2="148" y2="72"
-        :class="lineClass('bust_in')"
-      />
-      <line
-        x1="58" y1="108" x2="142" y2="108"
-        :class="lineClass('waist_in')"
-      />
-      <line
-        x1="50" y1="148" x2="150" y2="148"
-        :class="lineClass('hips_in')"
-      />
-      <line
-        x1="100" y1="48" x2="100" :y2="hemY"
-        :class="lineClass('length_in')"
-      />
-      <line
-        x1="48" y1="56" x2="152" y2="56"
-        :class="lineClass('shoulder_width_in')"
-      />
-      <line
-        x1="48" y1="56" x2="38" :y2="sleeveEndY"
-        :class="lineClass('sleeve_length_in')"
-      />
+      <line x1="52" y1="72" x2="148" y2="72" :class="lineClass('bust_in')" />
+      <line x1="58" y1="108" x2="142" y2="108" :class="lineClass('waist_in')" />
+      <line x1="50" y1="148" x2="150" y2="148" :class="lineClass('hips_in')" />
+      <line x1="100" y1="48" x2="100" :y2="hemY" :class="lineClass('length_in')" />
+      <line x1="48" y1="56" x2="152" y2="56" :class="lineClass('shoulder_width_in')" />
+      <line x1="48" y1="56" x2="38" :y2="sleeveEndY" :class="lineClass('sleeve_length_in')" />
       <ellipse
-        cx="38" :cy="sleeveEndY - 4"
-        rx="10" ry="6"
+        cx="38"
+        :cy="sleeveEndY - 4"
+        rx="10"
+        ry="6"
         :class="lineClass('arm_circumference_in')"
         fill="none"
         stroke-width="2"
       />
-      <line
-        x1="55" :y1="hemY" x2="145" :y2="hemY"
-        :class="lineClass('hem_width_in')"
-      />
-      <line
-        x1="78" y1="48" x2="122" y2="48"
-        :class="lineClass('neck_opening_in')"
-      />
+      <line x1="55" :y1="hemY" x2="145" :y2="hemY" :class="lineClass('hem_width_in')" />
+      <line x1="78" y1="48" x2="122" y2="48" :class="lineClass('neck_opening_in')" />
     </g>
 
     <!-- Labels for active highlight only -->
-    <text
-      v-if="highlight"
-      x="100"
-      y="16"
-      text-anchor="middle"
-      class="diagram-label"
-    >
+    <text v-if="highlight" x="100" y="16" text-anchor="middle" class="diagram-label">
       {{ highlightLabel }}
     </text>
   </svg>

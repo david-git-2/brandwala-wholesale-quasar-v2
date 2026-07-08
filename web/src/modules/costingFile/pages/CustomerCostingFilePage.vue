@@ -76,7 +76,10 @@
                     :style="statusChipStyle(slotProps.row.status)"
                     class="costing-status-chip"
                   >
-                    <span class="status-dot" :style="{ backgroundColor: statusDotColor(slotProps.row.status) }" />
+                    <span
+                      class="status-dot"
+                      :style="{ backgroundColor: statusDotColor(slotProps.row.status) }"
+                    />
                     {{ formatStatusLabel(slotProps.row.status) }}
                   </q-chip>
                 </q-td>
@@ -116,7 +119,10 @@
                   :style="statusChipStyle(file.status)"
                   class="costing-status-chip"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(file.status) }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: statusDotColor(file.status) }"
+                  />
                   {{ formatStatusLabel(file.status) }}
                 </q-chip>
               </div>
@@ -182,28 +188,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
-import { type QTableColumn } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
+import { type QTableColumn } from 'quasar';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
-import { handleApiFailure } from 'src/utils/appFeedback'
-import { formatCurrentDateTimeForName } from 'src/utils/dateTime'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { handleApiFailure } from 'src/utils/appFeedback';
+import { formatCurrentDateTimeForName } from 'src/utils/dateTime';
 
-const router = useRouter()
-const authStore = useAuthStore()
-const costingFileStore = useCostingFileStore()
-const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(costingFileStore)
-const createDialog = ref(false)
-const creating = ref(false)
-const deletingFileId = ref<number | null>(null)
-const initialLoading = ref(true)
-const page = ref(1)
-const pageSize = 20
-const viewMode = ref<'table' | 'card'>('table')
+const router = useRouter();
+const authStore = useAuthStore();
+const costingFileStore = useCostingFileStore();
+const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(costingFileStore);
+const createDialog = ref(false);
+const creating = ref(false);
+const deletingFileId = ref<number | null>(null);
+const initialLoading = ref(true);
+const page = ref(1);
+const pageSize = 20;
+const viewMode = ref<'table' | 'card'>('table');
 
 const pagination = ref({
   sortBy: 'id',
@@ -211,15 +217,19 @@ const pagination = ref({
   page: 1,
   rowsPerPage: 20,
   rowsNumber: 0,
-})
+});
 
-watch(totalItems, (newVal) => {
-  pagination.value.rowsNumber = newVal || 0
-}, { immediate: true })
+watch(
+  totalItems,
+  (newVal) => {
+    pagination.value.rowsNumber = newVal || 0;
+  },
+  { immediate: true },
+);
 
 watch(page, (newVal) => {
-  pagination.value.page = newVal
-})
+  pagination.value.page = newVal;
+});
 
 const tableColumns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
@@ -227,198 +237,199 @@ const tableColumns: QTableColumn[] = [
   { name: 'market', label: 'Market', field: 'market', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
-]
+];
 
 const statusSurfaceStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return { backgroundColor: '#f8fafc' }
-  if (value === 'customer_submitted') return { backgroundColor: '#f2f4ff' }
-  if (value === 'in_review') return { backgroundColor: '#fffbeb' }
-  if (value === 'offered') return { backgroundColor: '#f0f4ff' }
-  if (value === 'accepted') return { backgroundColor: '#e6f9f0' }
-  if (value === 'po_placed') return { backgroundColor: '#edfbf2' }
-  if (value === 'cancelled') return { backgroundColor: '#fef2f2' }
-  return { backgroundColor: '#f8fafc' }
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return { backgroundColor: '#f8fafc' };
+  if (value === 'customer_submitted') return { backgroundColor: '#f2f4ff' };
+  if (value === 'in_review') return { backgroundColor: '#fffbeb' };
+  if (value === 'offered') return { backgroundColor: '#f0f4ff' };
+  if (value === 'accepted') return { backgroundColor: '#e6f9f0' };
+  if (value === 'po_placed') return { backgroundColor: '#edfbf2' };
+  if (value === 'cancelled') return { backgroundColor: '#fef2f2' };
+  return { backgroundColor: '#f8fafc' };
+};
 
 const onRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  page.value = props.pagination.page
-  pagination.value.page = props.pagination.page
-  pagination.value.rowsPerPage = props.pagination.rowsPerPage
-  await loadFiles()
-}
+  page.value = props.pagination.page;
+  pagination.value.page = props.pagination.page;
+  pagination.value.rowsPerPage = props.pagination.rowsPerPage;
+  await loadFiles();
+};
 
 const cardAccentColor = computed(
   () => authStore.customerGroup?.accentColor?.trim() || 'var(--bw-theme-primary)',
-)
+);
 const statusChipStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 const statusDotColor = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
 const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-const customerGroupName = computed(() => authStore.customerGroup?.name?.trim() || 'Customer group')
-const canCreate = computed(() => Boolean(authStore.customerGroupId && authStore.tenantId))
-const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+const customerGroupName = computed(() => authStore.customerGroup?.name?.trim() || 'Customer group');
+const canCreate = computed(() => Boolean(authStore.customerGroupId && authStore.tenantId));
+const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)));
 
 const subtitle = computed(() =>
   authStore.customerGroup?.name
     ? `${authStore.customerGroup.name} can open costing files here.`
     : 'Customer group access is required.',
-)
+);
 
-const buildCustomerFileName = () => formatCurrentDateTimeForName(customerGroupName.value)
+const buildCustomerFileName = () => formatCurrentDateTimeForName(customerGroupName.value);
 
 const loadFiles = async () => {
-  const customerGroupId = authStore.customerGroupId
-  const tenantId = authStore.tenantId
+  const customerGroupId = authStore.customerGroupId;
+  const tenantId = authStore.tenantId;
 
   if (!customerGroupId || !tenantId) {
-    costingFileStore.items = []
-    costingFileStore.totalItems = 0
-    return
+    costingFileStore.items = [];
+    costingFileStore.totalItems = 0;
+    return;
   }
 
   await costingFileStore.fetchCostingFilesByCustomerGroup(customerGroupId, tenantId, {
     page: page.value,
     pageSize: pagination.value.rowsPerPage,
-  })
-}
+  });
+};
 
 const handlePageChange = async () => {
-  await loadFiles()
-}
+  await loadFiles();
+};
 
 const handleCreate = async () => {
-  const customerGroupId = authStore.customerGroupId
-  const tenantId = authStore.tenantId
+  const customerGroupId = authStore.customerGroupId;
+  const tenantId = authStore.tenantId;
 
   if (!customerGroupId || !tenantId) {
-    return
+    return;
   }
 
-  creating.value = true
+  creating.value = true;
   try {
     const result = await costingFileStore.createCostingFile({
       tenantId,
       customerGroupId,
       name: buildCustomerFileName(),
       market: '',
-    })
+    });
 
     if (!result.success || !result.data) {
-      handleApiFailure(result, 'Failed to create costing file.')
-      return
+      handleApiFailure(result, 'Failed to create costing file.');
+      return;
     }
 
-    createDialog.value = false
-    await loadFiles()
-    await openFile(result.data.id)
+    createDialog.value = false;
+    await loadFiles();
+    await openFile(result.data.id);
   } finally {
-    creating.value = false
+    creating.value = false;
   }
-}
+};
 
 const handleDelete = async (id: number) => {
-  deletingFileId.value = id
+  deletingFileId.value = id;
   try {
-    const result = await costingFileStore.deleteCostingFile({ id })
+    const result = await costingFileStore.deleteCostingFile({ id });
 
     if (!result.success) {
-      handleApiFailure(result, 'Failed to delete costing file.')
-      return
+      handleApiFailure(result, 'Failed to delete costing file.');
+      return;
     }
 
-    await loadFiles()
+    await loadFiles();
   } finally {
-    deletingFileId.value = null
+    deletingFileId.value = null;
   }
-}
+};
 
 const openFile = async (id: number) => {
   await router.push({
     name: 'customer-costing-file-details-page',
     params: { id: String(id) },
-  })
-}
+  });
+};
 
 onMounted(async () => {
   try {
-    await loadFiles()
+    await loadFiles();
   } finally {
-    initialLoading.value = false
+    initialLoading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>
-.costing-page { display: grid; gap: 1.25rem; }
+.costing-page {
+  display: grid;
+  gap: 1.25rem;
+}
 .floating-surface {
   background: rgba(255, 255, 255, 0.86);
   border-radius: 14px;
@@ -461,8 +472,12 @@ onMounted(async () => {
   justify-content: center;
   padding-top: 0.5rem;
 }
-.costing-page__empty { color: var(--bw-theme-muted); }
+.costing-page__empty {
+  color: var(--bw-theme-muted);
+}
 @media (max-width: 900px) {
-  .costing-page__card-grid { grid-template-columns: 1fr; }
+  .costing-page__card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

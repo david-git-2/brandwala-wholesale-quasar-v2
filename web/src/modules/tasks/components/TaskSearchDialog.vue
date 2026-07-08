@@ -5,10 +5,15 @@
         <div class="row items-center q-gutter-sm col">
           <q-icon name="search" :size="$q.screen.lt.sm ? '20px' : '24px'" color="primary" />
           <div class="col">
-            <div class="text-weight-bold text-grey-9" :class="$q.screen.lt.sm ? 'text-subtitle2' : 'text-h6'">
+            <div
+              class="text-weight-bold text-grey-9"
+              :class="$q.screen.lt.sm ? 'text-subtitle2' : 'text-h6'"
+            >
               {{ $q.screen.lt.sm ? 'Search Tasks' : 'Search Tasks Cross-Tenants' }}
             </div>
-            <div v-if="!$q.screen.lt.sm" class="text-caption text-grey-6">Search across all workspaces you belong to</div>
+            <div v-if="!$q.screen.lt.sm" class="text-caption text-grey-6">
+              Search across all workspaces you belong to
+            </div>
           </div>
         </div>
         <div class="row items-center q-gutter-sm">
@@ -29,7 +34,11 @@
       <q-card-section class="q-pt-none">
         <q-input
           v-model="searchQuery"
-          :placeholder="$q.screen.lt.sm ? 'Search tasks...' : 'Type to search title, description, tags, comments...'"
+          :placeholder="
+            $q.screen.lt.sm
+              ? 'Search tasks...'
+              : 'Type to search title, description, tags, comments...'
+          "
           outlined
           dense
           autofocus
@@ -72,7 +81,14 @@
                 <q-chip dense square color="amber-1" text-color="amber-9" class="text-overline">
                   {{ item.status }}
                 </q-chip>
-                <q-chip v-if="item.tenant_name" dense square color="purple-1" text-color="purple-8" class="text-overline">
+                <q-chip
+                  v-if="item.tenant_name"
+                  dense
+                  square
+                  color="purple-1"
+                  text-color="purple-8"
+                  class="text-overline"
+                >
                   Tenant: {{ item.tenant_name }}
                 </q-chip>
               </div>
@@ -87,7 +103,9 @@
 
         <div v-else class="text-center q-pa-xl text-grey-5">
           <q-icon name="manage_search" size="48px" class="q-mb-sm" />
-          <div>Search for tickets, notes, bugs, and discussions across all workspaces you belong to.</div>
+          <div>
+            Search for tickets, notes, bugs, and discussions across all workspaces you belong to.
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -100,11 +118,7 @@
     @updated="onTaskUpdated"
   />
 
-  <TaskFormDialog
-    v-model="createOpen"
-    :default-type="'task'"
-    @saved="onTaskCreated"
-  />
+  <TaskFormDialog v-model="createOpen" :default-type="'task'" @saved="onTaskCreated" />
 </template>
 
 <script setup lang="ts">
@@ -171,29 +185,47 @@ const onTaskCreated = () => {
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case 'project': return 'folder';
-    case 'module': return 'view_module';
-    case 'submodule': return 'layers';
-    case 'task': return 'assignment';
-    case 'note': return 'note';
-    case 'discussion': return 'forum';
-    case 'bug': return 'bug_report';
-    case 'feature': return 'star';
-    default: return 'help_outline';
+    case 'project':
+      return 'folder';
+    case 'module':
+      return 'view_module';
+    case 'submodule':
+      return 'layers';
+    case 'task':
+      return 'assignment';
+    case 'note':
+      return 'note';
+    case 'discussion':
+      return 'forum';
+    case 'bug':
+      return 'bug_report';
+    case 'feature':
+      return 'star';
+    default:
+      return 'help_outline';
   }
 };
 
 const getTypeColor = (type: string) => {
   switch (type) {
-    case 'project': return 'indigo';
-    case 'module': return 'blue';
-    case 'submodule': return 'cyan';
-    case 'task': return 'green';
-    case 'note': return 'orange';
-    case 'discussion': return 'teal';
-    case 'bug': return 'red';
-    case 'feature': return 'purple';
-    default: return 'grey';
+    case 'project':
+      return 'indigo';
+    case 'module':
+      return 'blue';
+    case 'submodule':
+      return 'cyan';
+    case 'task':
+      return 'green';
+    case 'note':
+      return 'orange';
+    case 'discussion':
+      return 'teal';
+    case 'bug':
+      return 'red';
+    case 'feature':
+      return 'purple';
+    default:
+      return 'grey';
   }
 };
 </script>

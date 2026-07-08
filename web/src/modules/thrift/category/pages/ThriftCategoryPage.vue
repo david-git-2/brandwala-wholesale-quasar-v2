@@ -5,7 +5,9 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold">Thrift Categories</div>
-            <div class="text-caption text-grey-8">Global catalog and tenant-specific categories</div>
+            <div class="text-caption text-grey-8">
+              Global catalog and tenant-specific categories
+            </div>
           </div>
           <div class="col-12 col-sm-auto">
             <q-btn
@@ -40,7 +42,12 @@
         </template>
         <template #body-cell-scope="props">
           <q-td :props="props">
-            <q-chip dense square :color="props.row.is_global ? 'blue-grey-2' : 'teal-2'" text-color="dark">
+            <q-chip
+              dense
+              square
+              :color="props.row.is_global ? 'blue-grey-2' : 'teal-2'"
+              text-color="dark"
+            >
               {{ props.row.is_global ? 'Global' : 'Tenant' }}
             </q-chip>
           </q-td>
@@ -49,14 +56,24 @@
           <q-td :props="props" class="text-right q-gutter-x-xs">
             <q-btn
               v-if="!props.row.is_global"
-              flat round dense icon="o_edit" color="warning" size="sm"
+              flat
+              round
+              dense
+              icon="o_edit"
+              color="warning"
+              size="sm"
               @click.stop="openDialog(props.row)"
             >
               <q-tooltip>Edit</q-tooltip>
             </q-btn>
             <q-btn
               v-if="!props.row.is_global"
-              flat round dense icon="delete" color="negative" size="sm"
+              flat
+              round
+              dense
+              icon="delete"
+              color="negative"
+              size="sm"
               @click.stop="confirmDelete(props.row)"
             >
               <q-tooltip>Delete</q-tooltip>
@@ -68,31 +85,56 @@
     </q-card>
 
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 420px; max-width: 95vw;" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Category' : 'New Category' }}</div>
+          <div class="text-h6 text-weight-bold">
+            {{ editingId ? 'Edit Category' : 'New Category' }}
+          </div>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-separator />
         <q-card-section class="q-pt-md q-gutter-md">
-          <q-input v-model="form.name" outlined dense label="Category Name *" class="soft-input" :rules="[val => !!val || 'Required']" />
-          <q-input v-model="form.description" outlined dense label="Description" class="soft-input" type="textarea" autogrow />
+          <q-input
+            v-model="form.name"
+            outlined
+            dense
+            label="Category Name *"
+            class="soft-input"
+            :rules="[(val) => !!val || 'Required']"
+          />
+          <q-input
+            v-model="form.description"
+            outlined
+            dense
+            label="Description"
+            class="soft-input"
+            type="textarea"
+            autogrow
+          />
         </q-card-section>
         <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
           <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Save" @click="save" />
+          <q-btn
+            color="primary"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            label="Save"
+            @click="save"
+          />
         </q-card-section>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="deleteConfirmOpen" persistent>
-      <q-card style="width: 350px; max-width: 90vw;">
+      <q-card style="width: 350px; max-width: 90vw">
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Category</span>
         </q-card-section>
         <q-card-section>
-          Delete category <strong>{{ selectedRow?.name }}</strong>?
+          Delete category <strong>{{ selectedRow?.name }}</strong
+          >?
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -124,8 +166,22 @@ const form = ref({ name: '', description: '' });
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
 const columns: QTableColumn[] = [
-  { name: 'sl', label: 'SL', field: 'sl', align: 'center', sortable: false, headerStyle: 'width: 50px' },
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true, headerStyle: 'width: 70px' },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'center',
+    sortable: false,
+    headerStyle: 'width: 50px',
+  },
+  {
+    name: 'id',
+    label: 'ID',
+    field: 'id',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 70px',
+  },
   { name: 'scope', align: 'left', label: 'Scope', field: 'is_global' },
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'description', align: 'left', label: 'Description', field: 'description' },
@@ -200,8 +256,16 @@ async function deleteItem() {
   border-radius: 14px;
   border: 1px solid rgba(34, 56, 101, 0.08);
 }
-.hero-surface { border-radius: 16px; }
-.pill-btn { border-radius: 999px; }
-.slim-btn { min-height: 32px; }
-.soft-input :deep(.q-field__control) { border-radius: 12px; }
+.hero-surface {
+  border-radius: 16px;
+}
+.pill-btn {
+  border-radius: 999px;
+}
+.slim-btn {
+  min-height: 32px;
+}
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+}
 </style>

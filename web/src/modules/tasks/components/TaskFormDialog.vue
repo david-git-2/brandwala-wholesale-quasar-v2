@@ -20,7 +20,7 @@
             emit-value
             map-options
             :readonly="isEdit"
-            :rules="[val => !!val || 'Type is required']"
+            :rules="[(val) => !!val || 'Type is required']"
             @update:model-value="onTypeChange"
           />
 
@@ -30,7 +30,7 @@
             label="Title"
             outlined
             dense
-            :rules="[val => !!val || 'Title is required']"
+            :rules="[(val) => !!val || 'Title is required']"
           />
 
           <!-- Description (Markdown / Text Editor) -->
@@ -170,7 +170,10 @@
             :options="[
               { label: 'Public - Visible to all workspace members', value: 'public' },
               { label: 'Private - Only visible to you', value: 'private' },
-              { label: 'Restricted - Only visible to creator, assignees, and collaborators', value: 'restricted' }
+              {
+                label: 'Restricted - Only visible to creator, assignees, and collaborators',
+                value: 'restricted',
+              },
             ]"
             label="Accessibility"
             outlined
@@ -227,7 +230,7 @@ const editorToolbar = computed(() => {
     return [
       ['bold', 'italic', 'underline'],
       ['unordered', 'ordered'],
-      ['undo', 'redo']
+      ['undo', 'redo'],
     ];
   }
   return [
@@ -235,7 +238,7 @@ const editorToolbar = computed(() => {
     ['unordered', 'ordered', 'outdent', 'indent'],
     ['quote', 'link', 'hr'],
     ['undo', 'redo'],
-    ['fullscreen']
+    ['fullscreen'],
   ];
 });
 
@@ -292,11 +295,11 @@ const priorityOptions = [
   { label: 'Urgent', value: 'urgent' },
 ];
 
-const memberEmails = computed(() => tasksStore.members.map(m => m.email));
-const tagOptions = computed(() => tasksStore.tags.map(t => ({ label: t.name, value: t.id })));
+const memberEmails = computed(() => tasksStore.members.map((m) => m.email));
+const tagOptions = computed(() => tasksStore.tags.map((t) => ({ label: t.name, value: t.id })));
 
 const getTagColor = (tagId: number) => {
-  const tag = tasksStore.tags.find(t => t.id === tagId);
+  const tag = tasksStore.tags.find((t) => t.id === tagId);
   return tag?.color || '#6366f1';
 };
 
@@ -379,12 +382,12 @@ watch(
   () => form.value.parent_id,
   (newParentId) => {
     if (newParentId) {
-      const parentItem = dialogItems.value.find(i => i.id === newParentId);
+      const parentItem = dialogItems.value.find((i) => i.id === newParentId);
       if (parentItem?.type === 'note') {
         form.value.type = 'note';
       }
     }
-  }
+  },
 );
 
 watch(
@@ -397,7 +400,7 @@ watch(
     if (!isAllowedParentType(newType, parentItem.type)) {
       form.value.parent_id = null;
     }
-  }
+  },
 );
 
 // Form populate on edit
@@ -420,7 +423,7 @@ watch(
       if (props.item) {
         const i = props.item;
         // Get tags & assignees from locally cached item state
-        const itemInStore = dialogItems.value.find(x => x.id === i.id);
+        const itemInStore = dialogItems.value.find((x) => x.id === i.id);
         const linkedTags = itemInStore?.tags || [];
         const assignees = itemInStore?.assignees || [];
 
@@ -485,28 +488,28 @@ const onSave = async () => {
 
     // Sync Assignees (add/remove diff)
     const currentAssignees = props.item?.assignees || [];
-    const currentEmails = currentAssignees.map(a => a.user_email);
+    const currentEmails = currentAssignees.map((a) => a.user_email);
     const newEmails = form.value.assigneeEmails;
 
-    const toAddAssignee = newEmails.filter(e => !currentEmails.includes(e));
-    const toRemoveAssignee = currentEmails.filter(e => !newEmails.includes(e));
+    const toAddAssignee = newEmails.filter((e) => !currentEmails.includes(e));
+    const toRemoveAssignee = currentEmails.filter((e) => !newEmails.includes(e));
 
     await Promise.all([
-      ...toAddAssignee.map(email => tasksStore.addAssignee(savedItem.id, email)),
-      ...toRemoveAssignee.map(email => tasksStore.removeAssignee(savedItem.id, email)),
+      ...toAddAssignee.map((email) => tasksStore.addAssignee(savedItem.id, email)),
+      ...toRemoveAssignee.map((email) => tasksStore.removeAssignee(savedItem.id, email)),
     ]);
 
     // Sync Tags (add/remove diff)
     const currentTags = props.item?.tags || [];
-    const currentTagIds = currentTags.map(t => t.id);
+    const currentTagIds = currentTags.map((t) => t.id);
     const newTagIds = form.value.tagIds;
 
-    const toAddTag = newTagIds.filter(id => !currentTagIds.includes(id));
-    const toRemoveTag = currentTagIds.filter(id => !newTagIds.includes(id));
+    const toAddTag = newTagIds.filter((id) => !currentTagIds.includes(id));
+    const toRemoveTag = currentTagIds.filter((id) => !newTagIds.includes(id));
 
     await Promise.all([
-      ...toAddTag.map(tagId => tasksStore.linkTag(savedItem.id, tagId)),
-      ...toRemoveTag.map(tagId => tasksStore.unlinkTag(savedItem.id, tagId)),
+      ...toAddTag.map((tagId) => tasksStore.linkTag(savedItem.id, tagId)),
+      ...toRemoveTag.map((tagId) => tasksStore.unlinkTag(savedItem.id, tagId)),
     ]);
 
     emit('saved');

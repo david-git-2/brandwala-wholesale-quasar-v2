@@ -1,4 +1,4 @@
-import { vendorRepository } from '../repositories/vendorRepository'
+import { vendorRepository } from '../repositories/vendorRepository';
 import type {
   Vendor,
   VendorCreateInput,
@@ -6,58 +6,58 @@ import type {
   VendorMarket,
   VendorServiceResult,
   VendorUpdateInput,
-} from '../types'
+} from '../types';
 
 const listVendors = async (tenantId?: number | null): Promise<VendorServiceResult<Vendor[]>> => {
   try {
-    const data = await vendorRepository.listVendors(tenantId)
+    const data = await vendorRepository.listVendors(tenantId);
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load vendors.',
-    }
+    };
   }
-}
+};
 
 const getVendorById = async (
   id: number,
   tenantId?: number | null,
 ): Promise<VendorServiceResult<Vendor | null>> => {
   try {
-    const data = await vendorRepository.getVendorById(id, tenantId)
+    const data = await vendorRepository.getVendorById(id, tenantId);
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load vendor.',
-    }
+    };
   }
-}
+};
 
 const listVendorMarkets = async (): Promise<VendorServiceResult<VendorMarket[]>> => {
   try {
-    const data = await vendorRepository.listVendorMarkets()
+    const data = await vendorRepository.listVendorMarkets();
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load markets.',
-    }
+    };
   }
-}
+};
 
 const isVendorCodeAvailable = async (
   code: string,
@@ -65,73 +65,67 @@ const isVendorCodeAvailable = async (
   excludeId?: number | null,
 ): Promise<VendorServiceResult<boolean>> => {
   try {
-    const data = await vendorRepository.isVendorCodeAvailable(code, tenantId, excludeId)
+    const data = await vendorRepository.isVendorCodeAvailable(code, tenantId, excludeId);
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to check vendor code.',
-    }
+    };
   }
-}
+};
 
-const createVendor = async (
-  payload: VendorCreateInput,
-): Promise<VendorServiceResult<Vendor>> => {
+const createVendor = async (payload: VendorCreateInput): Promise<VendorServiceResult<Vendor>> => {
   try {
-    const data = await vendorRepository.createVendor(payload)
+    const data = await vendorRepository.createVendor(payload);
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create vendor.',
-    }
+    };
   }
-}
+};
 
-const updateVendor = async (
-  payload: VendorUpdateInput,
-): Promise<VendorServiceResult<Vendor>> => {
+const updateVendor = async (payload: VendorUpdateInput): Promise<VendorServiceResult<Vendor>> => {
   try {
-    const data = await vendorRepository.updateVendor(payload)
+    const data = await vendorRepository.updateVendor(payload);
 
     return {
       success: true,
       data,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update vendor.',
-    }
+    };
   }
-}
+};
 
-const deleteVendor = async (
-  payload: VendorDeleteInput,
-): Promise<VendorServiceResult<null>> => {
+const deleteVendor = async (payload: VendorDeleteInput): Promise<VendorServiceResult<null>> => {
   try {
-    await vendorRepository.deleteVendor(payload)
+    await vendorRepository.deleteVendor(payload);
 
     return {
       success: true,
       data: null,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete vendor.',
-    }
+    };
   }
-}
+};
 
 export const vendorService = {
   listVendors,
@@ -141,4 +135,4 @@ export const vendorService = {
   createVendor,
   updateVendor,
   deleteVendor,
-}
+};

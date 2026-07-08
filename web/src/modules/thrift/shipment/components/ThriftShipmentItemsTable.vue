@@ -27,35 +27,66 @@
       </thead>
       <tbody>
         <tr v-for="i in 8" :key="i">
-          <td class="text-center col-sticky-sl"><q-skeleton type="text" width="20px" class="inline-block" /></td>
+          <td class="text-center col-sticky-sl">
+            <q-skeleton type="text" width="20px" class="inline-block" />
+          </td>
           <td class="text-center col-sticky-image">
             <div class="shipment-item-image-box">
-              <q-skeleton type="rect" style="width: 100%; height: 100%;" />
+              <q-skeleton type="rect" style="width: 100%; height: 100%" />
             </div>
           </td>
-          <td v-if="isVisible('barcode')" class="text-left col-sticky-barcode"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('barcode')" class="text-left col-sticky-barcode">
+            <q-skeleton type="text" />
+          </td>
           <td v-if="isVisible('name')" class="text-left"><q-skeleton type="text" /></td>
           <td v-if="isVisible('brand_name')" class="text-left"><q-skeleton type="text" /></td>
           <td v-if="isVisible('category_name')" class="text-left"><q-skeleton type="text" /></td>
           <td v-if="isVisible('type_name')" class="text-left"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('measurements')" class="text-left measurements-col"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('origin_unit_price')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('extra_origin_unit_price')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('product_unit_cost')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('cargo_share_per_unit')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('ops_share_per_unit')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('additional_charges_cost')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('landed_unit_cost')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('measurements')" class="text-left measurements-col">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('origin_unit_price')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('extra_origin_unit_price')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('product_unit_cost')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('cargo_share_per_unit')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('ops_share_per_unit')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('additional_charges_cost')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('landed_unit_cost')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
           <td v-if="isVisible('item_markup_pct')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('effective_markup_pct')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('suggested_sell_unit_price')" class="text-right"><q-skeleton type="text" /></td>
-          <td v-if="isVisible('listed_unit_price')" class="text-right"><q-skeleton type="text" /></td>
+          <td v-if="isVisible('effective_markup_pct')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('suggested_sell_unit_price')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
+          <td v-if="isVisible('listed_unit_price')" class="text-right">
+            <q-skeleton type="text" />
+          </td>
         </tr>
       </tbody>
     </q-markup-table>
 
     <!-- Actual table -->
-    <q-markup-table flat class="thrift-shipment-details-table" v-else :class="{ 'thrift-table-stale': loading }">
+    <q-markup-table
+      flat
+      class="thrift-shipment-details-table"
+      v-else
+      :class="{ 'thrift-table-stale': loading }"
+    >
       <thead>
         <tr>
           <th class="text-center col-sticky-sl">SL</th>
@@ -95,13 +126,16 @@
                 :alt="row.name || 'Stock image'"
                 imgClass="shipment-item-image"
                 :enableEdit="false"
-                style="width: 100%; height: 100%;"
+                style="width: 100%; height: 100%"
               />
             </div>
           </td>
 
           <!-- Barcode -->
-          <td v-if="isVisible('barcode')" class="text-left col-sticky-barcode text-mono text-weight-bold">
+          <td
+            v-if="isVisible('barcode')"
+            class="text-left col-sticky-barcode text-mono text-weight-bold"
+          >
             {{ row.barcode }}
           </td>
 
@@ -150,26 +184,32 @@
           </td>
 
           <!-- Origin Price -->
-          <td v-if="isVisible('origin_unit_price')" class="cursor-pointer text-right text-underline-dashed">
+          <td
+            v-if="isVisible('origin_unit_price')"
+            class="cursor-pointer text-right text-underline-dashed"
+          >
             {{ formatPurchase(row.origin_unit_price || 0) }}
             <q-popup-edit
               :model-value="row.origin_unit_price || 0"
               v-slot="scope"
               buttons
-              @save="val => emit('save-stock-value', row, 'origin_unit_price', val)"
+              @save="(val) => emit('save-stock-value', row, 'origin_unit_price', val)"
             >
               <q-input v-model.number="scope.value" type="number" step="0.01" dense autofocus />
             </q-popup-edit>
           </td>
 
           <!-- Extra Origin -->
-          <td v-if="isVisible('extra_origin_unit_price')" class="cursor-pointer text-right text-underline-dashed">
+          <td
+            v-if="isVisible('extra_origin_unit_price')"
+            class="cursor-pointer text-right text-underline-dashed"
+          >
             {{ formatPurchase(row.extra_origin_unit_price || 0) }}
             <q-popup-edit
               :model-value="row.extra_origin_unit_price || 0"
               v-slot="scope"
               buttons
-              @save="val => emit('save-stock-value', row, 'extra_origin_unit_price', val)"
+              @save="(val) => emit('save-stock-value', row, 'extra_origin_unit_price', val)"
             >
               <q-input v-model.number="scope.value" type="number" step="0.01" dense autofocus />
             </q-popup-edit>
@@ -191,13 +231,16 @@
           </td>
 
           <!-- Additional charges cost -->
-          <td v-if="isVisible('additional_charges_cost')" class="cursor-pointer text-right text-underline-dashed">
+          <td
+            v-if="isVisible('additional_charges_cost')"
+            class="cursor-pointer text-right text-underline-dashed"
+          >
             {{ formatCost(row.additional_charges_cost || 0) }}
             <q-popup-edit
               :model-value="row.additional_charges_cost || 0"
               v-slot="scope"
               buttons
-              @save="val => emit('save-stock-value', row, 'additional_charges_cost', val)"
+              @save="(val) => emit('save-stock-value', row, 'additional_charges_cost', val)"
             >
               <q-input v-model.number="scope.value" type="number" step="0.01" dense autofocus />
             </q-popup-edit>
@@ -223,10 +266,7 @@
 
           <!-- Item markup % -->
           <td v-if="isVisible('item_markup_pct')" class="text-right">
-            <div
-              v-if="isListedPriceLocked(row.pricing)"
-              class="text-grey-7"
-            >
+            <div v-if="isListedPriceLocked(row.pricing)" class="text-grey-7">
               {{ effectiveMarkupLabel(row) }}
               <q-tooltip>Listed price locked — effective margin</q-tooltip>
             </div>
@@ -260,9 +300,20 @@
                 :model-value="itemMarkupPct(row) ?? 0"
                 v-slot="scope"
                 buttons
-                @save="val => emit('save-pricing-value', row, 'markup_rate_override', Number(val) / 100)"
+                @save="
+                  (val) =>
+                    emit('save-pricing-value', row, 'markup_rate_override', Number(val) / 100)
+                "
               >
-                <q-input v-model.number="scope.value" type="number" min="0" step="1" suffix="%" dense autofocus />
+                <q-input
+                  v-model.number="scope.value"
+                  type="number"
+                  min="0"
+                  step="1"
+                  suffix="%"
+                  dense
+                  autofocus
+                />
               </q-popup-edit>
             </template>
           </td>
@@ -310,7 +361,7 @@
               :model-value="resolvedListedPrice(row)"
               v-slot="scope"
               buttons
-              @save="val => emit('save-pricing-value', row, 'listed_unit_price', val)"
+              @save="(val) => emit('save-pricing-value', row, 'listed_unit_price', val)"
             >
               <q-input v-model.number="scope.value" type="number" step="1" dense autofocus />
             </q-popup-edit>
@@ -324,7 +375,13 @@
         </tr>
       </tbody>
     </q-markup-table>
-    <q-linear-progress v-if="loading && stocks.length > 0" indeterminate color="primary" class="absolute-top" style="z-index: 10" />
+    <q-linear-progress
+      v-if="loading && stocks.length > 0"
+      indeterminate
+      color="primary"
+      class="absolute-top"
+      style="z-index: 10"
+    />
   </div>
 </template>
 
@@ -371,8 +428,6 @@ function formatCost(amount: number): string {
 function getFormattedMeasurements(row: ThriftStock): string {
   return formatThriftStockMeasurements(row);
 }
-
-
 
 function itemMarkupPct(row: ThriftStock): number | null {
   if (isListedPriceLocked(row.pricing)) return null;

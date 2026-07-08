@@ -13,8 +13,17 @@
           <q-input v-model="startDate" label="Start Date" outlined dense readonly>
             <template #append>
               <q-icon name="event" class="cursor-pointer">
-                <q-popup-proxy ref="startPopup" cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="startDate" mask="YYYY-MM-DD" @update:model-value="() => startPopup?.hide()">
+                <q-popup-proxy
+                  ref="startPopup"
+                  cover
+                  transition-show="scale"
+                  transition-hide="scale"
+                >
+                  <q-date
+                    v-model="startDate"
+                    mask="YYYY-MM-DD"
+                    @update:model-value="() => startPopup?.hide()"
+                  >
                     <div class="row items-center justify-end">
                       <q-btn v-close-popup label="Close" color="primary" flat />
                     </div>
@@ -30,7 +39,11 @@
             <template #append>
               <q-icon name="event" class="cursor-pointer">
                 <q-popup-proxy ref="endPopup" cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="endDate" mask="YYYY-MM-DD" @update:model-value="() => endPopup?.hide()">
+                  <q-date
+                    v-model="endDate"
+                    mask="YYYY-MM-DD"
+                    @update:model-value="() => endPopup?.hide()"
+                  >
                     <div class="row items-center justify-end">
                       <q-btn v-close-popup label="Close" color="primary" flat />
                     </div>
@@ -61,7 +74,14 @@
     <template v-if="report">
       <div class="row items-center justify-between q-mb-md">
         <div class="text-subtitle1 text-weight-bold">Report Summary</div>
-        <q-btn outline color="primary" label="Export CSV" icon="download" no-caps @click="exportCSV" />
+        <q-btn
+          outline
+          color="primary"
+          label="Export CSV"
+          icon="download"
+          no-caps
+          @click="exportCSV"
+        />
       </div>
 
       <div class="row q-col-gutter-md">
@@ -77,80 +97,86 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { QPopupProxy } from 'quasar'
+import { computed, ref } from 'vue';
+import type { QPopupProxy } from 'quasar';
 
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { investorPortalService } from '../services/investorPortalService'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { investorPortalService } from '../services/investorPortalService';
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
-const startPopup = ref<QPopupProxy | null>(null)
-const endPopup = ref<QPopupProxy | null>(null)
+const startPopup = ref<QPopupProxy | null>(null);
+const endPopup = ref<QPopupProxy | null>(null);
 
 const getFirstDayOfMonth = () => {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+};
 
-const getToday = () => new Date().toISOString().slice(0, 10)
+const getToday = () => new Date().toISOString().slice(0, 10);
 
-const startDate = ref(getFirstDayOfMonth())
-const endDate = ref(getToday())
-const loading = ref(false)
-const error = ref<string | null>(null)
-const report = ref<any>(null)
+const startDate = ref(getFirstDayOfMonth());
+const endDate = ref(getToday());
+const loading = ref(false);
+const error = ref<string | null>(null);
+const report = ref<any>(null);
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(
-    Number(value ?? 0),
-  )
+  new Intl.NumberFormat('en-BD', {
+    style: 'currency',
+    currency: 'BDT',
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
 
 const reportCards = computed(() => {
-  if (!report.value) return []
+  if (!report.value) return [];
 
   return [
     { label: 'Starting Balance', value: report.value.starting_balance },
     { label: 'Deposits in Period', value: report.value.deposits_sum },
     { label: 'Profit Earned in Period', value: report.value.profit_earned_sum },
     { label: 'Withdrawals in Period', value: report.value.withdrawals_sum },
-    { label: 'Ending Balance', value: report.value.ending_balance, class: 'bg-indigo-1 text-indigo-9' },
-  ]
-})
+    {
+      label: 'Ending Balance',
+      value: report.value.ending_balance,
+      class: 'bg-indigo-1 text-indigo-9',
+    },
+  ];
+});
 
 const generateReport = async () => {
-  loading.value = true
-  error.value = null
-  report.value = null
+  loading.value = true;
+  error.value = null;
+  report.value = null;
 
-  const tenantId = authStore.tenantId
-  const investorId = authStore.member?.id
+  const tenantId = authStore.tenantId;
+  const investorId = authStore.member?.id;
 
   if (!tenantId || !investorId) {
-    error.value = 'Auth session context invalid.'
-    loading.value = false
-    return
+    error.value = 'Auth session context invalid.';
+    loading.value = false;
+    return;
   }
 
   const result = await investorPortalService.getCapitalReport(
     tenantId,
     investorId,
     startDate.value,
-    endDate.value
-  )
+    endDate.value,
+  );
 
   if (!result.success) {
-    error.value = result.error ?? 'Failed to generate report.'
+    error.value = result.error ?? 'Failed to generate report.';
   } else {
-    report.value = result.data
+    report.value = result.data;
   }
-  loading.value = false
-}
+  loading.value = false;
+};
 
 const exportCSV = () => {
-  if (!report.value) return
-  const data = report.value
+  if (!report.value) return;
+  const data = report.value;
   const csvContent = [
     ['Period Capital Summary Report'],
     ['Start Date', startDate.value],
@@ -162,14 +188,16 @@ const exportCSV = () => {
     ['Profit Earned in Period', data.profit_earned_sum],
     ['Withdrawals in Period', data.withdrawals_sum],
     ['Ending Balance', data.ending_balance],
-  ].map(e => e.join(',')).join('\n')
+  ]
+    .map((e) => e.join(','))
+    .join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.setAttribute('download', `Capital_Summary_${startDate.value}_to_${endDate.value}.csv`)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `Capital_Summary_${startDate.value}_to_${endDate.value}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 </script>

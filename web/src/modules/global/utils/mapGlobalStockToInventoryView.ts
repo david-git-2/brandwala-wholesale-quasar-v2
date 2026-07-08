@@ -1,25 +1,25 @@
-import type { InventoryItemWithStock, Shipment } from '../types'
+import type { InventoryItemWithStock, Shipment } from '../types';
 
-import type { GlobalStockRow } from '../types'
+import type { GlobalStockRow } from '../types';
 
 const calculateUsableQuantity = (params: {
-  available: number
-  reserved: number
-  damaged: number
-  stolen: number
-}) => Math.max(0, params.available - params.reserved - params.damaged - params.stolen)
+  available: number;
+  reserved: number;
+  damaged: number;
+  stolen: number;
+}) => Math.max(0, params.available - params.reserved - params.damaged - params.stolen);
 
 export const mapGlobalStockToInventoryView = (
   row: GlobalStockRow,
   shipment?: Shipment | null,
 ): InventoryItemWithStock => {
-  const available = row.excellent_qty
-  const reserved = row.reserved_qty
-  const damaged = row.box_damage_qty
-  const stolen = row.stolen_qty
-  const expired = row.expired_qty
-  const openBox = row.box_less_qty
-  const usable = calculateUsableQuantity({ available, reserved, damaged, stolen })
+  const available = row.excellent_qty;
+  const reserved = row.reserved_qty;
+  const damaged = row.box_damage_qty;
+  const stolen = row.stolen_qty;
+  const expired = row.expired_qty;
+  const openBox = row.box_less_qty;
+  const usable = calculateUsableQuantity({ available, reserved, damaged, stolen });
 
   return {
     id: row.id,
@@ -64,5 +64,5 @@ export const mapGlobalStockToInventoryView = (
       expired,
       open_box: openBox,
     },
-  }
-}
+  };
+};

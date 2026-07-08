@@ -59,40 +59,40 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useTenantStore } from '../stores/tenantStore'
-import AddTenantDialog from '../components/AddTenantDialog.vue'
-import TenantTreeList from '../components/TenantTreeList.vue'
-import type { TenantCreateInput, TenantUpdateInput } from '../types'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useTenantStore } from '../stores/tenantStore';
+import AddTenantDialog from '../components/AddTenantDialog.vue';
+import TenantTreeList from '../components/TenantTreeList.vue';
+import type { TenantCreateInput, TenantUpdateInput } from '../types';
 
 type TenantForm = {
-  id?: number
-  name: string
-  slug: string
-  public_domain: string | null
-  is_active: boolean
-  parent_id: number | null
-  created_at?: string
-  updated_at?: string
-}
+  id?: number;
+  name: string;
+  slug: string;
+  public_domain: string | null;
+  is_active: boolean;
+  parent_id: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
-const router = useRouter()
-const tenantStore = useTenantStore()
-const { items, loading, error } = storeToRefs(tenantStore)
+const router = useRouter();
+const tenantStore = useTenantStore();
+const { items, loading, error } = storeToRefs(tenantStore);
 
-const openAddDialog = ref(false)
-const selectedTenant = ref<TenantForm | null>(null)
+const openAddDialog = ref(false);
+const selectedTenant = ref<TenantForm | null>(null);
 
-const refreshTenants = () => tenantStore.fetchTenants()
+const refreshTenants = () => tenantStore.fetchTenants();
 
 const onClickAddTenant = () => {
-  selectedTenant.value = null
-  openAddDialog.value = true
-}
+  selectedTenant.value = null;
+  openAddDialog.value = true;
+};
 
 const handleSaveTenant = async (payload: TenantForm) => {
   if (payload.id) {
@@ -103,9 +103,9 @@ const handleSaveTenant = async (payload: TenantForm) => {
       public_domain: payload.public_domain,
       is_active: payload.is_active,
       parent_id: payload.parent_id,
-    }
+    };
 
-    await tenantStore.updateTenant(updatePayload)
+    await tenantStore.updateTenant(updatePayload);
   } else {
     const createPayload: TenantCreateInput = {
       name: payload.name,
@@ -113,20 +113,20 @@ const handleSaveTenant = async (payload: TenantForm) => {
       public_domain: payload.public_domain,
       is_active: payload.is_active,
       parent_id: payload.parent_id,
-    }
+    };
 
-    await tenantStore.createTenant(createPayload)
+    await tenantStore.createTenant(createPayload);
   }
-}
+};
 
 const goToTenantDetails = (tenantId?: number) => {
-  if (!tenantId) return
-  void router.push(`/platform/tenants/${tenantId}`)
-}
+  if (!tenantId) return;
+  void router.push(`/platform/tenants/${tenantId}`);
+};
 
 onMounted(() => {
-  void refreshTenants()
-})
+  void refreshTenants();
+});
 </script>
 
 <style scoped>
@@ -178,7 +178,9 @@ onMounted(() => {
 
 .tenant-page__card {
   width: 100%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .tenant-page__card:hover {

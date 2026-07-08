@@ -1,6 +1,5 @@
 <template>
   <section class="auth-card" :class="`auth-card--${tone}`">
-
     <!-- Top accent bar -->
     <div class="auth-card__accent-bar" aria-hidden="true" />
 
@@ -91,78 +90,76 @@
 
     <!-- Security note -->
     <p class="auth-card__secure-note">
-      <q-icon name="o_lock" size="0.85rem" style="vertical-align: -2px;" />
+      <q-icon name="o_lock" size="0.85rem" style="vertical-align: -2px" />
       Secured with OAuth 2.0 — we never store your password
     </p>
-
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, watchEffect } from 'vue'
-import { useRoute } from 'vue-router'
-import type { Ref } from 'vue'
-import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin'
+import { computed, inject, watchEffect } from 'vue';
+import { useRoute } from 'vue-router';
+import type { Ref } from 'vue';
+import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
 
 const props = defineProps<{
-  scope: AuthScope
-  title: string
-  ctaLabel: string
-  disabled?: boolean
-  tenantSlug?: string | null
-  tone: 'platform' | 'app' | 'shop' | 'investor'
-}>()
+  scope: AuthScope;
+  title: string;
+  ctaLabel: string;
+  disabled?: boolean;
+  tenantSlug?: string | null;
+  tone: 'platform' | 'app' | 'shop' | 'investor';
+}>();
 
-const route = useRoute()
+const route = useRoute();
 const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
   tenantSlug: props.tenantSlug ?? null,
-})
+});
 
 // Push our title up to AuthLayout so the hero canvas tagline stays in sync
-const panelTitle = inject<Ref<string>>('authPanelTitle')
+const panelTitle = inject<Ref<string>>('authPanelTitle');
 watchEffect(() => {
-  if (panelTitle) panelTitle.value = props.title
-})
+  if (panelTitle) panelTitle.value = props.title;
+});
 
 const loginErrorMessage = computed(() => {
-  const error = route.query.login_error
-  if (error === 'session_expired')
-    return 'Your session expired. Please sign in again.'
+  const error = route.query.login_error;
+  if (error === 'session_expired') return 'Your session expired. Please sign in again.';
   if (error === 'no_membership')
-    return 'This Google account does not have permission for this entry point yet.'
+    return 'This Google account does not have permission for this entry point yet.';
   if (error === 'wrong_tenant')
     return props.scope === 'app'
       ? 'This Google account is not allowed for the requested tenant workspace.'
-      : 'This Google account is not allowed for this tenant shop link.'
+      : 'This Google account is not allowed for this tenant shop link.';
   if (error === 'invalid_tenant')
     return props.scope === 'app'
       ? 'The requested tenant workspace could not be found for this account.'
-      : 'This shop link is not connected to an active tenant.'
-  return ''
-})
+      : 'This shop link is not connected to an active tenant.';
+  return '';
+});
 </script>
 
 <style scoped>
 /* ── Per-scope accent colour ─────────────────────────── */
 .auth-card--platform {
-  --card-accent:     #dc2626;
+  --card-accent: #dc2626;
   --card-accent-rgb: 220 38 38;
-  --card-soft:       rgb(220 38 38 / 0.08);
+  --card-soft: rgb(220 38 38 / 0.08);
 }
 .auth-card--app {
-  --card-accent:     #059669;
+  --card-accent: #059669;
   --card-accent-rgb: 5 150 105;
-  --card-soft:       rgb(5 150 105 / 0.08);
+  --card-soft: rgb(5 150 105 / 0.08);
 }
 .auth-card--shop {
-  --card-accent:     #2563eb;
+  --card-accent: #2563eb;
   --card-accent-rgb: 37 99 235;
-  --card-soft:       rgb(37 99 235 / 0.08);
+  --card-soft: rgb(37 99 235 / 0.08);
 }
 .auth-card--investor {
-  --card-accent:     #0f766e;
+  --card-accent: #0f766e;
   --card-accent-rgb: 15 118 110;
-  --card-soft:       rgb(15 118 110 / 0.08);
+  --card-soft: rgb(15 118 110 / 0.08);
 }
 
 /* ── Card shell ──────────────────────────────────────── */
@@ -344,7 +341,9 @@ const loginErrorMessage = computed(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Security note ───────────────────────────────────── */

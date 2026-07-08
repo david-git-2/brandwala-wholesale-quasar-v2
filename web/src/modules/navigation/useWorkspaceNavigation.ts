@@ -1,12 +1,12 @@
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import type { AccessRole } from 'src/modules/auth/guards/accessGuard'
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin'
-import { hasTenantContextForScope, useModulePermissions } from './modulePermissions'
-import { MODULE_REGISTRY } from './moduleRegistry'
-import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/utils/moduleHierarchy'
+import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
+import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
+import { hasTenantContextForScope, useModulePermissions } from './modulePermissions';
+import { MODULE_REGISTRY } from './moduleRegistry';
+import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/utils/moduleHierarchy';
 
 /**
  * Sidebar nav grouping for the app scope.
@@ -18,21 +18,18 @@ import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/uti
  * - Domain groups (Invoices, Accounting, Commerce, …) only contain routes from that same module family.
  */
 
-type WorkspaceScope = AuthScope
+type WorkspaceScope = AuthScope;
 
 type BaseWorkspaceLinkDefinition = {
-  title: string
-  caption: string
-  icon: string
-  route: (context: {
-    scope: WorkspaceScope
-    tenantSlug: string | null
-  }) => string
-  scopes: readonly WorkspaceScope[]
-  allowedRoles?: readonly AccessRole[]
-  requiresTenantContext?: boolean
-  target?: string
-}
+  title: string;
+  caption: string;
+  icon: string;
+  route: (context: { scope: WorkspaceScope; tenantSlug: string | null }) => string;
+  scopes: readonly WorkspaceScope[];
+  allowedRoles?: readonly AccessRole[];
+  requiresTenantContext?: boolean;
+  target?: string;
+};
 
 const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
@@ -90,8 +87,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     icon: 'insights',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: ({ tenantSlug }) =>
-      tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard',
+    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'),
   },
   {
     title: 'Tenants',
@@ -99,8 +95,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     icon: 'domain',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: ({ tenantSlug }) =>
-      tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants',
+    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants'),
   },
   {
     title: 'Access Control',
@@ -128,10 +123,9 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,
-    route: ({ tenantSlug }) =>
-      tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard',
+    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard'),
   },
-] as const
+] as const;
 
 const getBaseWorkspaceLinks = ({
   scope,
@@ -139,49 +133,46 @@ const getBaseWorkspaceLinks = ({
   tenantId,
   tenantSlug,
 }: {
-  scope: WorkspaceScope | null
-  role: AccessRole | null | undefined
-  tenantId: number | null | undefined
-  tenantSlug: string | null
+  scope: WorkspaceScope | null;
+  role: AccessRole | null | undefined;
+  tenantId: number | null | undefined;
+  tenantSlug: string | null;
 }): WorkspaceLink[] => {
   if (!scope) {
-    return []
+    return [];
   }
 
   return WORKSPACE_NAV_REGISTRY.filter((definition) => {
     if (!definition.scopes.includes(scope)) {
-      return false
+      return false;
     }
 
     if (definition.allowedRoles && (!role || !definition.allowedRoles.includes(role))) {
-      return false
+      return false;
     }
 
-    if (
-      definition.requiresTenantContext &&
-      !hasTenantContextForScope({ scope, tenantId })
-    ) {
-      return false
+    if (definition.requiresTenantContext && !hasTenantContextForScope({ scope, tenantId })) {
+      return false;
     }
 
-    return true
+    return true;
   }).map((definition) => {
     const link: WorkspaceLink = {
       title: definition.title,
       caption: definition.caption,
       icon: definition.icon,
       to: definition.route({ scope, tenantSlug }),
-    }
+    };
     if (definition.target) {
-      link.target = definition.target
+      link.target = definition.target;
     }
-    return link
-  })
-}
+    return link;
+  });
+};
 
 export const useWorkspaceLinks = (scope: WorkspaceScope) => {
-  const authStore = useAuthStore()
-  const { accessibleModuleRoutes } = useModulePermissions()
+  const authStore = useAuthStore();
+  const { accessibleModuleRoutes } = useModulePermissions();
 
   const links = computed<WorkspaceLink[]>(() => {
     const baseLinks = getBaseWorkspaceLinks({
@@ -189,19 +180,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       role: authStore.matchedRole,
       tenantId: authStore.tenantId,
       tenantSlug: authStore.tenantSlug,
-    })
+    });
 
     const scopedModuleRouteDefinitions = accessibleModuleRoutes.value.filter(
       (routeDefinition) => routeDefinition.scope === scope,
-    )
+    );
 
-    const moduleLinks = scopedModuleRouteDefinitions
-      .map((routeDefinition) => ({
-        title: routeDefinition.title,
-        caption: routeDefinition.caption,
-        icon: routeDefinition.icon,
-        to: routeDefinition.to,
-      }))
+    const moduleLinks = scopedModuleRouteDefinitions.map((routeDefinition) => ({
+      title: routeDefinition.title,
+      caption: routeDefinition.caption,
+      icon: routeDefinition.icon,
+      to: routeDefinition.to,
+    }));
 
     if (scope === 'shop') {
       const shopModuleLinks = scopedModuleRouteDefinitions.map((routeDefinition) => ({
@@ -209,14 +199,14 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
         to: routeDefinition.to,
-      }))
+      }));
 
       const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
         (routeDefinition) => routeDefinition.moduleKey === 'koba_retail',
-      )
+      );
 
       if (!hasKobaRetailModuleAccess) {
-        return [...baseLinks, ...shopModuleLinks]
+        return [...baseLinks, ...shopModuleLinks];
       }
 
       const moduleLinksWithoutGrouped = scopedModuleRouteDefinitions
@@ -226,7 +216,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           caption: routeDefinition.caption,
           icon: routeDefinition.icon,
           to: routeDefinition.to,
-        }))
+        }));
 
       const kobaRetailChildren = scopedModuleRouteDefinitions
         .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
@@ -235,7 +225,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           caption: routeDefinition.caption,
           icon: 'chevron_right',
           to: routeDefinition.to,
-        }))
+        }));
 
       const groupedLinks = [
         ...moduleLinksWithoutGrouped,
@@ -245,28 +235,28 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           icon: 'shopping_bag',
           children: kobaRetailChildren,
         },
-      ]
+      ];
 
-      return [...baseLinks, ...groupedLinks]
+      return [...baseLinks, ...groupedLinks];
     }
 
     if (scope !== 'app') {
-      return [...baseLinks, ...moduleLinks]
+      return [...baseLinks, ...moduleLinks];
     }
 
     const { hierarchyLinks, remainingRoutes } = buildNavLinksFromModuleHierarchy(
       scopedModuleRouteDefinitions,
       MODULE_REGISTRY,
-    )
+    );
 
     const hasProductsModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'products',
-    )
+    );
     const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'koba_retail',
-    )
+    );
 
     const flatLinks = remainingRoutes
       .filter(
@@ -278,7 +268,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
         to: routeDefinition.to,
-      }))
+      }));
 
     const productsChildren = remainingRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'products')
@@ -287,24 +277,24 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
-      }))
+      }));
 
     const kobaRetailChildren = remainingRoutes
       .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
       .filter((routeDefinition) => {
-        const role = authStore.matchedRole
-        const isAdminOrSuper = role === 'admin' || role === 'superadmin'
+        const role = authStore.matchedRole;
+        const isAdminOrSuper = role === 'admin' || role === 'superadmin';
         if (isAdminOrSuper && routeDefinition.title === 'Cart') {
-          return false
+          return false;
         }
-        return true
+        return true;
       })
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: 'chevron_right',
         to: routeDefinition.to,
-      }))
+      }));
 
     const groupedLinks = [
       ...flatLinks,
@@ -329,11 +319,13 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           ]
         : []),
       ...hierarchyLinks,
-    ]
+    ];
 
     const baseLinksMapped = baseLinks.map((link) => {
       if (link.title === 'Access Control') {
-        const basePath = authStore.tenantSlug ? `/${authStore.tenantSlug}/app/access-control` : '/app/access-control'
+        const basePath = authStore.tenantSlug
+          ? `/${authStore.tenantSlug}/app/access-control`
+          : '/app/access-control';
         return {
           title: 'Access Control',
           caption: link.caption,
@@ -370,19 +362,19 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
               to: `${basePath}/investors`,
             },
           ],
-        }
+        };
       }
-      return link
-    })
+      return link;
+    });
 
-    return [...baseLinksMapped, ...groupedLinks]
-  })
+    return [...baseLinksMapped, ...groupedLinks];
+  });
 
   return {
     links,
-  }
-}
+  };
+};
 
-export const useAppWorkspaceLinks = () => useWorkspaceLinks('app')
-export const useShopWorkspaceLinks = () => useWorkspaceLinks('shop')
-export const usePlatformWorkspaceLinks = () => useWorkspaceLinks('platform')
+export const useAppWorkspaceLinks = () => useWorkspaceLinks('app');
+export const useShopWorkspaceLinks = () => useWorkspaceLinks('shop');
+export const usePlatformWorkspaceLinks = () => useWorkspaceLinks('platform');

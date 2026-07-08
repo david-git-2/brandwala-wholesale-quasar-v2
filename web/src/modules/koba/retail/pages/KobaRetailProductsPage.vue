@@ -1,13 +1,10 @@
 <template>
   <q-page class="bw-page">
-
     <!-- Page Header -->
     <div class="koba-header q-mb-md">
       <div>
         <div class="text-h5 text-weight-bold">Koba Retail</div>
-        <div class="text-caption text-grey-7">
-          {{ store.meta.total }} products
-        </div>
+        <div class="text-caption text-grey-7">{{ store.meta.total }} products</div>
       </div>
       <div v-if="isAdminOrSuper" class="row items-center q-gutter-sm">
         <q-btn
@@ -23,11 +20,11 @@
 
     <!-- Filter Toolbar -->
     <div class="row items-center q-gutter-sm q-mb-md">
-
       <!-- Search -->
       <q-input
         v-model="searchDraft"
-        outlined dense
+        outlined
+        dense
         class="soft-input"
         style="min-width: 220px; flex: 1 1 220px; max-width: 340px"
         placeholder="Search by name, SKU, barcode…"
@@ -40,7 +37,15 @@
       </q-input>
 
       <!-- Sidebar Toggle Button -->
-      <q-btn flat round dense icon="filter_alt" color="primary" aria-label="Filters" @click="filterDrawerOpen = true">
+      <q-btn
+        flat
+        round
+        dense
+        icon="filter_alt"
+        color="primary"
+        aria-label="Filters"
+        @click="filterDrawerOpen = true"
+      >
         <q-badge v-if="drawerFilterCount > 0" color="primary" rounded floating>
           {{ drawerFilterCount }}
         </q-badge>
@@ -48,8 +53,22 @@
 
       <!-- Active filter count + clear -->
       <div v-if="drawerFilterCount > 0" class="row items-center q-gutter-xs">
-        <q-chip dense color="primary" text-color="white" :label="`${drawerFilterCount} filter${drawerFilterCount > 1 ? 's' : ''}`" />
-        <q-btn flat dense no-caps size="sm" icon="close" label="Clear" color="grey-7" @click="onClearDrawerFilters" />
+        <q-chip
+          dense
+          color="primary"
+          text-color="white"
+          :label="`${drawerFilterCount} filter${drawerFilterCount > 1 ? 's' : ''}`"
+        />
+        <q-btn
+          flat
+          dense
+          no-caps
+          size="sm"
+          icon="close"
+          label="Clear"
+          color="grey-7"
+          @click="onClearDrawerFilters"
+        />
       </div>
     </div>
 
@@ -59,7 +78,8 @@
       <q-select
         v-model="selectedBrandId"
         :options="brandOptions"
-        outlined dense
+        outlined
+        dense
         label="Brand"
         class="soft-input q-mb-sm"
         emit-value
@@ -72,7 +92,8 @@
       <q-select
         v-model="selectedCategoryId"
         :options="categoryOptions"
-        outlined dense
+        outlined
+        dense
         label="Category"
         class="soft-input q-mb-md"
         emit-value
@@ -98,11 +119,7 @@
     <!-- Card Grid -->
     <template v-else>
       <div class="row q-col-gutter-sm">
-        <div
-          v-for="item in store.items"
-          :key="item.id"
-          class="col-6 col-sm-4 col-md-3 col-lg-2"
-        >
+        <div v-for="item in store.items" :key="item.id" class="col-6 col-sm-4 col-md-3 col-lg-2">
           <ProductCard :product="item" />
         </div>
       </div>
@@ -119,95 +136,91 @@
         />
       </div>
     </template>
-
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useKobaRetailStore } from 'src/modules/koba/retail/stores/kobaRetailStore'
-import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore'
-import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
-import ProductCard from 'src/modules/koba/retail/components/ProductCard.vue'
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { computed, onMounted, ref } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useKobaRetailStore } from 'src/modules/koba/retail/stores/kobaRetailStore';
+import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
+import ProductCard from 'src/modules/koba/retail/components/ProductCard.vue';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 
-const store = useKobaRetailStore()
-const cartStore = useKobaCartStore()
-const authStore = useAuthStore()
-const settingsStore = useKobaSettingsStore()
+const store = useKobaRetailStore();
+const cartStore = useKobaCartStore();
+const authStore = useAuthStore();
+const settingsStore = useKobaSettingsStore();
 
 const isAdminOrSuper = computed(() => {
-  const role = authStore.matchedRole
-  return role === 'admin' || role === 'superadmin'
-})
+  const role = authStore.matchedRole;
+  return role === 'admin' || role === 'superadmin';
+});
 
 // ─── UI state ────────────────────────────────────────────────────────────────
 
-const searchDraft     = ref('')
-const selectedBrandId     = ref<number | null>(null)
-const selectedCategoryId  = ref<number | null>(null)
-const currentPage     = ref(1)
-const filterDrawerOpen    = ref(false)
+const searchDraft = ref('');
+const selectedBrandId = ref<number | null>(null);
+const selectedCategoryId = ref<number | null>(null);
+const currentPage = ref(1);
+const filterDrawerOpen = ref(false);
 
 // ─── Computed options for selects ─────────────────────────────────────────────
 
-const brandOptions = computed(() =>
-  store.brands.map((b) => ({ label: b.name, value: b.id })),
-)
+const brandOptions = computed(() => store.brands.map((b) => ({ label: b.name, value: b.id })));
 
 const categoryOptions = computed(() =>
   store.categories.map((c) => ({ label: c.name, value: c.id })),
-)
+);
 
-const drawerFilterCount = computed(() =>
-  (selectedBrandId.value    ? 1 : 0) +
-  (selectedCategoryId.value ? 1 : 0),
-)
+const drawerFilterCount = computed(
+  () => (selectedBrandId.value ? 1 : 0) + (selectedCategoryId.value ? 1 : 0),
+);
 
 // ─── Filter handlers ─────────────────────────────────────────────────────────
 
 async function onSearchChange(val: string | number | null) {
-  await store.applyFilters({ search: String(val ?? '').trim() })
-  currentPage.value = 1
+  await store.applyFilters({ search: String(val ?? '').trim() });
+  currentPage.value = 1;
 }
 
 async function onSearchClear() {
-  await store.applyFilters({ search: '' })
-  currentPage.value = 1
+  await store.applyFilters({ search: '' });
+  currentPage.value = 1;
 }
 
 async function onApplyDrawerFilters() {
-  filterDrawerOpen.value = false
+  filterDrawerOpen.value = false;
   await store.applyFilters({
     brand_id: selectedBrandId.value,
     category_id: selectedCategoryId.value,
-  })
-  currentPage.value = 1
+  });
+  currentPage.value = 1;
 }
 
 function onResetDrawerFilters() {
-  selectedBrandId.value = null
-  selectedCategoryId.value = null
+  selectedBrandId.value = null;
+  selectedCategoryId.value = null;
 }
 
 async function onClearDrawerFilters() {
-  selectedBrandId.value = null
-  selectedCategoryId.value = null
-  filterDrawerOpen.value = false
+  selectedBrandId.value = null;
+  selectedCategoryId.value = null;
+  filterDrawerOpen.value = false;
   await store.applyFilters({
     brand_id: null,
     category_id: null,
-  })
-  currentPage.value = 1
+  });
+  currentPage.value = 1;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 async function onPageChange(page: number) {
-  currentPage.value = page
-  await store.fetchProducts(page)
+  currentPage.value = page;
+  await store.fetchProducts(page);
 }
 
 // ─── Initial load ─────────────────────────────────────────────────────────────
@@ -217,12 +230,12 @@ onMounted(async () => {
     store.fetchLookups(),
     store.fetchProducts(1),
     settingsStore.fetchSettings(),
-  ]
+  ];
   if (!isAdminOrSuper.value) {
-    promises.push(cartStore.fetchCart())
+    promises.push(cartStore.fetchCart());
   }
-  await Promise.all(promises)
-})
+  await Promise.all(promises);
+});
 </script>
 
 <style scoped>
@@ -252,6 +265,9 @@ onMounted(async () => {
 }
 
 @media (max-width: 599px) {
-  .koba-header { flex-wrap: wrap; align-items: flex-start; }
+  .koba-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
 }
 </style>

@@ -45,10 +45,7 @@ export const thriftShipmentRepository = {
   },
 
   async deleteShipment(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('thrift_shipments')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('thrift_shipments').delete().eq('id', id);
     if (error) throw error;
   },
 

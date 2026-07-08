@@ -27,7 +27,8 @@
         <template #avatar>
           <q-icon name="info" color="indigo" />
         </template>
-        Withdrawable balance is calculated from realized profits. Contact your administrator to request a payout.
+        Withdrawable balance is calculated from realized profits. Contact your administrator to
+        request a payout.
       </q-banner>
 
       <q-card flat class="floating-surface shadow-1 q-pa-md">
@@ -61,24 +62,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue';
 
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue'
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvestorPortalStore } from '../stores/investorPortalStore'
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
+import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvestorPortalStore } from '../stores/investorPortalStore';
 
-const authStore = useAuthStore()
-const investorPortalStore = useInvestorPortalStore()
+const authStore = useAuthStore();
+const investorPortalStore = useInvestorPortalStore();
 
-const loading = ref(true)
-const error = ref<string | null>(null)
+const loading = ref(true);
+const error = ref<string | null>(null);
 
-const portfolio = computed(() => investorPortalStore.portfolio)
+const portfolio = computed(() => investorPortalStore.portfolio);
 
 const balanceCards = computed(() => {
-  const balances = portfolio.value?.balances
-  if (!balances) return []
+  const balances = portfolio.value?.balances;
+  if (!balances) return [];
 
   return [
     { label: 'Total Invested', value: balances.deposits },
@@ -86,28 +87,34 @@ const balanceCards = computed(() => {
     { label: 'Unallocated Cash', value: balances.available },
     { label: 'Realized Profit', value: balances.realized_profit },
     { label: 'Unrealized Profit', value: balances.unrealized_profit },
-    { label: 'Withdrawable Balance', value: balances.withdrawable_balance, class: 'bg-green-1 text-green-9' },
+    {
+      label: 'Withdrawable Balance',
+      value: balances.withdrawable_balance,
+      class: 'bg-green-1 text-green-9',
+    },
     { label: 'Total Withdrawn', value: balances.withdrawals },
-  ]
-})
+  ];
+});
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(
-    Number(value ?? 0),
-  )
+  new Intl.NumberFormat('en-BD', {
+    style: 'currency',
+    currency: 'BDT',
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
 
 onMounted(async () => {
-  const investorId = authStore.member?.id
+  const investorId = authStore.member?.id;
   if (!investorId) {
-    error.value = 'Investor account not linked.'
-    loading.value = false
-    return
+    error.value = 'Investor account not linked.';
+    loading.value = false;
+    return;
   }
 
-  const result = await investorPortalStore.loadPortfolio(investorId)
+  const result = await investorPortalStore.loadPortfolio(investorId);
   if (!result.success) {
-    error.value = result.error ?? 'Failed to load portfolio.'
+    error.value = result.error ?? 'Failed to load portfolio.';
   }
-  loading.value = false
-})
+  loading.value = false;
+});
 </script>

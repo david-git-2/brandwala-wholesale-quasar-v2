@@ -1,12 +1,12 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
   getShopLoginRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const dashboardRoutes: RouteRecordRaw[] = [
   {
@@ -40,17 +40,17 @@ const dashboardRoutes: RouteRecordRaw[] = [
           requireTenantContext: true,
           validateAccess: ({ authStore, to }) => {
             if (!authStore.selectedTenant) {
-              return { name: 'admin-tenant-list' }
+              return { name: 'admin-tenant-list' };
             }
 
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant.slug
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const selectedTenantSlug = authStore.selectedTenant.slug;
 
             if (routeTenantSlug === selectedTenantSlug) {
-              return true
+              return true;
             }
 
-            return getAppRouteLocation(to, selectedTenantSlug)
+            return getAppRouteLocation(to, selectedTenantSlug);
           },
         }),
       },
@@ -71,11 +71,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
-          allowedRoles: [
-            'customer_admin',
-            'customer_negotiator',
-            'customer_staff',
-          ],
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
           validateAccess: ({ authStore, to }) => {
             if (
               authStore.actorType !== 'customer_group_member' ||
@@ -83,16 +79,16 @@ const dashboardRoutes: RouteRecordRaw[] = [
             ) {
               return getShopLoginRouteLocation(to, {
                 login_error: 'no_membership',
-              })
+              });
             }
 
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const sessionTenantSlug = authStore.tenantSlug
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const sessionTenantSlug = authStore.tenantSlug;
 
             if (!sessionTenantSlug) {
               return getShopLoginRouteLocation(to, {
                 login_error: 'invalid_tenant',
-              })
+              });
             }
 
             if (!routeTenantSlug) {
@@ -102,11 +98,11 @@ const dashboardRoutes: RouteRecordRaw[] = [
                   ...(to.params ?? {}),
                   tenantSlug: sessionTenantSlug,
                 },
-              })
+              });
             }
 
             if (routeTenantSlug === sessionTenantSlug) {
-              return true
+              return true;
             }
 
             return getShopDashboardRouteLocation({
@@ -114,12 +110,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
               query: {
                 tenant_slug: sessionTenantSlug,
               },
-            })
+            });
           },
         }),
       },
     ],
   },
-]
+];
 
-export default dashboardRoutes
+export default dashboardRoutes;

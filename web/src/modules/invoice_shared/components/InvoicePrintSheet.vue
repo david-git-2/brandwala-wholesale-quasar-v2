@@ -2,8 +2,12 @@
   <div class="invoice-sheet shadow-2">
     <div class="row justify-between items-start q-mb-sm">
       <div class="col-7">
-        <div class="text-subtitle1 text-weight-bold brand-title">{{ model.brandName || 'COMPANY BRAND' }}</div>
-        <div class="text-caption text-grey-9 brand-address" style="white-space: pre-wrap">{{ model.brandAddress || '' }}</div>
+        <div class="text-subtitle1 text-weight-bold brand-title">
+          {{ model.brandName || 'COMPANY BRAND' }}
+        </div>
+        <div class="text-caption text-grey-9 brand-address" style="white-space: pre-wrap">
+          {{ model.brandAddress || '' }}
+        </div>
       </div>
       <div class="col-5 text-right" style="font-size: 11px">
         <div class="text-subtitle1 text-weight-bold text-green-accent q-mb-xs">INVOICE</div>
@@ -20,7 +24,9 @@
       <template v-if="!model.isWholesale">
         <div class="q-mt-xs"><strong>Recipient:</strong> {{ model.recipientName }}</div>
         <div v-if="model.recipientPhone">{{ model.recipientPhone }}</div>
-        <div v-if="model.recipientAddress" style="white-space: pre-wrap">{{ model.recipientAddress }}</div>
+        <div v-if="model.recipientAddress" style="white-space: pre-wrap">
+          {{ model.recipientAddress }}
+        </div>
       </template>
     </div>
 
@@ -42,9 +48,7 @@
             <div v-if="line.imageUrl" class="print-item-image-box">
               <img :src="line.imageUrl" class="print-item-image" />
             </div>
-            <div v-else class="print-item-image-box print-item-image-fallback">
-              No Image
-            </div>
+            <div v-else class="print-item-image-box print-item-image-fallback">No Image</div>
           </td>
           <td>{{ line.name }}</td>
           <td class="text-right">{{ line.quantity }}</td>
@@ -56,35 +60,52 @@
 
     <div class="row justify-end">
       <div style="min-width: 220px">
-        <div class="row justify-between"><span>Subtotal</span><span>{{ formatAmount(model.subtotal) }}</span></div>
-        <div class="row justify-between"><span>Total Qty</span><span>{{ totalQuantity }}</span></div>
-        <div v-for="charge in model.charges" :key="charge.type" class="row justify-between">
-          <span>{{ charge.label }}</span><span>{{ formatAmount(charge.amount) }}</span>
+        <div class="row justify-between">
+          <span>Subtotal</span><span>{{ formatAmount(model.subtotal) }}</span>
         </div>
-        <div v-if="model.discount > 0" class="row justify-between"><span>Discount</span><span>-{{ formatAmount(model.discount) }}</span></div>
-        <div class="row justify-between text-weight-bold q-mt-xs"><span>Total</span><span>{{ formatAmount(model.total) }}</span></div>
-        <div class="row justify-between"><span>Paid</span><span>{{ formatAmount(model.paid) }}</span></div>
-        <div class="row justify-between"><span>Due</span><span>{{ formatAmount(model.due) }}</span></div>
+        <div class="row justify-between">
+          <span>Total Qty</span><span>{{ totalQuantity }}</span>
+        </div>
+        <div v-for="charge in model.charges" :key="charge.type" class="row justify-between">
+          <span>{{ charge.label }}</span
+          ><span>{{ formatAmount(charge.amount) }}</span>
+        </div>
+        <div v-if="model.discount > 0" class="row justify-between">
+          <span>Discount</span><span>-{{ formatAmount(model.discount) }}</span>
+        </div>
+        <div class="row justify-between text-weight-bold q-mt-xs">
+          <span>Total</span><span>{{ formatAmount(model.total) }}</span>
+        </div>
+        <div class="row justify-between">
+          <span>Paid</span><span>{{ formatAmount(model.paid) }}</span>
+        </div>
+        <div class="row justify-between">
+          <span>Due</span><span>{{ formatAmount(model.due) }}</span>
+        </div>
       </div>
     </div>
 
-    <div v-if="model.thankYouMessage" class="q-mt-md text-center text-caption">{{ model.thankYouMessage }}</div>
+    <div v-if="model.thankYouMessage" class="q-mt-md text-center text-caption">
+      {{ model.thankYouMessage }}
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { formatAmountBdt } from 'src/utils/currency'
+import { computed } from 'vue';
+import { formatAmountBdt } from 'src/utils/currency';
 
-import type { InvoicePrintModel } from '../types/invoicePrintModel'
+import type { InvoicePrintModel } from '../types/invoicePrintModel';
 
-const props = defineProps<{ model: InvoicePrintModel }>()
+const props = defineProps<{ model: InvoicePrintModel }>();
 
-const hasImages = computed(() => props.model.lines.some((line) => !!line.imageUrl))
+const hasImages = computed(() => props.model.lines.some((line) => !!line.imageUrl));
 
-const totalQuantity = computed(() => props.model.lines.reduce((sum, line) => sum + (line.quantity || 0), 0))
+const totalQuantity = computed(() =>
+  props.model.lines.reduce((sum, line) => sum + (line.quantity || 0), 0),
+);
 
-const formatAmount = (value: number) => formatAmountBdt(value)
+const formatAmount = (value: number) => formatAmountBdt(value);
 </script>
 
 <style scoped>

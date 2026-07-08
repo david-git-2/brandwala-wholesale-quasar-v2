@@ -8,13 +8,7 @@ export type ItemType =
   | 'bug'
   | 'feature';
 
-export type ItemStatus =
-  | 'todo'
-  | 'in_progress'
-  | 'review'
-  | 'done'
-  | 'blocked'
-  | 'archived';
+export type ItemStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'blocked' | 'archived';
 
 export type ItemPriority = 'low' | 'medium' | 'high' | 'urgent';
 

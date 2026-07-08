@@ -1,22 +1,23 @@
-import { defineBoot } from '#q-app/wrappers'
-import { createClient } from '@supabase/supabase-js'
-import { beginGlobalRequest, endGlobalRequest } from 'src/composables/useGlobalNetworkActivity'
+import { defineBoot } from '#q-app/wrappers';
+import { createClient } from '@supabase/supabase-js';
+import { beginGlobalRequest, endGlobalRequest } from 'src/composables/useGlobalNetworkActivity';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis)
-const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
+const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 
 const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {
-  const storageKey = 'brandwala.tenant.workspace.v1'
-  const storageValue = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
-  let selectedTenantId: string | null = null
+  const storageKey = 'brandwala.tenant.workspace.v1';
+  const storageValue =
+    typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
+  let selectedTenantId: string | null = null;
 
   if (storageValue) {
     try {
-      const parsed = JSON.parse(storageValue)
+      const parsed = JSON.parse(storageValue);
       if (parsed && parsed.selectedTenantId) {
-        selectedTenantId = parsed.selectedTenantId.toString()
+        selectedTenantId = parsed.selectedTenantId.toString();
       }
     } catch {
       // Ignore parse errors
@@ -24,83 +25,85 @@ const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined =
   }
 
   if (!selectedTenantId) {
-    return init
+    return init;
   }
 
-  const nextInit = { ...init }
-  const headers = new Headers(nextInit.headers)
-  headers.set('x-selected-tenant-id', selectedTenantId)
-  nextInit.headers = headers
-  return nextInit
-}
+  const nextInit = { ...init };
+  const headers = new Headers(nextInit.headers);
+  headers.set('x-selected-tenant-id', selectedTenantId);
+  nextInit.headers = headers;
+  return nextInit;
+};
 
 const isMonitoredSupabase401 = (urlStr: string): boolean => {
   if (!urlStr.startsWith(supabaseUrl)) {
-    return false
+    return false;
   }
 
   try {
-    const path = new URL(urlStr).pathname
+    const path = new URL(urlStr).pathname;
     const isMonitored =
       path.startsWith('/rest/v1/') ||
       path.startsWith('/functions/v1/') ||
-      path.startsWith('/storage/v1/')
-    const isExcluded =
-      path.startsWith('/auth/v1/token') || path.startsWith('/auth/v1/authorize')
+      path.startsWith('/storage/v1/');
+    const isExcluded = path.startsWith('/auth/v1/token') || path.startsWith('/auth/v1/authorize');
 
-    return isMonitored && !isExcluded
+    return isMonitored && !isExcluded;
   } catch {
-    return false
+    return false;
   }
-}
+};
 
 const trackedFetch: typeof fetch = async (input, init) => {
-  beginGlobalRequest()
+  beginGlobalRequest();
   try {
-    const modifiedInit = withSelectedTenantHeader(init)
-    let response = await defaultFetch(input, modifiedInit)
+    const modifiedInit = withSelectedTenantHeader(init);
+    let response = await defaultFetch(input, modifiedInit);
 
-    const urlStr = typeof input === 'string' ? input : input instanceof Request ? input.url : ''
+    const urlStr = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
     if (response.status === 401 && isMonitoredSupabase401(urlStr)) {
-      const headers = new Headers(modifiedInit?.headers)
-      const alreadyRetried = headers.get(AUTH_RETRY_HEADER) === '1'
-      const { tryRefreshSession, handleUnauthorizedResponse } = await import(
-        'src/modules/auth/utils/forceAuthLogout'
-      )
+      const headers = new Headers(modifiedInit?.headers);
+      const alreadyRetried = headers.get(AUTH_RETRY_HEADER) === '1';
+      const { tryRefreshSession, handleUnauthorizedResponse } =
+        await import('src/modules/auth/utils/forceAuthLogout');
 
       if (alreadyRetried) {
-        void handleUnauthorizedResponse()
+        void handleUnauthorizedResponse();
       } else {
-        const refreshed = await tryRefreshSession()
+        const refreshed = await tryRefreshSession();
         if (!refreshed) {
-          void handleUnauthorizedResponse()
+          void handleUnauthorizedResponse();
         } else {
-          const { data: { session } } = await supabase.auth.getSession()
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           if (session?.access_token) {
-            const retryInit = { ...modifiedInit }
-            const retryHeaders = new Headers(retryInit.headers)
-            retryHeaders.set('Authorization', `Bearer ${session.access_token}`)
-            retryHeaders.set(AUTH_RETRY_HEADER, '1')
-            retryInit.headers = retryHeaders
-            response = await defaultFetch(input, retryInit)
+            const retryInit = { ...modifiedInit };
+            const retryHeaders = new Headers(retryInit.headers);
+            retryHeaders.set('Authorization', `Bearer ${session.access_token}`);
+            retryHeaders.set(AUTH_RETRY_HEADER, '1');
+            retryInit.headers = retryHeaders;
+            response = await defaultFetch(input, retryInit);
           }
 
           if (response.status === 401) {
-            void handleUnauthorizedResponse()
+            void handleUnauthorizedResponse();
           }
         }
       }
     } else if (response.status === 403 && isMonitoredSupabase401(urlStr)) {
-      void import('src/modules/auth/utils/handleForbiddenResponse').then(({ handleForbiddenResponse }) => {
-        void handleForbiddenResponse(response)
-      })
+      void import('src/modules/auth/utils/handleForbiddenResponse').then(
+        ({ handleForbiddenResponse }) => {
+          void handleForbiddenResponse(response);
+        },
+      );
     }
 
-    return response
+    return response;
   } finally {
-    endGlobalRequest()
+    endGlobalRequest();
   }
-}
+};
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
@@ -110,40 +113,43 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
   },
-})
+});
 
 export default defineBoot(async ({ app }) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const { useAuthStore } = await import('src/modules/auth/stores/authStore')
-    const authStore = useAuthStore()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const { useAuthStore } = await import('src/modules/auth/stores/authStore');
+    const authStore = useAuthStore();
 
     if (authStore.hasAccess && !session) {
-      const { tryRefreshSession, handleUnauthorizedResponse } = await import(
-        'src/modules/auth/utils/forceAuthLogout'
-      )
-      const refreshed = await tryRefreshSession()
+      const { tryRefreshSession, handleUnauthorizedResponse } =
+        await import('src/modules/auth/utils/forceAuthLogout');
+      const refreshed = await tryRefreshSession();
       if (!refreshed) {
-        await handleUnauthorizedResponse()
+        await handleUnauthorizedResponse();
       }
-      return
+      return;
     }
   } catch (error) {
-    console.error('[supabase boot] session check error:', error)
+    console.error('[supabase boot] session check error:', error);
   }
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
       void import('src/modules/auth/stores/authStore').then(({ useAuthStore }) => {
-        const authStore = useAuthStore()
+        const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-          void import('src/modules/auth/utils/forceAuthLogout').then(({ handleUnauthorizedResponse }) => {
-            void handleUnauthorizedResponse()
-          })
+          void import('src/modules/auth/utils/forceAuthLogout').then(
+            ({ handleUnauthorizedResponse }) => {
+              void handleUnauthorizedResponse();
+            },
+          );
         }
-      })
+      });
     }
-  })
+  });
 
-  app.config.globalProperties.$supabase = supabase
-})
+  app.config.globalProperties.$supabase = supabase;
+});

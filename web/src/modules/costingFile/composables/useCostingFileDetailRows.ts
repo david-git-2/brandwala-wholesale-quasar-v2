@@ -1,119 +1,118 @@
-import type { CostingFileItem } from 'src/modules/costingFile/types'
+import type { CostingFileItem } from 'src/modules/costingFile/types';
 import {
   calculateBuyerSellPrice,
   calculateCostingItem,
-} from 'src/modules/costingFile/utils/costingCalculations'
+} from 'src/modules/costingFile/utils/costingCalculations';
 
 type AdminPricingInput = {
-  cargoRate1Kg: number | null
-  cargoRate2Kg: number | null
-  conversionRate: number | null
-  adminProfitRate: number | null
-}
+  cargoRate1Kg: number | null;
+  cargoRate2Kg: number | null;
+  conversionRate: number | null;
+  adminProfitRate: number | null;
+};
 
-const toNumber = (value: number | null | undefined) => Number(value ?? 0)
+const toNumber = (value: number | null | undefined) => Number(value ?? 0);
 
 const formatGbp = (value: number | null | undefined) =>
-  value == null ? '-' : Number(value).toFixed(2)
+  value == null ? '-' : Number(value).toFixed(2);
 
-const formatBdt = (value: number | null | undefined) =>
-  value == null ? '-' : String(value)
+const formatBdt = (value: number | null | undefined) => (value == null ? '-' : String(value));
 
 export type AdminProductRow = {
-  id: number
-  sl: number
-  imageUrl: string | null
-  websiteUrl: string | null
-  name: string
-  itemType: string
-  size: string
-  color: string
-  extraInformation1: string
-  extraInformation2: string
-  priceInWebGbpValue: number | null
-  priceInWebGbp: string
-  productWeightValue: number | null
-  productWeight: number | string
-  packageWeightValue: number | null
-  packageWeight: number | string
-  quantity: number | null
-}
+  id: number;
+  sl: number;
+  imageUrl: string | null;
+  websiteUrl: string | null;
+  name: string;
+  itemType: string;
+  size: string;
+  color: string;
+  extraInformation1: string;
+  extraInformation2: string;
+  priceInWebGbpValue: number | null;
+  priceInWebGbp: string;
+  productWeightValue: number | null;
+  productWeight: number | string;
+  packageWeightValue: number | null;
+  packageWeight: number | string;
+  quantity: number | null;
+};
 
 export type AdminReviewRow = {
-  id: number
-  sl: number
-  imageUrl: string | null
-  websiteUrl: string | null
-  quantity: number
-  name: string
-  itemType: string
-  size: string
-  color: string
-  extraInformation1: string
-  extraInformation2: string
-  productWeight: number | string
-  productWeightValue: number | null
-  packageWeight: number | string
-  packageWeightValue: number | null
-  totalWeight: number
-  priceInWebGbpValue: number | null
-  priceInWebGbp: string
-  deliveryPriceGbpValue: number | null
-  deliveryPriceGbp: string
-  status: string | null
-  assigned_shipment_id?: number | null
-  auxiliaryPriceGbpValue: number
-  auxiliaryPriceGbp: string
-  purchasePriceGbpValue: number
-  purchasePriceGbp: string
-  cargoRateValue: number | null
-  cargoRateGbp: string
-  costingPriceGbpValue: number
-  costingPriceGbp: string
-  costingPriceBdtValue: number
-  costingPriceBdt: string
-  offerPriceBdtValue: number
-  offerPriceBdt: string
-  offerPriceOverrideBdt: number | null
-  profitRateValue: number
-  profitRate: string
-  profitAmountValue: number
-  profitAmount: string
-  totalCostGbpValue: number
-  totalCostGbp: string
-  totalCostBdtValue: number
-  totalCostBdt: string
-  totalOfferPriceBdtValue: number
-  totalOfferPriceBdt: string
-  totalProfitBdtValue: number
-  totalProfitBdt: string
-  averageProfitRateValue: number
-  averageProfitRate: string
-}
+  id: number;
+  sl: number;
+  imageUrl: string | null;
+  websiteUrl: string | null;
+  quantity: number;
+  name: string;
+  itemType: string;
+  size: string;
+  color: string;
+  extraInformation1: string;
+  extraInformation2: string;
+  productWeight: number | string;
+  productWeightValue: number | null;
+  packageWeight: number | string;
+  packageWeightValue: number | null;
+  totalWeight: number;
+  priceInWebGbpValue: number | null;
+  priceInWebGbp: string;
+  deliveryPriceGbpValue: number | null;
+  deliveryPriceGbp: string;
+  status: string | null;
+  assigned_shipment_id?: number | null;
+  auxiliaryPriceGbpValue: number;
+  auxiliaryPriceGbp: string;
+  purchasePriceGbpValue: number;
+  purchasePriceGbp: string;
+  cargoRateValue: number | null;
+  cargoRateGbp: string;
+  costingPriceGbpValue: number;
+  costingPriceGbp: string;
+  costingPriceBdtValue: number;
+  costingPriceBdt: string;
+  offerPriceBdtValue: number;
+  offerPriceBdt: string;
+  offerPriceOverrideBdt: number | null;
+  profitRateValue: number;
+  profitRate: string;
+  profitAmountValue: number;
+  profitAmount: string;
+  totalCostGbpValue: number;
+  totalCostGbp: string;
+  totalCostBdtValue: number;
+  totalCostBdt: string;
+  totalOfferPriceBdtValue: number;
+  totalOfferPriceBdt: string;
+  totalProfitBdtValue: number;
+  totalProfitBdt: string;
+  averageProfitRateValue: number;
+  averageProfitRate: string;
+};
 
 export type CustomerProductRow = {
-  id: number
-  sl: number
-  imageUrl: string | null
-  websiteUrl: string | null
-  quantity: number | null
-  quantityValue: number
-  itemType: string
-  size: string
-  color: string
-  extraInformation1: string
-  extraInformation2: string
-  name: string
-  offerPriceBdtValue: number
-  offerPriceBdt: string
-  buyerSellingPriceBdtValue: number
-  buyerSellingPriceBdt: string
-  customerProfitAmountBdtValue: number
-  customerProfitAmountBdt: string
-  customerProfitRateValue: number | null
-  customerProfitRateDisplay: string
-  status: string | null
-}
+  id: number;
+  sl: number;
+  imageUrl: string | null;
+  websiteUrl: string | null;
+  quantity: number | null;
+  quantityValue: number;
+  itemType: string;
+  size: string;
+  color: string;
+  extraInformation1: string;
+  extraInformation2: string;
+  name: string;
+  offerPriceBdtValue: number;
+  offerPriceBdt: string;
+  buyerSellingPriceBdtValue: number;
+  buyerSellingPriceBdt: string;
+  customerProfitAmountBdtValue: number;
+  customerProfitAmountBdt: string;
+  customerProfitRateValue: number | null;
+  customerProfitRateDisplay: string;
+  status: string | null;
+};
 
 export const buildAdminProductRows = (items: CostingFileItem[]): AdminProductRow[] =>
   items.map((item, index) => ({
@@ -128,14 +127,13 @@ export const buildAdminProductRows = (items: CostingFileItem[]): AdminProductRow
     extraInformation1: item.extra_information_1 ?? '-',
     extraInformation2: item.extra_information_2 ?? '-',
     priceInWebGbpValue: item.price_in_web_gbp,
-    priceInWebGbp:
-      item.price_in_web_gbp == null ? '-' : Number(item.price_in_web_gbp).toFixed(2),
+    priceInWebGbp: item.price_in_web_gbp == null ? '-' : Number(item.price_in_web_gbp).toFixed(2),
     productWeightValue: item.product_weight,
     productWeight: item.product_weight == null ? '-' : item.product_weight,
     packageWeightValue: item.package_weight,
     packageWeight: item.package_weight == null ? '-' : item.package_weight,
     quantity: item.quantity,
-  }))
+  }));
 
 export const buildAdminReviewRows = (
   items: CostingFileItem[],
@@ -160,21 +158,18 @@ export const buildAdminReviewRows = (
         customerProfitRate: item.customer_profit_rate,
         itemType: item.item_type,
       },
-    )
-    const profitAmount = calculated.offerPriceBdt - calculated.costingPriceBdt
+    );
+    const profitAmount = calculated.offerPriceBdt - calculated.costingPriceBdt;
     const profitRateValue =
-      calculated.costingPriceBdt > 0 ? (profitAmount / calculated.costingPriceBdt) * 100 : 0
-    const profitRate =
-      calculated.costingPriceBdt > 0 ? `${profitRateValue.toFixed(2)}%` : '-'
-    const quantity = Number(item.quantity ?? 0)
-    const totalCostBdt = calculated.costingPriceBdt * quantity
-    const totalCostGbp = calculated.costingPriceGbp * quantity
-    const totalOfferPriceBdt = calculated.offerPriceBdt * quantity
-    const totalProfitBdt = totalOfferPriceBdt - totalCostBdt
-    const averageProfitRateValue =
-      totalCostBdt > 0 ? (totalProfitBdt / totalCostBdt) * 100 : 0
-    const averageProfitRate =
-      totalCostBdt > 0 ? `${averageProfitRateValue.toFixed(2)}%` : '-'
+      calculated.costingPriceBdt > 0 ? (profitAmount / calculated.costingPriceBdt) * 100 : 0;
+    const profitRate = calculated.costingPriceBdt > 0 ? `${profitRateValue.toFixed(2)}%` : '-';
+    const quantity = Number(item.quantity ?? 0);
+    const totalCostBdt = calculated.costingPriceBdt * quantity;
+    const totalCostGbp = calculated.costingPriceGbp * quantity;
+    const totalOfferPriceBdt = calculated.offerPriceBdt * quantity;
+    const totalProfitBdt = totalOfferPriceBdt - totalCostBdt;
+    const averageProfitRateValue = totalCostBdt > 0 ? (totalProfitBdt / totalCostBdt) * 100 : 0;
+    const averageProfitRate = totalCostBdt > 0 ? `${averageProfitRateValue.toFixed(2)}%` : '-';
 
     return {
       id: item.id,
@@ -226,8 +221,8 @@ export const buildAdminReviewRows = (
       totalProfitBdt: formatBdt(totalProfitBdt),
       averageProfitRateValue,
       averageProfitRate,
-    }
-  })
+    };
+  });
 
 export const buildStaffProductRows = (items: CostingFileItem[]) =>
   items.map((item, index) => ({
@@ -245,24 +240,19 @@ export const buildStaffProductRows = (items: CostingFileItem[]) =>
     productWeight: item.product_weight == null ? '-' : item.product_weight,
     packageWeight: item.package_weight == null ? '-' : item.package_weight,
     quantity: item.quantity ?? '-',
-  }))
+  }));
 
 export const buildCustomerProductRows = (
   items: CostingFileItem[],
   sharedProfitRate: number | null,
 ): CustomerProductRow[] =>
   items.map((item, index) => {
-    const offerPriceBdt = Number(item.offer_price_bdt ?? 0)
-    const effectiveProfitRate = sharedProfitRate ?? item.customer_profit_rate
-    const buyerSellingPriceBdt = calculateBuyerSellPrice(
-      item.offer_price_bdt,
-      effectiveProfitRate,
-    )
-    const customerProfitAmountBdt = buyerSellingPriceBdt - offerPriceBdt
+    const offerPriceBdt = Number(item.offer_price_bdt ?? 0);
+    const effectiveProfitRate = sharedProfitRate ?? item.customer_profit_rate;
+    const buyerSellingPriceBdt = calculateBuyerSellPrice(item.offer_price_bdt, effectiveProfitRate);
+    const customerProfitAmountBdt = buyerSellingPriceBdt - offerPriceBdt;
     const customerProfitRateDisplay =
-      offerPriceBdt > 0
-        ? `${((customerProfitAmountBdt / offerPriceBdt) * 100).toFixed(2)}%`
-        : '-'
+      offerPriceBdt > 0 ? `${((customerProfitAmountBdt / offerPriceBdt) * 100).toFixed(2)}%` : '-';
 
     return {
       id: item.id,
@@ -287,37 +277,37 @@ export const buildCustomerProductRows = (
         offerPriceBdt > 0 ? (customerProfitAmountBdt / offerPriceBdt) * 100 : null,
       customerProfitRateDisplay,
       status: item.status,
-    }
-  })
+    };
+  });
 
 export const summarizeAdminProductRows = (rows: AdminProductRow[]) => ({
   quantity: rows.reduce((sum, row) => sum + toNumber(row.quantity), 0),
   priceInWebGbp: rows.reduce((sum, row) => sum + toNumber(row.priceInWebGbpValue), 0),
   productWeight: rows.reduce((sum, row) => sum + toNumber(row.productWeightValue), 0),
   packageWeight: rows.reduce((sum, row) => sum + toNumber(row.packageWeightValue), 0),
-})
+});
 
 export const summarizeAdminReviewRows = (rows: AdminReviewRow[]) => {
   const totals = rows.reduce(
     (sum, row) => {
-      sum.quantity += row.quantity
-      sum.productWeight += toNumber(row.productWeightValue)
-      sum.packageWeight += toNumber(row.packageWeightValue)
-      sum.totalWeight += row.totalWeight
-      sum.priceInWebGbp += toNumber(row.priceInWebGbpValue)
-      sum.deliveryPriceGbp += toNumber(row.deliveryPriceGbpValue)
-      sum.auxiliaryPriceGbp += row.auxiliaryPriceGbpValue
-      sum.purchasePriceGbp += row.purchasePriceGbpValue
-      sum.cargoRateGbp += toNumber(row.cargoRateValue)
-      sum.costingPriceGbp += row.costingPriceGbpValue
-      sum.costingPriceBdt += row.costingPriceBdtValue
-      sum.offerPriceBdt += row.offerPriceBdtValue
-      sum.totalCostGbp += row.totalCostGbpValue
-      sum.totalCostBdt += row.totalCostBdtValue
-      sum.totalOfferPriceBdt += row.totalOfferPriceBdtValue
-      sum.totalProfitBdt += row.totalProfitBdtValue
-      sum.profitAmount += row.profitAmountValue
-      return sum
+      sum.quantity += row.quantity;
+      sum.productWeight += toNumber(row.productWeightValue);
+      sum.packageWeight += toNumber(row.packageWeightValue);
+      sum.totalWeight += row.totalWeight;
+      sum.priceInWebGbp += toNumber(row.priceInWebGbpValue);
+      sum.deliveryPriceGbp += toNumber(row.deliveryPriceGbpValue);
+      sum.auxiliaryPriceGbp += row.auxiliaryPriceGbpValue;
+      sum.purchasePriceGbp += row.purchasePriceGbpValue;
+      sum.cargoRateGbp += toNumber(row.cargoRateValue);
+      sum.costingPriceGbp += row.costingPriceGbpValue;
+      sum.costingPriceBdt += row.costingPriceBdtValue;
+      sum.offerPriceBdt += row.offerPriceBdtValue;
+      sum.totalCostGbp += row.totalCostGbpValue;
+      sum.totalCostBdt += row.totalCostBdtValue;
+      sum.totalOfferPriceBdt += row.totalOfferPriceBdtValue;
+      sum.totalProfitBdt += row.totalProfitBdtValue;
+      sum.profitAmount += row.profitAmountValue;
+      return sum;
     },
     {
       quantity: 0,
@@ -338,7 +328,7 @@ export const summarizeAdminReviewRows = (rows: AdminReviewRow[]) => {
       totalProfitBdt: 0,
       profitAmount: 0,
     },
-  )
+  );
 
   return {
     ...totals,
@@ -346,17 +336,17 @@ export const summarizeAdminReviewRows = (rows: AdminReviewRow[]) => {
       totals.costingPriceBdt > 0 ? (totals.profitAmount / totals.costingPriceBdt) * 100 : null,
     averageProfitRate:
       totals.totalCostBdt > 0 ? (totals.totalProfitBdt / totals.totalCostBdt) * 100 : null,
-  }
-}
+  };
+};
 
 export const summarizeCustomerProductRows = (rows: CustomerProductRow[]) => {
   const totals = rows.reduce(
     (sum, row) => {
-      sum.quantity += row.quantityValue
-      sum.offerPriceBdt += row.offerPriceBdtValue
-      sum.buyerSellingPriceBdt += row.buyerSellingPriceBdtValue
-      sum.customerProfitAmountBdt += row.customerProfitAmountBdtValue
-      return sum
+      sum.quantity += row.quantityValue;
+      sum.offerPriceBdt += row.offerPriceBdtValue;
+      sum.buyerSellingPriceBdt += row.buyerSellingPriceBdtValue;
+      sum.customerProfitAmountBdt += row.customerProfitAmountBdtValue;
+      return sum;
     },
     {
       quantity: 0,
@@ -364,7 +354,7 @@ export const summarizeCustomerProductRows = (rows: CustomerProductRow[]) => {
       buyerSellingPriceBdt: 0,
       customerProfitAmountBdt: 0,
     },
-  )
+  );
 
   return {
     ...totals,
@@ -372,5 +362,5 @@ export const summarizeCustomerProductRows = (rows: CustomerProductRow[]) => {
       totals.offerPriceBdt > 0
         ? (totals.customerProfitAmountBdt / totals.offerPriceBdt) * 100
         : null,
-  }
-}
+  };
+};

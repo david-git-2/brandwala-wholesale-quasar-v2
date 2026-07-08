@@ -8,5 +8,5 @@
 </template>
 
 <script setup lang="ts">
-import AuthLoginPanel from '../components/AuthLoginPanel.vue'
+import AuthLoginPanel from '../components/AuthLoginPanel.vue';
 </script>

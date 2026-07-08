@@ -3,7 +3,9 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="text-h6 text-weight-bold">Thrift Settings</div>
-        <div class="text-caption text-grey-8">Configure defaults and ops cost inputs for Thrift vertical</div>
+        <div class="text-caption text-grey-8">
+          Configure defaults and ops cost inputs for Thrift vertical
+        </div>
       </q-card-section>
     </q-card>
 
@@ -11,7 +13,9 @@
       <div class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 h-100">
           <q-card-section>
-            <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">Registration Defaults</div>
+            <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">
+              Registration Defaults
+            </div>
             <q-form @submit.prevent="save" class="q-gutter-md">
               <q-input
                 v-model.number="form.defaultOriginUnitPrice"
@@ -22,7 +26,7 @@
                 dense
                 label="Default origin unit price *"
                 class="soft-input"
-                :rules="[val => val >= 0 || 'Cannot be negative']"
+                :rules="[(val) => val >= 0 || 'Cannot be negative']"
               />
               <div class="text-caption text-grey-7">
                 Currency symbols come from the shipment when registering stock items.
@@ -153,9 +157,11 @@ onMounted(async () => {
 
   form.value.defaultOriginUnitPrice = settingsStore.defaultOriginUnitPrice;
   form.value.handTagUnitCost = settingsStore.handTagUnitCost ?? null;
-  form.value.handTagUnitCurrencyId = settingsStore.handTagUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
+  form.value.handTagUnitCurrencyId =
+    settingsStore.handTagUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
   form.value.stickerUnitCost = settingsStore.stickerUnitCost ?? null;
-  form.value.stickerUnitCurrencyId = settingsStore.stickerUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
+  form.value.stickerUnitCurrencyId =
+    settingsStore.stickerUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
 });
 
 function currencyOptionLabel(option: ThriftCurrency) {
@@ -190,9 +196,19 @@ async function save() {
   border-radius: 14px;
   border: 1px solid rgba(34, 56, 101, 0.08);
 }
-.hero-surface { border-radius: 16px; }
-.pill-btn { border-radius: 999px; }
-.slim-btn { min-height: 32px; }
-.soft-input :deep(.q-field__control) { border-radius: 12px; }
-.h-100 { height: 100%; }
+.hero-surface {
+  border-radius: 16px;
+}
+.pill-btn {
+  border-radius: 999px;
+}
+.slim-btn {
+  min-height: 32px;
+}
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+}
+.h-100 {
+  height: 100%;
+}
 </style>

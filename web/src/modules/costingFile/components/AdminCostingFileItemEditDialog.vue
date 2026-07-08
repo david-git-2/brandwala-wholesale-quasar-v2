@@ -32,7 +32,10 @@
               class="costing-item-edit-dialog__preview-image"
             />
           </div>
-          <div v-else class="costing-item-edit-dialog__preview costing-item-edit-dialog__preview--empty">
+          <div
+            v-else
+            class="costing-item-edit-dialog__preview costing-item-edit-dialog__preview--empty"
+          >
             <q-icon name="image" size="32px" />
             <div class="text-caption q-mt-sm">Image preview</div>
           </div>
@@ -47,13 +50,7 @@
             >
               <template #prepend><q-icon name="image" /></template>
             </q-input>
-            <q-input
-              v-model="form.websiteUrl"
-              label="Website URL"
-              outlined
-              dense
-              readonly
-            >
+            <q-input v-model="form.websiteUrl" label="Website URL" outlined dense readonly>
               <template #prepend><q-icon name="link" /></template>
               <template #append>
                 <q-btn
@@ -180,14 +177,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
-      save: [
-        payload: {
-          id: number;
-          name: string | null;
-          itemType: string | null;
-          productWeight: number | null;
-          packageWeight: number | null;
-          imageUrl: string | null;
+  save: [
+    payload: {
+      id: number;
+      name: string | null;
+      itemType: string | null;
+      productWeight: number | null;
+      packageWeight: number | null;
+      imageUrl: string | null;
       priceInWebGbp: number | null;
       deliveryPriceGbp: number | null;
     },

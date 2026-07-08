@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 600px; max-width: 90vw;">
+    <q-card class="q-dialog-plugin" style="width: 600px; max-width: 90vw">
       <q-form @submit="onSubmit">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-primary text-weight-bold">
@@ -23,7 +23,10 @@
             label="Shipment Name *"
             filled
             dense
-            :rules="[val => !!val || 'Name is required', val => val.trim().length > 0 || 'Name cannot be blank']"
+            :rules="[
+              (val) => !!val || 'Name is required',
+              (val) => val.trim().length > 0 || 'Name cannot be blank',
+            ]"
           />
 
           <div class="row q-col-gutter-sm">
@@ -74,7 +77,7 @@
           <!-- Rates (only shown or prioritized during Edit or advanced toggle) -->
           <div v-if="isEdit" class="q-gutter-y-md">
             <div class="text-subtitle2 text-grey-8 q-mt-md q-mb-xs">Costing & Conversion Rates</div>
-            
+
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
                 <q-select
@@ -133,7 +136,7 @@
                   label="Product Conv. Rate"
                   filled
                   dense
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  :rules="[(val) => val >= 0 || 'Must be >= 0']"
                 />
               </div>
               <div class="col-12 col-sm-4">
@@ -144,7 +147,7 @@
                   label="Cargo Conv. Rate"
                   filled
                   dense
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  :rules="[(val) => val >= 0 || 'Must be >= 0']"
                 />
               </div>
               <div class="col-12 col-sm-4">
@@ -155,18 +158,26 @@
                   label="Cargo Rate"
                   filled
                   dense
-                  :rules="[val => val >= 0 || 'Must be >= 0']"
+                  :rules="[(val) => val >= 0 || 'Must be >= 0']"
                 />
               </div>
             </div>
 
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <div class="bg-grey-2 q-pa-sm rounded-borders text-caption text-grey-8" style="min-height: 40px; display: flex; align-items: center;">
+                <div
+                  class="bg-grey-2 q-pa-sm rounded-borders text-caption text-grey-8"
+                  style="min-height: 40px; display: flex; align-items: center"
+                >
                   <span>
-                    Received Weight: <strong class="text-black">{{ form.received_weight !== null ? `${form.received_weight} kg` : '—' }}</strong>
+                    Received Weight:
+                    <strong class="text-black">{{
+                      form.received_weight !== null ? `${form.received_weight} kg` : '—'
+                    }}</strong>
                     <br />
-                    <span class="text-grey-6 text-weight-light" style="font-size: 10px;">(Set automatically via Weight Balance)</span>
+                    <span class="text-grey-6 text-weight-light" style="font-size: 10px"
+                      >(Set automatically via Weight Balance)</span
+                    >
                   </span>
                 </div>
               </div>
@@ -174,7 +185,6 @@
                 <q-checkbox v-model="form.stock_ready" label="Stock Ready" />
               </div>
             </div>
-
           </div>
         </q-card-section>
 
@@ -195,34 +205,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useDialogPluginComponent } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore'
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository'
-import type { GlobalShipment } from '../repositories/globalShipmentRepository'
+import { ref, onMounted, computed } from 'vue';
+import { useDialogPluginComponent } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 
 const props = defineProps<{
-  shipment?: GlobalShipment
-}>()
+  shipment?: GlobalShipment;
+}>();
 
-defineEmits([
-  ...useDialogPluginComponent.emits
-])
+defineEmits([...useDialogPluginComponent.emits]);
 
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent()
+const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 
-const authStore = useAuthStore()
-const shipmentStore = useGlobalShipmentStore()
+const authStore = useAuthStore();
+const shipmentStore = useGlobalShipmentStore();
 
-const isEdit = computed(() => !!props.shipment)
-const submitting = ref(false)
-const error = ref<string | null>(null)
+const isEdit = computed(() => !!props.shipment);
+const submitting = ref(false);
+const error = ref<string | null>(null);
 
 const typeOptions = [
   { label: 'International', value: 'international' },
   { label: 'Domestic', value: 'domestic' },
-]
+];
 
 const statusOptions = [
   { label: 'Draft', value: 'Draft' },
@@ -236,7 +244,7 @@ const statusOptions = [
   { label: 'Airport Released', value: 'Airport Released' },
   { label: 'Warehouse Received', value: 'Warehouse Received' },
   { label: 'Ready Stock', value: 'Ready Stock' },
-]
+];
 
 const form = ref({
   name: '',
@@ -251,24 +259,24 @@ const form = ref({
   received_date: null as string | null,
   transaction_rate: null as number | null,
   stock_ready: false,
-})
+});
 
-const currencyOptions = ref<Array<{ label: string; value: number }>>([])
-const loadingCurrencies = ref(false)
+const currencyOptions = ref<Array<{ label: string; value: number }>>([]);
+const loadingCurrencies = ref(false);
 
 onMounted(async () => {
   // Load currencies
-  loadingCurrencies.value = true
+  loadingCurrencies.value = true;
   try {
-    const list = await globalReferenceRepository.listCurrencies()
+    const list = await globalReferenceRepository.listCurrencies();
     currencyOptions.value = list.map((c) => ({
       label: `${c.code} (${c.symbol}) - ${c.name}`,
       value: c.id,
-    }))
+    }));
   } catch (err: unknown) {
-    console.error('Failed to load currencies', err)
+    console.error('Failed to load currencies', err);
   } finally {
-    loadingCurrencies.value = false
+    loadingCurrencies.value = false;
   }
 
   // Initialize form if edit mode
@@ -286,32 +294,32 @@ onMounted(async () => {
       received_date: props.shipment.received_date,
       transaction_rate: props.shipment.transaction_rate,
       stock_ready: props.shipment.stock_ready,
-    }
+    };
   }
-})
+});
 
 const onSubmit = async () => {
-  if (!authStore.tenantId) return
-  submitting.value = ref(true).value
-  error.value = null
+  if (!authStore.tenantId) return;
+  submitting.value = ref(true).value;
+  error.value = null;
 
   try {
     if (isEdit.value && props.shipment) {
-      const updated = await shipmentStore.updateShipment(props.shipment.id, form.value)
-      onDialogOK(updated)
+      const updated = await shipmentStore.updateShipment(props.shipment.id, form.value);
+      onDialogOK(updated);
     } else {
       const created = await shipmentStore.createShipment(authStore.tenantId, {
         name: form.value.name,
         type: form.value.type,
         shipment_purchase_currency_id: form.value.shipment_purchase_currency_id,
         shipment_cost_currency_id: form.value.shipment_cost_currency_id,
-      })
-      onDialogOK(created)
+      });
+      onDialogOK(created);
     }
   } catch (err: unknown) {
-    error.value = (err as Error).message || 'Failed to save shipment.'
+    error.value = (err as Error).message || 'Failed to save shipment.';
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
 </script>

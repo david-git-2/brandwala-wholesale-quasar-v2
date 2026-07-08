@@ -12,10 +12,7 @@ export const thriftSettingsRepository = {
     return data as ThriftSettings | null;
   },
 
-  async upsertSettings(
-    tenantId: number,
-    input: ThriftSettingsInput,
-  ): Promise<ThriftSettings> {
+  async upsertSettings(tenantId: number, input: ThriftSettingsInput): Promise<ThriftSettings> {
     const { data, error } = await supabase
       .from('thrift_settings')
       .upsert({

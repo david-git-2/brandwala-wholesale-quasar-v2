@@ -10,7 +10,8 @@
           <div class="text-overline">Shops</div>
           <h1 class="text-h5 q-my-none">Shop Access Matrix: {{ shopName }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Grant shop access to customer groups and define granular overrides. Overrides set to "Inherit" fallback to the group's default profile.
+            Grant shop access to customer groups and define granular overrides. Overrides set to
+            "Inherit" fallback to the group's default profile.
           </p>
         </div>
       </section>
@@ -24,7 +25,11 @@
       </q-banner>
 
       <!-- Loading state -->
-      <q-card v-if="store.loadingGroups || store.loadingAccess || store.loadingCurrencies" flat bordered>
+      <q-card
+        v-if="store.loadingGroups || store.loadingAccess || store.loadingCurrencies"
+        flat
+        bordered
+      >
         <q-card-section class="text-center q-pa-xl text-grey-7">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
           Loading access settings…
@@ -33,12 +38,7 @@
 
       <!-- Matrix List -->
       <div v-else class="q-gutter-y-md">
-        <q-card
-          v-for="group in store.customerGroups"
-          :key="group.id"
-          flat
-          bordered
-        >
+        <q-card v-for="group in store.customerGroups" :key="group.id" flat bordered>
           <q-card-section class="row items-center justify-between q-py-sm bg-grey-1">
             <div class="col">
               <span class="text-subtitle1 text-weight-medium text-grey-9">{{ group.name }}</span>
@@ -85,7 +85,7 @@
 
                 <div v-if="editForm.status" class="q-gutter-y-md q-mt-sm">
                   <div class="text-subtitle2 text-grey-8">Granular Overrides</div>
-                  
+
                   <div class="row q-col-gutter-md">
                     <!-- Browse Override -->
                     <div class="col-12 col-sm-4">
@@ -99,7 +99,7 @@
                         :options="inheritOptions"
                       />
                     </div>
-                    
+
                     <!-- See Price Override -->
                     <div class="col-12 col-sm-4">
                       <q-select
@@ -191,7 +191,7 @@
                   </div>
 
                   <div class="text-subtitle2 text-grey-8 q-mt-lg">Commercial Credit Limit</div>
-                  
+
                   <div class="row q-col-gutter-md">
                     <!-- Credit Limit Amount -->
                     <div class="col-12 col-sm-6">
@@ -221,7 +221,10 @@
                         :options="store.currencies"
                         :disable="!editForm.credit_limit_amount"
                         :rules="[
-                          val => !editForm.credit_limit_amount || !!val || 'Currency is required when amount is specified'
+                          (val) =>
+                            !editForm.credit_limit_amount ||
+                            !!val ||
+                            'Currency is required when amount is specified',
                         ]"
                       />
                     </div>
@@ -248,24 +251,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useShopPermissionsStore } from '../stores/shopPermissionsStore'
-import type { UpsertAccessPayload, ShopCustomerGroupAccess } from '../types'
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
+import type { UpsertAccessPayload, ShopCustomerGroupAccess } from '../types';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const store = useShopPermissionsStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const store = useShopPermissionsStore();
 
-const tenantId = computed(() => authStore.tenantId as number)
-const shopId = computed(() => Number(route.params.shopId))
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '')
+const tenantId = computed(() => authStore.tenantId as number);
+const shopId = computed(() => Number(route.params.shopId));
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
-const shopName = ref<string>('')
-const activeGroupId = ref<number | null>(null)
+const shopName = ref<string>('');
+const activeGroupId = ref<number | null>(null);
 
 const editForm = ref<UpsertAccessPayload>({
   shop_id: 0,
@@ -281,23 +284,23 @@ const editForm = ref<UpsertAccessPayload>({
   price_tier_code: null,
   credit_limit_amount: null,
   credit_limit_currency_id: null,
-})
+});
 
 const inheritOptions = [
   { label: 'Inherit Default Profile', value: null },
   { label: 'Allow Override', value: true },
   { label: 'Deny Override', value: false },
-]
+];
 
 const getAccessRow = (groupId: number): ShopCustomerGroupAccess | undefined => {
-  return store.accessOverrides.find((o) => o.customer_group_id === groupId)
-}
+  return store.accessOverrides.find((o) => o.customer_group_id === groupId);
+};
 
 const editGroup = (groupId: number | null) => {
-  activeGroupId.value = groupId
-  if (!groupId) return
+  activeGroupId.value = groupId;
+  if (!groupId) return;
 
-  const row = getAccessRow(groupId)
+  const row = getAccessRow(groupId);
   editForm.value = {
     shop_id: shopId.value,
     customer_group_id: groupId,
@@ -310,48 +313,56 @@ const editGroup = (groupId: number | null) => {
     can_view_quantity: row ? row.can_view_quantity : null,
     can_set_dropship_price: row ? row.can_set_dropship_price : null,
     price_tier_code: row ? row.price_tier_code : null,
-    credit_limit_amount: row ? (row.credit_limit_amount ? Number(row.credit_limit_amount) : null) : null,
+    credit_limit_amount: row
+      ? row.credit_limit_amount
+        ? Number(row.credit_limit_amount)
+        : null
+      : null,
     credit_limit_currency_id: row ? row.credit_limit_currency_id : null,
-  }
-}
+  };
+};
 
 const load = async () => {
-  if (!tenantId.value || !shopId.value) return
+  if (!tenantId.value || !shopId.value) return;
 
   // Fetch shop details for header
   const { data: shopData } = await supabase
     .from('shops')
     .select('name')
     .eq('id', shopId.value)
-    .single()
+    .single();
   if (shopData) {
-    shopName.value = shopData.name
+    shopName.value = shopData.name;
   }
 
-  void store.fetchCustomerGroups(tenantId.value)
-  void store.fetchAccessOverrides(shopId.value)
-  void store.fetchCurrencies()
-}
+  void store.fetchCustomerGroups(tenantId.value);
+  void store.fetchAccessOverrides(shopId.value);
+  void store.fetchCurrencies();
+};
 
 const onSave = async () => {
   // Clear currency if amount is null to satisfy constraint
-  if (editForm.value.credit_limit_amount === null || editForm.value.credit_limit_amount === undefined || String(editForm.value.credit_limit_amount) === '') {
-    editForm.value.credit_limit_amount = null
-    editForm.value.credit_limit_currency_id = null
+  if (
+    editForm.value.credit_limit_amount === null ||
+    editForm.value.credit_limit_amount === undefined ||
+    String(editForm.value.credit_limit_amount) === ''
+  ) {
+    editForm.value.credit_limit_amount = null;
+    editForm.value.credit_limit_currency_id = null;
   }
 
-  const res = await store.saveAccessOverride(editForm.value)
+  const res = await store.saveAccessOverride(editForm.value);
   if (res.success) {
-    editGroup(null)
+    editGroup(null);
   }
-}
+};
 
 const goBack = () => {
   void router.push({
     name: 'app-shop-shops-page',
     params: { tenantSlug: tenantSlug.value },
-  })
-}
+  });
+};
 
-onMounted(load)
+onMounted(load);
 </script>

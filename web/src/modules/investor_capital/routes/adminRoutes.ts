@@ -1,10 +1,10 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -13,21 +13,21 @@ const guard = (requiredModule: ModuleKey) =>
     requireTenantContext: true,
     requiredModule,
     validateAccess: ({ authStore, to }) => {
-      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
       if (!selectedTenantSlug) {
-        return true
+        return true;
       }
 
-      const routeTenantSlug = getTenantSlugFromRoute(to)
+      const routeTenantSlug = getTenantSlugFromRoute(to);
 
       if (routeTenantSlug === selectedTenantSlug) {
-        return true
+        return true;
       }
 
-      return getAppRouteLocation(to, selectedTenantSlug)
+      return getAppRouteLocation(to, selectedTenantSlug);
     },
-  })
+  });
 
 const investorCapitalAdminRoutes: RouteRecordRaw[] = [
   {
@@ -37,7 +37,8 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-capital-profiles-page',
-        component: () => import('src/modules/investor_capital/pages/admin/InvestorProfilesPage.vue'),
+        component: () =>
+          import('src/modules/investor_capital/pages/admin/InvestorProfilesPage.vue'),
         beforeEnter: guard('investor_profiles'),
       },
     ],
@@ -61,13 +62,15 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-capital-shipments-page',
-        component: () => import('src/modules/investor_capital/pages/admin/ShipmentAllocationsPage.vue'),
+        component: () =>
+          import('src/modules/investor_capital/pages/admin/ShipmentAllocationsPage.vue'),
         beforeEnter: guard('investor_shipment_share'),
       },
       {
         path: ':id',
         name: 'app-capital-shipment-details-page',
-        component: () => import('src/modules/investor_capital/pages/admin/ShipmentAllocationDetailsPage.vue'),
+        component: () =>
+          import('src/modules/investor_capital/pages/admin/ShipmentAllocationDetailsPage.vue'),
         beforeEnter: guard('investor_shipment_share'),
       },
     ],
@@ -104,6 +107,6 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     }),
     beforeEnter: guard('investor_shipment_share'),
   },
-]
+];
 
-export default investorCapitalAdminRoutes
+export default investorCapitalAdminRoutes;

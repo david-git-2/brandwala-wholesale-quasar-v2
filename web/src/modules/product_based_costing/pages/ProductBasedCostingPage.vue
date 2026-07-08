@@ -23,9 +23,7 @@
 
     <PageInitialLoader v-if="store.loading" />
 
-    <div v-else-if="store.error">
-      error: {{ store.error }}
-    </div>
+    <div v-else-if="store.error">error: {{ store.error }}</div>
 
     <div v-else>
       <div class="row items-center justify-between q-mb-sm">
@@ -64,29 +62,17 @@
                 aria-label="Hide search"
                 @click="
                   () => {
-                    searchText = ''
-                    showSearchInput = false
-                    onApplyFilters()
+                    searchText = '';
+                    showSearchInput = false;
+                    onApplyFilters();
                   }
                 "
               />
             </template>
           </q-input>
 
-          <q-btn
-            flat
-            round
-            dense
-            icon="filter_alt"
-            aria-label="Filters"
-            @click="openFilterDrawer"
-          >
-            <q-badge
-              v-if="activeFilterCount > 0"
-              color="primary"
-              rounded
-              floating
-            >
+          <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="openFilterDrawer">
+            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
               {{ activeFilterCount }}
             </q-badge>
           </q-btn>
@@ -136,12 +122,22 @@
                   :style="statusChipStyle(slotProps.row.status)"
                   class="costing-status-chip"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: statusDotColor(slotProps.row.status) }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: statusDotColor(slotProps.row.status) }"
+                  />
                   {{ slotProps.row.status ?? 'pending' }}
                 </q-chip>
               </q-td>
               <q-td key="actions" :props="slotProps" class="text-right">
-                <q-btn flat round dense icon="more_vert" aria-label="Costing file actions" @click.stop>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="more_vert"
+                  aria-label="Costing file actions"
+                  @click.stop
+                >
                   <q-menu auto-close>
                     <q-list dense style="min-width: 120px">
                       <q-item clickable v-ripple @click="onCopy(slotProps.row)">
@@ -205,44 +201,42 @@
         <q-btn flat no-caps label="Reset" @click="onResetFilters" />
       </div>
     </FilterSidebar>
-
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useQuasar, type QTableColumn } from 'quasar'
-import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue'
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
-import { useRouter, useRoute } from 'vue-router'
-import type { ProductBasedCostingFile } from '../types'
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { productBasedCostingService } from '../services/productBasedCostingService'
-import CostingFileCard from '../components/CostingFileCard.vue'
-import FilterSidebar from 'src/components/FilterSidebar.vue'
+import { computed, onMounted, ref } from 'vue';
+import { useQuasar, type QTableColumn } from 'quasar';
+import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
+import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import { useRouter, useRoute } from 'vue-router';
+import type { ProductBasedCostingFile } from '../types';
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { productBasedCostingService } from '../services/productBasedCostingService';
+import CostingFileCard from '../components/CostingFileCard.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 
-
-const store = useProductBasedCostingStore()
-const $q = useQuasar()
-const page = ref(1)
-const searchText = ref('')
-const showSearchInput = ref(false)
-const statusFilter = ref<string>('__all__')
-const draftStatusFilter = ref<string>('__all__')
-const filterDrawerOpen = ref(false)
-const viewMode = ref<'table' | 'card'>('table')
+const store = useProductBasedCostingStore();
+const $q = useQuasar();
+const page = ref(1);
+const searchText = ref('');
+const showSearchInput = ref(false);
+const statusFilter = ref<string>('__all__');
+const draftStatusFilter = ref<string>('__all__');
+const filterDrawerOpen = ref(false);
+const viewMode = ref<'table' | 'card'>('table');
 const tablePagination = ref({
   page: 1,
   rowsPerPage: 20,
   rowsNumber: 0,
-})
+});
 const tableColumns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
   { name: 'name', label: 'Name', field: 'name', align: 'left' },
   { name: 'order_for', label: 'Created For', field: 'order_for', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
-]
+];
 
 const statusFilterOptions = [
   { label: 'All', value: '__all__' },
@@ -253,65 +247,63 @@ const statusFilterOptions = [
   { label: 'Invoicing', value: 'invoicing' },
   { label: 'Invoiced', value: 'invoiced' },
   { label: 'Cancelled', value: 'cancelled' },
-]
+];
 
-const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0))
+const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0));
 
 const loadFiles = async () => {
   const payload: {
-    page: number
-    page_size: number
-    search?: string
-    status?: string | null
+    page: number;
+    page_size: number;
+    search?: string;
+    status?: string | null;
   } = {
     page: page.value,
     page_size: store.page_size,
-  }
+  };
 
-  const searchValue = searchText.value.trim()
+  const searchValue = searchText.value.trim();
   if (searchValue) {
-    payload.search = searchValue
+    payload.search = searchValue;
   }
 
   if (statusFilter.value === '__pending__') {
-    payload.status = null
+    payload.status = null;
   } else if (statusFilter.value !== '__all__') {
-    payload.status = statusFilter.value
+    payload.status = statusFilter.value;
   }
 
-  await store.fetchProductBasedCostingFiles(payload)
+  await store.fetchProductBasedCostingFiles(payload);
   tablePagination.value = {
     ...tablePagination.value,
     page: store.page,
     rowsPerPage: store.page_size,
     rowsNumber: store.total,
-  }
-}
+  };
+};
 
 onMounted(() => {
-  void loadFiles()
-})
+  void loadFiles();
+});
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
 type CostingFileForm = {
-  id: number | null
-  name: string
-  order_for: string
-  note: string
-  vendor_code: string | null
-  market_code: string | null
-}
+  id: number | null;
+  name: string;
+  order_for: string;
+  note: string;
+  vendor_code: string | null;
+  market_code: string | null;
+};
 
-const dialogOpen = ref(false)
-const selectedRow = ref<CostingFileForm | null>(null)
-
-
+const dialogOpen = ref(false);
+const selectedRow = ref<CostingFileForm | null>(null);
 
 function openCreateDialog() {
-  selectedRow.value = null
-  dialogOpen.value = true
+  selectedRow.value = null;
+  dialogOpen.value = true;
 }
 
 function openEditDialog(row: ProductBasedCostingFile) {
@@ -322,36 +314,36 @@ function openEditDialog(row: ProductBasedCostingFile) {
     note: row.note ?? '',
     vendor_code: row.vendor_code ?? null,
     market_code: row.market_code ?? null,
-  }
-  dialogOpen.value = true
+  };
+  dialogOpen.value = true;
 }
 
 async function handleDialogSubmit(payload: CostingFileForm) {
   if (payload.id) {
-    console.log('Edit mode payload:', payload)
-    await store.updateProductBasedCostingFile(
-      {id: payload.id,
+    console.log('Edit mode payload:', payload);
+    await store.updateProductBasedCostingFile({
+      id: payload.id,
       name: payload.name,
       order_for: payload.order_for,
       note: payload.note,
       vendor_code: payload.vendor_code,
-      market_code: payload.market_code}
-    )
+      market_code: payload.market_code,
+    });
   } else {
-    console.log('Create mode payload:', payload)
+    console.log('Create mode payload:', payload);
     await store.createProductBasedCostingFile({
       name: payload.name,
       order_for: payload.order_for,
       note: payload.note,
       vendor_code: payload.vendor_code,
-      market_code: payload.market_code
-    })
+      market_code: payload.market_code,
+    });
   }
-  await loadFiles()
+  await loadFiles();
 }
 
 const onSelect = async (item: ProductBasedCostingFile) => {
-  const tenantSlug = route.params.tenantSlug
+  const tenantSlug = route.params.tenantSlug;
 
   await router.push({
     name: 'product-based-costing-file-details-page',
@@ -359,10 +351,8 @@ const onSelect = async (item: ProductBasedCostingFile) => {
       tenantSlug,
       id: item.id,
     },
-  })
-}
-
-
+  });
+};
 
 const onDelete = (item: ProductBasedCostingFile) => {
   $q.dialog({
@@ -372,15 +362,15 @@ const onDelete = (item: ProductBasedCostingFile) => {
     persistent: true,
   }).onOk(() => {
     void (async () => {
-      await store.deleteProductBasedCostingFile(item.id)
-      await loadFiles()
-    })()
-  })
-}
+      await store.deleteProductBasedCostingFile(item.id);
+      await loadFiles();
+    })();
+  });
+};
 
 const onCopy = async (item: ProductBasedCostingFile) => {
-  const fileName = (item.name ?? '').trim()
-  const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${item.id} Copy`
+  const fileName = (item.name ?? '').trim();
+  const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${item.id} Copy`;
 
   const fileCreateResult = await productBasedCostingService.createProductBasedCostingFile({
     tenant_id: item.tenant_id ?? null,
@@ -394,20 +384,20 @@ const onCopy = async (item: ProductBasedCostingFile) => {
     conversion_rate: item.conversion_rate ?? null,
     // Copy should always start as a draft file.
     status: 'pending',
-  })
+  });
 
   if (!fileCreateResult.success || !fileCreateResult.data?.id) {
-    return
+    return;
   }
 
-  const sourceItemsResult = await productBasedCostingService.listProductBasedCostingItems(item.id)
+  const sourceItemsResult = await productBasedCostingService.listProductBasedCostingItems(item.id);
   if (!sourceItemsResult.success) {
-    await loadFiles()
-    return
+    await loadFiles();
+    return;
   }
 
-  const copiedFileId = fileCreateResult.data.id
-  const sourceItems = [...(sourceItemsResult.data ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+  const copiedFileId = fileCreateResult.data.id;
+  const sourceItems = [...(sourceItemsResult.data ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
 
   for (const sourceItem of sourceItems) {
     await productBasedCostingService.createProductBasedCostingItem({
@@ -431,86 +421,86 @@ const onCopy = async (item: ProductBasedCostingFile) => {
       status: 'pending',
       input_type: sourceItem.input_type ?? null,
       assigned_shipment_id: null,
-    })
+    });
   }
 
-  await loadFiles()
+  await loadFiles();
 
   $q.notify({
     type: 'positive',
     message: `Copied as #${copiedFileId} ${nextName}`,
-  })
-}
+  });
+};
 
 const onApplyFilters = async () => {
-  page.value = 1
-  await loadFiles()
-}
+  page.value = 1;
+  await loadFiles();
+};
 
 const normalizeStatus = (status: string | null | undefined) => {
-  const value = (status ?? '').trim().toLowerCase()
-  return value || 'pending'
-}
+  const value = (status ?? '').trim().toLowerCase();
+  return value || 'pending';
+};
 
 const statusSurfaceStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
+  const value = normalizeStatus(status);
   if (value === 'pending') {
     return {
       backgroundColor: '#fffbf2',
       boxShadow: 'inset 6px 0 0 #d8a54a',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#f3f7ff',
       boxShadow: 'inset 6px 0 0 #6f93d8',
-    }
+    };
   }
   if (value === 'processing') {
     return {
       backgroundColor: '#f2fbf6',
       boxShadow: 'inset 6px 0 0 #59aa7d',
-    }
+    };
   }
   if (value === 'ordered') {
     return {
       backgroundColor: '#f7fbff',
       boxShadow: 'inset 6px 0 0 #6d91b0',
-    }
+    };
   }
   if (value === 'invoicing') {
     return {
       backgroundColor: '#f8f9fa',
       boxShadow: 'inset 6px 0 0 #3f51b5',
-    }
+    };
   }
   if (value === 'invoiced') {
     return {
       backgroundColor: '#f2fbfb',
       boxShadow: 'inset 6px 0 0 #009688',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#fff4f6',
       boxShadow: 'inset 6px 0 0 #c97586',
-    }
+    };
   }
   return {
     backgroundColor: '#f8f9fb',
     boxShadow: 'inset 6px 0 0 #8ea0b8',
-  }
-}
+  };
+};
 
 const statusChipStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
+  const value = normalizeStatus(status);
   if (value === 'pending') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
       boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
-    }
+    };
   }
   if (value === 'offered') {
     return {
@@ -518,7 +508,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#27487a',
       border: '1px solid #a9c4f3',
       boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
-    }
+    };
   }
   if (value === 'processing') {
     return {
@@ -526,7 +516,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
       boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-    }
+    };
   }
   if (value === 'ordered') {
     return {
@@ -534,7 +524,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#1b4562',
       border: '1px solid #9fc0db',
       boxShadow: '0 1px 2px rgba(27, 69, 98, 0.18)',
-    }
+    };
   }
   if (value === 'invoicing') {
     return {
@@ -542,7 +532,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#283593',
       border: '1px solid #c5cae9',
       boxShadow: '0 1px 2px rgba(40, 53, 147, 0.18)',
-    }
+    };
   }
   if (value === 'invoiced') {
     return {
@@ -550,7 +540,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#00695c',
       border: '1px solid #b2dfdb',
       boxShadow: '0 1px 2px rgba(0, 105, 92, 0.18)',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
@@ -558,64 +548,64 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
       boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
-    }
+    };
   }
   return {
     backgroundColor: '#dbe5f3',
     color: '#3b4b66',
     border: '1px solid #b9c8dd',
     boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-  }
-}
+  };
+};
 
 const statusDotColor = (status: string | null | undefined) => {
-  const value = normalizeStatus(status)
-  if (value === 'pending') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'processing') return '#2f8b5d'
-  if (value === 'ordered') return '#2f6e92'
-  if (value === 'invoicing') return '#3f51b5'
-  if (value === 'invoiced') return '#009688'
-  if (value === 'cancelled') return '#a64c62'
-  return '#66758c'
-}
+  const value = normalizeStatus(status);
+  if (value === 'pending') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'processing') return '#2f8b5d';
+  if (value === 'ordered') return '#2f6e92';
+  if (value === 'invoicing') return '#3f51b5';
+  if (value === 'invoiced') return '#009688';
+  if (value === 'cancelled') return '#a64c62';
+  return '#66758c';
+};
 
 const onResetFilters = async () => {
-  searchText.value = ''
-  statusFilter.value = '__all__'
-  draftStatusFilter.value = '__all__'
-  page.value = 1
-  filterDrawerOpen.value = false
-  await loadFiles()
-}
+  searchText.value = '';
+  statusFilter.value = '__all__';
+  draftStatusFilter.value = '__all__';
+  page.value = 1;
+  filterDrawerOpen.value = false;
+  await loadFiles();
+};
 
 const onPageChange = async (nextPage: number) => {
-  page.value = nextPage
-  await loadFiles()
-}
+  page.value = nextPage;
+  await loadFiles();
+};
 
 const onTableRequest = async (payload: {
-  pagination: { page: number; rowsPerPage: number; rowsNumber?: number }
+  pagination: { page: number; rowsPerPage: number; rowsNumber?: number };
 }) => {
-  page.value = payload.pagination.page
-  store.page_size = payload.pagination.rowsPerPage
-  await loadFiles()
-}
+  page.value = payload.pagination.page;
+  store.page_size = payload.pagination.rowsPerPage;
+  await loadFiles();
+};
 
 const openFilterDrawer = () => {
-  draftStatusFilter.value = statusFilter.value
-  filterDrawerOpen.value = true
-}
+  draftStatusFilter.value = statusFilter.value;
+  filterDrawerOpen.value = true;
+};
 
 const onApplyDrawerFilters = async () => {
-  statusFilter.value = draftStatusFilter.value
-  page.value = 1
-  await loadFiles()
-}
+  statusFilter.value = draftStatusFilter.value;
+  page.value = 1;
+  await loadFiles();
+};
 
 const onDrawerStatusChange = async () => {
-  await onApplyDrawerFilters()
-}
+  await onApplyDrawerFilters();
+};
 </script>
 
 <style scoped>

@@ -1,7 +1,10 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import { getAppRouteLocation, getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import {
+  getAppRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const documentationRoutes: RouteRecordRaw[] = [
   // App Scope (Tenant Workspace) - Standalone Layout
@@ -14,19 +17,19 @@ const documentationRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff', 'viewer'],
       requireTenantContext: true,
       validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
         if (!selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        const routeTenantSlug = getTenantSlugFromRoute(to)
+        const routeTenantSlug = getTenantSlugFromRoute(to);
 
         if (routeTenantSlug === selectedTenantSlug) {
-          return true
+          return true;
         }
 
-        return getAppRouteLocation(to, selectedTenantSlug)
+        return getAppRouteLocation(to, selectedTenantSlug);
       },
     }),
     children: [
@@ -55,6 +58,6 @@ const documentationRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-]
+];
 
-export default documentationRoutes
+export default documentationRoutes;

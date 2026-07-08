@@ -6,7 +6,10 @@
     transition-hide="scale"
     persistent
   >
-    <q-card style="width: 480px; max-width: 95vw;" class="cloudinary-uploader-card floating-surface shadow-2 q-pa-md">
+    <q-card
+      style="width: 480px; max-width: 95vw"
+      class="cloudinary-uploader-card floating-surface shadow-2 q-pa-md"
+    >
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div class="text-h6 text-weight-bold row items-center">
           <q-icon name="cloud_upload" color="primary" class="q-mr-sm" size="sm" />
@@ -62,9 +65,7 @@
           <div class="text-subtitle1 text-weight-medium text-grey-9">
             Drag and drop your image here
           </div>
-          <div class="text-caption text-grey-6 q-mt-xs">
-            or click to browse from your device
-          </div>
+          <div class="text-caption text-grey-6 q-mt-xs">or click to browse from your device</div>
         </div>
 
         <div v-if="uploading" class="q-mt-md">
@@ -75,10 +76,7 @@
           <q-linear-progress :value="uploadProgress / 100" color="primary" class="q-mt-sm" />
         </div>
 
-        <div
-          v-if="showDriveCheckbox"
-          class="q-mt-md"
-        >
+        <div v-if="showDriveCheckbox" class="q-mt-md">
           <q-checkbox
             v-model="alsoUploadToDrive"
             dense
@@ -89,13 +87,7 @@
       </q-card-section>
 
       <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
-        <q-btn
-          flat
-          no-caps
-          label="Cancel"
-          v-close-popup
-          :disabled="uploading"
-        />
+        <q-btn flat no-caps label="Cancel" v-close-popup :disabled="uploading" />
         <q-btn
           color="primary"
           no-caps
@@ -143,7 +135,7 @@ const props = withDefaults(
     deferUpload: false,
     showDriveOption: false,
     driveFolderPath: 'thrift',
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -280,7 +272,7 @@ function resizeImage(file: File): Promise<Blob> {
             }
           },
           file.type || 'image/jpeg',
-          props.quality
+          props.quality,
         );
       };
       img.onerror = () => {

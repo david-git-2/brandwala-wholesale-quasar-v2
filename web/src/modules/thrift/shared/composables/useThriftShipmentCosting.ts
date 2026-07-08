@@ -92,11 +92,13 @@ export function useThriftShipmentCosting(
       origin_unit_price: stock.origin_unit_price ?? null,
       extra_origin_unit_price: stock.extra_origin_unit_price ?? null,
       additional_charges_cost: stock.additional_charges_cost ?? null,
-      pricing: stock.pricing ? {
-        listed_unit_price: stock.pricing.listed_unit_price,
-        is_listed_price_manual: stock.pricing.is_listed_price_manual,
-        markup_rate_override: stock.pricing.markup_rate_override ?? null,
-      } : null,
+      pricing: stock.pricing
+        ? {
+            listed_unit_price: stock.pricing.listed_unit_price,
+            is_listed_price_manual: stock.pricing.is_listed_price_manual,
+            markup_rate_override: stock.pricing.markup_rate_override ?? null,
+          }
+        : null,
     }));
 
     return buildThriftCostBreakdownByStockId(stocksInput, shipmentById, settings);

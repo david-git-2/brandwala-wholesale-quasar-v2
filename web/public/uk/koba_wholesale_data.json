@@ -121,9 +121,7 @@
         {
           "href": "https://www.kobainternational.com/wp-json/wc/store/v1/products/30574",
           "targetHints": {
-            "allow": [
-              "GET"
-            ]
+            "allow": ["GET"]
           }
         }
       ],
@@ -277,9 +275,7 @@
         {
           "href": "https://www.kobainternational.com/wp-json/wc/store/v1/products/30567",
           "targetHints": {
-            "allow": [
-              "GET"
-            ]
+            "allow": ["GET"]
           }
         }
       ],
@@ -422,9 +418,7 @@
         {
           "href": "https://www.kobainternational.com/wp-json/wc/store/v1/products/30530",
           "targetHints": {
-            "allow": [
-              "GET"
-            ]
+            "allow": ["GET"]
           }
         }
       ],
@@ -567,9 +561,7 @@
         {
           "href": "https://www.kobainternational.com/wp-json/wc/store/v1/products/30526",
           "targetHints": {
-            "allow": [
-              "GET"
-            ]
+            "allow": ["GET"]
           }
         }
       ],
@@ -718,9 +710,7 @@
         {
           "href": "https://www.kobainternational.com/wp-json/wc/store/v1/products/30523",
           "targetHints": {
-            "allow": [
-              "GET"
-            ]
+            "allow": ["GET"]
           }
         }
       ],

@@ -1,20 +1,20 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import type { InventoryItemWithStock, Shipment } from '../types'
+import type { InventoryItemWithStock, Shipment } from '../types';
 
-import { globalRepository } from '../repositories/globalRepository'
-import type { GlobalStockListQuery, GlobalStockRow } from '../types'
-import { mapGlobalStockToInventoryView } from '../utils/mapGlobalStockToInventoryView'
+import { globalRepository } from '../repositories/globalRepository';
+import type { GlobalStockListQuery, GlobalStockRow } from '../types';
+import { mapGlobalStockToInventoryView } from '../utils/mapGlobalStockToInventoryView';
 
 type GlobalStockStoreState = {
-  rows: GlobalStockRow[]
-  items: InventoryItemWithStock[]
-  total: number
-  page: number
-  page_size: number
-  total_pages: number
-  loading: boolean
-}
+  rows: GlobalStockRow[];
+  items: InventoryItemWithStock[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  loading: boolean;
+};
 
 export const useGlobalStockStore = defineStore('globalStock', {
   state: (): GlobalStockStoreState => ({
@@ -32,41 +32,41 @@ export const useGlobalStockStore = defineStore('globalStock', {
       payload: GlobalStockListQuery,
       shipmentsById: Map<number, Shipment> = new Map(),
     ) {
-      this.loading = true
+      this.loading = true;
       try {
-        const result = await globalRepository.listGlobalStockPage(payload)
-        this.rows = result.data
+        const result = await globalRepository.listGlobalStockPage(payload);
+        this.rows = result.data;
         this.items = result.data.map((row) =>
           mapGlobalStockToInventoryView(
             row,
-            row.shipment_id != null ? shipmentsById.get(row.shipment_id) ?? null : null,
+            row.shipment_id != null ? (shipmentsById.get(row.shipment_id) ?? null) : null,
           ),
-        )
-        this.total = result.meta.total
-        this.page = result.meta.page
-        this.page_size = result.meta.page_size
-        this.total_pages = result.meta.total_pages
-        return { success: true as const }
+        );
+        this.total = result.meta.total;
+        this.page = result.meta.page;
+        this.page_size = result.meta.page_size;
+        this.total_pages = result.meta.total_pages;
+        return { success: true as const };
       } catch (error) {
         return {
           success: false as const,
           error: error instanceof Error ? error.message : 'Failed to load global stock.',
-        }
+        };
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async deleteGlobalStock(id: number) {
       try {
-        await globalRepository.deleteGlobalStock(id)
-        return { success: true as const }
+        await globalRepository.deleteGlobalStock(id);
+        return { success: true as const };
       } catch (error) {
         return {
           success: false as const,
           error: error instanceof Error ? error.message : 'Failed to delete stock item.',
-        }
+        };
       }
     },
   },
-})
+});

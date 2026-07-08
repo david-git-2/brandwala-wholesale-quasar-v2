@@ -1,28 +1,14 @@
 <template>
   <div class="marketing-tag-card">
-    <div
-      v-if="showHeader"
-      class="marketing-tag-card__header"
-    >
-      <img
-        v-if="tagConfig.show_logo"
-        :src="basLogo"
-        class="marketing-tag-card__logo"
-        alt="BAS"
-      />
-      <div
-        v-if="tagConfig.show_brand_name && displayBrandName"
-        class="marketing-tag-card__brand"
-      >
+    <div v-if="showHeader" class="marketing-tag-card__header">
+      <img v-if="tagConfig.show_logo" :src="basLogo" class="marketing-tag-card__logo" alt="BAS" />
+      <div v-if="tagConfig.show_brand_name && displayBrandName" class="marketing-tag-card__brand">
         {{ displayBrandName }}
       </div>
     </div>
 
     <div class="marketing-tag-card__body">
-      <div
-        v-if="tagConfig.show_core_sizes && coreSizesLine"
-        class="marketing-tag-card__size-line"
-      >
+      <div v-if="tagConfig.show_core_sizes && coreSizesLine" class="marketing-tag-card__size-line">
         <span class="marketing-tag-card__label">Size</span>
         <span class="marketing-tag-card__size-value">{{ coreSizesLine }}</span>
       </div>
@@ -35,17 +21,19 @@
         <span class="marketing-tag-card__additional-value">{{ additionalSizesLine }}</span>
       </div>
 
-      <div
-        v-if="tagConfig.show_listed_sell"
-        class="marketing-tag-card__price"
-      >
+      <div v-if="tagConfig.show_listed_sell" class="marketing-tag-card__price">
         {{ listedSellFormatted }}
       </div>
     </div>
 
     <div class="marketing-tag-card__barcode-wrap">
       <div class="marketing-tag-card__barcode">
-        <BarcodeRenderer :value="stock.barcode || ''" :height="24" :width="1.15" :display-value="false" />
+        <BarcodeRenderer
+          :value="stock.barcode || ''"
+          :height="24"
+          :width="1.15"
+          :display-value="false"
+        />
       </div>
       <div v-if="tagConfig.show_barcode_text" class="marketing-tag-card__barcode-text">
         {{ stock.barcode }}
@@ -59,7 +47,10 @@ import { computed } from 'vue';
 import type { ThriftStock } from '../types';
 import type { ThriftMarketingTagConfig } from '../../shipment/types/marketingTag';
 import BarcodeRenderer from '../../barcode/components/BarcodeRenderer.vue';
-import { formatCoreSizes, formatAdditionalSizes } from '../../shared/utils/formatThriftStockTagSizes';
+import {
+  formatCoreSizes,
+  formatAdditionalSizes,
+} from '../../shared/utils/formatThriftStockTagSizes';
 import basLogo from 'src/assets/bas-logo.png';
 
 const props = defineProps<{
@@ -78,8 +69,7 @@ const displayBrandName = computed(() => {
 });
 
 const showHeader = computed(() => {
-  return props.tagConfig.show_logo
-    || (props.tagConfig.show_brand_name && !!displayBrandName.value);
+  return props.tagConfig.show_logo || (props.tagConfig.show_brand_name && !!displayBrandName.value);
 });
 </script>
 

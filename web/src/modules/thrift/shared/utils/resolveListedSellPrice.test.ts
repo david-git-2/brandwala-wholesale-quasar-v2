@@ -17,7 +17,7 @@ describe('resolveListedSellPrice', () => {
     const pricing = { listed_unit_price: 137, is_listed_price_manual: false };
     const breakdown = { display_listed_unit_price: 150, suggested_sell_unit_price: 190 } as any;
     expect(resolveListedSellPrice(pricing, breakdown)).toBe(150);
-    
+
     const breakdown2 = { suggested_sell_unit_price: 190 } as any;
     expect(resolveListedSellPrice(pricing, breakdown2)).toBe(190);
   });

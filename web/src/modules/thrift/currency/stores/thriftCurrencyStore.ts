@@ -10,10 +10,12 @@ export const useThriftCurrencyStore = defineStore('thriftCurrency', {
   }),
 
   getters: {
-    currencyById: (state) => (id: number | null | undefined): ThriftCurrency | undefined => {
-      if (!id) return undefined;
-      return state.currencies.find((c) => c.id === id);
-    },
+    currencyById:
+      (state) =>
+      (id: number | null | undefined): ThriftCurrency | undefined => {
+        if (!id) return undefined;
+        return state.currencies.find((c) => c.id === id);
+      },
   },
 
   actions: {

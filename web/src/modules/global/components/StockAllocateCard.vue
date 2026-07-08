@@ -8,7 +8,10 @@
         :product-id="stock.product_id"
         :enable-edit="false"
       />
-      <div class="text-subtitle2 text-weight-medium q-mt-sm full-width" style="word-break: break-word;">
+      <div
+        class="text-subtitle2 text-weight-medium q-mt-sm full-width"
+        style="word-break: break-word"
+      >
         {{ stock.name }}
       </div>
       <div class="text-caption text-grey-8 q-mt-xs">
@@ -25,7 +28,7 @@
         class="row items-center q-col-gutter-sm q-mb-sm"
       >
         <div class="col text-body2 ellipsis">{{ child.name }}</div>
-        <div class="col-auto" style="width: 88px;">
+        <div class="col-auto" style="width: 88px">
           <q-input
             :model-value="quantities[child.id] ?? 0"
             type="number"
@@ -68,36 +71,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import SmartImage from 'src/components/SmartImage.vue'
-import type { GlobalStockRow, AllocateChildTenant } from '../types'
+import SmartImage from 'src/components/SmartImage.vue';
+import type { GlobalStockRow, AllocateChildTenant } from '../types';
 
 const props = defineProps<{
-  stock: GlobalStockRow
-  childTenants: AllocateChildTenant[]
-  quantities: Record<number, number>
-  saving?: boolean
-}>()
+  stock: GlobalStockRow;
+  childTenants: AllocateChildTenant[];
+  quantities: Record<number, number>;
+  saving?: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:quantities', stockId: number, childTenantId: number, quantity: number): void
-  (e: 'save', stockId: number): void
-}>()
+  (e: 'update:quantities', stockId: number, childTenantId: number, quantity: number): void;
+  (e: 'save', stockId: number): void;
+}>();
 
 const allocatedTotal = computed(() =>
   props.childTenants.reduce((sum, child) => sum + Math.max(0, props.quantities[child.id] ?? 0), 0),
-)
+);
 
-const remainingQty = computed(() => Math.max(0, props.stock.excellent_qty - allocatedTotal.value))
+const remainingQty = computed(() => Math.max(0, props.stock.excellent_qty - allocatedTotal.value));
 
-const isOverAllocated = computed(() => allocatedTotal.value > props.stock.excellent_qty)
+const isOverAllocated = computed(() => allocatedTotal.value > props.stock.excellent_qty);
 
 const onQuantityInput = (childTenantId: number, value: string | number | null) => {
-  const parsed = Number(value)
-  const quantity = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
-  emit('update:quantities', props.stock.id, childTenantId, quantity)
-}
+  const parsed = Number(value);
+  const quantity = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+  emit('update:quantities', props.stock.id, childTenantId, quantity);
+};
 </script>
 
 <style scoped>

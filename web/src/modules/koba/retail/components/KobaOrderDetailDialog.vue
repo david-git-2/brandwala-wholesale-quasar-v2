@@ -24,7 +24,13 @@
             <div class="info-block">
               <span class="info-label">Status</span>
               <span class="info-val">
-                <q-chip :color="statusColor" text-color="white" dense square class="text-uppercase text-weight-bold">
+                <q-chip
+                  :color="statusColor"
+                  text-color="white"
+                  dense
+                  square
+                  class="text-uppercase text-weight-bold"
+                >
                   {{ order.status }}
                 </q-chip>
               </span>
@@ -53,39 +59,60 @@
             </div>
             <div class="info-block q-mt-sm">
               <span class="info-label text-primary">Total</span>
-              <span class="info-val text-primary text-weight-bold">৳{{ Number(order.subtotal_gbp || 0).toFixed(2) }}</span>
+              <span class="info-val text-primary text-weight-bold"
+                >৳{{ Number(order.subtotal_gbp || 0).toFixed(2) }}</span
+              >
             </div>
-            
+
             <q-separator class="q-my-sm" />
-            
+
             <div class="info-block q-mt-sm">
               <span class="info-label">Products Commission</span>
-              <span class="info-val text-positive text-weight-bold">৳{{ productsCommissionDisplay.toFixed(2) }}</span>
+              <span class="info-val text-positive text-weight-bold"
+                >৳{{ productsCommissionDisplay.toFixed(2) }}</span
+              >
             </div>
-            <div class="info-block q-mt-sm" v-if="order.extra_profit_user || order.extra_profit_company">
+            <div
+              class="info-block q-mt-sm"
+              v-if="order.extra_profit_user || order.extra_profit_company"
+            >
               <span class="info-label">Extra Profit Share (You 90% | Company 10%)</span>
-              <span class="info-val text-positive">+৳{{ Number(order.extra_profit_user || 0).toFixed(2) }} | +৳{{ Number(order.extra_profit_company || 0).toFixed(2) }}</span>
+              <span class="info-val text-positive"
+                >+৳{{ Number(order.extra_profit_user || 0).toFixed(2) }} | +৳{{
+                  Number(order.extra_profit_company || 0).toFixed(2)
+                }}</span
+              >
             </div>
             <div class="info-block q-mt-sm" v-if="order.delivery_adjustment">
               <span class="info-label">Delivery Adjustment</span>
-              <span class="info-val text-positive">+৳{{ Number(order.delivery_adjustment || 0).toFixed(2) }}</span>
+              <span class="info-val text-positive"
+                >+৳{{ Number(order.delivery_adjustment || 0).toFixed(2) }}</span
+              >
             </div>
             <div class="info-block q-mt-sm" v-if="order.cod_charge">
               <span class="info-label">COD Charge (1.00%)</span>
-              <span class="info-val text-negative">-৳{{ Number(order.cod_charge || 0).toFixed(2) }}</span>
+              <span class="info-val text-negative"
+                >-৳{{ Number(order.cod_charge || 0).toFixed(2) }}</span
+              >
             </div>
             <div class="info-block q-mt-sm" v-if="order.packing_charge">
               <span class="info-label">Packing Charge</span>
-              <span class="info-val text-negative">-৳{{ Number(order.packing_charge || 0).toFixed(2) }}</span>
+              <span class="info-val text-negative"
+                >-৳{{ Number(order.packing_charge || 0).toFixed(2) }}</span
+              >
             </div>
             <div class="info-block q-mt-sm" v-if="order.invoice_charge">
               <span class="info-label">Invoice Charge</span>
-              <span class="info-val text-negative">-৳{{ Number(order.invoice_charge || 0).toFixed(2) }}</span>
+              <span class="info-val text-negative"
+                >-৳{{ Number(order.invoice_charge || 0).toFixed(2) }}</span
+              >
             </div>
-            
+
             <div class="info-block q-mt-sm bg-blue-1">
               <span class="info-label text-primary">Order Commission</span>
-              <span class="info-val text-primary text-weight-bold">৳{{ netOrderCommission.toFixed(2) }}</span>
+              <span class="info-val text-primary text-weight-bold"
+                >৳{{ netOrderCommission.toFixed(2) }}</span
+              >
             </div>
           </div>
         </div>
@@ -94,7 +121,9 @@
 
         <!-- Shipping Info -->
         <div class="shipping-section q-mb-lg">
-          <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-sm">Shipping Information</div>
+          <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-sm">
+            Shipping Information
+          </div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
               <div class="text-caption text-grey-6">Name</div>
@@ -106,7 +135,9 @@
             </div>
             <div class="col-12 col-sm-6 q-mt-sm">
               <div class="text-caption text-grey-6">District / Thana</div>
-              <div class="text-body2 font-medium">{{ order.shipping_district || '—' }} / {{ order.shipping_thana || '—' }}</div>
+              <div class="text-body2 font-medium">
+                {{ order.shipping_district || '—' }} / {{ order.shipping_thana || '—' }}
+              </div>
             </div>
             <div class="col-12 col-sm-6 q-mt-sm">
               <div class="text-caption text-grey-6">Address</div>
@@ -126,26 +157,61 @@
           <q-item v-for="item in items" :key="item.id" class="q-py-md item-row">
             <q-item-section avatar>
               <q-avatar square size="50px" class="bg-grey-2 item-avatar">
-                <img v-if="item.image_url" :src="toDirectGoogleImageUrl(item.image_url)" referrerpolicy="no-referrer" />
+                <img
+                  v-if="item.image_url"
+                  :src="toDirectGoogleImageUrl(item.image_url)"
+                  referrerpolicy="no-referrer"
+                />
                 <q-icon v-else name="image_not_supported" color="grey-5" />
               </q-avatar>
             </q-item-section>
 
             <q-item-section>
-              <div class="text-caption text-grey-6 text-uppercase text-weight-bold" v-if="item.brand">{{ item.brand }}</div>
-              <q-item-label class="text-weight-bold text-grey-9 item-name">{{ item.name }}</q-item-label>
+              <div
+                class="text-caption text-grey-6 text-uppercase text-weight-bold"
+                v-if="item.brand"
+              >
+                {{ item.brand }}
+              </div>
+              <q-item-label class="text-weight-bold text-grey-9 item-name">{{
+                item.name
+              }}</q-item-label>
               <q-item-label caption>
-                Qty: <span class="text-weight-medium text-grey-8">{{ item.quantity }}</span> (Case Size: {{ item.case_size }})
+                Qty: <span class="text-weight-medium text-grey-8">{{ item.quantity }}</span> (Case
+                Size: {{ item.case_size }})
               </q-item-label>
               <q-item-label caption v-if="item.commission">
-                Commission: <span class="text-weight-medium text-positive">৳{{ Number(Math.max(0, (item.commission || 0) - (settingsStore.settings?.gateway_charge_flat ?? 20))).toFixed(2) }}</span> / unit
+                Commission:
+                <span class="text-weight-medium text-positive"
+                  >৳{{
+                    Number(
+                      Math.max(
+                        0,
+                        (item.commission || 0) -
+                          (settingsStore.settings?.gateway_charge_flat ?? 20),
+                      ),
+                    ).toFixed(2)
+                  }}</span
+                >
+                / unit
               </q-item-label>
             </q-item-section>
 
             <q-item-section side class="text-right">
-              <div class="text-weight-bold text-primary">৳{{ Number((item.custom_price_gbp || item.unit_price_gbp || 0) * item.quantity).toFixed(2) }}</div>
-              <div class="text-caption text-grey-6">৳{{ Number(item.custom_price_gbp || item.unit_price_gbp || 0).toFixed(2) }} each</div>
-              <div v-if="item.custom_price_gbp && item.custom_price_gbp > (item.unit_price_gbp || 0)" class="text-caption text-grey-5 text-strike">
+              <div class="text-weight-bold text-primary">
+                ৳{{
+                  Number(
+                    (item.custom_price_gbp || item.unit_price_gbp || 0) * item.quantity,
+                  ).toFixed(2)
+                }}
+              </div>
+              <div class="text-caption text-grey-6">
+                ৳{{ Number(item.custom_price_gbp || item.unit_price_gbp || 0).toFixed(2) }} each
+              </div>
+              <div
+                v-if="item.custom_price_gbp && item.custom_price_gbp > (item.unit_price_gbp || 0)"
+                class="text-caption text-grey-5 text-strike"
+              >
                 Orig: ৳{{ Number(item.unit_price_gbp || 0).toFixed(2) }}
               </div>
             </q-item-section>
@@ -157,81 +223,90 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { date } from 'quasar'
-import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore'
-import type { KobaOrder, KobaOrderItem } from '../repositories/kobaOrderRepository'
+import { computed, onMounted } from 'vue';
+import { date } from 'quasar';
+import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
+import type { KobaOrder, KobaOrderItem } from '../repositories/kobaOrderRepository';
 
 const props = defineProps<{
-  modelValue: boolean
-  order: KobaOrder | null
-  items: KobaOrderItem[]
-  loading: boolean
-}>()
+  modelValue: boolean;
+  order: KobaOrder | null;
+  items: KobaOrderItem[];
+  loading: boolean;
+}>();
 
-const settingsStore = useKobaSettingsStore()
+const settingsStore = useKobaSettingsStore();
 
 onMounted(() => {
-  void settingsStore.fetchSettings()
-})
+  void settingsStore.fetchSettings();
+});
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-}>()
+  (e: 'update:modelValue', value: boolean): void;
+}>();
 
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
-})
+});
 
 const totalQuantity = computed(() => {
-  return props.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
-})
+  return props.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+});
 
 const productsCommissionDisplay = computed(() => {
-  if (!props.order) return 0
-  return Number(props.order.total_commission || 0) + Number(props.order.extra_profit_user || 0)
-})
+  if (!props.order) return 0;
+  return Number(props.order.total_commission || 0) + Number(props.order.extra_profit_user || 0);
+});
 
 const netOrderCommission = computed(() => {
-  if (!props.order) return 0
-  
+  if (!props.order) return 0;
+
   if (props.order.net_order_commission) {
-    return Number(props.order.net_order_commission)
+    return Number(props.order.net_order_commission);
   }
-  
+
   // Fallback calculation if db value is missing
-  return productsCommissionDisplay.value + 
-         Number(props.order.delivery_adjustment || 0) - 
-         Number(props.order.cod_charge || 0) - 
-         Number(props.order.packing_charge || 0) - 
-         Number(props.order.invoice_charge || 0)
-})
+  return (
+    productsCommissionDisplay.value +
+    Number(props.order.delivery_adjustment || 0) -
+    Number(props.order.cod_charge || 0) -
+    Number(props.order.packing_charge || 0) -
+    Number(props.order.invoice_charge || 0)
+  );
+});
 
 const statusColor = computed(() => {
-  if (!props.order) return 'grey'
+  if (!props.order) return 'grey';
   switch (props.order.status) {
-    case 'pending': return 'amber-8'
-    case 'confirmed': return 'blue-7'
-    case 'processing': return 'indigo-7'
-    case 'shipped': return 'deep-purple-7'
-    case 'delivered': return 'positive'
-    case 'cancelled': return 'negative'
-    default: return 'grey'
+    case 'pending':
+      return 'amber-8';
+    case 'confirmed':
+      return 'blue-7';
+    case 'processing':
+      return 'indigo-7';
+    case 'shipped':
+      return 'deep-purple-7';
+    case 'delivered':
+      return 'positive';
+    case 'cancelled':
+      return 'negative';
+    default:
+      return 'grey';
   }
-})
+});
 
 function formatDate(isoString: string) {
-  return date.formatDate(new Date(isoString), 'YYYY-MM-DD HH:mm')
+  return date.formatDate(new Date(isoString), 'YYYY-MM-DD HH:mm');
 }
 
 function toDirectGoogleImageUrl(url: string | null) {
-  if (!url) return ''
-  const m1 = url.match(/[?&]id=([^&]+)/)
-  const m2 = url.match(/\/file\/d\/([^/]+)/)
-  const fileId = m1?.[1] || m2?.[1]
-  if (!fileId) return url
-  return `https://lh3.googleusercontent.com/d/${fileId}`
+  if (!url) return '';
+  const m1 = url.match(/[?&]id=([^&]+)/);
+  const m2 = url.match(/\/file\/d\/([^/]+)/);
+  const fileId = m1?.[1] || m2?.[1];
+  if (!fileId) return url;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
 }
 </script>
 

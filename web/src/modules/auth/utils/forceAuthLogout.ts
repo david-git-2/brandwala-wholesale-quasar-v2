@@ -1,49 +1,52 @@
-import type { Router } from 'vue-router'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from '../stores/authStore'
+import type { Router } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from '../stores/authStore';
 import {
   getAppRouteLocation,
   getShopLoginRouteLocation,
   getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext'
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
-let appRouter: Router | null = null
-let isLoggingOut = false
-let sessionRefreshInFlight: Promise<boolean> | null = null
+let appRouter: Router | null = null;
+let isLoggingOut = false;
+let sessionRefreshInFlight: Promise<boolean> | null = null;
 
 export function setAuthSessionRouter(router: Router) {
-  appRouter = router
+  appRouter = router;
 }
 
 export async function tryRefreshSession(): Promise<boolean> {
   if (sessionRefreshInFlight) {
-    return sessionRefreshInFlight
+    return sessionRefreshInFlight;
   }
 
   sessionRefreshInFlight = (async () => {
-    const { data: { session }, error } = await supabase.auth.refreshSession()
-    return Boolean(session) && !error
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.refreshSession();
+    return Boolean(session) && !error;
   })().finally(() => {
-    sessionRefreshInFlight = null
-  })
+    sessionRefreshInFlight = null;
+  });
 
-  return sessionRefreshInFlight
+  return sessionRefreshInFlight;
 }
 
 export async function handleUnauthorizedResponse() {
-  if (isLoggingOut) return
-  isLoggingOut = true
+  if (isLoggingOut) return;
+  isLoggingOut = true;
 
   try {
-    const router = appRouter
+    const router = appRouter;
     if (!router) {
-      console.warn('[auth] handleUnauthorizedResponse called before router was initialized')
-      isLoggingOut = false
-      return
+      console.warn('[auth] handleUnauthorizedResponse called before router was initialized');
+      isLoggingOut = false;
+      return;
     }
 
-    const currentRoute = router.currentRoute.value
-    const routeName = (currentRoute.name as string) || ''
+    const currentRoute = router.currentRoute.value;
+    const routeName = (currentRoute.name as string) || '';
 
     const loginRouteNames = [
       'admin-login-page',
@@ -51,71 +54,73 @@ export async function handleUnauthorizedResponse() {
       'superadmin-login-page',
       'investor-login-page',
       'auth-callback-page',
-      'auth-callback'
-    ]
+      'auth-callback',
+    ];
     if (loginRouteNames.includes(routeName) || currentRoute.path.includes('/auth/callback')) {
-      isLoggingOut = false
-      return
+      isLoggingOut = false;
+      return;
     }
 
-    const authStore = useAuthStore()
-    let scope = authStore.scope
-    const tenantSlug = authStore.tenantSlug ?? getTenantSlugFromRoute(currentRoute)
+    const authStore = useAuthStore();
+    let scope = authStore.scope;
+    const tenantSlug = authStore.tenantSlug ?? getTenantSlugFromRoute(currentRoute);
 
     if (!scope) {
-      const path = currentRoute.path
+      const path = currentRoute.path;
       if (path.startsWith('/platform')) {
-        scope = 'platform'
+        scope = 'platform';
       } else if (path.startsWith('/shop')) {
-        scope = 'shop'
+        scope = 'shop';
       } else if (path.startsWith('/investor')) {
-        scope = 'investor'
+        scope = 'investor';
       } else {
-        scope = 'app'
+        scope = 'app';
       }
     }
 
-    authStore.clearAccess()
-    await supabase.auth.signOut()
+    authStore.clearAccess();
+    await supabase.auth.signOut();
 
-    const loginError = 'session_expired'
+    const loginError = 'session_expired';
 
     if (scope === 'platform') {
       await router.replace({
         name: 'superadmin-login-page',
-        query: { login_error: loginError }
-      })
+        query: { login_error: loginError },
+      });
     } else if (scope === 'shop') {
       const loginRouteLocation = getShopLoginRouteLocation(currentRoute, {
-        login_error: loginError
-      })
-      await router.replace(loginRouteLocation)
+        login_error: loginError,
+      });
+      await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
       await router.replace({
         name: 'investor-login-page',
         params: tenantSlug ? { tenantSlug } : {},
-        query: { login_error: loginError }
-      })
+        query: { login_error: loginError },
+      });
     } else {
       const loginRouteLocation = getAppRouteLocation(
         {
           name: 'admin-login-page',
           params: tenantSlug ? { tenantSlug } : {},
-          query: {}
+          query: {},
         },
-        tenantSlug
-      )
+        tenantSlug,
+      );
 
       await router.replace({
-        ...(typeof loginRouteLocation === 'string' ? { path: loginRouteLocation } : loginRouteLocation),
+        ...(typeof loginRouteLocation === 'string'
+          ? { path: loginRouteLocation }
+          : loginRouteLocation),
         query: {
-          login_error: loginError
-        }
-      })
+          login_error: loginError,
+        },
+      });
     }
   } catch (err) {
-    console.error('[auth] Error in forceAuthLogout:', err)
+    console.error('[auth] Error in forceAuthLogout:', err);
   } finally {
-    isLoggingOut = false
+    isLoggingOut = false;
   }
 }

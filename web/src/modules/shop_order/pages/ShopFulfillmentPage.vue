@@ -12,9 +12,7 @@
       </section>
 
       <q-card flat bordered>
-        <q-card-section class="text-grey-7">
-          Fulfillment coming in P8.
-        </q-card-section>
+        <q-card-section class="text-grey-7"> Fulfillment coming in P8. </q-card-section>
       </q-card>
     </section>
   </q-page>

@@ -6,9 +6,13 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-12 col-sm">
             <div class="text-h6 text-weight-bold text-grey-9">Task Management</div>
-            <div class="text-caption text-grey-6">Organize projects, submodules, tickets, notes, and team updates</div>
+            <div class="text-caption text-grey-6">
+              Organize projects, submodules, tickets, notes, and team updates
+            </div>
           </div>
-          <div class="col-12 col-sm-auto row q-gutter-xs justify-start justify-sm-end q-mt-xs q-mt-sm-none">
+          <div
+            class="col-12 col-sm-auto row q-gutter-xs justify-start justify-sm-end q-mt-xs q-mt-sm-none"
+          >
             <q-btn
               color="secondary"
               outline
@@ -80,8 +84,8 @@
               aria-label="Hide search"
               @click="
                 () => {
-                  filters.search = ''
-                  showSearchInput = false
+                  filters.search = '';
+                  showSearchInput = false;
                 }
               "
             >
@@ -98,12 +102,7 @@
           aria-label="Filters"
           @click="filterDrawerOpen = true"
         >
-          <q-badge
-            v-if="activeFilterCount > 0"
-            color="primary"
-            rounded
-            floating
-          >
+          <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
             {{ activeFilterCount }}
           </q-badge>
           <q-tooltip>Open Filters</q-tooltip>
@@ -135,8 +134,15 @@
       </q-tabs>
 
       <!-- Status Summary Row -->
-      <div v-if="activeTab === 'tree' || activeTab === 'my-tasks'" class="row no-wrap q-col-gutter-xs q-mb-sm scroll-x">
-        <div v-for="status in statusSummaryItems" :key="status.key" class="col-grow col-sm col-md status-card-wrapper">
+      <div
+        v-if="activeTab === 'tree' || activeTab === 'my-tasks'"
+        class="row no-wrap q-col-gutter-xs q-mb-sm scroll-x"
+      >
+        <div
+          v-for="status in statusSummaryItems"
+          :key="status.key"
+          class="col-grow col-sm col-md status-card-wrapper"
+        >
           <q-card
             flat
             bordered
@@ -144,10 +150,17 @@
             :class="{ 'active-status-card shadow-1': filters.status === status.key }"
             @click="toggleStatusFilter(status.key)"
           >
-            <div class="text-caption text-grey-7 text-uppercase font-bold text-weight-medium" style="font-size: 0.65rem; line-height: 1;">
+            <div
+              class="text-caption text-grey-7 text-uppercase font-bold text-weight-medium"
+              style="font-size: 0.65rem; line-height: 1"
+            >
               {{ status.label }}
             </div>
-            <div class="text-subtitle1 text-weight-bold text-weight-bold" :class="`text-${status.color}`" style="line-height: 1.1; margin-top: 2px;">
+            <div
+              class="text-subtitle1 text-weight-bold text-weight-bold"
+              :class="`text-${status.color}`"
+              style="line-height: 1.1; margin-top: 2px"
+            >
               {{ status.count }}
             </div>
             <div class="status-indicator-bar" :class="`bg-${status.color}`"></div>
@@ -159,9 +172,16 @@
         <!-- TREE VIEW -->
         <q-tab-panel name="tree" class="q-pa-none">
           <div class="tree-container q-gutter-y-sm" v-if="filteredTree.length">
-            <div v-for="project in filteredTree" :key="project.id" class="tree-project-box floating-surface shadow-1 tree-project-padding">
+            <div
+              v-for="project in filteredTree"
+              :key="project.id"
+              class="tree-project-box floating-surface shadow-1 tree-project-padding"
+            >
               <!-- Project Header -->
-              <div class="row justify-between items-center q-mb-md cursor-pointer" @click="onClickItem(project.id)">
+              <div
+                class="row justify-between items-center q-mb-md cursor-pointer"
+                @click="onClickItem(project.id)"
+              >
                 <div class="row items-center q-gutter-sm">
                   <!-- Toggle Collapse Button for Project -->
                   <q-btn
@@ -169,17 +189,23 @@
                     flat
                     round
                     dense
-                    :icon="collapsedItems[project.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                    :icon="
+                      collapsedItems[project.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'
+                    "
                     size="sm"
                     @click.stop="toggleCollapse(project.id)"
                   />
-                  <q-icon :name="getTicketIcon(project.type)" :color="getTicketColor(project.type)" size="24px" />
+                  <q-icon
+                    :name="getTicketIcon(project.type)"
+                    :color="getTicketColor(project.type)"
+                    size="24px"
+                  />
                   <div>
                     <div class="row items-center q-gutter-x-xs">
                       <span
                         class="text-subtitle1 text-weight-bold"
                         :class="`text-${getTicketColor(project.type)}-9`"
-                        style="white-space: normal; word-break: break-word;"
+                        style="white-space: normal; word-break: break-word"
                       >
                         {{ project.title }}
                       </span>
@@ -198,7 +224,10 @@
                         :style="typeChipStyle(project.type)"
                         class="status-chip text-weight-bold q-ml-sm"
                       >
-                        <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(project.type) }"></span>
+                        <span
+                          class="status-chip-dot"
+                          :style="{ backgroundColor: typeDotColor(project.type) }"
+                        ></span>
                         {{ project.type.toUpperCase() }}
                       </q-chip>
                       <q-chip
@@ -210,7 +239,10 @@
                         class="status-chip text-weight-bold q-ml-xs"
                         @click.stop
                       >
-                        <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(project.status) }"></span>
+                        <span
+                          class="status-chip-dot"
+                          :style="{ backgroundColor: statusDotColor(project.status) }"
+                        ></span>
                         {{ project.status.toUpperCase() }}
                         <q-menu auto-close>
                           <q-list dense style="min-width: 120px">
@@ -249,18 +281,32 @@
                   icon="add"
                   size="sm"
                   :color="getTicketColor(project.type)"
-                  @click.stop="onClickQuickAdd(project.id, project.type === 'project' ? 'module' : 'task')"
+                  @click.stop="
+                    onClickQuickAdd(project.id, project.type === 'project' ? 'module' : 'task')
+                  "
                 >
-                  <q-tooltip>{{ project.type === 'project' ? 'Add Module' : 'Add Child Item' }}</q-tooltip>
+                  <q-tooltip>{{
+                    project.type === 'project' ? 'Add Module' : 'Add Child Item'
+                  }}</q-tooltip>
                 </q-btn>
               </div>
 
               <!-- Modules (only for projects) -->
-              <div v-if="project.type === 'project' && project.children?.length && !collapsedItems[project.id]" class="modules-list tree-indent-level border-left q-gutter-y-sm">
+              <div
+                v-if="
+                  project.type === 'project' &&
+                  project.children?.length &&
+                  !collapsedItems[project.id]
+                "
+                class="modules-list tree-indent-level border-left q-gutter-y-sm"
+              >
                 <template v-for="mod in project.children" :key="mod.id">
                   <!-- Render as Module if type is module -->
                   <div v-if="mod.type === 'module'" class="tree-module-box q-pa-sm rounded-borders">
-                    <div class="row justify-between items-center q-mb-sm cursor-pointer" @click="onClickItem(mod.id)">
+                    <div
+                      class="row justify-between items-center q-mb-sm cursor-pointer"
+                      @click="onClickItem(mod.id)"
+                    >
                       <div class="row items-center q-gutter-sm">
                         <!-- Toggle Collapse Button for Module -->
                         <q-btn
@@ -268,14 +314,20 @@
                           flat
                           round
                           dense
-                          :icon="collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                          :icon="
+                            collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'
+                          "
                           size="xs"
                           @click.stop="toggleCollapse(mod.id)"
                         />
                         <q-icon name="view_module" color="blue" size="20px" />
                         <div>
                           <div class="row items-center q-gutter-x-sm">
-                            <span class="text-subtitle2 text-weight-bold text-blue-9" style="white-space: normal; word-break: break-word;">{{ mod.title }}</span>
+                            <span
+                              class="text-subtitle2 text-weight-bold text-blue-9"
+                              style="white-space: normal; word-break: break-word"
+                              >{{ mod.title }}</span
+                            >
                             <q-icon
                               v-if="mod.accessibility && mod.accessibility !== 'public'"
                               :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
@@ -284,7 +336,14 @@
                             >
                               <q-tooltip>{{ mod.accessibility.toUpperCase() }} Note</q-tooltip>
                             </q-icon>
-                            <q-chip dense square color="blue-1" text-color="blue-8" class="text-overline">Module</q-chip>
+                            <q-chip
+                              dense
+                              square
+                              color="blue-1"
+                              text-color="blue-8"
+                              class="text-overline"
+                              >Module</q-chip
+                            >
                           </div>
                           <div v-if="mod.tags?.length" class="row q-gutter-x-xs q-mt-xs">
                             <q-chip
@@ -301,17 +360,34 @@
                           </div>
                         </div>
                       </div>
-                      <q-btn flat round dense icon="add" size="sm" color="blue" @click.stop="onClickQuickAdd(mod.id, 'submodule')">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="add"
+                        size="sm"
+                        color="blue"
+                        @click.stop="onClickQuickAdd(mod.id, 'submodule')"
+                      >
                         <q-tooltip>Add Submodule</q-tooltip>
                       </q-btn>
                     </div>
 
                     <!-- Submodules -->
-                    <div v-if="mod.children?.length && !collapsedItems[mod.id]" class="submodules-list tree-indent-level border-left q-gutter-y-sm">
+                    <div
+                      v-if="mod.children?.length && !collapsedItems[mod.id]"
+                      class="submodules-list tree-indent-level border-left q-gutter-y-sm"
+                    >
                       <template v-for="sub in mod.children" :key="sub.id">
                         <!-- Render as Submodule if type is submodule -->
-                        <div v-if="sub.type === 'submodule'" class="tree-submodule-box q-pa-sm rounded-borders">
-                          <div class="row justify-between items-center q-mb-xs cursor-pointer" @click="onClickItem(sub.id)">
+                        <div
+                          v-if="sub.type === 'submodule'"
+                          class="tree-submodule-box q-pa-sm rounded-borders"
+                        >
+                          <div
+                            class="row justify-between items-center q-mb-xs cursor-pointer"
+                            @click="onClickItem(sub.id)"
+                          >
                             <div class="row items-center q-gutter-sm">
                               <!-- Toggle Collapse Button for Submodule -->
                               <q-btn
@@ -319,23 +395,42 @@
                                 flat
                                 round
                                 dense
-                                :icon="collapsedItems[sub.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                                :icon="
+                                  collapsedItems[sub.id]
+                                    ? 'keyboard_arrow_right'
+                                    : 'keyboard_arrow_down'
+                                "
                                 size="xs"
                                 @click.stop="toggleCollapse(sub.id)"
                               />
                               <q-icon name="layers" color="cyan" size="18px" />
                               <div>
                                 <div class="row items-center q-gutter-x-sm">
-                                  <span class="text-body2 text-weight-bold text-cyan-9" style="white-space: normal; word-break: break-word;">{{ sub.title }}</span>
+                                  <span
+                                    class="text-body2 text-weight-bold text-cyan-9"
+                                    style="white-space: normal; word-break: break-word"
+                                    >{{ sub.title }}</span
+                                  >
                                   <q-icon
                                     v-if="sub.accessibility && sub.accessibility !== 'public'"
                                     :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
-                                    :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
+                                    :color="
+                                      sub.accessibility === 'private' ? 'negative' : 'primary'
+                                    "
                                     size="12px"
                                   >
-                                    <q-tooltip>{{ sub.accessibility.toUpperCase() }} Note</q-tooltip>
+                                    <q-tooltip
+                                      >{{ sub.accessibility.toUpperCase() }} Note</q-tooltip
+                                    >
                                   </q-icon>
-                                  <q-chip dense square color="cyan-1" text-color="cyan-8" class="text-overline">Submodule</q-chip>
+                                  <q-chip
+                                    dense
+                                    square
+                                    color="cyan-1"
+                                    text-color="cyan-8"
+                                    class="text-overline"
+                                    >Submodule</q-chip
+                                  >
                                 </div>
                                 <div v-if="sub.tags?.length" class="row q-gutter-x-xs q-mt-xs">
                                   <q-chip
@@ -352,13 +447,24 @@
                                 </div>
                               </div>
                             </div>
-                            <q-btn flat round dense icon="add" size="xs" color="cyan" @click.stop="onClickQuickAdd(sub.id, 'task')">
+                            <q-btn
+                              flat
+                              round
+                              dense
+                              icon="add"
+                              size="xs"
+                              color="cyan"
+                              @click.stop="onClickQuickAdd(sub.id, 'task')"
+                            >
                               <q-tooltip>Add Task/Bug/Feature</q-tooltip>
                             </q-btn>
                           </div>
 
                           <!-- Tickets / Child items -->
-                          <div v-if="sub.children?.length && !collapsedItems[sub.id]" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
+                          <div
+                            v-if="sub.children?.length && !collapsedItems[sub.id]"
+                            class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs"
+                          >
                             <div
                               v-for="ticket in sub.children"
                               :key="ticket.id"
@@ -371,24 +477,47 @@
                                   flat
                                   round
                                   dense
-                                  :icon="collapsedItems[ticket.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                                  :icon="
+                                    collapsedItems[ticket.id]
+                                      ? 'keyboard_arrow_right'
+                                      : 'keyboard_arrow_down'
+                                  "
                                   size="xs"
                                   @click.stop="toggleCollapse(ticket.id)"
                                 />
-                                <q-icon :name="getTicketIcon(ticket.type)" :color="getTicketColor(ticket.type)" size="16px" />
+                                <q-icon
+                                  :name="getTicketIcon(ticket.type)"
+                                  :color="getTicketColor(ticket.type)"
+                                  size="16px"
+                                />
                                 <div>
                                   <div class="row items-center q-gutter-x-sm">
-                                    <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
-                                      <span v-if="ticket.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ ticket.id }}</span>
+                                    <span
+                                      class="text-body2 text-grey-9 text-weight-medium"
+                                      style="white-space: normal; word-break: break-word"
+                                    >
+                                      <span
+                                        v-if="ticket.type === 'task'"
+                                        class="text-primary text-weight-bold q-mr-xs"
+                                        >#{{ ticket.id }}</span
+                                      >
                                       {{ ticket.title }}
                                     </span>
                                     <q-icon
-                                      v-if="ticket.accessibility && ticket.accessibility !== 'public'"
-                                      :name="ticket.accessibility === 'private' ? 'lock' : 'lock_person'"
-                                      :color="ticket.accessibility === 'private' ? 'negative' : 'primary'"
+                                      v-if="
+                                        ticket.accessibility && ticket.accessibility !== 'public'
+                                      "
+                                      :name="
+                                        ticket.accessibility === 'private' ? 'lock' : 'lock_person'
+                                      "
+                                      :color="
+                                        ticket.accessibility === 'private' ? 'negative' : 'primary'
+                                      "
                                       size="12px"
                                     >
-                                      <q-tooltip>{{ ticket.accessibility.toUpperCase() }} Note</q-tooltip>
+                                      <q-tooltip
+                                        >{{ ticket.accessibility.toUpperCase() }} Note</q-tooltip
+                                      >
                                     </q-icon>
                                     <q-chip
                                       square
@@ -398,7 +527,10 @@
                                       class="status-chip text-weight-bold"
                                       @click.stop
                                     >
-                                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(ticket.status) }"></span>
+                                      <span
+                                        class="status-chip-dot"
+                                        :style="{ backgroundColor: statusDotColor(ticket.status) }"
+                                      ></span>
                                       {{ ticket.status.toUpperCase() }}
                                       <q-menu auto-close>
                                         <q-list dense style="min-width: 120px">
@@ -409,7 +541,9 @@
                                             v-close-popup
                                             @click="updateItemStatus(ticket.id, opt.value)"
                                           >
-                                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                            <q-item-section>{{
+                                              opt.label.toUpperCase()
+                                            }}</q-item-section>
                                           </q-item>
                                         </q-list>
                                       </q-menu>
@@ -423,7 +557,12 @@
                                       class="status-chip text-weight-bold"
                                       @click.stop
                                     >
-                                      <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(ticket.priority) }"></span>
+                                      <span
+                                        class="status-chip-dot"
+                                        :style="{
+                                          backgroundColor: priorityDotColor(ticket.priority),
+                                        }"
+                                      ></span>
                                       {{ ticket.priority.toUpperCase() }}
                                       <q-menu auto-close>
                                         <q-list dense style="min-width: 120px">
@@ -434,7 +573,9 @@
                                             v-close-popup
                                             @click="updateItemPriority(ticket.id, opt.value)"
                                           >
-                                            <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                            <q-item-section>{{
+                                              opt.label.toUpperCase()
+                                            }}</q-item-section>
                                           </q-item>
                                         </q-list>
                                       </q-menu>
@@ -482,15 +623,30 @@
                               flat
                               round
                               dense
-                              :icon="collapsedItems[sub.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                              :icon="
+                                collapsedItems[sub.id]
+                                  ? 'keyboard_arrow_right'
+                                  : 'keyboard_arrow_down'
+                              "
                               size="xs"
                               @click.stop="toggleCollapse(sub.id)"
                             />
-                            <q-icon :name="getTicketIcon(sub.type)" :color="getTicketColor(sub.type)" size="16px" />
+                            <q-icon
+                              :name="getTicketIcon(sub.type)"
+                              :color="getTicketColor(sub.type)"
+                              size="16px"
+                            />
                             <div>
                               <div class="row items-center q-gutter-x-sm">
-                                <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
-                                  <span v-if="sub.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ sub.id }}</span>
+                                <span
+                                  class="text-body2 text-grey-9 text-weight-medium"
+                                  style="white-space: normal; word-break: break-word"
+                                >
+                                  <span
+                                    v-if="sub.type === 'task'"
+                                    class="text-primary text-weight-bold q-mr-xs"
+                                    >#{{ sub.id }}</span
+                                  >
                                   {{ sub.title }}
                                 </span>
                                 <q-icon
@@ -509,7 +665,10 @@
                                   class="status-chip text-weight-bold"
                                   @click.stop
                                 >
-                                  <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(sub.status) }"></span>
+                                  <span
+                                    class="status-chip-dot"
+                                    :style="{ backgroundColor: statusDotColor(sub.status) }"
+                                  ></span>
                                   {{ sub.status.toUpperCase() }}
                                   <q-menu auto-close>
                                     <q-list dense style="min-width: 120px">
@@ -520,7 +679,9 @@
                                         v-close-popup
                                         @click="updateItemStatus(sub.id, opt.value)"
                                       >
-                                        <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                        <q-item-section>{{
+                                          opt.label.toUpperCase()
+                                        }}</q-item-section>
                                       </q-item>
                                     </q-list>
                                   </q-menu>
@@ -534,7 +695,10 @@
                                   class="status-chip text-weight-bold"
                                   @click.stop
                                 >
-                                  <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(sub.priority) }"></span>
+                                  <span
+                                    class="status-chip-dot"
+                                    :style="{ backgroundColor: priorityDotColor(sub.priority) }"
+                                  ></span>
                                   {{ sub.priority.toUpperCase() }}
                                   <q-menu auto-close>
                                     <q-list dense style="min-width: 120px">
@@ -545,7 +709,9 @@
                                         v-close-popup
                                         @click="updateItemPriority(sub.id, opt.value)"
                                       >
-                                        <q-item-section>{{ opt.label.toUpperCase() }}</q-item-section>
+                                        <q-item-section>{{
+                                          opt.label.toUpperCase()
+                                        }}</q-item-section>
                                       </q-item>
                                     </q-list>
                                   </q-menu>
@@ -594,14 +760,24 @@
                         flat
                         round
                         dense
-                        :icon="collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                        :icon="
+                          collapsedItems[mod.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'
+                        "
                         size="xs"
                         @click.stop="toggleCollapse(mod.id)"
                       />
-                      <q-icon :name="getTicketIcon(mod.type)" :color="getTicketColor(mod.type)" size="16px" />
+                      <q-icon
+                        :name="getTicketIcon(mod.type)"
+                        :color="getTicketColor(mod.type)"
+                        size="16px"
+                      />
                       <div>
                         <div class="row items-center q-gutter-x-sm">
-                          <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">{{ mod.title }}</span>
+                          <span
+                            class="text-body2 text-grey-9 text-weight-medium"
+                            style="white-space: normal; word-break: break-word"
+                            >{{ mod.title }}</span
+                          >
                           <q-icon
                             v-if="mod.accessibility && mod.accessibility !== 'public'"
                             :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
@@ -618,7 +794,10 @@
                             class="status-chip text-weight-bold"
                             @click.stop
                           >
-                            <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(mod.status) }"></span>
+                            <span
+                              class="status-chip-dot"
+                              :style="{ backgroundColor: statusDotColor(mod.status) }"
+                            ></span>
                             {{ mod.status.toUpperCase() }}
                             <q-menu auto-close>
                               <q-list dense style="min-width: 120px">
@@ -643,7 +822,10 @@
                             class="status-chip text-weight-bold"
                             @click.stop
                           >
-                            <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(mod.priority) }"></span>
+                            <span
+                              class="status-chip-dot"
+                              :style="{ backgroundColor: priorityDotColor(mod.priority) }"
+                            ></span>
                             {{ mod.priority.toUpperCase() }}
                             <q-menu auto-close>
                               <q-list dense style="min-width: 120px">
@@ -691,7 +873,14 @@
               </div>
 
               <!-- Direct Children of Project (if any, when not module) -->
-              <div v-else-if="project.type !== 'project' && project.children?.length && !collapsedItems[project.id]" class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs">
+              <div
+                v-else-if="
+                  project.type !== 'project' &&
+                  project.children?.length &&
+                  !collapsedItems[project.id]
+                "
+                class="tickets-list tree-indent-level border-left q-mt-sm q-gutter-y-xs"
+              >
                 <div
                   v-for="child in project.children"
                   :key="child.id"
@@ -704,15 +893,28 @@
                       flat
                       round
                       dense
-                      :icon="collapsedItems[child.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'"
+                      :icon="
+                        collapsedItems[child.id] ? 'keyboard_arrow_right' : 'keyboard_arrow_down'
+                      "
                       size="xs"
                       @click.stop="toggleCollapse(child.id)"
                     />
-                    <q-icon :name="getTicketIcon(child.type)" :color="getTicketColor(child.type)" size="16px" />
+                    <q-icon
+                      :name="getTicketIcon(child.type)"
+                      :color="getTicketColor(child.type)"
+                      size="16px"
+                    />
                     <div>
                       <div class="row items-center q-gutter-x-sm">
-                        <span class="text-body2 text-grey-9 text-weight-medium" style="white-space: normal; word-break: break-word;">
-                          <span v-if="child.type === 'task'" class="text-primary text-weight-bold q-mr-xs">#{{ child.id }}</span>
+                        <span
+                          class="text-body2 text-grey-9 text-weight-medium"
+                          style="white-space: normal; word-break: break-word"
+                        >
+                          <span
+                            v-if="child.type === 'task'"
+                            class="text-primary text-weight-bold q-mr-xs"
+                            >#{{ child.id }}</span
+                          >
                           {{ child.title }}
                         </span>
                         <q-icon
@@ -731,7 +933,10 @@
                           class="status-chip text-weight-bold"
                           @click.stop
                         >
-                          <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(child.status) }"></span>
+                          <span
+                            class="status-chip-dot"
+                            :style="{ backgroundColor: statusDotColor(child.status) }"
+                          ></span>
                           {{ child.status.toUpperCase() }}
                           <q-menu auto-close>
                             <q-list dense style="min-width: 120px">
@@ -756,7 +961,10 @@
                           class="status-chip text-weight-bold"
                           @click.stop
                         >
-                          <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(child.priority) }"></span>
+                          <span
+                            class="status-chip-dot"
+                            :style="{ backgroundColor: priorityDotColor(child.priority) }"
+                          ></span>
                           {{ child.priority.toUpperCase() }}
                           <q-menu auto-close>
                             <q-list dense style="min-width: 120px">
@@ -806,10 +1014,11 @@
           <div v-else class="text-center q-pa-xl floating-surface shadow-1">
             <q-icon name="folder_open" size="48px" class="text-grey-5 q-mb-md" />
             <div class="text-subtitle1 text-grey-9 text-weight-bold">No Projects Found</div>
-            <div class="text-body2 text-grey-6">Create a Project to begin building your task hierarchy.</div>
+            <div class="text-body2 text-grey-6">
+              Create a Project to begin building your task hierarchy.
+            </div>
           </div>
         </q-tab-panel>
-
 
         <!-- LIST VIEW -->
         <q-tab-panel name="list" class="q-pa-none">
@@ -828,7 +1037,9 @@
               >
                 <template #body-cell-id="cellProps">
                   <q-td :props="cellProps">
-                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold">#{{ cellProps.value }}</span>
+                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold"
+                      >#{{ cellProps.value }}</span
+                    >
                     <span v-else class="text-grey-7">#{{ cellProps.value }}</span>
                   </q-td>
                 </template>
@@ -838,13 +1049,19 @@
                       <div class="row items-center no-wrap">
                         <span class="text-weight-medium">{{ cellProps.value }}</span>
                         <q-icon
-                          v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                          v-if="
+                            cellProps.row.accessibility && cellProps.row.accessibility !== 'public'
+                          "
                           :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
-                          :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                          :color="
+                            cellProps.row.accessibility === 'private' ? 'negative' : 'primary'
+                          "
                           size="14px"
                           class="q-ml-xs"
                         >
-                          <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                          <q-tooltip
+                            >{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip
+                          >
                         </q-icon>
                       </div>
                       <div v-if="cellProps.row.tags?.length" class="row q-gutter-x-xs q-mt-xs">
@@ -871,7 +1088,10 @@
                       :style="typeChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: typeDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                     </q-chip>
                   </q-td>
@@ -887,7 +1107,10 @@
                       class="status-chip text-weight-bold"
                       @click.stop
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: statusDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                       <q-menu auto-close>
                         <q-list dense style="min-width: 120px">
@@ -916,7 +1139,10 @@
                       class="status-chip text-weight-bold"
                       @click.stop
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: priorityDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                       <q-menu auto-close>
                         <q-list dense style="min-width: 120px">
@@ -937,7 +1163,9 @@
 
                 <template #body-cell-due_date="cellProps">
                   <q-td :props="cellProps">
-                    <span class="text-caption text-grey-8">{{ cellProps.value ? new Date(cellProps.value).toLocaleDateString() : 'N/A' }}</span>
+                    <span class="text-caption text-grey-8">{{
+                      cellProps.value ? new Date(cellProps.value).toLocaleDateString() : 'N/A'
+                    }}</span>
                   </q-td>
                 </template>
               </q-table>
@@ -957,7 +1185,13 @@
               <q-card flat class="floating-surface shadow-1 card-hover">
                 <q-card-section>
                   <div class="row items-center justify-between q-mb-sm">
-                    <q-chip dense square color="amber-1" text-color="amber-9" class="status-chip text-weight-bold">
+                    <q-chip
+                      dense
+                      square
+                      color="amber-1"
+                      text-color="amber-9"
+                      class="status-chip text-weight-bold"
+                    >
                       <span class="status-chip-dot" style="background-color: #d97706"></span>
                       NOTE
                     </q-chip>
@@ -970,18 +1204,30 @@
                       >
                         <q-tooltip>{{ n.accessibility.toUpperCase() }} Note</q-tooltip>
                       </q-icon>
-                      <span class="text-caption text-grey-5">{{ formatDateShort(n.created_at) }}</span>
+                      <span class="text-caption text-grey-5">{{
+                        formatDateShort(n.created_at)
+                      }}</span>
                     </div>
                   </div>
-                  <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">{{ n.title }}</div>
-                  <div class="text-body2 text-grey-7 ellipsis-3-lines" v-html="n.content || 'No details provided.'"></div>
+                  <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
+                    {{ n.title }}
+                  </div>
+                  <div
+                    class="text-body2 text-grey-7 ellipsis-3-lines"
+                    v-html="n.content || 'No details provided.'"
+                  ></div>
                 </q-card-section>
               </q-card>
             </div>
-            <div v-if="!filteredNotes.length" class="col-12 text-center q-pa-xl floating-surface shadow-1">
+            <div
+              v-if="!filteredNotes.length"
+              class="col-12 text-center q-pa-xl floating-surface shadow-1"
+            >
               <q-icon name="note" size="48px" class="text-grey-5 q-mb-md" />
               <div class="text-subtitle1 text-grey-9 text-weight-bold">No Notes Found</div>
-              <div class="text-body2 text-grey-6">Create a note to keep track of ideas or documentation.</div>
+              <div class="text-body2 text-grey-6">
+                Create a note to keep track of ideas or documentation.
+              </div>
             </div>
           </div>
         </q-tab-panel>
@@ -998,21 +1244,39 @@
               <q-card flat class="floating-surface shadow-1 card-hover">
                 <q-card-section>
                   <div class="row items-center justify-between q-mb-sm">
-                    <q-chip dense square color="teal-1" text-color="teal-8" class="text-overline text-weight-bold">Discussion</q-chip>
-                    <span class="text-caption text-grey-5">{{ formatDateShort(d.created_at) }}</span>
+                    <q-chip
+                      dense
+                      square
+                      color="teal-1"
+                      text-color="teal-8"
+                      class="text-overline text-weight-bold"
+                      >Discussion</q-chip
+                    >
+                    <span class="text-caption text-grey-5">{{
+                      formatDateShort(d.created_at)
+                    }}</span>
                   </div>
-                  <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">{{ d.title }}</div>
-                  <div class="text-body2 text-grey-7 ellipsis-3-lines">{{ d.content || 'No details provided.' }}</div>
+                  <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
+                    {{ d.title }}
+                  </div>
+                  <div class="text-body2 text-grey-7 ellipsis-3-lines">
+                    {{ d.content || 'No details provided.' }}
+                  </div>
                   <div class="row items-center q-mt-md text-primary text-weight-bold text-caption">
                     <q-icon name="comment" class="q-mr-xs" /> View Comments
                   </div>
                 </q-card-section>
               </q-card>
             </div>
-            <div v-if="!filteredDiscussions.length" class="col-12 text-center q-pa-xl floating-surface shadow-1">
+            <div
+              v-if="!filteredDiscussions.length"
+              class="col-12 text-center q-pa-xl floating-surface shadow-1"
+            >
               <q-icon name="forum" size="48px" class="text-grey-5 q-mb-md" />
               <div class="text-subtitle1 text-grey-9 text-weight-bold">No Discussions Found</div>
-              <div class="text-body2 text-grey-6">Create a discussion under any project, module, or submodule.</div>
+              <div class="text-body2 text-grey-6">
+                Create a discussion under any project, module, or submodule.
+              </div>
             </div>
           </div>
         </q-tab-panel>
@@ -1033,7 +1297,9 @@
               >
                 <template #body-cell-id="cellProps">
                   <q-td :props="cellProps">
-                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold">#{{ cellProps.value }}</span>
+                    <span v-if="cellProps.row.type === 'task'" class="text-primary text-weight-bold"
+                      >#{{ cellProps.value }}</span
+                    >
                     <span v-else class="text-grey-7">#{{ cellProps.value }}</span>
                   </q-td>
                 </template>
@@ -1043,13 +1309,19 @@
                       <div class="row items-center no-wrap">
                         <span class="text-weight-medium">{{ cellProps.value }}</span>
                         <q-icon
-                          v-if="cellProps.row.accessibility && cellProps.row.accessibility !== 'public'"
+                          v-if="
+                            cellProps.row.accessibility && cellProps.row.accessibility !== 'public'
+                          "
                           :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
-                          :color="cellProps.row.accessibility === 'private' ? 'negative' : 'primary'"
+                          :color="
+                            cellProps.row.accessibility === 'private' ? 'negative' : 'primary'
+                          "
                           size="14px"
                           class="q-ml-xs"
                         >
-                          <q-tooltip>{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip>
+                          <q-tooltip
+                            >{{ cellProps.row.accessibility.toUpperCase() }} Note</q-tooltip
+                          >
                         </q-icon>
                       </div>
                       <div v-if="cellProps.row.tags?.length" class="row q-gutter-x-xs q-mt-xs">
@@ -1076,7 +1348,10 @@
                       :style="typeChipStyle(cellProps.value)"
                       class="status-chip text-weight-bold"
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: typeDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: typeDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                     </q-chip>
                   </q-td>
@@ -1092,7 +1367,10 @@
                       class="status-chip text-weight-bold"
                       @click.stop
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: statusDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: statusDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                       <q-menu auto-close>
                         <q-list dense style="min-width: 120px">
@@ -1121,7 +1399,10 @@
                       class="status-chip text-weight-bold"
                       @click.stop
                     >
-                      <span class="status-chip-dot" :style="{ backgroundColor: priorityDotColor(cellProps.value) }"></span>
+                      <span
+                        class="status-chip-dot"
+                        :style="{ backgroundColor: priorityDotColor(cellProps.value) }"
+                      ></span>
                       {{ cellProps.value.toUpperCase() }}
                       <q-menu auto-close>
                         <q-list dense style="min-width: 120px">
@@ -1142,7 +1423,9 @@
 
                 <template #body-cell-due_date="cellProps">
                   <q-td :props="cellProps">
-                    <span class="text-caption text-grey-8">{{ cellProps.value ? new Date(cellProps.value).toLocaleDateString() : 'N/A' }}</span>
+                    <span class="text-caption text-grey-8">{{
+                      cellProps.value ? new Date(cellProps.value).toLocaleDateString() : 'N/A'
+                    }}</span>
                   </q-td>
                 </template>
               </q-table>
@@ -1152,7 +1435,10 @@
       </q-tab-panels>
 
       <!-- Pagination Controls (Only for non-tree views) -->
-      <div v-if="activeTab !== 'tree' && activeTab !== 'my-tasks' && totalPages > 1" class="row justify-center q-mt-md q-mb-lg">
+      <div
+        v-if="activeTab !== 'tree' && activeTab !== 'my-tasks' && totalPages > 1"
+        class="row justify-center q-mt-md q-mb-lg"
+      >
         <q-pagination
           v-model="page"
           :max="totalPages"
@@ -1260,13 +1546,24 @@
         <!-- Date Range Selection Pop-up -->
         <div v-if="filters.dateField">
           <div class="text-caption text-grey-7 q-mb-xs">Date Range</div>
-          <q-btn outline no-caps class="full-width soft-input text-left justify-start q-px-sm" color="primary">
+          <q-btn
+            outline
+            no-caps
+            class="full-width soft-input text-left justify-start q-px-sm"
+            color="primary"
+          >
             <q-icon name="event" class="q-mr-xs" />
             <span class="text-caption">{{ dateRangeLabel }}</span>
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date v-model="selectedDateRange" range @update:model-value="onDateRangeChange">
                 <div class="row items-center justify-end q-gutter-sm">
-                  <q-btn v-close-popup label="Clear" color="negative" flat @click="clearDateRange" />
+                  <q-btn
+                    v-close-popup
+                    label="Clear"
+                    color="negative"
+                    flat
+                    @click="clearDateRange"
+                  />
                   <q-btn v-close-popup label="Close" color="primary" flat />
                 </div>
               </q-date>
@@ -1289,9 +1586,7 @@
       @saved="refreshData"
     />
 
-    <TagManagerDialog
-      v-model="tagManagerOpen"
-    />
+    <TagManagerDialog v-model="tagManagerOpen" />
 
     <TaskDetailsDialog
       v-model="detailsOpen"
@@ -1299,10 +1594,7 @@
       @updated="refreshData"
     />
 
-    <BulkDeleteDialog
-      v-model="bulkDeleteOpen"
-      @deleted="refreshData"
-    />
+    <BulkDeleteDialog v-model="bulkDeleteOpen" @deleted="refreshData" />
   </q-page>
 </template>
 
@@ -1421,7 +1713,11 @@ const dateRangeLabel = computed(() => {
   if (typeof selectedDateRange.value === 'string') {
     return selectedDateRange.value;
   }
-  if (typeof selectedDateRange.value === 'object' && selectedDateRange.value.from && selectedDateRange.value.to) {
+  if (
+    typeof selectedDateRange.value === 'object' &&
+    selectedDateRange.value.from &&
+    selectedDateRange.value.to
+  ) {
     return `${selectedDateRange.value.from} to ${selectedDateRange.value.to}`;
   }
   return 'Any Time';
@@ -1508,16 +1804,42 @@ const priorityFilterOptions = [
 ];
 
 const assigneeFilterOptions = computed(() => tasksStore.members.map((m) => m.email));
-const tagFilterOptions = computed(() => tasksStore.tags.map((t) => ({ label: t.name, value: t.id })));
+const tagFilterOptions = computed(() =>
+  tasksStore.tags.map((t) => ({ label: t.name, value: t.id })),
+);
 
 // Columns for List View Table
 const listColumns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true },
   { name: 'title', label: 'Title', field: 'title', align: 'left' as const, sortable: true },
-  { name: 'type', label: 'Type', field: 'type', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  {
+    name: 'type',
+    label: 'Type',
+    field: 'type',
+    align: 'left' as const,
+    sortable: true,
+    classes: 'gt-xs',
+    headerClasses: 'gt-xs',
+  },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const, sortable: true },
-  { name: 'priority', label: 'Priority', field: 'priority', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
-  { name: 'due_date', label: 'Due Date', field: 'due_date', align: 'left' as const, sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  {
+    name: 'priority',
+    label: 'Priority',
+    field: 'priority',
+    align: 'left' as const,
+    sortable: true,
+    classes: 'gt-xs',
+    headerClasses: 'gt-xs',
+  },
+  {
+    name: 'due_date',
+    label: 'Due Date',
+    field: 'due_date',
+    align: 'left' as const,
+    sortable: true,
+    classes: 'gt-xs',
+    headerClasses: 'gt-xs',
+  },
 ];
 
 // Dialog triggers
@@ -1542,7 +1864,7 @@ watch(
       selectedItemId.value = null;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Sync selectedItemId changes to URL query params
@@ -1573,7 +1895,7 @@ watch(
   [activeTab, page, filters],
   () => {
     const query = { ...route.query };
-    
+
     if (activeTab.value && activeTab.value !== 'tree') {
       query.tab = activeTab.value;
     } else {
@@ -1657,7 +1979,7 @@ watch(
       void router.replace({ query });
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 // Sync route.query changes back to local refs (e.g. for back/forward navigation or initial load)
@@ -1715,7 +2037,7 @@ watch(
 
     syncSelectedDateRangeFromFilters();
   },
-  { deep: true }
+  { deep: true },
 );
 
 // Initialize states from URL parameters on mount
@@ -1770,7 +2092,7 @@ const myTasksPagination = computed({
       descending: true,
       page: page.value,
       rowsPerPage: pageSize.value,
-      rowsNumber: tasksStore.totalItems
+      rowsNumber: tasksStore.totalItems,
     };
   },
   set(val) {
@@ -1780,7 +2102,7 @@ const myTasksPagination = computed({
     if (val.rowsPerPage) {
       pageSize.value = val.rowsPerPage;
     }
-  }
+  },
 });
 
 const onMyTasksRequest = (props: {
@@ -1806,7 +2128,7 @@ const onClickCreate = () => {
 };
 
 const onClickQuickAdd = (parentId: number, type: ItemType) => {
-  const parentItem = tasksStore.items.find(i => i.id === parentId);
+  const parentItem = tasksStore.items.find((i) => i.id === parentId);
   quickAddParentId.value = parentId;
   quickAddType.value = parentItem?.type === 'note' ? 'note' : type;
   formOpen.value = true;
@@ -1852,13 +2174,10 @@ const onPageChange = () => {
   refreshData();
 };
 
-watch(
-  activeTab,
-  () => {
-    page.value = 1;
-    refreshData();
-  }
-);
+watch(activeTab, () => {
+  page.value = 1;
+  refreshData();
+});
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(
@@ -1874,7 +2193,7 @@ watch(
       refreshData();
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 // Filtered Lists - simplified as server handles all filtering
@@ -1884,9 +2203,7 @@ const filteredList = computed(() => {
 
 // Filtered tree - simplified as server handles tree matching + parents recursively
 const filteredTree = computed(() => {
-  return tasksStore.itemsTree.filter(
-    (item) => item.type !== 'note' && item.type !== 'discussion'
-  );
+  return tasksStore.itemsTree.filter((item) => item.type !== 'note' && item.type !== 'discussion');
 });
 
 // Notes list
@@ -1906,29 +2223,47 @@ const myTasksList = computed(() => {
 
 const getTicketIcon = (type: string) => {
   switch (type) {
-    case 'project': return 'folder';
-    case 'module': return 'view_module';
-    case 'submodule': return 'layers';
-    case 'task': return 'assignment';
-    case 'note': return 'note';
-    case 'discussion': return 'forum';
-    case 'bug': return 'bug_report';
-    case 'feature': return 'star';
-    default: return 'help_outline';
+    case 'project':
+      return 'folder';
+    case 'module':
+      return 'view_module';
+    case 'submodule':
+      return 'layers';
+    case 'task':
+      return 'assignment';
+    case 'note':
+      return 'note';
+    case 'discussion':
+      return 'forum';
+    case 'bug':
+      return 'bug_report';
+    case 'feature':
+      return 'star';
+    default:
+      return 'help_outline';
   }
 };
 
 const getTicketColor = (type: string) => {
   switch (type) {
-    case 'project': return 'indigo';
-    case 'module': return 'blue';
-    case 'submodule': return 'cyan';
-    case 'task': return 'green';
-    case 'note': return 'orange';
-    case 'discussion': return 'teal';
-    case 'bug': return 'red';
-    case 'feature': return 'purple';
-    default: return 'grey';
+    case 'project':
+      return 'indigo';
+    case 'module':
+      return 'blue';
+    case 'submodule':
+      return 'cyan';
+    case 'task':
+      return 'green';
+    case 'note':
+      return 'orange';
+    case 'discussion':
+      return 'teal';
+    case 'bug':
+      return 'red';
+    case 'feature':
+      return 'purple';
+    default:
+      return 'grey';
   }
 };
 
@@ -1953,13 +2288,20 @@ const statusChipStyle = (status: string) => {
 
 const statusDotColor = (status: string) => {
   switch (status) {
-    case 'todo': return '#64748b';
-    case 'in_progress': return '#3b82f6';
-    case 'review': return '#f97316';
-    case 'done': return '#22c55e';
-    case 'blocked': return '#ef4444';
-    case 'archived': return '#8c857b';
-    default: return '#9ca3af';
+    case 'todo':
+      return '#64748b';
+    case 'in_progress':
+      return '#3b82f6';
+    case 'review':
+      return '#f97316';
+    case 'done':
+      return '#22c55e';
+    case 'blocked':
+      return '#ef4444';
+    case 'archived':
+      return '#8c857b';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -1980,11 +2322,16 @@ const priorityChipStyle = (priority: string) => {
 
 const priorityDotColor = (priority: string) => {
   switch (priority) {
-    case 'low': return '#22c55e';
-    case 'medium': return '#3b82f6';
-    case 'high': return '#f97316';
-    case 'urgent': return '#ef4444';
-    default: return '#9ca3af';
+    case 'low':
+      return '#22c55e';
+    case 'medium':
+      return '#3b82f6';
+    case 'high':
+      return '#f97316';
+    case 'urgent':
+      return '#ef4444';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -2013,15 +2360,24 @@ const typeChipStyle = (type: string) => {
 
 const typeDotColor = (type: string) => {
   switch (type) {
-    case 'project': return '#8b5cf6';
-    case 'module': return '#10b981';
-    case 'submodule': return '#06b6d4';
-    case 'task': return '#3b82f6';
-    case 'note': return '#f59e0b';
-    case 'discussion': return '#14b8a6';
-    case 'bug': return '#ef4444';
-    case 'feature': return '#ec4899';
-    default: return '#9ca3af';
+    case 'project':
+      return '#8b5cf6';
+    case 'module':
+      return '#10b981';
+    case 'submodule':
+      return '#06b6d4';
+    case 'task':
+      return '#3b82f6';
+    case 'note':
+      return '#f59e0b';
+    case 'discussion':
+      return '#14b8a6';
+    case 'bug':
+      return '#ef4444';
+    case 'feature':
+      return '#ec4899';
+    default:
+      return '#9ca3af';
   }
 };
 
@@ -2158,12 +2514,14 @@ onMounted(async () => {
 }
 
 .kanban-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .kanban-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 .tree-project-box {
@@ -2174,12 +2532,12 @@ onMounted(async () => {
 
 .tree-module-box {
   background: #f8fafc;
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .tree-submodule-box {
   background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.02);
+  border: 1px solid rgba(0, 0, 0, 0.02);
 }
 
 .ticket-row {
@@ -2196,7 +2554,9 @@ onMounted(async () => {
 }
 
 .card-hover {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .card-hover:hover {

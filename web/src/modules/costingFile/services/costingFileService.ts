@@ -1,6 +1,6 @@
-import { costingFileRepository } from '../repositories/costingFileRepository'
-import { costingFileAccessService } from './costingFileAccessService'
-import { costingFileItemService } from './costingFileItemService'
+import { costingFileRepository } from '../repositories/costingFileRepository';
+import { costingFileAccessService } from './costingFileAccessService';
+import { costingFileItemService } from './costingFileItemService';
 import type {
   CostingFileCreateInput,
   CostingFileDeleteInput,
@@ -21,21 +21,21 @@ import type {
   CostingFileStatusUpdateInput,
   CostingFileUpdateInput,
   TenantViewer,
-} from '../types'
+} from '../types';
 
 const listCostingFilesForTenant = async (
   tenantId: number,
 ): Promise<CostingFileServiceResult<CostingFileListEntry[]>> => {
   try {
-    const data = await costingFileRepository.listCostingFilesForTenant(tenantId)
-    return { success: true, data }
+    const data = await costingFileRepository.listCostingFilesForTenant(tenantId);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing files.',
-    }
+    };
   }
-}
+};
 
 const listCostingFilesForTenantPage = async (
   tenantId: number,
@@ -49,16 +49,16 @@ const listCostingFilesForTenantPage = async (
       customerGroupId,
       page,
       pageSize,
-    )
+    );
 
-    return { success: true, data }
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing files.',
-    }
+    };
   }
-}
+};
 
 const listCostingFilesForCustomerGroup = async (
   customerGroupId: number,
@@ -68,15 +68,15 @@ const listCostingFilesForCustomerGroup = async (
     const data = await costingFileRepository.listCostingFilesForCustomerGroup(
       customerGroupId,
       tenantId,
-    )
-    return { success: true, data }
+    );
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing files.',
-    }
+    };
   }
-}
+};
 
 const listCostingFilesForCustomerGroupPage = async (
   customerGroupId: number,
@@ -90,97 +90,97 @@ const listCostingFilesForCustomerGroupPage = async (
       tenantId,
       page,
       pageSize,
-    )
-    return { success: true, data }
+    );
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing files.',
-    }
+    };
   }
-}
+};
 
 const getCostingFileById = async (
   id: number,
 ): Promise<CostingFileServiceResult<CostingFileDetails | null>> => {
   try {
-    const data = await costingFileRepository.getCostingFileById(id)
-    return { success: true, data }
+    const data = await costingFileRepository.getCostingFileById(id);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing file details.',
-    }
+    };
   }
-}
+};
 
 const getCostingFileByIdForCustomer = async (
   id: number,
 ): Promise<CostingFileServiceResult<CostingFileDetails | null>> => {
   try {
-    const data = await costingFileRepository.getCostingFileByIdForCustomer(id)
-    return { success: true, data }
+    const data = await costingFileRepository.getCostingFileByIdForCustomer(id);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load costing file details.',
-    }
+    };
   }
-}
+};
 
 const listCostingFileItems = async (
   costingFileId: number,
 ): Promise<CostingFileServiceResult<CostingFileItem[]>> => {
-  return costingFileItemService.listCostingFileItems(costingFileId)
-}
+  return costingFileItemService.listCostingFileItems(costingFileId);
+};
 
 const listCostingFileItemsForCustomer = async (
   costingFileId: number,
 ): Promise<CostingFileServiceResult<CostingFileItem[]>> => {
-  return costingFileItemService.listCostingFileItemsForCustomer(costingFileId)
-}
+  return costingFileItemService.listCostingFileItemsForCustomer(costingFileId);
+};
 
 const createCostingFile = async (
   payload: CostingFileCreateInput,
 ): Promise<CostingFileServiceResult<CostingFileDetails>> => {
   try {
-    const data = await costingFileRepository.createCostingFile(payload)
-    return { success: true, data }
+    const data = await costingFileRepository.createCostingFile(payload);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create costing file.',
-    }
+    };
   }
-}
+};
 
 const updateCostingFile = async (
   payload: CostingFileUpdateInput,
 ): Promise<CostingFileServiceResult<CostingFileDetails>> => {
   try {
-    const data = await costingFileRepository.updateCostingFile(payload)
-    return { success: true, data }
+    const data = await costingFileRepository.updateCostingFile(payload);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update costing file.',
-    }
+    };
   }
-}
+};
 
 const deleteCostingFile = async (
   payload: CostingFileDeleteInput,
 ): Promise<CostingFileServiceResult<CostingFileDeleteInput>> => {
   try {
-    const data = await costingFileRepository.deleteCostingFile(payload)
-    return { success: true, data }
+    const data = await costingFileRepository.deleteCostingFile(payload);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete costing file.',
-    }
+    };
   }
-}
+};
 
 const createCostingFileItemRequest = async (
   payload: CostingFileItemRequestCreateInput,
@@ -200,22 +200,22 @@ const createCostingFileItemRequest = async (
     >
   >
 > => {
-  return costingFileItemService.createCostingFileItemRequest(payload)
-}
+  return costingFileItemService.createCostingFileItemRequest(payload);
+};
 
 const updateCostingFileStatus = async (
   payload: CostingFileStatusUpdateInput,
 ): Promise<CostingFileServiceResult<Pick<CostingFileDetails, 'id' | 'status' | 'updated_at'>>> => {
   try {
-    const data = await costingFileRepository.updateCostingFileStatus(payload)
-    return { success: true, data }
+    const data = await costingFileRepository.updateCostingFileStatus(payload);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update costing file status.',
-    }
+    };
   }
-}
+};
 
 const updateCostingFilePricing = async (
   payload: CostingFilePricingUpdateInput,
@@ -223,40 +223,45 @@ const updateCostingFilePricing = async (
   CostingFileServiceResult<
     Pick<
       CostingFileDetails,
-      'id' | 'cargo_rate_1kg' | 'cargo_rate_2kg' | 'conversion_rate' | 'admin_profit_rate' | 'updated_at'
+      | 'id'
+      | 'cargo_rate_1kg'
+      | 'cargo_rate_2kg'
+      | 'conversion_rate'
+      | 'admin_profit_rate'
+      | 'updated_at'
     >
   >
 > => {
   try {
-    const data = await costingFileRepository.updateCostingFilePricing(payload)
-    return { success: true, data }
+    const data = await costingFileRepository.updateCostingFilePricing(payload);
+    return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update pricing.',
-    }
+    };
   }
-}
+};
 
 const updateCostingFileItemEnrichment = async (
   payload: CostingFileItemEnrichmentUpdateInput,
 ): Promise<CostingFileServiceResult<CostingFileItem>> => {
-  return costingFileItemService.updateCostingFileItemEnrichment(payload)
-}
+  return costingFileItemService.updateCostingFileItemEnrichment(payload);
+};
 
 const updateCostingFileItemCustomerProfit = async (
   payload: CostingFileItemCustomerProfitUpdateInput,
 ): Promise<
   CostingFileServiceResult<Pick<CostingFileItem, 'id' | 'customer_profit_rate' | 'updated_at'>>
 > => {
-  return costingFileItemService.updateCostingFileItemCustomerProfit(payload)
-}
+  return costingFileItemService.updateCostingFileItemCustomerProfit(payload);
+};
 
 const updateCostingFileItemStatus = async (
   payload: CostingFileItemStatusUpdateInput,
 ): Promise<CostingFileServiceResult<Pick<CostingFileItem, 'id' | 'status' | 'updated_at'>>> => {
-  return costingFileItemService.updateCostingFileItemStatus(payload)
-}
+  return costingFileItemService.updateCostingFileItemStatus(payload);
+};
 
 const updateCostingFileItemOffer = async (
   payload: CostingFileItemOfferUpdateInput,
@@ -265,34 +270,36 @@ const updateCostingFileItemOffer = async (
     Pick<CostingFileItem, 'id' | 'offer_price_override_bdt' | 'offer_price_bdt' | 'updated_at'>
   >
 > => {
-  return costingFileItemService.updateCostingFileItemOffer(payload)
-}
+  return costingFileItemService.updateCostingFileItemOffer(payload);
+};
 
 const listTenantViewers = async (
   tenantId: number,
 ): Promise<CostingFileServiceResult<TenantViewer[]>> => {
-  return costingFileAccessService.listTenantViewers(tenantId)
-}
+  return costingFileAccessService.listTenantViewers(tenantId);
+};
 
 const listCostingFileViewers = async (
   costingFileId: number,
 ): Promise<CostingFileServiceResult<CostingFileViewer[]>> => {
-  return costingFileAccessService.listCostingFileViewers(costingFileId)
-}
+  return costingFileAccessService.listCostingFileViewers(costingFileId);
+};
 
 const grantCostingFileViewer = async (
   payload: CostingFileViewerGrantInput,
 ): Promise<CostingFileServiceResult<CostingFileViewer>> => {
-  return costingFileAccessService.grantCostingFileViewer(payload)
-}
+  return costingFileAccessService.grantCostingFileViewer(payload);
+};
 
 const revokeCostingFileViewer = async (
   payload: CostingFileViewerRevokeInput,
 ): Promise<
-  CostingFileServiceResult<Pick<CostingFileViewer, 'costing_file_viewer_id' | 'costing_file_id' | 'membership_id'>>
+  CostingFileServiceResult<
+    Pick<CostingFileViewer, 'costing_file_viewer_id' | 'costing_file_id' | 'membership_id'>
+  >
 > => {
-  return costingFileAccessService.revokeCostingFileViewer(payload)
-}
+  return costingFileAccessService.revokeCostingFileViewer(payload);
+};
 
 export const costingFileService = {
   listCostingFilesForTenant,
@@ -317,4 +324,4 @@ export const costingFileService = {
   listCostingFileViewers,
   grantCostingFileViewer,
   revokeCostingFileViewer,
-}
+};

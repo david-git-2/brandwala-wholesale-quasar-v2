@@ -16,7 +16,10 @@
               class="costing-status-chip"
               :style="tenant?.is_active ? activeStatusStyle : inactiveStatusStyle"
             >
-              <span class="status-dot" :style="{ backgroundColor: tenant?.is_active ? '#2f8b5d' : '#66758c' }" />
+              <span
+                class="status-dot"
+                :style="{ backgroundColor: tenant?.is_active ? '#2f8b5d' : '#66758c' }"
+              />
               {{ tenant?.is_active ? 'Active' : 'Inactive' }}
             </q-chip>
           </div>
@@ -31,16 +34,16 @@
     <PageInitialLoader v-if="pageLoading" />
 
     <template v-else>
-      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">
-        Tenant not found.
-      </div>
+      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">Tenant not found.</div>
 
       <div v-else class="row q-col-gutter-md">
         <div class="col-12 col-lg-7">
           <q-card flat class="tenant-details-card floating-surface shadow-1">
             <q-card-section class="row items-start justify-between q-col-gutter-sm">
               <div class="col">
-                <div class="text-overline text-primary text-weight-bold">Tenant #{{ tenant.id }}</div>
+                <div class="text-overline text-primary text-weight-bold">
+                  Tenant #{{ tenant.id }}
+                </div>
                 <div class="text-subtitle1 text-weight-bold text-grey-9">{{ tenant.name }}</div>
                 <div class="text-body2 text-grey-7 q-mt-xs">{{ tenant.slug }}</div>
               </div>
@@ -51,7 +54,10 @@
                   class="costing-status-chip"
                   :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }"
+                  />
                   {{ tenant.is_active ? 'Active' : 'Inactive' }}
                 </q-chip>
               </div>
@@ -67,30 +73,66 @@
               <q-card flat class="q-pa-sm inner-card">
                 <div class="text-caption text-grey-7 q-mb-xs">Admin Login</div>
                 <div class="row items-center justify-between q-gutter-sm">
-                  <a :href="adminLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                  <a
+                    :href="adminLoginUrl"
+                    class="text-primary ellipsis col"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {{ adminLoginUrl }}
                   </a>
-                  <q-btn flat round dense icon="content_copy" aria-label="Copy admin login URL" @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    aria-label="Copy admin login URL"
+                    @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
+                  />
                 </div>
               </q-card>
 
               <q-card flat class="q-pa-sm inner-card">
                 <div class="text-caption text-grey-7 q-mb-xs">Customer Login</div>
                 <div class="row items-center justify-between q-gutter-sm">
-                  <a :href="customerLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                  <a
+                    :href="customerLoginUrl"
+                    class="text-primary ellipsis col"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {{ customerLoginUrl }}
                   </a>
-                  <q-btn flat round dense icon="content_copy" aria-label="Copy customer login URL" @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    aria-label="Copy customer login URL"
+                    @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
+                  />
                 </div>
               </q-card>
 
               <q-card v-if="isCapitalHostTenant" flat class="q-pa-sm inner-card">
                 <div class="text-caption text-grey-7 q-mb-xs">Investor Login</div>
                 <div class="row items-center justify-between q-gutter-sm">
-                  <a :href="investorLoginUrl" class="text-primary ellipsis col" target="_blank" rel="noopener noreferrer">
+                  <a
+                    :href="investorLoginUrl"
+                    class="text-primary ellipsis col"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {{ investorLoginUrl }}
                   </a>
-                  <q-btn flat round dense icon="content_copy" aria-label="Copy investor login URL" @click="copyLoginUrl(investorLoginUrl, 'Investor login URL copied.')" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    aria-label="Copy investor login URL"
+                    @click="copyLoginUrl(investorLoginUrl, 'Investor login URL copied.')"
+                  />
                 </div>
               </q-card>
             </q-card-section>
@@ -109,8 +151,22 @@
             <q-separator />
 
             <q-card-section class="column q-gutter-sm">
-              <q-btn color="primary" icon="o_groups" label="Customer Group Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('customer-groups')" />
-              <q-btn color="primary" icon="o_manage_accounts" label="Staff Management" no-caps class="pill-btn slim-btn full-width" @click="goToSection('staff')" />
+              <q-btn
+                color="primary"
+                icon="o_groups"
+                label="Customer Group Management"
+                no-caps
+                class="pill-btn slim-btn full-width"
+                @click="goToSection('customer-groups')"
+              />
+              <q-btn
+                color="primary"
+                icon="o_manage_accounts"
+                label="Staff Management"
+                no-caps
+                class="pill-btn slim-btn full-width"
+                @click="goToSection('staff')"
+              />
               <q-btn
                 v-if="isCapitalHostTenant"
                 color="primary"
@@ -120,8 +176,22 @@
                 class="pill-btn slim-btn full-width"
                 @click="goToSection('investors')"
               />
-              <q-btn color="primary" icon="o_extension" :label="modulesButtonLabel" no-caps class="pill-btn slim-btn full-width" @click="goToSection('modules')" />
-              <q-btn color="primary" icon="o_tune" label="Tenant Preferences" no-caps class="pill-btn slim-btn full-width" @click="goToSection('preferences')" />
+              <q-btn
+                color="primary"
+                icon="o_extension"
+                :label="modulesButtonLabel"
+                no-caps
+                class="pill-btn slim-btn full-width"
+                @click="goToSection('modules')"
+              />
+              <q-btn
+                color="primary"
+                icon="o_tune"
+                label="Tenant Preferences"
+                no-caps
+                class="pill-btn slim-btn full-width"
+                @click="goToSection('preferences')"
+              />
             </q-card-section>
           </q-card>
         </div>
@@ -131,150 +201,156 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { copyToClipboard, useQuasar } from 'quasar'
-import { useRoute, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue';
+import { copyToClipboard, useQuasar } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useTenantStore } from '../stores/tenantStore'
-import type { Tenant } from '../types'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useTenantStore } from '../stores/tenantStore';
+import type { Tenant } from '../types';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-const route = useRoute()
-const router = useRouter()
-const $q = useQuasar()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
 
-const tenantStore = useTenantStore()
-const { items } = storeToRefs(tenantStore)
+const tenantStore = useTenantStore();
+const { items } = storeToRefs(tenantStore);
 
-const pageLoading = ref(false)
-const pageError = ref('')
+const pageLoading = ref(false);
+const pageError = ref('');
 
 const canManageModules = computed(() => {
-  return authStore.matchedRole === 'superadmin' && authStore.scope === 'platform'
-})
+  return authStore.matchedRole === 'superadmin' && authStore.scope === 'platform';
+});
 
 const modulesButtonLabel = computed(() => {
-  return canManageModules.value ? 'Enable Modules' : 'Module Features'
-})
+  return canManageModules.value ? 'Enable Modules' : 'Module Features';
+});
 
-const tenantId = computed(() => Number(route.params.id))
+const tenantId = computed(() => Number(route.params.id));
 
 const tenant = computed<Tenant | null>(
   () => items.value.find((item) => item.id === tenantId.value) ?? null,
-)
+);
 
 const activeStatusStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
   border: '1px solid #9fd4b7',
   boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
+};
 
 const inactiveStatusStyle = {
   backgroundColor: '#dbe5f3',
   color: '#3b4b66',
   border: '1px solid #b9c8dd',
   boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
+};
 
-const baseUrl = computed(() =>
-  typeof window === 'undefined' ? '' : window.location.origin,
-)
+const baseUrl = computed(() => (typeof window === 'undefined' ? '' : window.location.origin));
 
 const adminLoginUrl = computed(() =>
-  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/app/login` : `${baseUrl.value}/app/login`,
-)
+  tenant.value?.slug
+    ? `${baseUrl.value}/${tenant.value.slug}/app/login`
+    : `${baseUrl.value}/app/login`,
+);
 
 const customerLoginUrl = computed(() =>
-  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/shop/login` : `${baseUrl.value}/shop/login`,
-)
+  tenant.value?.slug
+    ? `${baseUrl.value}/${tenant.value.slug}/shop/login`
+    : `${baseUrl.value}/shop/login`,
+);
 
 const investorLoginUrl = computed(() =>
-  tenant.value?.slug ? `${baseUrl.value}/${tenant.value.slug}/investor/login` : `${baseUrl.value}/investor/login`,
-)
+  tenant.value?.slug
+    ? `${baseUrl.value}/${tenant.value.slug}/investor/login`
+    : `${baseUrl.value}/investor/login`,
+);
 
-const isCapitalHostTenant = computed(() => tenant.value?.parent_id === null)
+const isCapitalHostTenant = computed(() => tenant.value?.parent_id === null);
 
 const loadPageData = async () => {
-  pageLoading.value = true
-  pageError.value = ''
+  pageLoading.value = true;
+  pageError.value = '';
 
   try {
     await tenantStore.fetchTenantDetailsByMembership({
       tenantId: tenantId.value,
-    })
+    });
 
     if (!tenant.value) {
-      pageError.value = 'Tenant not found.'
+      pageError.value = 'Tenant not found.';
     }
   } catch (error) {
-    console.error(error)
-    pageError.value = 'Failed to load tenant details.'
+    console.error(error);
+    pageError.value = 'Failed to load tenant details.';
   } finally {
-    pageLoading.value = false
+    pageLoading.value = false;
   }
-}
+};
 
 const copyLoginUrl = async (value: string, successMessage: string) => {
   try {
-    await copyToClipboard(value)
+    await copyToClipboard(value);
     $q.notify({
       color: 'positive',
       message: successMessage,
       icon: 'check',
       position: 'top',
-    })
+    });
   } catch (error) {
-    console.error(error)
+    console.error(error);
     $q.notify({
       color: 'negative',
       message: 'Failed to copy URL.',
       icon: 'error',
       position: 'top',
-    })
+    });
   }
-}
+};
 
-const goToSection = (section: 'customer-groups' | 'staff' | 'investors' | 'modules' | 'preferences') => {
-  const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null
+const goToSection = (
+  section: 'customer-groups' | 'staff' | 'investors' | 'modules' | 'preferences',
+) => {
+  const slug = tenant.value?.slug ?? tenantStore.selectedTenantSlug ?? null;
   if (section === 'preferences') {
-    const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`
-    void router.push(`${base}/preferences`)
+    const base = slug ? `/${slug}/app/tenants/${tenantId.value}` : `/app/tenants/${tenantId.value}`;
+    void router.push(`${base}/preferences`);
   } else {
     // Map section to corresponding access control tab name
     const tabMap = {
       'customer-groups': 'customer-groups',
-      'staff': 'team',
-      'investors': 'investors',
-      'modules': 'modules'
-    }
-    const tab = tabMap[section] || 'modules'
-    const base = slug ? `/${slug}/app/access-control` : '/app/access-control'
-    void router.push(`${base}/${tab}`)
+      staff: 'team',
+      investors: 'investors',
+      modules: 'modules',
+    };
+    const tab = tabMap[section] || 'modules';
+    const base = slug ? `/${slug}/app/access-control` : '/app/access-control';
+    void router.push(`${base}/${tab}`);
   }
-}
+};
 
 watch(
   tenant,
   (value) => {
     if (!value) {
-      return
+      return;
     }
 
     tenantStore.setSelectedTenant({
       id: value.id,
       slug: value.slug,
-    })
+    });
   },
   { immediate: true },
-)
+);
 
 onMounted(() => {
-  void loadPageData()
-})
+  void loadPageData();
+});
 </script>
 
 <style scoped>

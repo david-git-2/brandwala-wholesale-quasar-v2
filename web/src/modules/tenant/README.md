@@ -8,27 +8,27 @@ It follows the same `page -> store -> service -> repository` pattern as the exam
 
 ### `public.tenants`
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | `bigserial` | Primary key |
-| `name` | `text` | Required |
-| `slug` | `text` | Required, unique |
-| `public_domain` | `text` | Optional, globally unique when present |
-| `is_active` | `boolean` | Defaults to `true` |
-| `preference` | `jsonb` | Flexible tenant settings object; defaults to `{}` |
-| `created_at` | `timestamptz` | Defaults to `now()` |
-| `updated_at` | `timestamptz` | Defaults to `now()` |
+| Column          | Type          | Notes                                             |
+| --------------- | ------------- | ------------------------------------------------- |
+| `id`            | `bigserial`   | Primary key                                       |
+| `name`          | `text`        | Required                                          |
+| `slug`          | `text`        | Required, unique                                  |
+| `public_domain` | `text`        | Optional, globally unique when present            |
+| `is_active`     | `boolean`     | Defaults to `true`                                |
+| `preference`    | `jsonb`       | Flexible tenant settings object; defaults to `{}` |
+| `created_at`    | `timestamptz` | Defaults to `now()`                               |
+| `updated_at`    | `timestamptz` | Defaults to `now()`                               |
 
 ### `public.memberships`
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | `bigserial` | Primary key |
-| `tenant_id` | `bigint` | Null for `superadmin` |
-| `role` | `app_role` | `superadmin`, `admin`, `staff`, `viewer` |
-| `is_active` | `boolean` | Defaults to `true` |
-| `created_at` | `timestamptz` | Defaults to `now()` |
-| `updated_at` | `timestamptz` | Defaults to `now()` |
+| Column       | Type          | Notes                                    |
+| ------------ | ------------- | ---------------------------------------- |
+| `id`         | `bigserial`   | Primary key                              |
+| `tenant_id`  | `bigint`      | Null for `superadmin`                    |
+| `role`       | `app_role`    | `superadmin`, `admin`, `staff`, `viewer` |
+| `is_active`  | `boolean`     | Defaults to `true`                       |
+| `created_at` | `timestamptz` | Defaults to `now()`                      |
+| `updated_at` | `timestamptz` | Defaults to `now()`                      |
 
 Current access checks rely on `memberships.email`; the earlier `profiles` join is now legacy history and has been removed from the live schema.
 
@@ -110,10 +110,10 @@ Access: `is_tenant_admin(p_tenant_id)` or `is_superadmin()`. The RPC replaces th
 
 ### Preference keys (registry-driven UI)
 
-| Key | Type | Module | Description |
-| --- | --- | --- | --- |
+| Key                                | Type   | Module          | Description                                               |
+| ---------------------------------- | ------ | --------------- | --------------------------------------------------------- |
 | `thrift.default_purchase_currency` | number | thrift_shipment | `global_currencies.id` for new shipment purchase currency |
-| `thrift.default_cost_currency` | number | thrift_shipment | `global_currencies.id` for new shipment cost currency |
+| `thrift.default_cost_currency`     | number | thrift_shipment | `global_currencies.id` for new shipment cost currency     |
 
 Admin UI: `/:tenantSlug/app/tenants/:id/preferences` — fields are defined in `config/tenantPreferenceFields.ts` and rendered by `TenantPreferenceForm` + `TenantPreferenceFieldRenderer`. Add a registry entry + TypeScript schema property to expose a new preference.
 

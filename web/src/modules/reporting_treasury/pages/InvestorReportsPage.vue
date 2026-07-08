@@ -11,7 +11,10 @@
 
     <div v-else class="q-gutter-y-lg">
       <!-- Failed PnL Warning Banner -->
-      <q-banner v-if="failedShipmentNames.length > 0" class="bg-warning text-black rounded-borders q-pa-md">
+      <q-banner
+        v-if="failedShipmentNames.length > 0"
+        class="bg-warning text-black rounded-borders q-pa-md"
+      >
         <template #avatar>
           <q-icon name="warning" color="black" />
         </template>
@@ -182,30 +185,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useQuasar } from 'quasar'
-import type { QTableColumn } from 'quasar'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { formatAmountBdt } from 'src/utils/currency'
-import { treasuryRepository } from '../repositories/treasuryRepository'
-import TreasuryPageShell from '../components/TreasuryPageShell.vue'
-import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
-import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
-import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
+import { ref, onMounted, computed } from 'vue';
+import { useQuasar } from 'quasar';
+import type { QTableColumn } from 'quasar';
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import { treasuryRepository } from '../repositories/treasuryRepository';
+import TreasuryPageShell from '../components/TreasuryPageShell.vue';
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
+import TreasuryFilterBar from '../components/TreasuryFilterBar.vue';
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue';
 
-const $q = useQuasar()
-const authStore = useAuthStore()
+const $q = useQuasar();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const shipmentPnLs = ref<any[]>([])
-const partners = ref<any[]>([])
-const failedShipmentNames = ref<string[]>([])
+const loading = ref(false);
+const error = ref<string | null>(null);
+const shipmentPnLs = ref<any[]>([]);
+const partners = ref<any[]>([]);
+const failedShipmentNames = ref<string[]>([]);
 
-const reportStartDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10))
-const reportEndDate = ref(new Date().toISOString().slice(0, 10))
-const selectedExportInvestorId = ref<number | null>(null)
+const reportStartDate = ref(
+  new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+);
+const reportEndDate = ref(new Date().toISOString().slice(0, 10));
+const selectedExportInvestorId = ref<number | null>(null);
 
 const totals = ref({
   invested_cost: 0,
@@ -214,7 +219,7 @@ const totals = ref({
   sellable_on_hand: 0,
   shrinkage_loss: 0,
   unsold_stock: 0,
-})
+});
 
 const shipmentColumns: QTableColumn[] = [
   { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: true },
@@ -224,22 +229,46 @@ const shipmentColumns: QTableColumn[] = [
   { name: 'gross_profit', label: 'Gross Profit', field: 'id', align: 'right' },
   { name: 'sellable_on_hand_value', label: 'Sellable on-hand', field: 'id', align: 'right' },
   { name: 'shrinkage_value', label: 'Shrinkage Loss', field: 'id', align: 'right' },
-]
+];
 
 const partnerColumns: QTableColumn[] = [
   { name: 'name', label: 'Partner Profile', field: 'name', align: 'left', sortable: true },
-  { name: 'total_in', label: 'Total Capital In', field: 'total_in', align: 'right', sortable: true },
-  { name: 'deployed', label: 'Deployed Capital', field: 'deployed', align: 'right', sortable: true },
-  { name: 'available', label: 'Available Balance', field: 'available', align: 'right', sortable: true },
-  { name: 'total_out', label: 'Total Withdrawn', field: 'total_out', align: 'right', sortable: true },
-]
+  {
+    name: 'total_in',
+    label: 'Total Capital In',
+    field: 'total_in',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'deployed',
+    label: 'Deployed Capital',
+    field: 'deployed',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'available',
+    label: 'Available Balance',
+    field: 'available',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'total_out',
+    label: 'Total Withdrawn',
+    field: 'total_out',
+    align: 'right',
+    sortable: true,
+  },
+];
 
 const investorOptions = computed(() =>
   partners.value.map((p) => ({
     label: p.name,
     value: p.id,
-  }))
-)
+  })),
+);
 
 const statCards = computed(() => [
   {
@@ -276,55 +305,55 @@ const statCards = computed(() => [
     valueClass: 'text-negative',
     class: 'col-12 col-sm-6 col-md-4',
   },
-])
+]);
 
 const loadReports = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    const parentId = await resolveParentTenantId(tenantId)
+    const parentId = await resolveParentTenantId(tenantId);
 
     // 1. Fetch shipments with stock ready
     const { data: shipments, error: err } = await supabase
       .from('global_shipments')
       .select('id, name')
       .eq('parent_tenant_id', parentId)
-      .eq('stock_ready', true)
+      .eq('stock_ready', true);
 
-    if (err) throw err
+    if (err) throw err;
 
-    const pnlList: any[] = []
-    let cost = 0
-    let rev = 0
-    let gp = 0
-    let sellableOnHand = 0
-    let shrinkage = 0
-    failedShipmentNames.value = []
+    const pnlList: any[] = [];
+    let cost = 0;
+    let rev = 0;
+    let gp = 0;
+    let sellableOnHand = 0;
+    let shrinkage = 0;
+    failedShipmentNames.value = [];
 
     // 2. Fetch PnL for each shipment
-    for (const ship of (shipments || [])) {
+    for (const ship of shipments || []) {
       try {
-        const res = await treasuryRepository.getShipmentPnL(tenantId, ship.id)
+        const res = await treasuryRepository.getShipmentPnL(tenantId, ship.id);
         pnlList.push({
           id: ship.id,
           name: ship.name,
           totals: res.totals,
-        })
-        cost += res.totals.landed_cost
-        rev += res.totals.revenue
-        gp += res.totals.gross_profit
-        sellableOnHand += res.totals.sellable_on_hand_value
-        shrinkage += res.totals.shrinkage_value
+        });
+        cost += res.totals.landed_cost;
+        rev += res.totals.revenue;
+        gp += res.totals.gross_profit;
+        sellableOnHand += res.totals.sellable_on_hand_value;
+        shrinkage += res.totals.shrinkage_value;
       } catch (err: any) {
-        failedShipmentNames.value.push(ship.name)
-        console.warn(`Failed to load P&L for shipment ${ship.name}:`, err)
+        failedShipmentNames.value.push(ship.name);
+        console.warn(`Failed to load P&L for shipment ${ship.name}:`, err);
       }
     }
 
-    shipmentPnLs.value = pnlList
+    shipmentPnLs.value = pnlList;
     totals.value = {
       invested_cost: cost,
       realized_revenue: rev,
@@ -332,15 +361,15 @@ const loadReports = async () => {
       sellable_on_hand: sellableOnHand,
       shrinkage_loss: shrinkage,
       unsold_stock: sellableOnHand,
-    }
+    };
 
     // 3. Fetch real active partners
     const { data: profiles, error: pError } = await supabase.rpc('list_investor_profiles', {
       p_tenant_id: parentId,
       p_limit: 1000,
-    })
+    });
 
-    if (pError) throw pError
+    if (pError) throw pError;
 
     partners.value = (profiles || []).map((p: any, idx: number) => ({
       id: p.id,
@@ -350,28 +379,28 @@ const loadReports = async () => {
       total_in: Number(p.total_capital_in),
       total_out: Number(p.total_withdrawn),
       color: ['#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][idx % 5],
-    }))
+    }));
 
     if (partners.value.length > 0) {
-      selectedExportInvestorId.value = partners.value[0].id
+      selectedExportInvestorId.value = partners.value[0].id;
     }
   } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load investor report: ${err.message}` })
+    error.value = err.message;
+    $q.notify({ type: 'negative', message: `Failed to load investor report: ${err.message}` });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const resolveParentTenantId = async (id: number): Promise<number> => {
-  const { data, error: err } = await supabase.rpc('resolve_parent_tenant_id', { p_tenant_id: id })
-  if (err) return id
-  return Number(data)
-}
+  const { data, error: err } = await supabase.rpc('resolve_parent_tenant_id', { p_tenant_id: id });
+  if (err) return id;
+  return Number(data);
+};
 
 const exportCapitalReport = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId || !selectedExportInvestorId.value) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !selectedExportInvestorId.value) return;
 
   try {
     const { data, error: err } = await supabase.rpc('get_investor_capital_report', {
@@ -379,12 +408,13 @@ const exportCapitalReport = async () => {
       p_investor_id: selectedExportInvestorId.value,
       p_start_date: reportStartDate.value,
       p_end_date: reportEndDate.value,
-    })
+    });
 
-    if (err) throw err
+    if (err) throw err;
 
-    const reportData = data
-    const investorName = partners.value.find((p) => p.id === selectedExportInvestorId.value)?.name ?? 'Investor'
+    const reportData = data;
+    const investorName =
+      partners.value.find((p) => p.id === selectedExportInvestorId.value)?.name ?? 'Investor';
 
     const csvContent = [
       ['Capital Partner Report', investorName],
@@ -396,23 +426,28 @@ const exportCapitalReport = async () => {
       ['Withdrawals / Payouts', reportData.withdrawals_sum],
       ['Profit Earned in Period', reportData.profit_earned_sum],
       ['Ending Capital Balance', reportData.ending_balance],
-    ].map(e => e.join(',')).join('\n')
+    ]
+      .map((e) => e.join(','))
+      .join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.setAttribute('download', `Capital_Report_${investorName.replace(/\s+/g, '_')}_${reportStartDate.value}_to_${reportEndDate.value}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute(
+      'download',
+      `Capital_Report_${investorName.replace(/\s+/g, '_')}_${reportStartDate.value}_to_${reportEndDate.value}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    $q.notify({ type: 'positive', message: 'Report CSV exported successfully.' })
+    $q.notify({ type: 'positive', message: 'Report CSV exported successfully.' });
   } catch (err: any) {
-    $q.notify({ type: 'negative', message: `Export failed: ${err.message}` })
+    $q.notify({ type: 'negative', message: `Export failed: ${err.message}` });
   }
-}
+};
 
 onMounted(() => {
-  void loadReports()
-})
+  void loadReports();
+});
 </script>

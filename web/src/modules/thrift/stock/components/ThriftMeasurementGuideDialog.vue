@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card style="width: 800px; max-width: 95vw;" class="floating-surface shadow-2">
+    <q-card style="width: 800px; max-width: 95vw" class="floating-surface shadow-2">
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div>
           <div class="text-h6 text-weight-bold">Measurement guide</div>
@@ -10,10 +10,11 @@
       </q-card-section>
 
       <q-banner dense rounded class="bg-blue-1 text-grey-9 q-mx-md q-mb-sm">
-        All measurements are optional. Lay the item flat on a table. Record inches to one decimal place.
+        All measurements are optional. Lay the item flat on a table. Record inches to one decimal
+        place.
       </q-banner>
 
-      <q-card-section class="q-pt-none scroll" style="max-height: 70vh;">
+      <q-card-section class="q-pt-none scroll" style="max-height: 70vh">
         <q-tabs
           v-model="activeTab"
           dense

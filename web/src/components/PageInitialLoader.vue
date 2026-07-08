@@ -16,16 +16,16 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    message?: string
-    compact?: boolean
-    overlay?: boolean
+    message?: string;
+    compact?: boolean;
+    overlay?: boolean;
   }>(),
   {
     message: '',
     compact: false,
     overlay: false,
   },
-)
+);
 </script>
 
 <style scoped>

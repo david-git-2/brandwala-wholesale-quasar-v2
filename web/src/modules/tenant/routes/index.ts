@@ -1,6 +1,9 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import { getAppRouteLocation, getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import {
+  getAppRouteLocation,
+  getTenantSlugFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext';
 
 const tenantRoutes: RouteRecordRaw[] = [
   // SUPERADMIN ROUTES
@@ -44,17 +47,17 @@ const tenantRoutes: RouteRecordRaw[] = [
           allowedRoles: ['admin', 'staff', 'viewer'],
           validateAccess: ({ authStore, to }) => {
             if (!authStore.selectedTenant) {
-              return true
+              return true;
             }
 
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant.slug
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const selectedTenantSlug = authStore.selectedTenant.slug;
 
             if (routeTenantSlug === selectedTenantSlug) {
-              return true
+              return true;
             }
 
-            return getAppRouteLocation(to, selectedTenantSlug)
+            return getAppRouteLocation(to, selectedTenantSlug);
           },
         }),
       },
@@ -69,13 +72,13 @@ const tenantRoutes: RouteRecordRaw[] = [
           allowedRoles: ['admin'],
           requireTenantContext: true,
           validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+            const selectedTenantId = authStore.selectedTenant?.id;
+            const routeTenantId = Number(to.params?.id);
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
             if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
+              return { name: 'admin-tenant-list' };
             }
 
             if (
@@ -83,7 +86,7 @@ const tenantRoutes: RouteRecordRaw[] = [
               routeTenantId === selectedTenantId &&
               routeTenantSlug === selectedTenantSlug
             ) {
-              return true
+              return true;
             }
 
             return getAppRouteLocation(
@@ -96,7 +99,7 @@ const tenantRoutes: RouteRecordRaw[] = [
                 },
               },
               selectedTenantSlug,
-            )
+            );
           },
         }),
       },
@@ -104,33 +107,39 @@ const tenantRoutes: RouteRecordRaw[] = [
         path: ':id/customer-groups',
         name: 'admin-tenant-customer-groups',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/customer-groups` : '/app/access-control/customer-groups'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/customer-groups`
+            : '/app/access-control/customer-groups';
+        },
       },
       {
         path: ':id/staff',
         name: 'admin-tenant-staff',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/team` : '/app/access-control/team'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug ? `/${tenantSlug}/app/access-control/team` : '/app/access-control/team';
+        },
       },
       {
         path: ':id/investors',
         name: 'admin-tenant-investors',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/investors` : '/app/access-control/investors'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/investors`
+            : '/app/access-control/investors';
+        },
       },
       {
         path: ':id/modules',
         name: 'admin-tenant-modules',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/modules` : '/app/access-control/modules'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/modules`
+            : '/app/access-control/modules';
+        },
       },
       {
         path: ':id/preferences',
@@ -143,13 +152,13 @@ const tenantRoutes: RouteRecordRaw[] = [
           allowedRoles: ['admin'],
           requireTenantContext: true,
           validateAccess: ({ authStore, to }) => {
-            const selectedTenantId = authStore.selectedTenant?.id
-            const routeTenantId = Number(to.params?.id)
-            const routeTenantSlug = getTenantSlugFromRoute(to)
-            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null
+            const selectedTenantId = authStore.selectedTenant?.id;
+            const routeTenantId = Number(to.params?.id);
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 
             if (!selectedTenantId) {
-              return { name: 'admin-tenant-list' }
+              return { name: 'admin-tenant-list' };
             }
 
             if (
@@ -157,7 +166,7 @@ const tenantRoutes: RouteRecordRaw[] = [
               routeTenantId === selectedTenantId &&
               routeTenantSlug === selectedTenantSlug
             ) {
-              return true
+              return true;
             }
 
             return getAppRouteLocation(
@@ -170,7 +179,7 @@ const tenantRoutes: RouteRecordRaw[] = [
                 },
               },
               selectedTenantSlug,
-            )
+            );
           },
         }),
       },
@@ -186,18 +195,22 @@ const tenantRoutes: RouteRecordRaw[] = [
         path: 'roles',
         name: 'admin-settings-roles',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles`
+            : '/app/access-control/roles';
+        },
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-settings-role-grants',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          const id = String(to.params.id)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/roles/${id}/grants` : `/app/access-control/roles/${id}/grants`
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          const id = String(to.params.id);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
+            : `/app/access-control/roles/${id}/grants`;
+        },
       },
     ],
   },
@@ -211,21 +224,25 @@ const tenantRoutes: RouteRecordRaw[] = [
         path: 'roles',
         name: 'admin-shop-roles',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles'
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles`
+            : '/app/access-control/roles';
+        },
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-shop-role-grants',
         redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to)
-          const id = String(to.params.id)
-          return tenantSlug ? `/${tenantSlug}/app/access-control/roles/${id}/grants` : `/app/access-control/roles/${id}/grants`
-        }
+          const tenantSlug = getTenantSlugFromRoute(to);
+          const id = String(to.params.id);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
+            : `/app/access-control/roles/${id}/grants`;
+        },
       },
     ],
   },
-]
+];
 
-export default tenantRoutes
+export default tenantRoutes;

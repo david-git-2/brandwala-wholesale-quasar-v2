@@ -6,7 +6,7 @@
     :color="chipColor"
     :text-color="chipTextColor"
     class="module-nav-badge text-weight-bold text-uppercase"
-    style="font-size: 10px; letter-spacing: 0.06em;"
+    style="font-size: 10px; letter-spacing: 0.06em"
   >
     <q-icon v-if="icon" :name="icon" size="14px" class="q-mr-xs" />
     {{ label }}
@@ -14,41 +14,41 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import type { ModuleNavFamily } from 'src/modules/navigation/moduleRegistry'
+import type { ModuleNavFamily } from 'src/modules/navigation/moduleRegistry';
 
 const props = defineProps<{
-  family: ModuleNavFamily
-}>()
+  family: ModuleNavFamily;
+}>();
 
 const label = computed(() => {
   switch (props.family) {
     case 'global':
-      return 'Global module'
+      return 'Global module';
     case 'products':
-      return 'Products module'
+      return 'Products module';
     case 'koba_retail':
-      return 'Koba Retail module'
+      return 'Koba Retail module';
     case 'standalone':
     default:
-      return 'Module'
+      return 'Module';
   }
-})
+});
 
 const icon = computed(() => {
   switch (props.family) {
     case 'global':
-      return 'public'
+      return 'public';
     case 'products':
-      return 'inventory_2'
+      return 'inventory_2';
     case 'koba_retail':
-      return 'shopping_bag'
+      return 'shopping_bag';
     default:
-      return undefined
+      return undefined;
   }
-})
+});
 
-const chipColor = computed(() => (props.family === 'global' ? 'primary' : 'grey-7'))
-const chipTextColor = computed(() => (props.family === 'global' ? 'primary' : 'grey-8'))
+const chipColor = computed(() => (props.family === 'global' ? 'primary' : 'grey-7'));
+const chipTextColor = computed(() => (props.family === 'global' ? 'primary' : 'grey-8'));
 </script>

@@ -5,10 +5,20 @@
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
             <div class="text-h6 text-weight-bold">Invoice Brands</div>
-            <div class="text-caption text-grey-8">Manage company/brand details and addresses used for customizable invoices</div>
+            <div class="text-caption text-grey-8">
+              Manage company/brand details and addresses used for customizable invoices
+            </div>
           </div>
           <div class="col-auto">
-            <q-btn color="primary" no-caps size="sm" class="pill-btn slim-btn" label="Create Brand" icon="add" @click="openCreateDialog" />
+            <q-btn
+              color="primary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              label="Create Brand"
+              icon="add"
+              @click="openCreateDialog"
+            />
           </div>
         </div>
       </q-card-section>
@@ -56,7 +66,7 @@
               <div class="text-weight-bold text-black">{{ row.name }}</div>
             </td>
             <td>
-              <div style="white-space: pre-wrap;" class="text-grey-9">{{ row.address }}</div>
+              <div style="white-space: pre-wrap" class="text-grey-9">{{ row.address }}</div>
             </td>
             <td>
               <q-chip dense outline size="sm" color="purple" class="text-weight-medium">
@@ -84,7 +94,7 @@
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="dialogOpen" backdrop-filter="blur(4px)">
-      <q-card style="width: 480px; max-width: 90vw;" class="floating-surface shadow-2 q-pa-sm">
+      <q-card style="width: 480px; max-width: 90vw" class="floating-surface shadow-2 q-pa-sm">
         <q-card-section class="row items-center justify-between q-py-sm">
           <div class="text-h6 text-weight-bold text-black">
             {{ isEdit ? 'Edit Invoice Brand' : 'Create Invoice Brand' }}
@@ -104,7 +114,7 @@
             label="Tenant Workspace *"
             outlined
             dense
-            :rules="[val => !!val || 'Tenant is required']"
+            :rules="[(val) => !!val || 'Tenant is required']"
             :disable="isEdit"
             class="soft-input"
           />
@@ -114,7 +124,7 @@
             label="Brand Name *"
             outlined
             dense
-            :rules="[val => !!val && !!val.trim() || 'Brand Name is required']"
+            :rules="[(val) => (!!val && !!val.trim()) || 'Brand Name is required']"
             class="soft-input"
             autofocus
           />
@@ -125,7 +135,7 @@
             type="textarea"
             outlined
             dense
-            :rules="[val => !!val && !!val.trim() || 'Address is required']"
+            :rules="[(val) => (!!val && !!val.trim()) || 'Address is required']"
             class="soft-input"
             rows="4"
           />
@@ -147,14 +157,22 @@
 
     <!-- Delete Dialog -->
     <q-dialog v-model="deleteOpen">
-      <q-card style="min-width: 320px;" class="floating-surface q-pa-sm">
+      <q-card style="min-width: 320px" class="floating-surface q-pa-sm">
         <q-card-section class="text-h6 text-weight-bold text-black">Delete Brand</q-card-section>
         <q-card-section class="q-py-none">
-          Are you sure you want to delete the brand <strong class="text-black">"{{ selectedBrand?.name }}"</strong>? This cannot be undone.
+          Are you sure you want to delete the brand
+          <strong class="text-black">"{{ selectedBrand?.name }}"</strong>? This cannot be undone.
         </q-card-section>
         <q-card-actions align="right" class="q-pt-md">
           <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="negative" no-caps label="Delete" :loading="invoiceStore.saving" @click="handleDelete" class="pill-btn q-px-md" />
+          <q-btn
+            color="negative"
+            no-caps
+            label="Delete"
+            :loading="invoiceStore.saving"
+            @click="handleDelete"
+            class="pill-btn q-px-md"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -162,93 +180,91 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useInvoiceStore } from '../stores/invoiceStore'
-import { supabase } from 'src/boot/supabase'
-import type { InvoiceBrand } from '../repositories/invoiceRepository'
-import { showWarningDialog } from 'src/utils/appFeedback'
+import { computed, onMounted, ref } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvoiceStore } from '../stores/invoiceStore';
+import { supabase } from 'src/boot/supabase';
+import type { InvoiceBrand } from '../repositories/invoiceRepository';
+import { showWarningDialog } from 'src/utils/appFeedback';
 
-const authStore = useAuthStore()
-const invoiceStore = useInvoiceStore()
+const authStore = useAuthStore();
+const invoiceStore = useInvoiceStore();
 
-const searchText = ref('')
-const dialogOpen = ref(false)
-const deleteOpen = ref(false)
-const isEdit = ref(false)
-const selectedBrand = ref<InvoiceBrand | null>(null)
+const searchText = ref('');
+const dialogOpen = ref(false);
+const deleteOpen = ref(false);
+const isEdit = ref(false);
+const selectedBrand = ref<InvoiceBrand | null>(null);
 
 interface TenantOption {
-  id: number
-  name: string
-  slug: string
+  id: number;
+  name: string;
+  slug: string;
 }
-const tenantOptions = ref<TenantOption[]>([])
+const tenantOptions = ref<TenantOption[]>([]);
 
 const form = ref({
   id: 0,
   tenant_id: 0,
   name: '',
   address: '',
-})
+});
 
 const filteredBrands = computed(() => {
-  const query = searchText.value.trim().toLowerCase()
-  if (!query) return invoiceStore.brands
+  const query = searchText.value.trim().toLowerCase();
+  if (!query) return invoiceStore.brands;
 
   return invoiceStore.brands.filter(
-    (b) =>
-      b.name.toLowerCase().includes(query) ||
-      b.address.toLowerCase().includes(query)
-  )
-})
+    (b) => b.name.toLowerCase().includes(query) || b.address.toLowerCase().includes(query),
+  );
+});
 
 const loadTenants = async () => {
   try {
-    const { data, error } = await supabase.rpc('list_my_admin_tenants')
-    if (error) throw error
-    tenantOptions.value = (data as TenantOption[]) || []
+    const { data, error } = await supabase.rpc('list_my_admin_tenants');
+    if (error) throw error;
+    tenantOptions.value = (data as TenantOption[]) || [];
   } catch (error) {
-    console.error('Error loading admin tenants:', error)
+    console.error('Error loading admin tenants:', error);
   }
-}
+};
 
 const loadBrands = async () => {
-  await invoiceStore.fetchInvoiceBrands()
-}
+  await invoiceStore.fetchInvoiceBrands();
+};
 
 const openCreateDialog = () => {
-  isEdit.value = false
+  isEdit.value = false;
   form.value = {
     id: 0,
     tenant_id: authStore.tenantId ?? 0,
     name: '',
     address: '',
-  }
-  dialogOpen.value = true
-}
+  };
+  dialogOpen.value = true;
+};
 
 const openEditDialog = (brand: InvoiceBrand) => {
-  isEdit.value = true
-  selectedBrand.value = brand
+  isEdit.value = true;
+  selectedBrand.value = brand;
   form.value = {
     id: brand.id,
     tenant_id: brand.tenant_id,
     name: brand.name,
     address: brand.address,
-  }
-  dialogOpen.value = true
-}
+  };
+  dialogOpen.value = true;
+};
 
 const openDeleteDialog = (brand: InvoiceBrand) => {
-  selectedBrand.value = brand
-  deleteOpen.value = true
-}
+  selectedBrand.value = brand;
+  deleteOpen.value = true;
+};
 
 const handleSubmit = async () => {
   if (!form.value.name.trim() || !form.value.address.trim()) {
-    showWarningDialog('Please fill in all required fields.')
-    return
+    showWarningDialog('Please fill in all required fields.');
+    return;
   }
 
   if (isEdit.value) {
@@ -258,36 +274,36 @@ const handleSubmit = async () => {
         name: form.value.name.trim(),
         address: form.value.address.trim(),
       },
-    })
+    });
     if (res.success) {
-      dialogOpen.value = false
-      await loadBrands()
+      dialogOpen.value = false;
+      await loadBrands();
     }
   } else {
     const res = await invoiceStore.createInvoiceBrand({
       tenant_id: form.value.tenant_id,
       name: form.value.name.trim(),
       address: form.value.address.trim(),
-    })
+    });
     if (res.success) {
-      dialogOpen.value = false
-      await loadBrands()
+      dialogOpen.value = false;
+      await loadBrands();
     }
   }
-}
+};
 
 const handleDelete = async () => {
-  if (!selectedBrand.value) return
-  const res = await invoiceStore.deleteInvoiceBrand({ id: selectedBrand.value.id })
+  if (!selectedBrand.value) return;
+  const res = await invoiceStore.deleteInvoiceBrand({ id: selectedBrand.value.id });
   if (res.success) {
-    deleteOpen.value = false
-    selectedBrand.value = null
+    deleteOpen.value = false;
+    selectedBrand.value = null;
   }
-}
+};
 
 onMounted(async () => {
-  await Promise.all([loadBrands(), loadTenants()])
-})
+  await Promise.all([loadBrands(), loadTenants()]);
+});
 </script>
 
 <style scoped>

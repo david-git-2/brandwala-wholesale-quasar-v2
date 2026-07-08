@@ -1,63 +1,55 @@
-import { supabase } from 'src/boot/supabase'
+import { supabase } from 'src/boot/supabase';
 
-export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string | undefined }
+export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string | undefined };
 
-const THRIFT_FOLDER_PREFIXES = [
-  'thrift-inventory-images/',
-  'thrift_stocks/',
-  'thrift-stocks/',
-]
+const THRIFT_FOLDER_PREFIXES = ['thrift-inventory-images/', 'thrift_stocks/', 'thrift-stocks/'];
 
 export function getThriftCloudinaryRootFolder(): string {
   const configured =
-    import.meta.env.VITE_CLOUDINARY_THRIFT_FOLDER ||
-    process.env.VITE_CLOUDINARY_THRIFT_FOLDER
-  const root = (configured as string | undefined)?.trim() || 'thrift-inventory-images'
-  return root.replace(/^\/+|\/+$/g, '')
+    import.meta.env.VITE_CLOUDINARY_THRIFT_FOLDER || process.env.VITE_CLOUDINARY_THRIFT_FOLDER;
+  const root = (configured as string | undefined)?.trim() || 'thrift-inventory-images';
+  return root.replace(/^\/+|\/+$/g, '');
 }
 
-export const DEFAULT_THRIFT_CLOUDINARY_FOLDER = getThriftCloudinaryRootFolder()
+export const DEFAULT_THRIFT_CLOUDINARY_FOLDER = getThriftCloudinaryRootFolder();
 
 export function buildThriftShipmentCloudinaryFolder(
   shipmentId: number,
   baseFolder = getThriftCloudinaryRootFolder(),
 ): string {
-  return `${baseFolder}/shipment-${shipmentId}`
+  return `${baseFolder}/shipment-${shipmentId}`;
 }
 
 export function resolveThriftCloudinaryFolder(options?: {
-  shipmentId?: number | null
-  folder?: string
+  shipmentId?: number | null;
+  folder?: string;
 }): string {
-  const base = options?.folder?.trim() || getThriftCloudinaryRootFolder()
+  const base = options?.folder?.trim() || getThriftCloudinaryRootFolder();
   if (options?.shipmentId && options.shipmentId > 0) {
-    return buildThriftShipmentCloudinaryFolder(options.shipmentId, base)
+    return buildThriftShipmentCloudinaryFolder(options.shipmentId, base);
   }
-  return base
+  return base;
 }
 
 export function buildThriftStockImageFileName(barcode: string): string {
-  const safe = barcode.trim().replace(/[^\w.-]+/g, '_')
-  const base = safe || 'stock-image'
+  const safe = barcode.trim().replace(/[^\w.-]+/g, '_');
+  const base = safe || 'stock-image';
   return base.toLowerCase().endsWith('.jpg') || base.toLowerCase().endsWith('.jpeg')
     ? base
-    : `${base}.jpg`
+    : `${base}.jpg`;
 }
 
 export function buildThriftStockImagePublicId(barcode: string): string {
-  return buildThriftStockImageFileName(barcode).replace(/\.(jpe?g)$/i, '')
+  return buildThriftStockImageFileName(barcode).replace(/\.(jpe?g)$/i, '');
 }
 
 export function buildThriftShipmentCloudinarySubfolder(shipmentId: number): string {
-  return `shipment-${shipmentId}`
+  return `shipment-${shipmentId}`;
 }
 
-export function buildThriftStockCloudinaryPublicId(
-  barcode: string,
-  shipmentId: number,
-): string {
-  const imageId = buildThriftStockImagePublicId(barcode)
-  return `${buildThriftShipmentCloudinarySubfolder(shipmentId)}/${imageId}`
+export function buildThriftStockCloudinaryPublicId(barcode: string, shipmentId: number): string {
+  const imageId = buildThriftStockImagePublicId(barcode);
+  return `${buildThriftShipmentCloudinarySubfolder(shipmentId)}/${imageId}`;
 }
 
 export function buildThriftShipmentCloudinaryUploadTarget(
@@ -65,34 +57,32 @@ export function buildThriftShipmentCloudinaryUploadTarget(
   barcode: string,
   baseFolder = getThriftCloudinaryRootFolder(),
 ): {
-  publicId: string
-  shipmentFolder: string
+  publicId: string;
+  shipmentFolder: string;
 } {
-  const shipmentSegment = buildThriftShipmentCloudinarySubfolder(shipmentId)
-  const imageId = buildThriftStockImagePublicId(barcode)
+  const shipmentSegment = buildThriftShipmentCloudinarySubfolder(shipmentId);
+  const imageId = buildThriftStockImagePublicId(barcode);
 
   return {
     publicId: imageId,
     shipmentFolder: `${baseFolder}/${shipmentSegment}`,
-  }
+  };
 }
 
 export type CloudinaryUploadOptions = {
-  publicId?: string
-  publicIdPrefix?: string
-  assetFolder?: string
-  shipmentFolder?: string
-}
+  publicId?: string;
+  publicIdPrefix?: string;
+  assetFolder?: string;
+  shipmentFolder?: string;
+};
 
 function getCloudinaryConfig() {
   const cloudName =
-    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME ||
-    process.env.VITE_CLOUDINARY_CLOUD_NAME
+    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset =
-    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET ||
-    process.env.VITE_CLOUDINARY_UPLOAD_PRESET
+    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || process.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-  return { cloudName, uploadPreset }
+  return { cloudName, uploadPreset };
 }
 
 function resizeImage(
@@ -102,65 +92,65 @@ function resizeImage(
   quality = 0.85,
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(fileOrBlob)
+    const reader = new FileReader();
+    reader.readAsDataURL(fileOrBlob);
     reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target?.result as string
+      const img = new Image();
+      img.src = event.target?.result as string;
       img.onload = () => {
-        let width = img.width
-        let height = img.height
+        let width = img.width;
+        let height = img.height;
 
         if (width > height) {
           if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width)
-            width = maxWidth
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
           }
         } else if (height > maxHeight) {
-          width = Math.round((width * maxHeight) / height)
-          height = maxHeight
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
         }
 
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
 
-        const ctx = canvas.getContext('2d')
+        const ctx = canvas.getContext('2d');
         if (!ctx) {
-          reject(new Error('Failed to get 2D context'))
-          return
+          reject(new Error('Failed to get 2D context'));
+          return;
         }
 
-        ctx.drawImage(img, 0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob(
           (blob) => {
-            if (blob) resolve(blob)
-            else reject(new Error('Canvas toBlob failed'))
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas toBlob failed'));
           },
           'image/jpeg',
           quality,
-        )
-      }
-      img.onerror = () => reject(new Error('Failed to load image into object'))
-    }
-    reader.onerror = () => reject(new Error('Failed to read file source'))
-  })
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image into object'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file source'));
+  });
 }
 
 export function isCloudinaryThriftUrl(url: string): boolean {
-  const trimmed = url.trim()
-  if (!trimmed) return false
+  const trimmed = url.trim();
+  if (!trimmed) return false;
 
   try {
-    const parsed = new URL(trimmed)
-    if (parsed.hostname !== 'res.cloudinary.com') return false
-    const path = decodeURIComponent(parsed.pathname)
+    const parsed = new URL(trimmed);
+    if (parsed.hostname !== 'res.cloudinary.com') return false;
+    const path = decodeURIComponent(parsed.pathname);
     return (
-      THRIFT_FOLDER_PREFIXES.some((prefix) => path.includes(`/${prefix}`))
-      || /\/shipment-\d+\//.test(path)
-    )
+      THRIFT_FOLDER_PREFIXES.some((prefix) => path.includes(`/${prefix}`)) ||
+      /\/shipment-\d+\//.test(path)
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -170,107 +160,107 @@ export async function uploadToCloudinary(
   folder = DEFAULT_THRIFT_CLOUDINARY_FOLDER,
   options?: CloudinaryUploadOptions,
 ): Promise<CloudinaryUploadResult> {
-  const { cloudName, uploadPreset } = getCloudinaryConfig()
+  const { cloudName, uploadPreset } = getCloudinaryConfig();
 
   if (!cloudName || !uploadPreset) {
-    throw new Error('Cloudinary environment configuration missing.')
+    throw new Error('Cloudinary environment configuration missing.');
   }
 
-  let imageToUpload = blob
+  let imageToUpload = blob;
   try {
-    imageToUpload = await resizeImage(blob)
+    imageToUpload = await resizeImage(blob);
   } catch (err) {
-    console.warn('Resize failed, uploading original blob instead', err)
+    console.warn('Resize failed, uploading original blob instead', err);
   }
 
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`
-  const formData = new FormData()
-  formData.append('file', imageToUpload, name)
-  formData.append('upload_preset', uploadPreset)
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+  const formData = new FormData();
+  formData.append('file', imageToUpload, name);
+  formData.append('upload_preset', uploadPreset);
   const shipmentFolder =
-    options?.shipmentFolder?.trim() || options?.assetFolder?.trim() || folder?.trim()
+    options?.shipmentFolder?.trim() || options?.assetFolder?.trim() || folder?.trim();
   if (shipmentFolder) {
-    formData.append('folder', shipmentFolder)
-    formData.append('asset_folder', shipmentFolder)
+    formData.append('folder', shipmentFolder);
+    formData.append('asset_folder', shipmentFolder);
   }
   if (options?.publicIdPrefix?.trim()) {
-    formData.append('public_id_prefix', options.publicIdPrefix.trim())
+    formData.append('public_id_prefix', options.publicIdPrefix.trim());
   }
   if (options?.publicId?.trim()) {
-    formData.append('public_id', options.publicId.trim())
+    formData.append('public_id', options.publicId.trim());
   }
 
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
-  })
+  });
 
   if (!response.ok) {
-    const errObj = await response.json()
-    throw new Error(errObj.error?.message || 'Upload HTTP request failed')
+    const errObj = await response.json();
+    throw new Error(errObj.error?.message || 'Upload HTTP request failed');
   }
 
-  const resData = await response.json()
+  const resData = await response.json();
   return {
     secureUrl: resData.secure_url as string,
     deleteToken: resData.delete_token as string | undefined,
-  }
+  };
 }
 
 export async function deleteCloudinaryByToken(deleteToken: string): Promise<void> {
-  if (!deleteToken) return
+  if (!deleteToken) return;
 
-  const { cloudName } = getCloudinaryConfig()
-  if (!cloudName) return
+  const { cloudName } = getCloudinaryConfig();
+  if (!cloudName) return;
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/delete_by_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: deleteToken }),
-    })
+    });
     if (!response.ok) {
-      console.warn('Failed to delete image using delete token:', await response.text())
+      console.warn('Failed to delete image using delete token:', await response.text());
     }
   } catch (err) {
-    console.error('Error deleting Cloudinary image by token:', err)
+    console.error('Error deleting Cloudinary image by token:', err);
   }
 }
 
 export async function deleteCloudinaryImage(imageUrl: string): Promise<void> {
-  if (!imageUrl || !isCloudinaryThriftUrl(imageUrl)) return
+  if (!imageUrl || !isCloudinaryThriftUrl(imageUrl)) return;
 
   try {
     const { error } = await supabase.functions.invoke('cloudinary-delete', {
       body: { imageUrl },
-    })
+    });
     if (error) {
-      console.warn('Failed to delete Cloudinary image:', error.message)
+      console.warn('Failed to delete Cloudinary image:', error.message);
     }
   } catch (err) {
-    console.error('Error invoking cloudinary-delete function:', err)
+    console.error('Error invoking cloudinary-delete function:', err);
   }
 }
 
 export async function deleteCloudinaryImageStrict(imageUrl: string): Promise<void> {
-  const trimmed = imageUrl.trim()
-  if (!trimmed) return
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return;
 
   if (!isCloudinaryThriftUrl(trimmed)) {
-    throw new Error('Cannot delete image: not a valid Cloudinary thrift image URL.')
+    throw new Error('Cannot delete image: not a valid Cloudinary thrift image URL.');
   }
 
   const { data, error } = await supabase.functions.invoke('cloudinary-delete', {
     body: { imageUrl: trimmed },
-  })
+  });
 
-  const payload = (data ?? {}) as { error?: string; details?: string; publicId?: string }
+  const payload = (data ?? {}) as { error?: string; details?: string; publicId?: string };
   if (error || payload.error) {
     const message =
-      payload.details?.trim()
-      || payload.error?.trim()
-      || error?.message
-      || 'Cloudinary image delete failed'
-    throw new Error(message)
+      payload.details?.trim() ||
+      payload.error?.trim() ||
+      error?.message ||
+      'Cloudinary image delete failed';
+    throw new Error(message);
   }
 }

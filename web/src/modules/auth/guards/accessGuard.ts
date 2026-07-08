@@ -1,18 +1,18 @@
-import { useAuthStore } from '../stores/authStore'
-import type { AuthScope } from '../composables/useOAuthLogin'
+import { useAuthStore } from '../stores/authStore';
+import type { AuthScope } from '../composables/useOAuthLogin';
 import {
   canAccessModule,
   type ModuleAction,
   type ModuleKey,
-} from 'src/modules/navigation/modulePermissions'
-import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router'
+} from 'src/modules/navigation/modulePermissions';
+import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
 
 type GuardRoute = {
-  name?: string | symbol | null | undefined
-  fullPath: string
-  params?: Record<string, unknown> | undefined
-  query?: LocationQueryRaw | undefined
-}
+  name?: string | symbol | null | undefined;
+  fullPath: string;
+  params?: Record<string, unknown> | undefined;
+  query?: LocationQueryRaw | undefined;
+};
 
 export type AccessRole =
   | 'superadmin'
@@ -22,7 +22,7 @@ export type AccessRole =
   | 'customer_admin'
   | 'customer_negotiator'
   | 'customer_staff'
-  | 'investor_portal'
+  | 'investor_portal';
 
 export const createAccessGuard = ({
   allowedRoles,
@@ -33,27 +33,27 @@ export const createAccessGuard = ({
   requiredModuleAction,
   validateAccess,
 }: {
-  allowedRoles?: readonly AccessRole[]
-  loginRoute: string | ((to: GuardRoute) => RouteLocationRaw)
-  requiredScope?: AuthScope
-  requireTenantContext?: boolean
-  requiredModule?: ModuleKey
-  requiredModuleAction?: ModuleAction
+  allowedRoles?: readonly AccessRole[];
+  loginRoute: string | ((to: GuardRoute) => RouteLocationRaw);
+  requiredScope?: AuthScope;
+  requireTenantContext?: boolean;
+  requiredModule?: ModuleKey;
+  requiredModuleAction?: ModuleAction;
   validateAccess?: (context: {
-    authStore: ReturnType<typeof useAuthStore>
-    to: GuardRoute
-  }) => boolean | RouteLocationRaw
+    authStore: ReturnType<typeof useAuthStore>;
+    to: GuardRoute;
+  }) => boolean | RouteLocationRaw;
 }) => {
   return async (to: GuardRoute) => {
-    const authStore = useAuthStore()
+    const authStore = useAuthStore();
 
     if (authStore.isAuthenticated && authStore.tenantId) {
-      await authStore.checkFreshness()
+      await authStore.checkFreshness();
     }
 
-    const memberRole = authStore.member?.role
-    const currentScope = authStore.scope
-    const hasTenantContext = authStore.tenantId !== null
+    const memberRole = authStore.member?.role;
+    const currentScope = authStore.scope;
+    const hasTenantContext = authStore.tenantId !== null;
     const hasRequiredModuleAccess =
       requiredModule === undefined
         ? true
@@ -67,7 +67,7 @@ export const createAccessGuard = ({
             action: requiredModuleAction ?? 'view',
             effectiveGrants: authStore.access?.effectiveGrants,
             isAdmin: authStore.access?.isAdmin,
-          })
+          });
 
     if (
       !authStore.isAuthenticated ||
@@ -78,7 +78,7 @@ export const createAccessGuard = ({
       (allowedRoles !== undefined && !allowedRoles.includes(memberRole))
     ) {
       if (typeof loginRoute === 'function') {
-        return loginRoute(to)
+        return loginRoute(to);
       }
 
       return {
@@ -86,31 +86,31 @@ export const createAccessGuard = ({
         query: {
           redirect: to.fullPath,
         },
-      }
+      };
     }
 
     if (!hasRequiredModuleAccess) {
       if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
-        const tenantSlug = authStore.tenantSlug
+        const tenantSlug = authStore.tenantSlug;
         return tenantSlug
           ? `/${tenantSlug}/app/procurement/tenant-stock`
-          : '/app/procurement/tenant-stock'
+          : '/app/procurement/tenant-stock';
       }
-      const tenantSlug = authStore.tenantSlug
-      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'
+      const tenantSlug = authStore.tenantSlug;
+      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
     }
 
     if (validateAccess) {
       const validationResult = validateAccess({
         authStore,
         to,
-      })
+      });
 
       if (validationResult !== true) {
-        return validationResult
+        return validationResult;
       }
     }
 
-    return true
-  }
-}
+    return true;
+  };
+};

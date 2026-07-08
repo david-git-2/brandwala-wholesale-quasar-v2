@@ -319,7 +319,7 @@ sequenceDiagram
 
 ### Session tenant fields
 
-Stored in `AuthAccessSnapshot` (`brandwala.auth.access.v2`):
+Stored in `AuthAccessSnapshot` (`brandwala.auth.access.v4`):
 
 - `tenant.id`, `tenant.slug`, `tenant.name`
 - `activeModuleKeys` for this tenant

@@ -1,4 +1,4 @@
-import { supabase } from 'src/boot/supabase'
+import { supabase } from 'src/boot/supabase';
 import type {
   GlobalCurrency,
   GlobalCurrencyCreateInput,
@@ -9,17 +9,17 @@ import type {
   UnitOfMeasure,
   UnitOfMeasureCreateInput,
   UnitOfMeasureUpdateInput,
-} from '../types'
+} from '../types';
 
 const listCurrencies = async (): Promise<GlobalCurrency[]> => {
   const { data, error } = await supabase
     .from('global_currencies')
     .select('*')
-    .order('code', { ascending: true })
+    .order('code', { ascending: true });
 
-  if (error) throw error
-  return (data as GlobalCurrency[] | null) ?? []
-}
+  if (error) throw error;
+  return (data as GlobalCurrency[] | null) ?? [];
+};
 
 const createCurrency = async (input: GlobalCurrencyCreateInput): Promise<GlobalCurrency> => {
   const { data, error } = await supabase
@@ -34,11 +34,11 @@ const createCurrency = async (input: GlobalCurrencyCreateInput): Promise<GlobalC
       },
     ])
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as GlobalCurrency
-}
+  if (error) throw error;
+  return data as GlobalCurrency;
+};
 
 const updateCurrency = async (input: GlobalCurrencyUpdateInput): Promise<GlobalCurrency> => {
   const { data, error } = await supabase
@@ -52,26 +52,26 @@ const updateCurrency = async (input: GlobalCurrencyUpdateInput): Promise<GlobalC
     })
     .eq('id', input.id)
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as GlobalCurrency
-}
+  if (error) throw error;
+  return data as GlobalCurrency;
+};
 
 const deleteCurrency = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('global_currencies').delete().eq('id', id)
-  if (error) throw error
-}
+  const { error } = await supabase.from('global_currencies').delete().eq('id', id);
+  if (error) throw error;
+};
 
 const listPaymentMethods = async (): Promise<PaymentMethod[]> => {
   const { data, error } = await supabase
     .from('payment_methods')
     .select('*')
-    .order('sort_order', { ascending: true })
+    .order('sort_order', { ascending: true });
 
-  if (error) throw error
-  return (data as PaymentMethod[] | null) ?? []
-}
+  if (error) throw error;
+  return (data as PaymentMethod[] | null) ?? [];
+};
 
 const createPaymentMethod = async (input: PaymentMethodCreateInput): Promise<PaymentMethod> => {
   const { data, error } = await supabase
@@ -88,11 +88,11 @@ const createPaymentMethod = async (input: PaymentMethodCreateInput): Promise<Pay
       },
     ])
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as PaymentMethod
-}
+  if (error) throw error;
+  return data as PaymentMethod;
+};
 
 const updatePaymentMethod = async (input: PaymentMethodUpdateInput): Promise<PaymentMethod> => {
   const { data, error } = await supabase
@@ -107,26 +107,26 @@ const updatePaymentMethod = async (input: PaymentMethodUpdateInput): Promise<Pay
     })
     .eq('id', input.id)
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as PaymentMethod
-}
+  if (error) throw error;
+  return data as PaymentMethod;
+};
 
 const deletePaymentMethod = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('payment_methods').delete().eq('id', id)
-  if (error) throw error
-}
+  const { error } = await supabase.from('payment_methods').delete().eq('id', id);
+  if (error) throw error;
+};
 
 const listUnitsOfMeasure = async (): Promise<UnitOfMeasure[]> => {
   const { data, error } = await supabase
     .from('units_of_measure')
     .select('*')
-    .order('sort_order', { ascending: true })
+    .order('sort_order', { ascending: true });
 
-  if (error) throw error
-  return (data as UnitOfMeasure[] | null) ?? []
-}
+  if (error) throw error;
+  return (data as UnitOfMeasure[] | null) ?? [];
+};
 
 const createUnitOfMeasure = async (input: UnitOfMeasureCreateInput): Promise<UnitOfMeasure> => {
   const { data, error } = await supabase
@@ -143,11 +143,11 @@ const createUnitOfMeasure = async (input: UnitOfMeasureCreateInput): Promise<Uni
       },
     ])
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as UnitOfMeasure
-}
+  if (error) throw error;
+  return data as UnitOfMeasure;
+};
 
 const updateUnitOfMeasure = async (input: UnitOfMeasureUpdateInput): Promise<UnitOfMeasure> => {
   const { data, error } = await supabase
@@ -162,16 +162,16 @@ const updateUnitOfMeasure = async (input: UnitOfMeasureUpdateInput): Promise<Uni
     })
     .eq('id', input.id)
     .select()
-    .single()
+    .single();
 
-  if (error) throw error
-  return data as UnitOfMeasure
-}
+  if (error) throw error;
+  return data as UnitOfMeasure;
+};
 
 const deleteUnitOfMeasure = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('units_of_measure').delete().eq('id', id)
-  if (error) throw error
-}
+  const { error } = await supabase.from('units_of_measure').delete().eq('id', id);
+  if (error) throw error;
+};
 
 export const globalReferenceRepository = {
   listCurrencies,
@@ -186,4 +186,4 @@ export const globalReferenceRepository = {
   createUnitOfMeasure,
   updateUnitOfMeasure,
   deleteUnitOfMeasure,
-}
+};

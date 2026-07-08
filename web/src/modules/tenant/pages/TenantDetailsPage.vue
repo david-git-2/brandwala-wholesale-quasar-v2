@@ -3,14 +3,7 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="row items-center q-col-gutter-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="arrow_back"
-            color="primary"
-            @click="goBack"
-          />
+          <q-btn flat round dense icon="arrow_back" color="primary" @click="goBack" />
           <div class="min-w-0 q-ml-sm">
             <div class="text-h6 text-weight-bold">Tenant Details</div>
             <div v-if="tenant" class="text-caption text-grey-8">
@@ -28,9 +21,7 @@
     <PageInitialLoader v-if="pageLoading" />
 
     <template v-else>
-      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">
-        Tenant not found.
-      </div>
+      <div v-if="!tenant" class="text-grey-7 q-pa-lg text-center">Tenant not found.</div>
 
       <section v-else class="row q-col-gutter-md">
         <div class="col-12 col-lg-5">
@@ -47,7 +38,10 @@
                 class="costing-status-chip"
                 :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
               >
-                <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }"
+                />
                 {{ tenant.is_active ? 'Active' : 'Inactive' }}
               </q-chip>
             </q-card-section>
@@ -65,7 +59,9 @@
               </div>
               <div class="row items-center justify-between q-py-xs border-bottom">
                 <div class="text-grey-8">Public Domain</div>
-                <div class="text-weight-bold text-primary">{{ tenant.public_domain || 'Not set' }}</div>
+                <div class="text-weight-bold text-primary">
+                  {{ tenant.public_domain || 'Not set' }}
+                </div>
               </div>
               <div class="row items-center justify-between q-py-xs border-bottom">
                 <div class="text-grey-8">Parent Tenant</div>
@@ -79,7 +75,10 @@
                   class="costing-status-chip"
                   :style="tenant.is_active ? activeStatusStyle : inactiveStatusStyle"
                 >
-                  <span class="status-dot" :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }" />
+                  <span
+                    class="status-dot"
+                    :style="{ backgroundColor: tenant.is_active ? '#2f8b5d' : '#66758c' }"
+                  />
                   {{ tenant.is_active ? 'Active' : 'Inactive' }}
                 </q-chip>
               </div>
@@ -114,7 +113,9 @@
 
         <div class="col-12 col-lg-7">
           <q-card flat class="q-mb-md tenant-details-page__card floating-surface shadow-1">
-            <q-card-section class="row items-center justify-between q-pa-md tenant-details-page__section-head">
+            <q-card-section
+              class="row items-center justify-between q-pa-md tenant-details-page__section-head"
+            >
               <div class="text-subtitle1 text-weight-bold text-grey-9">Tenant Admins</div>
               <q-btn
                 color="primary"
@@ -134,7 +135,10 @@
               <div class="q-mt-xs">Loading admins...</div>
             </q-card-section>
 
-            <q-card-section v-else-if="tenantAdmins.length === 0" class="text-grey-7 q-pa-md text-center">
+            <q-card-section
+              v-else-if="tenantAdmins.length === 0"
+              class="text-grey-7 q-pa-md text-center"
+            >
               No admins found.
             </q-card-section>
 
@@ -187,7 +191,9 @@
           </q-card>
 
           <q-card flat class="tenant-details-page__card floating-surface shadow-1">
-            <q-card-section class="row items-center justify-between q-pa-md tenant-details-page__section-head">
+            <q-card-section
+              class="row items-center justify-between q-pa-md tenant-details-page__section-head"
+            >
               <div class="text-subtitle1 text-weight-bold text-grey-9">Module Features</div>
             </q-card-section>
 
@@ -197,41 +203,68 @@
               <q-spinner color="primary" size="2em" />
               <div class="q-mt-xs">Loading module features...</div>
             </q-card-section>
-
             <q-card-section v-else class="q-pa-md">
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-md-6">
-                  <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Available Features</div>
+                  <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">
+                    Available Features
+                  </div>
                   <q-list bordered separator class="rounded-borders">
-                    <q-item v-for="feature in availableModules" :key="feature.id">
-                      <q-item-section>
-                        <q-item-label class="text-weight-medium">{{ feature.name }}</q-item-label>
-                        <q-item-label caption>{{ feature.key }}</q-item-label>
-                      </q-item-section>
-                      <q-item-section side>
-                        <q-btn
-                          color="primary"
-                          dense
-                          flat
-                          no-caps
-                          label="Add"
-                          @click="addTenantFeature(feature.key)"
-                        />
-                      </q-item-section>
-                    </q-item>
+                    <template v-for="feature in availableModules" :key="feature.key">
+                      <q-item>
+                        <q-item-section>
+                          <q-item-label class="text-weight-medium">{{ feature.name }}</q-item-label>
+                          <q-item-label caption>{{ feature.key }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                          <q-btn
+                            color="primary"
+                            dense
+                            flat
+                            no-caps
+                            label="Add"
+                            @click="addTenantFeature(feature.key)"
+                          />
+                        </q-item-section>
+                      </q-item>
+                      <div
+                        v-if="moduleStore.submodulesOf(feature.key).length > 0"
+                        class="q-pl-lg q-pb-sm q-pr-md"
+                      >
+                        <div class="text-caption text-grey-7 q-mb-xs">Includes submodules:</div>
+                        <q-list dense bordered class="bg-grey-1 rounded-borders">
+                          <q-item
+                            v-for="sub in moduleStore.submodulesOf(feature.key)"
+                            :key="sub.key"
+                            class="q-py-xs"
+                          >
+                            <q-item-section>
+                              <q-item-label class="text-caption text-weight-medium text-grey-8">{{ sub.name }}</q-item-label>
+                              <q-item-label caption class="text-caption">{{ sub.key }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </q-list>
+                      </div>
+                    </template>
                     <q-item v-if="availableModules.length === 0">
                       <q-item-section class="text-grey-7">No available features.</q-item-section>
                     </q-item>
                   </q-list>
                 </div>
                 <div class="col-12 col-md-6">
-                  <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Tenant Features</div>
+                  <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">
+                    Tenant Features
+                  </div>
                   <q-list bordered separator class="rounded-borders">
                     <template v-for="feature in modules" :key="feature.id">
                       <q-item>
                         <q-item-section>
-                          <q-item-label class="text-weight-medium">{{ feature.module_key }}</q-item-label>
-                          <q-item-label caption>{{ feature.is_active ? 'Active' : 'Inactive' }}</q-item-label>
+                          <q-item-label class="text-weight-medium">{{
+                            getModuleName(feature.module_key)
+                          }}</q-item-label>
+                          <q-item-label caption>{{
+                            feature.is_active ? 'Active' : 'Inactive'
+                          }}</q-item-label>
                         </q-item-section>
                         <q-item-section side>
                           <q-btn
@@ -251,7 +284,9 @@
                       />
                     </template>
                     <q-item v-if="modules.length === 0">
-                      <q-item-section class="text-grey-7">No tenant features assigned.</q-item-section>
+                      <q-item-section class="text-grey-7"
+                        >No tenant features assigned.</q-item-section
+                      >
                     </q-item>
                   </q-list>
                 </div>
@@ -269,25 +304,33 @@
     />
 
     <q-dialog v-model="openDeleteDialog" persistent>
-      <q-card style="min-width: 350px; border-radius: 12px;">
+      <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section>
           <div class="text-h6 text-weight-bold">Confirm Delete</div>
         </q-card-section>
 
         <q-card-section>
           Are you sure you want to delete
-          <strong>{{ tenant?.name }}</strong>?
+          <strong>{{ tenant?.name }}</strong
+          >?
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat no-caps label="Cancel" @click="openDeleteDialog = false" />
-          <q-btn color="negative" unelevated class="pill-btn" no-caps label="Delete" @click="confirmDeleteTenant" />
+          <q-btn
+            color="negative"
+            unelevated
+            class="pill-btn"
+            no-caps
+            label="Delete"
+            @click="confirmDeleteTenant"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openAddAdminDialog" persistent>
-      <q-card style="min-width: 420px; border-radius: 12px;">
+      <q-card style="min-width: 420px; border-radius: 12px">
         <q-card-section>
           <div class="text-h6 text-weight-bold">Add Member</div>
         </q-card-section>
@@ -315,25 +358,40 @@
 
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat no-caps label="Cancel" @click="openAddAdminDialog = false" />
-          <q-btn color="primary" unelevated class="pill-btn" no-caps label="Save" @click="handleSaveAdmin" />
+          <q-btn
+            color="primary"
+            unelevated
+            class="pill-btn"
+            no-caps
+            label="Save"
+            @click="handleSaveAdmin"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="openDeleteAdminDialog" persistent>
-      <q-card style="min-width: 350px; border-radius: 12px;">
+      <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section>
           <div class="text-h6 text-weight-bold">Confirm Delete</div>
         </q-card-section>
 
         <q-card-section>
           Are you sure you want to delete admin
-          <strong>{{ adminToDelete?.email }}</strong>?
+          <strong>{{ adminToDelete?.email }}</strong
+          >?
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat no-caps label="Cancel" @click="openDeleteAdminDialog = false" />
-          <q-btn color="negative" unelevated class="pill-btn" no-caps label="Delete" @click="confirmDeleteAdmin" />
+          <q-btn
+            color="negative"
+            unelevated
+            class="pill-btn"
+            no-caps
+            label="Delete"
+            @click="confirmDeleteAdmin"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -341,81 +399,79 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
-import { useRoute, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useTenantStore } from '../stores/tenantStore'
-import { useTenantModuleStore } from '../stores/tenantModuleStore'
-import { useMembershipStore } from 'src/modules/membership/stores/membershipStore'
-import type { Membership } from 'src/modules/membership/types'
-import AddTenantDialog from '../components/AddTenantDialog.vue'
-import SubmoduleAccessPanel from '../components/SubmoduleAccessPanel.vue'
-import type { Tenant, TenantUpdateInput } from '../types'
-import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useTenantStore } from '../stores/tenantStore';
+import { useTenantModuleStore } from '../stores/tenantModuleStore';
+import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
+import type { Membership } from 'src/modules/membership/types';
+import AddTenantDialog from '../components/AddTenantDialog.vue';
+import SubmoduleAccessPanel from '../components/SubmoduleAccessPanel.vue';
+import type { Tenant, TenantUpdateInput } from '../types';
+import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
 
 type TenantForm = {
-  id?: number
-  name: string
-  slug: string
-  public_domain: string | null
-  is_active: boolean
-  parent_id: number | null
-  created_at?: string
-  updated_at?: string
-}
+  id?: number;
+  name: string;
+  slug: string;
+  public_domain: string | null;
+  is_active: boolean;
+  parent_id: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
-const route = useRoute()
-const router = useRouter()
-const $q = useQuasar()
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
 
-const tenantStore = useTenantStore()
-const tenantModuleStore = useTenantModuleStore()
-const membershipStore = useMembershipStore()
-const { items } = storeToRefs(tenantStore)
-const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore)
-const moduleStore = useModuleStore()
+const tenantStore = useTenantStore();
+const tenantModuleStore = useTenantModuleStore();
+const membershipStore = useMembershipStore();
+const { items } = storeToRefs(tenantStore);
+const { items: modules, loading: modulesLoading } = storeToRefs(tenantModuleStore);
+const moduleStore = useModuleStore();
 
-const openEditDialog = ref(false)
-const openDeleteDialog = ref(false)
-const openAddAdminDialog = ref(false)
-const openDeleteAdminDialog = ref(false)
+const openEditDialog = ref(false);
+const openDeleteDialog = ref(false);
+const openAddAdminDialog = ref(false);
+const openDeleteAdminDialog = ref(false);
 
-const selectedTenant = ref<TenantForm | null>(null)
-const adminToDelete = ref<Membership | null>(null)
+const selectedTenant = ref<TenantForm | null>(null);
+const adminToDelete = ref<Membership | null>(null);
 
-const adminEmail = ref('')
-const adminIsActive = ref(true)
+const adminEmail = ref('');
+const adminIsActive = ref(true);
 
-const tenantAdmins = ref<Membership[]>([])
-const tenantAdminsLoading = ref(false)
-const pageLoading = ref(false)
-const pageError = ref('')
+const tenantAdmins = ref<Membership[]>([]);
+const tenantAdminsLoading = ref(false);
+const pageLoading = ref(false);
+const pageError = ref('');
 
-const tenantId = computed(() => Number(route.params.id))
+const tenantId = computed(() => Number(route.params.id));
 
 const tenant = computed<Tenant | null>(() => {
-  return items.value.find((item) => item.id === tenantId.value) ?? null
-})
+  return items.value.find((item) => item.id === tenantId.value) ?? null;
+});
 
 const parentTenantName = computed(() => {
-  if (!tenant.value?.parent_id) return 'None'
-  const parent = items.value.find((t) => t.id === tenant.value?.parent_id)
-  return parent ? `${parent.name} (#${parent.id})` : `Tenant #${tenant.value.parent_id}`
-})
+  if (!tenant.value?.parent_id) return 'None';
+  const parent = items.value.find((t) => t.id === tenant.value?.parent_id);
+  return parent ? `${parent.name} (#${parent.id})` : `Tenant #${tenant.value.parent_id}`;
+});
 
 const tenantAdminColumns = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const },
   { name: 'role', label: 'Role', field: 'role', align: 'left' as const },
   { name: 'active', label: 'Active', field: 'is_active', align: 'left' as const },
   { name: 'delete', label: 'Delete', field: 'id', align: 'left' as const },
-]
+];
 
-const tenantModuleKeys = computed(
-  () => new Set(modules.value.map((item) => item.module_key)),
-)
+const tenantModuleKeys = computed(() => new Set(modules.value.map((item) => item.module_key)));
 
 const availableModules = computed(() =>
   moduleStore.assignableModules.filter(
@@ -423,84 +479,86 @@ const availableModules = computed(() =>
   ),
 )
 
+const getModuleName = (key: string) => {
+  const mod = moduleStore.items.find((item) => item.key === key)
+  return mod ? mod.name : key
+};
+
 const activeStatusStyle = {
   backgroundColor: '#c3e8d2',
   color: '#1f5d3c',
   border: '1px solid #9fd4b7',
   boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-}
+};
 
 const inactiveStatusStyle = {
   backgroundColor: '#dbe5f3',
   color: '#3b4b66',
   border: '1px solid #b9c8dd',
   boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-}
+};
 
 const loadTenantAdmins = async () => {
-  if (!tenant.value?.id) return
+  if (!tenant.value?.id) return;
 
-  tenantAdminsLoading.value = true
+  tenantAdminsLoading.value = true;
 
   try {
-    const result = await membershipStore.getTenantAdmins(tenant.value.id)
+    const result = await membershipStore.getTenantAdmins(tenant.value.id);
 
     if (!result.success) {
-      tenantAdmins.value = []
-      pageError.value = result.error || 'Failed to load tenant admins.'
-      return
+      tenantAdmins.value = [];
+      pageError.value = result.error || 'Failed to load tenant admins.';
+      return;
     }
 
-    tenantAdmins.value = result.data ?? []
+    tenantAdmins.value = result.data ?? [];
   } catch (err) {
-    console.error(err)
-    pageError.value = 'Failed to load tenant admins.'
-    tenantAdmins.value = []
+    console.error(err);
+    pageError.value = 'Failed to load tenant admins.';
+    tenantAdmins.value = [];
   } finally {
-    tenantAdminsLoading.value = false
+    tenantAdminsLoading.value = false;
   }
-}
+};
 
 const loadTenantModules = async () => {
-  if (!tenant.value?.id) return
+  if (!tenant.value?.id) return;
 
-  const result = await tenantModuleStore.fetchTenantModules(tenant.value.id)
+  const result = await tenantModuleStore.fetchTenantModules(tenant.value.id);
 
   if (!result.success) {
-    pageError.value = result.error || 'Failed to load module features.'
+    pageError.value = result.error || 'Failed to load module features.';
   }
-}
+};
 
 const loadPageData = async () => {
-  pageLoading.value = true
-  pageError.value = ''
+  pageLoading.value = true;
+  pageError.value = '';
 
   try {
-    await tenantStore.fetchTenants()
+    await tenantStore.fetchTenants();
 
     if (!tenant.value) {
-      pageError.value = 'Tenant not found.'
-      return
+      pageError.value = 'Tenant not found.';
+      return;
     }
 
-    await Promise.all([
-      loadTenantAdmins(),
-      loadTenantModules()
-    ])
+    await Promise.all([loadTenantAdmins(), loadTenantModules()]);
   } catch (err) {
-    console.error(err)
-    pageError.value = 'Failed to load tenant details.'
+    console.error(err);
+    pageError.value = 'Failed to load tenant details.';
   } finally {
-    pageLoading.value = false
+    pageLoading.value = false;
   }
-}
+};
 
 const goBack = () => {
-  void router.push('/platform/tenants')
-}
+  void router.push('/platform/tenants');
+};
 
 const onClickEditTenant = () => {
-  if (!tenant.value) return
+  if (!tenant.value) return;
 
   selectedTenant.value = {
     id: tenant.value.id,
@@ -511,13 +569,13 @@ const onClickEditTenant = () => {
     parent_id: tenant.value.parent_id,
     created_at: tenant.value.created_at,
     updated_at: tenant.value.updated_at,
-  }
+  };
 
-  openEditDialog.value = true
-}
+  openEditDialog.value = true;
+};
 
 const handleSaveTenant = async (payload: TenantForm) => {
-  if (payload.id === undefined) return
+  if (payload.id === undefined) return;
 
   const updatePayload: TenantUpdateInput = {
     id: payload.id,
@@ -526,111 +584,109 @@ const handleSaveTenant = async (payload: TenantForm) => {
     public_domain: payload.public_domain,
     is_active: payload.is_active,
     parent_id: payload.parent_id,
-  }
+  };
 
-  await tenantStore.updateTenant(updatePayload)
-  openEditDialog.value = false
-  await loadPageData()
-}
+  await tenantStore.updateTenant(updatePayload);
+  openEditDialog.value = false;
+  await loadPageData();
+};
 
 const confirmDeleteTenant = async () => {
-  if (!tenant.value) return
+  if (!tenant.value) return;
 
-  await tenantStore.deleteTenant({ id: tenant.value.id })
-  openDeleteDialog.value = false
-  void router.push('/platform/tenants')
-}
+  await tenantStore.deleteTenant({ id: tenant.value.id });
+  openDeleteDialog.value = false;
+  void router.push('/platform/tenants');
+};
 
 const onClickAddAdmin = () => {
-  adminEmail.value = ''
-  adminIsActive.value = true
-  openAddAdminDialog.value = true
-}
+  adminEmail.value = '';
+  adminIsActive.value = true;
+  openAddAdminDialog.value = true;
+};
 
 const handleSaveAdmin = async () => {
-  if (!tenant.value?.id || !adminEmail.value) return
+  if (!tenant.value?.id || !adminEmail.value) return;
 
   await membershipStore.createMembership({
     tenant_id: tenant.value.id,
     email: adminEmail.value,
     role: 'admin',
-    is_active: adminIsActive.value
-  })
+    is_active: adminIsActive.value,
+  });
 
-  openAddAdminDialog.value = false
-  await loadTenantAdmins()
-}
+  openAddAdminDialog.value = false;
+  await loadTenantAdmins();
+};
 
 const onToggleAdminActive = async (admin: Membership, value: boolean) => {
-  const previousValue = !value
+  const previousValue = !value;
 
   try {
     const result = await membershipStore.updateMembership({
       id: admin.id,
-      is_active: value
-    })
+      is_active: value,
+    });
 
     if (!result.success) {
-      admin.is_active = previousValue
-      console.error('Failed to update admin status:', result.error)
+      admin.is_active = previousValue;
+      console.error('Failed to update admin status:', result.error);
     }
   } catch (err) {
-    admin.is_active = previousValue
-    console.error('Failed to update admin status:', err)
+    admin.is_active = previousValue;
+    console.error('Failed to update admin status:', err);
   }
-}
+};
 
 const onClickDeleteAdmin = (admin: Membership) => {
-  adminToDelete.value = admin
-  openDeleteAdminDialog.value = true
-}
+  adminToDelete.value = admin;
+  openDeleteAdminDialog.value = true;
+};
 
 const confirmDeleteAdmin = async () => {
-  if (!adminToDelete.value) return
+  if (!adminToDelete.value) return;
 
   try {
     const result = await membershipStore.deleteMembership({
-      id: adminToDelete.value.id
-    })
+      id: adminToDelete.value.id,
+    });
 
     if (!result.success) {
-      console.error('Failed to delete admin:', result.error)
-      return
+      console.error('Failed to delete admin:', result.error);
+      return;
     }
 
-    tenantAdmins.value = tenantAdmins.value.filter(
-      (item) => item.id !== adminToDelete.value?.id
-    )
+    tenantAdmins.value = tenantAdmins.value.filter((item) => item.id !== adminToDelete.value?.id);
 
-    openDeleteAdminDialog.value = false
+    openDeleteAdminDialog.value = false;
   } catch (err) {
-    console.error('Failed to delete admin:', err)
+    console.error('Failed to delete admin:', err);
   }
-}
+};
 
 const addTenantFeature = async (moduleKey: string) => {
-  if (!tenant.value?.id) return
+  if (!tenant.value?.id) return;
   const result = await tenantModuleStore.createTenantModule({
     tenant_id: tenant.value.id,
     module_key: moduleKey,
     is_active: true,
-  })
+  });
   if (!result.success) {
-    pageError.value = result.error ?? 'Failed to add feature.'
+    pageError.value = result.error ?? 'Failed to add feature.';
   }
-}
+};
 
 const removeTenantFeature = async (moduleId: number) => {
-  const result = await tenantModuleStore.deleteTenantModule({ id: moduleId })
+  const result = await tenantModuleStore.deleteTenantModule({ id: moduleId });
   if (!result.success) {
-    pageError.value = result.error ?? 'Failed to remove feature.'
+    pageError.value = result.error ?? 'Failed to remove feature.';
   }
-}
+};
 
 onMounted(async () => {
-  await moduleStore.fetchModules()
-  void loadPageData()
-})
+  await moduleStore.fetchModules();
+  void loadPageData();
+});
 </script>
 
 <style scoped>

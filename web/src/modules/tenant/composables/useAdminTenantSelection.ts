@@ -1,52 +1,52 @@
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { showWarningDialog } from 'src/utils/appFeedback'
-import { useTenantStore } from '../stores/tenantStore'
-import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore'
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore'
-import type { Tenant } from '../types'
+import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { showWarningDialog } from 'src/utils/appFeedback';
+import { useTenantStore } from '../stores/tenantStore';
+import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore';
+import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import type { Tenant } from '../types';
 
 export function useAdminTenantSelection() {
-  const router = useRouter()
-  const authStore = useAuthStore()
-  const tenantStore = useTenantStore()
-  const tenantPreferenceStore = useTenantPreferenceStore()
-  const selectingTenantId = ref<number | null>(null)
+  const router = useRouter();
+  const authStore = useAuthStore();
+  const tenantStore = useTenantStore();
+  const tenantPreferenceStore = useTenantPreferenceStore();
+  const selectingTenantId = ref<number | null>(null);
 
   const selectTenantWorkspace = async (
     tenant: Pick<Tenant, 'id' | 'slug' | 'name'>,
     options?: {
-      navigate?: boolean
+      navigate?: boolean;
     },
   ) => {
     if (!authStore.user?.email || !authStore.member) {
-      showWarningDialog('Sign in again before selecting a tenant workspace.', 'Session required')
-      return false
+      showWarningDialog('Sign in again before selecting a tenant workspace.', 'Session required');
+      return false;
     }
 
-    selectingTenantId.value = tenant.id
+    selectingTenantId.value = tenant.id;
 
     try {
       const membershipId =
         authStore.member?.actorType === 'membership' && authStore.member.tenantId === tenant.id
           ? authStore.member.id
-          : null
+          : null;
 
       const { data, error } = await supabase.rpc('get_app_bootstrap_context', {
         p_email: authStore.user.email,
         p_tenant_id: tenant.id,
         p_membership_id: membershipId,
-      })
+      });
 
       if (error) {
-        showWarningDialog(error.message, 'Tenant selection failed')
-        return false
+        showWarningDialog(error.message, 'Tenant selection failed');
+        return false;
       }
 
-      const bootstrap = Array.isArray(data) ? data[0] : data
+      const bootstrap = Array.isArray(data) ? data[0] : data;
 
       if (
         !bootstrap ||
@@ -59,8 +59,8 @@ export function useAdminTenantSelection() {
         showWarningDialog(
           'This account could not load the selected tenant workspace.',
           'Tenant selection failed',
-        )
-        return false
+        );
+        return false;
       }
 
       authStore.saveAccess({
@@ -94,60 +94,57 @@ export function useAdminTenantSelection() {
         isAdmin: Boolean(bootstrap.is_admin),
         permissionVersion: bootstrap.permission_version ?? null,
         savedAt: new Date().toISOString(),
-      })
+      });
 
       tenantStore.setSelectedTenant({
         id: bootstrap.tenant_id,
         slug: bootstrap.tenant_slug,
-      })
+      });
 
-      tenantPreferenceStore.setPreference(
-        bootstrap.tenant_id,
-        bootstrap.tenant_preference,
-      )
+      tenantPreferenceStore.setPreference(bootstrap.tenant_id, bootstrap.tenant_preference);
 
       useMembershipPreferenceStore().setPreference(
         bootstrap.member_id,
         bootstrap.member_preference,
-      )
+      );
 
       if (options?.navigate !== false) {
         if (bootstrap.member_role === 'admin') {
-          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`)
+          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`);
         } else if (bootstrap.member_role === 'viewer') {
-          await router.push(`/${bootstrap.tenant_slug}/app/costing/viewer`)
+          await router.push(`/${bootstrap.tenant_slug}/app/costing/viewer`);
         } else {
-          await router.push(`/${bootstrap.tenant_slug}/app/dashboard`)
+          await router.push(`/${bootstrap.tenant_slug}/app/dashboard`);
         }
       }
 
-      return true
+      return true;
     } finally {
-      selectingTenantId.value = null
+      selectingTenantId.value = null;
     }
-  }
+  };
 
   const ensureSelectedTenantWorkspace = async () => {
     if (authStore.scope !== 'app') {
-      return false
+      return false;
     }
 
-    const selectedTenant = tenantStore.selectedTenant
+    const selectedTenant = tenantStore.selectedTenant;
 
     if (!selectedTenant) {
-      return false
+      return false;
     }
 
     if (authStore.tenant?.id === selectedTenant.id) {
-      return true
+      return true;
     }
 
-    return selectTenantWorkspace(selectedTenant, { navigate: false })
-  }
+    return selectTenantWorkspace(selectedTenant, { navigate: false });
+  };
 
   return {
     ensureSelectedTenantWorkspace,
     selectTenantWorkspace,
     selectingTenantId,
-  }
+  };
 }

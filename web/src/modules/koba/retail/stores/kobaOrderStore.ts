@@ -1,38 +1,38 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-import { handleApiFailure } from 'src/utils/appFeedback'
+import { handleApiFailure } from 'src/utils/appFeedback';
 
-import { kobaOrderService } from '../services/kobaOrderService'
+import { kobaOrderService } from '../services/kobaOrderService';
 
 import type {
   KobaOrder,
   KobaOrderItem,
   KobaOrderStatus,
-} from '../repositories/kobaOrderRepository'
+} from '../repositories/kobaOrderRepository';
 
 export interface KobaOrderState {
-  orders: KobaOrder[]
+  orders: KobaOrder[];
 
   orderDetail: {
-    order: KobaOrder
-    items: KobaOrderItem[]
-  } | null
+    order: KobaOrder;
+    items: KobaOrderItem[];
+  } | null;
 
-  loading: boolean
+  loading: boolean;
 
-  error: string | null
+  error: string | null;
 
   meta: {
-    total: number
-    page: number
-    page_size: number
-    total_pages: number
-  }
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
 }
 
-const KOBA_TENANT_ID = 12
+const KOBA_TENANT_ID = 12;
 
 export const useKobaOrderStore = defineStore('kobaOrder', {
   state: (): KobaOrderState => ({
@@ -53,121 +53,77 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
   }),
 
   getters: {
-    pendingOrders: (state) =>
-      state.orders.filter(
-        (order) => order.status === 'pending'
-      ),
+    pendingOrders: (state) => state.orders.filter((order) => order.status === 'pending'),
 
-    completedOrders: (state) =>
-      state.orders.filter(
-        (order) =>
-          order.status === 'delivered'
-      ),
+    completedOrders: (state) => state.orders.filter((order) => order.status === 'delivered'),
   },
 
   actions: {
-    async fetchOrders(
-      page: number = 1,
-      status: KobaOrderStatus | null = null
-    ) {
-      const authStore = useAuthStore()
+    async fetchOrders(page: number = 1, status: KobaOrderStatus | null = null) {
+      const authStore = useAuthStore();
 
-      const tenantId =
-        authStore.tenantId ??
-        KOBA_TENANT_ID
+      const tenantId = authStore.tenantId ?? KOBA_TENANT_ID;
 
       const customerGroupId =
-        authStore.customerGroupId != null
-          ? Number(
-              authStore.customerGroupId
-            )
-          : null
+        authStore.customerGroupId != null ? Number(authStore.customerGroupId) : null;
 
-      this.loading = true
+      this.loading = true;
 
-      this.error = null
+      this.error = null;
 
       try {
-        const result =
-          await kobaOrderService.listOrders(
-            tenantId,
-            customerGroupId,
-            page,
-            this.meta.page_size,
-            status
-          )
+        const result = await kobaOrderService.listOrders(
+          tenantId,
+          customerGroupId,
+          page,
+          this.meta.page_size,
+          status,
+        );
 
-        if (
-          !result.success ||
-          !result.data
-        ) {
-          this.error =
-            result.error ??
-            'Failed to load orders.'
+        if (!result.success || !result.data) {
+          this.error = result.error ?? 'Failed to load orders.';
 
-          handleApiFailure(
-            result,
-            this.error
-          )
+          handleApiFailure(result, this.error);
 
-          return result
+          return result;
         }
 
-        this.orders =
-          result.data.data
+        this.orders = result.data.data;
 
-        this.meta =
-          result.data.meta
+        this.meta = result.data.meta;
 
-        return result
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async fetchOrderDetails(
-      orderId: number
-    ) {
-      this.loading = true
+    async fetchOrderDetails(orderId: number) {
+      this.loading = true;
 
-      this.error = null
+      this.error = null;
 
       try {
-        const result =
-          await kobaOrderService.getOrderWithItems(
-            orderId
-          )
+        const result = await kobaOrderService.getOrderWithItems(orderId);
 
-        if (
-          !result.success ||
-          !result.data
-        ) {
-          this.error =
-            result.error ??
-            'Failed to load order details.'
+        if (!result.success || !result.data) {
+          this.error = result.error ?? 'Failed to load order details.';
 
-          handleApiFailure(
-            result,
-            this.error
-          )
+          handleApiFailure(result, this.error);
 
-          return result
+          return result;
         }
 
-        this.orderDetail =
-          result.data
+        this.orderDetail = result.data;
 
-        return result
+        return result;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async updateOrderStatus(
-      orderId: number,
-      status: KobaOrderStatus
-    ) {
-      const result = await kobaOrderService.updateOrderStatus(orderId, status)
+    async updateOrderStatus(orderId: number, status: KobaOrderStatus) {
+      const result = await kobaOrderService.updateOrderStatus(orderId, status);
 
       if (result.success && result.data && this.orderDetail) {
         this.orderDetail = {
@@ -177,31 +133,28 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
             status: result.data.status,
             updated_at: result.data.updated_at,
           },
-        }
+        };
 
         // Also reflect in the orders list if it's there
-        const idx = this.orders.findIndex((o) => o.id === orderId)
+        const idx = this.orders.findIndex((o) => o.id === orderId);
         if (idx !== -1) {
           this.orders[idx] = {
             ...this.orders[idx]!,
             status: result.data.status,
             updated_at: result.data.updated_at,
-          }
+          };
         }
       }
 
       if (!result.success) {
-        handleApiFailure(result, result.error ?? 'Failed to update status.')
+        handleApiFailure(result, result.error ?? 'Failed to update status.');
       }
 
-      return result
+      return result;
     },
 
-    async updateItemConfirmedQty(
-      itemId: number,
-      confirmedQuantity: number
-    ) {
-      const result = await kobaOrderService.updateItemConfirmedQty(itemId, confirmedQuantity)
+    async updateItemConfirmedQty(itemId: number, confirmedQuantity: number) {
+      const result = await kobaOrderService.updateItemConfirmedQty(itemId, confirmedQuantity);
 
       if (result.success && result.data && this.orderDetail) {
         this.orderDetail = {
@@ -213,23 +166,20 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
                   confirmed_quantity: result.data!.confirmed_quantity,
                   updated_at: result.data!.updated_at,
                 }
-              : item
+              : item,
           ),
-        }
+        };
       }
 
       if (!result.success) {
-        handleApiFailure(result, result.error ?? 'Failed to update confirmed quantity.')
+        handleApiFailure(result, result.error ?? 'Failed to update confirmed quantity.');
       }
 
-      return result
+      return result;
     },
 
-    async updateItemDeliveredQty(
-      itemId: number,
-      deliveredQuantity: number
-    ) {
-      const result = await kobaOrderService.updateItemDeliveredQty(itemId, deliveredQuantity)
+    async updateItemDeliveredQty(itemId: number, deliveredQuantity: number) {
+      const result = await kobaOrderService.updateItemDeliveredQty(itemId, deliveredQuantity);
 
       if (result.success && result.data && this.orderDetail) {
         this.orderDetail = {
@@ -241,20 +191,20 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
                   delivered_quantity: result.data!.delivered_quantity,
                   updated_at: result.data!.updated_at,
                 }
-              : item
+              : item,
           ),
-        }
+        };
       }
 
       if (!result.success) {
-        handleApiFailure(result, result.error ?? 'Failed to update delivered quantity.')
+        handleApiFailure(result, result.error ?? 'Failed to update delivered quantity.');
       }
 
-      return result
+      return result;
     },
 
     async softDeleteOrder(orderId: number) {
-      const result = await kobaOrderService.softDeleteOrder(orderId)
+      const result = await kobaOrderService.softDeleteOrder(orderId);
 
       if (result.success && result.data && this.orderDetail) {
         this.orderDetail = {
@@ -264,38 +214,38 @@ export const useKobaOrderStore = defineStore('kobaOrder', {
             status: result.data.status,
             updated_at: result.data.updated_at,
           },
-        }
+        };
 
-        const idx = this.orders.findIndex((o) => o.id === orderId)
+        const idx = this.orders.findIndex((o) => o.id === orderId);
         if (idx !== -1) {
           this.orders[idx] = {
             ...this.orders[idx]!,
             status: result.data.status,
             updated_at: result.data.updated_at,
-          }
+          };
         }
       }
 
       if (!result.success) {
-        handleApiFailure(result, result.error ?? 'Failed to delete order.')
+        handleApiFailure(result, result.error ?? 'Failed to delete order.');
       }
 
-      return result
+      return result;
     },
 
     clearOrderDetails() {
-      this.orderDetail = null
+      this.orderDetail = null;
     },
 
     clearOrders() {
-      this.orders = []
+      this.orders = [];
 
       this.meta = {
         total: 0,
         page: 1,
         page_size: 20,
         total_pages: 1,
-      }
+      };
     },
   },
-})
+});

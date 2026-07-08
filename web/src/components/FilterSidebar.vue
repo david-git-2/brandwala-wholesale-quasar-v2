@@ -1,31 +1,14 @@
 <template>
   <transition name="filter-sidebar-fade">
-    <div
-      v-if="modelValue"
-      class="filter-sidebar__backdrop"
-      :style="backdropStyle"
-      @click="close"
-    />
+    <div v-if="modelValue" class="filter-sidebar__backdrop" :style="backdropStyle" @click="close" />
   </transition>
 
   <transition name="filter-sidebar-slide">
-    <div
-      v-if="modelValue"
-      class="filter-sidebar"
-      :style="panelStyle"
-      @click.stop
-    >
+    <div v-if="modelValue" class="filter-sidebar" :style="panelStyle" @click.stop>
       <div class="filter-sidebar__inner q-pa-md">
         <div class="row items-center justify-between q-mb-md">
           <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            :aria-label="`Close ${title}`"
-            @click="close"
-          />
+          <q-btn flat round dense icon="close" :aria-label="`Close ${title}`" @click="close" />
         </div>
 
         <slot />
@@ -35,16 +18,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = withDefaults(
   defineProps<{
-    modelValue: boolean
-    title?: string | undefined
-    topOffset?: number | undefined
-    bottomOffset?: number | undefined
-    width?: string | undefined
-    zIndex?: number | undefined
+    modelValue: boolean;
+    title?: string | undefined;
+    topOffset?: number | undefined;
+    bottomOffset?: number | undefined;
+    width?: string | undefined;
+    zIndex?: number | undefined;
   }>(),
   {
     title: 'Filters',
@@ -52,40 +35,40 @@ const props = withDefaults(
     bottomOffset: 12,
     width: 'min(320px, 92vw)',
   },
-)
+);
 
 const emit = defineEmits<{
-  (event: 'update:modelValue', value: boolean): void
-}>()
+  (event: 'update:modelValue', value: boolean): void;
+}>();
 
 const close = () => {
-  emit('update:modelValue', false)
-}
+  emit('update:modelValue', false);
+};
 
 const onWindowKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && props.modelValue) {
-    close()
+    close();
   }
-}
+};
 
 onMounted(() => {
-  window.addEventListener('keydown', onWindowKeyDown)
-})
+  window.addEventListener('keydown', onWindowKeyDown);
+});
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onWindowKeyDown)
-})
+  window.removeEventListener('keydown', onWindowKeyDown);
+});
 
 const backdropStyle = computed(() => ({
   zIndex: props.zIndex ? props.zIndex - 1 : undefined,
-}))
+}));
 
 const panelStyle = computed(() => ({
   top: `${props.topOffset}px`,
   bottom: `${props.bottomOffset}px`,
   width: props.width,
   zIndex: props.zIndex ? props.zIndex : undefined,
-}))
+}));
 </script>
 
 <style scoped>
@@ -112,11 +95,7 @@ const panelStyle = computed(() => ({
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.62),
-    rgba(255, 255, 255, 0.38)
-  );
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 16px;
   backdrop-filter: blur(18px) saturate(135%);
@@ -150,7 +129,9 @@ const panelStyle = computed(() => ({
 
 .filter-sidebar-slide-enter-active,
 .filter-sidebar-slide-leave-active {
-  transition: transform 0.22s ease, opacity 0.22s ease;
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
 }
 
 .filter-sidebar-slide-enter-from,

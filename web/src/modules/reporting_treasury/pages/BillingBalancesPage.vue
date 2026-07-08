@@ -85,7 +85,11 @@
                 </template>
 
                 <template #body-cell-balance_due="props">
-                  <q-td :props="props" class="text-right text-weight-bold" :class="props.row.balance_due > 0 ? 'text-negative' : 'text-grey-6'">
+                  <q-td
+                    :props="props"
+                    class="text-right text-weight-bold"
+                    :class="props.row.balance_due > 0 ? 'text-negative' : 'text-grey-6'"
+                  >
                     {{ formatAmountBdt(props.row.balance_due) }}
                   </q-td>
                 </template>
@@ -94,13 +98,21 @@
                   <q-td :props="props" class="text-center">
                     <div class="row items-center justify-center no-wrap">
                       <q-linear-progress
-                        :value="props.row.total_invoiced > 0 ? (props.row.total_paid / props.row.total_invoiced) : 0"
+                        :value="
+                          props.row.total_invoiced > 0
+                            ? props.row.total_paid / props.row.total_invoiced
+                            : 0
+                        "
                         color="primary"
                         class="q-mr-sm rounded-borders"
-                        style="width: 60px; height: 6px;"
+                        style="width: 60px; height: 6px"
                       />
                       <span class="text-caption text-grey-8 text-weight-bold">
-                        {{ props.row.total_invoiced > 0 ? ((props.row.total_paid / props.row.total_invoiced) * 100).toFixed(0) : '0' }}%
+                        {{
+                          props.row.total_invoiced > 0
+                            ? ((props.row.total_paid / props.row.total_invoiced) * 100).toFixed(0)
+                            : '0'
+                        }}%
                       </span>
                     </div>
                   </q-td>
@@ -143,7 +155,9 @@
                 <template #body-cell-recipient="props">
                   <q-td :props="props">
                     <div class="text-weight-medium">{{ props.row.recipient_name || '-' }}</div>
-                    <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">{{ props.row.recipient_phone }}</div>
+                    <div v-if="props.row.recipient_phone" class="text-caption text-grey-6">
+                      {{ props.row.recipient_phone }}
+                    </div>
                   </q-td>
                 </template>
 
@@ -174,110 +188,158 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
-import type { QTableColumn } from 'quasar'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { formatAmountBdt } from 'src/utils/currency'
-import { treasuryRepository } from '../repositories/treasuryRepository'
-import TreasuryPageShell from '../components/TreasuryPageShell.vue'
-import TreasuryStatGrid from '../components/TreasuryStatGrid.vue'
-import TreasuryFilterBar from '../components/TreasuryFilterBar.vue'
-import TreasuryTableWrap from '../components/TreasuryTableWrap.vue'
+import { ref, computed, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
+import type { QTableColumn } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import { treasuryRepository } from '../repositories/treasuryRepository';
+import TreasuryPageShell from '../components/TreasuryPageShell.vue';
+import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
+import TreasuryFilterBar from '../components/TreasuryFilterBar.vue';
+import TreasuryTableWrap from '../components/TreasuryTableWrap.vue';
 
-const $q = useQuasar()
-const authStore = useAuthStore()
+const $q = useQuasar();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const activeTab = ref('profiles')
-const search = ref('')
+const loading = ref(false);
+const error = ref<string | null>(null);
+const activeTab = ref('profiles');
+const search = ref('');
 
-const profiles = ref<any[]>([])
-const outstandingInvoices = ref<any[]>([])
+const profiles = ref<any[]>([]);
+const outstandingInvoices = ref<any[]>([]);
 
 const profileColumns: QTableColumn[] = [
   { name: 'name', label: 'Customer Profile', field: 'name', align: 'left', sortable: true },
-  { name: 'total_invoiced', label: 'Total Invoiced', field: 'total_invoiced', align: 'right', sortable: true },
+  {
+    name: 'total_invoiced',
+    label: 'Total Invoiced',
+    field: 'total_invoiced',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'total_paid', label: 'Total Paid', field: 'total_paid', align: 'right', sortable: true },
-  { name: 'balance_due', label: 'Balance Due', field: 'balance_due', align: 'right', sortable: true },
+  {
+    name: 'balance_due',
+    label: 'Balance Due',
+    field: 'balance_due',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'collection_pct', label: 'Collection %', field: 'total_paid', align: 'center' },
-]
+];
 
 const invoiceColumns: QTableColumn[] = [
   { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', sortable: true },
-  { name: 'invoice_date', label: 'Invoice Date', field: 'invoice_date', align: 'left', sortable: true },
-  { name: 'billing_profile_name', label: 'Billing Profile', field: 'billing_profile_name', align: 'left', sortable: true },
-  { name: 'recipient', label: 'Recipient / Phone', field: 'recipient_name', align: 'left', sortable: true },
-  { name: 'total_amount', label: 'Total Amount', field: 'total_amount', align: 'right', sortable: true },
-  { name: 'paid_amount', label: 'Paid Amount', field: 'paid_amount', align: 'right', sortable: true },
+  {
+    name: 'invoice_date',
+    label: 'Invoice Date',
+    field: 'invoice_date',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'billing_profile_name',
+    label: 'Billing Profile',
+    field: 'billing_profile_name',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'recipient',
+    label: 'Recipient / Phone',
+    field: 'recipient_name',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'total_amount',
+    label: 'Total Amount',
+    field: 'total_amount',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'paid_amount',
+    label: 'Paid Amount',
+    field: 'paid_amount',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'due_amount', label: 'Due Balance', field: 'due_amount', align: 'right', sortable: true },
-]
+];
 
 const loadData = async () => {
-  const tenantId = authStore.tenantId
-  if (!tenantId) return
+  const tenantId = authStore.tenantId;
+  if (!tenantId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
     const [profRes, outRes] = await Promise.all([
       treasuryRepository.listBillingBalances(tenantId, search.value || undefined),
       treasuryRepository.listInvoiceOutstanding(tenantId, search.value || undefined),
-    ])
+    ]);
 
-    profiles.value = profRes || []
-    outstandingInvoices.value = outRes || []
+    profiles.value = profRes || [];
+    outstandingInvoices.value = outRes || [];
   } catch (err: any) {
-    error.value = err.message
-    $q.notify({ type: 'negative', message: `Failed to load balances: ${err.message}` })
+    error.value = err.message;
+    $q.notify({ type: 'negative', message: `Failed to load balances: ${err.message}` });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Stats rollups
 const totalInvoiced = computed(() => {
-  return profiles.value.reduce((sum, p) => sum + (p.total_invoiced || 0), 0)
-})
+  return profiles.value.reduce((sum, p) => sum + (p.total_invoiced || 0), 0);
+});
 
 const totalPaid = computed(() => {
-  return profiles.value.reduce((sum, p) => sum + (p.total_paid || 0), 0)
-})
+  return profiles.value.reduce((sum, p) => sum + (p.total_paid || 0), 0);
+});
 
 const totalOutstandingDue = computed(() => {
-  return profiles.value.reduce((sum, p) => sum + (p.balance_due || 0), 0)
-})
+  return profiles.value.reduce((sum, p) => sum + (p.balance_due || 0), 0);
+});
 
 const collectionRate = computed(() => {
-  return totalInvoiced.value > 0 ? (totalPaid.value / totalInvoiced.value) * 100 : 0
-})
+  return totalInvoiced.value > 0 ? (totalPaid.value / totalInvoiced.value) * 100 : 0;
+});
 
 const statCards = computed(() => [
   {
     label: 'Total Outstanding AR',
     value: totalOutstandingDue.value,
-    caption: search.value ? 'Based on filtered profiles (includes Walk-in)' : 'Based on billing profiles tab (includes Walk-in / Direct)',
+    caption: search.value
+      ? 'Based on filtered profiles (includes Walk-in)'
+      : 'Based on billing profiles tab (includes Walk-in / Direct)',
     valueClass: 'text-negative',
     format: 'currency' as const,
   },
   {
     label: 'Total Paid Collections',
     value: totalPaid.value,
-    caption: search.value ? 'Based on filtered profiles (includes Walk-in)' : 'Based on billing profiles tab (includes Walk-in / Direct)',
+    caption: search.value
+      ? 'Based on filtered profiles (includes Walk-in)'
+      : 'Based on billing profiles tab (includes Walk-in / Direct)',
     valueClass: 'text-positive',
     format: 'currency' as const,
   },
   {
     label: 'Average Collection Rate',
     value: collectionRate.value,
-    caption: search.value ? 'Invoiced to cash conversion (filtered)' : 'Invoiced to cash conversion percentage',
+    caption: search.value
+      ? 'Invoiced to cash conversion (filtered)'
+      : 'Invoiced to cash conversion percentage',
     valueClass: 'text-primary',
     format: 'percent' as const,
   },
-])
+]);
 
 onMounted(() => {
-  void loadData()
-})
+  void loadData();
+});
 </script>

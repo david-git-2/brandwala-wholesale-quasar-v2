@@ -39,7 +39,10 @@
                 :style="statusChipStyle(file.status)"
                 class="costing-status-chip"
               >
-                <span class="status-dot" :style="{ backgroundColor: statusDotColor(file.status) }" />
+                <span
+                  class="status-dot"
+                  :style="{ backgroundColor: statusDotColor(file.status) }"
+                />
                 {{ formatStatusLabel(file.status) }}
               </q-chip>
             </div>
@@ -66,140 +69,141 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
 
-import PageInitialLoader from 'src/components/PageInitialLoader.vue'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore'
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
 
-const router = useRouter()
-const authStore = useAuthStore()
-const costingFileStore = useCostingFileStore()
-const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(costingFileStore)
-const initialLoading = ref(true)
-const page = ref(1)
-const pageSize = 20
+const router = useRouter();
+const authStore = useAuthStore();
+const costingFileStore = useCostingFileStore();
+const { items: files, listLoading: loadingFiles, totalItems } = storeToRefs(costingFileStore);
+const initialLoading = ref(true);
+const page = ref(1);
+const pageSize = 20;
 
-const cardAccentColor = computed(() => 'var(--bw-theme-primary)')
+const cardAccentColor = computed(() => 'var(--bw-theme-primary)');
 const statusChipStyle = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
     return {
       backgroundColor: '#f1f5f9',
       color: '#475569',
       border: '1px solid #cbd5e1',
-    }
+    };
   }
   if (value === 'customer_submitted') {
     return {
       backgroundColor: '#e8eaf6',
       color: '#283593',
       border: '1px solid #c5cae9',
-    }
+    };
   }
   if (value === 'in_review') {
     return {
       backgroundColor: '#efd399',
       color: '#6a4a14',
       border: '1px solid #d8b672',
-    }
+    };
   }
   if (value === 'offered') {
     return {
       backgroundColor: '#c8d8f8',
       color: '#27487a',
       border: '1px solid #a9c4f3',
-    }
+    };
   }
   if (value === 'accepted') {
     return {
       backgroundColor: '#d1fae5',
       color: '#065f46',
       border: '1px solid #a7f3d0',
-    }
+    };
   }
   if (value === 'po_placed') {
     return {
       backgroundColor: '#c3e8d2',
       color: '#1f5d3c',
       border: '1px solid #9fd4b7',
-    }
+    };
   }
   if (value === 'cancelled') {
     return {
       backgroundColor: '#f2c7d0',
       color: '#6f2b3a',
       border: '1px solid #e3a6b3',
-    }
+    };
   }
   return {
     backgroundColor: '#f1f5f9',
     color: '#475569',
     border: '1px solid #cbd5e1',
-  }
-}
+  };
+};
 const statusDotColor = (currentStatus: string | null | undefined) => {
-  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending'
-  if (value === 'draft') return '#64748b'
-  if (value === 'customer_submitted') return '#3f51b5'
-  if (value === 'in_review') return '#9a6a24'
-  if (value === 'offered') return '#3f67b3'
-  if (value === 'accepted') return '#059669'
-  if (value === 'po_placed') return '#2f8b5d'
-  if (value === 'cancelled') return '#a64c62'
-  return '#64748b'
-}
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
 const formatStatusLabel = (status: string) =>
-  status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)))
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+const totalPages = computed(() => Math.max(1, Math.ceil((totalItems.value || 0) / pageSize)));
 
 const subtitle = computed(() =>
   authStore.selectedTenant?.name
     ? `Viewer access for ${authStore.selectedTenant.name}.`
     : 'Viewer access is required to open assigned costing files.',
-)
+);
 
 const loadFiles = async () => {
-  const tenantId = authStore.tenantId
+  const tenantId = authStore.tenantId;
 
   if (!tenantId) {
-    costingFileStore.items = []
-    costingFileStore.totalItems = 0
-    return
+    costingFileStore.items = [];
+    costingFileStore.totalItems = 0;
+    return;
   }
 
   await costingFileStore.fetchCostingFilesByTenant(tenantId, {
     page: page.value,
     pageSize,
-  })
-}
+  });
+};
 
 const handlePageChange = async () => {
-  await loadFiles()
-}
+  await loadFiles();
+};
 
 const openFile = async (id: number) => {
   await router.push({
     name: 'viewer-costing-file-details-page',
     params: { id: String(id) },
-  })
-}
+  });
+};
 
 onMounted(async () => {
   try {
-    await loadFiles()
+    await loadFiles();
   } finally {
-    initialLoading.value = false
+    initialLoading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>
-.costing-page { display: grid; gap: 1.25rem; }
+.costing-page {
+  display: grid;
+  gap: 1.25rem;
+}
 .costing-page__card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 260px));

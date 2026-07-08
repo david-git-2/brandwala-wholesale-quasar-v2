@@ -7,9 +7,7 @@
     <q-card class="costing-item-edit-dialog">
       <q-card-section>
         <div class="text-h6">Edit item</div>
-        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-          Update item #{{ item?.id }} details.
-        </p>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Update item #{{ item?.id }} details.</p>
       </q-card-section>
 
       <q-card-section class="costing-item-edit-dialog__grid">
@@ -114,31 +112,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue';
 
-import type { CostingFileItem } from 'src/modules/costingFile/types'
+import type { CostingFileItem } from 'src/modules/costingFile/types';
 
 const props = defineProps<{
-  modelValue: boolean
-  item: CostingFileItem | null
-  loading?: boolean
-}>()
+  modelValue: boolean;
+  item: CostingFileItem | null;
+  loading?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-      save: [
-        payload: {
-          id: number
-          name: string
-          itemType: string | null
-          imageUrl: string
-          productWeight: number
-          packageWeight: number
-      priceInWebGbp: number
-      deliveryPriceGbp: number
+  'update:modelValue': [value: boolean];
+  save: [
+    payload: {
+      id: number;
+      name: string;
+      itemType: string | null;
+      imageUrl: string;
+      productWeight: number;
+      packageWeight: number;
+      priceInWebGbp: number;
+      deliveryPriceGbp: number;
     },
-  ]
-}>()
+  ];
+}>();
 
 const form = reactive({
   name: '',
@@ -148,42 +146,42 @@ const form = reactive({
   packageWeight: null as number | null,
   priceInWebGbp: null as number | null,
   deliveryPriceGbp: null as number | null,
-})
+});
 
-const itemTypeOptions = ['Watch', 'Perfume', 'Others']
+const itemTypeOptions = ['Watch', 'Perfume', 'Others'];
 
 const normalizeExternalUrl = (value: string) =>
-  /^https?:\/\//i.test(value) ? value : `https://${value}`
+  /^https?:\/\//i.test(value) ? value : `https://${value}`;
 
 const previewImageUrl = computed(() => {
-  const value = form.imageUrl.trim()
-  return value ? normalizeExternalUrl(value) : ''
-})
+  const value = form.imageUrl.trim();
+  return value ? normalizeExternalUrl(value) : '';
+});
 
 const isFormInvalid = computed(() => {
-  if (!form.imageUrl.trim()) return true
-  if (!form.name.trim()) return true
-  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true
-  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true
-  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true
-  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true
+  if (!form.imageUrl.trim()) return true;
+  if (!form.name.trim()) return true;
+  if (form.priceInWebGbp == null || Number.isNaN(Number(form.priceInWebGbp))) return true;
+  if (form.productWeight == null || Number.isNaN(Number(form.productWeight))) return true;
+  if (form.packageWeight == null || Number.isNaN(Number(form.packageWeight))) return true;
+  if (form.deliveryPriceGbp == null || Number.isNaN(Number(form.deliveryPriceGbp))) return true;
 
-  return false
-})
+  return false;
+});
 
 const syncForm = (item: CostingFileItem | null) => {
-  form.name = item?.name ?? ''
-  form.itemType = item?.item_type ?? ''
-  form.imageUrl = item?.image_url ?? ''
-  form.productWeight = item?.product_weight ?? null
-  form.packageWeight = item?.package_weight ?? null
-  form.priceInWebGbp = item?.price_in_web_gbp ?? null
-  form.deliveryPriceGbp = item?.delivery_price_gbp ?? null
-}
+  form.name = item?.name ?? '';
+  form.itemType = item?.item_type ?? '';
+  form.imageUrl = item?.image_url ?? '';
+  form.productWeight = item?.product_weight ?? null;
+  form.packageWeight = item?.package_weight ?? null;
+  form.priceInWebGbp = item?.price_in_web_gbp ?? null;
+  form.deliveryPriceGbp = item?.delivery_price_gbp ?? null;
+};
 
 const handleSave = () => {
   if (!props.item) {
-    return
+    return;
   }
 
   emit('save', {
@@ -195,25 +193,25 @@ const handleSave = () => {
     packageWeight: Number(form.packageWeight),
     priceInWebGbp: Number(form.priceInWebGbp),
     deliveryPriceGbp: Number(form.deliveryPriceGbp),
-  })
-}
+  });
+};
 
 watch(
   () => props.item,
   (item) => {
-    syncForm(item)
+    syncForm(item);
   },
   { immediate: true },
-)
+);
 
 watch(
   () => props.modelValue,
   (isOpen) => {
     if (isOpen) {
-      syncForm(props.item)
+      syncForm(props.item);
     }
   },
-)
+);
 </script>
 
 <style scoped>

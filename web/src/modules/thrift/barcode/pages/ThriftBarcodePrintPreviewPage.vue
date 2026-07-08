@@ -2,7 +2,9 @@
   <q-page class="q-pa-md preview-canvas">
     <div class="preview-page__shell a4-sheet">
       <!-- Actions Bar (hidden when printing) -->
-      <div class="preview-page__actions q-mb-md no-print row justify-between items-center q-col-gutter-sm">
+      <div
+        class="preview-page__actions q-mb-md no-print row justify-between items-center q-col-gutter-sm"
+      >
         <div class="col-auto">
           <q-btn
             flat
@@ -14,7 +16,7 @@
             @click="goBack"
           />
         </div>
-        
+
         <div class="col-auto">
           <q-btn
             color="primary"
@@ -43,11 +45,7 @@
 
       <!-- Printable Barcodes Grid -->
       <div v-if="printList.length > 0" class="barcode-grid">
-        <div
-          v-for="barcode in printList"
-          :key="barcode.id"
-          class="barcode-card"
-        >
+        <div v-for="barcode in printList" :key="barcode.id" class="barcode-card">
           <div class="barcode-card__inner">
             <div class="barcode-card__tenant">THRIFT</div>
             <!-- Accurate Scannable Barcode Renderer -->
@@ -62,18 +60,26 @@
 
     <!-- Post-Print Confirmation Dialog -->
     <q-dialog v-model="showPostPrintDialog" persistent>
-      <q-card style="min-width: 380px; border-radius: 12px;">
+      <q-card style="min-width: 380px; border-radius: 12px">
         <q-card-section class="bg-primary text-white q-py-sm">
           <div class="text-subtitle1 text-weight-bold">Mark as Printed?</div>
         </q-card-section>
 
         <q-card-section class="q-py-md">
-          Did the print job complete successfully? Would you like to mark these <strong>{{ printList.length }}</strong> barcodes as <strong>Printed</strong> in the database?
+          Did the print job complete successfully? Would you like to mark these
+          <strong>{{ printList.length }}</strong> barcodes as <strong>Printed</strong> in the
+          database?
         </q-card-section>
 
         <q-card-actions align="right" class="q-pt-none">
           <q-btn flat label="No, Keep Unprinted" color="grey" @click="closePostPrint(false)" />
-          <q-btn unelevated label="Yes, Mark Printed" color="primary" class="pill-btn" @click="closePostPrint(true)" />
+          <q-btn
+            unelevated
+            label="Yes, Mark Printed"
+            color="primary"
+            class="pill-btn"
+            @click="closePostPrint(true)"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -81,71 +87,74 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from 'src/modules/auth/stores/authStore'
-import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore'
-import BarcodeRenderer from '../components/BarcodeRenderer.vue'
-import type { ThriftBarcode } from '../types'
-import { isBarcodePrintEligible } from '../types'
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore';
+import BarcodeRenderer from '../components/BarcodeRenderer.vue';
+import type { ThriftBarcode } from '../types';
+import { isBarcodePrintEligible } from '../types';
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const barcodeStore = useThriftBarcodeStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const barcodeStore = useThriftBarcodeStore();
 
-const loading = ref(false)
-const printList = ref<ThriftBarcode[]>([])
-const showPostPrintDialog = ref(false)
+const loading = ref(false);
+const printList = ref<ThriftBarcode[]>([]);
+const showPostPrintDialog = ref(false);
 
 const barcodeIds = computed(() => {
-  const queryIds = route.query.ids
-  if (typeof queryIds !== 'string') return []
-  return queryIds.split(',').map(Number).filter(n => Number.isFinite(n) && n > 0)
-})
+  const queryIds = route.query.ids;
+  if (typeof queryIds !== 'string') return [];
+  return queryIds
+    .split(',')
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0);
+});
 
 const goBack = () => {
-  void router.push({ name: 'thrift-barcodes-page' })
-}
+  void router.push({ name: 'thrift-barcodes-page' });
+};
 
 const printPage = () => {
-  window.print()
+  window.print();
   // Prompt user after standard browser print returns
-  showPostPrintDialog.value = true
-}
+  showPostPrintDialog.value = true;
+};
 
 const closePostPrint = async (markAsPrinted: boolean) => {
-  showPostPrintDialog.value = false
+  showPostPrintDialog.value = false;
   if (markAsPrinted && authStore.tenantId && printList.value.length > 0) {
-    loading.value = true
+    loading.value = true;
     try {
-      const ids = printList.value.map(b => b.id)
-      await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId)
+      const ids = printList.value.map((b) => b.id);
+      await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId);
 
-      printList.value = printList.value.map(b => ({ ...b, is_printed: 1 }))
+      printList.value = printList.value.map((b) => ({ ...b, is_printed: 1 }));
     } catch (err) {
-      console.error('Failed to update printed status:', err)
+      console.error('Failed to update printed status:', err);
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
-}
+};
 
 onMounted(async () => {
-  if (!authStore.tenantId) return
-  loading.value = true
+  if (!authStore.tenantId) return;
+  loading.value = true;
 
   try {
     if (barcodeIds.value.length > 0) {
-      const rows = await barcodeStore.fetchBarcodesByIds(barcodeIds.value)
-      printList.value = rows.filter(isBarcodePrintEligible)
+      const rows = await barcodeStore.fetchBarcodesByIds(barcodeIds.value);
+      printList.value = rows.filter(isBarcodePrintEligible);
     }
   } catch (err) {
-    console.error(err)
+    console.error(err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>
@@ -165,7 +174,7 @@ onMounted(async () => {
 }
 
 .preview-page__actions {
-  border-bottom: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding-bottom: 12px;
 }
 

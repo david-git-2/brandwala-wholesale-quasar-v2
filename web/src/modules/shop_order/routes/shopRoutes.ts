@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard'
-import { getShopLoginRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext'
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { getShopLoginRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const shopRoutes: RouteRecordRaw[] = [
   // shop_order_mgmt — Customer Orders (shop scope)
@@ -114,30 +114,30 @@ const shopRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/shop/commerce/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
-        : ''
-      return `${tenantSlug}/shop${subPath}`
+        : '';
+      return `${tenantSlug}/shop${subPath}`;
     },
   },
   {
     path: '/:tenantSlug?/shop/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
-        : ''
-      return `${tenantSlug}/shop${subPath}`
+        : '';
+      return `${tenantSlug}/shop${subPath}`;
     },
   },
   {
     path: '/:tenantSlug?/shop/stores/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : ''
-      return `${tenantSlug}/app/shop/shops`
+      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      return `${tenantSlug}/app/shop/shops`;
     },
   },
-]
+];
 
-export default shopRoutes
+export default shopRoutes;

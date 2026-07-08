@@ -2,7 +2,6 @@
   <q-layout view="hHh lpR fFf" class="auth-layout" :class="scopeClass">
     <q-page-container>
       <q-page class="auth-page">
-
         <!-- Animated background blobs (left canvas only) -->
         <div class="auth-bg" aria-hidden="true">
           <div class="auth-bg__blob auth-bg__blob--1" />
@@ -11,19 +10,35 @@
         </div>
 
         <div class="auth-layout__inner">
-
           <!-- ── Left: full-bleed dark canvas ───────────────── -->
           <div class="auth-canvas">
-
             <!-- Brand wordmark — top left -->
             <div class="auth-canvas__brand">
               <div class="auth-canvas__brand-mark" aria-hidden="true">
-                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="28" height="28" rx="7" fill="currentColor" fill-opacity="0.2"/>
-                  <path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="currentColor"/>
-                  <path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="currentColor" fill-opacity="0.7"/>
-                  <path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="currentColor" fill-opacity="0.7"/>
-                  <path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="currentColor" fill-opacity="0.45"/>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 28 28"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect width="28" height="28" rx="7" fill="currentColor" fill-opacity="0.2" />
+                  <path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="currentColor" />
+                  <path
+                    d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z"
+                    fill="currentColor"
+                    fill-opacity="0.7"
+                  />
+                  <path
+                    d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z"
+                    fill="currentColor"
+                    fill-opacity="0.7"
+                  />
+                  <path
+                    d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z"
+                    fill="currentColor"
+                    fill-opacity="0.45"
+                  />
                 </svg>
               </div>
               <span class="auth-canvas__brand-name">TradeFlowBD</span>
@@ -39,90 +54,92 @@
               <p class="auth-canvas__tagline">{{ tagline }}</p>
               <p class="auth-canvas__credit">Powered by TradeFlowBD</p>
             </div>
-
           </div>
 
           <!-- ── Right: login card panel ─────────────────────── -->
           <div class="auth-panel">
             <router-view />
           </div>
-
         </div>
-
       </q-page>
     </q-page-container>
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, provide, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, provide, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
-const route = useRoute()
+const route = useRoute();
 
 // Injected by AuthLoginPanel so the headline can use the real store name
-const panelTitle = ref('')
-provide('authPanelTitle', panelTitle)
+const panelTitle = ref('');
+provide('authPanelTitle', panelTitle);
 
 const authScope = computed(() => {
-  const metaScope = (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope
+  const metaScope = (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope;
   // The /auth/callback route carries ?scope=shop|app|platform in the URL;
   // fall back to it when meta doesn't define an authScope.
-  const queryScope = route.query.scope as 'platform' | 'app' | 'shop' | undefined
-  return metaScope ?? queryScope ?? 'app'
-})
+  const queryScope = route.query.scope as 'platform' | 'app' | 'shop' | undefined;
+  return metaScope ?? queryScope ?? 'app';
+});
 
-const scopeClass = computed(() => `auth-scope--${authScope.value}`)
+const scopeClass = computed(() => `auth-scope--${authScope.value}`);
 
 // The giant ghost word stamped across the left canvas
 const ghostWord = computed(() => {
   switch (authScope.value) {
-    case 'platform': return 'Platform'
-    case 'shop':     return 'Store'
-    default:         return 'Operations'
+    case 'platform':
+      return 'Platform';
+    case 'shop':
+      return 'Store';
+    default:
+      return 'Operations';
   }
-})
+});
 
 // Short, confident tagline below the ghost word
 const tagline = computed(() => {
   switch (authScope.value) {
-    case 'platform': return 'Govern the platform.'
+    case 'platform':
+      return 'Govern the platform.';
     case 'shop':
-      return panelTitle.value ? panelTitle.value : 'Your wholesale store.'
-    default:         return 'Run your business.'
+      return panelTitle.value ? panelTitle.value : 'Your wholesale store.';
+    default:
+      return 'Run your business.';
   }
-})
+});
 </script>
 
 <style scoped>
 /* ── Per-scope colour palette ────────────────────────── */
 .auth-scope--platform {
-  --auth-bg:       #100707;
-  --auth-mid:      #2d0a0a;
-  --auth-accent:   #ef4444;
+  --auth-bg: #100707;
+  --auth-mid: #2d0a0a;
+  --auth-accent: #ef4444;
   --auth-accent-rgb: 239 68 68;
-  --auth-glow:     rgb(239 68 68 / 0.4);
-  --auth-ghost:    rgb(239 68 68 / 0.04);
+  --auth-glow: rgb(239 68 68 / 0.4);
+  --auth-ghost: rgb(239 68 68 / 0.04);
   --auth-card-bar: #dc2626;
 }
 
 .auth-scope--app {
-  --auth-bg:       #030f08;
-  --auth-mid:      #052e1a;
-  --auth-accent:   #10b981;
+  --auth-bg: #030f08;
+  --auth-mid: #052e1a;
+  --auth-accent: #10b981;
   --auth-accent-rgb: 16 185 129;
-  --auth-glow:     rgb(16 185 129 / 0.38);
-  --auth-ghost:    rgb(16 185 129 / 0.04);
+  --auth-glow: rgb(16 185 129 / 0.38);
+  --auth-ghost: rgb(16 185 129 / 0.04);
   --auth-card-bar: #059669;
 }
 
 .auth-scope--shop {
-  --auth-bg:       #030814;
-  --auth-mid:      #09184a;
-  --auth-accent:   #3b82f6;
+  --auth-bg: #030814;
+  --auth-mid: #09184a;
+  --auth-accent: #3b82f6;
   --auth-accent-rgb: 59 130 246;
-  --auth-glow:     rgb(59 130 246 / 0.38);
-  --auth-ghost:    rgb(59 130 246 / 0.04);
+  --auth-glow: rgb(59 130 246 / 0.38);
+  --auth-ghost: rgb(59 130 246 / 0.04);
   --auth-card-bar: #2563eb;
 }
 
@@ -187,10 +204,18 @@ const tagline = computed(() => {
 }
 
 @keyframes blobFloat {
-  0%   { transform: translate(0,     0)    scale(1); }
-  40%  { transform: translate(40px, -50px) scale(1.06); }
-  70%  { transform: translate(-25px, 30px) scale(0.96); }
-  100% { transform: translate(15px,  -15px) scale(1.03); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  40% {
+    transform: translate(40px, -50px) scale(1.06);
+  }
+  70% {
+    transform: translate(-25px, 30px) scale(0.96);
+  }
+  100% {
+    transform: translate(15px, -15px) scale(1.03);
+  }
 }
 
 /* ── Two-column inner ────────────────────────────────── */
@@ -280,11 +305,7 @@ const tagline = computed(() => {
   color: transparent;
   /* two-layer approach: outline stroke + faint fill */
   -webkit-text-stroke: 1px rgb(255 255 255 / 0.07);
-  background: linear-gradient(
-    160deg,
-    rgb(255 255 255 / 0.06) 0%,
-    var(--auth-ghost) 100%
-  );
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.06) 0%, var(--auth-ghost) 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }

@@ -6,6 +6,55 @@
   --bw-brand-muted: #736a61;
   --bw-brand-accent: #7c3aed;
   --bw-brand-accent-rgb: 124 58 237;
+  --color-mix-tint: #ffffff;
+}
+
+body.body--dark {
+  --bw-brand-base: #0c0a09; /* stone 950 */
+  --bw-brand-surface: #1c1917; /* stone 900 */
+  --bw-brand-border: #292524; /* stone 800 */
+  --bw-brand-ink: #f5f5f4; /* stone 100 */
+  --bw-brand-muted: #a8a29e; /* stone 400 */
+  --bw-brand-accent: #a78bfa; /* violet 400 */
+  --bw-brand-accent-rgb: 167 139 250;
+
+  --bw-theme-shadow: 0 10px 30px rgba(0, 0, 0, 0.48), 0 2px 8px rgba(0, 0, 0, 0.36);
+  --color-mix-tint: #000000;
+
+  .theme-platform,
+  .theme-app,
+  .theme-shop {
+    --bw-theme-border: var(--bw-brand-border);
+    --bw-theme-ink: var(--bw-brand-ink);
+    --bw-theme-muted: var(--bw-brand-muted);
+  }
+
+  .theme-platform {
+    --bw-theme-primary: #f87171; /* red 400 */
+    --bw-theme-primary-rgb: 248 113 113;
+    --bw-theme-primary-soft: rgb(248 113 113 / 0.15);
+    --bw-theme-shadow: 0 12px 30px -12px rgb(248 113 113 / 0.35);
+  }
+
+  .theme-app {
+    --bw-theme-primary: #34d399; /* emerald 400 */
+    --bw-theme-primary-rgb: 52 211 153;
+    --bw-theme-primary-soft: rgb(52 211 153 / 0.15);
+    --bw-theme-shadow: 0 12px 30px -12px rgb(52 211 153 / 0.3);
+  }
+
+  .theme-shop {
+    --bw-theme-primary: #60a5fa; /* blue 400 */
+    --bw-theme-primary-rgb: 96 165 250;
+    --bw-theme-primary-soft: rgb(96 165 250 / 0.15);
+    --bw-theme-shadow: 0 12px 30px -12px rgb(96 165 250 / 0.3);
+  }
+
+  .theme-investor {
+    --bw-theme-primary: #2dd4bf; /* teal 400 */
+    --bw-theme-primary-rgb: 45 212 191;
+    --bw-theme-primary-soft: rgb(45 212 191 / 0.15);
+  }
 }
 
 .theme-platform,
@@ -75,12 +124,11 @@ body {
   color: var(--bw-theme-ink, var(--bw-brand-ink));
 }
 
-
 .q-page {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  background: #ffffff;
+  background: var(--bw-theme-surface);
 }
 
 .bw-page {
@@ -193,9 +241,9 @@ body {
 }
 
 .floating-surface {
-  background: rgba(255, 255, 255, 0.86);
+  background: color-mix(in srgb, var(--bw-theme-surface) 86%, transparent);
   border-radius: 14px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
+  border: 1px solid color-mix(in srgb, var(--bw-theme-border) 40%, transparent);
   backdrop-filter: blur(6px);
 }
 
@@ -210,7 +258,7 @@ body {
 
 .soft-input .q-field__control {
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--bw-theme-surface) 82%, transparent);
 }
 
 .theme-investor {
@@ -257,8 +305,8 @@ body {
 }
 
 .stat-card {
-  background: rgba(248, 250, 254, 0.9);
-  border: 1px solid rgba(34, 56, 101, 0.08);
+  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%);
+  border: 1px solid var(--bw-theme-border);
   border-radius: 10px;
   padding: 12px 14px 10px;
   margin-bottom: 12px;
@@ -266,28 +314,28 @@ body {
 }
 
 .stat-card:hover {
-  box-shadow: 0 2px 12px rgba(34, 56, 101, 0.08);
+  box-shadow: var(--bw-theme-shadow);
 }
 
 .stat-card--negative {
   border-left: 3px solid #e53935;
-  background: rgba(253, 245, 245, 0.9);
+  background: color-mix(in srgb, var(--bw-theme-surface) 95%, #e53935 5%);
 }
 
 .stat-card--positive {
   border-left: 3px solid #2e7d32;
-  background: rgba(244, 251, 246, 0.9);
+  background: color-mix(in srgb, var(--bw-theme-surface) 95%, #2e7d32 5%);
 }
 
 .stat-card--primary {
-  border-left: 3px solid var(--q-primary, #1976d2);
-  background: rgba(245, 249, 255, 0.9);
+  border-left: 3px solid var(--bw-theme-primary);
+  background: color-mix(in srgb, var(--bw-theme-surface) 95%, var(--bw-theme-primary) 5%);
 }
 
 .stat-label {
   font-size: 11px;
   font-weight: 500;
-  color: #555e72;
+  color: var(--bw-theme-muted);
   letter-spacing: 0.01em;
   margin-bottom: 4px;
   line-height: 1.35;
@@ -296,13 +344,13 @@ body {
 .stat-value {
   font-size: 20px;
   font-weight: 700;
-  color: #1a2642;
+  color: var(--bw-theme-ink);
   line-height: 1.2;
 }
 
 .stat-unit {
   font-size: 10px;
-  color: #8896aa;
+  color: var(--bw-theme-muted);
   margin-top: 2px;
 }
 
@@ -312,7 +360,9 @@ body {
 }
 
 .card-hover {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .card-hover:hover {
@@ -357,22 +407,22 @@ body {
 
 .inventory-page__table .inventory-q-table td:first-child {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, var(--bw-theme-base) 6%);
 }
 
 .inventory-page__table .inventory-q-table td:nth-child(2) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, var(--bw-theme-base) 4%);
 }
 
 .inventory-page__table .inventory-q-table tr:first-child th:first-child {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, var(--bw-theme-base) 6%);
 }
 
 .inventory-page__table .inventory-q-table tr:first-child th:nth-child(2) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, var(--bw-theme-base) 4%);
 }
 
 .inventory-page__table .inventory-page__name-cell {
@@ -381,18 +431,18 @@ body {
 
 /* ── Shipment accounting list ── */
 .shipment-acct-list-table th {
-  background: color-mix(in srgb, #fff 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--bw-theme-surface) 96%, var(--bw-theme-base) 4%);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #7a8499;
+  color: var(--bw-theme-muted);
   padding: 10px 16px;
 }
 
 .shipment-acct-list-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(34, 56, 101, 0.06);
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
 .shipment-row {
@@ -400,7 +450,7 @@ body {
 }
 
 .shipment-row:hover {
-  background: rgba(25, 118, 210, 0.04);
+  background: var(--bw-theme-primary-soft);
 }
 
 /* ── Global invoice accounting table ── */
@@ -411,22 +461,22 @@ body {
 }
 
 .invoice-table th {
-  background: color-mix(in srgb, #f7f9fc 96%, rgba(34, 56, 101, 0.04) 4%);
+  background: color-mix(in srgb, var(--bw-theme-base) 96%, var(--bw-theme-primary-soft) 4%);
   font-size: 12px;
   font-weight: 600;
-  color: #3b4b66;
+  color: var(--bw-theme-ink);
   padding: 10px 12px;
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 2;
-  border-bottom: 1px solid rgba(34, 56, 101, 0.1);
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
 .invoice-table td {
   padding: 9px 12px;
   font-size: 13px;
-  border-bottom: 1px solid rgba(34, 56, 101, 0.05);
+  border-bottom: 1px solid var(--bw-theme-border);
   vertical-align: middle;
 }
 
@@ -436,7 +486,7 @@ body {
 }
 
 .invoice-group-row:hover td {
-  background: rgba(34, 56, 101, 0.04);
+  background: var(--bw-theme-primary-soft);
 }
 
 .entry-status-chip {
@@ -471,8 +521,8 @@ body {
 }
 
 .totals-row td {
-  background: rgba(248, 250, 254, 0.95) !important;
-  border-top: 2px solid rgba(34, 56, 101, 0.12);
+  background: color-mix(in srgb, var(--bw-theme-surface) 95%, var(--bw-theme-base) 5%) !important;
+  border-top: 2px solid var(--bw-theme-border);
   font-size: 13px;
 }
 
@@ -481,3 +531,133 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Shared compact/sticky page toolbar ── */
+.bw-page-toolbar {
+  position: sticky;
+  top: var(--workspace-header-offset, 54px);
+  z-index: 10;
+  min-height: 48px;
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 12px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px -10px rgb(0 0 0 / 0.08);
+
+  body.body--dark & {
+    box-shadow: 0 4px 25px -10px rgb(0 0 0 / 0.5);
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    min-height: auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+}
+
+.bw-page-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.bw-page-toolbar__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--bw-theme-ink);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.bw-page-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ── Compact layout density overrides ── */
+body.body--compact {
+  .q-table th {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .q-table td {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .q-list .q-item {
+    min-height: 32px !important;
+    padding: 4px 12px !important;
+
+    .q-item__section--avatar {
+      min-width: 32px;
+    }
+  }
+
+  // Adjust table sticky header and cell paddings for Thrift stock page specifically
+  .thrift-table-card {
+    .thrift-table :deep(thead tr th) {
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+    }
+
+    .thrift-table :deep(td) {
+      padding: 6px 10px !important;
+      font-size: 12px !important;
+    }
+
+    .thrift-stock-image-wrap {
+      width: 48px;
+      height: 48px;
+
+      :deep(.smart-image-wrapper),
+      :deep(.thrift-stock-image__img),
+      :deep(img) {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    .thrift-table :deep(td.col-sticky-image),
+    .thrift-table :deep(th.col-sticky-image),
+    .thrift-table :deep(.col-sticky-image) {
+      width: 56px;
+      min-width: 56px;
+      max-width: 56px;
+    }
+  }
+
+  // Invoice table density
+  .invoice-table th {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .invoice-table td {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+}
