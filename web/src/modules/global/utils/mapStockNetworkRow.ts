@@ -8,8 +8,18 @@ export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalSto
   tenant_id: row.holding_tenant_id,
   parent_tenant_id: row.parent_tenant_id,
   name: row.name,
-  cost: row.cost,
   shipment_id: row.shipment_id,
+  shipment_item_id: row.shipment_item_id,
+  ordered_quantity: row.ordered_quantity,
+  purchase_price: row.purchase_price,
+  product_weight: row.product_weight,
+  package_weight: row.package_weight,
+  shipment_type: row.shipment_type,
+  product_conversion_rate: row.product_conversion_rate,
+  cargo_conversion_rate: row.cargo_conversion_rate,
+  cargo_rate: row.cargo_rate,
+  received_weight: row.received_weight,
+  transaction_rate: row.transaction_rate,
   product_id: row.product_id,
   barcode: row.barcode,
   product_code: row.product_code,
@@ -26,8 +36,9 @@ export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalSto
 export const mapStockNetworkToInventoryView = (
   row: StockNetworkRow,
   shipment?: Shipment | null,
+  unitCost?: number,
 ): InventoryItemWithStock =>
-  mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment);
+  mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment, unitCost);
 
 export type StockNetworkProductGroup = {
   key: string;
@@ -36,9 +47,9 @@ export type StockNetworkProductGroup = {
   image_url: string | null;
   barcode: string | null;
   product_code: string | null;
-  cost: number;
+  resolvedUnitCost?: number;
   global_stock_id: number;
-  shipment_id: number | null;
+  shipment_id: number;
   contexts: StockNetworkRow[];
 };
 
@@ -56,15 +67,21 @@ export const groupStockNetworkRows = (rows: StockNetworkRow[]): StockNetworkProd
         image_url: row.image_url,
         barcode: row.barcode,
         product_code: row.product_code,
-        cost: row.cost,
         global_stock_id: row.global_stock_id,
         shipment_id: row.shipment_id,
         contexts: [],
+        ...(row.resolvedUnitCost != null ? { resolvedUnitCost: row.resolvedUnitCost } : {}),
       };
       groups.set(key, group);
     }
-    group.contexts.push(row);
+    group!.contexts.push(row);
+    if (row.resolvedUnitCost != null) {
+      group.resolvedUnitCost = row.resolvedUnitCost;
+    }
   }
 
   return Array.from(groups.values());
 };
+
+export const pickableContext = (group: StockNetworkProductGroup) =>
+  group.contexts.find((ctx) => ctx.is_pickable) ?? group.contexts[0] ?? null;

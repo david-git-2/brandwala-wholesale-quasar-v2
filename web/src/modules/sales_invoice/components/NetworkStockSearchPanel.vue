@@ -26,7 +26,7 @@
           @update:model-value="onSearchInput"
         >
           <template #append>
-            <q-spinner v-if="loading" size="20px" color="primary" />
+            <q-spinner v-if="loading || resolvingCosts" size="20px" color="primary" />
           </template>
         </q-input>
       </div>
@@ -55,12 +55,15 @@
             <q-item-label class="text-subtitle2 text-weight-bold row items-center justify-between">
               <span>{{ group.name }}</span>
               <span class="text-caption text-grey-8 text-weight-bold">
-                Cost: BDT {{ formatCost(group.cost) }}
+                Cost: BDT {{ formatGroupCost(group) }}
               </span>
             </q-item-label>
             <q-item-label caption class="text-grey-7 row q-gutter-x-md">
               <span v-if="group.product_code">Code: {{ group.product_code }}</span>
               <span v-if="group.barcode">Barcode: {{ group.barcode }}</span>
+              <span v-if="getShipmentNames(group)" class="text-primary text-weight-bold">
+                Shipment: {{ getShipmentNames(group) }}
+              </span>
             </q-item-label>
 
             <div class="row items-center q-gutter-xs q-mt-xs flex-wrap">
@@ -128,6 +131,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { globalRepository } from 'src/modules/global/repositories/globalRepository';
 import type {
   GlobalStockSearchField,
@@ -136,8 +140,10 @@ import type {
 } from 'src/modules/global/types';
 import {
   groupStockNetworkRows,
+  pickableContext,
   type StockNetworkProductGroup,
 } from 'src/modules/global/utils/mapStockNetworkRow';
+import { resolveGlobalStockUnitCost } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const formatCost = (val: number) => formatAmountBdt(val);
@@ -162,12 +168,15 @@ const emit = defineEmits<{
   (e: 'view', row: StockNetworkRow): void;
 }>();
 
-const searchField = ref<GlobalStockSearchField>('name');
+const searchField = ref<GlobalStockSearchField>('all');
 const searchQuery = ref(props.initialSearch);
 const results = ref<StockNetworkRow[]>([]);
 const loading = ref(false);
+const resolvingCosts = ref(false);
+const costingCache = createShipmentItemsCostingCache();
 
 const searchFieldOptions = [
+  { label: 'All Fields', value: 'all' as const },
   { label: 'Name', value: 'name' as const },
   { label: 'Barcode', value: 'barcode' as const },
   { label: 'Product Code', value: 'product_code' as const },
@@ -179,14 +188,54 @@ const searchPlaceholder = computed(() => {
       return 'Search by barcode...';
     case 'product_code':
       return 'Search by product code...';
-    default:
+    case 'name':
       return 'Search by product name...';
+    default:
+      return 'Search stock...';
   }
 });
 
+const getShipmentNames = (group: StockNetworkProductGroup) => {
+  const names = group.contexts
+    .map((ctx) => ctx.shipment_name)
+    .filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+  const uniqueNames = Array.from(new Set(names));
+  return uniqueNames.join(', ');
+};
+
 const groupedResults = computed(() => groupStockNetworkRows(results.value));
 
+const formatGroupCost = (group: StockNetworkProductGroup) => {
+  const ctx = pickableContext(group);
+  const cost = ctx?.resolvedUnitCost ?? group.resolvedUnitCost;
+  if (cost == null) return resolvingCosts.value ? '…' : '—';
+  return formatCost(cost);
+};
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+const resolveResultCosts = async (rows: StockNetworkRow[]) => {
+  if (!rows.length) {
+    results.value = [];
+    return;
+  }
+
+  resolvingCosts.value = true;
+  try {
+    await costingCache.prefetchShipmentItems(rows.map((row) => row.shipment_id));
+    const resolved = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        resolvedUnitCost: await resolveGlobalStockUnitCost(row, costingCache),
+      })),
+    );
+    results.value = resolved;
+  } catch {
+    results.value = rows;
+  } finally {
+    resolvingCosts.value = false;
+  }
+};
 
 const runSearch = async () => {
   if (!props.contextTenantId) {
@@ -210,8 +259,9 @@ const runSearch = async () => {
       page_size: 50,
       skip_count: true,
     });
-    results.value =
+    const rows =
       props.mode === 'invoice' ? result.data.filter((row) => row.is_pickable) : result.data;
+    await resolveResultCosts(rows);
   } catch {
     results.value = [];
   } finally {
@@ -231,9 +281,6 @@ const onCriteriaChange = () => {
     void runSearch();
   }
 };
-
-const pickableContext = (group: StockNetworkProductGroup) =>
-  group.contexts.find((ctx) => ctx.is_pickable) ?? group.contexts[0] ?? null;
 
 const onSelectRow = (row: StockNetworkRow) => {
   if (!row.is_pickable && props.mode === 'invoice') return;
@@ -256,7 +303,7 @@ watch(
   { immediate: true },
 );
 
-defineExpose({ refresh: runSearch });
+defineExpose({ refresh: runSearch, costingCache });
 </script>
 
 <style scoped>

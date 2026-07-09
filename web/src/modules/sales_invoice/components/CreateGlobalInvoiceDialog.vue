@@ -36,7 +36,20 @@
             class="soft-input"
             :loading="loadingProfiles"
             :rules="[(value: number | null) => value != null || 'Billing profile is required']"
-          />
+          >
+            <template #after>
+              <q-btn
+                round
+                dense
+                flat
+                icon="add"
+                color="primary"
+                @click="goToBillingProfileCreate"
+              >
+                <q-tooltip>Create Billing Profile</q-tooltip>
+              </q-btn>
+            </template>
+          </q-select>
 
           <q-input
             v-model="form.invoice_date"
@@ -69,15 +82,10 @@
             :rules="[(value: string) => Boolean(value?.trim()) || 'Invoice number is required']"
           />
 
-          <q-input
-            v-model="form.note"
-            label="Note"
-            type="textarea"
-            outlined
-            dense
-            autogrow
-            class="soft-input"
-          />
+          <div class="q-mb-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Note</div>
+            <RichTextEditor v-model="form.note" min-height="6rem" />
+          </div>
 
           <div class="text-caption text-grey-7">
             Wholesale invoices bill the selected profile. Recipient details are copied from the
@@ -110,10 +118,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
+import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showWarningDialog } from 'src/utils/appFeedback';
+import { cleanEditorHtml } from 'src/utils/editor';
 
 import { useInvoiceStore } from '../stores/invoiceStore';
 import type { GlobalInvoiceCreated } from '../types';
@@ -128,11 +140,26 @@ const emit = defineEmits<{
   (e: 'created', invoice: GlobalInvoiceCreated): void;
 }>();
 
+const router = useRouter();
+const authStore = useAuthStore();
+
 const globalInvoiceStore = useInvoiceStore();
 const billingProfileStore = useBillingProfileStore();
 const tenantStore = useTenantStore();
 
 const loadingProfiles = ref(false);
+
+const goToBillingProfileCreate = () => {
+  void router.push({
+    name: 'app-global-billing-profiles',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+    },
+    query: {
+      create: 'true',
+    },
+  });
+};
 
 const form = reactive({
   tenant_id: null as number | null,
@@ -266,7 +293,7 @@ const onSubmit = async () => {
     billing_profile_id: form.billing_profile_id,
     invoice_type: 'wholesale',
     invoice_date: form.invoice_date,
-    note: form.note.trim() || null,
+    note: cleanEditorHtml(form.note || ''),
   });
 
   if (!result.success || !result.data) {

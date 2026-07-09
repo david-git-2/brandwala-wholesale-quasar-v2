@@ -7,11 +7,13 @@ export interface GlobalStock {
   id: number;
   parent_tenant_id: number;
   shipment_item_id: number;
+  shipment_id: number;
   stock_type_id: number;
   quantity: number;
   is_usable: boolean;
   created_at: string;
   updated_at: string;
+  ordered_quantity: number;
 
   // Joined fields
   item_name: string;

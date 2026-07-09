@@ -31,7 +31,8 @@
               ID: <span class="text-black text-weight-medium">{{ item.id }}</span>
             </div>
             <div class="text-subtitle2 text-black q-mt-sm">
-              Cost: <strong class="text-primary">BDT {{ item.cost ?? '-' }}</strong>
+              Cost:
+              <strong class="text-primary">BDT {{ formattedUnitCost }}</strong>
             </div>
           </div>
 
@@ -98,11 +99,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { formatAmountBdt } from 'src/utils/currency';
+
 import type { InventoryItemWithStock } from '../types';
 
 const props = defineProps<{
   modelValue: boolean;
   item: InventoryItemWithStock | null;
+  unitCost?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -112,6 +116,11 @@ const emit = defineEmits<{
 const localModelValue = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
+});
+
+const formattedUnitCost = computed(() => {
+  if (props.unitCost == null) return '—';
+  return formatAmountBdt(props.unitCost);
 });
 
 const shipmentLabel = computed(() => {

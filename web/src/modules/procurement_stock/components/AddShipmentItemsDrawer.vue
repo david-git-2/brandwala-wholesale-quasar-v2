@@ -52,20 +52,18 @@ const onCancel = () => {
 
 <style scoped>
 .drawer-card {
-  width: 500px;
-  max-width: 90vw;
+  width: 1000px;
+  max-width: 95vw;
   height: calc(100vh - 24px) !important;
   margin: 12px;
   border-radius: 16px !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15) !important;
   overflow: hidden;
 }
 
 .drawer-header {
-  background: color-mix(in srgb, var(--q-primary) 85%, transparent) !important;
-  backdrop-filter: blur(8px);
+  background: var(--q-primary) !important;
 }
 </style>

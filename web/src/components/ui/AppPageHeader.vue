@@ -1,5 +1,5 @@
 <template>
-  <div class="app-page-header">
+  <div class="app-page-header" :class="{ 'app-page-header--dense': dense }">
     <div class="app-page-header__copy">
       <p v-if="eyebrow" class="app-page-header__eyebrow">{{ eyebrow }}</p>
       <h1 class="app-page-header__title">{{ title }}</h1>
@@ -16,6 +16,7 @@ defineProps<{
   title: string;
   subtitle?: string;
   eyebrow?: string;
+  dense?: boolean;
 }>();
 </script>
 
@@ -53,5 +54,24 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.app-page-header--dense {
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.app-page-header--dense .app-page-header__eyebrow {
+  margin: 0 0 0.1rem;
+  font-size: 0.65rem;
+}
+
+.app-page-header--dense .app-page-header__title {
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+}
+
+.app-page-header--dense .app-page-header__subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
 }
 </style>

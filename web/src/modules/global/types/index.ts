@@ -1,4 +1,4 @@
-export type GlobalStockSearchField = 'name' | 'barcode' | 'product_code';
+export type GlobalStockSearchField = 'all' | 'name' | 'barcode' | 'product_code';
 
 export type StockNetworkMode = 'page' | 'search' | 'invoice';
 
@@ -16,15 +16,29 @@ export type StockNetworkQuery = {
   skip_count?: boolean;
 };
 
-export type StockNetworkRow = {
+export type GlobalStockCostingInput = {
+  shipment_id: number;
+  shipment_item_id: number;
+  purchase_price: number;
+  product_weight: number;
+  package_weight: number;
+  ordered_quantity: number;
+  shipment_type: 'domestic' | 'international';
+  product_conversion_rate: number;
+  cargo_conversion_rate: number;
+  cargo_rate: number;
+  received_weight: number | null;
+  transaction_rate: number | null;
+};
+
+export type StockNetworkRow = GlobalStockCostingInput & {
   global_stock_id: number;
   product_id: number | null;
   name: string;
   barcode: string | null;
   product_code: string | null;
   image_url: string | null;
-  cost: number;
-  shipment_id: number | null;
+  shipment_name: string | null;
   parent_tenant_id: number;
   holding_tenant_id: number;
   holding_tenant_name: string | null;
@@ -41,6 +55,7 @@ export type StockNetworkRow = {
   is_pickable: boolean;
   sort_rank: number;
   product_group_key: string;
+  resolvedUnitCost?: number;
 };
 
 export type StockNetworkPage = {
@@ -99,13 +114,11 @@ export type GlobalStockListPage = {
   };
 };
 
-export type GlobalStockRow = {
+export type GlobalStockRow = GlobalStockCostingInput & {
   id: number;
   tenant_id: number;
   parent_tenant_id: number;
   name: string;
-  cost: number;
-  shipment_id: number | null;
   product_id: number | null;
   barcode: string | null;
   product_code: string | null;
@@ -207,7 +220,6 @@ export type InventoryItemWithStock = {
   product_id: number | null;
   name: string;
   image_url: string | null;
-  cost: number;
   barcode: string | null;
   product_code: string | null;
   manufacturing_date: string | null;

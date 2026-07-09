@@ -23,9 +23,17 @@ export interface GlobalStockAllocation {
   purchase_price: number;
   product_weight: number;
   package_weight: number;
+  shipment_item_id: number;
+  shipment_id: number;
+  ordered_quantity: number;
   shipment_name: string;
   shipment_type: 'domestic' | 'international';
   shipment_status: string;
+  product_conversion_rate: number;
+  cargo_conversion_rate: number;
+  cargo_rate: number;
+  received_weight: number | null;
+  transaction_rate: number | null;
   stock_type_description: string;
   is_sellable: boolean;
 }

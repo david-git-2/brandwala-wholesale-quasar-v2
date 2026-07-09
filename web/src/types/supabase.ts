@@ -8532,6 +8532,35 @@ export type Database = {
         }
         Returns: Json
       }
+      list_global_invoice_items: {
+        Args: { p_invoice_id: number }
+        Returns: {
+          cargo_conversion_rate: number
+          cargo_rate: number
+          global_stock_id: number
+          id: number
+          image_url: string
+          invoice_id: number
+          line_discount_amount: number
+          line_face_total_amount: number
+          line_total_amount: number
+          name_snapshot: string
+          ordered_quantity: number
+          package_weight: number
+          product_conversion_rate: number
+          product_weight: number
+          purchase_price: number
+          quantity: number
+          received_weight: number
+          recipient_price_amount: number
+          return_quantity: number
+          sell_price_amount: number
+          shipment_id: number
+          shipment_item_id: number
+          shipment_type: string
+          transaction_rate: number
+        }[]
+      }
       list_global_shipments_paginated: {
         Args: {
           p_page?: number
@@ -9552,7 +9581,8 @@ export type Database = {
           barcode: string
           box_damage_qty: number
           box_less_qty: number
-          cost: number
+          cargo_conversion_rate: number
+          cargo_rate: number
           excellent_qty: number
           expired_qty: number
           global_qty: number
@@ -9563,15 +9593,25 @@ export type Database = {
           is_own_tenant: boolean
           is_pickable: boolean
           name: string
+          ordered_quantity: number
+          package_weight: number
           parent_tenant_id: number
           product_code: string
+          product_conversion_rate: number
           product_group_key: string
           product_id: number
+          product_weight: number
+          purchase_price: number
+          received_weight: number
           reserved_qty: number
           shipment_id: number
+          shipment_item_id: number
+          shipment_name: string
+          shipment_type: string
           sort_rank: number
           stolen_qty: number
           total_qty: number
+          transaction_rate: number
         }[]
       }
       seed_tenant_roles_and_grants: {

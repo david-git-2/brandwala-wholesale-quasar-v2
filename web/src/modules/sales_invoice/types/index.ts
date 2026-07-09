@@ -1,3 +1,5 @@
+import type { GlobalStockCostingInput } from 'src/modules/global/types';
+
 export type GlobalInvoiceRow = {
   id: number;
   tenant_id: number;
@@ -85,6 +87,7 @@ export type GlobalInvoiceItemRow = {
   line_discount_amount: number;
   line_total_amount: number;
   unit_cost_price?: number | null;
+  costing?: GlobalStockCostingInput | null;
   return_quantity: number;
   image_url?: string | null | undefined;
 };

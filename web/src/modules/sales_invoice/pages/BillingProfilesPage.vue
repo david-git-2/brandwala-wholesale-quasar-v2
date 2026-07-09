@@ -176,6 +176,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue';
@@ -188,6 +189,7 @@ import type {
 } from '../repositories/billingProfileRepository';
 
 const authStore = useAuthStore();
+const route = useRoute();
 const store = useBillingProfileStore();
 const customerGroupStore = useCustomerGroupStore();
 
@@ -302,6 +304,9 @@ const onResetFilters = () => {
 
 onMounted(() => {
   void load();
+  if (route.query.create === 'true') {
+    createOpen.value = true;
+  }
 });
 </script>
 

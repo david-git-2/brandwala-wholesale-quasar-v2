@@ -20,7 +20,11 @@
     </q-card>
   </q-dialog>
 
-  <GlobalStockDetailsDialog v-model="detailsOpen" :item="selectedItem" />
+  <GlobalStockDetailsDialog
+    v-model="detailsOpen"
+    :item="selectedItem"
+    :unit-cost="selectedUnitCost"
+  />
 </template>
 
 <script setup lang="ts">
@@ -55,9 +59,11 @@ const contextTenantId = computed(() => tenantStore.selectedTenantId ?? authStore
 
 const detailsOpen = ref(false);
 const selectedItem = ref<InventoryItemWithStock | null>(null);
+const selectedUnitCost = ref<number | null>(null);
 
 const onSelectResult = (row: StockNetworkRow) => {
-  selectedItem.value = mapStockNetworkToInventoryView(row);
+  selectedUnitCost.value = row.resolvedUnitCost ?? null;
+  selectedItem.value = mapStockNetworkToInventoryView(row, null, row.resolvedUnitCost);
   detailsOpen.value = true;
 };
 </script>

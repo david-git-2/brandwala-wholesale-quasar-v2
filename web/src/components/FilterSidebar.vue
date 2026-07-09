@@ -75,8 +75,7 @@ const panelStyle = computed(() => ({
 .filter-sidebar__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(6px) saturate(120%);
+  background: rgba(15, 23, 42, 0.35);
   z-index: 2998;
 }
 
@@ -95,10 +94,9 @@ const panelStyle = computed(() => ({
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 16px;
-  backdrop-filter: blur(18px) saturate(135%);
   box-shadow:
     0 14px 34px rgba(15, 23, 42, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);

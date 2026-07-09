@@ -136,10 +136,11 @@
                 </q-chip>
 
                 <!-- Edit / Delete flat buttons with icons only -->
-                <q-btn color="secondary" flat round dense icon="edit" @click="openEditShipment">
+                <q-btn v-if="isEditable" color="secondary" flat round dense icon="edit" @click="openEditShipment">
                   <q-tooltip>Edit Details</q-tooltip>
                 </q-btn>
                 <q-btn
+                  v-if="isEditable"
                   color="negative"
                   flat
                   round
@@ -365,6 +366,7 @@
                     @click="autoAcceptSplits"
                   />
                   <q-btn
+                    v-if="isEditable"
                     color="secondary"
                     icon="content_paste"
                     label="Bulk Paste"
@@ -375,6 +377,7 @@
                     @click="openBulkPaste"
                   />
                   <q-btn
+                    v-if="isEditable"
                     color="primary"
                     icon="add_shopping_cart"
                     label="Add Items"
@@ -1115,6 +1118,15 @@ const shipmentForLiveCosting = computed(() => {
   };
 });
 
+const isEditable = computed(() => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return false;
+  return (
+    shipment.status !== 'Ready Stock' &&
+    shipment.status !== 'Warehouse Received'
+  );
+});
+
 const ratesPreview = computed(() => {
   const shipment = shipmentStore.currentShipment;
   const items = shipmentStore.currentShipmentItems;
@@ -1341,6 +1353,10 @@ const openEditItem = (item: GlobalShipmentItem) => {
     componentProps: {
       shipmentId,
       item,
+      isReceived:
+        shipmentStore.currentShipment?.status === 'Warehouse Received' ||
+        shipmentStore.currentShipment?.status === 'Ready Stock' ||
+        shipmentStore.currentShipment?.stock_ready === true,
     },
   });
 };

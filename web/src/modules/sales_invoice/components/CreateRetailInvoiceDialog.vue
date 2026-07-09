@@ -55,7 +55,20 @@
             class="soft-input"
             :loading="loadingProfiles"
             :rules="[(v: number | null) => v != null || 'Required']"
-          />
+          >
+            <template #after>
+              <q-btn
+                round
+                dense
+                flat
+                icon="add"
+                color="primary"
+                @click="goToBillingProfileCreate"
+              >
+                <q-tooltip>Create Billing Profile</q-tooltip>
+              </q-btn>
+            </template>
+          </q-select>
 
           <q-input
             v-model="form.invoice_date"
@@ -126,15 +139,10 @@
             class="soft-input"
           />
 
-          <q-input
-            v-model="form.note"
-            label="Note"
-            type="textarea"
-            outlined
-            dense
-            autogrow
-            class="soft-input"
-          />
+          <div class="q-mb-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Note</div>
+            <RichTextEditor v-model="form.note" min-height="6rem" />
+          </div>
 
           <div class="row justify-end q-gutter-sm q-mt-lg">
             <q-btn flat no-caps label="Cancel" @click="onCancel" />
@@ -156,11 +164,15 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
+import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showWarningDialog } from 'src/utils/appFeedback';
+import { cleanEditorHtml } from 'src/utils/editor';
 
 import { useInvoiceStore } from '../stores/invoiceStore';
 import type { GlobalInvoiceCreated } from '../types';
@@ -171,19 +183,45 @@ const emit = defineEmits<{
   (e: 'created', invoice: GlobalInvoiceCreated): void;
 }>();
 
+const router = useRouter();
+const authStore = useAuthStore();
+
 const globalInvoiceStore = useInvoiceStore();
 const billingProfileStore = useBillingProfileStore();
 const recipientProfileStore = useRecipientProfileStore();
 const tenantStore = useTenantStore();
 
 const loadingProfiles = ref(false);
+
+const goToBillingProfileCreate = () => {
+  void router.push({
+    name: 'app-global-billing-profiles',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+    },
+    query: {
+      create: 'true',
+    },
+  });
+};
 const loadingRecipients = ref(false);
 
-const form = reactive({
-  tenant_id: null as number | null,
-  billing_profile_id: null as number | null,
-  recipient_profile_id: null as number | null,
-  retail_billing_mode: 'account' as 'account' | 'direct' | null,
+const form = reactive<{
+  tenant_id: number | null;
+  billing_profile_id: number | null;
+  recipient_profile_id: number | null;
+  retail_billing_mode: 'account' | 'direct' | null;
+  invoice_no: string;
+  invoice_date: string;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  note: string;
+}>({
+  tenant_id: null,
+  billing_profile_id: null,
+  recipient_profile_id: null,
+  retail_billing_mode: 'account',
   invoice_no: '',
   invoice_date: new Date().toISOString().slice(0, 10),
   recipient_name: '',
@@ -333,7 +371,6 @@ const onRecipientProfileChange = (profileId: number | null) => {
 };
 
 const onCancel = () => emit('update:modelValue', false);
-
 const onSubmit = async () => {
   if (!form.tenant_id) return;
   if (form.retail_billing_mode === 'account' && !form.billing_profile_id) return;
@@ -349,7 +386,7 @@ const onSubmit = async () => {
     recipient_name: form.recipient_name.trim(),
     recipient_phone: form.recipient_phone.trim() || null,
     recipient_address: form.recipient_address.trim() || null,
-    note: form.note.trim() || null,
+    note: cleanEditorHtml(form.note || ''),
   });
   if (!result.success || !result.data) {
     showWarningDialog(result.error ?? 'Failed to create retail invoice.');

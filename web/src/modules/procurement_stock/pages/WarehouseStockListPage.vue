@@ -208,12 +208,18 @@ import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StockTypeConfigPanel from '../components/StockTypeConfigPanel.vue';
-import { calculateLineLandedCostBdt } from '../utils/landedCost';
+import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import {
+  isGlobalStockCostingInput,
+  resolveGlobalStockUnitCostSync,
+} from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+import type { GlobalStock } from '../repositories/globalStockRepository';
 
 const authStore = useAuthStore();
 const stockStore = useGlobalStockStore();
 const stockTypeStore = useGlobalStockTypeStore();
 const $q = useQuasar();
+const costingCache = createShipmentItemsCostingCache();
 
 // Filter State
 const searchText = ref('');
@@ -291,11 +297,9 @@ const shipmentStatusOptions = [
   { label: 'Ready Stock', value: 'Ready Stock' },
 ];
 
-const getUnitCost = (row: any): number => {
-  return calculateLineLandedCostBdt(row, {
-    ...row,
-    type: row.shipment_type,
-  });
+const getUnitCost = (row: GlobalStock): number => {
+  if (!isGlobalStockCostingInput(row)) return 0;
+  return resolveGlobalStockUnitCostSync(row, costingCache.getSync(row.shipment_id));
 };
 
 const formatCost = (val: number): string => {
@@ -336,6 +340,7 @@ const loadStock = async () => {
     shipmentStatus: shipmentStatusFilter.value === '__all__' ? null : shipmentStatusFilter.value,
     hideZeroStock: hideZeroStockFilter.value,
   });
+  await costingCache.prefetchShipmentItems(stockStore.rows.map((row) => row.shipment_id));
 };
 
 const onTableRequest = async (props: any) => {

@@ -56,13 +56,9 @@ const searchStockNetwork = async (payload: StockNetworkQuery): Promise<StockNetw
 
   const total = Number(countResult.data ?? 0);
   const rawRows = (listResult.data as StockNetworkPage['data'] | null) ?? [];
-  const rows = rawRows.map((row) => ({
-    ...row,
-    cost: row.cost != null ? Math.round((Number(row.cost) + Number.EPSILON) * 100) / 100 : 0,
-  }));
 
   return {
-    data: rows,
+    data: rawRows,
     meta: {
       total,
       page,

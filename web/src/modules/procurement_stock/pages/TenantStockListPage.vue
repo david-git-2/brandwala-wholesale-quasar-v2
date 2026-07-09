@@ -155,12 +155,18 @@ import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import { calculateLineLandedCostBdt } from '../utils/landedCost';
+import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import {
+  isGlobalStockCostingInput,
+  resolveGlobalStockUnitCostSync,
+} from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+import type { GlobalStockAllocation } from '../repositories/globalStockAllocationRepository';
 
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const allocationStore = useTenantStockStore();
 const stockTypeStore = useGlobalStockTypeStore();
+const costingCache = createShipmentItemsCostingCache();
 
 // Filter State
 const searchText = ref('');
@@ -259,11 +265,9 @@ const childTenantOptions = computed(() => {
   return childTenants.value.map((t) => ({ label: t.name, value: t.id }));
 });
 
-const getUnitCost = (row: any): number => {
-  return calculateLineLandedCostBdt(row, {
-    ...row,
-    type: row.shipment_type,
-  });
+const getUnitCost = (row: GlobalStockAllocation): number => {
+  if (!isGlobalStockCostingInput(row)) return 0;
+  return resolveGlobalStockUnitCostSync(row, costingCache.getSync(row.shipment_id));
 };
 
 const formatCost = (val: number): string => {
@@ -279,6 +283,9 @@ const loadAllocations = async () => {
     childTenantId: isParentContext.value ? childTenantFilter.value : null,
     stockTypeId: stockTypeFilter.value,
   });
+  await costingCache.prefetchShipmentItems(
+    allocationStore.rows.map((row) => row.shipment_id),
+  );
 };
 
 const onTableRequest = async (props: any) => {

@@ -12,6 +12,7 @@ const calculateUsableQuantity = (params: {
 export const mapGlobalStockToInventoryView = (
   row: GlobalStockRow,
   shipment?: Shipment | null,
+  _unitCost?: number,
 ): InventoryItemWithStock => {
   const available = row.excellent_qty;
   const reserved = row.reserved_qty;
@@ -29,7 +30,6 @@ export const mapGlobalStockToInventoryView = (
     product_id: row.product_id,
     name: row.name,
     image_url: row.image_url,
-    cost: row.cost,
     barcode: row.barcode,
     product_code: row.product_code,
     manufacturing_date: null,

@@ -19,15 +19,17 @@
 <script setup lang="ts">
 import { formatAmountBdt } from 'src/utils/currency';
 
+export interface StatCardItem {
+  label: string;
+  value: number | string;
+  caption?: string;
+  class?: string;
+  valueClass?: string;
+  format?: 'currency' | 'percent' | 'number' | 'text';
+}
+
 defineProps<{
-  items: Array<{
-    label: string;
-    value: number | string;
-    caption?: string;
-    class?: string;
-    valueClass?: string;
-    format?: 'currency' | 'percent' | 'number' | 'text';
-  }>;
+  items: StatCardItem[];
 }>();
 
 const formatCardValue = (

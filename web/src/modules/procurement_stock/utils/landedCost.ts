@@ -204,6 +204,19 @@ export interface ShipmentCostSummary {
 }
 
 /**
+ * Builds a CostingShipmentInput with transaction_rate overridden by the calculated rate for live costing.
+ */
+export function buildShipmentForLiveCosting(
+  shipment: CostingShipmentInput,
+  items: CostingLineItemInput[],
+): CostingShipmentInput {
+  return {
+    ...shipment,
+    transaction_rate: calculateTransactionRate(shipment, items),
+  };
+}
+
+/**
  * Calculates the complete shipment costing summary.
  */
 export function calculateShipmentCostSummary(

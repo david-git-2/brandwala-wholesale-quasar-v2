@@ -130,9 +130,8 @@
             </td>
             <td
               v-if="isColumnVisible('name')"
-              class="shipment-item-name-cell shipment-name-col"
-              :class="{ 'cursor-pointer': isEditable }"
-              @click="isEditable && emit('edit-details', item)"
+              class="shipment-item-name-cell shipment-name-col cursor-pointer"
+              @click="emit('edit-details', item)"
             >
               {{ item.name ?? '-' }}
             </td>
@@ -313,13 +312,13 @@
               </div>
             </td>
             <td v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">
-              <q-btn v-if="isEditable" flat round dense icon="more_vert">
+              <q-btn flat round dense icon="more_vert">
                 <q-menu auto-close>
                   <q-list dense style="min-width: 120px">
                     <q-item clickable @click="emit('edit-details', item)">
                       <q-item-section>Edit details</q-item-section>
                     </q-item>
-                    <q-item clickable class="text-negative" @click="emit('delete', item.id)">
+                    <q-item v-if="isEditable" clickable class="text-negative" @click="emit('delete', item.id)">
                       <q-item-section>Delete</q-item-section>
                     </q-item>
                   </q-list>
@@ -569,7 +568,10 @@ const columnOptions = computed(() =>
 
 const isEditable = computed(() => {
   if (!props.shipment) return false;
-  return !props.shipment.stock_ready && props.shipment.status !== 'Ready Stock';
+  return (
+    props.shipment.status !== 'Ready Stock' &&
+    props.shipment.status !== 'Warehouse Received'
+  );
 });
 
 const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);

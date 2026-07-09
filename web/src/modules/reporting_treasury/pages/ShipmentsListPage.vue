@@ -42,6 +42,7 @@
             :pagination="{ rowsPerPage: 20 }"
             :dense="$q.screen.lt.md"
             table-style="min-width: 800px;"
+            @row-click="onRowClick"
           >
             <template #body-cell-id="props">
               <q-td :props="props" class="text-weight-bold text-primary">
@@ -206,6 +207,10 @@ const navigateToPnL = (id: number) => {
   });
 };
 
+const onRowClick = (evt: any, row: any) => {
+  navigateToPnL(row.id);
+};
+
 const statusColor = (status: string | null | undefined) => {
   const s = (status ?? '').trim().toLowerCase();
   if (s === 'completed' || s === 'delivered')
@@ -227,5 +232,13 @@ onMounted(() => {
   border-radius: 6px !important;
   font-weight: 600;
   font-size: 12px;
+}
+
+:deep(.q-table tbody tr) {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+:deep(.q-table tbody tr:hover) {
+  background: var(--bw-theme-primary-soft, rgba(4, 120, 87, 0.04)) !important;
 }
 </style>

@@ -1,9 +1,12 @@
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack">
+  <q-page
+    :class="dense ? 'q-pa-sm q-sm-pa-md' : 'bw-page'"
+    :style="dense ? 'max-width: 100% !important;' : ''"
+  >
+    <div :class="dense ? 'q-gutter-y-sm' : 'bw-page__stack'">
       <!-- Title & Subtitle Card -->
-      <q-card flat bordered class="q-pa-md">
-        <AppPageHeader :title="title" :subtitle="subtitle || ''">
+      <q-card flat bordered :class="dense ? 'q-py-none q-px-sm' : 'q-pa-md'">
+        <AppPageHeader :title="title" :subtitle="subtitle || ''" :dense="dense">
           <template v-if="$slots.action" #action>
             <slot name="action" />
           </template>
@@ -29,5 +32,6 @@ defineProps<{
   title: string;
   subtitle?: string;
   error?: string | null;
+  dense?: boolean;
 }>();
 </script>

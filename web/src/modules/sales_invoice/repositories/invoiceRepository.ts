@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import type { GlobalStockCostingInput } from 'src/modules/global/types';
 import type {
   CreateGlobalInvoiceInput,
   GlobalInvoiceCreated,
@@ -77,66 +78,58 @@ const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDet
   return data as GlobalInvoiceDetail;
 };
 
+const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
+  const shipmentItemId = row.shipment_item_id ? Number(row.shipment_item_id) : null;
+  const shipmentId = row.shipment_id ? Number(row.shipment_id) : null;
+  const shipmentType = row.shipment_type;
+
+  const hasCosting =
+    shipmentItemId !== null &&
+    shipmentId !== null &&
+    (shipmentType === 'domestic' || shipmentType === 'international');
+
+  const costing: GlobalStockCostingInput | null = hasCosting
+    ? {
+        shipment_id: shipmentId,
+        shipment_item_id: shipmentItemId,
+        purchase_price: Number(row.purchase_price ?? 0),
+        product_weight: Number(row.product_weight ?? 0),
+        package_weight: Number(row.package_weight ?? 0),
+        ordered_quantity: Number(row.ordered_quantity ?? 0),
+        shipment_type: shipmentType as 'domestic' | 'international',
+        product_conversion_rate: Number(row.product_conversion_rate ?? 1),
+        cargo_conversion_rate: Number(row.cargo_conversion_rate ?? 1),
+        cargo_rate: Number(row.cargo_rate ?? 0),
+        received_weight: row.received_weight == null ? null : Number(row.received_weight),
+        transaction_rate: row.transaction_rate == null ? null : Number(row.transaction_rate),
+      }
+    : null;
+
+  return {
+    id: Number(row.id),
+    invoice_id: Number(row.invoice_id),
+    global_stock_id: Number(row.global_stock_id),
+    name_snapshot: row.name_snapshot,
+    quantity: Number(row.quantity),
+    sell_price_amount: Number(row.sell_price_amount),
+    recipient_price_amount: row.recipient_price_amount == null ? null : Number(row.recipient_price_amount),
+    line_face_total_amount: row.line_face_total_amount == null ? null : Number(row.line_face_total_amount),
+    line_discount_amount: Number(row.line_discount_amount),
+    line_total_amount: Number(row.line_total_amount),
+    return_quantity: Number(row.return_quantity),
+    costing,
+    image_url: row.image_url || null,
+  };
+};
+
 const listGlobalInvoiceItems = async (invoiceId: number): Promise<GlobalInvoiceItemRow[]> => {
-  const { data, error } = await supabase
-    .from('global_invoice_items')
-    .select(
-      `
-      id,
-      invoice_id,
-      global_stock_id,
-      name_snapshot,
-      quantity,
-      sell_price_amount,
-      recipient_price_amount,
-      line_face_total_amount,
-      line_discount_amount,
-      line_total_amount,
-      unit_cost_price,
-      return_quantity,
-      global_stocks (
-        global_shipment_items (
-          image_url
-        )
-      ),
-      products (
-        image_url
-      )
-    `,
-    )
-    .eq('invoice_id', invoiceId)
-    .order('id', { ascending: true });
+  const { data, error } = await supabase.rpc('list_global_invoice_items', {
+    p_invoice_id: invoiceId,
+  });
 
   if (error) throw error;
 
-  return ((data as any[]) ?? []).map((row) => {
-    const globalStocks = Array.isArray(row.global_stocks)
-      ? row.global_stocks[0]
-      : row.global_stocks;
-    const globalShipmentItems = globalStocks
-      ? Array.isArray(globalStocks.global_shipment_items)
-        ? globalStocks.global_shipment_items[0]
-        : globalStocks.global_shipment_items
-      : null;
-    const products = Array.isArray(row.products) ? row.products[0] : row.products;
-    const imageUrl = globalShipmentItems?.image_url || products?.image_url || null;
-
-    return {
-      id: row.id,
-      invoice_id: row.invoice_id,
-      global_stock_id: row.global_stock_id,
-      name_snapshot: row.name_snapshot,
-      quantity: row.quantity,
-      sell_price_amount: row.sell_price_amount,
-      recipient_price_amount: row.recipient_price_amount,
-      line_face_total_amount: row.line_face_total_amount,
-      line_discount_amount: row.line_discount_amount,
-      line_total_amount: row.line_total_amount,
-      unit_cost_price: row.unit_cost_price,
-      return_quantity: row.return_quantity,
-      image_url: imageUrl,
-    };
-  });
+  return ((data as any[]) ?? []).map(mapListGlobalInvoiceItemRow);
 };
 
 const addGlobalInvoiceItem = async (payload: {
@@ -330,7 +323,7 @@ const applyGlobalInvoiceTargetTotal = async (payload: {
   });
 
   if (error) throw error;
-  return data as unknown as TargetTotalSummary;
+  return data;
 };
 
 const updateGlobalInvoiceHeader = async (payload: {
@@ -389,6 +382,17 @@ const deleteGlobalInvoice = async (invoiceId: number): Promise<void> => {
   const { error } = await supabase.from('global_invoices').delete().eq('id', invoiceId);
   if (error) throw error;
 };
+
+const convertWholesaleDraftToRetail = async (invoiceId: number): Promise<void> => {
+  const { error } = await supabase.rpc('convert_wholesale_draft_to_retail', {
+    p_invoice_id: invoiceId,
+  });
+  if (error) throw error;
+};
+
+const updateInvoiceItemsBulk = async (
+  updates: Array<{ id: number; quantity: number; sell_price_amount: number; recipient_price_amount?: number }>,
+) => Promise.all(updates.map(updateGlobalInvoiceItem));
 
 export type InvoiceBrand = {
   id: number;
@@ -449,6 +453,7 @@ export const invoiceRepository = {
   listGlobalInvoiceItems,
   addGlobalInvoiceItem,
   updateGlobalInvoiceItem,
+  updateInvoiceItemsBulk,
   applyGlobalInvoiceTargetTotal,
   recordBillingProfilePayment,
   recordRecipientInvoiceCollection,
@@ -462,6 +467,7 @@ export const invoiceRepository = {
   voidGlobalInvoice,
   unpostGlobalInvoice,
   deleteGlobalInvoice,
+  convertWholesaleDraftToRetail,
   listInvoiceBrands,
   createInvoiceBrand,
   updateInvoiceBrand,

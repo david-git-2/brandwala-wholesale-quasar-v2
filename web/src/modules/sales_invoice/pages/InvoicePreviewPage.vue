@@ -78,6 +78,7 @@ import { useInvoiceStore } from 'src/modules/sales_invoice/stores/invoiceStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 import { invoiceRepository } from '../repositories/invoiceRepository';
+import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 
 const route = useRoute();
@@ -87,6 +88,7 @@ const invoiceStore = useInvoiceStore();
 const loading = ref(true);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
+const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
 
 const selectedBrandId = ref<number | null>(null);
 const brandName = ref('');
@@ -132,7 +134,7 @@ const printModel = computed<InvoicePrintModel>(() => {
   ].filter((c) => c.amount > 0);
 
   const totalCost = items.value.reduce(
-    (sum, row) => sum + (row.unit_cost_price ?? 0) * Number(row.quantity),
+    (sum, row) => sum + (getItemUnitCost(row) ?? 0) * Number(row.quantity),
     0,
   );
   const profit = invoiceGrossProfit(
@@ -145,7 +147,11 @@ const printModel = computed<InvoicePrintModel>(() => {
       discount_amount: inv?.discount_amount,
       invoice_status: 'posted', // bypass check
     },
-    items.value.map((row) => ({ ...row, id: row.id })),
+    items.value.map((row) => ({
+      ...row,
+      id: row.id,
+      unit_cost_price: getItemUnitCost(row) ?? 0,
+    })),
   );
   const rate = totalCost > 0 ? (profit / totalCost) * 100 : 0;
   const averageProfitRate = totalCost > 0 ? `${rate.toFixed(2)}%` : '-';
@@ -202,6 +208,7 @@ onMounted(async () => {
     ]);
     invoice.value = inv;
     items.value = invItems;
+    await resolveItemUnitCosts(invItems);
 
     clientName.value = inv.billing_profiles?.name ?? '';
 

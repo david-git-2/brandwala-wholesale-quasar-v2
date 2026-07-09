@@ -32,7 +32,20 @@
             map-options
             class="soft-input"
             :loading="loadingProfiles"
-          />
+          >
+            <template #after>
+              <q-btn
+                round
+                dense
+                flat
+                icon="add"
+                color="primary"
+                @click="goToBillingProfileCreate"
+              >
+                <q-tooltip>Create Billing Profile</q-tooltip>
+              </q-btn>
+            </template>
+          </q-select>
           <q-input
             v-model="form.invoice_date"
             label="Invoice Date *"
@@ -110,15 +123,10 @@
             class="soft-input"
             min="0"
           />
-          <q-input
-            v-model="form.note"
-            label="Note"
-            type="textarea"
-            outlined
-            dense
-            autogrow
-            class="soft-input"
-          />
+          <div class="q-mb-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Note</div>
+            <RichTextEditor v-model="form.note" min-height="6rem" />
+          </div>
           <div class="text-caption text-grey-7">
             Invoice face bills the recipient. Accounting uses sell price per line.
           </div>
@@ -142,10 +150,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showWarningDialog } from 'src/utils/appFeedback';
+import { cleanEditorHtml } from 'src/utils/editor';
 import { useInvoiceStore } from '../stores/invoiceStore';
 import type { GlobalInvoiceCreated } from '../types';
 
@@ -155,12 +167,27 @@ const emit = defineEmits<{
   (e: 'created', invoice: GlobalInvoiceCreated): void;
 }>();
 
+const router = useRouter();
+const authStore = useAuthStore();
+
 const globalInvoiceStore = useInvoiceStore();
 const billingProfileStore = useBillingProfileStore();
 const recipientProfileStore = useRecipientProfileStore();
 const tenantStore = useTenantStore();
 
 const loadingProfiles = ref(false);
+
+const goToBillingProfileCreate = () => {
+  void router.push({
+    name: 'app-global-billing-profiles',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+    },
+    query: {
+      create: 'true',
+    },
+  });
+};
 const loadingRecipients = ref(false);
 
 const form = reactive({
@@ -314,7 +341,7 @@ const onSubmit = async () => {
     recipient_phone: form.recipient_phone.trim(),
     recipient_address: form.recipient_address.trim(),
     middle_man_payout_amount: form.middle_man_payout_amount || null,
-    note: form.note.trim() || null,
+    note: cleanEditorHtml(form.note || ''),
   });
   if (!result.success || !result.data) {
     showWarningDialog(result.error ?? 'Failed.');

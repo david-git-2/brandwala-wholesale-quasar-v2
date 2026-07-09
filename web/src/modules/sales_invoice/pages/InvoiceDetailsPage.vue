@@ -141,6 +141,19 @@
                   </q-item>
 
                   <q-item
+                    v-if="invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'"
+                    clickable
+                    class="text-primary"
+                    :disable="convertingInvoice"
+                    @click="onConvertWholesaleToRetail"
+                  >
+                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                      <q-icon name="swap_horiz" />
+                    </q-item-section>
+                    <q-item-section>Convert to Retail</q-item-section>
+                  </q-item>
+
+                  <q-item
                     v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
                     clickable
                     class="text-negative"
@@ -558,18 +571,33 @@
 
           <!-- Note Area -->
           <q-card flat class="floating-surface shadow-1 q-pa-md">
-            <div class="text-subtitle2 text-weight-bold q-mb-xs">Invoice Note</div>
-            <q-input
-              v-if="invoice.invoice_status === 'draft'"
-              v-model="form.note"
-              type="textarea"
-              rows="2"
-              dense
-              outlined
-              class="soft-input"
-              @blur="onHeaderUpdate"
+            <div class="row items-center justify-between no-wrap q-mb-xs">
+              <div class="text-subtitle2 text-weight-bold">Invoice Note</div>
+              <q-btn
+                v-if="invoice.invoice_status === 'draft'"
+                flat
+                round
+                dense
+                color="primary"
+                icon="edit"
+                size="sm"
+                @click="openEditNoteDialog"
+              >
+                <q-tooltip>Edit Note</q-tooltip>
+              </q-btn>
+            </div>
+            <div
+              v-if="invoice.note"
+              ref="notePreviewRef"
+              class="text-body2 text-grey-8 invoice-note-preview invoice-note-preview--clamped"
+              :class="{ 'invoice-note-preview--overflow cursor-pointer': noteOverflows }"
+              v-html="invoice.note"
+              @click="noteOverflows && (viewNoteDialog = true)"
             />
-            <div v-else class="text-body2 text-grey-8">{{ invoice.note || '—' }}</div>
+            <div v-else class="text-body2 text-grey-8">—</div>
+            <div v-if="noteOverflows" class="text-caption text-primary q-mt-xs cursor-pointer" @click="viewNoteDialog = true">
+              View full note
+            </div>
           </q-card>
         </div>
 
@@ -589,6 +617,16 @@
                 <q-tooltip>{{ showSidebar ? 'Hide Sidebar' : 'Show Sidebar' }}</q-tooltip>
               </q-btn>
               <div class="text-subtitle1 text-weight-bold">Items ({{ items.length }})</div>
+              <q-space />
+              <q-btn
+                v-if="invoice.invoice_status === 'draft' && items.length > 0"
+                color="secondary"
+                icon="content_paste"
+                label="Bulk Paste"
+                unelevated dense no-caps
+                class="q-ml-sm"
+                @click="openBulkPaste"
+              />
             </q-card-section>
             <q-separator />
             <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-lg">
@@ -664,7 +702,7 @@
                     </div>
                   </td>
                   <td class="text-right text-grey-8">
-                    {{ formatAmount(row.unit_cost_price ?? 0) }}
+                    {{ formatItemUnitCost(row) }}
                   </td>
                   <td class="text-right">
                     <span
@@ -760,8 +798,8 @@
     <!-- Add From Stock Dialog -->
     <q-dialog v-model="stockDialog" persistent>
       <q-card
-        style="width: 1100px; max-width: 95vw; border-radius: 16px"
-        class="floating-surface q-pa-sm"
+        style="width: 1100px; max-width: 95vw; border-radius: 16px; background: var(--bw-theme-surface); border: 1px solid var(--bw-theme-border);"
+        class="q-pa-sm shadow-2"
       >
         <q-card-section class="text-h6 text-weight-bold row items-center justify-between q-pb-none">
           <span>Add From Stock</span>
@@ -809,8 +847,8 @@
                 class="border rounded-borders q-pa-sm scroll"
                 style="
                   height: 450px;
-                  background: rgba(255, 255, 255, 0.4);
-                  border: 1px solid rgba(0, 0, 0, 0.08);
+                  background: var(--bw-theme-surface);
+                  border: 1px solid var(--bw-theme-border);
                   border-radius: 12px;
                 "
               >
@@ -846,7 +884,7 @@
                       <q-item-label class="text-weight-bold text-subtitle2">{{
                         item.name
                       }}</q-item-label>
-                      <q-item-label caption class="text-grey-7 row q-gutter-x-md">
+                      <q-item-label caption class="text-grey-7 row q-gutter-x-md flex-wrap">
                         <span v-if="item.product_code">Code: {{ item.product_code }}</span>
                         <span v-if="item.is_own_tenant" class="text-green-9 text-weight-bold"
                           >Own Stock</span
@@ -854,6 +892,9 @@
                         <span v-else-if="item.holding_tenant_name" class="text-grey-8">{{
                           item.holding_tenant_name
                         }}</span>
+                        <span v-if="item.shipment_name" class="text-primary text-weight-bold">
+                          Shipment: {{ item.shipment_name }}
+                        </span>
                       </q-item-label>
 
                       <!-- Editable fields for each item -->
@@ -1161,15 +1202,49 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- View Note Dialog -->
+    <q-dialog v-model="viewNoteDialog">
+      <q-card class="q-pa-md" style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px">
+        <q-card-section class="text-h6 text-weight-bold">Invoice Note</q-card-section>
+        <q-card-section class="invoice-note-preview invoice-note-preview--full scroll">
+          <div v-html="invoice?.note || '—'"></div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" v-close-popup class="pill-btn" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Edit Note Dialog -->
+    <q-dialog v-model="editNoteDialog" persistent>
+      <q-card class="q-pa-md" style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px">
+        <q-card-section class="text-h6 text-weight-bold">Edit Invoice Note</q-card-section>
+        <q-card-section>
+          <RichTextEditor v-model="noteEditValue" min-height="12rem" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup class="pill-btn" :disable="savingNote" />
+          <q-btn
+            color="primary"
+            label="Save"
+            :loading="savingNote"
+            @click="saveNote"
+            class="pill-btn"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, reactive } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
@@ -1180,11 +1255,14 @@ import {
   requestConfirmation,
 } from 'src/utils/appFeedback';
 
+import { cleanEditorHtml } from 'src/utils/editor';
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import type { TargetTotalSummary } from '../repositories/invoiceRepository';
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
+import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
 import type { StockNetworkRow } from 'src/modules/global/types';
+import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 
 const route = useRoute();
@@ -1196,7 +1274,28 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
+const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
 const showSidebar = ref(true);
+
+const noteEditValue = ref('');
+const editNoteDialog = ref(false);
+const viewNoteDialog = ref(false);
+const savingNote = ref(false);
+const notePreviewRef = ref<HTMLElement | null>(null);
+const noteOverflows = ref(false);
+
+const checkNoteOverflow = () => {
+  const el = notePreviewRef.value;
+  noteOverflows.value = el ? el.scrollHeight > el.clientHeight + 1 : false;
+};
+
+watch(
+  () => invoice.value?.note,
+  async () => {
+    await nextTick();
+    checkNoteOverflow();
+  },
+);
 
 const stockDialog = ref(false);
 const addingItem = ref(false);
@@ -1208,9 +1307,10 @@ interface StockCartItem {
   barcode: string | null;
   product_code: string | null;
   image_url: string | null;
-  cost: number;
+  unitCost: number;
   holding_tenant_name: string | null;
   is_own_tenant: boolean;
+  shipment_name: string | null;
   quantity: number;
   sell_price_amount: number;
   recipient_price_amount: number;
@@ -1264,6 +1364,7 @@ const postingInvoice = ref(false);
 const voidingInvoice = ref(false);
 const unpostingInvoice = ref(false);
 const deletingInvoice = ref(false);
+const convertingInvoice = ref(false);
 
 const targetTotal = ref<number | null>(null);
 const targetPreview = ref<TargetTotalSummary | null>(null);
@@ -1303,16 +1404,24 @@ const returnItemOptions = computed(() =>
 
 const formatAmount = (value: number) => formatAmountBdt(value);
 
+const formatItemUnitCost = (row: GlobalInvoiceItemRow) => {
+  const unitCost = getItemUnitCost(row);
+  return unitCost == null ? '—' : formatAmount(unitCost);
+};
+
 const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
   lineMargin({
     sell_price_amount: row.sell_price_amount,
-    unit_cost_price: row.unit_cost_price ?? undefined,
+    unit_cost_price: getItemUnitCost(row) ?? 0,
     quantity: row.quantity,
     line_discount_amount: row.line_discount_amount,
   });
 
 const totalCost = computed(() => {
-  return items.value.reduce((sum, row) => sum + (row.unit_cost_price ?? 0) * row.quantity, 0);
+  return items.value.reduce(
+    (sum, row) => sum + (getItemUnitCost(row) ?? 0) * row.quantity,
+    0,
+  );
 });
 const totalQuantity = computed(() => {
   return items.value.reduce((sum, row) => sum + row.quantity, 0);
@@ -1330,7 +1439,11 @@ const estimatedProfit = computed(() => {
       settlement_discount_amount: invoice.value.settlement_discount_amount,
       invoice_status: 'posted', // force posted to calculate profit
     },
-    items.value.map((row) => ({ ...row, id: row.id })),
+    items.value.map((row) => ({
+      ...row,
+      id: row.id,
+      unit_cost_price: getItemUnitCost(row) ?? 0,
+    })),
   );
 });
 
@@ -1352,6 +1465,7 @@ const loadInvoice = async () => {
     ]);
     invoice.value = inv;
     items.value = invItems;
+    await resolveItemUnitCosts(invItems);
 
     // Sync form values
     form.discount_amount = inv.discount_amount;
@@ -1372,7 +1486,30 @@ const loadInvoice = async () => {
   }
 };
 
+const refreshInvoiceHeader = async () => {
+  try {
+    const inv = await invoiceRepository.getGlobalInvoiceById(invoiceId.value);
+    invoice.value = inv;
+
+    // Sync form values
+    form.discount_amount = inv.discount_amount;
+    form.shipping_charge = inv.shipping_charge;
+    form.cod_charge = inv.cod_charge;
+    form.wrapping_charge = inv.wrapping_charge;
+    form.print_charge = inv.print_charge;
+    form.recipient_name = inv.recipient_name || '';
+    form.recipient_phone = inv.recipient_phone || '';
+    form.recipient_address = inv.recipient_address || '';
+    form.note = inv.note || '';
+    form.invoice_no = inv.invoice_no || '';
+    form.invoice_date = inv.invoice_date || '';
+  } catch (e) {
+    console.error('Failed to refresh invoice header', e);
+  }
+};
+
 const onSelectStockRow = (row: StockNetworkRow) => {
+  const unitCost = row.resolvedUnitCost ?? 0;
   const existingIdx = stockCart.value.findIndex(
     (item) => item.global_stock_id === row.global_stock_id,
   );
@@ -1391,12 +1528,13 @@ const onSelectStockRow = (row: StockNetworkRow) => {
       barcode: row.barcode,
       product_code: row.product_code,
       image_url: row.image_url,
-      cost: row.cost,
+      unitCost,
       holding_tenant_name: row.holding_tenant_name ?? null,
       is_own_tenant: row.is_own_tenant,
+      shipment_name: row.shipment_name ?? null,
       quantity: 1,
-      sell_price_amount: row.cost,
-      recipient_price_amount: row.cost,
+      sell_price_amount: unitCost,
+      recipient_price_amount: unitCost,
     });
   }
 };
@@ -1439,8 +1577,9 @@ const onRemoveItem = async (itemId: number) => {
   if (!invoice.value) return;
   try {
     await invoiceRepository.removeGlobalInvoiceItem(itemId);
-    await loadInvoice();
-    showSuccessNotification('Item removed from invoice.');
+    items.value = items.value.filter((item) => item.id !== itemId);
+    await refreshInvoiceHeader();
+    showSuccessNotification('Item removed successfully.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Failed to remove item.');
   }
@@ -1476,11 +1615,32 @@ const onUpdateItemField = async (
       sell_price_amount: sellPrice,
       recipient_price_amount: recipientPrice,
     });
-    await loadInvoice();
+    const itemIdx = items.value.findIndex((item) => item.id === row.id);
+    const existing = itemIdx > -1 ? items.value[itemIdx] : null;
+    if (existing) {
+      existing.quantity = quantity;
+      existing.sell_price_amount = sellPrice;
+      existing.recipient_price_amount = recipientPrice;
+    }
+    await refreshInvoiceHeader();
     showSuccessNotification('Item updated successfully.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Failed to update item.');
   }
+};
+
+const openBulkPaste = () => {
+  $q.dialog({
+    component: InvoiceBulkPasteDialog,
+    componentProps: { items: items.value, isDropship: isDropship.value },
+  }).onOk(() => {
+    void (async () => {
+      items.value = await invoiceRepository.listGlobalInvoiceItems(invoiceId.value);
+      await resolveItemUnitCosts(items.value);
+      await refreshInvoiceHeader();
+      showSuccessNotification('Bulk update applied.');
+    })();
+  });
 };
 
 const onTargetTotalInput = () => {
@@ -1580,13 +1740,46 @@ const onHeaderUpdate = async () => {
       recipient_name: form.recipient_name.trim() || null,
       recipient_phone: form.recipient_phone.trim() || null,
       recipient_address: form.recipient_address.trim() || null,
-      note: form.note.trim() || null,
+      note: cleanEditorHtml(form.note || ''),
       invoice_no: form.invoice_no.trim() || null,
       invoice_date: form.invoice_date || null,
     });
-    await loadInvoice();
+    await refreshInvoiceHeader();
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Failed to update invoice details.');
+  }
+};
+
+const openEditNoteDialog = () => {
+  noteEditValue.value = invoice.value?.note || '';
+  editNoteDialog.value = true;
+};
+
+const saveNote = async () => {
+  if (!invoice.value) return;
+  savingNote.value = true;
+  try {
+    await invoiceRepository.updateGlobalInvoiceHeader({
+      id: invoice.value.id,
+      discount_amount: form.discount_amount,
+      shipping_charge: form.shipping_charge,
+      cod_charge: form.cod_charge,
+      wrapping_charge: form.wrapping_charge,
+      print_charge: form.print_charge,
+      recipient_name: form.recipient_name.trim() || null,
+      recipient_phone: form.recipient_phone.trim() || null,
+      recipient_address: form.recipient_address.trim() || null,
+      note: cleanEditorHtml(noteEditValue.value),
+      invoice_no: form.invoice_no.trim() || null,
+      invoice_date: form.invoice_date || null,
+    });
+    await refreshInvoiceHeader();
+    editNoteDialog.value = false;
+    showSuccessNotification('Invoice note updated successfully.');
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to update invoice note.');
+  } finally {
+    savingNote.value = false;
   }
 };
 
@@ -1768,6 +1961,26 @@ const onDeleteInvoice = async () => {
   }
 };
 
+const onConvertWholesaleToRetail = async () => {
+  if (!invoice.value) return;
+  const confirmed = await requestConfirmation(
+    'Are you sure you want to convert this wholesale draft invoice to retail account mode? This action cannot be undone.',
+    'Convert Invoice to Retail',
+    'Convert',
+  );
+  if (!confirmed) return;
+  convertingInvoice.value = true;
+  try {
+    await invoiceRepository.convertWholesaleDraftToRetail(invoice.value.id);
+    showSuccessNotification('Wholesale invoice converted to Retail successfully.');
+    await loadInvoice();
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Failed to convert invoice.');
+  } finally {
+    convertingInvoice.value = false;
+  }
+};
+
 const openPreview = () => {
   void router.push({
     name: 'app-global-invoice-preview',
@@ -1788,7 +2001,7 @@ const onRecordPayment = async () => {
       allocations: [{ global_invoice_id: invoice.value.id, amount: paymentAmount.value }],
     });
     paymentDialog.value = false;
-    await loadInvoice();
+    await refreshInvoiceHeader();
     showSuccessNotification('Payment recorded.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Payment failed.');
@@ -1806,7 +2019,7 @@ const onRecordCod = async () => {
       method: codMethod.value,
     });
     codDialog.value = false;
-    await loadInvoice();
+    await refreshInvoiceHeader();
     showSuccessNotification('COD recorded.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'COD recording failed.');
@@ -1826,7 +2039,7 @@ const onApplySettlement = async () => {
   try {
     await invoiceRepository.applySettlementDiscount(invoice.value.id, settleAmount.value);
     settleDialog.value = false;
-    await loadInvoice();
+    await refreshInvoiceHeader();
     showSuccessNotification('Settlement discount applied.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Settlement failed.');
@@ -1846,7 +2059,7 @@ const onRecordPayout = async () => {
       amount: payoutAmount.value,
     });
     payoutDialog.value = false;
-    await loadInvoice();
+    await refreshInvoiceHeader();
     showSuccessNotification('Payout recorded.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Payout failed.');
@@ -1961,5 +2174,50 @@ onMounted(() => {
 }
 .invoice-item-row:hover {
   background: rgba(37, 99, 235, 0.03);
+}
+.invoice-note-preview--clamped {
+  max-height: 120px;
+  overflow: hidden;
+  position: relative;
+}
+.invoice-note-preview--overflow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 36px;
+  background: linear-gradient(transparent, var(--bw-theme-surface, #fff));
+  pointer-events: none;
+}
+.invoice-note-preview--full {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.invoice-note-preview :deep(p) {
+  margin: 0 0 8px 0;
+}
+.invoice-note-preview :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.invoice-note-preview :deep(ul),
+.invoice-note-preview :deep(ol) {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+.invoice-note-preview :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.invoice-note-preview :deep(th),
+.invoice-note-preview :deep(td) {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
+  text-align: left;
+}
+.invoice-note-preview :deep(th) {
+  background-color: rgba(0, 0, 0, 0.04);
+  font-weight: bold;
 }
 </style>

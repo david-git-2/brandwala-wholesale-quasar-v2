@@ -3,40 +3,42 @@
     class="add-items-panel column no-wrap"
     :class="{ 'add-items-panel--drawer': layout === 'drawer' }"
   >
+   <div class="panel-body col">
+    <!-- LEFT COLUMN: search + catalog -->
+    <div class="search-col column no-wrap">
     <!-- Top compact toolbar -->
     <div class="q-pa-md toolbar-section column q-gutter-y-sm">
       <div class="row items-center q-col-gutter-sm">
+        <div class="col-auto">
+          <q-btn-dropdown
+            flat
+            dense
+            :label="searchFieldLabel"
+            class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+            no-caps
+          >
+            <q-list dense>
+              <q-item clickable v-close-popup @click="browseSearchField = 'name'">
+                <q-item-section>Name</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
+                <q-item-section>Barcode</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
+                <q-item-section>Product Code</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+        </div>
         <div class="col">
           <q-input
             v-model="browseSearch"
             :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
-            filled
+            outlined
             dense
             clearable
-            debounce="400"
-          >
-            <template #prepend>
-              <q-btn-dropdown
-                flat
-                dense
-                :label="searchFieldLabel"
-                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-                no-caps
-              >
-                <q-list dense>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'name'">
-                    <q-item-section>Name</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
-                    <q-item-section>Barcode</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
-                    <q-item-section>Product Code</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-btn-dropdown>
-            </template>
-          </q-input>
+            class="full-width"
+          />
         </div>
         <div class="col-auto">
           <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
@@ -70,6 +72,7 @@
                   :src="product.image_url"
                   style="width: 1in; height: 1in; object-fit: contain"
                   :enable-edit="false"
+                  :enable-lightbox="false"
                 />
               </q-avatar>
             </q-item-section>
@@ -129,9 +132,10 @@
         </div>
       </div>
     </div>
+    </div>
 
-    <q-separator />
-
+    <!-- RIGHT COLUMN: cart + footer -->
+    <div class="cart-col column no-wrap">
     <!-- Cart -->
     <div class="cart-section col q-pa-md">
       <div class="row items-center justify-between q-mb-sm">
@@ -164,6 +168,7 @@
                   :src="item.image_url"
                   style="width: 1in; height: 1in; object-fit: contain"
                   :enable-edit="false"
+                  :enable-lightbox="false"
                 />
               </q-avatar>
             </div>
@@ -256,6 +261,8 @@
         />
       </div>
     </div>
+    </div>
+   </div>
 
     <!-- Catalog Filters Sidebar -->
     <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
@@ -486,7 +493,13 @@ const loadCartFromStorage = () => {
   }
 };
 
-watch(cart, saveCartToStorage, { deep: true });
+let saveCartTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedSaveCart = () => {
+  if (saveCartTimer) clearTimeout(saveCartTimer);
+  saveCartTimer = setTimeout(saveCartToStorage, 500);
+};
+
+watch(cart, debouncedSaveCart, { deep: true });
 
 const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartItem => ({
   key: `catalog_${product.id}`,
@@ -598,6 +611,12 @@ const loadMoreBrowse = () => {
   void loadBrowse(true);
 };
 
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedLoadBrowse = () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => void loadBrowse(), 300);
+};
+
 // Watcher to auto-detect search field type (e.g. numeric barcode vs name)
 watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim();
@@ -619,7 +638,7 @@ watch(browseSearch, (newVal) => {
   }
 
   browsePage.value = 1;
-  void loadBrowse();
+  debouncedLoadBrowse();
 });
 
 watch(browseSearchField, () => {
@@ -892,6 +911,44 @@ onMounted(async () => {
 
 .add-items-panel:not(.add-items-panel--drawer) {
   min-height: 70vh;
+}
+
+.panel-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.search-col {
+  flex: 1 1 58%;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.cart-col {
+  flex: 1 1 42%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Stack to a single column on narrow screens */
+@media (max-width: 900px) {
+  .panel-body {
+    flex-direction: column;
+  }
+  .search-col,
+  .cart-col {
+    flex: 1 1 auto;
+  }
+  .search-col {
+    border-right: none;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  }
+  .browse-list-container {
+    max-height: 45vh;
+  }
 }
 
 .toolbar-section {
