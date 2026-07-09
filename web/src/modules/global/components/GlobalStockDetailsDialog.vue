@@ -148,11 +148,6 @@ const formattedQuantities = computed(() => {
 </script>
 
 <style scoped>
-.floating-surface {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 16px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-}
 .border-right-light {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
 }

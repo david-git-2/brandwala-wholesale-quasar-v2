@@ -248,9 +248,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.floating-surface {
-  border-radius: 12px;
-}
 .hero-surface {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }

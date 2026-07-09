@@ -809,7 +809,6 @@ const confirmLogout = async () => {
 
 .workspace-shell__header {
   background: color-mix(in srgb, var(--shell-surface) 90%, var(--color-mix-tint, white) 10%);
-  backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--shell-border);
 }
 
@@ -1020,8 +1019,7 @@ const confirmLogout = async () => {
 
 .command-palette-card {
   border: 1px solid var(--shell-border);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
+  background: var(--shell-surface);
   border-radius: 12px;
 }
 
@@ -1070,9 +1068,11 @@ const confirmLogout = async () => {
   width: min(92vw, 26rem);
   border-radius: 1.5rem;
   padding: 1.75rem;
-  background: color-mix(in srgb, var(--shell-surface) 96%, transparent);
-  backdrop-filter: blur(28px) saturate(1.6);
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  --shell-surface: var(--bw-theme-surface, #ffffff);
+  --shell-muted: var(--bw-theme-muted, #6b7280);
+  --shell-ink: var(--bw-theme-ink, #1f2937);
+  --shell-border: var(--bw-theme-border, rgb(40 56 74 / 0.12));
+  background: var(--shell-surface);
   border: 1px solid color-mix(in srgb, var(--color-mix-tint, white) 30%, transparent);
   box-shadow:
     0 2px 0 color-mix(in srgb, var(--color-mix-tint, white) 60%, transparent) inset,

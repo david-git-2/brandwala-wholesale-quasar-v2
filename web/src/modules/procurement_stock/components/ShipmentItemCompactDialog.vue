@@ -100,7 +100,6 @@ const form = reactive<{
 });
 
 watch(
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   () => props.modelValue as boolean,
   (opened) => {
     if (opened) {

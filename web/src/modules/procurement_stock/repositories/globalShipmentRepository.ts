@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import type { CostingLineItemInput } from 'src/modules/procurement_stock/utils/landedCost';
 
 const db = supabase as any;
 
@@ -165,6 +166,38 @@ const listShipmentItems = async (shipmentId: number): Promise<GlobalShipmentItem
   return (data as GlobalShipmentItem[] | null) ?? [];
 };
 
+const listShipmentItemsBatch = async (
+  shipmentIds: number[],
+): Promise<Record<number, CostingLineItemInput[]>> => {
+  if (!shipmentIds.length) return {};
+  const { data, error } = await db.rpc('list_shipment_items_for_shipments', {
+    p_shipment_ids: shipmentIds,
+  });
+
+  if (error) throw error;
+
+  const results: Record<number, CostingLineItemInput[]> = {};
+  for (const item of (data || []) as {
+    shipment_id: number;
+    purchase_price: number;
+    product_weight: number;
+    package_weight: number;
+    ordered_quantity: number;
+  }[]) {
+    const sId = Number(item.shipment_id);
+    if (!results[sId]) {
+      results[sId] = [];
+    }
+    results[sId].push({
+      purchase_price: Number(item.purchase_price),
+      product_weight: Number(item.product_weight),
+      package_weight: Number(item.package_weight),
+      ordered_quantity: Number(item.ordered_quantity),
+    });
+  }
+  return results;
+};
+
 const updateShipmentItemsOrder = async (
   items: { id: number; sort_order: number }[],
 ): Promise<void> => {
@@ -268,6 +301,7 @@ export const globalShipmentRepository = {
   updateShipment,
   deleteShipment,
   listShipmentItems,
+  listShipmentItemsBatch,
   createShipmentItem,
   updateShipmentItem,
   deleteShipmentItem,

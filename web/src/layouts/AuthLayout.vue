@@ -170,7 +170,6 @@ const tagline = computed(() => {
   position: absolute;
   border-radius: 50%;
   filter: blur(100px);
-  animation: blobFloat 16s ease-in-out infinite alternate;
 }
 
 .auth-bg__blob--1 {
@@ -180,7 +179,6 @@ const tagline = computed(() => {
   left: -100px;
   background: radial-gradient(circle, var(--auth-accent) 0%, transparent 68%);
   opacity: 0.18;
-  animation-delay: 0s;
 }
 
 .auth-bg__blob--2 {
@@ -190,7 +188,6 @@ const tagline = computed(() => {
   left: 20%;
   background: radial-gradient(circle, var(--auth-mid) 0%, transparent 70%);
   opacity: 0.55;
-  animation-delay: -6s;
 }
 
 .auth-bg__blob--3 {
@@ -200,22 +197,6 @@ const tagline = computed(() => {
   left: 30%;
   background: radial-gradient(circle, var(--auth-accent) 0%, transparent 70%);
   opacity: 0.1;
-  animation-delay: -11s;
-}
-
-@keyframes blobFloat {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  40% {
-    transform: translate(40px, -50px) scale(1.06);
-  }
-  70% {
-    transform: translate(-25px, 30px) scale(0.96);
-  }
-  100% {
-    transform: translate(15px, -15px) scale(1.03);
-  }
 }
 
 /* ── Two-column inner ────────────────────────────────── */

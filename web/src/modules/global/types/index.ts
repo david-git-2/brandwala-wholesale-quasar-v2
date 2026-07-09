@@ -102,6 +102,7 @@ export type GlobalStockListQuery = {
   search_field?: GlobalStockSearchField;
   shipment_id?: number | null;
   exclude_zero_qty?: boolean;
+  skip_count?: boolean;
 };
 
 export type GlobalStockListPage = {

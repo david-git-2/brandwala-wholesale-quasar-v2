@@ -883,14 +883,6 @@ watch(
 .thrift-shipment-details-page {
   background: transparent;
 }
-
-.floating-surface {
-  background: rgba(255, 255, 255, 0.86);
-  border-radius: 14px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-  backdrop-filter: blur(6px);
-}
-
 .bg-theme-gradient {
   background: linear-gradient(135deg, #1f4068, #162447);
 }

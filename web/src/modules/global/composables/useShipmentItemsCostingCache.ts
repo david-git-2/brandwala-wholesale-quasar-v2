@@ -47,6 +47,27 @@ export function createShipmentItemsCostingCache() {
 
   const prefetchShipmentItems = async (shipmentIds: number[]): Promise<void> => {
     const uniqueIds = Array.from(new Set(shipmentIds.filter((id) => id > 0)));
+    const toFetchIds = uniqueIds.filter((id) => !cache.has(id) && !inflight.has(id));
+
+    if (toFetchIds.length > 0) {
+      const batchPromise = globalShipmentRepository.listShipmentItemsBatch(toFetchIds);
+
+      toFetchIds.forEach((id) => {
+        const promise = batchPromise
+          .then((groupedItems) => {
+            const mapped = groupedItems[id] || [];
+            cache.set(id, mapped);
+            inflight.delete(id);
+            return mapped;
+          })
+          .catch((error) => {
+            inflight.delete(id);
+            throw error;
+          });
+        inflight.set(id, promise);
+      });
+    }
+
     await Promise.all(uniqueIds.map((id) => ensureShipmentItems(id)));
   };
 

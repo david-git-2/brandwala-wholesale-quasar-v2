@@ -241,10 +241,9 @@ body {
 }
 
 .floating-surface {
-  background: color-mix(in srgb, var(--bw-theme-surface) 86%, transparent);
+  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-theme-base) 6%);
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--bw-theme-border) 40%, transparent);
-  backdrop-filter: blur(6px);
 }
 
 .hero-surface {
@@ -537,8 +536,7 @@ body {
   top: var(--workspace-header-offset, 54px);
   z-index: 10;
   min-height: 48px;
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, transparent);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%);
   border: 1px solid var(--bw-theme-border);
   border-radius: 12px;
   padding: 6px 16px;
@@ -659,5 +657,12 @@ body.body--compact {
   .invoice-table td {
     padding: 6px 10px !important;
     font-size: 12px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -36,9 +36,8 @@ export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalSto
 export const mapStockNetworkToInventoryView = (
   row: StockNetworkRow,
   shipment?: Shipment | null,
-  unitCost?: number,
 ): InventoryItemWithStock =>
-  mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment, unitCost);
+  mapGlobalStockToInventoryView(mapStockNetworkToGlobalStockRow(row), shipment);
 
 export type StockNetworkProductGroup = {
   key: string;
@@ -74,7 +73,7 @@ export const groupStockNetworkRows = (rows: StockNetworkRow[]): StockNetworkProd
       };
       groups.set(key, group);
     }
-    group!.contexts.push(row);
+    group.contexts.push(row);
     if (row.resolvedUnitCost != null) {
       group.resolvedUnitCost = row.resolvedUnitCost;
     }

@@ -171,7 +171,7 @@
                       color="grey-6"
                       @click="
                         copyToClipboard(
-                          (order.shipping_district ?? '') + ' / ' + (order.shipping_thana ?? ''),
+                          (order?.shipping_district ?? '') + ' / ' + (order?.shipping_thana ?? ''),
                           'District copied',
                         )
                       "

@@ -12,6 +12,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
+    "perf-budget": "node scripts/perf-budget.mjs",
     "postinstall": "quasar prepare"
   },
   "dependencies": {

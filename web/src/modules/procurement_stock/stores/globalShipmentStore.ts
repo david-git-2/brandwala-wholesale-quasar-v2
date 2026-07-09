@@ -279,7 +279,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               this.currentShipmentItems[index] = {
                 ...item,
                 ...u.payload,
-              } as GlobalShipmentItem;
+              };
             }
           }
         }

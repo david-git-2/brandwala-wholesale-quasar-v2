@@ -2322,14 +2322,6 @@ onMounted(async () => {
   display: grid;
   gap: 1.25rem;
 }
-
-.floating-surface {
-  background: rgba(255, 255, 255, 0.86);
-  border-radius: 14px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-  backdrop-filter: blur(6px);
-}
-
 .hero-surface {
   border-radius: 16px;
 }

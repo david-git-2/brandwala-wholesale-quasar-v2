@@ -8886,6 +8886,18 @@ export type Database = {
         }
         Returns: Json
       }
+      list_shipment_items_for_shipments: {
+        Args: {
+          p_shipment_ids: number[]
+        }
+        Returns: {
+          shipment_id: number
+          purchase_price: number
+          product_weight: number
+          package_weight: number
+          ordered_quantity: number
+        }[]
+      }
       list_shipments_paginated: {
         Args: {
           p_page?: number

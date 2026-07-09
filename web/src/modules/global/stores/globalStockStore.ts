@@ -34,7 +34,11 @@ export const useGlobalStockStore = defineStore('globalStock', {
     ) {
       this.loading = true;
       try {
-        const result = await globalRepository.listGlobalStockPage(payload);
+        const skipCount = payload.skip_count ?? true;
+        const result = await globalRepository.listGlobalStockPage({
+          ...payload,
+          skip_count: skipCount,
+        });
         this.rows = result.data;
         this.items = result.data.map((row) =>
           mapGlobalStockToInventoryView(
@@ -42,10 +46,17 @@ export const useGlobalStockStore = defineStore('globalStock', {
             row.shipment_id != null ? (shipmentsById.get(row.shipment_id) ?? null) : null,
           ),
         );
-        this.total = result.meta.total;
         this.page = result.meta.page;
         this.page_size = result.meta.page_size;
-        this.total_pages = result.meta.total_pages;
+
+        if (skipCount) {
+          const hasMore = result.data.length === this.page_size;
+          this.total = (this.page - 1) * this.page_size + result.data.length + (hasMore ? 1 : 0);
+          this.total_pages = this.page + (hasMore ? 1 : 0);
+        } else {
+          this.total = result.meta.total;
+          this.total_pages = result.meta.total_pages;
+        }
         return { success: true as const };
       } catch (error) {
         return {

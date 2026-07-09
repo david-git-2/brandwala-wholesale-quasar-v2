@@ -152,11 +152,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.floating-surface {
-  background: rgba(255, 255, 255, 0.86);
-  border-radius: 14px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-}
 .hero-surface {
   border-radius: 16px;
 }

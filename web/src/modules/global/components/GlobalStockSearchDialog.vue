@@ -63,7 +63,7 @@ const selectedUnitCost = ref<number | null>(null);
 
 const onSelectResult = (row: StockNetworkRow) => {
   selectedUnitCost.value = row.resolvedUnitCost ?? null;
-  selectedItem.value = mapStockNetworkToInventoryView(row, null, row.resolvedUnitCost);
+  selectedItem.value = mapStockNetworkToInventoryView(row, null);
   detailsOpen.value = true;
 };
 </script>

@@ -79,6 +79,7 @@ const listGlobalStockPage = async (payload: GlobalStockListQuery): Promise<Globa
   if (payload.shipment_id != null) networkQuery.shipment_id = payload.shipment_id;
   if (payload.page) networkQuery.page = payload.page;
   if (payload.page_size) networkQuery.page_size = payload.page_size;
+  if (payload.skip_count !== undefined) networkQuery.skip_count = payload.skip_count;
 
   const result = await searchStockNetwork(networkQuery);
 

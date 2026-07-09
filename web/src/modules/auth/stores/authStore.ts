@@ -112,6 +112,9 @@ export const useAuthStore = defineStore('auth', () => {
   const snapshot = ref<StoredAuthAccess | null>(readStorage());
   const tenantStore = useTenantStore();
 
+  let lastFreshnessCheckAt: number | null = null;
+  const FRESHNESS_TTL_MS = 60_000;
+
   const access = computed(() => snapshot.value);
   const user = computed(() => snapshot.value?.user ?? null);
   const member = computed(() => snapshot.value?.member ?? null);
@@ -209,6 +212,7 @@ export const useAuthStore = defineStore('auth', () => {
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
         });
+        lastFreshnessCheckAt = null;
         return true;
       } else if (scopeVal === 'shop') {
         const tenantIdVal = snapshot.value.tenant?.id ?? null;
@@ -253,6 +257,7 @@ export const useAuthStore = defineStore('auth', () => {
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
         });
+        lastFreshnessCheckAt = null;
         return true;
       } else if (scopeVal === 'investor') {
         const tenantIdVal = snapshot.value.tenant?.id ?? null;
@@ -293,6 +298,7 @@ export const useAuthStore = defineStore('auth', () => {
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
         });
+        lastFreshnessCheckAt = null;
         return true;
       }
     } catch (e) {
@@ -303,10 +309,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const checkFreshness = async () => {
     if (!tenantId.value) return;
+    if (lastFreshnessCheckAt !== null && Date.now() - lastFreshnessCheckAt < FRESHNESS_TTL_MS) {
+      return;
+    }
     try {
       const { data, error } = await supabase.rpc('get_tenant_permission_version', {
         p_tenant_id: tenantId.value,
       });
+      lastFreshnessCheckAt = Date.now();
       if (!error && data !== null && Number(data) !== permissionVersion.value) {
         console.log(
           '[authStore] Permission version mismatch. Re-bootstrapping silently...',

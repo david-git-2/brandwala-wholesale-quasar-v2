@@ -188,8 +188,8 @@
         </q-btn-dropdown>
       </div>
 
-      <TaskSearchDialog v-model="searchDialogOpen" />
-      <GlobalStockSearchDialog v-model="stockSearchDialogOpen" />
+      <TaskSearchDialog v-if="searchDialogOpen" v-model="searchDialogOpen" />
+      <GlobalStockSearchDialog v-if="stockSearchDialogOpen" v-model="stockSearchDialogOpen" />
     </template>
 
     <router-view />

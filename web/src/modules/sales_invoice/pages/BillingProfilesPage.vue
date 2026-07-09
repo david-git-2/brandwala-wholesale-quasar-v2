@@ -321,12 +321,6 @@ onMounted(() => {
 .hero-surface {
   border-radius: 16px;
 }
-.floating-surface {
-  background: rgba(255, 255, 255, 0.86);
-  border-radius: 14px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-  backdrop-filter: blur(6px);
-}
 .pill-btn {
   border-radius: 999px;
 }

@@ -137,10 +137,6 @@ async function onSave() {
 </script>
 
 <style scoped>
-.floating-surface {
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 14px;
-}
 .pill-btn {
   border-radius: 999px;
 }
