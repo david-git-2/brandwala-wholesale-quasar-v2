@@ -136,6 +136,16 @@
                 </q-chip>
 
                 <!-- Edit / Delete flat buttons with icons only -->
+                <q-btn
+                  color="primary"
+                  flat
+                  round
+                  dense
+                  icon="download"
+                  @click="downloadExcel"
+                >
+                  <q-tooltip>Download Excel</q-tooltip>
+                </q-btn>
                 <q-btn v-if="isEditable" color="secondary" flat round dense icon="edit" @click="openEditShipment">
                   <q-tooltip>Edit Details</q-tooltip>
                 </q-btn>
@@ -952,6 +962,7 @@ import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLi
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue';
 import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCard.vue';
 import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost';
+import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
 import {
@@ -1355,6 +1366,46 @@ const confirmDeleteShipment = () => {
   });
 };
 
+const safeNamePart = (value: string) =>
+  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
+
+const downloadExcel = async () => {
+  if (!shipmentStore.currentShipment) {
+    showWarningNotification('No shipment loaded.');
+    return;
+  }
+
+  const loading = $q.loading.show({ message: 'Generating Excel...' });
+
+  try {
+    const workbook = await buildShipmentExcelWorkbook({
+      shipment: shipmentStore.currentShipment,
+      items: shipmentStore.currentShipmentItems ?? [],
+      totals: totals.value,
+      boxWeightSum: currentShipmentBoxesTotal.value,
+      splitsSummary: splitsSummary.value,
+      purchaseCurrencySymbol: currentPurchaseCurrencySymbol.value,
+      costCurrencySymbol: currentCostCurrencySymbol.value,
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const fileTitle = safeNamePart(shipmentStore.currentShipment.name ?? `shipment_${shipmentStore.currentShipment.id}`);
+    anchor.href = url;
+    anchor.download = `${fileTitle || `shipment_${shipmentStore.currentShipment.id}`}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    showErrorNotification(error instanceof Error ? error.message : 'Failed to generate Excel.');
+  } finally {
+    loading();
+  }
+};
+
 const openAddItems = () => {
   $q.dialog({
     component: AddShipmentItemsDrawer,
@@ -1365,6 +1416,8 @@ const openAddItems = () => {
 const openBulkPaste = () => {
   $q.dialog({
     component: BulkPasteDialog,
+  }).onOk(() => {
+    loadShipmentDetails();
   });
 };
 

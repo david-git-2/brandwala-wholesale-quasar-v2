@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
-    "dev": "npm --prefix web run dev",
-    "build": "npm --prefix web run build",
-    "lint": "npm --prefix web run lint",
-    "perf-budget": "npm --prefix web run perf-budget",
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
+    "perf-budget": "pnpm --filter web run perf-budget",
     "python:pc": "bash scripts/run-python-pc.sh",
     "python:wts": "bash scripts/run-python-wts.sh",
     "python:scrape:pc": "bash -c 'cd python && source ../.venv/bin/activate && python3 scripts/uk/export_pricecheck_scraper.py'",
@@ -26,16 +26,18 @@
     "backend:init": "npx supabase init",
     "backend:login": "npx supabase login",
     "backend:link": "npx supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
-    "backend:link:push:types": "sh -c 'npm run backend:link && npx supabase db push --linked --include-all && mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
+    "backend:link:push:types": "sh -c 'pnpm run backend:link && npx supabase db push --linked --include-all && mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
     "backend:new-migration": "npx supabase migration new",
     "backend:push": "npx supabase db push --linked",
     "backend:push:all": "npx supabase db push --linked --include-all",
     "backend:types": "sh -c 'mkdir -p web/src/types && npx supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
-    "deploy:backend": "npm run backend:push && npm run backend:types",
-    "backend:all": "npm run backend:push:all && npm run backend:types"
+    "deploy:backend": "pnpm run backend:push && pnpm run backend:types",
+    "backend:all": "pnpm run backend:push:all && pnpm run backend:types"
   },
   "devDependencies": {
     "supabase": "^2.105.0",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.6",
     "wrangler": "^4.93.1"
   }
 }

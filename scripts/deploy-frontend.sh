@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Usage:
-#   npm run deploy:frontend
-#   npm run deploy:frontend -- tradeflowbd
+#   pnpm run deploy:frontend
+#   pnpm run deploy:frontend -- tradeflowbd
 
 if [[ -f web/.env ]]; then
   # shellcheck disable=SC1091
@@ -28,12 +28,12 @@ wrangler_cmd() {
 
 rm -rf web/.quasar web/dist
 
-if ! npm --prefix web ci --include=optional; then
-  echo "npm ci failed (likely lockfile drift). Running npm install to resync dependencies..."
-  npm --prefix web install --include=optional
+if ! pnpm install --frozen-lockfile; then
+  echo "pnpm install --frozen-lockfile failed. Running pnpm install to resync dependencies..."
+  pnpm install
 fi
 
-npm --prefix web run build
+pnpm --filter web build
 
 # Clean up large scraper data, backups, and temporary files not used by the frontend
 echo "Cleaning up local development data, backups, and DS_Store from build output..."

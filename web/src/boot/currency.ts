@@ -1,4 +1,4 @@
-import { defineBoot } from '#q-app/wrappers';
+import { defineBoot } from '#q-app';
 import { formatAmountBdt } from 'src/utils/currency';
 
 export default defineBoot(({ app }) => {

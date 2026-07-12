@@ -1,9 +1,9 @@
-import { defineBoot } from '#q-app/wrappers';
+import { defineBoot } from '#q-app';
 import { createClient } from '@supabase/supabase-js';
 import { beginGlobalRequest, endGlobalRequest } from 'src/composables/useGlobalNetworkActivity';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
 const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 

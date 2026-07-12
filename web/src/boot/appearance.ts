@@ -1,4 +1,4 @@
-import { defineBoot } from '#q-app/wrappers';
+import { defineBoot } from '#q-app';
 import { applyDarkMode, applyDensity, applyNavPinned } from 'src/composables/useAppearance';
 
 export default defineBoot(() => {

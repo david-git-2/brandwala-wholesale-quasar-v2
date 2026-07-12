@@ -8,6 +8,7 @@ import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRe
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
+import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 import { supabase } from 'src/boot/supabase';
 import { useGlobalStockTypeStore } from './globalStockTypeStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -266,7 +267,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const updated = await globalShipmentRepository.updateShipmentItem(id, payload);
         const index = this.currentShipmentItems.findIndex((item) => item.id === id);
         if (index !== -1) {
-          this.currentShipmentItems[index] = updated;
+          const newItems = [...this.currentShipmentItems];
+          newItems[index] = updated;
+          this.currentShipmentItems = newItems;
+        }
+        if (this.currentShipment?.id) {
+          await this.fetchShipmentDetails(this.currentShipment.id);
         }
         return updated;
       } catch (err: unknown) {
@@ -276,7 +282,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.loading = false;
       }
     },
-
+ 
     async updateShipmentItemsBulk(
       updates: Array<{
         id: number;
@@ -291,17 +297,44 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         await Promise.all(
           updates.map((u) => globalShipmentRepository.updateShipmentItem(u.id, u.payload)),
         );
+
+        // Sync modified weight fields to the products catalog
+        const productUpdates: Promise<void>[] = [];
         for (const u of updates) {
-          const index = this.currentShipmentItems.findIndex((item) => item.id === u.id);
+          const item = this.currentShipmentItems.find((item) => item.id === u.id);
+          if (item && item.product_id != null) {
+            if ('product_weight' in u.payload && u.payload.product_weight !== undefined) {
+              productUpdates.push(
+                syncShipmentWeightToProduct(item.product_id, 'product_weight', u.payload.product_weight)
+              );
+            }
+            if ('package_weight' in u.payload && u.payload.package_weight !== undefined) {
+              productUpdates.push(
+                syncShipmentWeightToProduct(item.product_id, 'package_weight', u.payload.package_weight)
+              );
+            }
+          }
+        }
+        if (productUpdates.length > 0) {
+          await Promise.all(productUpdates);
+        }
+
+        const newItems = [...this.currentShipmentItems];
+        for (const u of updates) {
+          const index = newItems.findIndex((item) => item.id === u.id);
           if (index !== -1) {
-            const item = this.currentShipmentItems[index];
+            const item = newItems[index];
             if (item) {
-              this.currentShipmentItems[index] = {
+              newItems[index] = {
                 ...item,
                 ...u.payload,
               };
             }
           }
+        }
+        this.currentShipmentItems = newItems;
+        if (this.currentShipment?.id) {
+          await this.fetchShipmentDetails(this.currentShipment.id);
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to update shipment items';

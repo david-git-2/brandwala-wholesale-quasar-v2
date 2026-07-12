@@ -1,7 +1,7 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
-import { defineConfig } from '#q-app/wrappers';
+import { defineConfig } from '#q-app';
 
 export default defineConfig((ctx) => {
   const checkerVitePlugin: [string, Record<string, unknown>, { server: boolean }] = [
@@ -45,7 +45,15 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
     build: {
-      env: {
+      alias: {
+        src: ctx.appPaths.resolve.src(''),
+        components: ctx.appPaths.resolve.src('components'),
+        layouts: ctx.appPaths.resolve.src('layouts'),
+        pages: ctx.appPaths.resolve.src('pages'),
+        assets: ctx.appPaths.resolve.src('assets'),
+        boot: ctx.appPaths.resolve.src('boot'),
+      },
+      defineEnv: {
         SUPABASE_URL: process.env.VITE_SUPABASE_URL,
         SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
         GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY,

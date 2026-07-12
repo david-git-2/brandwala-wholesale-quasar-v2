@@ -284,6 +284,10 @@ const onApply = async () => {
 
       // Strip symbols like £, $, g, etc.
       const cleaned = cellVal.replace(/[^0-9.-]/g, '');
+      if (cleaned === '') {
+        console.log(`Row ${i}, Col ${colIdx}: Value '${cellVal}' has no numeric content, skipping`);
+        return;
+      }
       const numVal = Number(cleaned);
       if (isNaN(numVal)) {
         console.log(`Row ${i}, Col ${colIdx}: Value '${cellVal}' parsed as NaN`);
