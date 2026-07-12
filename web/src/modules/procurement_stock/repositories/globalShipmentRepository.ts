@@ -15,6 +15,8 @@ export interface GlobalShipment {
   product_conversion_rate: number;
   cargo_conversion_rate: number;
   cargo_rate: number;
+  cargo_invoice_total: number | null;
+  purchase_invoice_total: number | null;
   received_weight: number | null;
   received_date: string | null;
   transaction_rate: number | null;
@@ -234,6 +236,32 @@ const applyWeightBalance = async (
   return data as ApplyWeightBalanceRpcResult;
 };
 
+export interface ApplyPurchaseBalanceAdjustment {
+  item_id: number;
+  purchase_price: number;
+}
+
+export interface ApplyPurchaseBalanceRpcResult {
+  estimated_total: number;
+  actual_total: number;
+  delta_total: number;
+}
+
+const applyPurchaseBalance = async (
+  shipmentId: number,
+  adjustments: ApplyPurchaseBalanceAdjustment[],
+  transactionRate: number | null,
+): Promise<ApplyPurchaseBalanceRpcResult> => {
+  const { data, error } = await db.rpc('apply_global_shipment_purchase_balance', {
+    p_shipment_id: shipmentId,
+    p_adjustments: adjustments,
+    p_transaction_rate: transactionRate,
+  });
+
+  if (error) throw error;
+  return data as ApplyPurchaseBalanceRpcResult;
+};
+
 const createShipmentItem = async (
   payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>,
 ): Promise<GlobalShipmentItem> => {
@@ -309,4 +337,5 @@ export const globalShipmentRepository = {
   checkShipmentItemStockReferences,
   updateShipmentItemsOrder,
   applyWeightBalance,
+  applyPurchaseBalance,
 };

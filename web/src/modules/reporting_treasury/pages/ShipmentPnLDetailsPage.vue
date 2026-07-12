@@ -92,6 +92,7 @@
         >
           <q-tab name="trading" label="Trading Cost & Profit" />
           <q-tab name="disposition" label="Stock Disposition & Shrinkage" />
+          <q-tab name="sales" label="Sales Breakdown by Invoice" />
         </q-tabs>
         <q-separator />
 
@@ -333,6 +334,125 @@
           </div>
         </q-banner>
           </q-tab-panel>
+
+          <q-tab-panel name="sales" class="q-pa-md">
+            <div class="row items-center q-mb-md q-col-gutter-sm">
+              <div class="col-12 col-sm-4">
+                <q-input
+                  v-model="salesSearch"
+                  placeholder="Search by item, invoice # or buyer..."
+                  dense
+                  outlined
+                  clearable
+                  class="soft-input"
+                >
+                  <template #append>
+                    <q-icon name="search" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <q-table
+              flat
+              v-model:pagination="salesPagination"
+              :rows-per-page-options="[0]"
+              row-key="_key"
+              :rows="filteredInvoiceRows"
+              :columns="salesColumns"
+              :dense="$q.screen.lt.md"
+              :loading="salesLoading"
+              class="pnl-sticky-table"
+              table-style="min-width: 1100px;"
+            >
+              <template #body-cell-shipment_item_name="props">
+                <q-td :props="props" class="text-weight-bold">
+                  {{ props.row.shipment_item_name }}
+                  <div v-if="props.row.product_code" class="text-caption text-grey-6">{{ props.row.product_code }}</div>
+                </q-td>
+              </template>
+
+              <template #body-cell-invoice_no="props">
+                <q-td :props="props">
+                  <a
+                    class="text-primary text-weight-bold cursor-pointer"
+                    style="text-decoration: none"
+                    @click.stop="navigateToInvoice(props.row.invoice_id)"
+                  >
+                    {{ props.row.invoice_no }}
+                  </a>
+                </q-td>
+              </template>
+
+              <template #body-cell-invoice_type="props">
+                <q-td :props="props">
+                  <q-chip
+                    dense
+                    square
+                    :color="props.row.invoice_type === 'wholesale' ? 'blue-1' : props.row.invoice_type === 'retail' ? 'green-1' : 'purple-1'"
+                    :text-color="props.row.invoice_type === 'wholesale' ? 'blue-9' : props.row.invoice_type === 'retail' ? 'green-9' : 'purple-9'"
+                    class="text-capitalize text-xs text-weight-bold"
+                  >
+                    {{ props.row.invoice_type }}
+                  </q-chip>
+                </q-td>
+              </template>
+
+              <template #body-cell-buyer_name="props">
+                <q-td :props="props">
+                  {{ props.row.buyer_name }}
+                </q-td>
+              </template>
+
+              <template #body-cell-qty_sold="props">
+                <q-td :props="props" class="text-right">
+                  {{ props.row.qty_sold }}
+                </q-td>
+              </template>
+
+              <template #body-cell-return_qty="props">
+                <q-td :props="props" class="text-right" :class="props.row.return_qty > 0 ? 'text-negative' : 'text-grey-5'">
+                  {{ props.row.return_qty }}
+                </q-td>
+              </template>
+
+              <template #body-cell-net_sold="props">
+                <q-td :props="props" class="text-right text-weight-bold text-primary">
+                  {{ props.row.net_sold }}
+                </q-td>
+              </template>
+
+              <template #body-cell-unit_cost_price="props">
+                <q-td :props="props" class="text-right text-grey-8">
+                  {{ formatAmountBdt(props.row.unit_cost_price) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-sell_price_amount="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatAmountBdt(props.row.sell_price_amount) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-line_total_amount="props">
+                <q-td :props="props" class="text-right text-weight-bold text-positive">
+                  {{ formatAmountBdt(props.row.line_total_amount) }}
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="text-weight-bold bg-grey-1 text-right">
+                  <q-td class="text-left" colspan="5">TOTAL ({{ filteredInvoiceRows.length }} lines)</q-td>
+                  <q-td class="bg-blue-highlight">{{ salesTotals.qtySold }}</q-td>
+                  <q-td :class="salesTotals.returnQty > 0 ? 'text-negative' : ''">{{ salesTotals.returnQty }}</q-td>
+                  <q-td class="bg-blue-highlight text-primary">{{ salesTotals.netSold }}</q-td>
+                  <q-td></q-td>
+                  <q-td></q-td>
+                  <q-td class="bg-green-highlight text-positive">{{ formatAmountBdt(salesTotals.lineTotal) }}</q-td>
+                </q-tr>
+              </template>
+            </q-table>
+          </q-tab-panel>
         </q-tab-panels>
       </q-card>
     </div>
@@ -341,20 +461,24 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { treasuryRepository } from '../repositories/treasuryRepository';
+import type { ShipmentItemInvoiceRow } from '../repositories/treasuryRepository';
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
 import type { StatCardItem } from '../components/TreasuryStatGrid.vue';
 
 const search = ref('');
+const salesSearch = ref('');
 const activeTable = ref('trading');
 const pagination = ref({ rowsPerPage: 0 });
+const salesPagination = ref({ rowsPerPage: 0 });
 
 const route = useRoute();
+const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
@@ -364,6 +488,8 @@ const error = ref<string | null>(null);
 
 const shipment = ref<any>(null);
 const items = ref<any[]>([]);
+const invoiceRows = ref<ShipmentItemInvoiceRow[]>([]);
+const salesLoading = ref(false);
 const totals = ref({
   landed_cost: 0,
   sold_cost: 0,
@@ -760,12 +886,128 @@ const loadPnL = async () => {
     shipment.value = res.shipment;
     items.value = res.items || [];
     totals.value = res.totals;
+    // Load invoice breakdown in parallel
+    void loadInvoiceRows(tenantId);
   } catch (err: any) {
     error.value = err.message;
     $q.notify({ type: 'negative', message: `Failed to load shipment details: ${err.message}` });
   } finally {
     loading.value = false;
   }
+};
+
+const loadInvoiceRows = async (tenantId: number) => {
+  salesLoading.value = true;
+  try {
+    invoiceRows.value = await treasuryRepository.getShipmentItemInvoices(tenantId, id);
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: `Failed to load sales breakdown: ${err.message}` });
+  } finally {
+    salesLoading.value = false;
+  }
+};
+
+const salesColumns: QTableColumn[] = [
+  { name: 'shipment_item_name', label: 'Item Name', field: 'shipment_item_name', align: 'left', sortable: true },
+  { name: 'invoice_no', label: 'Invoice #', field: 'invoice_no', align: 'left', sortable: true },
+  { name: 'invoice_date', label: 'Date', field: 'invoice_date', align: 'left', sortable: true },
+  {
+    name: 'invoice_type',
+    label: 'Type',
+    field: 'invoice_type',
+    align: 'left',
+    sortable: true,
+  },
+  { name: 'buyer_name', label: 'Buyer', field: 'buyer_name', align: 'left', sortable: true },
+  {
+    name: 'qty_sold',
+    label: 'Qty Sold',
+    field: 'qty_sold',
+    align: 'right',
+    sortable: true,
+    classes: 'bg-blue-highlight',
+    headerClasses: 'bg-blue-highlight',
+  },
+  {
+    name: 'return_qty',
+    label: 'Returned',
+    field: 'return_qty',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'net_sold',
+    label: 'Net Sold',
+    field: 'net_sold',
+    align: 'right',
+    sortable: true,
+    classes: 'bg-blue-highlight',
+    headerClasses: 'bg-blue-highlight',
+  },
+  {
+    name: 'unit_cost_price',
+    label: 'Unit Cost',
+    field: 'unit_cost_price',
+    align: 'right',
+    sortable: true,
+    classes: 'bg-orange-highlight',
+    headerClasses: 'bg-orange-highlight',
+  },
+  {
+    name: 'sell_price_amount',
+    label: 'Sell Price',
+    field: 'sell_price_amount',
+    align: 'right',
+    sortable: true,
+    classes: 'bg-orange-highlight',
+    headerClasses: 'bg-orange-highlight',
+  },
+  {
+    name: 'line_total_amount',
+    label: 'Line Total',
+    field: 'line_total_amount',
+    align: 'right',
+    sortable: true,
+    classes: 'bg-green-highlight',
+    headerClasses: 'bg-green-highlight',
+  },
+];
+
+const filteredInvoiceRows = computed(() => {
+  const rows = invoiceRows.value.map((r, i) => ({
+    ...r,
+    _key: `${r.shipment_item_id}_${r.invoice_id}_${i}`,
+  }));
+  if (!salesSearch.value) return rows;
+  const q = salesSearch.value.trim().toLowerCase();
+  return rows.filter((r) => {
+    return (
+      (r.shipment_item_name || '').toLowerCase().includes(q) ||
+      (r.invoice_no || '').toLowerCase().includes(q) ||
+      (r.buyer_name || '').toLowerCase().includes(q) ||
+      (r.product_code || '').toLowerCase().includes(q)
+    );
+  });
+});
+
+const salesTotals = computed(() => {
+  const list = filteredInvoiceRows.value;
+  return {
+    qtySold: list.reduce((sum, r) => sum + Number(r.qty_sold || 0), 0),
+    returnQty: list.reduce((sum, r) => sum + Number(r.return_qty || 0), 0),
+    netSold: list.reduce((sum, r) => sum + Number(r.net_sold || 0), 0),
+    lineTotal: list.reduce((sum, r) => sum + Number(r.line_total_amount || 0), 0),
+  };
+});
+
+const navigateToInvoice = (invoiceId: number) => {
+  void router.push({
+    name: 'app-finance-invoice-margin-details-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? undefined,
+      id: invoiceId,
+    },
+  });
 };
 
 onMounted(() => {
@@ -800,7 +1042,7 @@ onMounted(() => {
 
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
+  background: #f3f4f6;
 }
 
 .pnl-page :deep(.q-card) {

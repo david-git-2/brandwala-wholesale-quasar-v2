@@ -1856,12 +1856,14 @@ export type Database = {
       global_shipments: {
         Row: {
           cargo_conversion_rate: number
+          cargo_invoice_total: number | null
           cargo_rate: number
           created_at: string
           id: number
           name: string
           parent_tenant_id: number
           product_conversion_rate: number
+          purchase_invoice_total: number | null
           received_date: string | null
           received_weight: number | null
           shipment_cost_currency_id: number | null
@@ -1875,12 +1877,14 @@ export type Database = {
         }
         Insert: {
           cargo_conversion_rate?: number
+          cargo_invoice_total?: number | null
           cargo_rate?: number
           created_at?: string
           id?: number
           name: string
           parent_tenant_id: number
           product_conversion_rate?: number
+          purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
           shipment_cost_currency_id?: number | null
@@ -1894,12 +1898,14 @@ export type Database = {
         }
         Update: {
           cargo_conversion_rate?: number
+          cargo_invoice_total?: number | null
           cargo_rate?: number
           created_at?: string
           id?: number
           name?: string
           parent_tenant_id?: number
           product_conversion_rate?: number
+          purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
           shipment_cost_currency_id?: number | null
@@ -6968,6 +6974,14 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_global_shipment_purchase_balance: {
+        Args: {
+          p_adjustments: Json
+          p_shipment_id: number
+          p_transaction_rate?: number
+        }
+        Returns: Json
+      }
       apply_global_shipment_weight_balance: {
         Args: {
           p_adjustments: Json
@@ -7336,6 +7350,10 @@ export type Database = {
         Returns: number
       }
       confirm_shop_order: { Args: { p_order_id: number }; Returns: undefined }
+      convert_wholesale_draft_to_retail: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
       count_costing_files_for_actor: {
         Args: { p_customer_group_id?: number; p_tenant_id?: number }
         Returns: number
@@ -8064,6 +8082,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_shipment_item_invoices: {
+        Args: { p_shipment_id: number; p_tenant_id: number }
+        Returns: Json
       }
       get_shipment_pnl: {
         Args: { p_shipment_id: number; p_tenant_id: number }
@@ -8887,15 +8909,13 @@ export type Database = {
         Returns: Json
       }
       list_shipment_items_for_shipments: {
-        Args: {
-          p_shipment_ids: number[]
-        }
+        Args: { p_shipment_ids: number[] }
         Returns: {
-          shipment_id: number
-          purchase_price: number
-          product_weight: number
-          package_weight: number
           ordered_quantity: number
+          package_weight: number
+          product_weight: number
+          purchase_price: number
+          shipment_id: number
         }[]
       }
       list_shipments_paginated: {

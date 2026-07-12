@@ -719,9 +719,11 @@
             </q-card>
           </div>
 
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-6 q-gutter-y-md">
             <!-- Shipment Weight Balance Card -->
             <ShipmentWeightBalanceCard :shipment-id="shipmentId" @applied="loadShipmentDetails" />
+            <!-- Shipment Purchase Balance Card -->
+            <ShipmentPurchaseBalanceCard :shipment-id="shipmentId" @applied="loadShipmentDetails" />
           </div>
         </div>
       </div>
@@ -759,12 +761,49 @@
                   dense
                 />
                 <q-input
+                  v-model.number="ratesForm.purchase_invoice_total"
+                  type="number"
+                  step="0.01"
+                  label="Paid Purchase Invoice Total"
+                  filled
+                  dense
+                  :prefix="currentPurchaseCurrencySymbol"
+                />
+
+                <q-separator class="q-my-xs" />
+                <div class="text-subtitle2 text-weight-bold text-grey-7">Cargo Rate Calculation</div>
+                <div class="text-caption text-grey-6" style="margin-top: -8px; font-size: 11px;">
+                  Cargo Rate = Cargo Invoice Total ÷ Cargo Weight (kg)
+                </div>
+
+                <q-input
+                  v-model.number="ratesForm.cargo_invoice_total"
+                  type="number"
+                  step="0.01"
+                  label="Cargo Invoice Total"
+                  filled
+                  dense
+                  :prefix="currentPurchaseCurrencySymbol"
+                />
+                <q-input
+                  v-model.number="ratesForm.received_weight"
+                  type="number"
+                  step="0.01"
+                  label="Cargo Weight (kg)"
+                  filled
+                  dense
+                  suffix="kg"
+                />
+                <q-input
                   v-model.number="ratesForm.cargo_rate"
                   type="number"
                   step="0.01"
-                  label="Cargo Rate *"
+                  label="Cargo Rate (per kg)"
                   filled
                   dense
+                  :readonly="isCargoRateAutoCalculated"
+                  :hint="isCargoRateAutoCalculated ? 'Auto-calculated from invoice total ÷ weight' : 'Enter manually or fill invoice total & weight above'"
+                  :class="{ 'bg-green-1': isCargoRateAutoCalculated }"
                 />
               </div>
 
@@ -911,6 +950,7 @@ import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
 import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLineItemsTable.vue';
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue';
+import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCard.vue';
 import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
@@ -1524,7 +1564,26 @@ const ratesForm = ref({
   product_conversion_rate: 1.0,
   cargo_conversion_rate: 1.0,
   cargo_rate: 0.0,
+  cargo_invoice_total: null as number | null,
+  purchase_invoice_total: null as number | null,
+  received_weight: null as number | null,
 });
+
+const isCargoRateAutoCalculated = computed(() => {
+  const t = ratesForm.value.cargo_invoice_total;
+  const w = ratesForm.value.received_weight;
+  return t != null && t > 0 && w != null && w > 0;
+});
+
+// Auto-calculate cargo_rate when both cargo_invoice_total and received_weight are provided
+watch(
+  () => [ratesForm.value.cargo_invoice_total, ratesForm.value.received_weight],
+  ([invoiceTotal, weight]) => {
+    if (invoiceTotal != null && invoiceTotal > 0 && weight != null && weight > 0) {
+      ratesForm.value.cargo_rate = invoiceTotal / weight;
+    }
+  },
+);
 
 const openEditRates = () => {
   const shipment = shipmentStore.currentShipment;
@@ -1533,6 +1592,9 @@ const openEditRates = () => {
     product_conversion_rate: shipment.product_conversion_rate,
     cargo_conversion_rate: shipment.cargo_conversion_rate,
     cargo_rate: shipment.cargo_rate,
+    cargo_invoice_total: shipment.cargo_invoice_total,
+    purchase_invoice_total: shipment.purchase_invoice_total,
+    received_weight: shipment.received_weight,
   };
   showRatesDialog.value = true;
 };
@@ -1549,7 +1611,12 @@ const onSaveRates = async () => {
     };
     const txRate = calculateTransactionRate(mockShipment, items);
     const updatePayload = {
-      ...ratesForm.value,
+      product_conversion_rate: ratesForm.value.product_conversion_rate,
+      cargo_conversion_rate: ratesForm.value.cargo_conversion_rate,
+      cargo_rate: ratesForm.value.cargo_rate,
+      cargo_invoice_total: ratesForm.value.cargo_invoice_total,
+      purchase_invoice_total: ratesForm.value.purchase_invoice_total,
+      received_weight: ratesForm.value.received_weight,
       transaction_rate: txRate,
     };
     await shipmentStore.updateShipment(shipmentId, updatePayload);

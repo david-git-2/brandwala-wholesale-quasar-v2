@@ -7,6 +7,7 @@ import {
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
+import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { supabase } from 'src/boot/supabase';
 import { useGlobalStockTypeStore } from './globalStockTypeStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -125,6 +126,25 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         return result;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to apply weight balance';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async applyPurchaseBalance(shipmentId: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const preload =
+          this.currentShipment && this.currentShipment.id === shipmentId
+            ? { shipment: this.currentShipment, items: this.currentShipmentItems }
+            : undefined;
+        const result = await applyShipmentPurchaseBalance(shipmentId, preload);
+        await this.fetchShipmentDetails(shipmentId);
+        return result;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to apply purchase balance';
         throw err;
       } finally {
         this.loading = false;

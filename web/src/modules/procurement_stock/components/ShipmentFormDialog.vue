@@ -152,34 +152,52 @@
               </div>
               <div class="col-12 col-sm-4">
                 <q-input
-                  v-model.number="form.cargo_rate"
+                  v-model.number="form.purchase_invoice_total"
                   type="number"
                   step="0.01"
-                  label="Cargo Rate"
+                  label="Purchase Invoice Total"
                   filled
                   dense
-                  :rules="[(val) => val >= 0 || 'Must be >= 0']"
+                />
+              </div>
+            </div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="form.cargo_invoice_total"
+                  type="number"
+                  step="0.01"
+                  label="Cargo Invoice Total"
+                  filled
+                  dense
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="form.received_weight"
+                  type="number"
+                  step="0.01"
+                  label="Cargo Weight (kg)"
+                  filled
+                  dense
+                  suffix="kg"
                 />
               </div>
             </div>
 
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <div
-                  class="bg-grey-2 q-pa-sm rounded-borders text-caption text-grey-8"
-                  style="min-height: 40px; display: flex; align-items: center"
-                >
-                  <span>
-                    Received Weight:
-                    <strong class="text-black">{{
-                      form.received_weight !== null ? `${form.received_weight} kg` : '—'
-                    }}</strong>
-                    <br />
-                    <span class="text-grey-6 text-weight-light" style="font-size: 10px"
-                      >(Set automatically via Weight Balance)</span
-                    >
-                  </span>
-                </div>
+                <q-input
+                  v-model.number="form.cargo_rate"
+                  type="number"
+                  step="0.01"
+                  label="Cargo Rate (per kg)"
+                  filled
+                  dense
+                  :readonly="isCargoRateAutoCalculated"
+                  :hint="isCargoRateAutoCalculated ? 'Auto-calculated from total ÷ weight' : 'Enter manually or fill total & weight'"
+                  :class="{ 'bg-green-1': isCargoRateAutoCalculated }"
+                />
               </div>
               <div class="col-12 col-sm-6 items-center flex">
                 <q-checkbox v-model="form.stock_ready" label="Stock Ready" />
@@ -255,11 +273,30 @@ const form = ref({
   product_conversion_rate: 1.0,
   cargo_conversion_rate: 1.0,
   cargo_rate: 0.0,
+  cargo_invoice_total: null as number | null,
+  purchase_invoice_total: null as number | null,
   received_weight: null as number | null,
   received_date: null as string | null,
   transaction_rate: null as number | null,
   stock_ready: false,
 });
+
+const isCargoRateAutoCalculated = computed(() => {
+  const t = form.value.cargo_invoice_total;
+  const w = form.value.received_weight;
+  return t != null && t > 0 && w != null && w > 0;
+});
+
+// Auto-calculate cargo_rate when both cargo_invoice_total and received_weight are provided
+import { watch } from 'vue';
+watch(
+  () => [form.value.cargo_invoice_total, form.value.received_weight],
+  ([invoiceTotal, weight]) => {
+    if (invoiceTotal != null && invoiceTotal > 0 && weight != null && weight > 0) {
+      form.value.cargo_rate = invoiceTotal / weight;
+    }
+  },
+);
 
 const currencyOptions = ref<Array<{ label: string; value: number }>>([]);
 const loadingCurrencies = ref(false);
@@ -290,6 +327,8 @@ onMounted(async () => {
       product_conversion_rate: props.shipment.product_conversion_rate,
       cargo_conversion_rate: props.shipment.cargo_conversion_rate,
       cargo_rate: props.shipment.cargo_rate,
+      cargo_invoice_total: props.shipment.cargo_invoice_total,
+      purchase_invoice_total: props.shipment.purchase_invoice_total,
       received_weight: props.shipment.received_weight,
       received_date: props.shipment.received_date,
       transaction_rate: props.shipment.transaction_rate,

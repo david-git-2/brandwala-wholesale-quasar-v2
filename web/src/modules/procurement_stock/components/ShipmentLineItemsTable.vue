@@ -181,7 +181,7 @@
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
                 <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatFixed2(item.purchase_price)
+                  formatPrice(item.purchase_price)
                 }}</span>
                 <q-popup-edit
                   v-if="isEditable"
@@ -709,6 +709,16 @@ const formatDecimal = (value: number | null | undefined) =>
 
 const formatFixed2 = (value: number | null | undefined) =>
   value == null ? '-' : Number(value).toFixed(2);
+
+const formatPrice = (value: number | null | undefined) => {
+  if (value == null) return '-';
+  const num = Number(value);
+  // Check if there are decimal places beyond 2 digits
+  if (Math.abs(num - Math.round(num * 100) / 100) > 0.000001) {
+    return num.toFixed(6).replace(/\.?0+$/, ''); // show up to 6 decimals, trimming trailing zeros
+  }
+  return num.toFixed(2);
+};
 
 const lineCostBdt = (item: GlobalShipmentItem) => {
   if (!props.shipment) return 0;

@@ -90,6 +90,40 @@ const getShipmentPnL = async (
   return data;
 };
 
+export interface ShipmentItemInvoiceRow {
+  shipment_item_id: number;
+  shipment_item_name: string;
+  product_code: string | null;
+  barcode: string | null;
+  ordered_quantity: number;
+  invoice_id: number;
+  invoice_no: string;
+  invoice_date: string;
+  invoice_type: string;
+  invoice_status: string;
+  buyer_name: string;
+  qty_sold: number;
+  return_qty: number;
+  net_sold: number;
+  unit_cost_price: number;
+  sell_price_amount: number;
+  line_discount_amount: number;
+  line_total_amount: number;
+}
+
+const getShipmentItemInvoices = async (
+  tenantId: number,
+  shipmentId: number,
+): Promise<ShipmentItemInvoiceRow[]> => {
+  const { data, error } = await supabase.rpc('get_shipment_item_invoices', {
+    p_tenant_id: tenantId,
+    p_shipment_id: shipmentId,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+};
+
 const listBillingBalances = async (tenantId: number, search?: string): Promise<any[]> => {
   const { data, error } = await supabase.rpc('list_billing_balances', {
     p_tenant_id: tenantId,
@@ -135,6 +169,7 @@ export const treasuryRepository = {
   listInvoiceMarginReport,
   getInvoiceMarginDetail,
   getShipmentPnL,
+  getShipmentItemInvoices,
   listBillingBalances,
   listInvoiceOutstanding,
   getParentDashboard,

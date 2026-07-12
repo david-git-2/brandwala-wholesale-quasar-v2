@@ -284,44 +284,69 @@
       </q-banner>
     </div>
 
-    <!-- 3. Preview Table (only if there are boxes and no hard errors) -->
-    <div v-if="previewItems.length && !validationError" class="q-mb-md">
-      <div class="text-caption text-weight-bold text-grey-9 q-mb-xs">
-        Preview Weight Adjustments
-      </div>
-      <div style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden">
-        <q-markup-table dense flat class="weight-preview-table bg-grey-1">
-          <thead>
-            <tr>
-              <th class="text-left text-caption">Product</th>
-              <th class="text-right text-caption">Qty</th>
-              <th class="text-right text-caption">Pkg Wt (g)</th>
-              <th class="text-right text-caption">Delta (g)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in previewItems" :key="item.id">
-              <td
-                class="text-left text-caption text-weight-medium ellipsis"
-                style="max-width: 120px"
-              >
-                {{ item.name }}
-              </td>
-              <td class="text-right text-caption text-mono">{{ item.qty }}</td>
-              <td class="text-right text-caption text-mono">
-                {{ item.weightBefore.toFixed(1) }} &rarr;
-                <strong class="text-primary">{{ item.weightAfter.toFixed(1) }}</strong>
-              </td>
-              <td
-                class="text-right text-caption text-mono"
-                :class="item.delta >= 0 ? 'text-negative' : 'text-positive'"
-              >
-                {{ item.delta >= 0 ? '+' : '' }}{{ item.delta.toFixed(1) }}g
-              </td>
-            </tr>
-          </tbody>
-        </q-markup-table>
-      </div>
+    <!-- 3. Preview Adjustments Trigger -->
+    <div v-if="previewItems.length && !validationError" class="q-mb-sm">
+      <q-btn
+        outline
+        color="secondary"
+        icon="visibility"
+        label="Preview Weight Adjustments"
+        class="full-width soft-input"
+        no-caps
+        dense
+        @click="showPreviewDialog = true"
+      />
+
+      <!-- Preview Dialog -->
+      <q-dialog v-model="showPreviewDialog">
+        <q-card style="width: 600px; max-width: 90vw">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-subtitle1 text-weight-bold text-primary row items-center q-gutter-xs">
+              <q-icon name="scale" size="20px" />
+              <span>Preview Weight Adjustments</span>
+            </div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
+          </q-card-section>
+
+          <q-card-section class="q-pa-md">
+            <div style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden">
+              <q-markup-table dense flat class="weight-preview-table bg-grey-1">
+                <thead>
+                  <tr>
+                    <th class="text-left text-caption">Product</th>
+                    <th class="text-right text-caption">Qty</th>
+                    <th class="text-right text-caption">Pkg Wt (g)</th>
+                    <th class="text-right text-caption">Delta (g)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in previewItems" :key="item.id">
+                    <td class="text-left text-caption text-weight-medium ellipsis" style="max-width: 250px">
+                      {{ item.name }}
+                    </td>
+                    <td class="text-right text-caption text-mono">{{ item.qty }}</td>
+                    <td class="text-right text-caption text-mono">
+                      {{ item.weightBefore.toFixed(1) }} &rarr;
+                      <strong class="text-primary">{{ item.weightAfter.toFixed(1) }}</strong>
+                    </td>
+                    <td
+                      class="text-right text-caption text-mono"
+                      :class="item.delta >= 0 ? 'text-negative' : 'text-positive'"
+                    >
+                      {{ item.delta >= 0 ? '+' : '' }}{{ item.delta.toFixed(1) }}g
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right" class="bg-grey-1 q-pa-sm">
+            <q-btn flat label="Close" color="grey-8" v-close-popup no-caps />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
 
     <!-- 4. Apply Action -->
@@ -367,6 +392,8 @@ const emit = defineEmits<{
 const $q = useQuasar();
 const shipmentStore = useGlobalShipmentStore();
 const authStore = useAuthStore();
+
+const showPreviewDialog = ref(false);
 
 // Local state for box additions
 const newBoxNumber = ref('');
