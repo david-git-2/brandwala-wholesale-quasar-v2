@@ -385,7 +385,7 @@ const autofillWeights = async () => {
   const apiKey =
     localStorage.getItem('gemini_api_key') ||
     (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
-    process.env.GEMINI_API_KEY;
+    (import.meta.env.GEMINI_API_KEY as string | undefined);
 
   if (!apiKey || !apiKey.trim()) {
     $q.dialog({

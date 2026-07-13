@@ -53,6 +53,10 @@ export default defineConfig((ctx) => {
         assets: ctx.appPaths.resolve.src('assets'),
         boot: ctx.appPaths.resolve.src('boot'),
       },
+      // Quasar v3 defaults clientPrefix to QCLI_; keep VITE_ so existing import.meta.env.VITE_* works
+      env: {
+        clientPrefix: 'VITE_',
+      },
       defineEnv: {
         SUPABASE_URL: process.env.VITE_SUPABASE_URL,
         SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,

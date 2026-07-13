@@ -41,16 +41,13 @@ export function throwIfGoogleDrivePermissionDenied(
 }
 
 function isDriveFeatureEnabled(): boolean {
-  const flag =
-    import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED ||
-    process.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED;
+  const flag = import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED;
 
   return String(flag ?? '').toLowerCase() === 'true';
 }
 
 export function getDriveSyncAdminEmail(): string {
-  const configured =
-    import.meta.env.VITE_GOOGLE_DRIVE_ADMIN_EMAIL || process.env.VITE_GOOGLE_DRIVE_ADMIN_EMAIL;
+  const configured = import.meta.env.VITE_GOOGLE_DRIVE_ADMIN_EMAIL;
 
   return (configured || 'tradeflowbd2026@gmail.com').trim().toLowerCase();
 }
@@ -78,10 +75,7 @@ export function getGoogleOAuthDriveOptions():
 
 function getOAuthCallbackBaseUrl(): string {
   const configured =
-    import.meta.env.VITE_PRODUCTION_APP_URL ||
-    process.env.VITE_PRODUCTION_APP_URL ||
-    import.meta.env.VITE_LOCAL_APP_URL ||
-    process.env.VITE_LOCAL_APP_URL;
+    import.meta.env.VITE_PRODUCTION_APP_URL || import.meta.env.VITE_LOCAL_APP_URL;
 
   if (configured) {
     return String(configured).replace(/\/$/, '');

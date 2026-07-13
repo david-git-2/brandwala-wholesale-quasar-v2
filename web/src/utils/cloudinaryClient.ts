@@ -5,8 +5,7 @@ export type CloudinaryUploadResult = { secureUrl: string; deleteToken?: string |
 const THRIFT_FOLDER_PREFIXES = ['thrift-inventory-images/', 'thrift_stocks/', 'thrift-stocks/'];
 
 export function getThriftCloudinaryRootFolder(): string {
-  const configured =
-    import.meta.env.VITE_CLOUDINARY_THRIFT_FOLDER || process.env.VITE_CLOUDINARY_THRIFT_FOLDER;
+  const configured = import.meta.env.VITE_CLOUDINARY_THRIFT_FOLDER;
   const root = (configured as string | undefined)?.trim() || 'thrift-inventory-images';
   return root.replace(/^\/+|\/+$/g, '');
 }
@@ -77,10 +76,8 @@ export type CloudinaryUploadOptions = {
 };
 
 function getCloudinaryConfig() {
-  const cloudName =
-    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset =
-    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || process.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
   return { cloudName, uploadPreset };
 }

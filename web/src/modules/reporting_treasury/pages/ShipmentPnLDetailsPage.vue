@@ -80,20 +80,31 @@
       <!-- Stats Row -->
       <TreasuryStatGrid :items="statCards" />
 
-      <!-- Tabbed P&L Tables -->
       <q-card flat class="overflow-hidden floating-surface shadow-1" style="min-width: 0">
-        <q-tabs
-          v-model="activeTable"
-          dense
-          align="left"
-          active-color="primary"
-          indicator-color="primary"
-          class="text-grey-7"
-        >
-          <q-tab name="trading" label="Trading Cost & Profit" />
-          <q-tab name="disposition" label="Stock Disposition & Shrinkage" />
-          <q-tab name="sales" label="Sales Breakdown by Invoice" />
-        </q-tabs>
+        <div class="row items-center justify-between q-pr-sm">
+          <q-tabs
+            v-model="activeTable"
+            dense
+            align="left"
+            active-color="primary"
+            indicator-color="primary"
+            class="text-grey-7 col"
+          >
+            <q-tab name="trading" label="Trading Cost & Profit" />
+            <q-tab name="disposition" label="Stock Disposition & Shrinkage" />
+            <q-tab name="sales" label="Sales Breakdown by Invoice" />
+          </q-tabs>
+          <q-btn
+            flat
+            round
+            dense
+            color="primary"
+            icon="help_outline"
+            @click="showInfoDialog = true"
+          >
+            <q-tooltip>Learn about these tabs</q-tooltip>
+          </q-btn>
+        </div>
         <q-separator />
 
         <q-tab-panels v-model="activeTable" animated>
@@ -456,6 +467,44 @@
         </q-tab-panels>
       </q-card>
     </div>
+
+    <!-- Tab Explanation Dialog -->
+    <q-dialog v-model="showInfoDialog">
+      <q-card style="width: 500px; max-width: 90vw;" class="floating-surface text-grey-9">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-weight-bold text-primary">Shipment P&L Tabs Guide</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <div class="q-mb-md">
+            <div class="text-subtitle1 text-weight-bold text-grey-8">1. Trading Cost & Profit</div>
+            <div class="text-body2 text-grey-7 q-pl-sm">
+              Displays a **per-product financial summary**. If an item is sold in multiple invoices at different prices, this tab combines them into a single row to show total revenue, cost of goods sold (COGS), and total Gross Profit (reflecting the weighted average selling price).
+            </div>
+          </div>
+
+          <div class="q-mb-md">
+            <div class="text-subtitle1 text-weight-bold text-grey-8">2. Stock Disposition & Shrinkage</div>
+            <div class="text-body2 text-grey-7 q-pl-sm">
+              Tracks the **physical status of the inventory** (units sellable on-hand, box damages, stolen, or expired) and calculates the monetary loss (shrinkage) at landed cost.
+            </div>
+          </div>
+
+          <div>
+            <div class="text-subtitle1 text-weight-bold text-grey-8">3. Sales Breakdown by Invoice</div>
+            <div class="text-body2 text-grey-7 q-pl-sm">
+              Provides the **detailed transaction log**. Each sale is shown as a separate row, specifying the exact invoice number, quantity sold, customer, and individual selling price.
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pb-md q-pr-md">
+          <q-btn flat label="Got it" color="primary" v-close-popup class="text-weight-bold" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -471,6 +520,7 @@ import type { ShipmentItemInvoiceRow } from '../repositories/treasuryRepository'
 import TreasuryStatGrid from '../components/TreasuryStatGrid.vue';
 import type { StatCardItem } from '../components/TreasuryStatGrid.vue';
 
+const showInfoDialog = ref(false);
 const search = ref('');
 const salesSearch = ref('');
 const activeTable = ref('trading');

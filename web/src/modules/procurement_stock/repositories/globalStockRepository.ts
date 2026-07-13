@@ -81,6 +81,38 @@ const listPaginated = async (
   };
 };
 
+const fetchStocksByShipmentItem = async (shipmentItemId: number): Promise<GlobalStock[]> => {
+  const { data, error } = await supabase
+    .from('global_stocks')
+    .select('*')
+    .eq('shipment_item_id', shipmentItemId);
+
+  if (error) {
+    throw error;
+  }
+  return data as any[];
+};
+
+const saveStockSplits = async (
+  stockRows: Array<{
+    parent_tenant_id: number;
+    shipment_item_id: number;
+    stock_type_id: number;
+    quantity: number;
+    is_usable: boolean;
+  }>,
+): Promise<void> => {
+  const { error } = await supabase
+    .from('global_stocks')
+    .upsert(stockRows, { onConflict: 'shipment_item_id,stock_type_id,is_usable' });
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const globalStockRepository = {
   listPaginated,
+  fetchStocksByShipmentItem,
+  saveStockSplits,
 };

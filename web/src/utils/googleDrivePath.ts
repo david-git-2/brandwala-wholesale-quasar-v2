@@ -1,11 +1,7 @@
 const SHIPMENT_FOLDER_PATTERN = /^shipment-\d+$/;
 
 export function getThriftDriveBaseFolder(): string {
-  return (
-    import.meta.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER ||
-    process.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER ||
-    'thrift'
-  );
+  return import.meta.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER || 'thrift';
 }
 
 export function parseThriftDriveFolderPath(folderPath: string): string[] | null {

@@ -7,7 +7,7 @@ export async function fetchWeightsFromGemini(productName: string): Promise<Gemin
   const apiKey =
     localStorage.getItem('gemini_api_key') ||
     (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
-    process.env.GEMINI_API_KEY;
+    (import.meta.env.GEMINI_API_KEY as string | undefined);
 
   if (!apiKey || !apiKey.trim()) {
     throw new Error(

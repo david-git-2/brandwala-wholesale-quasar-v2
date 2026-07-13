@@ -48,15 +48,69 @@
           </q-btn>
         </div>
       </div>
-      <q-btn
-        unelevated
-        no-caps
-        color="primary"
-        icon="add"
-        label="New Product"
-        class="new-product-btn full-width"
-        @click="showNewProductSidebar = true"
-      />
+      <div class="row q-col-gutter-sm">
+        <div class="col">
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            icon="add"
+            label="New Product"
+            class="new-product-btn full-width"
+            @click="showNewProductSidebar = true"
+          />
+        </div>
+        <div class="col-auto">
+          <q-btn
+            outline
+            no-caps
+            icon="playlist_add"
+            label="Bulk codes"
+            class="full-height"
+            :color="showBulkCodes ? 'secondary' : 'primary'"
+            @click="showBulkCodes = !showBulkCodes"
+          />
+        </div>
+      </div>
+
+      <div v-if="showBulkCodes" class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders">
+        <q-input
+          v-model="bulkCodesText"
+          type="textarea"
+          outlined
+          dense
+          class="bulk-codes-input"
+          :input-style="{ height: '120px', maxHeight: '120px', overflowY: 'auto', resize: 'none' }"
+          placeholder="Paste one barcode or product code per line&#10;8711000279502&#10;8711000279380"
+        />
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-auto">
+            <q-input
+              v-model.number="bulkDefaultQty"
+              type="number"
+              outlined
+              dense
+              label="Qty"
+              style="width: 90px"
+              min="1"
+              step="1"
+            />
+          </div>
+          <div class="col">
+            <q-btn
+              unelevated
+              no-caps
+              color="secondary"
+              icon="add_shopping_cart"
+              label="Add to cart"
+              class="full-width"
+              :loading="bulkLoading"
+              :disable="!bulkCodesText.trim()"
+              @click="onBulkAddCodes"
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Catalog Browse list -->
@@ -404,6 +458,10 @@ const browseLoading = ref(false);
 const browsePage = ref(1);
 const browseTotal = ref(0);
 const browseQtyById = ref<Record<number, number | null>>({});
+const showBulkCodes = ref(false);
+const bulkCodesText = ref('');
+const bulkDefaultQty = ref(1);
+const bulkLoading = ref(false);
 
 const searchFieldLabel = computed(() => {
   if (browseSearchField.value === 'name') return 'Name';
@@ -518,6 +576,24 @@ const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartIt
   brand: null,
 });
 
+const mergeProductIntoCart = (product: ProductItem, cleanQty: number) => {
+  const key = `catalog_${product.id}`;
+  const existing = cart.value.find((c) => c.key === key);
+  if (existing) {
+    existing.ordered_quantity += cleanQty;
+    existing.product_weight = product.product_weight ?? 0;
+    existing.package_weight = product.package_weight ?? 0;
+
+    const idx = cart.value.indexOf(existing);
+    if (idx > -1) {
+      cart.value.splice(idx, 1);
+      cart.value.unshift(existing);
+    }
+  } else {
+    cart.value.unshift(buildCatalogCartItem(product, cleanQty));
+  }
+};
+
 const setBrowseQty = (productId: number, qty: number | null) => {
   if (qty === null || isNaN(qty) || qty < 1) {
     browseQtyById.value[productId] = null;
@@ -535,30 +611,103 @@ const addProductToCart = (product: ProductItem, qty: number | null | undefined) 
     return;
   }
 
-  const cleanQty = Math.floor(qty);
-  const key = `catalog_${product.id}`;
-  const existing = cart.value.find((c) => c.key === key);
-  if (existing) {
-    existing.ordered_quantity += cleanQty;
-    // Refresh weights from the latest catalog product record
-    existing.product_weight = product.product_weight ?? 0;
-    existing.package_weight = product.package_weight ?? 0;
-
-    // Move existing item to top of the cart since it's the last added/modified
-    const idx = cart.value.indexOf(existing);
-    if (idx > -1) {
-      cart.value.splice(idx, 1);
-      cart.value.unshift(existing);
-    }
-  } else {
-    // Unshift to put last added item first in the cart stack
-    cart.value.unshift(buildCatalogCartItem(product, cleanQty));
-  }
-  // Reset row qty
+  mergeProductIntoCart(product, Math.floor(qty));
   browseQtyById.value[product.id] = null;
-
-  // Clear search query
   browseSearch.value = '';
+};
+
+const parseBulkCodes = (raw: string): string[] => {
+  const tokens: string[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    for (const part of line.split(/[,;]+/)) {
+      const code = part.trim();
+      if (code) tokens.push(code);
+    }
+  }
+  return tokens;
+};
+
+const onBulkAddCodes = async () => {
+  const codes = parseBulkCodes(bulkCodesText.value);
+  if (codes.length === 0) {
+    $q.notify({ type: 'warning', message: 'Paste at least one barcode or product code.' });
+    return;
+  }
+
+  const qty = Math.floor(Number(bulkDefaultQty.value));
+  if (!qty || isNaN(qty) || qty < 1) {
+    $q.notify({ type: 'warning', message: 'Quantity must be at least 1.' });
+    return;
+  }
+
+  if (!authStore.tenantId) {
+    $q.notify({ type: 'negative', message: 'Tenant is required to look up products.' });
+    return;
+  }
+
+  bulkLoading.value = true;
+  try {
+    const products = await productRepository.lookupProductsByCodes({
+      codes,
+      tenantId: authStore.tenantId,
+    });
+
+    const byBarcode = new Map<string, ProductItem>();
+    const byProductCode = new Map<string, ProductItem>();
+    for (const p of products) {
+      const item: ProductItem = {
+        id: p.id,
+        name: p.name ?? '',
+        product_code: p.product_code,
+        barcode: p.barcode,
+        list_price_amount: p.list_price_amount,
+        product_weight: p.product_weight,
+        package_weight: p.package_weight,
+        image_url: p.image_url,
+      };
+      if (p.barcode?.trim()) byBarcode.set(p.barcode.trim(), item);
+      if (p.product_code?.trim()) byProductCode.set(p.product_code.trim(), item);
+    }
+
+    const missing: string[] = [];
+    let added = 0;
+    for (const code of codes) {
+      const product = byBarcode.get(code) ?? byProductCode.get(code);
+      if (!product) {
+        missing.push(code);
+        continue;
+      }
+      mergeProductIntoCart(product, qty);
+      added += 1;
+    }
+
+    if (added > 0) {
+      bulkCodesText.value = '';
+    }
+
+    if (missing.length === 0) {
+      $q.notify({ type: 'positive', message: `Added ${added} item${added === 1 ? '' : 's'} to cart.` });
+    } else if (added > 0) {
+      $q.notify({
+        type: 'warning',
+        message: `Added ${added}. Not found: ${missing.join(', ')}`,
+        timeout: 6000,
+      });
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: `Not found: ${missing.join(', ')}`,
+        timeout: 6000,
+      });
+    }
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to look up products.',
+    });
+  } finally {
+    bulkLoading.value = false;
+  }
 };
 
 let currentQuerySeq = 0;
@@ -958,6 +1107,11 @@ onMounted(async () => {
 
 .new-product-btn {
   height: 40px;
+}
+
+.bulk-codes-box {
+  background: rgba(241, 245, 249, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .browse-section {

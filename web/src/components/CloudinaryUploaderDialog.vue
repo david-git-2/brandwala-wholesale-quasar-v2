@@ -311,12 +311,8 @@ function confirmSelection() {
 async function uploadToCloudinary() {
   if (!selectedFile.value) return;
 
-  const cloudName =
-    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME ||
-    (process.env.VITE_CLOUDINARY_CLOUD_NAME as string);
-  const uploadPreset =
-    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET ||
-    (process.env.VITE_CLOUDINARY_UPLOAD_PRESET as string);
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string | undefined;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string | undefined;
 
   if (!cloudName || !uploadPreset) {
     $q.notify({

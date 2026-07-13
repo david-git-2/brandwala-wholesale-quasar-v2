@@ -7,17 +7,13 @@ const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
 const DRIVE_ROOT_STORAGE_KEY = 'tradeflow_drive_app_root_folder_id';
 
 function getConfiguredRootFolderId(): string | null {
-  const folderId = (
-    import.meta.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID || process.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID
-  )?.trim();
+  const folderId = import.meta.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_ID?.trim();
 
   return folderId || null;
 }
 
 function getAppRootFolderName(): string {
-  const configured =
-    import.meta.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_NAME ||
-    process.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_NAME;
+  const configured = import.meta.env.VITE_GOOGLE_DRIVE_ROOT_FOLDER_NAME;
 
   return (configured || 'TradeFlow Uploads').trim();
 }

@@ -91,7 +91,7 @@
                 <q-chip
                   dense
                   square
-                  clickable
+                  :clickable="shipmentStore.currentShipment.status !== 'Ready Stock'"
                   :style="statusChipStyle(shipmentStore.currentShipment.status)"
                   class="q-px-md q-py-sm text-weight-bold q-ma-none"
                 >
@@ -102,8 +102,8 @@
                     }"
                   />
                   {{ shipmentStore.currentShipment.status }}
-                  <q-icon name="arrow_drop_down" class="q-ml-xs" size="16px" />
-                  <q-menu>
+                  <q-icon v-if="shipmentStore.currentShipment.status !== 'Ready Stock'" name="arrow_drop_down" class="q-ml-xs" size="16px" />
+                  <q-menu v-if="shipmentStore.currentShipment.status !== 'Ready Stock'">
                     <q-list dense style="min-width: 180px">
                       <q-item
                         v-for="status in statuses"
@@ -661,6 +661,19 @@
                     Configure quantity splits for all items in the table first
                   </q-tooltip>
                 </q-btn>
+
+                <!-- Rollback Shipment button (only for Ready Stock status) -->
+                <q-btn
+                  v-if="shipmentStore.currentShipment?.status === 'Ready Stock'"
+                  color="negative"
+                  unelevated
+                  class="full-width q-mt-md text-weight-bold text-white"
+                  icon="history"
+                  label="Rollback Shipment to Draft"
+                  no-caps
+                  :loading="updatingStatus"
+                  @click="rollbackShipmentToDraft"
+                />
               </template>
             </q-card>
 
@@ -1268,6 +1281,11 @@ const changeStatus = (newStatus: string) => {
   if (!shipmentStore.currentShipment) return;
   if (shipmentStore.currentShipment.status === newStatus) return;
 
+  if (shipmentStore.currentShipment.status === 'Ready Stock') {
+    showWarningNotification('To change status, please use the Rollback option to revert the shipment to Draft.');
+    return;
+  }
+
   if (newStatus === 'Ready Stock') {
     if (!isSplitsComplete.value) {
       showWarningNotification('Please configure quantity splits for all line items first.');
@@ -1328,6 +1346,31 @@ const changeStatus = (newStatus: string) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         showErrorNotification(message || 'Failed to update status');
+      } finally {
+        updatingStatus.value = false;
+      }
+    })();
+  });
+};
+
+const rollbackShipmentToDraft = () => {
+  if (!shipmentStore.currentShipment) return;
+
+  $q.dialog({
+    title: 'Rollback Shipment to Draft',
+    message:
+      'This will delete all active stock entries and allocations for this shipment. The shipment status will be set back to "Draft". Are you sure you want to proceed?',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    void (async () => {
+      updatingStatus.value = true;
+      try {
+        await shipmentStore.rollbackShipmentToDraft(shipmentId);
+        showSuccessNotification('Shipment successfully rolled back to Draft.');
+        loadShipmentDetails();
+      } catch (err: any) {
+        showErrorNotification(err.message || 'Failed to rollback shipment.');
       } finally {
         updatingStatus.value = false;
       }

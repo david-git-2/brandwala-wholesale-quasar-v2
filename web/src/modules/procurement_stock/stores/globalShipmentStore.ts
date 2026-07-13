@@ -443,5 +443,43 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.loading = false;
       }
     },
+
+    async rollbackShipmentToDraft(shipmentId: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        // 1. Check for invoice references
+        const invoiceNos = await globalShipmentRepository.checkShipmentInvoiceReferences(shipmentId);
+        if (invoiceNos.length > 0) {
+          throw new Error(
+            `Cannot rollback shipment. The following invoices contain stock from this shipment and must be deleted first: ${invoiceNos.join(', ')}`
+          );
+        }
+
+        // 2. Delete global_stocks associated with shipment items (cascades to allocations)
+        const itemIds = this.currentShipmentItems.map((item) => item.id);
+        if (itemIds.length > 0) {
+          const { error: deleteStocksError } = await supabase
+            .from('global_stocks')
+            .delete()
+            .in('shipment_item_id', itemIds);
+          if (deleteStocksError) throw deleteStocksError;
+        }
+
+        // 3. Update shipment status to Draft and stock_ready to false
+        await globalShipmentRepository.updateShipment(shipmentId, {
+          status: 'Draft',
+          stock_ready: false,
+        });
+
+        // 4. Reload details
+        await this.fetchShipmentDetails(shipmentId);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to rollback shipment';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

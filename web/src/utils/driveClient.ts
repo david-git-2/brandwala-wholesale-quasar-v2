@@ -7,19 +7,13 @@ export type DriveUploadResult = {
 };
 
 export function isDriveUploadEnabled(): boolean {
-  const flag =
-    import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED ||
-    process.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED;
+  const flag = import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_ENABLED;
 
   return String(flag).toLowerCase() === 'true';
 }
 
 export function getDefaultThriftDriveFolder(): string {
-  return (
-    import.meta.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER ||
-    process.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER ||
-    'thrift'
-  );
+  return import.meta.env.VITE_GOOGLE_DRIVE_THRIFT_FOLDER || 'thrift';
 }
 
 export function buildThriftShipmentDriveFolderPath(shipmentId: number): string {

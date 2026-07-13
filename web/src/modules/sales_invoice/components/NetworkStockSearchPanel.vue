@@ -1,7 +1,7 @@
 <template>
   <div class="network-stock-search">
     <div v-if="showSearchControls" class="row q-col-gutter-sm items-center q-mb-md">
-      <div class="col-12 col-sm-4">
+      <div class="col-12 col-sm-3">
         <q-select
           v-model="searchField"
           :options="searchFieldOptions"
@@ -14,7 +14,24 @@
           @update:model-value="onCriteriaChange"
         />
       </div>
-      <div class="col-12 col-sm-8">
+      <div class="col-12 col-sm-4">
+        <q-select
+          v-model="selectedShipmentId"
+          :options="shipmentOptions"
+          outlined
+          dense
+          emit-value
+          map-options
+          option-label="label"
+          option-value="value"
+          label="Filter Shipment"
+          class="soft-input"
+          clearable
+          :loading="loadingShipments"
+          @update:model-value="onCriteriaChange"
+        />
+      </div>
+      <div class="col-12 col-sm-5">
         <q-input
           v-model="searchQuery"
           :placeholder="searchPlaceholder"
@@ -130,6 +147,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { supabase } from 'src/boot/supabase';
 
 import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { globalRepository } from 'src/modules/global/repositories/globalRepository';
@@ -166,10 +184,49 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'select', row: StockNetworkRow): void;
   (e: 'view', row: StockNetworkRow): void;
-}>();
+ }>();
 
 const searchField = ref<GlobalStockSearchField>('all');
 const searchQuery = ref(props.initialSearch);
+const selectedShipmentId = ref<number | null>(null);
+const shipments = ref<Array<{ id: number; name: string; tenant_shipment_id: number | null }>>([]);
+const loadingShipments = ref(false);
+
+const shipmentOptions = computed(() => {
+  const opts = shipments.value.map((s) => ({
+    label: `${s.tenant_shipment_id ? '#' + s.tenant_shipment_id + ' - ' : ''}${s.name}`,
+    value: s.id,
+  }));
+  return [{ label: 'All Shipments', value: null }, ...opts];
+});
+
+const loadShipments = async () => {
+  if (!props.contextTenantId) return;
+  loadingShipments.value = true;
+  try {
+    const { data: parentTenantId, error: resolveError } = await supabase.rpc(
+      'resolve_parent_tenant_id',
+      { p_tenant_id: props.contextTenantId }
+    );
+    if (resolveError) throw resolveError;
+
+    const targetTenantId = parentTenantId || props.contextTenantId;
+
+    const { data, error } = await supabase
+      .from('global_shipments')
+      .select('id, name, tenant_shipment_id')
+      .eq('parent_tenant_id', targetTenantId)
+      .eq('status', 'Ready Stock')
+      .order('id', { ascending: false });
+    if (error) throw error;
+    shipments.value = data || [];
+  } catch (err) {
+    console.error('Failed to load shipments for filter:', err);
+  } finally {
+    loadingShipments.value = false;
+  }
+};
+
 const results = ref<StockNetworkRow[]>([]);
 const loading = ref(false);
 const resolvingCosts = ref(false);
@@ -243,8 +300,8 @@ const runSearch = async () => {
     return;
   }
 
-  const query = searchQuery.value.trim();
-  if (!query) {
+  const query = searchQuery.value?.trim() || '';
+  if (!query && !selectedShipmentId.value) {
     results.value = [];
     return;
   }
@@ -256,6 +313,7 @@ const runSearch = async () => {
       mode: props.mode,
       search: query,
       search_field: searchField.value,
+      shipment_id: selectedShipmentId.value,
       page_size: 50,
       skip_count: true,
     });
@@ -277,9 +335,7 @@ const onSearchInput = () => {
 };
 
 const onCriteriaChange = () => {
-  if (searchQuery.value.trim()) {
-    void runSearch();
-  }
+  void runSearch();
 };
 
 const onSelectRow = (row: StockNetworkRow) => {
@@ -296,7 +352,8 @@ const onSelectGroup = (group: StockNetworkProductGroup) => {
 watch(
   () => [props.contextTenantId, props.mode] as const,
   () => {
-    if (searchQuery.value.trim()) {
+    void loadShipments();
+    if (searchQuery.value?.trim() || selectedShipmentId.value) {
       void runSearch();
     }
   },

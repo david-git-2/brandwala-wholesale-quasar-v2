@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="localModelValue" backdrop-filter="blur(4px)">
+  <q-dialog v-model="localModelValue">
     <q-card
       style="width: 760px; max-width: 95vw; max-height: 90vh"
       class="floating-surface shadow-2 q-pa-md scroll"

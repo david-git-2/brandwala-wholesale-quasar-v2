@@ -158,6 +158,22 @@
             </q-td>
           </template>
 
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-center">
+              <q-btn
+                flat
+                round
+                dense
+                icon="call_split"
+                size="sm"
+                color="primary"
+                @click.stop="openSplitDialog(props.row)"
+              >
+                <q-tooltip>Split Stock Quantity</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+
           <template #bottom-row>
             <q-tr class="totals-row">
               <q-td class="totals-row__cell" />
@@ -183,6 +199,8 @@
                 {{ pageTotals.totalQty }} pcs
               </q-td>
               <!-- quantity -->
+              <q-td class="totals-row__cell" />
+              <!-- actions -->
             </q-tr>
           </template>
 
@@ -208,6 +226,7 @@ import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StockTypeConfigPanel from '../components/StockTypeConfigPanel.vue';
+import GlobalStockSplitDialog from '../components/GlobalStockSplitDialog.vue';
 import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
@@ -263,6 +282,13 @@ const columns: QTableColumn[] = [
     sortable: false,
     classes: 'stock-qty-col',
     headerClasses: 'stock-qty-col',
+  },
+  {
+    name: 'actions',
+    label: 'Actions',
+    field: 'id',
+    align: 'center',
+    sortable: false,
   },
 ];
 
@@ -390,6 +416,21 @@ const onResetFilters = () => {
 const openStockTypesConfig = () => {
   $q.dialog({
     component: StockTypeConfigPanel,
+  }).onOk(() => {
+    void loadStock();
+  });
+};
+
+const openSplitDialog = (row: GlobalStock) => {
+  $q.dialog({
+    component: GlobalStockSplitDialog,
+    componentProps: {
+      shipmentItemId: row.shipment_item_id,
+      itemName: row.item_name,
+      productCode: row.product_code,
+      barcode: row.barcode,
+      imageUrl: row.image_url,
+    },
   }).onOk(() => {
     void loadStock();
   });

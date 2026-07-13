@@ -37,8 +37,6 @@ const FILL_FOOTER_TOTAL_COST_BDT = 'FF92CDDC';
 const FILL_FOOTER_TOTAL_SELL = 'FF92D050';
 
 const FILL_BLUE_HEADER = 'FFDCE6F1';
-const FILL_GREEN_HEADER = 'FFE2EFDA';
-const FILL_ORANGE_HEADER = 'FFFCE4D6';
 
 const FONT_SIZE = 10;
 const SPACER_ROW_HEIGHT = 28.5;
@@ -116,16 +114,16 @@ const excelRowHeightToPixels = (heightPt: number) => heightPt * (96 / 72);
 const pixelsToEmu = (px: number) => Math.round(px * EMU_PER_PIXEL);
 
 type ExcelCell = {
-  fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } };
-  font?: { bold?: boolean; color?: { argb: string }; size?: number; name?: string };
-  alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean };
+  fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } } | undefined;
+  font?: { bold?: boolean | undefined; color?: { argb: string } | undefined; size?: number | undefined; name?: string | undefined } | undefined;
+  alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean | undefined } | undefined;
   border?: {
-    top?: { style: 'thin' };
-    left?: { style: 'thin' };
-    bottom?: { style: 'thin' };
-    right?: { style: 'thin' };
-  };
-  numFmt?: string;
+    top?: { style: 'thin' } | undefined;
+    left?: { style: 'thin' } | undefined;
+    bottom?: { style: 'thin' } | undefined;
+    right?: { style: 'thin' } | undefined;
+  } | undefined;
+  numFmt?: string | undefined;
   value?: any;
 };
 
@@ -138,12 +136,12 @@ const solidFill = (argb: string) => ({
 const applyCellStyle = (
   cell: ExcelCell,
   opts: {
-    fillArgb?: string;
-    bold?: boolean;
-    numFmt?: string;
-    fontColorArgb?: string;
-    fontSize?: number;
-    alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean };
+    fillArgb?: string | undefined;
+    bold?: boolean | undefined;
+    numFmt?: string | undefined;
+    fontColorArgb?: string | undefined;
+    fontSize?: number | undefined;
+    alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean | undefined } | undefined;
   } = {},
 ) => {
   if (opts.fillArgb !== undefined) {
@@ -450,88 +448,147 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     mergeAndStyleRange(worksheet, 3, curRow, 5, curRow, row.val, { horizontal: 'left' });
   });
 
-  // Section 2: Landed Cost Summary (Columns G to K)
-  mergeAndStyleRange(worksheet, 7, summaryStartRow, 11, summaryStartRow, 'LANDED COST SUMMARY', {
-    fillArgb: FILL_GREEN_HEADER,
-    bold: true,
-  });
+  // Costing breakdown (screenshot-style table) — black text, matched fills
+  const wtsStartRow = summaryStartRow + overviewData.length + 3;
 
-  const pSymbol = input.purchaseCurrencySymbol;
-  const cSymbol = input.costCurrencySymbol;
+  worksheet.addRow([]);
+  worksheet.addRow([]);
 
-  const costData = [
-    { label: 'Total Quantity', val: input.totals.quantity, fmt: '0' },
-    { label: 'Packaging Weight', val: `${input.totals.packagingWeightKg.toFixed(2)} kg` },
-    { label: 'Invoice Weight', val: `${input.totals.cargoWeightKg.toFixed(2)} kg` },
-    { label: 'Box Weight Sum', val: `${input.boxWeightSum.toFixed(2)} kg` },
-    { label: `Product Purchase Cost (${pSymbol})`, val: input.totals.goodsPurchase, fmt: NUM_FMT_KG_GBP },
-    { label: `Cargo Cost Purchase (${pSymbol})`, val: input.totals.cargoPurchase, fmt: NUM_FMT_KG_GBP },
-    { label: `Total Purchase Cost (${pSymbol})`, val: input.totals.totalPurchase, fmt: NUM_FMT_KG_GBP },
-    { label: `Product Cost (${cSymbol})`, val: input.totals.goodsCost, fmt: NUM_FMT_BDT },
-    { label: `Cargo Cost (${cSymbol})`, val: input.totals.cargoCost, fmt: NUM_FMT_BDT },
-    { label: `Total Cost (${cSymbol})`, val: input.totals.totalCost, fmt: NUM_FMT_BDT, bold: true, fill: 'FFE2EFDA' },
-    { label: 'Blended Transaction Rate', val: input.totals.transactionRate ? `${cSymbol}${input.totals.transactionRate.toFixed(4)}` : '—' },
-    { label: 'Product Conversion Rate', val: input.shipment.product_conversion_rate, fmt: '0.00' },
-    { label: 'Cargo Conversion Rate', val: input.shipment.cargo_conversion_rate, fmt: '0.00' },
+  // Exact fills from reference sheet
+  const FILL_GOODS_PINK = 'FFE8C1C1';
+  const FILL_CARGO_ORANGE = 'FFFFD8B1';
+  const FILL_TOTAL_OLIVE = 'FF7A9148';
+  const FILL_TX_BLUE = 'FF92D0EA';
+  const FONT_BLACK = 'FF000000';
+
+  const productConv =
+    input.shipment.type === 'international' ? toNum(input.shipment.product_conversion_rate) : 1;
+  const cargoConv =
+    input.shipment.type === 'international' ? toNum(input.shipment.cargo_conversion_rate) : 1;
+  const cargoRatePerKg = toNum(input.shipment.cargo_rate);
+  const goodsGbp = input.totals.goodsPurchase;
+  const goodsBdt = input.totals.goodsCost;
+  const cargoKg = input.totals.cargoWeightKg;
+  const cargoGbp = input.totals.cargoPurchase;
+  const cargoBdt = input.totals.cargoCost;
+  const totalCosting = input.totals.totalCost;
+  const txRate = input.totals.transactionRate;
+
+  type CostingRow = {
+    label: string;
+    colB?: number | null;
+    colC?: number | null;
+    colD: number | string;
+    fill: string;
+    bold?: boolean | undefined;
+    fmtB?: string | undefined;
+    fmtC?: string | undefined;
+    fmtD?: string | undefined;
+  };
+
+  const costingRows: CostingRow[] = [
+    {
+      label: 'Goods Cost in GBP',
+      colD: goodsGbp,
+      fill: FILL_GOODS_PINK,
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Goods Cost in BDT',
+      colC: productConv,
+      colD: goodsBdt,
+      fill: FILL_GOODS_PINK,
+      bold: true,
+      fmtC: '0.00',
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Cargo Weight in KG',
+      colD: cargoKg,
+      fill: FILL_CARGO_ORANGE,
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Cargo Cost in GBP',
+      colB: cargoRatePerKg,
+      colD: cargoGbp,
+      fill: FILL_CARGO_ORANGE,
+      fmtB: '0.0000',
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Cargo Cost in BDT',
+      colC: cargoConv,
+      colD: cargoBdt,
+      fill: FILL_CARGO_ORANGE,
+      bold: true,
+      fmtC: '0.00',
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Total Costing',
+      colD: totalCosting,
+      fill: FILL_TOTAL_OLIVE,
+      bold: true,
+      fmtD: NUM_FMT_KG_GBP,
+    },
+    {
+      label: 'Transaction Rate',
+      colD: txRate !== null ? txRate : '—',
+      fill: FILL_TX_BLUE,
+      bold: true,
+      fmtD: typeof txRate === 'number' ? '0.00' : undefined,
+    },
   ];
 
-  costData.forEach((row, i) => {
-    const curRow = summaryStartRow + 1 + i;
-    // Label cell (Cols G to H = 7 to 8)
-    mergeAndStyleRange(worksheet, 7, curRow, 8, curRow, row.label, { horizontal: 'left', bold: true });
-    // Value cell (Cols I to K = 9 to 11)
-    const valOpts: {
-      horizontal?: 'center' | 'left' | 'right';
-      bold?: boolean;
-      fillArgb?: string;
-      numFmt?: string;
-    } = { horizontal: 'right' };
-    
-    if (row.bold !== undefined) valOpts.bold = row.bold;
-    if (row.fill !== undefined) valOpts.fillArgb = row.fill;
-    if (row.fmt !== undefined) valOpts.numFmt = row.fmt;
+  costingRows.forEach((row, i) => {
+    const curRow = wtsStartRow + i;
 
-    mergeAndStyleRange(worksheet, 9, curRow, 11, curRow, row.val, valOpts);
-  });
-
-  // Section 3: Quantity Splits Summary (Columns M to R)
-  mergeAndStyleRange(worksheet, 13, summaryStartRow, 18, summaryStartRow, 'QUANTITY SPLITS SUMMARY', {
-    fillArgb: FILL_ORANGE_HEADER,
-    bold: true,
-  });
-
-  const splits = input.splitsSummary.breakdown;
-  if (splits.length === 0) {
-    mergeAndStyleRange(worksheet, 13, summaryStartRow + 1, 18, summaryStartRow + 1, 'No splits configured/pending.', {
-      horizontal: 'center',
-    });
-  } else {
-    splits.forEach((split, i) => {
-      const curRow = summaryStartRow + 1 + i;
-      // Description cell (Cols M to P = 13 to 16)
-      mergeAndStyleRange(worksheet, 13, curRow, 16, curRow, split.description, { horizontal: 'left' });
-      // Value cell (Cols Q to R = 17 to 18)
-      mergeAndStyleRange(worksheet, 17, curRow, 18, curRow, `${split.quantity} pcs`, { horizontal: 'right' });
-    });
-
-    const totalSplitsRow = summaryStartRow + 1 + splits.length;
-    // Label
-    mergeAndStyleRange(worksheet, 13, totalSplitsRow, 16, totalSplitsRow, 'Total Allocated / Ordered', {
+    mergeAndStyleRange(worksheet, 2, curRow, 2, curRow, row.label, {
       horizontal: 'left',
-      bold: true,
-      fillArgb: 'FFFCE4D6',
+      bold: row.bold ?? false,
+      fillArgb: row.fill,
     });
-    // Value
-    mergeAndStyleRange(
-      worksheet,
-      17,
-      totalSplitsRow,
-      18,
-      totalSplitsRow,
-      `${input.splitsSummary.totalAllocated} / ${input.splitsSummary.totalOrdered} pcs`,
-      { horizontal: 'right', bold: true, fillArgb: 'FFFCE4D6' },
-    );
-  }
+    const labelCell = worksheet.getCell(curRow, 2);
+    labelCell.font = {
+      ...labelCell.font,
+      color: { argb: FONT_BLACK },
+      bold: row.bold ?? false,
+    };
+
+    const cellB = worksheet.getCell(curRow, 3);
+    applyCellStyle(cellB, {
+      fillArgb: row.fill,
+      bold: row.bold,
+      numFmt: row.fmtB,
+      fontColorArgb: FONT_BLACK,
+      alignment: { vertical: 'middle', horizontal: 'right', wrapText: true },
+    });
+    cellB.value = row.colB ?? '';
+    cellB.border = thinBorderSet;
+
+    const cellC = worksheet.getCell(curRow, 4);
+    applyCellStyle(cellC, {
+      fillArgb: row.fill,
+      bold: row.bold,
+      numFmt: row.fmtC,
+      fontColorArgb: FONT_BLACK,
+      alignment: { vertical: 'middle', horizontal: 'right', wrapText: true },
+    });
+    cellC.value = row.colC ?? '';
+    cellC.border = thinBorderSet;
+
+    const cellD = worksheet.getCell(curRow, 5);
+    applyCellStyle(cellD, {
+      fillArgb: row.fill,
+      bold: true,
+      numFmt: row.fmtD,
+      fontColorArgb: FONT_BLACK,
+      alignment: { vertical: 'middle', horizontal: 'right', wrapText: true },
+    });
+    cellD.value = row.colD;
+    cellD.border = thinBorderSet;
+  });
 
   return workbook;
 }

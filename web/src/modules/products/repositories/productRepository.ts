@@ -656,6 +656,46 @@ const deleteProductCategory = async (payload: ProductCategoryDeleteInput): Promi
   if (error) throw error;
 };
 
+const escapePostgrestInValue = (value: string) => `"${value.replace(/"/g, '\\"')}"`;
+
+const lookupProductsByCodes = async ({
+  codes,
+  tenantId,
+}: {
+  codes: string[];
+  tenantId: number;
+}): Promise<Product[]> => {
+  const uniqueCodes = [
+    ...new Set(codes.map((c) => c.trim()).filter((c) => c.length > 0)),
+  ];
+  if (uniqueCodes.length === 0) return [];
+
+  const scopeTenantId = await resolveProductScopeTenantId(tenantId);
+  const chunkSize = 100;
+  const results: Product[] = [];
+  const seenIds = new Set<number>();
+
+  for (let i = 0; i < uniqueCodes.length; i += chunkSize) {
+    const chunk = uniqueCodes.slice(i, i + chunkSize);
+    const inList = chunk.map(escapePostgrestInValue).join(',');
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('parent_tenant_id', scopeTenantId)
+      .or(`barcode.in.(${inList}),product_code.in.(${inList})`);
+
+    if (error) throw error;
+
+    for (const row of (data as Product[] | null) ?? []) {
+      if (seenIds.has(row.id)) continue;
+      seenIds.add(row.id);
+      results.push(row);
+    }
+  }
+
+  return results;
+};
+
 export const productRepository = {
   listBrands,
   listCategories,
@@ -668,6 +708,7 @@ export const productRepository = {
   updateProductCategory,
   deleteProductCategory,
   listProducts,
+  lookupProductsByCodes,
   getProductById,
   createProduct,
   updateProduct,

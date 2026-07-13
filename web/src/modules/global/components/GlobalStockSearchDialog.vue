@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="isOpen" backdrop-filter="blur(4px)">
+  <q-dialog v-model="isOpen">
     <q-card class="search-card floating-surface shadow-2">
       <q-card-section class="q-py-md row items-center justify-between">
         <div class="row items-center q-gutter-sm">
@@ -72,9 +72,8 @@ const onSelectResult = (row: StockNetworkRow) => {
 .search-card {
   width: 90vw;
   max-width: 650px;
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   border-radius: 16px;
   border: 1px solid rgba(34, 56, 101, 0.08);
-  backdrop-filter: blur(10px);
 }
 </style>

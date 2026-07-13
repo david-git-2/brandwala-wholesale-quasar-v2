@@ -117,6 +117,50 @@ const onBrandChanged = (id: number | null) => {
   }
 };
 
+const combineInvoiceItemsForPreview = (
+  itemList: GlobalInvoiceItemRow[],
+  isDropship: boolean,
+) => {
+  const grouped: Record<string, {
+    id: number;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    imageUrl: string | null;
+  }> = {};
+
+  for (const row of itemList) {
+    const key = row.name_snapshot;
+    
+    const unit = isDropship
+      ? Number(row.recipient_price_amount ?? row.sell_price_amount)
+      : Number(row.sell_price_amount);
+    const lineTotal = isDropship
+      ? Number(row.line_face_total_amount ?? row.line_total_amount)
+      : Number(row.line_total_amount);
+
+    if (!grouped[key]) {
+      grouped[key] = {
+        id: row.id,
+        name: row.name_snapshot,
+        quantity: Number(row.quantity),
+        unitPrice: unit,
+        lineTotal,
+        imageUrl: row.image_url ?? null,
+      };
+    } else {
+      grouped[key].quantity += Number(row.quantity);
+      grouped[key].lineTotal += lineTotal;
+      if (grouped[key].quantity > 0) {
+        grouped[key].unitPrice = grouped[key].lineTotal / grouped[key].quantity;
+      }
+    }
+  }
+
+  return Object.values(grouped);
+};
+
 const printModel = computed<InvoicePrintModel>(() => {
   const inv = invoice.value;
   const isWholesale = inv?.invoice_type === 'wholesale';
@@ -167,22 +211,7 @@ const printModel = computed<InvoicePrintModel>(() => {
     recipientName: inv?.recipient_name || inv?.billing_profiles?.name || '-',
     recipientPhone: inv?.recipient_phone ?? null,
     recipientAddress: inv?.recipient_address ?? null,
-    lines: items.value.map((row) => {
-      const unit = isDropship
-        ? Number(row.recipient_price_amount ?? row.sell_price_amount)
-        : Number(row.sell_price_amount);
-      const lineTotal = isDropship
-        ? Number(row.line_face_total_amount ?? row.line_total_amount)
-        : Number(row.line_total_amount);
-      return {
-        id: row.id,
-        name: row.name_snapshot,
-        quantity: Number(row.quantity),
-        unitPrice: unit,
-        lineTotal,
-        imageUrl: row.image_url ?? null,
-      };
-    }),
+    lines: combineInvoiceItemsForPreview(items.value, isDropship),
     charges: inlineCharges,
     subtotal,
     discount: Number(inv?.discount_amount ?? 0),

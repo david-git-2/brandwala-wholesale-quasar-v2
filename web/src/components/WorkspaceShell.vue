@@ -1018,6 +1018,11 @@ const confirmLogout = async () => {
 }
 
 .command-palette-card {
+  --bw-theme-surface: var(--bw-brand-surface);
+  --bw-theme-base: var(--bw-brand-base);
+  --bw-theme-border: var(--bw-brand-border);
+  --shell-surface: var(--bw-brand-surface);
+  --shell-border: var(--bw-brand-border);
   border: 1px solid var(--shell-border);
   background: var(--shell-surface);
   border-radius: 12px;
@@ -1034,6 +1039,7 @@ const confirmLogout = async () => {
 
 .command-palette-input :deep(.q-field__control) {
   border-radius: 8px;
+  background: var(--bw-brand-base) !important;
 }
 
 .workspace-shell__logout {

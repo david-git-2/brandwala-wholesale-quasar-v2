@@ -7937,6 +7937,10 @@ export type Database = {
           tenant_slug: string
         }[]
       }
+      get_available_stock: {
+        Args: { p_stock_id: number; p_tenant_id: number }
+        Returns: number
+      }
       get_cart: { Args: { p_cart_id: number }; Returns: Json }
       get_cart_details: { Args: { p_cart_id: number }; Returns: Json }
       get_costing_file_by_id: {
