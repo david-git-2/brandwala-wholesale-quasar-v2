@@ -1691,7 +1691,12 @@ const visibleReviewColumns = computed(() => {
   const selectedNames = new Set(visibleProductColumnNames.value);
   return reviewColumns.filter((column) => {
     if (column.name === 'actions') {
-      return selectedFile.value?.status === 'in_review';
+      return (
+        selectedFile.value?.status === 'in_review' ||
+        selectedFile.value?.status === 'offered' ||
+        selectedFile.value?.status === 'accepted' ||
+        selectedFile.value?.status === 'po_placed'
+      );
     }
     const isShared = productColumns.some((col) => col.name === column.name);
     if (!isShared) {
@@ -2025,7 +2030,11 @@ const handleCreateItem = async (payload: {
 };
 
 const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
-  if (selectedFile.value?.status !== 'offered' && selectedFile.value?.status !== 'po_placed') {
+  if (
+    selectedFile.value?.status !== 'offered' &&
+    selectedFile.value?.status !== 'accepted' &&
+    selectedFile.value?.status !== 'po_placed'
+  ) {
     return;
   }
 

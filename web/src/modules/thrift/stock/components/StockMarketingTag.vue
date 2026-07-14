@@ -155,6 +155,7 @@ const showHeader = computed(() => {
 .marketing-tag-card__additional-line {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 1.5mm;
   min-width: 0;
   flex-shrink: 1;
@@ -169,7 +170,6 @@ const showHeader = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  flex: 1;
 }
 
 .marketing-tag-card__additional-value {
@@ -181,7 +181,6 @@ const showHeader = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  flex: 1;
 }
 
 .marketing-tag-card__barcode-wrap {
