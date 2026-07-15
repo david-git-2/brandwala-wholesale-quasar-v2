@@ -162,7 +162,7 @@
       <q-card-section class="row items-center justify-between q-py-md bg-primary text-white">
         <div class="text-h6 row items-center no-wrap">
           <q-icon name="help_outline" class="q-mr-sm" size="24px" />
-          Shop Features Guide
+          Shop Features Guide / দোকানের ফিচার গাইড
         </div>
         <q-btn icon="close" flat round dense v-close-popup color="white" />
       </q-card-section>
@@ -177,9 +177,9 @@
         align="justify"
         narrow-indicator
       >
-        <q-tab name="types" label="Shop Types" />
-        <q-tab name="modes" label="Order Modes" />
-        <q-tab name="settings" label="Settings" />
+        <q-tab name="types" label="Shop Types / ধরন" />
+        <q-tab name="modes" label="Order Modes / অর্ডার" />
+        <q-tab name="settings" label="Settings / সেটিংস" />
       </q-tabs>
 
       <q-separator />
@@ -191,9 +191,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="storefront" color="blue-1" text-color="blue-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Vendor Catalog</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Vendor Catalog / ভেন্ডর ক্যাটালগ</div>
               <div class="text-caption text-grey-7">
-                Directly displays a supplier's catalog. Perfect for collecting bulk or low-MOQ procurement requests. No stock allocation is required.
+                Shows a supplier's product list directly. Customers request what they want to buy (bulk or low MOQ). You do not need allocated stock.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                সাপ্লায়ারের পণ্য তালিকা সরাসরি দেখায়। কাস্টমার কি কিনতে চায় অনুরোধ করে। আগে থেকে স্টক বরাদ্দ লাগে না।
               </div>
             </div>
           </div>
@@ -202,9 +205,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="local_offer" color="green-1" text-color="green-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Price</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Price / নির্ধারিত দাম</div>
               <div class="text-caption text-grey-7">
-                Sells inventory from your child-tenant's allocated stock pool at a set, non-negotiable retail price.
+                Sells from your branch/child-tenant stock at a fixed retail price. Price cannot be changed by the customer.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                আপনার শাখা/চাইল্ড-টেন্যান্টের স্টক থেকে নির্ধারিত খুচরা দামে বিক্রি। কাস্টমার দাম বদলাতে পারে না।
               </div>
             </div>
           </div>
@@ -213,9 +219,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="local_shipping" color="orange-1" text-color="orange-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Dropship</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Dropship / ড্রপশিপ</div>
               <div class="text-caption text-grey-7">
-                Lets dropshippers define their own retail prices and markup on allocated stock, with a hard minimum floor price constraint. Negotiation is disabled.
+                Reseller sets their own selling price on allocated stock, but cannot go below a minimum floor price. Negotiation stays off.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                রিসেলার বরাদ্দ স্টকে নিজের বিক্রয়মূল্য সেট করে, তবে ন্যূনতম দামের নিচে নামতে পারে না। দরকষাকষি বন্ধ থাকে।
               </div>
             </div>
           </div>
@@ -226,9 +235,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="assignment" color="purple-1" text-color="purple-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Procurement Intent</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Procurement Intent / ক্রয় অনুরোধ</div>
               <div class="text-caption text-grey-7">
-                Customers add products to request quotes. Staff review, price, and transition requests into central warehouse procurement orders.
+                Customer picks products and asks for a quote. Staff review, set price, then turn it into a warehouse procurement order.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                কাস্টমার পণ্য বেছে কোটেশন চায়। স্টাফ দেখে দাম নির্ধারণ করে, তারপর ওয়্যারহাউজ প্রকিউরমেন্ট অর্ডারে রূপান্তর করে।
               </div>
             </div>
           </div>
@@ -237,9 +249,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="shopping_cart" color="teal-1" text-color="teal-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Checkout</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Checkout / নির্ধারিত চেকআউট</div>
               <div class="text-caption text-grey-7">
-                Traditional retail checkout: customer builds a cart, completes purchase at the listed price, generating an immediate invoice.
+                Normal retail buy: cart → pay at listed price → invoice is created right away.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                সাধারণ খুচরা কেনা: কার্ট → তালিকাভুক্ত দামে কেনা → সাথে সাথে ইনভয়েস তৈরি।
               </div>
             </div>
           </div>
@@ -248,9 +263,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="business" color="indigo-1" text-color="indigo-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Wholesale Checkout</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Wholesale Checkout / পাইকারি চেকআউট</div>
               <div class="text-caption text-grey-7">
-                A custom invoicing and order workflow optimized specifically for bulk, account-based B2B transactions.
+                For bulk B2B orders with accounts: custom invoice/order flow instead of simple retail checkout.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                অ্যাকাউন্টভিত্তিক বাল্ক B2B অর্ডারের জন্য: সাধারণ খুচরা চেকআউটের বদলে কাস্টম ইনভয়েস/অর্ডার প্রক্রিয়া।
               </div>
             </div>
           </div>
@@ -261,9 +279,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="forum" color="pink-1" text-color="pink-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Negotiable</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Negotiable / দরকষাকষি</div>
               <div class="text-caption text-grey-7">
-                Enables active price negotiations. Buyers and staff can submit counter-offers on orders. (Must be disabled for Dropship).
+                On: buyers and staff can send counter-offers. Off for Dropship shops (required).
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                চালু থাকলে ক্রেতা ও স্টাফ কাউন্টার অফার পাঠাতে পারে। ড্রপশিপ দোকানে অবশ্যই বন্ধ রাখতে হবে।
               </div>
             </div>
           </div>
@@ -272,9 +293,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="visibility" color="cyan-1" text-color="cyan-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Show Stock Qty</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Show Stock Qty / স্টক সংখ্যা দেখান</div>
               <div class="text-caption text-grey-7">
-                If enabled, customer storefronts show precise stock counts. If disabled, they only see simple "In Stock / Out of Stock" status.
+                On: show exact stock number. Off: only show “In Stock / Out of Stock”.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                চালু: সঠিক স্টক সংখ্যা দেখায়। বন্ধ: শুধু “স্টকে আছে / নেই” দেখায়।
               </div>
             </div>
           </div>
@@ -283,9 +307,12 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="check_circle" color="positive" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Active</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Active / সক্রিয়</div>
               <div class="text-caption text-grey-7">
-                Controls the storefront's general visibility. If inactive, customers cannot access or view the shop.
+                On: shop is visible to customers. Off: customers cannot open or view the shop.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                চালু: কাস্টমার দোকান দেখতে পায়। বন্ধ: কাস্টমার দোকান খুলতে বা দেখতে পারে না।
               </div>
             </div>
           </div>
@@ -296,7 +323,7 @@
 
       <!-- Footer Actions -->
       <q-card-actions align="right" class="q-pr-md q-pb-md">
-        <q-btn label="Got It" color="primary" unelevated v-close-popup />
+        <q-btn label="Got It / বুঝেছি" color="primary" unelevated v-close-popup />
       </q-card-actions>
     </q-card>
   </q-dialog>

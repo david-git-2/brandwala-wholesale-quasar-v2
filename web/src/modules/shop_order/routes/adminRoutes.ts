@@ -62,10 +62,21 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_permissions'),
       },
       {
+        path: ':groupId/members',
+        name: 'app-shop-customer-group-members-page',
+        component: () => import('src/modules/shop_order/pages/CustomerGroupMembersPage.vue'),
+        beforeEnter: guard('shop_permissions'),
+      },
+      {
         path: ':groupId/permissions',
         name: 'app-shop-customer-group-permissions-page',
-        component: () => import('src/modules/shop_order/pages/CustomerGroupShopProfilePage.vue'),
-        beforeEnter: guard('shop_permissions'),
+        redirect: (to) => ({
+          name: 'app-shop-customer-group-members-page',
+          params: {
+            tenantSlug: to.params.tenantSlug,
+            groupId: to.params.groupId,
+          },
+        }),
       },
     ],
   },

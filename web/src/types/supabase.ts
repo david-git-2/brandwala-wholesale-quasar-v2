@@ -9026,6 +9026,19 @@ export type Database = {
           vendor_code: string
         }[]
       }
+      list_shops_for_customer: {
+        Args: { p_tenant_id?: number }
+        Returns: {
+          id: number
+          is_negotiable: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          see_price: boolean
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          slug: string
+          tenant_id: number
+        }[]
+      }
       list_store_product_pricing: {
         Args: {
           p_page?: number

@@ -1,11 +1,11 @@
 <template>
-  <q-page class="q-pa-md dashboard-page theme-shop">
+  <q-page class="q-pa-md">
     <section class="bw-page__stack">
       <section>
-        <div class="text-overline text-primary">{{ tenantName }}</div>
-        <h1 class="text-h5 text-weight-bold q-my-none">Dashboard</h1>
+        <div class="text-overline text-primary">Shop</div>
+        <h1 class="text-h5 text-weight-bold q-my-none">Browse shops</h1>
         <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-          Continue to shops your group can access.
+          Open a shop your group can access.
         </p>
       </section>
 
@@ -24,7 +24,7 @@
         <q-icon name="storefront" size="64px" color="grey-4" class="q-mb-md" />
         <div class="text-h6">No shops available</div>
         <p class="text-body2 text-grey-5 q-mb-none">
-          Ask your admin to grant your group shop access.
+          Your group does not have browse access to any shop yet.
         </p>
       </div>
 
@@ -32,11 +32,11 @@
         <div v-for="shop in shops" :key="shop.id" class="col-12 col-sm-6 col-md-4">
           <q-card flat bordered class="shop-card cursor-pointer" @click="openShop(shop)">
             <q-card-section>
-              <div class="row items-center no-wrap q-gutter-sm">
+              <div class="row items-start no-wrap q-gutter-sm">
                 <q-icon name="storefront" size="28px" color="primary" />
                 <div class="col">
                   <div class="text-subtitle1 text-weight-bold">{{ shop.name }}</div>
-                  <div class="text-caption text-grey-6">Browse catalog</div>
+                  <div class="text-caption text-grey-6">{{ shop.slug }}</div>
                 </div>
                 <q-icon name="chevron_right" color="grey-5" />
               </div>
@@ -44,61 +44,30 @@
           </q-card>
         </div>
       </div>
-
-      <div v-if="shops.length > 0" class="row q-gutter-sm">
-        <q-btn
-          color="primary"
-          unelevated
-          no-caps
-          icon="shopping_bag"
-          label="Browse shops"
-          @click="goBrowse"
-        />
-        <q-btn
-          flat
-          no-caps
-          color="primary"
-          icon="receipt_long"
-          label="My orders"
-          @click="goOrders"
-        />
-      </div>
     </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { shopOrderService } from 'src/modules/shop_order/services/shopOrderService';
-import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
+import { shopOrderService } from '../services/shopOrderService';
+import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const tenantName = computed(() => authStore.tenant?.name ?? 'Tenant workspace');
 const shops = ref<CustomerAccessibleShop[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-const tenantBase = computed(() =>
-  authStore.tenantSlug ? `/${authStore.tenantSlug}/shop` : '/shop',
-);
-
 const openShop = (shop: CustomerAccessibleShop) => {
   localStorage.setItem('last_visited_shop_id', String(shop.id));
   localStorage.setItem('last_visited_shop_slug', shop.slug);
-  void router.push(`${tenantBase.value}/browse/${shop.slug}`);
-};
-
-const goBrowse = () => {
-  void router.push(`${tenantBase.value}/browse`);
-};
-
-const goOrders = () => {
-  void router.push(`${tenantBase.value}/orders`);
+  const tenantSlug = authStore.tenantSlug;
+  void router.push(tenantSlug ? `/${tenantSlug}/shop/browse/${shop.slug}` : `/shop/browse/${shop.slug}`);
 };
 
 onMounted(async () => {
@@ -122,11 +91,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.dashboard-page {
-  display: grid;
-  gap: 1.25rem;
-}
-
 .shop-card:hover {
   border-color: var(--q-primary);
 }

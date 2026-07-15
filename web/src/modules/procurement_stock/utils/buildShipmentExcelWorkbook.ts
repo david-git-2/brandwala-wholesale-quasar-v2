@@ -254,7 +254,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
 
   const headerRow = worksheet.addRow([...HEADERS]);
   headerRow.height = HEADER_ROW_HEIGHT;
-  headerRow.eachCell((cell) => {
+  headerRow.eachCell((cell: any) => {
     applyCellStyle(cell, { bold: true, fillArgb: FILL_WHITE });
   });
   applyColoredColumnStyle(headerRow, ['G', 'J', 'N', 'P'], true);
@@ -301,7 +301,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     row.getCell('S').value = { formula: `(P${r}-N${r})*D${r}` };
     row.getCell('T').value = { formula: `((P${r}-N${r})*100)/N${r}` };
 
-    row.eachCell((cell) => {
+    row.eachCell((cell: any) => {
       applyCellStyle(cell);
     });
     ['F', 'G', 'H'].forEach((col) => {

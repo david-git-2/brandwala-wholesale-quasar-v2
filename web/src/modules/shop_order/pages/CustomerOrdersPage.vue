@@ -125,6 +125,8 @@ const goToStorefront = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   if (slug) {
     void router.push(`${tenantSlug}/shop/browse/${slug}`);
+  } else {
+    void router.push(`${tenantSlug}/shop/browse`);
   }
 };
 

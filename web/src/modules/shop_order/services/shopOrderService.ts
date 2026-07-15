@@ -171,6 +171,20 @@ const browseShopCatalog = async (
   }
 };
 
+const listShopsForCustomer = async (
+  tenantId?: number | null,
+): Promise<ShopServiceResult<Awaited<ReturnType<typeof shopOrderRepository.listShopsForCustomer>>>> => {
+  try {
+    const data = await shopOrderRepository.listShopsForCustomer(tenantId);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to list accessible shops.',
+    };
+  }
+};
+
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
@@ -183,4 +197,5 @@ export const shopOrderService = {
   placeOrderForProcurement,
   fulfillOrderToInvoice,
   browseShopCatalog,
+  listShopsForCustomer,
 };

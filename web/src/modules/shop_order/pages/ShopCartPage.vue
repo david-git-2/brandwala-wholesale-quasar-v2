@@ -219,7 +219,7 @@ const goBack = () => {
   if (lastSlug) {
     void router.push(`${tenantSlug}/shop/browse/${lastSlug}`);
   } else {
-    void router.push(`${tenantSlug}/app/shop/shops`);
+    void router.push(`${tenantSlug}/shop/browse`);
   }
 };
 

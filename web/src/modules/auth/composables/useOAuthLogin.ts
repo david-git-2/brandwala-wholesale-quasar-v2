@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { supabase } from 'src/boot/supabase';
-import type { AccessRole } from '../guards/accessGuard';
+import { mapShopRoleToAccessRole } from '../guards/accessGuard';
 import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
@@ -47,19 +47,6 @@ const scopeConfig: Record<
     homeRouteName: 'investor-portfolio-page',
     loginRouteName: 'investor-login-page',
   },
-};
-
-const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
-  switch (role) {
-    case 'admin':
-      return 'customer_admin';
-    case 'negotiator':
-      return 'customer_negotiator';
-    case 'staff':
-      return 'customer_staff';
-    default:
-      return null;
-  }
 };
 
 const normalizeModuleKeys = (moduleKeys: string[] | null | undefined) =>
@@ -198,7 +185,7 @@ export function useOAuthLogin(
       savedAt: new Date().toISOString(),
     });
 
-    if (payload.scope === 'app') {
+    if (payload.scope === 'app' || payload.scope === 'shop') {
       tenantStore.hydrateSelectedTenantFromAuth(payload.tenant);
     }
 
@@ -716,7 +703,8 @@ export function useOAuthLogin(
     });
     const redirectPath =
       typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
-    const tenantSlug = getTenantSlugFromRoute(route);
+    const tenantSlug =
+      normalizeTenantSlug(options?.tenantSlug) ?? getTenantSlugFromRoute(route);
 
     if (redirectPath) {
       callbackSearchParams.set('redirect', redirectPath);

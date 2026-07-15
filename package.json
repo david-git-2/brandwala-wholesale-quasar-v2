@@ -7,6 +7,7 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "lint": "pnpm --filter web lint",
+    "type-check": "pnpm --filter web type-check",
     "perf-budget": "pnpm --filter web run perf-budget",
     "python:pc": "bash scripts/run-python-pc.sh",
     "python:wts": "bash scripts/run-python-wts.sh",

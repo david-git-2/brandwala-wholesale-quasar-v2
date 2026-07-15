@@ -43,11 +43,26 @@ const shopRoutes: RouteRecordRaw[] = [
 
   // shop_storefront — Customer Storefront (P5)
   {
-    path: '/:tenantSlug?/shop/browse/:shopSlug',
+    path: '/:tenantSlug?/shop/browse',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
+        name: 'shop-storefront-picker-page',
+        component: () => import('src/modules/shop_order/pages/ShopPickerPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
+          requiredScope: 'shop',
+          requireTenantContext: true,
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+          requiredModule: 'shop_storefront',
+        }),
+      },
+      {
+        path: ':shopSlug',
         name: 'shop-storefront-browse-page',
         component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
         beforeEnter: createAccessGuard({

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { supabase } from 'src/boot/supabase';
 import type { AuthScope } from '../composables/useOAuthLogin';
-import type { AccessRole } from '../guards/accessGuard';
+import { mapShopRoleToAccessRole, type AccessRole } from '../guards/accessGuard';
 import { clearTenantWorkspaceStorage, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
@@ -226,13 +226,16 @@ export const useAuthStore = defineStore('auth', () => {
         const bootstrap = Array.isArray(data) ? data[0] : data;
         if (!bootstrap) return false;
 
+        const shopRole = mapShopRoleToAccessRole(bootstrap.member_role ?? '');
+        if (!shopRole) return false;
+
         saveAccess({
           scope: 'shop',
-          matchedRole: bootstrap.member_role,
+          matchedRole: shopRole,
           user: snapshot.value.user,
           member: {
             ...snapshot.value.member,
-            role: bootstrap.member_role,
+            role: shopRole,
             name: bootstrap.member_name ?? null,
             isActive: Boolean(bootstrap.member_is_active),
             tenantId: bootstrap.tenant_id,
@@ -256,6 +259,10 @@ export const useAuthStore = defineStore('auth', () => {
           isAdmin: Boolean(bootstrap.is_admin),
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
+        });
+        tenantStore.hydrateSelectedTenantFromAuth({
+          id: bootstrap.tenant_id,
+          slug: bootstrap.tenant_slug,
         });
         lastFreshnessCheckAt = null;
         return true;

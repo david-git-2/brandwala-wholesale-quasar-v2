@@ -83,6 +83,31 @@ const browseShopCatalog = async (
   return data;
 };
 
+export type CustomerAccessibleShop = {
+  id: number;
+  tenant_id: number;
+  name: string;
+  slug: string;
+  shop_type: string;
+  order_mode: string;
+  is_negotiable: boolean;
+  see_price: boolean;
+};
+
+const listShopsForCustomer = async (
+  tenantId?: number | null,
+): Promise<CustomerAccessibleShop[]> => {
+  const { data, error } = await supabase.rpc('list_shops_for_customer', {
+    p_tenant_id: tenantId ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as CustomerAccessibleShop[] | null) ?? [];
+};
+
 // ---- Order Management RPCs (P7) ---------------------------------------
 
 const submitShopOrderFromCart = async (
@@ -214,6 +239,7 @@ export const shopOrderRepository = {
   listShops,
   upsertShop,
   browseShopCatalog,
+  listShopsForCustomer,
   submitShopOrderFromCart,
   staffPriceShopOrder,
   customerCounterOffer,

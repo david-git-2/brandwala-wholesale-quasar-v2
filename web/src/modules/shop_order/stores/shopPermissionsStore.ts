@@ -12,6 +12,7 @@ interface CustomerGroup {
   id: number;
   name: string;
   is_active: boolean;
+  accent_color: string | null;
 }
 
 interface Currency {

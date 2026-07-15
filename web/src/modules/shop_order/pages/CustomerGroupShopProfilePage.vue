@@ -7,7 +7,7 @@
           <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
-          <div class="text-overline">Customer Access</div>
+          <div class="text-overline">Customer Groups</div>
           <h1 class="text-h5 q-my-none">Default Shop Profile</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
             Configure default shop capability rules for this customer group.

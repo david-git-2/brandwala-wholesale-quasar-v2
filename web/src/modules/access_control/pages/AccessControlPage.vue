@@ -1594,7 +1594,7 @@ const loadTenantMembers = async () => {
       const { data } = await supabase.rpc('list_membership_ids_with_overrides', {
         p_tenant_id: tenantId.value,
       });
-      const ids = new Set((data || []).map((row) => row.membership_id));
+      const ids = new Set((data || []).map((row: any) => row.membership_id));
       hasOverridesMap.value = tenantMembers.value.reduce(
         (acc, m) => {
           acc[m.id] = ids.has(m.id);
@@ -1770,7 +1770,7 @@ const loadCustomerGroupMembers = async (groupId: number) => {
   const { data } = await supabase.rpc('list_cgm_ids_with_overrides', {
     p_customer_group_id: groupId,
   });
-  const ids = new Set((data || []).map((row) => row.customer_group_member_id));
+  const ids = new Set((data || []).map((row: any) => row.customer_group_member_id));
   hasCgmOverridesMap.value = customerGroupMembers.value.reduce(
     (acc, m) => {
       acc[m.id] = ids.has(m.id);
@@ -2040,7 +2040,7 @@ const openOverridesDialog = async (member: any, scope: 'app' | 'shop') => {
       });
 
       const grantsMap: Record<string, 'allow' | 'deny' | 'inherit'> = {};
-      (grantsData || []).forEach((g) => {
+      (grantsData || []).forEach((g: any) => {
         grantsMap[`${g.module_key}:${g.action}`] = g.effect as 'allow' | 'deny';
       });
       overridesGrants.value = grantsMap;
@@ -2050,7 +2050,7 @@ const openOverridesDialog = async (member: any, scope: 'app' | 'shop') => {
       });
 
       const grantsMap: Record<string, 'allow' | 'deny' | 'inherit'> = {};
-      (grantsData || []).forEach((g) => {
+      (grantsData || []).forEach((g: any) => {
         grantsMap[`${g.module_key}:${g.action}`] = g.effect as 'allow' | 'deny';
       });
       overridesGrants.value = grantsMap;

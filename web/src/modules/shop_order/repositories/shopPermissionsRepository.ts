@@ -10,6 +10,7 @@ interface CustomerGroup {
   id: number;
   name: string;
   is_active: boolean;
+  accent_color: string | null;
 }
 
 interface Currency {
@@ -21,7 +22,7 @@ interface Currency {
 const listCustomerGroups = async (tenantId: number): Promise<CustomerGroup[]> => {
   const { data, error } = await supabase
     .from('customer_groups')
-    .select('id, name, is_active')
+    .select('id, name, is_active, accent_color')
     .eq('tenant_id', tenantId)
     .order('name', { ascending: true });
 

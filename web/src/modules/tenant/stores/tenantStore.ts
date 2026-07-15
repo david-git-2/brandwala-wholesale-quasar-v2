@@ -113,7 +113,12 @@ export const useTenantStore = defineStore('tenant', {
         items.find((tenant) => tenant.id === this.selectedTenantId) ??
         null;
 
+      // Keep shop-scoped selection even when it is not in admin tenant lists.
       if (!selectedTenant) {
+        if (this.selectedTenantSlug) {
+          this.persistWorkspaceState();
+          return;
+        }
         this.selectedTenantId = null;
         this.selectedTenantSlug = null;
         this.persistWorkspaceState();

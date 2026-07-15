@@ -32,15 +32,17 @@
         <q-skeleton type="text" width="180px" height="28px" />
         <q-skeleton type="text" width="280px" class="q-mt-xs" />
       </q-card>
-      <div class="row q-col-gutter-md">
-        <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-          <q-card flat bordered class="product-card-sk">
-            <q-skeleton type="rect" height="200px" />
-            <q-card-section>
+      <div class="row q-col-gutter-md product-grid">
+        <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item">
+          <q-card flat bordered class="product-card product-card-sk">
+            <div class="product-image-wrapper">
+              <q-skeleton type="rect" class="full-width full-height" />
+            </div>
+            <div class="product-body">
               <q-skeleton type="text" width="80%" />
               <q-skeleton type="text" width="50%" class="q-mt-xs" />
               <q-skeleton type="text" width="30%" class="q-mt-md" />
-            </q-card-section>
+            </div>
           </q-card>
         </div>
       </div>
@@ -193,100 +195,97 @@
 
       <!-- PRODUCT GRID WITH INFINITE SCROLL -->
       <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
-        <div v-if="shopStorefrontStore.catalogItems.length > 0" class="row q-col-gutter-md">
+        <div v-if="shopStorefrontStore.catalogItems.length > 0" class="row q-col-gutter-md product-grid">
           <div
             v-for="item in shopStorefrontStore.catalogItems"
             :key="item.product_id + '-' + (item.global_stock_allocation_id || '')"
-            class="col-xs-12 col-sm-6 col-md-4 col-lg-3"
+            class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item"
           >
-            <q-card flat bordered class="product-card full-height column justify-between">
-              <!-- Product Image -->
-              <div class="product-image-wrapper relative-position">
-                <q-img
-                  :src="item.product_image_url || 'https://placehold.co/300x200?text=No+Image'"
-                  :ratio="4 / 3"
+            <q-card flat bordered class="product-card">
+              <div class="product-image-wrapper">
+                <img
+                  v-if="item.product_image_url && !brokenImages[itemKey(item)]"
+                  :src="item.product_image_url"
+                  :alt="item.product_name || 'Product'"
                   class="product-image"
-                  fit="contain"
-                >
-                  <template #error>
-                    <div class="absolute-full flex flex-center bg-grey-3 text-grey-7">
-                      No Image Available
-                    </div>
-                  </template>
-                </q-img>
+                  loading="lazy"
+                  @error="brokenImages[itemKey(item)] = true"
+                />
+                <div v-else class="product-image-fallback">
+                  <q-icon name="image_not_supported" size="28px" color="grey-5" />
+                </div>
               </div>
 
-              <!-- Product Info -->
-              <q-card-section class="col q-pa-sm">
-                <div class="text-caption text-grey-6 text-uppercase tracking-wider">
+              <div class="product-body">
+                <div class="product-meta text-caption text-uppercase tracking-wider">
                   {{ item.product_brand || 'Generic' }}
                 </div>
-                <div class="product-name text-subtitle2 text-weight-bold text-grey-9 q-mt-xs">
+                <div class="product-name text-subtitle2 text-weight-bold">
                   {{ item.product_name }}
                 </div>
-                <div class="text-caption text-grey-7 q-mt-xs">
+                <div class="product-codes text-caption">
                   Code: {{ item.product_code || 'N/A' }}
+                  <span v-if="item.product_category" class="product-codes__secondary">
+                    · {{ item.product_category }}
+                  </span>
                 </div>
-                <div class="text-caption text-grey-5">
-                  Category: {{ item.product_category || 'N/A' }}
-                </div>
-              </q-card-section>
 
-              <!-- Stock & Price section -->
-              <q-card-section class="q-pa-sm q-pt-none border-top">
-                <div class="row items-center justify-between q-mt-sm">
-                  <!-- Price display -->
-                  <div>
-                    <div v-if="shopStorefrontStore.permissions?.see_price" class="column">
-                      <div class="text-caption text-grey-6">Price</div>
+                <div class="product-footer">
+                  <div class="product-pricing">
+                    <template v-if="shopStorefrontStore.permissions?.see_price">
                       <div class="text-subtitle1 text-weight-bold text-primary">
-                        {{ item.unit_price_currency_symbol || '£'
-                        }}{{ Number(item.unit_price_amount).toFixed(2) }}
+                        {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
                       </div>
-                      <div v-if="item.minimum_sell_price_amount" class="text-caption text-grey-6">
-                        Min Sell: {{ item.minimum_sell_price_currency_symbol || '£'
-                        }}{{ Number(item.minimum_sell_price_amount).toFixed(2) }}
-                      </div>
-                    </div>
-                    <div v-else class="text-caption text-grey-5 italic q-py-xs">Price hidden</div>
-                  </div>
-
-                  <!-- Quantity display -->
-                  <div class="text-right">
-                    <div
-                      v-if="shopStorefrontStore.permissions?.can_view_quantity"
-                      class="column items-end"
-                    >
-                      <div class="text-caption text-grey-6">Available</div>
                       <div
-                        class="text-body2 text-weight-medium"
-                        :class="item.available_units > 0 ? 'text-positive' : 'text-negative'"
+                        v-if="item.minimum_sell_price_amount != null"
+                        class="text-caption text-grey-6"
                       >
+                        Min:
                         {{
-                          item.available_units !== null ? `${item.available_units} units` : 'N/A'
+                          formatMoney(
+                            item.minimum_sell_price_amount,
+                            item.minimum_sell_price_currency_symbol,
+                          )
                         }}
                       </div>
+                    </template>
+                    <div v-else class="text-caption text-grey-5">Price hidden</div>
+
+                    <div
+                      v-if="shopStorefrontStore.permissions?.can_view_quantity"
+                      class="text-caption"
+                      :class="
+                        item.available_units > 0
+                          ? 'text-positive'
+                          : item.available_units === 0
+                            ? 'text-negative'
+                            : 'text-grey-6'
+                      "
+                    >
+                      {{
+                        item.available_units !== null && item.available_units !== undefined
+                          ? `${item.available_units} avail.`
+                          : 'Qty N/A'
+                      }}
                     </div>
                   </div>
-                </div>
-              </q-card-section>
 
-              <!-- Action buttons -->
-              <q-card-actions align="right" class="q-pa-sm q-pt-none">
-                <q-btn
-                  color="primary"
-                  unelevated
-                  no-caps
-                  icon="shopping_cart"
-                  label="Add to Cart"
-                  class="full-width pill-btn"
-                  :disabled="
-                    !shopStorefrontStore.permissions?.can_add_to_cart ||
-                    (item.available_units !== null && item.available_units <= 0)
-                  "
-                  @click="onAddToCart(item)"
-                />
-              </q-card-actions>
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    no-caps
+                    dense
+                    icon="shopping_cart"
+                    :label="quasar.screen.lt.sm ? undefined : 'Add'"
+                    class="add-cart-btn"
+                    :disabled="
+                      !shopStorefrontStore.permissions?.can_add_to_cart ||
+                      (item.available_units !== null && item.available_units <= 0)
+                    "
+                    @click="onAddToCart(item)"
+                  />
+                </div>
+              </div>
             </q-card>
           </div>
         </div>
@@ -362,14 +361,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useShopCartStore } from '../stores/shopCartStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import type { QInfiniteScroll } from 'quasar';
+import { useQuasar, type QInfiniteScroll } from 'quasar';
 
+const quasar = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const shopStorefrontStore = useShopStorefrontStore();
@@ -423,6 +423,16 @@ const hasActiveFilters = computed(() => {
 const goBack = () => {
   router.back();
 };
+
+const formatMoney = (amount: unknown, symbol?: string | null) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '—';
+  return `${symbol || '£'}${n.toFixed(2)}`;
+};
+
+const brokenImages = reactive<Record<string, boolean>>({});
+const itemKey = (item: { product_id: number; global_stock_allocation_id?: number | null }) =>
+  `${item.product_id}-${item.global_stock_allocation_id || ''}`;
 
 const getShopTypeLabel = (type?: string) => {
   if (type === 'vendor_catalog') return 'Vendor Catalog';
@@ -625,56 +635,177 @@ onBeforeUnmount(() => {
 }
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 82%, transparent);
 }
+
+/* —— Desktop / tablet: vertical cards —— */
 .product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--bw-theme-surface, #ffffff);
+  border-color: var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  color: var(--bw-theme-ink, #1f2937);
+  overflow: hidden;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
-  overflow: hidden;
 }
 .product-card:hover {
   transform: translateY(-4px);
-  box-shadow:
-    0 10px 20px rgba(34, 56, 101, 0.06),
-    0 2px 6px rgba(34, 56, 101, 0.04);
+  box-shadow: var(--bw-theme-shadow, 0 10px 20px rgba(34, 56, 101, 0.06));
 }
 .product-image-wrapper {
-  background: #fafafa;
-  border-bottom: 1px solid rgba(34, 56, 101, 0.05);
+  position: relative;
+  height: 160px;
+  flex: 0 0 160px;
+  background: color-mix(in srgb, var(--bw-theme-base, #fafafa) 90%, var(--bw-theme-surface, #fff) 10%);
+  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px;
 }
 .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
   border-radius: 8px;
+}
+.product-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bw-theme-base, #eef2f6) 88%, var(--bw-theme-surface, #fff) 12%);
+  border-radius: 8px;
+}
+.product-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px 12px 12px;
+}
+.product-meta {
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+  color: var(--bw-theme-muted, #6b7280);
 }
 .product-name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  height: 40px;
-  line-height: 20px;
+  line-height: 1.35;
+  min-height: 2.7em;
+  margin-bottom: 4px;
+  color: var(--bw-theme-ink, #1f2937);
 }
-.tracking-wider {
-  letter-spacing: 0.05em;
+.product-codes {
+  margin-bottom: 8px;
+  color: var(--bw-theme-muted, #6b7280);
 }
-.border-top {
-  border-top: 1px solid rgba(34, 56, 101, 0.06);
+.product-codes__secondary {
+  opacity: 0.75;
 }
+.product-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.06));
+}
+.product-pricing {
+  min-width: 0;
+}
+.add-cart-btn {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .empty-state {
   min-height: 320px;
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 60%, transparent);
   border-radius: 16px;
-  border: 1px dashed rgba(34, 56, 101, 0.12);
+  border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
   backdrop-filter: blur(4px);
+  color: var(--bw-theme-ink, #1f2937);
 }
 .error-container {
   min-height: 450px;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 80%, transparent);
   border-radius: 20px;
-  border: 1px solid rgba(34, 56, 101, 0.08);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  box-shadow: var(--bw-theme-shadow, 0 8px 30px rgba(0, 0, 0, 0.02));
+  color: var(--bw-theme-ink, #1f2937);
+}
+
+/* —— Small screen: side-image list rows —— */
+@media (max-width: 599px) {
+  .product-grid {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    row-gap: 0 !important;
+  }
+  .product-grid-item {
+    padding: 0 !important;
+  }
+  .product-card {
+    flex-direction: row;
+    align-items: stretch;
+    height: auto;
+    min-height: unset;
+    border-radius: 0;
+    border: none !important;
+    border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08)) !important;
+    box-shadow: none;
+  }
+  .product-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .product-image-wrapper {
+    width: 96px;
+    height: 96px;
+    flex: 0 0 96px;
+    align-self: center;
+    margin: 10px 0 10px 10px;
+    padding: 4px;
+    border-bottom: none;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .product-image,
+  .product-image-fallback {
+    border-radius: 6px;
+  }
+  .product-body {
+    padding: 10px 12px 10px 10px;
+  }
+  .product-name {
+    min-height: unset;
+    -webkit-line-clamp: 2;
+    font-size: 14px;
+  }
+  .product-codes {
+    margin-bottom: 4px;
+  }
+  .product-footer {
+    border-top: none;
+    padding-top: 4px;
+  }
+  .add-cart-btn {
+    min-width: 40px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
 }
 </style>

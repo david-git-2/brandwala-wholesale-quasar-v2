@@ -7,22 +7,45 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
 const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 
-const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {
-  const storageKey = 'brandwala.tenant.workspace.v1';
-  const storageValue =
-    typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
-  let selectedTenantId: string | null = null;
+const readSelectedTenantIdFromStorage = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
-  if (storageValue) {
+  const workspaceRaw = window.localStorage.getItem('brandwala.tenant.workspace.v1');
+  if (workspaceRaw) {
     try {
-      const parsed = JSON.parse(storageValue);
-      if (parsed && parsed.selectedTenantId) {
-        selectedTenantId = parsed.selectedTenantId.toString();
+      const parsed = JSON.parse(workspaceRaw) as { selectedTenantId?: number | string | null };
+      if (parsed?.selectedTenantId != null && parsed.selectedTenantId !== '') {
+        return String(parsed.selectedTenantId);
       }
     } catch {
       // Ignore parse errors
     }
   }
+
+  // Shop login stores tenant on auth access, not always on workspace selection.
+  const authRaw = window.localStorage.getItem('brandwala.auth.access.v4');
+  if (authRaw) {
+    try {
+      const parsed = JSON.parse(authRaw) as {
+        tenant?: { id?: number | null } | null;
+        member?: { tenantId?: number | null } | null;
+      };
+      const tenantId = parsed?.tenant?.id ?? parsed?.member?.tenantId ?? null;
+      if (tenantId != null) {
+        return String(tenantId);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  return null;
+};
+
+const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {
+  const selectedTenantId = readSelectedTenantIdFromStorage();
 
   if (!selectedTenantId) {
     return init;

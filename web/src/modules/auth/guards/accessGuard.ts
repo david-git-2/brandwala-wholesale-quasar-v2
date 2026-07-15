@@ -24,6 +24,23 @@ export type AccessRole =
   | 'customer_staff'
   | 'investor_portal';
 
+export const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
+  switch (role) {
+    case 'admin':
+      return 'customer_admin';
+    case 'negotiator':
+      return 'customer_negotiator';
+    case 'staff':
+      return 'customer_staff';
+    case 'customer_admin':
+    case 'customer_negotiator':
+    case 'customer_staff':
+      return role;
+    default:
+      return null;
+  }
+};
+
 export const createAccessGuard = ({
   allowedRoles,
   loginRoute,
@@ -90,13 +107,18 @@ export const createAccessGuard = ({
     }
 
     if (!hasRequiredModuleAccess) {
+      const tenantSlug = authStore.tenantSlug;
+
+      if (currentScope === 'shop') {
+        return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
+      }
+
       if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
-        const tenantSlug = authStore.tenantSlug;
         return tenantSlug
           ? `/${tenantSlug}/app/procurement/tenant-stock`
           : '/app/procurement/tenant-stock';
       }
-      const tenantSlug = authStore.tenantSlug;
+
       return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
     }
 
