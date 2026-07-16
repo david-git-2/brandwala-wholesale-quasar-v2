@@ -23,7 +23,10 @@ export const useVendorStore = defineStore('vendor', {
       this.error = null;
     },
 
-    async fetchVendors(tenantId?: number | null) {
+    async fetchVendors(tenantId?: number | null, forceReload = false) {
+      if (!forceReload && this.items.length > 0) {
+        return { success: true, data: this.items };
+      }
       this.loading = true;
       this.error = null;
 

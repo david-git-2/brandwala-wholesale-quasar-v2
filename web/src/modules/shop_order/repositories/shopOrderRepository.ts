@@ -44,6 +44,12 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_id: isEdit ? (payload as UpdateShopPayload).id : null,
     p_default_currency_id: payload.default_currency_id ?? null,
     p_global_stock_type_id: payload.global_stock_type_id ?? null,
+    p_allow_delivery: payload.allow_delivery,
+    p_buy_currency_id: payload.buy_currency_id ?? null,
+    p_sell_currency_id: payload.sell_currency_id ?? null,
+    p_pricing_method: payload.pricing_method ?? null,
+    p_markup_percentage: payload.markup_percentage ?? 0,
+    p_quantity_display_mode: payload.quantity_display_mode ?? null,
   });
 
   if (error) {
@@ -235,6 +241,13 @@ const fulfillShopOrderToInvoice = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const deleteShopOrder = async (orderId: number): Promise<void> => {
+  const { error } = await supabase.rpc('delete_shop_order', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -250,4 +263,5 @@ export const shopOrderRepository = {
   getShopOrderById,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
+  deleteShopOrder,
 };

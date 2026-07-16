@@ -238,6 +238,24 @@ export const useShopOrderStore = defineStore('shopOrder', {
       }
     },
 
+    async deleteShopOrder(orderId: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopOrderService.deleteOrder(orderId);
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        showSuccessNotification('Order deleted successfully.');
+        this.orders = this.orders.filter((o) => o.id !== orderId);
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async fetchShopsByTenant(
       tenantId: number,
       opts: { active?: boolean | null; search?: string | null } = {},

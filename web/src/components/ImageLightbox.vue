@@ -1,7 +1,6 @@
 <template>
   <q-dialog
     v-model="isOpen"
-    backdrop-filter="blur(6px)"
     transition-show="scale"
     transition-hide="scale"
     maximized
@@ -114,7 +113,7 @@ const downloadImage = async () => {
   width: 100vw;
   height: 100vh;
   position: relative;
-  background-color: rgba(0, 0, 0, 0.85);
+  background-color: #000000;
   outline: none;
   overflow: hidden;
 }
@@ -129,8 +128,7 @@ const downloadImage = async () => {
 }
 
 .lightbox-btn {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -167,10 +165,9 @@ const downloadImage = async () => {
   color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
   letter-spacing: 0.5px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.85);
   padding: 8px 16px;
   border-radius: 20px;
-  backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   text-align: center;
   max-width: 100%;

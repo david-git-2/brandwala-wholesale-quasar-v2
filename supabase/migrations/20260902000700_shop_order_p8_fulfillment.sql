@@ -122,6 +122,8 @@ grant execute on function public.list_procurement_shop_order_lines(bigint, bigin
 -- =========================================================
 -- 3. Redefine list_child_procurement_lines to include shop orders
 -- =========================================================
+drop function if exists public.list_child_procurement_lines(bigint, bigint, text, integer, integer) cascade;
+
 create or replace function public.list_child_procurement_lines(
   p_parent_tenant_id bigint,
   p_child_tenant_id bigint default null,

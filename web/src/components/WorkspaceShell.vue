@@ -368,7 +368,7 @@
                   </q-item-section>
 
                   <q-tooltip anchor="center right" self="center left" :offset="[10, 10]">
-                    {{ link.title }}
+                    {{ translateTitle(link.title) }}
                   </q-tooltip>
 
                   <q-menu
@@ -383,7 +383,7 @@
                         class="text-uppercase text-weight-bold text-grey-7 q-py-xs"
                         style="font-size: 10px; letter-spacing: 0.05em"
                       >
-                        {{ link.title }}
+                        {{ translateTitle(link.title) }}
                       </q-item-label>
                       <q-separator class="q-mb-xs" />
                       <q-item
@@ -397,7 +397,7 @@
                         active-class="workspace-shell__nav-item--active"
                       >
                         <q-item-section>
-                          <q-item-label>{{ child.title }}</q-item-label>
+                          <q-item-label>{{ translateTitle(child.title) }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </q-list>
@@ -408,7 +408,7 @@
                 <q-expansion-item
                   v-else-if="link.children?.length"
                   :icon="link.icon"
-                  :label="link.title"
+                  :label="translateTitle(link.title)"
                   class="workspace-shell__nav-item workspace-shell__nav-group"
                   expand-separator
                 >
@@ -423,7 +423,7 @@
                       active-class="workspace-shell__nav-item--active"
                     >
                       <q-item-section>
-                        <q-item-label>{{ child.title }}</q-item-label>
+                        <q-item-label>{{ translateTitle(child.title) }}</q-item-label>
                       </q-item-section>
                     </q-item>
                   </div>
@@ -444,7 +444,7 @@
                   </q-item-section>
 
                   <q-item-section v-if="!isMini">
-                    <q-item-label>{{ link.title }}</q-item-label>
+                    <q-item-label>{{ translateTitle(link.title) }}</q-item-label>
                   </q-item-section>
 
                   <q-tooltip
@@ -453,7 +453,7 @@
                     self="center left"
                     :offset="[10, 10]"
                   >
-                    {{ link.title }}
+                    {{ translateTitle(link.title) }}
                   </q-tooltip>
                 </q-item>
               </template>
@@ -498,7 +498,7 @@
               'workspace-shell__bottom-nav-item--active': isBottomNavGroupActive(link),
             }"
             :icon="link.icon"
-            :label="link.title"
+            :label="translateTitle(link.title)"
           >
             <q-menu anchor="top middle" self="bottom middle" :offset="[0, 8]">
               <q-list dense style="min-width: 160px" class="q-py-xs">
@@ -512,7 +512,7 @@
                   active-class="workspace-shell__nav-item--active"
                 >
                   <q-item-section>
-                    <q-item-label>{{ child.title }}</q-item-label>
+                    <q-item-label>{{ translateTitle(child.title) }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -530,7 +530,7 @@
               'workspace-shell__bottom-nav-item--active': isBottomNavLinkActive(link),
             }"
             :icon="link.icon"
-            :label="link.title"
+            :label="translateTitle(link.title)"
             :to="link.target ? undefined : link.to"
             :href="link.target ? link.to : undefined"
             :target="link.target"
@@ -603,14 +603,14 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-medium">
-                  {{ link.title }}
+                  {{ translateTitle(link.title) }}
                 </q-item-label>
                 <q-item-label caption v-if="link.caption">
-                  {{ link.caption }}
+                  {{ translateCaption(link.title, link.caption) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side v-if="link.parentTitle">
-                <q-badge outline color="primary" size="sm">{{ link.parentTitle }}</q-badge>
+                <q-badge outline color="primary" size="sm">{{ translateTitle(link.parentTitle) }}</q-badge>
               </q-item-section>
             </q-item>
           </q-list>
@@ -680,6 +680,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QInput } from 'quasar';
+import { useI18n } from 'vue-i18n';
 
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -711,6 +712,22 @@ const authStore = useAuthStore();
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();
 const drawerHovered = ref(false);
+
+const i18n = useI18n();
+
+const getTransKey = (title: string) => {
+  return title.toLowerCase().replace(/\s+/g, '_');
+};
+
+const translateTitle = (title: string) => {
+  const key = `navigation.${getTransKey(title)}`;
+  return i18n.te(key) ? i18n.t(key) : title;
+};
+
+const translateCaption = (title: string, defaultCaption: string) => {
+  const key = `navigation.${getTransKey(title)}_caption`;
+  return i18n.te(key) ? i18n.t(key) : defaultCaption;
+};
 
 const useMobileBottomNav = computed(() => props.theme === 'shop' && $q.screen.xs);
 
@@ -800,10 +817,13 @@ const filteredLinks = computed(() => {
     return flattenedLinks.value;
   }
   return flattenedLinks.value.filter((link) => {
+    const title = translateTitle(link.title).toLowerCase();
+    const caption = translateCaption(link.title, link.caption ?? '').toLowerCase();
+    const parentTitle = link.parentTitle ? translateTitle(link.parentTitle).toLowerCase() : '';
     return (
-      link.title.toLowerCase().includes(query) ||
-      (link.caption && link.caption.toLowerCase().includes(query)) ||
-      (link.parentTitle && link.parentTitle.toLowerCase().includes(query))
+      title.includes(query) ||
+      caption.includes(query) ||
+      parentTitle.includes(query)
     );
   });
 });

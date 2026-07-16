@@ -294,6 +294,7 @@ const loadBrands = async () => {
   try {
     const result = await productStore.fetchBrandOptions({
       vendorCode: vendorCode.value,
+      tenantId: authStore.tenantId ?? null,
     });
 
     if (result.success) {
@@ -311,6 +312,7 @@ const loadCategories = async () => {
   try {
     const result = await productStore.fetchCategoryOptions({
       vendorCode: vendorCode.value,
+      tenantId: authStore.tenantId ?? null,
     });
 
     if (result.success) {

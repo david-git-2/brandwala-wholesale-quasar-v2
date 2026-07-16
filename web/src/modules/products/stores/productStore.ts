@@ -181,7 +181,37 @@ export const useProductStore = defineStore('product', {
       }
     },
 
-    async fetchBrandOptions(params?: FetchProductLookupParams) {
+    async bulkCreateProducts(payloads: ProductCreateInput[]) {
+      this.saving = true;
+      this.error = null;
+
+      try {
+        const result = await productService.bulkCreateProducts(payloads);
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to import products.';
+          handleApiFailure(result, this.error);
+          return result;
+        }
+
+        if (result.data && result.data.length) {
+          this.items.unshift(...result.data);
+          this.total += result.data.length;
+        }
+
+        showSuccessNotification(`Successfully imported ${payloads.length} products.`);
+
+        return result;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async fetchBrandOptions(params?: FetchProductLookupParams, forceReload = false) {
+      if (!forceReload && this.brandOptions.length > 0 && !params?.vendorCode) {
+        return { success: true, data: this.brandOptions };
+      }
+
       const result = await productService.listBrands({
         vendorCode: params?.vendorCode ?? null,
         tenantId: params?.tenantId ?? null,
@@ -193,11 +223,17 @@ export const useProductStore = defineStore('product', {
         return result;
       }
 
-      this.brandOptions = result.data ?? [];
+      if (!params?.vendorCode) {
+        this.brandOptions = result.data ?? [];
+      }
       return result;
     },
 
-    async fetchCategoryOptions(params?: FetchProductLookupParams) {
+    async fetchCategoryOptions(params?: FetchProductLookupParams, forceReload = false) {
+      if (!forceReload && this.categoryOptions.length > 0 && !params?.vendorCode) {
+        return { success: true, data: this.categoryOptions };
+      }
+
       const result = await productService.listCategories({
         vendorCode: params?.vendorCode ?? null,
         tenantId: params?.tenantId ?? null,
@@ -209,7 +245,9 @@ export const useProductStore = defineStore('product', {
         return result;
       }
 
-      this.categoryOptions = result.data ?? [];
+      if (!params?.vendorCode) {
+        this.categoryOptions = result.data ?? [];
+      }
       return result;
     },
 

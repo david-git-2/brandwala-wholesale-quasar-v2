@@ -105,49 +105,65 @@
           </q-card>
 
           <!-- Action Buttons Panel -->
-          <div class="q-mt-md">
-            <div v-if="canAction" class="row q-gutter-md justify-end">
+          <div class="q-mt-md row items-center justify-between">
+            <div>
               <q-btn
+                v-if="orderStore.currentOrder.status !== 'fulfilled'"
                 outline
-                color="primary"
+                color="negative"
                 no-caps
-                label="Save Price / Send Counter"
+                icon="delete"
+                label="Delete Order"
                 class="pill-btn text-weight-bold q-px-lg q-py-sm"
                 :loading="orderStore.saving"
-                @click="submitStaffPricing"
-              />
-              <q-btn
-                color="green-7"
-                unelevated
-                no-caps
-                label="Confirm Order"
-                class="pill-btn text-weight-bold q-px-lg q-py-sm"
-                :loading="orderStore.saving"
-                @click="confirmOrder"
+                @click="confirmDeleteOrder"
               />
             </div>
 
-            <div v-if="canFulfill" class="row q-gutter-md justify-end">
-              <q-btn
-                v-if="orderStore.currentOrder.shop_type_snapshot === 'vendor_catalog'"
-                color="indigo-7"
-                unelevated
-                no-caps
-                label="Place for Procurement"
-                class="pill-btn text-weight-bold q-px-lg q-py-sm"
-                :loading="orderStore.saving"
-                @click="placeForProcurement"
-              />
-              <q-btn
-                v-else
-                color="teal-7"
-                unelevated
-                no-caps
-                label="Fulfill to Invoice"
-                class="pill-btn text-weight-bold q-px-lg q-py-sm"
-                :loading="orderStore.saving"
-                @click="fulfillToInvoice"
-              />
+            <div class="row q-gutter-md justify-end">
+              <div v-if="canAction" class="row q-gutter-md justify-end">
+                <q-btn
+                  outline
+                  color="primary"
+                  no-caps
+                  label="Save Price / Send Counter"
+                  class="pill-btn text-weight-bold q-px-lg q-py-sm"
+                  :loading="orderStore.saving"
+                  @click="submitStaffPricing"
+                />
+                <q-btn
+                  color="green-7"
+                  unelevated
+                  no-caps
+                  label="Confirm Order"
+                  class="pill-btn text-weight-bold q-px-lg q-py-sm"
+                  :loading="orderStore.saving"
+                  @click="confirmOrder"
+                />
+              </div>
+
+              <div v-if="canFulfill" class="row q-gutter-md justify-end">
+                <q-btn
+                  v-if="orderStore.currentOrder.shop_type_snapshot === 'vendor_catalog'"
+                  color="indigo-7"
+                  unelevated
+                  no-caps
+                  label="Place for Procurement"
+                  class="pill-btn text-weight-bold q-px-lg q-py-sm"
+                  :loading="orderStore.saving"
+                  @click="placeForProcurement"
+                />
+                <q-btn
+                  v-else
+                  color="teal-7"
+                  unelevated
+                  no-caps
+                  label="Fulfill to Invoice"
+                  class="pill-btn text-weight-bold q-px-lg q-py-sm"
+                  :loading="orderStore.saving"
+                  @click="fulfillToInvoice"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -258,11 +274,12 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopOrderStore } from '../stores/shopOrderStore';
-import { date } from 'quasar';
+import { date, useQuasar } from 'quasar';
 
 const route = useRoute();
 const router = useRouter();
 const orderStore = useShopOrderStore();
+const $q = useQuasar();
 
 const orderItems = ref<any[]>([]);
 
@@ -309,6 +326,35 @@ const fulfillToInvoice = async () => {
       }
     }
   }
+};
+
+const confirmDeleteOrder = () => {
+  $q.dialog({
+    title: 'Confirm Deletion',
+    message: 'Are you sure you want to delete this order? This action is permanent and cannot be undone.',
+    persistent: true,
+    ok: {
+      label: 'Delete',
+      color: 'negative',
+      flat: true,
+    },
+    cancel: {
+      label: 'Cancel',
+      flat: true,
+    }
+  }).onOk(() => {
+    void (async () => {
+      if (orderId.value) {
+        const res = await orderStore.deleteShopOrder(orderId.value);
+        if (res.success) {
+          void router.push({
+            name: 'app-shop-orders-page',
+            params: { tenantSlug: route.params.tenantSlug },
+          });
+        }
+      }
+    })();
+  });
 };
 
 const getDisplayUnitPrice = (item: any) => {

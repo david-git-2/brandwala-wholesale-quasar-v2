@@ -150,6 +150,18 @@ const fulfillOrderToInvoice = async (orderId: number): Promise<ShopServiceResult
   }
 };
 
+const deleteOrder = async (orderId: number): Promise<ShopServiceResult<void>> => {
+  try {
+    await shopOrderRepository.deleteShopOrder(orderId);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete order.',
+    };
+  }
+};
+
 const browseShopCatalog = async (
   shopSlug: string,
   opts?: {
@@ -196,6 +208,7 @@ export const shopOrderService = {
   fetchStaffOrders,
   placeOrderForProcurement,
   fulfillOrderToInvoice,
+  deleteOrder,
   browseShopCatalog,
   listShopsForCustomer,
 };

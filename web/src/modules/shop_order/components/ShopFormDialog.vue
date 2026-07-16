@@ -114,6 +114,95 @@
           class="q-mb-md"
         />
 
+        <!-- Currencies Selection -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-6">
+            <q-select
+              v-model="form.buy_currency_id"
+              :options="currencyOptions"
+              emit-value
+              map-options
+              :loading="loadingCurrencies"
+              label="Buy Currency (ক্রয় কারেন্সি) *"
+              outlined
+              dense
+              :rules="[val => !!val || 'Buy currency is required']"
+            />
+          </div>
+          <div class="col-6">
+            <q-select
+              v-model="form.sell_currency_id"
+              :options="currencyOptions"
+              emit-value
+              map-options
+              :loading="loadingCurrencies"
+              label="Sell Currency (বিক্রয় কারেন্সি) *"
+              outlined
+              dense
+              :rules="[val => !!val || 'Sell currency is required']"
+            />
+          </div>
+        </div>
+
+        <!-- Retail Shop Specific Configurations -->
+        <div 
+          v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')" 
+          class="q-pa-md bg-blue-50 rounded-borders q-mb-md border-blue-100"
+          style="background-color: #f0f7ff; border: 1px solid #d0e7ff; border-radius: 8px"
+        >
+          <div class="text-subtitle2 text-blue-9 text-weight-medium q-mb-sm">
+            Retail Pricing & Quantity (খুচরা মূল্য ও পরিমাণ সেটিংস)
+          </div>
+          
+          <div class="row q-col-gutter-md items-center q-mb-sm">
+            <div class="col-6">
+              <q-select
+                v-model="form.pricing_method"
+                :options="[
+                  { value: 'direct_cost', label: 'Direct Cost (সরাসরি খরচ)' },
+                  { value: 'markup', label: 'Markup Percentage (মার্কআপ)' }
+                ]"
+                emit-value
+                map-options
+                label="Pricing Method *"
+                outlined
+                dense
+              />
+            </div>
+            <div class="col-6" v-if="form.pricing_method === 'markup'">
+              <q-input
+                v-model.number="form.markup_percentage"
+                type="number"
+                label="Markup % *"
+                suffix="%"
+                outlined
+                dense
+                :rules="[
+                  val => val !== null && val !== undefined || 'Markup % is required',
+                  val => val >= 0 || 'Markup % must be non-negative'
+                ]"
+              />
+            </div>
+          </div>
+
+          <div class="row q-mb-sm">
+            <div class="col-12">
+              <q-select
+                v-model="form.quantity_display_mode"
+                :options="[
+                  { value: 'original', label: 'Show Original Stock Qty (আসল স্টক)' },
+                  { value: 'custom_override', label: 'Show Custom Override Qty (কাস্টম সংখ্যা)' }
+                ]"
+                emit-value
+                map-options
+                label="Quantity Display Mode *"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+        </div>
+
         <!-- Flags row -->
         <div class="row q-col-gutter-md items-center q-mb-md">
           <div class="col-auto">
@@ -131,6 +220,12 @@
           </div>
           <div class="col-auto">
             <q-toggle v-model="form.is_active" label="Active" color="positive" />
+          </div>
+          <div
+            v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')"
+            class="col-auto"
+          >
+            <q-toggle v-model="form.allow_delivery" label="Allow Delivery" color="primary" />
           </div>
         </div>
 
@@ -305,6 +400,48 @@
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
+            <q-avatar icon="monetization_on" color="yellow-2" text-color="yellow-9" size="md" class="q-mr-md" />
+            <div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Shop Currencies / কারেন্সি সেটিংস</div>
+              <div class="text-caption text-grey-7">
+                Buy Currency: original purchase costing currency. Sell Currency: display & checkout currency. Negotiations must happen in Sell Currency.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                ক্রয় কারেন্সি: কেনা দামের আসল কারেন্সি। বিক্রয় কারেন্সি: কাস্টমারের প্রদর্শন ও পেমেন্ট কারেন্সি। সমস্ত দরকষাকষি বিক্রয় কারেন্সিতে হতে হবে।
+              </div>
+            </div>
+          </div>
+          <q-separator inset />
+
+          <div class="row items-start no-wrap q-py-sm">
+            <q-avatar icon="calculate" color="indigo-1" text-color="indigo-8" size="md" class="q-mr-md" />
+            <div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Retail Pricing Method / খুচরা মূল্য সেটিংস</div>
+              <div class="text-caption text-grey-7">
+                Direct Cost: sell price equals original procurement cost. Markup: sell price includes the set markup percentage.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                সরাসরি খরচ: ক্রয়মূল্যই বিক্রয়মূল্য হিসেবে দেখাবে। মার্কআপ: ক্রয়মূল্যের সাথে নির্দিষ্ট মার্কআপ শতাংশ যোগ হয়ে দেখাবে।
+              </div>
+            </div>
+          </div>
+          <q-separator inset />
+
+          <div class="row items-start no-wrap q-py-sm">
+            <q-avatar icon="bar_chart" color="cyan-1" text-color="cyan-8" size="md" class="q-mr-md" />
+            <div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">Quantity Display Mode / স্টক পরিমাণ সেটিংস</div>
+              <div class="text-caption text-grey-7">
+                Show Original Stock Qty: displays warehouse physical stock. Custom Override: displays custom marketing override value if set.
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                আসল স্টক: গুদামের ফিজিক্যাল আসল স্টক দেখাবে। কাস্টম সংখ্যা: নির্দিষ্ট কাস্টম ওভাররাইড সংখ্যা মার্কেটিং হিসেবে দেখাবে।
+              </div>
+            </div>
+          </div>
+          <q-separator inset />
+
+          <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="check_circle" color="positive" size="md" class="q-mr-md" />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">Active / সক্রিয়</div>
@@ -336,6 +473,8 @@ import { computed, reactive, ref, watch } from 'vue';
 import type { Shop, ShopType, ShopOrderMode } from 'src/modules/shop_order/types';
 import { vendorService } from 'src/modules/vendor/services/vendorService';
 import type { Vendor } from 'src/modules/vendor/types';
+import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import type { GlobalCurrency } from 'src/modules/global_reference/types';
 
 // ---- types ---------------------------------------------------------
 
@@ -350,6 +489,12 @@ type ShopForm = {
   is_negotiable: boolean;
   show_stock_quantity: boolean;
   is_active: boolean;
+  allow_delivery: boolean;
+  buy_currency_id: number | null;
+  sell_currency_id: number | null;
+  pricing_method: 'direct_cost' | 'markup';
+  markup_percentage: number;
+  quantity_display_mode: 'original' | 'custom_override';
 };
 
 type FormErrors = {
@@ -398,6 +543,24 @@ const loadVendors = async () => {
   loadingVendors.value = false;
 };
 
+const currencies = ref<GlobalCurrency[]>([]);
+const loadingCurrencies = ref(false);
+
+const currencyOptions = computed(() =>
+  currencies.value.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+);
+
+const loadCurrencies = async () => {
+  loadingCurrencies.value = true;
+  try {
+    currencies.value = await globalReferenceRepository.listCurrencies();
+  } catch (e) {
+    console.error('Failed to load currencies', e);
+  } finally {
+    loadingCurrencies.value = false;
+  }
+};
+
 const errors = reactive<FormErrors>({});
 // snapshot of shop_type on edit open (immutable field guard)
 const shopTypeSnapshot = ref<ShopType | null>(null);
@@ -412,6 +575,12 @@ const defaultForm = (): ShopForm => ({
   is_negotiable: false,
   show_stock_quantity: true,
   is_active: true,
+  allow_delivery: false,
+  buy_currency_id: null,
+  sell_currency_id: null,
+  pricing_method: 'direct_cost',
+  markup_percentage: 0,
+  quantity_display_mode: 'original',
 });
 
 const form = reactive<ShopForm>(defaultForm());
@@ -459,6 +628,7 @@ watch(
     Object.keys(errors).forEach((k) => delete (errors as any)[k]);
 
     void loadVendors();
+    void loadCurrencies();
 
     if (initialData) {
       shopTypeSnapshot.value = initialData.shop_type;
@@ -473,6 +643,12 @@ watch(
         is_negotiable: initialData.is_negotiable,
         show_stock_quantity: initialData.show_stock_quantity,
         is_active: initialData.is_active,
+        allow_delivery: initialData.allow_delivery || false,
+        buy_currency_id: initialData.buy_currency_id,
+        sell_currency_id: initialData.sell_currency_id,
+        pricing_method: initialData.pricing_method || 'direct_cost',
+        markup_percentage: initialData.markup_percentage || 0,
+        quantity_display_mode: initialData.quantity_display_mode || 'original',
       });
     } else {
       shopTypeSnapshot.value = null;
@@ -521,6 +697,12 @@ const onSave = () => {
       is_negotiable: form.is_negotiable,
       show_stock_quantity: form.show_stock_quantity,
       is_active: form.is_active,
+      allow_delivery: form.allow_delivery,
+      buy_currency_id: form.buy_currency_id,
+      sell_currency_id: form.sell_currency_id,
+      pricing_method: form.pricing_method,
+      markup_percentage: Number(form.markup_percentage || 0),
+      quantity_display_mode: form.quantity_display_mode,
     });
   } else {
     emit('save', {
@@ -533,6 +715,12 @@ const onSave = () => {
       is_negotiable: form.is_negotiable,
       show_stock_quantity: form.show_stock_quantity,
       is_active: form.is_active,
+      allow_delivery: form.allow_delivery,
+      buy_currency_id: form.buy_currency_id,
+      sell_currency_id: form.sell_currency_id,
+      pricing_method: form.pricing_method,
+      markup_percentage: Number(form.markup_percentage || 0),
+      quantity_display_mode: form.quantity_display_mode,
     });
   }
 };

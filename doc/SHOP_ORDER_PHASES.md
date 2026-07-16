@@ -4,13 +4,13 @@
 **Canon:** [SHOP_ORDER.md](SHOP_ORDER.md)
 
 Update this file when a phase completes. Agent: set status to `done` and stop.
-
-**Next phase:** None (all phases completed)
-
+ 
+**Next phase:** P11 (Implement Shop Settings Schema & Dual Currencies)
+ 
 ---
-
+ 
 ## Summary
-
+ 
 | Phase | Status | Migration file | Submodule |
 |-------|--------|----------------|-----------|
 | P0 | done | `20260901_shop_order_p0_products_currency.sql` | — |
@@ -24,6 +24,10 @@ Update this file when a phase completes. Agent: set status to `done` and stop.
 | P8 | done | `20260902000700_shop_order_p8_fulfillment.sql` | `shop_fulfillment` |
 | P9 | done | — (web only) | — |
 | P10 | done | — (web only) | — |
+| P11 | pending | `20260716000000_shop_order_p11_negotiation_settings.sql` | `shop_config` |
+| P12 | pending | `20260716000100_shop_order_p12_calculation_rpcs.sql` | `shop_pricing` |
+| P13 | pending | — (web only) | `shop_config` (UI) |
+| P14 | pending | — (web only) | `shop_storefront` / `shop_cart` (UI) |
 
 ---
 
@@ -255,3 +259,88 @@ Retire the legacy `/app/commerce-shop` and `/shop/commerce-shop/*` paths. Ensure
 ### Exit
 
 - [x] Legacy `commerce-shop` routes retired/redirected to `shop_order` targets.
+
+---
+
+## P11 — Shop Settings Schema & Dual Currencies (`shop_config` database migration)
+
+**Read:** SHOP_ORDER §3.5, §7.1
+
+### Migration
+
+**Tables:** Modify the `shops` table:
+*   Add `buy_currency_id` bigint referencing `global_currencies`.
+*   Add `sell_currency_id` bigint referencing `global_currencies`.
+*   Add `pricing_method` text check constraint (`direct_cost` or `markup`).
+*   Add `markup_percentage` numeric(5,2) check constraint (`markup_percentage >= 0`).
+*   Add `quantity_display_mode` text check constraint (`original` or `custom_override`).
+*   Add a trigger/constraint verifying that `sell_currency_id = default_currency_id`.
+*   Establish backward-compatible backfill: default existing shops to BDT for both Buy and Sell currencies.
+
+### Exit
+
+- [ ] New fields exist on `shops` table.
+- [ ] Check constraints prevent invalid values on pricing methods and percentages.
+- [ ] Database migrated successfully.
+
+---
+
+## P12 — Pricing Calculations & Checkout Validation (`shop_pricing` database logic)
+
+**Read:** SHOP_ORDER §3.1, §4.2, §4.3
+
+### Migration
+
+**RPC updates:**
+*   Update `list_shops` and `upsert_shop` RPCs to include the new settings fields.
+*   Update `browse_shop_catalog` and listing display views to calculate prices on-the-fly:
+    *   If `pricing_method = markup`: final displayed price = base cost * (1 + markup_percentage/100).
+    *   If `pricing_method = direct_cost`: final displayed price = base cost.
+    *   Respect the `quantity_display_mode` setting (if `custom_override`, show the override value; otherwise show the actual physical allocations pool).
+*   Add validation in `submit_shop_order_from_cart` (or cart update):
+    *   For Dropship shops: enforce `customer_sell_price_amount >= minimum_sell_price_amount`.
+
+### Exit
+
+- [ ] RPCs retrieve and update the new columns.
+- [ ] Storefront price calculations match the markup logic.
+- [ ] Reseller checkout fails if dropship item falls below minimum sell price floor.
+
+---
+
+## P13 — Shop Creation/Editing Settings Form & Bilingual Help (`shop_config` admin web)
+
+**Read:** SHOP_ORDER §12, §12a
+
+### Web
+
+*   Update `ShopFormDialog.vue`:
+    *   Add dropdown inputs for **Buy Currency** and **Sell Currency** (bound to `global_currencies`).
+    *   Add pricing configuration toggles: Pricing Method (Direct Cost / Markup) and Markup Percentage input field.
+    *   Add Quantity Display options (Original / Override).
+    *   Update the Help Dialog ("I" button) to contain the bilingual (Bangla & English) descriptions for Shop Types (Procurement, Retail, Dropship), Currencies (Buy, Sell), and pricing options.
+
+### Exit
+
+- [ ] Shop settings form handles the new fields during create and edit.
+- [ ] Help Dialog shows clear, bilingual instructions.
+
+---
+
+## P14 — Storefront & Cart Checkout UI Integration (`shop_storefront` & `shop_cart` customer web)
+
+**Read:** SHOP_ORDER §4, §5.4, §8
+
+### Web
+
+*   Update `ShopBrowsePage.vue` / product cards to:
+    *   Display dual prices (Sell Price & Min Sell Price) when viewing a Dropship shop.
+    *   Display custom marketing override quantities or default to "In Stock / Out of Stock" based on quantity configurations.
+*   Update checkout/cart logic to:
+    *   Validate custom input prices for dropship items against the minimum floor.
+    *   Disable/enable negotiation input based on profile capability overrides.
+
+### Exit
+
+- [ ] Storefront properly shows dropship pricing constraints.
+- [ ] Checkout constraints are verified on the client.

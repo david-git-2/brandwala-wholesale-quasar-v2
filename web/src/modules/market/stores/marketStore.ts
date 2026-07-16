@@ -22,7 +22,10 @@ export const useMarketStore = defineStore('market', {
       this.error = null;
     },
 
-    async fetchMarkets() {
+    async fetchMarkets(forceReload = false) {
+      if (!forceReload && this.items.length > 0) {
+        return { success: true, data: this.items };
+      }
       this.loading = true;
       this.error = null;
 

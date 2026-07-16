@@ -25,7 +25,7 @@ import accessControlRoutes from 'src/modules/access_control/routes';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/platform/dashboard',
+    redirect: '/app',
   },
   {
     path: '/app/home',

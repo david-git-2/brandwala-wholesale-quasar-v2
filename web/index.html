@@ -388,9 +388,18 @@
         function resolveTenantName(scope, auth, workspace, path) {
           var tenants = workspace && workspace.availableAdminTenants;
           var slugMatch = path.match(/^\/([^/]+)\/(app|shop|investor)/);
-          var slugTenant = slugMatch ? findTenantBySlug(tenants, slugMatch[1]) : null;
+          var urlSlug = slugMatch ? slugMatch[1] : null;
 
-          if (slugTenant && slugTenant.name) return slugTenant.name;
+          if (urlSlug) {
+            var slugTenant = findTenantBySlug(tenants, urlSlug);
+            if (slugTenant && slugTenant.name) return slugTenant.name;
+
+            if (auth && auth.tenant && auth.tenant.slug === urlSlug && auth.tenant.name) {
+              return auth.tenant.name;
+            }
+
+            return urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1);
+          }
 
           if (scope === 'app' && workspace && workspace.selectedTenantId != null) {
             var selected = findTenantById(tenants, workspace.selectedTenantId);

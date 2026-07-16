@@ -7,10 +7,10 @@
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
             <div>
-              <div class="text-overline">Shop &amp; Order</div>
-              <h1 class="text-h5 q-my-none">Checkout</h1>
+              <div class="text-overline">{{ $t('shop.title') }} &amp; {{ $t('navigation.orders') }}</div>
+              <h1 class="text-h5 q-my-none">{{ $t('shop.checkout') }}</h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Provide shipping details and finalize your order.
+                {{ $t('shop.checkout_subtitle') }}
               </p>
             </div>
           </div>
@@ -22,21 +22,28 @@
         <div class="col-xs-12 col-md-8">
           <div class="column q-gutter-md">
             <!-- Shipping Information -->
-            <q-card flat bordered class="form-card">
-              <q-card-section class="q-px-md q-py-sm border-bottom">
+            <q-card v-if="shopType === 'dropship' || (shopType === 'fixed_price' && allowDelivery)" flat bordered class="form-card">
+              <q-card-section class="q-px-md q-py-sm border-bottom row items-center justify-between">
                 <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                   <q-icon name="local_shipping" size="18px" class="q-mr-xs text-primary" />
-                  Shipping Information
+                  {{ $t('shop.shipping_info') }}
                 </div>
+                <!-- Toggle checkbox only for fixed_price -->
+                <q-checkbox
+                  v-if="shopType === 'fixed_price'"
+                  v-model="requestDelivery"
+                  :label="$t('shop.request_delivery')"
+                  dense
+                />
               </q-card-section>
 
-              <q-card-section class="q-gutter-md">
+              <q-card-section v-if="requestDelivery" class="q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-sm-6">
-                    <q-input v-model="recipientName" outlined dense label="Recipient Name" />
+                    <q-input v-model="recipientName" outlined dense :label="$t('shop.recipient_name') + ' *'" />
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model="recipientPhone" outlined dense label="Recipient Phone" />
+                    <q-input v-model="recipientPhone" outlined dense :label="$t('shop.recipient_phone') + ' *'" />
                   </div>
                 </div>
                 <q-input
@@ -44,7 +51,7 @@
                   outlined
                   dense
                   type="textarea"
-                  label="Shipping Address"
+                  :label="$t('shop.shipping_address') + ' *'"
                   rows="3"
                 />
               </q-card-section>
@@ -55,7 +62,7 @@
               <q-card-section class="q-px-md q-py-sm border-bottom">
                 <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                   <q-icon name="payment" size="18px" class="q-mr-xs text-primary" />
-                  Billing Profile
+                  {{ $t('shop.billing_profile') }}
                 </div>
               </q-card-section>
 
@@ -64,12 +71,12 @@
                   v-model="billingProfile"
                   outlined
                   dense
-                  label="Select Billing Profile"
+                  :label="$t('shop.select_billing_profile')"
                   :options="billingOptions"
                   class="full-width"
                 />
                 <p class="text-caption text-grey-6 q-mt-sm q-mb-none">
-                  Choose the commercial billing account for payment terms.
+                  {{ $t('shop.billing_profile_desc') }}
                 </p>
               </q-card-section>
             </q-card>
@@ -80,7 +87,7 @@
         <div class="col-xs-12 col-md-4">
           <q-card flat bordered class="summary-card sticky-card">
             <q-card-section class="q-px-md q-py-sm border-bottom">
-              <div class="text-subtitle2 text-weight-bold text-grey-9">Items Summary</div>
+              <div class="text-subtitle2 text-weight-bold text-grey-9">{{ $t('shop.items_summary') }}</div>
             </q-card-section>
 
             <q-list class="item-list-compact" separator>
@@ -95,7 +102,7 @@
                   <div class="text-caption text-weight-bold text-grey-9 item-name">
                     {{ item.name }}
                   </div>
-                  <div class="text-caption text-grey-6">Qty: {{ item.quantity }}</div>
+                  <div class="text-caption text-grey-6">{{ $t('shop.qty') }}: {{ item.quantity }}</div>
                 </q-item-section>
                 <q-item-section side v-if="cartStore.cart?.see_price_snapshot">
                   <div class="text-caption text-weight-bold text-grey-9">
@@ -107,16 +114,16 @@
 
             <q-separator />
 
-            <q-card-section class="q-py-md">
+             <q-card-section class="q-py-md">
               <div class="row justify-between items-baseline q-mb-lg">
-                <span class="text-subtitle1 text-weight-bold text-grey-9">Estimated Total</span>
+                <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.estimated_total') }}</span>
                 <span
                   v-if="cartStore.cart?.see_price_snapshot"
                   class="text-h6 text-weight-bold text-primary"
                 >
                   {{ formatCartTotal() }}
                 </span>
-                <span v-else class="text-subtitle1 text-grey-5 italic"> Prices Hidden </span>
+                <span v-else class="text-subtitle1 text-grey-5 italic"> {{ $t('shop.prices_hidden') }} </span>
               </div>
 
               <!-- PLACE ORDER -->
@@ -124,10 +131,10 @@
                 color="primary"
                 unelevated
                 no-caps
-                label="Place Order"
+                :label="$t('shop.place_order')"
                 class="full-width pill-btn text-weight-bold q-py-sm"
                 :loading="orderStore.saving"
-                :disabled="!recipientName || !recipientPhone || !shippingAddress"
+                :disabled="requestDelivery && (!recipientName.trim() || !recipientPhone.trim() || !shippingAddress.trim())"
                 @click="submitOrder"
               />
             </q-card-section>
@@ -139,13 +146,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const cartStore = useShopCartStore();
 const orderStore = useShopOrderStore();
 
@@ -153,10 +162,39 @@ const recipientName = ref('');
 const recipientPhone = ref('');
 const shippingAddress = ref('');
 const billingProfile = ref(null);
+const requestDelivery = ref(false);
 
-const billingOptions = ref([
-  { label: 'Default Term Account (Net 30)', value: 'default' },
-  { label: 'Proforma Invoice (Pre-pay)', value: 'proforma' },
+const shopType = computed(() => cartStore.cart?.shop_type);
+const allowDelivery = computed(() => cartStore.cart?.allow_delivery);
+
+const shopId = computed(() => {
+  return route.query.shopId ? Number(route.query.shopId) : null;
+});
+
+// Watch for cart changes to initialize requestDelivery
+watch(
+  () => cartStore.cart,
+  (cart) => {
+    if (cart) {
+      if (cart.shop_type === 'dropship') {
+        requestDelivery.value = true;
+      } else {
+        requestDelivery.value = false;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(async () => {
+  if (!cartStore.cart && shopId.value) {
+    await cartStore.fetchCart(shopId.value);
+  }
+});
+
+const billingOptions = computed(() => [
+  { label: t('shop.billing_option_default'), value: 'default' },
+  { label: t('shop.billing_option_proforma'), value: 'proforma' },
 ]);
 
 const goBack = () => {
@@ -166,11 +204,15 @@ const goBack = () => {
 
 const submitOrder = async () => {
   if (!cartStore.cart?.id) return;
+  const name = requestDelivery.value ? recipientName.value.trim() : '';
+  const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
+  const address = requestDelivery.value ? shippingAddress.value.trim() : '';
+
   const res = await orderStore.submitOrder(
     cartStore.cart.id,
-    recipientName.value,
-    recipientPhone.value,
-    shippingAddress.value,
+    name,
+    phone,
+    address,
     null,
   );
   if (res.success) {

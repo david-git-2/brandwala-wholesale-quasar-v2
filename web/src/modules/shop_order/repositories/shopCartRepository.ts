@@ -8,6 +8,8 @@ export interface CartData {
     customer_group_id: number;
     see_price_snapshot: boolean;
     status: 'active' | 'converted' | 'abandoned';
+    shop_type: 'vendor_catalog' | 'fixed_price' | 'dropship';
+    allow_delivery: boolean;
     created_at: string;
     updated_at: string;
   };

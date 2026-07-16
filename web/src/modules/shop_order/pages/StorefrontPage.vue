@@ -1,16 +1,16 @@
 <template>
-  <q-page class="q-pa-md storefront-page">
+<q-page class="bw-page storefront-page">
     <!-- ACCESS DENIED STATE -->
     <div
       v-if="accessDenied"
       class="column items-center justify-center error-container text-center q-pa-xl"
     >
       <q-icon name="gpp_bad" size="80px" color="negative" class="q-mb-md" />
-      <div class="text-h5 text-weight-bold text-grey-9">Access Denied</div>
+      <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.access_denied') }}</div>
       <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
-        You do not have permission to access this shop. Please contact your administrator.
+        {{ $t('shop.access_denied_desc') }}
       </p>
-      <q-btn color="primary" no-caps label="Go Back" class="pill-btn" @click="goBack" />
+      <q-btn color="primary" no-caps :label="$t('shop.go_back')" class="pill-btn" @click="goBack" />
     </div>
 
     <!-- NOT FOUND STATE -->
@@ -19,16 +19,16 @@
       class="column items-center justify-center error-container text-center q-pa-xl"
     >
       <q-icon name="search_off" size="80px" color="warning" class="q-mb-md" />
-      <div class="text-h5 text-weight-bold text-grey-9">Shop Not Found</div>
+      <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.shop_not_found') }}</div>
       <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
-        The shop you are trying to browse could not be found or is inactive.
+        {{ $t('shop.shop_not_found_desc') }}
       </p>
-      <q-btn color="primary" no-caps label="Go Back" class="pill-btn" @click="goBack" />
+      <q-btn color="primary" no-caps :label="$t('shop.go_back')" class="pill-btn" @click="goBack" />
     </div>
 
     <!-- INITIAL LOADING SKELETON -->
     <div v-else-if="initialLoading" class="storefront-loading">
-      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 q-pa-md">
+      <q-card flat bordered class="q-mb-md q-pa-md">
         <q-skeleton type="text" width="180px" height="28px" />
         <q-skeleton type="text" width="280px" class="q-mt-xs" />
       </q-card>
@@ -49,32 +49,24 @@
     </div>
 
     <!-- STOREFRONT MAIN CONTENT -->
-    <div v-else>
+    <div v-else class="bw-page__stack">
       <!-- Shop Header Hero -->
-      <q-card flat class="q-mb-lg floating-surface hero-surface shadow-1">
+      <q-card flat bordered class="q-mb-lg">
         <q-card-section class="q-py-md q-px-lg">
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col">
-              <div class="row items-center q-gutter-sm">
-                <q-icon name="storefront" size="32px" color="primary" />
-                <div>
-                  <h1 class="text-h5 text-weight-bold q-my-none">
-                    {{ shopStorefrontStore.shopDetails?.name }}
-                  </h1>
-                  <div class="row items-center q-gutter-xs text-caption text-grey-7 q-mt-xs">
-                    <q-badge
-                      :color="getShopTypeColor(shopStorefrontStore.shopDetails?.shop_type)"
-                      text-color="white"
-                      class="q-mr-xs"
-                    >
-                      {{ getShopTypeLabel(shopStorefrontStore.shopDetails?.shop_type) }}
-                    </q-badge>
-                    <span>•</span>
-                    <span
-                      >Order Mode:
-                      {{ getOrderModeLabel(shopStorefrontStore.shopDetails?.order_mode) }}</span
-                    >
-                  </div>
+              <div>
+                <h1 class="text-h6 text-weight-bold q-my-none">
+                  {{ shopStorefrontStore.shopDetails?.name }}
+                </h1>
+                <div class="row items-center q-gutter-xs text-caption text-grey-7 q-mt-xs">
+                  <q-badge
+                    :color="getShopTypeColor(shopStorefrontStore.shopDetails?.shop_type)"
+                    text-color="white"
+                    class="q-mr-xs"
+                  >
+                    {{ getShopTypeLabel(shopStorefrontStore.shopDetails?.shop_type) }}
+                  </q-badge>
                 </div>
               </div>
             </div>
@@ -92,10 +84,7 @@
                 <q-badge color="negative" floating v-if="shopCartStore.itemCount > 0">
                   {{ shopCartStore.itemCount }}
                 </q-badge>
-                <q-tooltip>View Cart</q-tooltip>
-              </q-btn>
-              <q-btn flat round dense icon="arrow_back" color="grey-7" @click="goBack">
-                <q-tooltip>Go Back</q-tooltip>
+                <q-tooltip>{{ $t('shop.cart') }}</q-tooltip>
               </q-btn>
             </div>
           </div>
@@ -105,24 +94,34 @@
       <!-- Toolbar & Search -->
       <div class="row items-center justify-between q-col-gutter-md q-mb-md">
         <!-- Search bar -->
-        <div class="col-xs-12 col-sm-6 col-md-4">
+        <div class="col-xs-12 col-sm-8 col-md-6 row no-wrap q-gutter-sm">
           <q-input
             v-model="search"
             filled
             dense
             type="text"
-            class="soft-input full-width"
-            placeholder="Search products..."
+            class="soft-input col"
+            :placeholder="$t('shop.search_placeholder')"
             clearable
+            @keydown.enter="onSearchClick"
+            @clear="onSearchClick"
           >
             <template #prepend>
               <q-icon name="search" />
             </template>
           </q-input>
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            :label="$t('shop.search')"
+            class="pill-btn"
+            @click="onSearchClick"
+          />
         </div>
 
         <!-- Filter toggles -->
-        <div class="col-xs-12 col-sm-6 col-md-8 text-right row justify-end q-gutter-sm">
+        <div class="col-xs-12 col-sm-4 col-md-6 text-right row justify-end q-gutter-sm">
           <q-btn
             flat
             round
@@ -134,7 +133,7 @@
             <q-badge v-if="activeFilterCount > 0" color="primary" floating rounded>
               {{ activeFilterCount }}
             </q-badge>
-            <q-tooltip>Filters</q-tooltip>
+            <q-tooltip>{{ $t('shop.filters') }}</q-tooltip>
           </q-btn>
         </div>
       </div>
@@ -144,7 +143,7 @@
         v-if="hasActiveFilters"
         class="row items-center q-gutter-xs q-mb-md active-filters-section"
       >
-        <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">Active Filters:</span>
+        <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">{{ $t('shop.active_filters') }}</span>
         <q-chip
           v-if="search"
           removable
@@ -186,7 +185,7 @@
           dense
           no-caps
           color="primary"
-          label="Clear All"
+          :label="$t('shop.clear_all')"
           size="sm"
           class="q-px-sm q-ml-xs text-weight-bold"
           @click="onResetFilters"
@@ -249,10 +248,9 @@
                         }}
                       </div>
                     </template>
-                    <div v-else class="text-caption text-grey-5">Price hidden</div>
 
                     <div
-                      v-if="shopStorefrontStore.permissions?.can_view_quantity"
+                      v-if="shopStorefrontStore.permissions?.can_view_quantity && item.available_units !== null && item.available_units !== undefined"
                       class="text-caption"
                       :class="
                         item.available_units > 0
@@ -262,28 +260,70 @@
                             : 'text-grey-6'
                       "
                     >
-                      {{
-                        item.available_units !== null && item.available_units !== undefined
-                          ? `${item.available_units} avail.`
-                          : 'Qty N/A'
-                      }}
+                      {{ item.available_units }} {{ $t('shop.avail') }}
                     </div>
                   </div>
 
-                  <q-btn
-                    color="primary"
-                    unelevated
-                    no-caps
-                    dense
-                    icon="shopping_cart"
-                    :label="quasar.screen.lt.sm ? undefined : 'Add'"
-                    class="add-cart-btn"
-                    :disabled="
-                      !shopStorefrontStore.permissions?.can_add_to_cart ||
-                      (item.available_units !== null && item.available_units <= 0)
-                    "
-                    @click="onAddToCart(item)"
-                  />
+                   <div class="row items-center no-wrap q-gutter-x-sm">
+                    <!-- Qty adjuster shown only when NOT in cart -->
+                    <div
+                      v-if="!isInCart(item)"
+                      class="row items-center no-wrap quantity-controls"
+                      style="border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15)); border-radius: 10px; padding: 4px; background: rgba(0,0,0,0.02);"
+                    >
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        icon="remove"
+                        color="grey-8"
+                        style="min-width: 32px; min-height: 32px;"
+                        @click="decrementQty(item)"
+                      />
+                      <div class="text-weight-bold text-center text-grey-9" style="width: 36px; font-size: 15px; user-select: none;">
+                        {{ selectedQuantities[itemKey(item)] || getMinQty(item) }}
+                      </div>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        icon="add"
+                        color="grey-8"
+                        style="min-width: 32px; min-height: 32px;"
+                        @click="incrementQty(item)"
+                      />
+                    </div>
+
+                    <q-btn
+                      v-if="!isInCart(item)"
+                      color="primary"
+                      unelevated
+                      no-caps
+                      dense
+                      icon="shopping_cart"
+                      :label="quasar.screen.lt.sm ? undefined : $t('shop.add')"
+                      class="add-cart-btn"
+                      :disabled="
+                        !shopStorefrontStore.permissions?.can_add_to_cart ||
+                        (item.available_units !== null && item.available_units <= 0)
+                      "
+                      @click="onAddToCart(item)"
+                    />
+                    <q-btn
+                      v-else
+                      color="negative"
+                      unelevated
+                      no-caps
+                      dense
+                      icon="remove_shopping_cart"
+                      :label="quasar.screen.lt.sm ? undefined : $t('shop.remove')"
+                      class="add-cart-btn"
+                      :disabled="!shopStorefrontStore.permissions?.can_add_to_cart"
+                      @click="onRemoveFromCart(item)"
+                    />
+                  </div>
                 </div>
               </div>
             </q-card>
@@ -361,11 +401,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useShopCartStore } from '../stores/shopCartStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import { useQuasar, type QInfiniteScroll } from 'quasar';
 
@@ -375,6 +416,7 @@ const router = useRouter();
 const shopStorefrontStore = useShopStorefrontStore();
 const productStore = useProductStore();
 const shopCartStore = useShopCartStore();
+const authStore = useAuthStore();
 
 const shopSlug = computed(() => (route.params.shopSlug as string) || '');
 
@@ -392,8 +434,8 @@ const categoryNames = ref<string[]>([]);
 const filteredBrandNames = ref<string[]>([]);
 const filteredCategoryNames = ref<string[]>([]);
 
-let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 const suppressFilterWatch = ref(false);
+const selectedQuantities = reactive<Record<string, number>>({});
 const infiniteScrollRef = ref<QInfiniteScroll | null>(null);
 
 const allBrandOption = { label: 'All brands', value: null };
@@ -448,16 +490,11 @@ const getShopTypeColor = (type?: string) => {
   return 'grey';
 };
 
-const getOrderModeLabel = (mode?: string) => {
-  if (mode === 'procurement_intent') return 'Procurement Intent';
-  if (mode === 'checkout_fixed') return 'Fixed Checkout';
-  if (mode === 'checkout_wholesale') return 'Wholesale Checkout';
-  return mode || 'N/A';
-};
 
-const loadBrands = async (vendorCode?: string | null) => {
+const loadBrands = async (vendorCode?: string | null, tenantId?: number | null) => {
   const result = await productStore.fetchBrandOptions({
     vendorCode: vendorCode ?? null,
+    tenantId: tenantId ?? null,
   });
   if (result.success) {
     brandNames.value = productStore.brandOptions;
@@ -465,9 +502,10 @@ const loadBrands = async (vendorCode?: string | null) => {
   }
 };
 
-const loadCategories = async (vendorCode?: string | null) => {
+const loadCategories = async (vendorCode?: string | null, tenantId?: number | null) => {
   const result = await productStore.fetchCategoryOptions({
     vendorCode: vendorCode ?? null,
+    tenantId: tenantId ?? null,
   });
   if (result.success) {
     categoryNames.value = productStore.categoryOptions;
@@ -554,18 +592,43 @@ const onResetFilters = () => {
   }
 };
 
+const getMinQty = (item: any) => {
+  return item.minimum_order_quantity || 1;
+};
+
+const decrementQty = (item: any) => {
+  const key = itemKey(item);
+  const min = getMinQty(item);
+  const current = selectedQuantities[key] || min;
+  if (current > min) {
+    selectedQuantities[key] = current - min;
+  }
+};
+
+const incrementQty = (item: any) => {
+  const key = itemKey(item);
+  const min = getMinQty(item);
+  const current = selectedQuantities[key] || min;
+  if (item.available_units === null || current + min <= item.available_units) {
+    selectedQuantities[key] = current + min;
+  }
+};
+
 const onAddToCart = async (item: any) => {
   if (!shopStorefrontStore.shopDetails) return;
+  const key = itemKey(item);
+  const qty = selectedQuantities[key] || getMinQty(item);
   const result = await shopCartStore.addItem(
     shopStorefrontStore.shopDetails.id,
     item.product_id,
     item.global_stock_allocation_id,
-    1,
+    qty,
   );
   if (result.success) {
     if (item.available_units !== null) {
-      item.available_units = Math.max(0, item.available_units - 1);
+      item.available_units = Math.max(0, item.available_units - qty);
     }
+    delete selectedQuantities[key];
   }
 };
 
@@ -574,14 +637,33 @@ const goToCart = () => {
   void router.push(`${tenantSlug}/shop/cart`);
 };
 
-watch(search, () => {
-  if (suppressFilterWatch.value) return;
-  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-  searchDebounceTimer = setTimeout(() => {
-    shopStorefrontStore.catalogItems = [];
-    resetInfiniteScroll();
-  }, 400);
-});
+const cartItemFor = (catalogItem: any) => {
+  return shopCartStore.items.find(
+    (cartItem) =>
+      cartItem.product_id === catalogItem.product_id &&
+      cartItem.global_stock_allocation_id === catalogItem.global_stock_allocation_id,
+  );
+};
+
+const isInCart = (catalogItem: any) => {
+  return !!cartItemFor(catalogItem);
+};
+
+const onRemoveFromCart = async (catalogItem: any) => {
+  const cartItem = cartItemFor(catalogItem);
+  if (!cartItem) return;
+  const result = await shopCartStore.removeItem(cartItem.id);
+  if (result.success) {
+    if (catalogItem.available_units !== null) {
+      catalogItem.available_units += cartItem.quantity;
+    }
+  }
+};
+
+const onSearchClick = () => {
+  shopStorefrontStore.catalogItems = [];
+  resetInfiniteScroll();
+};
 
 watch([category, brand], () => {
   if (suppressFilterWatch.value) return;
@@ -613,16 +695,13 @@ onMounted(async () => {
     }
 
     const vendorCode = shopStorefrontStore.shopDetails?.vendor_code;
-    await Promise.all([loadBrands(vendorCode), loadCategories(vendorCode)]);
+    const tenantId = shopStorefrontStore.shopDetails?.tenant_id || authStore.tenantId;
+    await Promise.all([loadBrands(vendorCode, tenantId), loadCategories(vendorCode, tenantId)]);
   } catch {
     notFound.value = true;
   } finally {
     initialLoading.value = false;
   }
-});
-
-onBeforeUnmount(() => {
-  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
 });
 </script>
 

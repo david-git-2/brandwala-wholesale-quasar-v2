@@ -408,8 +408,9 @@ import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import type { Product } from '../types';
 import { productService } from '../services/productService';
+import { useProductStore } from '../stores/productStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { vendorService } from 'src/modules/vendor/services/vendorService';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import type { Vendor } from 'src/modules/vendor/types';
 import type { QForm } from 'quasar';
 import { showSuccessNotification } from 'src/utils/appFeedback';
@@ -419,6 +420,8 @@ const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const productStore = useProductStore();
+const vendorStore = useVendorStore();
 
 const loading = ref(false);
 const deleting = ref(false);
@@ -514,19 +517,19 @@ const loadLookupData = async () => {
   if (!tenantId) return;
 
   const [brandsRes, categoriesRes, vendorsRes] = await Promise.all([
-    productService.listBrands({ tenantId }),
-    productService.listCategories({ tenantId }),
-    vendorService.listVendors(tenantId),
+    productStore.fetchBrandOptions({ tenantId }),
+    productStore.fetchCategoryOptions({ tenantId }),
+    vendorStore.fetchVendors(tenantId),
   ]);
 
-  if (brandsRes.success && brandsRes.data) {
-    brandsList.value = brandsRes.data.filter(Boolean);
+  if (brandsRes.success) {
+    brandsList.value = productStore.brandOptions.filter(Boolean);
   }
-  if (categoriesRes.success && categoriesRes.data) {
-    categoriesList.value = categoriesRes.data.filter(Boolean);
+  if (categoriesRes.success) {
+    categoriesList.value = productStore.categoryOptions.filter(Boolean);
   }
-  if (vendorsRes.success && vendorsRes.data) {
-    vendorsList.value = vendorsRes.data;
+  if (vendorsRes.success) {
+    vendorsList.value = vendorStore.items;
   }
 };
 

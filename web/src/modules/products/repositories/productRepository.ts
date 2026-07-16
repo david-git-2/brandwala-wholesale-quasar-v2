@@ -441,6 +441,20 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
   return data as Product;
 };
 
+const bulkCreateProducts = async (payloads: ProductCreateInput[]): Promise<Product[]> => {
+  const formatted = payloads.map(buildProductPayload);
+  const { data, error } = await supabase
+    .from('products')
+    .insert(formatted)
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Product[]) ?? [];
+};
+
 const getProductById = async (id: number, tenantId?: number | null): Promise<Product> => {
   if (typeof tenantId === 'number') {
     const { data, error } = await supabase.rpc('get_product_for_tenant', {
@@ -711,6 +725,7 @@ export const productRepository = {
   lookupProductsByCodes,
   getProductById,
   createProduct,
+  bulkCreateProducts,
   updateProduct,
   deleteProduct,
 };

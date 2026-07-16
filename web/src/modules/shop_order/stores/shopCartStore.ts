@@ -59,7 +59,7 @@ export const useShopCartStore = defineStore('shopCart', {
           return res;
         }
         this.cart = res.data?.cart ?? null;
-        this.items = res.data?.items ?? [];
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         return res;
       } finally {
         this.loading = false;
@@ -91,7 +91,7 @@ export const useShopCartStore = defineStore('shopCart', {
           return res;
         }
         this.cart = res.data?.cart ?? null;
-        this.items = res.data?.items ?? [];
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         showSuccessNotification('Item added to cart.');
         return res;
       } finally {
@@ -110,7 +110,7 @@ export const useShopCartStore = defineStore('shopCart', {
           return res;
         }
         this.cart = res.data?.cart ?? null;
-        this.items = res.data?.items ?? [];
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         return res;
       } finally {
         this.saving = false;
@@ -128,7 +128,7 @@ export const useShopCartStore = defineStore('shopCart', {
           return res;
         }
         this.cart = res.data?.cart ?? null;
-        this.items = res.data?.items ?? [];
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         showSuccessNotification('Item removed from cart.');
         return res;
       } finally {

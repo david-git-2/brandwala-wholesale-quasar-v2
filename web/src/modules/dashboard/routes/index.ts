@@ -12,6 +12,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/platform',
     component: () => import('layouts/PlatformLayout.vue'),
+    redirect: '/platform/dashboard',
     children: [
       {
         path: 'dashboard',
@@ -28,6 +29,10 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app',
     component: () => import('layouts/AppLayout.vue'),
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
+    },
     children: [
       {
         path: 'dashboard',
@@ -59,6 +64,10 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/shop',
     component: () => import('layouts/ShopLayout.vue'),
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+      return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
+    },
     children: [
       {
         path: 'dashboard',

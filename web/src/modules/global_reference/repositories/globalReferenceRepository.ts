@@ -11,14 +11,20 @@ import type {
   UnitOfMeasureUpdateInput,
 } from '../types';
 
-const listCurrencies = async (): Promise<GlobalCurrency[]> => {
+let cachedCurrencies: GlobalCurrency[] | null = null;
+
+const listCurrencies = async (forceReload = false): Promise<GlobalCurrency[]> => {
+  if (!forceReload && cachedCurrencies) {
+    return cachedCurrencies;
+  }
   const { data, error } = await supabase
     .from('global_currencies')
     .select('*')
     .order('code', { ascending: true });
 
   if (error) throw error;
-  return (data as GlobalCurrency[] | null) ?? [];
+  cachedCurrencies = (data as GlobalCurrency[] | null) ?? [];
+  return cachedCurrencies;
 };
 
 const createCurrency = async (input: GlobalCurrencyCreateInput): Promise<GlobalCurrency> => {
@@ -37,6 +43,7 @@ const createCurrency = async (input: GlobalCurrencyCreateInput): Promise<GlobalC
     .single();
 
   if (error) throw error;
+  cachedCurrencies = null; // Clear cache on changes
   return data as GlobalCurrency;
 };
 
@@ -55,12 +62,14 @@ const updateCurrency = async (input: GlobalCurrencyUpdateInput): Promise<GlobalC
     .single();
 
   if (error) throw error;
+  cachedCurrencies = null; // Clear cache on changes
   return data as GlobalCurrency;
 };
 
 const deleteCurrency = async (id: number): Promise<void> => {
   const { error } = await supabase.from('global_currencies').delete().eq('id', id);
   if (error) throw error;
+  cachedCurrencies = null; // Clear cache on changes
 };
 
 const listPaymentMethods = async (): Promise<PaymentMethod[]> => {

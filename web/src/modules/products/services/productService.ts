@@ -130,6 +130,24 @@ const createProduct = async (
   }
 };
 
+const bulkCreateProducts = async (
+  payloads: ProductCreateInput[],
+): Promise<ProductServiceResult<Product[]>> => {
+  try {
+    const data = await productRepository.bulkCreateProducts(payloads);
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to import products.',
+    };
+  }
+};
+
 const updateProduct = async (
   payload: ProductUpdateInput,
 ): Promise<ProductServiceResult<Product>> => {
@@ -292,6 +310,7 @@ export const productService = {
   listProducts,
   getProductById,
   createProduct,
+  bulkCreateProducts,
   updateProduct,
   deleteProduct,
 };

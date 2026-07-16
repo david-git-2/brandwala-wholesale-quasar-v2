@@ -7,7 +7,17 @@
             <div class="text-h6 text-weight-bold">Products</div>
             <div class="text-caption text-grey-8">Browse product previews and open details</div>
           </div>
-          <div class="col-auto">
+          <div class="col-auto row q-gutter-x-sm no-wrap">
+            <q-btn
+              outline
+              color="primary"
+              no-caps
+              size="sm"
+              class="pill-btn slim-btn"
+              label="Bulk Import"
+              icon="drive_folder_upload"
+              @click="bulkImportDialogOpen = true"
+            />
             <q-btn
               outline
               color="primary"
@@ -530,17 +540,24 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Bulk Import Dialog -->
+    <BulkImportDialog
+      v-model="bulkImportDialogOpen"
+      @success="onApplyFilters"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QForm } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
+import BulkImportDialog from '../components/BulkImportDialog.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useMarketStore } from 'src/modules/market/stores/marketStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
@@ -550,6 +567,7 @@ import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 
 const router = useRouter();
+const route = useRoute();
 const $q = useQuasar();
 const authStore = useAuthStore();
 const productStore = useProductStore();
@@ -559,6 +577,7 @@ const marketStore = useMarketStore();
 const page = ref(1);
 const showSearchInput = ref(false);
 const filterDrawerOpen = ref(false);
+const bulkImportDialogOpen = ref(false);
 const search = ref('');
 const searchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name');
 const brand = ref<string | null>(null);
@@ -607,7 +626,23 @@ const activeFilterCount = computed(() => {
   return count;
 });
 
+const updateUrlQuery = () => {
+  void router.replace({
+    query: {
+      page: page.value > 1 ? String(page.value) : undefined,
+      search: search.value || undefined,
+      searchField: searchField.value !== 'name' ? searchField.value : undefined,
+      brand: brand.value || undefined,
+      category: category.value || undefined,
+      vendorCode: vendorCode.value || undefined,
+      marketCode: marketCode.value || undefined,
+      availability: availability.value !== 'all' ? availability.value : undefined,
+    },
+  });
+};
+
 const loadProducts = async () => {
+  updateUrlQuery();
   await productStore.fetchProducts({
     page: page.value,
     pageSize: productStore.pageSize,
@@ -985,7 +1020,54 @@ const onCreateProduct = async () => {
   }
 };
 
+const initializeFiltersFromQuery = () => {
+  const query = route.query;
+
+  if (query.page) {
+    const parsedPage = Number(query.page);
+    if (!isNaN(parsedPage) && parsedPage > 0) {
+      page.value = parsedPage;
+    }
+  }
+
+  if (query.search) {
+    search.value = String(query.search);
+    showSearchInput.value = true;
+  }
+
+  if (query.searchField) {
+    const val = String(query.searchField);
+    if (val === 'name' || val === 'barcode' || val === 'product_code' || val === 'id') {
+      searchField.value = val;
+    }
+  }
+
+  if (query.brand) {
+    brand.value = String(query.brand);
+  }
+
+  if (query.category) {
+    category.value = String(query.category);
+  }
+
+  if (query.vendorCode) {
+    vendorCode.value = String(query.vendorCode);
+  }
+
+  if (query.marketCode) {
+    marketCode.value = String(query.marketCode);
+  }
+
+  if (query.availability) {
+    const val = String(query.availability);
+    if (val === 'all' || val === 'available' || val === 'unavailable') {
+      availability.value = val;
+    }
+  }
+};
+
 onMounted(async () => {
+  initializeFiltersFromQuery();
   try {
     const currencyData = await globalReferenceRepository.listCurrencies();
     currencies.value = currencyData
@@ -996,17 +1078,17 @@ onMounted(async () => {
   }
 
   const [brandResult, categoryResult] = await Promise.all([
-    productService.listBrands({ tenantId: authStore.tenantId ?? null }),
-    productService.listCategories({ tenantId: authStore.tenantId ?? null }),
+    productStore.fetchBrandOptions({ tenantId: authStore.tenantId ?? null }),
+    productStore.fetchCategoryOptions({ tenantId: authStore.tenantId ?? null }),
     vendorStore.fetchVendors(authStore.tenantId ?? null),
     marketStore.fetchMarkets(),
   ]);
 
   if (brandResult.success) {
-    brands.value = brandResult.data ?? [];
+    brands.value = productStore.brandOptions;
   }
   if (categoryResult.success) {
-    categories.value = categoryResult.data ?? [];
+    categories.value = productStore.categoryOptions;
   }
 
   await loadProducts();

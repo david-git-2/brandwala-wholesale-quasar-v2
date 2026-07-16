@@ -4995,14 +4995,20 @@ export type Database = {
       }
       shops: {
         Row: {
+          allow_delivery: boolean
+          buy_currency_id: number
           created_at: string
           default_currency_id: number | null
           global_stock_type_id: number | null
           id: number
           is_active: boolean
           is_negotiable: boolean
+          markup_percentage: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          pricing_method: string
+          quantity_display_mode: string
+          sell_currency_id: number
           shop_type: Database["public"]["Enums"]["shop_type_enum"]
           show_stock_quantity: boolean
           slug: string
@@ -5011,14 +5017,20 @@ export type Database = {
           vendor_code: string | null
         }
         Insert: {
+          allow_delivery?: boolean
+          buy_currency_id: number
           created_at?: string
           default_currency_id?: number | null
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
           is_negotiable?: boolean
+          markup_percentage?: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          pricing_method: string
+          quantity_display_mode: string
+          sell_currency_id: number
           shop_type: Database["public"]["Enums"]["shop_type_enum"]
           show_stock_quantity?: boolean
           slug: string
@@ -5027,14 +5039,20 @@ export type Database = {
           vendor_code?: string | null
         }
         Update: {
+          allow_delivery?: boolean
+          buy_currency_id?: number
           created_at?: string
           default_currency_id?: number | null
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
           is_negotiable?: boolean
+          markup_percentage?: number
           name?: string
           order_mode?: Database["public"]["Enums"]["shop_order_mode_enum"]
+          pricing_method?: string
+          quantity_display_mode?: string
+          sell_currency_id?: number
           shop_type?: Database["public"]["Enums"]["shop_type_enum"]
           show_stock_quantity?: boolean
           slug?: string
@@ -5044,8 +5062,22 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "shops_buy_currency_id_fkey"
+            columns: ["buy_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shops_default_currency_id_fkey"
             columns: ["default_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shops_sell_currency_id_fkey"
+            columns: ["sell_currency_id"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["id"]
@@ -7841,6 +7873,7 @@ export type Database = {
         Returns: boolean
       }
       delete_shipment_order: { Args: { p_id: number }; Returns: undefined }
+      delete_shop_order: { Args: { p_order_id: number }; Returns: undefined }
       delete_store: { Args: { p_id: number }; Returns: undefined }
       delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
@@ -9009,14 +9042,20 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: {
+          allow_delivery: boolean
+          buy_currency_id: number
           created_at: string
           default_currency_id: number
           global_stock_type_id: number
           id: number
           is_active: boolean
           is_negotiable: boolean
+          markup_percentage: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          pricing_method: string
+          quantity_display_mode: string
+          sell_currency_id: number
           shop_type: Database["public"]["Enums"]["shop_type_enum"]
           show_stock_quantity: boolean
           slug: string
@@ -10351,13 +10390,19 @@ export type Database = {
       }
       upsert_shop: {
         Args: {
+          p_allow_delivery?: boolean
+          p_buy_currency_id?: number
           p_default_currency_id?: number
           p_global_stock_type_id?: number
           p_id?: number
           p_is_active: boolean
           p_is_negotiable: boolean
+          p_markup_percentage?: number
           p_name: string
           p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          p_pricing_method?: string
+          p_quantity_display_mode?: string
+          p_sell_currency_id?: number
           p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
           p_show_stock_quantity: boolean
           p_slug: string
@@ -10365,14 +10410,20 @@ export type Database = {
           p_vendor_code?: string
         }
         Returns: {
+          allow_delivery: boolean
+          buy_currency_id: number
           created_at: string
           default_currency_id: number | null
           global_stock_type_id: number | null
           id: number
           is_active: boolean
           is_negotiable: boolean
+          markup_percentage: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          pricing_method: string
+          quantity_display_mode: string
+          sell_currency_id: number
           shop_type: Database["public"]["Enums"]["shop_type_enum"]
           show_stock_quantity: boolean
           slug: string

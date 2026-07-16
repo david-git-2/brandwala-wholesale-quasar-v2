@@ -18,6 +18,12 @@ export interface Shop {
   default_currency_id: number | null;
   global_stock_type_id: number | null;
   is_active: boolean;
+  allow_delivery: boolean;
+  buy_currency_id: number;
+  sell_currency_id: number;
+  pricing_method: 'direct_cost' | 'markup';
+  markup_percentage: number;
+  quantity_display_mode: 'original' | 'custom_override';
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +42,12 @@ export interface CreateShopPayload {
   default_currency_id?: number | null;
   global_stock_type_id?: number | null;
   is_active: boolean;
+  allow_delivery: boolean;
+  buy_currency_id?: number | null;
+  sell_currency_id?: number | null;
+  pricing_method?: 'direct_cost' | 'markup' | null;
+  markup_percentage?: number;
+  quantity_display_mode?: 'original' | 'custom_override' | null;
 }
 
 export interface UpdateShopPayload {
@@ -49,6 +61,12 @@ export interface UpdateShopPayload {
   default_currency_id?: number | null;
   global_stock_type_id?: number | null;
   is_active: boolean;
+  allow_delivery: boolean;
+  buy_currency_id?: number | null;
+  sell_currency_id?: number | null;
+  pricing_method?: 'direct_cost' | 'markup' | null;
+  markup_percentage?: number;
+  quantity_display_mode?: 'original' | 'custom_override' | null;
 }
 
 // ---- Service result wrapper -----------------------------------------

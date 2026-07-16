@@ -179,6 +179,24 @@ flowchart TB
 
 ---
 
+## 1a. Gap Analysis & Legacy Negotiation Analysis
+
+Before starting the full-scale implementation of shop order negotiation features, a gap analysis was performed comparing the legacy `brand-wala-wholesale` project against the new architecture in `brandwala-wholesale-quasar-v2`.
+
+### Legacy Negotiation Issues (`brand-wala-wholesale`)
+1. **Lack of Shop Configurations**: Legacy had no `shops` or `stores` table/collection concept. All orders were placed directly under a `market_id` and `vendor_id`. Consequently, there was no way to customize features (such as toggling negotiation status, setting currencies, or choosing pricing methods) per storefront.
+2. **Rigid Transition Lifecycle**: The status flow (`submitted -> priced -> under_review -> finalized -> ordered`) locked down customer inputs once the order entered `under_review` (the "Negotiate" phase). During this phase, the customer's UI became read-only, preventing any iterative back-and-forth negotiation loops.
+3. **Hardcoded Currency Assumptions**: Pricing and offers were hardcoded as BDT (Bangladeshi Taka) for sales and GBP (British Pound) for purchase cost, with no option to modify the transaction currencies per vendor or shop.
+4. **No Customer Profile Controls**: There were no profile-based negotiation flags or overrides. Customer capabilities were determined solely by hardcoded roles.
+
+### Current Implementation Gaps in `brandwala-wholesale-quasar-v2`
+1. **Shop Currency Settings**: The `shops` table contains only a single `default_currency_id`. It lacks explicit dual-currency configurations (Buy currency vs. Sell currency) and does not enforce the rule that negotiations happen in the Sell currency.
+2. **Retail Price Configurations**: There is no database setting or UI configuration allowing admins to decide whether the displayed retail price should use direct cost or a markup percentage. Toggling stock quantity display (original vs. override custom quantity) is also missing.
+3. **Dropship Floor Price Validation**: Although the `shop_product_listings` table contains `minimum_sell_price_amount`, the storefront and cart validation rules are missing checks to prevent reseller listings from falling below the minimum sell price.
+4. **Bilingual Info ("I") Button**: In both the shop create and edit dialogs (`ShopFormDialog.vue`), the help tooltip modal does not detail the new pricing configurations, currency settings, or negotiation options in both Bangla and English.
+
+---
+
 ## 2. Module hierarchy
 
 **Parent module key (target):** `shop_order`  
@@ -241,11 +259,11 @@ Shop **type** is set at create and **immutable**. Order **mode** and **negotiati
 
 ### 3.1 Shop types
 
-| Type | `shop_type` | Catalog source | Stock required |
-|------|-------------|----------------|----------------|
-| **Vendor catalog** | `vendor_catalog` | `products` where `vendor_code = shops.vendor_code` and `is_available` | No |
-| **Fixed price** | `fixed_price` | `shop_product_listings` → `global_stock_allocations` | Yes |
-| **Dropship** | `dropship` | Same as fixed price | Yes |
+| Type | `shop_type` | Catalog source | Stock required | Details / Configurations |
+|------|-------------|----------------|----------------|--------------------------|
+| **Vendor catalog (Procurement)** | `vendor_catalog` | `products` where `vendor_code = shops.vendor_code` and `is_available` | No | Catalog ordering when product is not present. Order negotiable toggle is set based on the user profile for the shop. If negotiable, full negotiation flow is supported. |
+| **Fixed price (Retail)** | `fixed_price` | `shop_product_listings` → `global_stock_allocations` | Yes | Stock-backed. Admin configures display selling price (Direct Cost vs. Markup) and quantity display option (Original Quantity vs. Custom Override). |
+| **Dropship** | `dropship` | Same as fixed price | Yes | Reseller storefront. Shows suggested sell price and minimum sell price (floor price constraint) that the reseller must sell at. |
 
 ### 3.2 Order modes
 
@@ -274,6 +292,13 @@ Shop **type** is set at create and **immutable**. Order **mode** and **negotiati
 | `dropship` | `checkout_fixed` | false | `global_invoice` type `dropship` (dual amounts) |
 
 Not every cart produces the same order path — the matrix above is enforced at `submit_shop_order_from_cart`.
+
+### 3.5 Shop Currency Settings
+
+Every shop must configure dual currencies to distinguish origin costing from retail pricing:
+1. **Buy Currency** (`buy_currency_id`): The currency in which the product was or will be purchased from suppliers (e.g., GBP, USD). This drives origin costing snapshots.
+2. **Sell Currency** (`sell_currency_id` / `default_currency_id`): The currency in which the product will be listed, sold, and checked out (e.g., BDT).
+3. **Negotiation Currency Rule**: All counter-offers, negotiations, and pricing agreements must happen in the **Sell Currency** (`sell_currency_id`).
 
 ---
 
@@ -488,7 +513,12 @@ WHERE price_gbp IS NOT NULL;
 | `order_mode` | enum | `procurement_intent` \| `checkout_fixed` \| `checkout_wholesale` |
 | `is_negotiable` | boolean | Default false; false forced for dropship |
 | `show_stock_quantity` | boolean | Default true; fixed/dropship display |
-| `default_currency_id` | bigint FK | Shop display/checkout currency |
+| `buy_currency_id` | bigint FK | Currency product is bought in (e.g., GBP, USD) |
+| `sell_currency_id` | bigint FK | Currency product is sold/negotiated in (e.g., BDT) |
+| `default_currency_id` | bigint FK | Shop display/checkout currency (maps to `sell_currency_id`) |
+| `pricing_method` | text | For retail (`fixed_price`): `direct_cost` \| `markup` |
+| `markup_percentage` | numeric | Used when `pricing_method = markup` |
+| `quantity_display_mode` | text | For retail (`fixed_price`): `original` \| `custom_override` |
 | `global_stock_type_id` | bigint FK null | Optional filter for listing pick |
 | `is_active` | boolean | |
 | `created_at`, `updated_at` | timestamptz | |
@@ -693,6 +723,42 @@ All new pages follow [frontend style guide](frontend%20style%20guilde.md) and [U
 | Customer orders | `/shop/orders` | `shop_order_mgmt` |
 | Staff order desk | `/app/shop/orders` | `shop_order_mgmt` |
 | Fulfillment | `/app/shop/orders/:id` | `shop_fulfillment` |
+
+---
+
+## 12a. Bilingual Information Guide (I Button)
+
+To ensure admin users understand all configuration choices, a bilingual Help Dialog ("I" button) is integrated directly into the Shop Create and Edit forms. The content covers:
+
+### 1. Shop Types (দোকানের ধরন)
+*   **English**: 
+    *   **Procurement Intent (Vendor Catalog)**: Used when the product is not physically present in inventory. The customer browses the supplier's catalog and places an order. Order negotiation is optional and governed by the user's profile permission for that shop.
+    *   **Retail Shop (Fixed Price)**: Stock-backed storefront. Products are sold directly from branch inventory. Admins configure how prices are calculated (direct cost vs markup) and how quantities are shown (original quantity vs custom display quantity).
+    *   **Dropship Shop**: Reseller portal where the buyer sets their own customer price. The listing displays both the Sell Price and the Minimum Sell Price (floor price constraint) to prevent price undercutting.
+*   **Bangla (বাংলা)**:
+    *   **ক্রয় অনুরোধ (ভেন্ডর ক্যাটালগ)**: পণ্য যখন স্টকে থাকে না তখন ব্যবহৃত হয়। কাস্টমার সাপ্লায়ারের ক্যাটালগ দেখে অর্ডারের অনুরোধ করে। দরকষাকষির বিষয়টি ঐচ্ছিক এবং দোকানের জন্য ব্যবহারকারীর প্রোফাইল পারমিশন দ্বারা নির্ধারিত হয়।
+    *   **খুচরা দোকান (নির্ধারিত দাম)**: ফিজিক্যাল স্টক-ব্যাকড দোকান। শাখা বা চাইল্ড টেন্যান্টের স্টক থেকে সরাসরি বিক্রি। অ্যাডমিন নির্ধারণ করতে পারেন দাম কীভাবে দেখানো হবে (সরাসরি খরচ নাকি মার্কআপ সহ) এবং স্টকের পরিমাণ কীভাবে প্রদর্শিত হবে (আসল স্টক নাকি কাস্টম সংখ্যা)।
+    *   **ড্রপশিপ দোকান**: রিসেলার পোর্টাল যেখানে রিসেলার ক্রেতার কাছে নিজের বিক্রয়মূল্য সেট করতে পারেন। এখানে দুটি মূল্য দেখানো হয়: বিক্রয়মূল্য এবং ন্যূনতম বিক্রয়মূল্য (ফ্লোর প্রাইস), যা রিসেলারকে ন্যূনতম মূল্যের নিচে পণ্য বিক্রি করতে বাধা দেয়।
+
+### 2. Shop Currencies (দোকানের কারেন্সি সেটিংস)
+*   **English**: 
+    *   Every shop operates with two currencies:
+        1. **Buy Currency**: The currency in which the product was or will be purchased from suppliers (e.g. GBP, USD). Used for back-office cost logging.
+        2. **Sell Currency**: The currency in which the customer views prices and completes checkout (e.g. BDT).
+    *   All customer-facing pricing and active negotiations happen in the **Sell Currency**.
+*   **Bangla (বাংলা)**:
+    *   প্রতিটি দোকানের দুটি কারেন্সি থাকে:
+        ১. **ক্রয় কারেন্সি**: যে কারেন্সিতে পণ্যটি সাপ্লায়ারের কাছ থেকে কেনা হয়েছে বা হবে (যেমন GBP, USD)। এটি ব্যাক-অফিস খরচের হিসাব রাখার জন্য ব্যবহৃত হয়।
+        ২. **বিক্রয় কারেন্সি**: যে কারেন্সিতে কাস্টমার দাম দেখবে এবং পেমেন্ট সম্পন্ন করবে (যেমন BDT)।
+    *   কাস্টমার-ফেসিং সমস্ত প্রাইসিং এবং দরকষাকষি অবশ্যই **বিক্রয় কারেন্সিতে** সম্পন্ন হবে।
+
+### 3. Retail & Quantity Pricing Configurations (খুচরা মূল্য ও পরিমাণ সেটিংস)
+*   **English**:
+    *   **Direct Cost vs. Markup**: Decide if checkout price displays the baseline cost directly or applies a customized percentage markup.
+    *   **Original vs. Custom Quantity**: Choose to expose actual physical stock availability or define a custom marketing override quantity to show in the storefront.
+*   **Bangla (বাংলা)**:
+    *   **সরাসরি খরচ বনাম মার্কআপ**: বিক্রয়মূল্য সরাসরি বেসলাইন খরচে নাকি কাস্টম পার্সেন্টেজ মার্কআপ যোগ করে দেখানো হবে তা নির্ধারণ করুন।
+    *   **আসল বনাম কাস্টম স্টক**: ওয়্যারহাউজের ফিজিক্যাল আসল স্টক কাস্টমারকে সরাসরি দেখানো হবে নাকি একটি কাস্টম মার্কেটিং সংখ্যা ওভাররাইড হিসেবে দেখানো হবে তা বেছে নিন।
 
 ---
 
