@@ -318,7 +318,12 @@
                     <q-item clickable @click="emit('edit-details', item)">
                       <q-item-section>Edit details</q-item-section>
                     </q-item>
-                    <q-item v-if="isEditable" clickable class="text-negative" @click="emit('delete', item.id)">
+                    <q-item
+                      v-if="isEditable"
+                      clickable
+                      class="text-negative"
+                      @click="emit('delete', item.id)"
+                    >
                       <q-item-section>Delete</q-item-section>
                     </q-item>
                   </q-list>
@@ -568,10 +573,7 @@ const columnOptions = computed(() =>
 
 const isEditable = computed(() => {
   if (!props.shipment) return false;
-  return (
-    props.shipment.status !== 'Ready Stock' &&
-    props.shipment.status !== 'Warehouse Received'
-  );
+  return props.shipment.status !== 'Ready Stock' && props.shipment.status !== 'Warehouse Received';
 });
 
 const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);

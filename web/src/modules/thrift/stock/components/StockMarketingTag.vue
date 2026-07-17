@@ -30,8 +30,8 @@
       <div class="marketing-tag-card__barcode">
         <BarcodeRenderer
           :value="stock.barcode || ''"
-          :height="24"
-          :width="1.15"
+          :height="32"
+          :width="1.25"
           :display-value="false"
         />
       </div>
@@ -77,13 +77,13 @@ const showHeader = computed(() => {
 .marketing-tag-card {
   --tag-accent: #1565c0;
   border: 1.5px solid #1a1a1a;
-  padding: 2mm 3mm;
+  padding: 1.2mm 3mm;
   background: #fff;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 1mm;
   box-sizing: border-box;
-  height: 42mm;
+  height: var(--tag-height, 39mm);
   width: 100%;
   border-radius: 4px;
   overflow: hidden;
@@ -192,20 +192,20 @@ const showHeader = computed(() => {
 
 .marketing-tag-card__barcode {
   width: 100%;
-  height: 7.5mm;
+  height: 9.5mm;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .marketing-tag-card__barcode-text {
-  font-size: 8px;
+  font-size: 14px;
   font-family: ui-monospace, monospace;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
   text-align: center;
-  color: #222;
+  color: #000;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

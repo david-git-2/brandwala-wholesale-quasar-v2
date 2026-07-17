@@ -10,9 +10,7 @@ import type { ShipmentItemsCostingCache } from '../composables/useShipmentItemsC
 export const roundUnitCost = (value: number): number =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 
-export const toCostingShipmentInput = (
-  line: GlobalStockCostingInput,
-): CostingShipmentInput => ({
+export const toCostingShipmentInput = (line: GlobalStockCostingInput): CostingShipmentInput => ({
   type: line.shipment_type,
   product_conversion_rate: line.product_conversion_rate,
   cargo_conversion_rate: line.cargo_conversion_rate,

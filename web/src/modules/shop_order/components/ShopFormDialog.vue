@@ -9,14 +9,7 @@
             Shop type is locked after creation.
           </div>
         </div>
-        <q-btn
-          flat
-          round
-          dense
-          icon="info"
-          color="primary"
-          @click="showHelpDialog = true"
-        >
+        <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
           <q-tooltip>Shop Functionality Guide</q-tooltip>
         </q-btn>
       </q-card-section>
@@ -126,7 +119,7 @@
               label="Buy Currency (ক্রয় কারেন্সি) *"
               outlined
               dense
-              :rules="[val => !!val || 'Buy currency is required']"
+              :rules="[(val) => !!val || 'Buy currency is required']"
             />
           </div>
           <div class="col-6">
@@ -139,28 +132,28 @@
               label="Sell Currency (বিক্রয় কারেন্সি) *"
               outlined
               dense
-              :rules="[val => !!val || 'Sell currency is required']"
+              :rules="[(val) => !!val || 'Sell currency is required']"
             />
           </div>
         </div>
 
         <!-- Retail Shop Specific Configurations -->
-        <div 
-          v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')" 
+        <div
+          v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')"
           class="q-pa-md bg-blue-50 rounded-borders q-mb-md border-blue-100"
           style="background-color: #f0f7ff; border: 1px solid #d0e7ff; border-radius: 8px"
         >
           <div class="text-subtitle2 text-blue-9 text-weight-medium q-mb-sm">
             Retail Pricing & Quantity (খুচরা মূল্য ও পরিমাণ সেটিংস)
           </div>
-          
+
           <div class="row q-col-gutter-md items-center q-mb-sm">
             <div class="col-6">
               <q-select
                 v-model="form.pricing_method"
                 :options="[
                   { value: 'direct_cost', label: 'Direct Cost (সরাসরি খরচ)' },
-                  { value: 'markup', label: 'Markup Percentage (মার্কআপ)' }
+                  { value: 'markup', label: 'Markup Percentage (মার্কআপ)' },
                 ]"
                 emit-value
                 map-options
@@ -178,8 +171,8 @@
                 outlined
                 dense
                 :rules="[
-                  val => val !== null && val !== undefined || 'Markup % is required',
-                  val => val >= 0 || 'Markup % must be non-negative'
+                  (val) => (val !== null && val !== undefined) || 'Markup % is required',
+                  (val) => val >= 0 || 'Markup % must be non-negative',
                 ]"
               />
             </div>
@@ -191,7 +184,7 @@
                 v-model="form.quantity_display_mode"
                 :options="[
                   { value: 'original', label: 'Show Original Stock Qty (আসল স্টক)' },
-                  { value: 'custom_override', label: 'Show Custom Override Qty (কাস্টম সংখ্যা)' }
+                  { value: 'custom_override', label: 'Show Custom Override Qty (কাস্টম সংখ্যা)' },
                 ]"
                 emit-value
                 map-options
@@ -222,7 +215,9 @@
             <q-toggle v-model="form.is_active" label="Active" color="positive" />
           </div>
           <div
-            v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')"
+            v-if="
+              form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')
+            "
             class="col-auto"
           >
             <q-toggle v-model="form.allow_delivery" label="Allow Delivery" color="primary" />
@@ -284,42 +279,70 @@
         <!-- Shop Types -->
         <q-tab-panel name="types" class="q-gutter-y-sm">
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="storefront" color="blue-1" text-color="blue-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="storefront"
+              color="blue-1"
+              text-color="blue-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Vendor Catalog / ভেন্ডর ক্যাটালগ</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Vendor Catalog / ভেন্ডর ক্যাটালগ
+              </div>
               <div class="text-caption text-grey-7">
-                Shows a supplier's product list directly. Customers request what they want to buy (bulk or low MOQ). You do not need allocated stock.
+                Shows a supplier's product list directly. Customers request what they want to buy
+                (bulk or low MOQ). You do not need allocated stock.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                সাপ্লায়ারের পণ্য তালিকা সরাসরি দেখায়। কাস্টমার কি কিনতে চায় অনুরোধ করে। আগে থেকে স্টক বরাদ্দ লাগে না।
+                সাপ্লায়ারের পণ্য তালিকা সরাসরি দেখায়। কাস্টমার কি কিনতে চায় অনুরোধ করে। আগে থেকে
+                স্টক বরাদ্দ লাগে না।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="local_offer" color="green-1" text-color="green-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="local_offer"
+              color="green-1"
+              text-color="green-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Price / নির্ধারিত দাম</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Fixed Price / নির্ধারিত দাম
+              </div>
               <div class="text-caption text-grey-7">
-                Sells from your branch/child-tenant stock at a fixed retail price. Price cannot be changed by the customer.
+                Sells from your branch/child-tenant stock at a fixed retail price. Price cannot be
+                changed by the customer.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                আপনার শাখা/চাইল্ড-টেন্যান্টের স্টক থেকে নির্ধারিত খুচরা দামে বিক্রি। কাস্টমার দাম বদলাতে পারে না।
+                আপনার শাখা/চাইল্ড-টেন্যান্টের স্টক থেকে নির্ধারিত খুচরা দামে বিক্রি। কাস্টমার দাম
+                বদলাতে পারে না।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="local_shipping" color="orange-1" text-color="orange-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="local_shipping"
+              color="orange-1"
+              text-color="orange-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">Dropship / ড্রপশিপ</div>
               <div class="text-caption text-grey-7">
-                Reseller sets their own selling price on allocated stock, but cannot go below a minimum floor price. Negotiation stays off.
+                Reseller sets their own selling price on allocated stock, but cannot go below a
+                minimum floor price. Negotiation stays off.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                রিসেলার বরাদ্দ স্টকে নিজের বিক্রয়মূল্য সেট করে, তবে ন্যূনতম দামের নিচে নামতে পারে না। দরকষাকষি বন্ধ থাকে।
+                রিসেলার বরাদ্দ স্টকে নিজের বিক্রয়মূল্য সেট করে, তবে ন্যূনতম দামের নিচে নামতে পারে
+                না। দরকষাকষি বন্ধ থাকে।
               </div>
             </div>
           </div>
@@ -328,23 +351,41 @@
         <!-- Order Modes -->
         <q-tab-panel name="modes" class="q-gutter-y-sm">
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="assignment" color="purple-1" text-color="purple-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="assignment"
+              color="purple-1"
+              text-color="purple-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Procurement Intent / ক্রয় অনুরোধ</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Procurement Intent / ক্রয় অনুরোধ
+              </div>
               <div class="text-caption text-grey-7">
-                Customer picks products and asks for a quote. Staff review, set price, then turn it into a warehouse procurement order.
+                Customer picks products and asks for a quote. Staff review, set price, then turn it
+                into a warehouse procurement order.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                কাস্টমার পণ্য বেছে কোটেশন চায়। স্টাফ দেখে দাম নির্ধারণ করে, তারপর ওয়্যারহাউজ প্রকিউরমেন্ট অর্ডারে রূপান্তর করে।
+                কাস্টমার পণ্য বেছে কোটেশন চায়। স্টাফ দেখে দাম নির্ধারণ করে, তারপর ওয়্যারহাউজ
+                প্রকিউরমেন্ট অর্ডারে রূপান্তর করে।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="shopping_cart" color="teal-1" text-color="teal-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="shopping_cart"
+              color="teal-1"
+              text-color="teal-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Fixed Checkout / নির্ধারিত চেকআউট</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Fixed Checkout / নির্ধারিত চেকআউট
+              </div>
               <div class="text-caption text-grey-7">
                 Normal retail buy: cart → pay at listed price → invoice is created right away.
               </div>
@@ -356,14 +397,24 @@
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="business" color="indigo-1" text-color="indigo-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="business"
+              color="indigo-1"
+              text-color="indigo-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Wholesale Checkout / পাইকারি চেকআউট</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Wholesale Checkout / পাইকারি চেকআউট
+              </div>
               <div class="text-caption text-grey-7">
-                For bulk B2B orders with accounts: custom invoice/order flow instead of simple retail checkout.
+                For bulk B2B orders with accounts: custom invoice/order flow instead of simple
+                retail checkout.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                অ্যাকাউন্টভিত্তিক বাল্ক B2B অর্ডারের জন্য: সাধারণ খুচরা চেকআউটের বদলে কাস্টম ইনভয়েস/অর্ডার প্রক্রিয়া।
+                অ্যাকাউন্টভিত্তিক বাল্ক B2B অর্ডারের জন্য: সাধারণ খুচরা চেকআউটের বদলে কাস্টম
+                ইনভয়েস/অর্ডার প্রক্রিয়া।
               </div>
             </div>
           </div>
@@ -379,16 +430,25 @@
                 On: buyers and staff can send counter-offers. Off for Dropship shops (required).
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                চালু থাকলে ক্রেতা ও স্টাফ কাউন্টার অফার পাঠাতে পারে। ড্রপশিপ দোকানে অবশ্যই বন্ধ রাখতে হবে।
+                চালু থাকলে ক্রেতা ও স্টাফ কাউন্টার অফার পাঠাতে পারে। ড্রপশিপ দোকানে অবশ্যই বন্ধ
+                রাখতে হবে।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="visibility" color="cyan-1" text-color="cyan-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="visibility"
+              color="cyan-1"
+              text-color="cyan-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Show Stock Qty / স্টক সংখ্যা দেখান</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Show Stock Qty / স্টক সংখ্যা দেখান
+              </div>
               <div class="text-caption text-grey-7">
                 On: show exact stock number. Off: only show “In Stock / Out of Stock”.
               </div>
@@ -400,42 +460,72 @@
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="monetization_on" color="yellow-2" text-color="yellow-9" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="monetization_on"
+              color="yellow-2"
+              text-color="yellow-9"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Shop Currencies / কারেন্সি সেটিংস</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Shop Currencies / কারেন্সি সেটিংস
+              </div>
               <div class="text-caption text-grey-7">
-                Buy Currency: original purchase costing currency. Sell Currency: display & checkout currency. Negotiations must happen in Sell Currency.
+                Buy Currency: original purchase costing currency. Sell Currency: display & checkout
+                currency. Negotiations must happen in Sell Currency.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                ক্রয় কারেন্সি: কেনা দামের আসল কারেন্সি। বিক্রয় কারেন্সি: কাস্টমারের প্রদর্শন ও পেমেন্ট কারেন্সি। সমস্ত দরকষাকষি বিক্রয় কারেন্সিতে হতে হবে।
+                ক্রয় কারেন্সি: কেনা দামের আসল কারেন্সি। বিক্রয় কারেন্সি: কাস্টমারের প্রদর্শন ও
+                পেমেন্ট কারেন্সি। সমস্ত দরকষাকষি বিক্রয় কারেন্সিতে হতে হবে।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="calculate" color="indigo-1" text-color="indigo-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="calculate"
+              color="indigo-1"
+              text-color="indigo-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Retail Pricing Method / খুচরা মূল্য সেটিংস</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Retail Pricing Method / খুচরা মূল্য সেটিংস
+              </div>
               <div class="text-caption text-grey-7">
-                Direct Cost: sell price equals original procurement cost. Markup: sell price includes the set markup percentage.
+                Direct Cost: sell price equals original procurement cost. Markup: sell price
+                includes the set markup percentage.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                সরাসরি খরচ: ক্রয়মূল্যই বিক্রয়মূল্য হিসেবে দেখাবে। মার্কআপ: ক্রয়মূল্যের সাথে নির্দিষ্ট মার্কআপ শতাংশ যোগ হয়ে দেখাবে।
+                সরাসরি খরচ: ক্রয়মূল্যই বিক্রয়মূল্য হিসেবে দেখাবে। মার্কআপ: ক্রয়মূল্যের সাথে
+                নির্দিষ্ট মার্কআপ শতাংশ যোগ হয়ে দেখাবে।
               </div>
             </div>
           </div>
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="bar_chart" color="cyan-1" text-color="cyan-8" size="md" class="q-mr-md" />
+            <q-avatar
+              icon="bar_chart"
+              color="cyan-1"
+              text-color="cyan-8"
+              size="md"
+              class="q-mr-md"
+            />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Quantity Display Mode / স্টক পরিমাণ সেটিংস</div>
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                Quantity Display Mode / স্টক পরিমাণ সেটিংস
+              </div>
               <div class="text-caption text-grey-7">
-                Show Original Stock Qty: displays warehouse physical stock. Custom Override: displays custom marketing override value if set.
+                Show Original Stock Qty: displays warehouse physical stock. Custom Override:
+                displays custom marketing override value if set.
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                আসল স্টক: গুদামের ফিজিক্যাল আসল স্টক দেখাবে। কাস্টম সংখ্যা: নির্দিষ্ট কাস্টম ওভাররাইড সংখ্যা মার্কেটিং হিসেবে দেখাবে।
+                আসল স্টক: গুদামের ফিজিক্যাল আসল স্টক দেখাবে। কাস্টম সংখ্যা: নির্দিষ্ট কাস্টম
+                ওভাররাইড সংখ্যা মার্কেটিং হিসেবে দেখাবে।
               </div>
             </div>
           </div>
@@ -464,8 +554,6 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
-
-
 </template>
 
 <script setup lang="ts">

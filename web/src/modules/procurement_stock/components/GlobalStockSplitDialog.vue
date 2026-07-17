@@ -2,9 +2,7 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
     <q-card class="q-dialog-plugin shadow-2" style="width: 500px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-none" style="position: relative">
-        <div class="text-h6 text-primary text-weight-bold">
-          Split Stock Quantity
-        </div>
+        <div class="text-h6 text-primary text-weight-bold">Split Stock Quantity</div>
         <q-btn
           icon="close"
           flat
@@ -31,13 +29,15 @@
           <!-- Item info panel -->
           <div class="row items-center q-col-gutter-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders">
             <q-avatar rounded size="48px" class="bg-grey-2">
-              <img 
-                :src="imageUrl || 'https://placehold.co/48x48?text=No+Image'" 
+              <img
+                :src="imageUrl || 'https://placehold.co/48x48?text=No+Image'"
                 style="object-fit: cover; width: 100%; height: 100%"
               />
             </q-avatar>
             <div class="col">
-              <div class="text-weight-bold text-grey-9" style="word-break: break-word">{{ itemName }}</div>
+              <div class="text-weight-bold text-grey-9" style="word-break: break-word">
+                {{ itemName }}
+              </div>
               <div class="text-caption text-grey-6">
                 Code: {{ productCode || '-' }} | Barcode: {{ barcode || '-' }}
               </div>
@@ -65,7 +65,7 @@
                   {{ t.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
                 </div>
               </div>
-              
+
               <q-input
                 v-if="splits[t.id]"
                 :model-value="splits[t.id]?.quantity"
@@ -158,7 +158,7 @@ onMounted(async () => {
   try {
     // 1. Fetch all stock types
     await stockTypeStore.fetchStockTypes(authStore.tenantId);
-    
+
     // Initialize empty splits map
     const initialSplits: Record<number, SplitState> = {};
     stockTypeStore.items.forEach((t) => {
@@ -166,8 +166,10 @@ onMounted(async () => {
     });
 
     // 2. Fetch existing stock rows for this shipment item
-    const currentStocks = await globalStockRepository.fetchStocksByShipmentItem(props.shipmentItemId);
-    
+    const currentStocks = await globalStockRepository.fetchStocksByShipmentItem(
+      props.shipmentItemId,
+    );
+
     // 3. Populate existing values
     currentStocks.forEach((s) => {
       const splitItem = initialSplits[s.stock_type_id];

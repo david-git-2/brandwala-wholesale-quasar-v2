@@ -16,14 +16,7 @@
           @click="toggleDrawerOrPin"
         />
 
-        <q-btn
-          v-else
-          flat
-          round
-          dense
-          class="workspace-shell__menu"
-          padding="none"
-        >
+        <q-btn v-else flat round dense class="workspace-shell__menu" padding="none">
           <q-avatar size="32px" class="workspace-shell__avatar">
             <img
               v-if="userAvatarUrl"
@@ -72,11 +65,7 @@
               >
               <q-item clickable @click="toggleDarkMode">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon
-                    :name="darkMode ? 'dark_mode' : 'light_mode'"
-                    size="xs"
-                    color="grey-6"
-                  />
+                  <q-icon :name="darkMode ? 'dark_mode' : 'light_mode'" size="xs" color="grey-6" />
                 </q-item-section>
                 <q-item-section>Dark Mode</q-item-section>
                 <q-item-section side>
@@ -480,11 +469,7 @@
       </div>
     </q-drawer>
 
-    <q-footer
-      v-if="useMobileBottomNav"
-      elevated
-      class="workspace-shell__bottom-nav"
-    >
+    <q-footer v-if="useMobileBottomNav" elevated class="workspace-shell__bottom-nav">
       <nav class="workspace-shell__bottom-nav-inner" aria-label="Shop navigation">
         <template v-for="link in links" :key="link.to || link.title">
           <q-btn
@@ -610,7 +595,9 @@
                 </q-item-label>
               </q-item-section>
               <q-item-section side v-if="link.parentTitle">
-                <q-badge outline color="primary" size="sm">{{ translateTitle(link.parentTitle) }}</q-badge>
+                <q-badge outline color="primary" size="sm">{{
+                  translateTitle(link.parentTitle)
+                }}</q-badge>
               </q-item-section>
             </q-item>
           </q-list>
@@ -820,11 +807,7 @@ const filteredLinks = computed(() => {
     const title = translateTitle(link.title).toLowerCase();
     const caption = translateCaption(link.title, link.caption ?? '').toLowerCase();
     const parentTitle = link.parentTitle ? translateTitle(link.parentTitle).toLowerCase() : '';
-    return (
-      title.includes(query) ||
-      caption.includes(query) ||
-      parentTitle.includes(query)
-    );
+    return title.includes(query) || caption.includes(query) || parentTitle.includes(query);
   });
 });
 

@@ -45,7 +45,8 @@
           </q-input>
         </div>
         <div class="col-4 text-caption text-grey-7 q-pl-xs leading-tight" style="font-size: 10px">
-          The exact paid purchase total to the vendor. Click save, then apply balance to distribute across lines.
+          The exact paid purchase total to the vendor. Click save, then apply balance to distribute
+          across lines.
         </div>
       </div>
     </div>
@@ -55,7 +56,10 @@
       <div class="col-4">
         <div class="bg-grey-2 q-pa-xs rounded-borders">
           <div class="text-caption text-grey-7" style="font-size: 10px">Estimated</div>
-          <div class="text-subtitle2 text-weight-bold text-mono text-ellipsis" style="font-size: 12px">
+          <div
+            class="text-subtitle2 text-weight-bold text-mono text-ellipsis"
+            style="font-size: 12px"
+          >
             {{ purchaseCurrencySymbol }}{{ estimated.toFixed(2) }}
           </div>
         </div>
@@ -63,7 +67,10 @@
       <div class="col-4">
         <div class="bg-grey-2 q-pa-xs rounded-borders">
           <div class="text-caption text-grey-7" style="font-size: 10px">Invoice</div>
-          <div class="text-subtitle2 text-weight-bold text-mono text-ellipsis" style="font-size: 12px">
+          <div
+            class="text-subtitle2 text-weight-bold text-mono text-ellipsis"
+            style="font-size: 12px"
+          >
             {{ purchaseCurrencySymbol }}{{ actual.toFixed(2) }}
           </div>
         </div>
@@ -71,7 +78,10 @@
       <div class="col-4">
         <div :class="`q-pa-xs rounded-borders ${deltaBg}`">
           <div class="text-caption text-grey-7" style="font-size: 10px">Delta</div>
-          <div class="text-subtitle2 text-weight-bold text-mono text-ellipsis" style="font-size: 12px">
+          <div
+            class="text-subtitle2 text-weight-bold text-mono text-ellipsis"
+            style="font-size: 12px"
+          >
             {{ delta >= 0 ? '+' : '' }}{{ purchaseCurrencySymbol }}{{ delta.toFixed(2) }}
           </div>
         </div>
@@ -126,7 +136,9 @@
           </q-card-section>
 
           <q-card-section class="q-pa-md">
-            <div style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden">
+            <div
+              style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden"
+            >
               <q-markup-table dense flat class="price-preview-table bg-grey-1">
                 <thead>
                   <tr>
@@ -138,7 +150,10 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in previewItems" :key="item.id">
-                    <td class="text-left text-caption text-weight-medium ellipsis" style="max-width: 250px">
+                    <td
+                      class="text-left text-caption text-weight-medium ellipsis"
+                      style="max-width: 250px"
+                    >
                       {{ item.name }}
                     </td>
                     <td class="text-right text-caption text-mono">{{ item.qty }}</td>
@@ -188,7 +203,10 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
-import { computePurchasePriceAdjustments, calculateEstimatedPurchaseTotal } from '../utils/purchaseBalance';
+import {
+  computePurchasePriceAdjustments,
+  calculateEstimatedPurchaseTotal,
+} from '../utils/purchaseBalance';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -222,7 +240,7 @@ const estimated = computed(() => {
       name: item.name,
       purchase_price: item.purchase_price || 0,
       ordered_quantity: item.ordered_quantity || 0,
-    }))
+    })),
   );
 });
 
@@ -367,8 +385,7 @@ const applyDisabled = computed(() => {
 });
 
 const applyDisabledReason = computed(() => {
-  if (savedInvoiceTotal.value <= 0)
-    return 'Save Purchase Invoice Total before applying balance';
+  if (savedInvoiceTotal.value <= 0) return 'Save Purchase Invoice Total before applying balance';
   if (hasUnsavedInvoiceTotal.value) return 'Save Purchase Invoice Total first — unsaved changes';
   if (items.value.length === 0) return 'No line items to distribute cost to';
   if (validationError.value !== null) return validationError.value;

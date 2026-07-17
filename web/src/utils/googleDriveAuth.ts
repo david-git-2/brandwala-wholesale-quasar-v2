@@ -60,8 +60,7 @@ export function canShowDriveSyncForUser(email: string | null | undefined): boole
 }
 
 export function getGoogleOAuthDriveOptions():
-  | { scopes: string; queryParams: { access_type: string; prompt: string } }
-  | Record<string, never> {
+  { scopes: string; queryParams: { access_type: string; prompt: string } } | Record<string, never> {
   if (!isDriveFeatureEnabled()) return {};
 
   return {
@@ -74,8 +73,7 @@ export function getGoogleOAuthDriveOptions():
 }
 
 function getOAuthCallbackBaseUrl(): string {
-  const configured =
-    import.meta.env.VITE_PRODUCTION_APP_URL || import.meta.env.VITE_LOCAL_APP_URL;
+  const configured = import.meta.env.VITE_PRODUCTION_APP_URL || import.meta.env.VITE_LOCAL_APP_URL;
 
   if (configured) {
     return String(configured).replace(/\/$/, '');

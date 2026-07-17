@@ -17,15 +17,15 @@
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-12 col-sm">
               <div class="row items-center q-gutter-sm">
-                <q-badge color="primary" outline class="text-weight-bold">
-                  #{{ id }}
-                </q-badge>
+                <q-badge color="primary" outline class="text-weight-bold"> #{{ id }} </q-badge>
                 <div class="text-subtitle1 text-weight-bold">
                   Shipment P&amp;L: {{ shipment.name || 'Unnamed Shipment' }}
                 </div>
               </div>
             </div>
-            <div class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap">
+            <div
+              class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap"
+            >
               <!-- Type Chip -->
               <q-chip
                 v-if="shipment.type"
@@ -110,83 +110,93 @@
         <q-tab-panels v-model="activeTable" animated>
           <q-tab-panel name="trading" class="q-pa-md">
             <q-table
-          flat
-          v-model:pagination="pagination"
-          :rows-per-page-options="[0]"
-          row-key="id"
-          :rows="filteredItems"
-          :columns="tradingColumns"
-          :dense="$q.screen.lt.md"
-          class="pnl-sticky-table"
-          table-style="min-width: 1100px;"
-        >
-            <template #body-cell-id="props">
-              <q-td :props="props" class="font-mono text-grey-6 text-sm">
-                #{{ props.row.id }}
-              </q-td>
-            </template>
+              flat
+              v-model:pagination="pagination"
+              :rows-per-page-options="[0]"
+              row-key="id"
+              :rows="filteredItems"
+              :columns="tradingColumns"
+              :dense="$q.screen.lt.md"
+              class="pnl-sticky-table"
+              table-style="min-width: 1100px;"
+            >
+              <template #body-cell-id="props">
+                <q-td :props="props" class="font-mono text-grey-6 text-sm">
+                  #{{ props.row.id }}
+                </q-td>
+              </template>
 
-            <template #body-cell-name="props">
-              <q-td :props="props" class="text-weight-bold">
-                {{ props.row.name }}
-              </q-td>
-            </template>
+              <template #body-cell-name="props">
+                <q-td :props="props" class="text-weight-bold">
+                  {{ props.row.name }}
+                </q-td>
+              </template>
 
-            <template #body-cell-ordered_quantity="props">
-              <q-td :props="props" class="text-right">
-                {{ props.row.ordered_quantity }}
-              </q-td>
-            </template>
+              <template #body-cell-ordered_quantity="props">
+                <q-td :props="props" class="text-right">
+                  {{ props.row.ordered_quantity }}
+                </q-td>
+              </template>
 
-            <template #body-cell-landed_unit_cost="props">
-              <q-td :props="props" class="text-right">
-                {{ formatAmountBdt(props.row.landed_unit_cost) }}
-              </q-td>
-            </template>
+              <template #body-cell-landed_unit_cost="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatAmountBdt(props.row.landed_unit_cost) }}
+                </q-td>
+              </template>
 
-            <template #body-cell-total_landed_cost="props">
-              <q-td :props="props" class="text-right">
-                {{ formatAmountBdt(props.row.landed_unit_cost * props.row.ordered_quantity) }}
-              </q-td>
-            </template>
+              <template #body-cell-total_landed_cost="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatAmountBdt(props.row.landed_unit_cost * props.row.ordered_quantity) }}
+                </q-td>
+              </template>
 
-            <template #body-cell-sold_qty="props">
-              <q-td :props="props" class="text-right text-primary text-weight-bold">
-                {{ props.row.sold_qty }}
-              </q-td>
-            </template>
+              <template #body-cell-sold_qty="props">
+                <q-td :props="props" class="text-right text-primary text-weight-bold">
+                  {{ props.row.sold_qty }}
+                </q-td>
+              </template>
 
-            <template #body-cell-sold_cost="props">
-              <q-td :props="props" class="text-right text-grey-8">
-                {{ formatAmountBdt(props.row.sold_cost) }}
-              </q-td>
-            </template>
+              <template #body-cell-sold_cost="props">
+                <q-td :props="props" class="text-right text-grey-8">
+                  {{ formatAmountBdt(props.row.sold_cost) }}
+                </q-td>
+              </template>
 
-            <template #body-cell-revenue="props">
-              <q-td :props="props" class="text-right text-positive">
-                {{ formatAmountBdt(props.row.revenue) }}
-              </q-td>
-            </template>
+              <template #body-cell-revenue="props">
+                <q-td :props="props" class="text-right text-positive">
+                  {{ formatAmountBdt(props.row.revenue) }}
+                </q-td>
+              </template>
 
-            <template #body-cell-gross_profit="props">
-              <q-td :props="props" class="text-right text-weight-bold text-primary">
-                {{ formatAmountBdt(props.row.revenue - props.row.sold_cost) }}
-              </q-td>
-            </template>
+              <template #body-cell-gross_profit="props">
+                <q-td :props="props" class="text-right text-weight-bold text-primary">
+                  {{ formatAmountBdt(props.row.revenue - props.row.sold_cost) }}
+                </q-td>
+              </template>
 
-            <template #bottom-row>
-              <q-tr class="text-weight-bold bg-grey-1 text-right">
-                <q-td class="text-left" colspan="2">TOTAL</q-td>
-                <q-td class="bg-blue-highlight">{{ tradingTotals.receivedQty }}</q-td>
-                <q-td class="bg-orange-highlight">{{ formatAmountBdt(tradingTotals.avgLandedUnitCost) }}</q-td>
-                <q-td class="bg-orange-highlight">{{ formatAmountBdt(tradingTotals.totalLandedCost) }}</q-td>
-                <q-td class="bg-blue-highlight text-primary">{{ tradingTotals.soldQty }}</q-td>
-                <q-td class="bg-orange-highlight text-grey-8">{{ formatAmountBdt(tradingTotals.soldCost) }}</q-td>
-                <q-td class="bg-green-highlight text-positive">{{ formatAmountBdt(tradingTotals.revenue) }}</q-td>
-                <q-td class="bg-green-highlight text-primary">{{ formatAmountBdt(tradingTotals.grossProfit) }}</q-td>
-              </q-tr>
-            </template>
-        </q-table>
+              <template #bottom-row>
+                <q-tr class="text-weight-bold bg-grey-1 text-right">
+                  <q-td class="text-left" colspan="2">TOTAL</q-td>
+                  <q-td class="bg-blue-highlight">{{ tradingTotals.receivedQty }}</q-td>
+                  <q-td class="bg-orange-highlight">{{
+                    formatAmountBdt(tradingTotals.avgLandedUnitCost)
+                  }}</q-td>
+                  <q-td class="bg-orange-highlight">{{
+                    formatAmountBdt(tradingTotals.totalLandedCost)
+                  }}</q-td>
+                  <q-td class="bg-blue-highlight text-primary">{{ tradingTotals.soldQty }}</q-td>
+                  <q-td class="bg-orange-highlight text-grey-8">{{
+                    formatAmountBdt(tradingTotals.soldCost)
+                  }}</q-td>
+                  <q-td class="bg-green-highlight text-positive">{{
+                    formatAmountBdt(tradingTotals.revenue)
+                  }}</q-td>
+                  <q-td class="bg-green-highlight text-primary">{{
+                    formatAmountBdt(tradingTotals.grossProfit)
+                  }}</q-td>
+                </q-tr>
+              </template>
+            </q-table>
           </q-tab-panel>
 
           <q-tab-panel name="disposition" class="q-pa-md">
@@ -199,151 +209,167 @@
             </div>
 
             <q-table
-          flat
-          v-model:pagination="pagination"
-          :rows-per-page-options="[0]"
-          row-key="id"
-          :rows="filteredItems"
-          :columns="dispositionColumns"
-          :dense="$q.screen.lt.md"
-          class="pnl-sticky-table"
-          table-style="min-width: 1000px;"
-        >
-            <template #body-cell-id="props">
-              <q-td :props="props" class="font-mono text-grey-6 text-sm">
-                #{{ props.row.id }}
-              </q-td>
-            </template>
-
-            <template #body-cell-name="props">
-              <q-td :props="props" class="text-weight-bold">
-                {{ props.row.name }}
-              </q-td>
-            </template>
-
-            <template #body-cell-sellable_qty="props">
-              <q-td :props="props" class="text-right text-weight-bold text-warning">
-                {{ props.row.sellable_qty }}
-              </q-td>
-            </template>
-
-            <template #body-cell-sellable_value="props">
-              <q-td :props="props" class="text-right text-weight-bold text-warning">
-                {{ formatAmountBdt(props.row.sellable_value) }}
-              </q-td>
-            </template>
-
-            <template #body-cell-box_damage_qty="props">
-              <q-td :props="props" class="text-right">
-                {{ props.row.box_damage_qty }}
-              </q-td>
-            </template>
-
-            <template #body-cell-box_damage_value="props">
-              <q-td :props="props" class="text-right text-grey-8">
-                {{ formatAmountBdt(props.row.box_damage_value) }}
-              </q-td>
-            </template>
-
-            <template #body-cell-stolen_qty="props">
-              <q-td :props="props" class="text-right">
-                {{ props.row.stolen_qty }}
-              </q-td>
-            </template>
-
-            <template #body-cell-stolen_value="props">
-              <q-td :props="props" class="text-right text-negative">
-                {{ formatAmountBdt(props.row.stolen_value) }}
-              </q-td>
-            </template>
-
-            <template #body-cell-expired_qty="props">
-              <q-td :props="props" class="text-right">
-                {{ props.row.expired_qty }}
-              </q-td>
-            </template>
-
-            <template #body-cell-expired_value="props">
-              <q-td :props="props" class="text-right text-grey-8">
-                {{ formatAmountBdt(props.row.expired_value) }}
-              </q-td>
-            </template>
-
-            <template #body-cell-shrinkage_value="props">
-              <q-td :props="props" class="text-right text-weight-bold text-negative">
-                {{ formatAmountBdt(props.row.shrinkage_value) }}
-              </q-td>
-            </template>
-
-            <template #body-cell-reconciliation_gap="props">
-              <q-td
-                :props="props"
-                class="text-right text-weight-bold"
-                :class="props.row.reconciliation_gap !== 0 ? 'text-negative' : 'text-grey-6'"
-              >
-                {{ formatGapQty(props.row.reconciliation_gap) }}
-              </q-td>
-            </template>
-
-            <template #bottom-row>
-              <q-tr class="text-weight-bold bg-grey-1 text-right">
-                <q-td class="text-left" colspan="2">TOTAL</q-td>
-                <q-td class="bg-blue-highlight text-warning">{{ dispositionTotals.sellableQty }}</q-td>
-                <q-td class="bg-green-highlight text-warning">{{ formatAmountBdt(dispositionTotals.sellableValue) }}</q-td>
-                <q-td class="bg-blue-highlight">{{ dispositionTotals.boxDamageQty }}</q-td>
-                <q-td class="bg-orange-highlight text-grey-8">{{ formatAmountBdt(dispositionTotals.boxDamageValue) }}</q-td>
-                <q-td class="bg-blue-highlight">{{ dispositionTotals.stolenQty }}</q-td>
-                <q-td class="bg-orange-highlight text-negative">{{ formatAmountBdt(dispositionTotals.stolenValue) }}</q-td>
-                <q-td class="bg-blue-highlight">{{ dispositionTotals.expiredQty }}</q-td>
-                <q-td class="bg-orange-highlight text-grey-8">{{ formatAmountBdt(dispositionTotals.expiredValue) }}</q-td>
-                <q-td class="bg-orange-highlight text-negative">{{ formatAmountBdt(dispositionTotals.shrinkageValue) }}</q-td>
-                <q-td :class="dispositionTotals.reconciliationGap !== 0 ? 'text-negative' : 'text-grey-6'">
-                  {{ formatGapQty(dispositionTotals.reconciliationGap) }}
+              flat
+              v-model:pagination="pagination"
+              :rows-per-page-options="[0]"
+              row-key="id"
+              :rows="filteredItems"
+              :columns="dispositionColumns"
+              :dense="$q.screen.lt.md"
+              class="pnl-sticky-table"
+              table-style="min-width: 1000px;"
+            >
+              <template #body-cell-id="props">
+                <q-td :props="props" class="font-mono text-grey-6 text-sm">
+                  #{{ props.row.id }}
                 </q-td>
-              </q-tr>
-            </template>
-        </q-table>
+              </template>
 
-        <!-- Reconciliation Gap Warning Banner -->
-        <q-banner
-          v-if="reconciliationSummary.hasGap"
-          class="bg-warning text-black rounded-borders q-mt-md"
-        >
-          <template #avatar>
-            <q-icon name="warning" color="black" />
-          </template>
-          <div class="text-weight-bold q-mb-xs">Unit count mismatch</div>
-          <div class="q-mb-sm">{{ reconciliationSummary.message }}</div>
-          <div class="row q-col-gutter-md q-mb-sm text-body2">
-            <div class="col-auto">
-              <span class="text-grey-8">Received:</span>
-              <span class="text-weight-medium q-ml-xs"
-                >{{ reconciliationSummary.received.toLocaleString() }} units</span
-              >
-            </div>
-            <div class="col-auto">
-              <span class="text-grey-8">Sold + stock:</span>
-              <span class="text-weight-medium q-ml-xs"
-                >{{ reconciliationSummary.accounted.toLocaleString() }} units</span
-              >
-            </div>
-            <div class="col-auto">
-              <span class="text-grey-8">Difference:</span>
-              <span class="text-weight-bold q-ml-xs"
-                >{{ formatGapQty(reconciliationSummary.gap) }} units</span
-              >
-            </div>
-          </div>
-          <div class="text-caption text-grey-9">{{ reconciliationSummary.actionHint }}</div>
-          <div v-if="gapOffenders.length" class="q-mt-sm">
-            <div class="text-caption text-weight-bold q-mb-xs">Largest mismatches by item</div>
-            <ul class="q-pl-md q-my-none text-caption">
-              <li v-for="row in gapOffenders" :key="row.id">
-                {{ row.name }} (#{{ row.id }}): {{ formatGapQty(row.reconciliation_gap) }} units
-              </li>
-            </ul>
-          </div>
-        </q-banner>
+              <template #body-cell-name="props">
+                <q-td :props="props" class="text-weight-bold">
+                  {{ props.row.name }}
+                </q-td>
+              </template>
+
+              <template #body-cell-sellable_qty="props">
+                <q-td :props="props" class="text-right text-weight-bold text-warning">
+                  {{ props.row.sellable_qty }}
+                </q-td>
+              </template>
+
+              <template #body-cell-sellable_value="props">
+                <q-td :props="props" class="text-right text-weight-bold text-warning">
+                  {{ formatAmountBdt(props.row.sellable_value) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-box_damage_qty="props">
+                <q-td :props="props" class="text-right">
+                  {{ props.row.box_damage_qty }}
+                </q-td>
+              </template>
+
+              <template #body-cell-box_damage_value="props">
+                <q-td :props="props" class="text-right text-grey-8">
+                  {{ formatAmountBdt(props.row.box_damage_value) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-stolen_qty="props">
+                <q-td :props="props" class="text-right">
+                  {{ props.row.stolen_qty }}
+                </q-td>
+              </template>
+
+              <template #body-cell-stolen_value="props">
+                <q-td :props="props" class="text-right text-negative">
+                  {{ formatAmountBdt(props.row.stolen_value) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-expired_qty="props">
+                <q-td :props="props" class="text-right">
+                  {{ props.row.expired_qty }}
+                </q-td>
+              </template>
+
+              <template #body-cell-expired_value="props">
+                <q-td :props="props" class="text-right text-grey-8">
+                  {{ formatAmountBdt(props.row.expired_value) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-shrinkage_value="props">
+                <q-td :props="props" class="text-right text-weight-bold text-negative">
+                  {{ formatAmountBdt(props.row.shrinkage_value) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-reconciliation_gap="props">
+                <q-td
+                  :props="props"
+                  class="text-right text-weight-bold"
+                  :class="props.row.reconciliation_gap !== 0 ? 'text-negative' : 'text-grey-6'"
+                >
+                  {{ formatGapQty(props.row.reconciliation_gap) }}
+                </q-td>
+              </template>
+
+              <template #bottom-row>
+                <q-tr class="text-weight-bold bg-grey-1 text-right">
+                  <q-td class="text-left" colspan="2">TOTAL</q-td>
+                  <q-td class="bg-blue-highlight text-warning">{{
+                    dispositionTotals.sellableQty
+                  }}</q-td>
+                  <q-td class="bg-green-highlight text-warning">{{
+                    formatAmountBdt(dispositionTotals.sellableValue)
+                  }}</q-td>
+                  <q-td class="bg-blue-highlight">{{ dispositionTotals.boxDamageQty }}</q-td>
+                  <q-td class="bg-orange-highlight text-grey-8">{{
+                    formatAmountBdt(dispositionTotals.boxDamageValue)
+                  }}</q-td>
+                  <q-td class="bg-blue-highlight">{{ dispositionTotals.stolenQty }}</q-td>
+                  <q-td class="bg-orange-highlight text-negative">{{
+                    formatAmountBdt(dispositionTotals.stolenValue)
+                  }}</q-td>
+                  <q-td class="bg-blue-highlight">{{ dispositionTotals.expiredQty }}</q-td>
+                  <q-td class="bg-orange-highlight text-grey-8">{{
+                    formatAmountBdt(dispositionTotals.expiredValue)
+                  }}</q-td>
+                  <q-td class="bg-orange-highlight text-negative">{{
+                    formatAmountBdt(dispositionTotals.shrinkageValue)
+                  }}</q-td>
+                  <q-td
+                    :class="
+                      dispositionTotals.reconciliationGap !== 0 ? 'text-negative' : 'text-grey-6'
+                    "
+                  >
+                    {{ formatGapQty(dispositionTotals.reconciliationGap) }}
+                  </q-td>
+                </q-tr>
+              </template>
+            </q-table>
+
+            <!-- Reconciliation Gap Warning Banner -->
+            <q-banner
+              v-if="reconciliationSummary.hasGap"
+              class="bg-warning text-black rounded-borders q-mt-md"
+            >
+              <template #avatar>
+                <q-icon name="warning" color="black" />
+              </template>
+              <div class="text-weight-bold q-mb-xs">Unit count mismatch</div>
+              <div class="q-mb-sm">{{ reconciliationSummary.message }}</div>
+              <div class="row q-col-gutter-md q-mb-sm text-body2">
+                <div class="col-auto">
+                  <span class="text-grey-8">Received:</span>
+                  <span class="text-weight-medium q-ml-xs"
+                    >{{ reconciliationSummary.received.toLocaleString() }} units</span
+                  >
+                </div>
+                <div class="col-auto">
+                  <span class="text-grey-8">Sold + stock:</span>
+                  <span class="text-weight-medium q-ml-xs"
+                    >{{ reconciliationSummary.accounted.toLocaleString() }} units</span
+                  >
+                </div>
+                <div class="col-auto">
+                  <span class="text-grey-8">Difference:</span>
+                  <span class="text-weight-bold q-ml-xs"
+                    >{{ formatGapQty(reconciliationSummary.gap) }} units</span
+                  >
+                </div>
+              </div>
+              <div class="text-caption text-grey-9">{{ reconciliationSummary.actionHint }}</div>
+              <div v-if="gapOffenders.length" class="q-mt-sm">
+                <div class="text-caption text-weight-bold q-mb-xs">Largest mismatches by item</div>
+                <ul class="q-pl-md q-my-none text-caption">
+                  <li v-for="row in gapOffenders" :key="row.id">
+                    {{ row.name }} (#{{ row.id }}): {{ formatGapQty(row.reconciliation_gap) }} units
+                  </li>
+                </ul>
+              </div>
+            </q-banner>
           </q-tab-panel>
 
           <q-tab-panel name="sales" class="q-pa-md">
@@ -379,7 +405,9 @@
               <template #body-cell-shipment_item_name="props">
                 <q-td :props="props" class="text-weight-bold">
                   {{ props.row.shipment_item_name }}
-                  <div v-if="props.row.product_code" class="text-caption text-grey-6">{{ props.row.product_code }}</div>
+                  <div v-if="props.row.product_code" class="text-caption text-grey-6">
+                    {{ props.row.product_code }}
+                  </div>
                 </q-td>
               </template>
 
@@ -400,8 +428,20 @@
                   <q-chip
                     dense
                     square
-                    :color="props.row.invoice_type === 'wholesale' ? 'blue-1' : props.row.invoice_type === 'retail' ? 'green-1' : 'purple-1'"
-                    :text-color="props.row.invoice_type === 'wholesale' ? 'blue-9' : props.row.invoice_type === 'retail' ? 'green-9' : 'purple-9'"
+                    :color="
+                      props.row.invoice_type === 'wholesale'
+                        ? 'blue-1'
+                        : props.row.invoice_type === 'retail'
+                          ? 'green-1'
+                          : 'purple-1'
+                    "
+                    :text-color="
+                      props.row.invoice_type === 'wholesale'
+                        ? 'blue-9'
+                        : props.row.invoice_type === 'retail'
+                          ? 'green-9'
+                          : 'purple-9'
+                    "
                     class="text-capitalize text-xs text-weight-bold"
                   >
                     {{ props.row.invoice_type }}
@@ -422,7 +462,11 @@
               </template>
 
               <template #body-cell-return_qty="props">
-                <q-td :props="props" class="text-right" :class="props.row.return_qty > 0 ? 'text-negative' : 'text-grey-5'">
+                <q-td
+                  :props="props"
+                  class="text-right"
+                  :class="props.row.return_qty > 0 ? 'text-negative' : 'text-grey-5'"
+                >
                   {{ props.row.return_qty }}
                 </q-td>
               </template>
@@ -453,13 +497,19 @@
 
               <template #bottom-row>
                 <q-tr class="text-weight-bold bg-grey-1 text-right">
-                  <q-td class="text-left" colspan="5">TOTAL ({{ filteredInvoiceRows.length }} lines)</q-td>
+                  <q-td class="text-left" colspan="5"
+                    >TOTAL ({{ filteredInvoiceRows.length }} lines)</q-td
+                  >
                   <q-td class="bg-blue-highlight">{{ salesTotals.qtySold }}</q-td>
-                  <q-td :class="salesTotals.returnQty > 0 ? 'text-negative' : ''">{{ salesTotals.returnQty }}</q-td>
+                  <q-td :class="salesTotals.returnQty > 0 ? 'text-negative' : ''">{{
+                    salesTotals.returnQty
+                  }}</q-td>
                   <q-td class="bg-blue-highlight text-primary">{{ salesTotals.netSold }}</q-td>
                   <q-td></q-td>
                   <q-td></q-td>
-                  <q-td class="bg-green-highlight text-positive">{{ formatAmountBdt(salesTotals.lineTotal) }}</q-td>
+                  <q-td class="bg-green-highlight text-positive">{{
+                    formatAmountBdt(salesTotals.lineTotal)
+                  }}</q-td>
                 </q-tr>
               </template>
             </q-table>
@@ -470,7 +520,7 @@
 
     <!-- Tab Explanation Dialog -->
     <q-dialog v-model="showInfoDialog">
-      <q-card style="width: 500px; max-width: 90vw;" class="floating-surface text-grey-9">
+      <q-card style="width: 500px; max-width: 90vw" class="floating-surface text-grey-9">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold text-primary">Shipment P&L Tabs Guide</div>
           <q-space />
@@ -481,21 +531,31 @@
           <div class="q-mb-md">
             <div class="text-subtitle1 text-weight-bold text-grey-8">1. Trading Cost & Profit</div>
             <div class="text-body2 text-grey-7 q-pl-sm">
-              Displays a **per-product financial summary**. If an item is sold in multiple invoices at different prices, this tab combines them into a single row to show total revenue, cost of goods sold (COGS), and total Gross Profit (reflecting the weighted average selling price).
+              Displays a **per-product financial summary**. If an item is sold in multiple invoices
+              at different prices, this tab combines them into a single row to show total revenue,
+              cost of goods sold (COGS), and total Gross Profit (reflecting the weighted average
+              selling price).
             </div>
           </div>
 
           <div class="q-mb-md">
-            <div class="text-subtitle1 text-weight-bold text-grey-8">2. Stock Disposition & Shrinkage</div>
+            <div class="text-subtitle1 text-weight-bold text-grey-8">
+              2. Stock Disposition & Shrinkage
+            </div>
             <div class="text-body2 text-grey-7 q-pl-sm">
-              Tracks the **physical status of the inventory** (units sellable on-hand, box damages, stolen, or expired) and calculates the monetary loss (shrinkage) at landed cost.
+              Tracks the **physical status of the inventory** (units sellable on-hand, box damages,
+              stolen, or expired) and calculates the monetary loss (shrinkage) at landed cost.
             </div>
           </div>
 
           <div>
-            <div class="text-subtitle1 text-weight-bold text-grey-8">3. Sales Breakdown by Invoice</div>
+            <div class="text-subtitle1 text-weight-bold text-grey-8">
+              3. Sales Breakdown by Invoice
+            </div>
             <div class="text-body2 text-grey-7 q-pl-sm">
-              Provides the **detailed transaction log**. Each sale is shown as a separate row, specifying the exact invoice number, quantity sold, customer, and individual selling price.
+              Provides the **detailed transaction log**. Each sale is shown as a separate row,
+              specifying the exact invoice number, quantity sold, customer, and individual selling
+              price.
             </div>
           </div>
         </q-card-section>
@@ -740,7 +800,11 @@ const statusChipStyle = (currentStatus: string) => {
       border: '1px solid #e5e7eb',
     };
   }
-  if (value === 'warehouse received' || value === 'warehouse_received' || value === 'uk warehouse delivery received') {
+  if (
+    value === 'warehouse received' ||
+    value === 'warehouse_received' ||
+    value === 'uk warehouse delivery received'
+  ) {
     return {
       backgroundColor: '#f3e8ff',
       color: '#581c87',
@@ -765,7 +829,12 @@ const statusDotColor = (currentStatus: string) => {
   const value = (currentStatus ?? '').toLowerCase().trim();
   if (value === 'ready stock' || value === 'ready_stock') return '#2f8b5d';
   if (value === 'draft') return '#4b5563';
-  if (value === 'warehouse received' || value === 'warehouse_received' || value === 'uk warehouse delivery received') return '#7c3aed';
+  if (
+    value === 'warehouse received' ||
+    value === 'warehouse_received' ||
+    value === 'uk warehouse delivery received'
+  )
+    return '#7c3aed';
   if (value === 'cancelled') return '#b91c1c';
   return '#3f67b3';
 };
@@ -773,7 +842,10 @@ const statusDotColor = (currentStatus: string) => {
 const tradingTotals = computed(() => {
   const list = filteredItems.value;
   const receivedQty = list.reduce((sum, item) => sum + Number(item.ordered_quantity || 0), 0);
-  const totalLandedCost = list.reduce((sum, item) => sum + Number(item.landed_unit_cost || 0) * Number(item.ordered_quantity || 0), 0);
+  const totalLandedCost = list.reduce(
+    (sum, item) => sum + Number(item.landed_unit_cost || 0) * Number(item.ordered_quantity || 0),
+    0,
+  );
   const avgLandedUnitCost = receivedQty > 0 ? totalLandedCost / receivedQty : 0;
   const soldQty = list.reduce((sum, item) => sum + Number(item.sold_qty || 0), 0);
   const soldCost = list.reduce((sum, item) => sum + Number(item.sold_cost || 0), 0);
@@ -802,7 +874,10 @@ const dispositionTotals = computed(() => {
   const expiredQty = list.reduce((sum, item) => sum + Number(item.expired_qty || 0), 0);
   const expiredValue = list.reduce((sum, item) => sum + Number(item.expired_value || 0), 0);
   const shrinkageValue = list.reduce((sum, item) => sum + Number(item.shrinkage_value || 0), 0);
-  const reconciliationGap = list.reduce((sum, item) => sum + Number(item.reconciliation_gap || 0), 0);
+  const reconciliationGap = list.reduce(
+    (sum, item) => sum + Number(item.reconciliation_gap || 0),
+    0,
+  );
 
   return {
     sellableQty,
@@ -958,7 +1033,13 @@ const loadInvoiceRows = async (tenantId: number) => {
 };
 
 const salesColumns: QTableColumn[] = [
-  { name: 'shipment_item_name', label: 'Item Name', field: 'shipment_item_name', align: 'left', sortable: true },
+  {
+    name: 'shipment_item_name',
+    label: 'Item Name',
+    field: 'shipment_item_name',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'invoice_no', label: 'Invoice #', field: 'invoice_no', align: 'left', sortable: true },
   { name: 'invoice_date', label: 'Date', field: 'invoice_date', align: 'left', sortable: true },
   {
@@ -1098,7 +1179,6 @@ onMounted(() => {
 .pnl-page :deep(.q-card) {
   border-radius: 12px;
 }
-
 </style>
 
 <style>

@@ -239,8 +239,12 @@
                             class="q-py-xs"
                           >
                             <q-item-section>
-                              <q-item-label class="text-caption text-weight-medium text-grey-8">{{ sub.name }}</q-item-label>
-                              <q-item-label caption class="text-caption">{{ sub.key }}</q-item-label>
+                              <q-item-label class="text-caption text-weight-medium text-grey-8">{{
+                                sub.name
+                              }}</q-item-label>
+                              <q-item-label caption class="text-caption">{{
+                                sub.key
+                              }}</q-item-label>
                             </q-item-section>
                           </q-item>
                         </q-list>
@@ -477,11 +481,11 @@ const availableModules = computed(() =>
   moduleStore.assignableModules.filter(
     (item) => item.is_active && !tenantModuleKeys.value.has(item.key),
   ),
-)
+);
 
 const getModuleName = (key: string) => {
-  const mod = moduleStore.items.find((item) => item.key === key)
-  return mod ? mod.name : key
+  const mod = moduleStore.items.find((item) => item.key === key);
+  return mod ? mod.name : key;
 };
 
 const activeStatusStyle = {

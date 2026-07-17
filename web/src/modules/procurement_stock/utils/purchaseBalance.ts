@@ -15,7 +15,10 @@ export interface PurchaseAdjustmentResult {
  * Calculates estimated purchase total from line items.
  */
 export function calculateEstimatedPurchaseTotal(items: PurchaseBalanceItemInput[]): number {
-  return items.reduce((sum, item) => sum + (item.purchase_price || 0) * (item.ordered_quantity || 0), 0);
+  return items.reduce(
+    (sum, item) => sum + (item.purchase_price || 0) * (item.ordered_quantity || 0),
+    0,
+  );
 }
 
 /**
@@ -40,7 +43,7 @@ export function computePurchasePriceAdjustments(
   if (estimatedTotal === 0) {
     if (delta !== 0) {
       throw new Error(
-        'Estimated purchase total is 0. Cannot proportionally adjust prices. Please set manual base prices on your line items first so they have a distribution basis.'
+        'Estimated purchase total is 0. Cannot proportionally adjust prices. Please set manual base prices on your line items first so they have a distribution basis.',
       );
     }
     // If both are 0, no adjustments needed
@@ -93,7 +96,7 @@ export function computePurchasePriceAdjustments(
 
     if (newPriceRaw < 0) {
       throw new Error(
-        `Purchase price for line "${item.name}" would go below 0 after adjustment (${newPriceRaw.toFixed(6)}). Adjustments blocked.`
+        `Purchase price for line "${item.name}" would go below 0 after adjustment (${newPriceRaw.toFixed(6)}). Adjustments blocked.`,
       );
     }
 
@@ -119,7 +122,7 @@ export function computePurchasePriceAdjustments(
 
       if (adjustedPriceRaw < 0) {
         throw new Error(
-          `Purchase price for line "${items.find((i) => i.id === maxValueItemId)?.name}" would go below 0 after remainder distribution (${adjustedPriceRaw.toFixed(6)}). Adjustments blocked.`
+          `Purchase price for line "${items.find((i) => i.id === maxValueItemId)?.name}" would go below 0 after remainder distribution (${adjustedPriceRaw.toFixed(6)}). Adjustments blocked.`,
         );
       }
 

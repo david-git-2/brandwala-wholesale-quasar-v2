@@ -331,7 +331,8 @@ const fulfillToInvoice = async () => {
 const confirmDeleteOrder = () => {
   $q.dialog({
     title: 'Confirm Deletion',
-    message: 'Are you sure you want to delete this order? This action is permanent and cannot be undone.',
+    message:
+      'Are you sure you want to delete this order? This action is permanent and cannot be undone.',
     persistent: true,
     ok: {
       label: 'Delete',
@@ -341,7 +342,7 @@ const confirmDeleteOrder = () => {
     cancel: {
       label: 'Cancel',
       flat: true,
-    }
+    },
   }).onOk(() => {
     void (async () => {
       if (orderId.value) {

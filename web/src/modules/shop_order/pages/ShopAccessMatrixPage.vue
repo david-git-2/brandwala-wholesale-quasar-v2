@@ -93,9 +93,7 @@
                 </div>
 
                 <div v-if="editForm.status" class="q-gutter-y-md q-mt-sm">
-                  <div class="text-subtitle2 text-grey-8">
-                    Capabilities / সুবিধাসমূহ
-                  </div>
+                  <div class="text-subtitle2 text-grey-8">Capabilities / সুবিধাসমূহ</div>
 
                   <div class="row q-col-gutter-md">
                     <div class="col-12 col-sm-4">
@@ -198,8 +196,7 @@
                   </div>
                   <p class="text-caption text-grey-7 q-mb-none">
                     Max unpaid balance this group may hold on this shop. Leave empty for unlimited.
-                    এই গ্রুপ এই শপে কত টাকা পর্যন্ত বাকি/ক্রেডিটে রাখতে পারবে। খালি =
-                    সীমা নেই।
+                    এই গ্রুপ এই শপে কত টাকা পর্যন্ত বাকি/ক্রেডিটে রাখতে পারবে। খালি = সীমা নেই।
                   </p>
 
                   <div class="row q-col-gutter-md">

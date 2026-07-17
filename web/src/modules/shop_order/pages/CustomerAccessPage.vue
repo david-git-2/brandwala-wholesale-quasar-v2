@@ -249,7 +249,12 @@ const openCreateDialog = () => {
   dialogOpen.value = true;
 };
 
-const openEditDialog = (group: { id: number; name: string; accent_color?: string | null; is_active: boolean }) => {
+const openEditDialog = (group: {
+  id: number;
+  name: string;
+  accent_color?: string | null;
+  is_active: boolean;
+}) => {
   form.id = group.id;
   form.name = group.name;
   form.accentColor = group.accent_color || '';

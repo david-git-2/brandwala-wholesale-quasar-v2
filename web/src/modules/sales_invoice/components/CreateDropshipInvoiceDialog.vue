@@ -34,14 +34,7 @@
             :loading="loadingProfiles"
           >
             <template #after>
-              <q-btn
-                round
-                dense
-                flat
-                icon="add"
-                color="primary"
-                @click="goToBillingProfileCreate"
-              >
+              <q-btn round dense flat icon="add" color="primary" @click="goToBillingProfileCreate">
                 <q-tooltip>Create Billing Profile</q-tooltip>
               </q-btn>
             </template>

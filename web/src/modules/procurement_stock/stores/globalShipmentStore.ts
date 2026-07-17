@@ -282,7 +282,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.loading = false;
       }
     },
- 
+
     async updateShipmentItemsBulk(
       updates: Array<{
         id: number;
@@ -305,12 +305,20 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           if (item && item.product_id != null) {
             if ('product_weight' in u.payload && u.payload.product_weight !== undefined) {
               productUpdates.push(
-                syncShipmentWeightToProduct(item.product_id, 'product_weight', u.payload.product_weight)
+                syncShipmentWeightToProduct(
+                  item.product_id,
+                  'product_weight',
+                  u.payload.product_weight,
+                ),
               );
             }
             if ('package_weight' in u.payload && u.payload.package_weight !== undefined) {
               productUpdates.push(
-                syncShipmentWeightToProduct(item.product_id, 'package_weight', u.payload.package_weight)
+                syncShipmentWeightToProduct(
+                  item.product_id,
+                  'package_weight',
+                  u.payload.package_weight,
+                ),
               );
             }
           }
@@ -449,10 +457,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.error = null;
       try {
         // 1. Check for invoice references
-        const invoiceNos = await globalShipmentRepository.checkShipmentInvoiceReferences(shipmentId);
+        const invoiceNos =
+          await globalShipmentRepository.checkShipmentInvoiceReferences(shipmentId);
         if (invoiceNos.length > 0) {
           throw new Error(
-            `Cannot rollback shipment. The following invoices contain stock from this shipment and must be deleted first: ${invoiceNos.join(', ')}`
+            `Cannot rollback shipment. The following invoices contain stock from this shipment and must be deleted first: ${invoiceNos.join(', ')}`,
           );
         }
 

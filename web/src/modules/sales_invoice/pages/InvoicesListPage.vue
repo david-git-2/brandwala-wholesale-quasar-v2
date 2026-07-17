@@ -137,8 +137,20 @@
                 <q-chip
                   square
                   dense
-                  :color="row.invoice_type === 'wholesale' ? 'purple-2' : row.invoice_type === 'dropship' ? 'orange-2' : 'blue-2'"
-                  :text-color="row.invoice_type === 'wholesale' ? 'purple-10' : row.invoice_type === 'dropship' ? 'orange-10' : 'blue-10'"
+                  :color="
+                    row.invoice_type === 'wholesale'
+                      ? 'purple-2'
+                      : row.invoice_type === 'dropship'
+                        ? 'orange-2'
+                        : 'blue-2'
+                  "
+                  :text-color="
+                    row.invoice_type === 'wholesale'
+                      ? 'purple-10'
+                      : row.invoice_type === 'dropship'
+                        ? 'orange-10'
+                        : 'blue-10'
+                  "
                   class="text-weight-bold text-capitalize q-ma-none"
                 >
                   {{ row.invoice_type || 'retail' }}
@@ -263,7 +275,7 @@
           no-caps
           class="full-width soft-input text-left justify-start q-px-sm"
           color="primary"
-          style="min-height: 40px; border-color: rgba(0, 0, 0, 0.12);"
+          style="min-height: 40px; border-color: rgba(0, 0, 0, 0.12)"
         >
           <q-icon name="event" class="q-mr-xs" color="primary" />
           <span class="text-caption text-grey-8">{{ dateRangeLabel }}</span>
@@ -565,7 +577,9 @@ onMounted(() => {
 }
 .invoice-card {
   box-shadow: 0 4px 12px rgba(34, 56, 101, 0.08) !important;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .invoice-card:hover {
   transform: translateY(-3px);

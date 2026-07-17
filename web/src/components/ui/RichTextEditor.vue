@@ -10,14 +10,7 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <template v-if="withTable" #insert_table>
-      <q-btn
-        dense
-        flat
-        no-caps
-        size="sm"
-        icon="table_chart"
-        class="q-px-sm"
-      >
+      <q-btn dense flat no-caps size="sm" icon="table_chart" class="q-px-sm">
         <q-tooltip>Insert Table</q-tooltip>
         <q-menu
           anchor="bottom left"
@@ -26,18 +19,17 @@
           @before-show="onTableMenuOpen"
         >
           <div class="table-grid-picker q-pa-sm">
-            <div
-              v-for="row in gridSize"
-              :key="`row-${row}`"
-              class="table-grid-picker__row"
-            >
+            <div v-for="row in gridSize" :key="`row-${row}`" class="table-grid-picker__row">
               <div
                 v-for="col in gridSize"
                 :key="`cell-${row}-${col}`"
                 class="table-grid-picker__cell"
                 :class="{ 'table-grid-picker__cell--active': row <= hoverRows && col <= hoverCols }"
                 v-close-popup
-                @mouseenter="hoverRows = row; hoverCols = col"
+                @mouseenter="
+                  hoverRows = row;
+                  hoverCols = col;
+                "
                 @click="onInsertTable(row, col)"
               />
             </div>
@@ -72,7 +64,11 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
 }>();
 
-const editorRef = ref<{ focus?: () => void; caret?: { save?: () => void; restore?: () => void }; $el?: HTMLElement } | null>(null);
+const editorRef = ref<{
+  focus?: () => void;
+  caret?: { save?: () => void; restore?: () => void };
+  $el?: HTMLElement;
+} | null>(null);
 const gridSize = 8;
 const hoverRows = ref(3);
 const hoverCols = ref(3);
@@ -148,7 +144,9 @@ const onInsertTable = (rows: number, cols: number) => {
   border-radius: 2px;
   cursor: pointer;
   background: #fff;
-  transition: background-color 0.1s ease, border-color 0.1s ease;
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease;
 }
 
 .table-grid-picker__cell--active {

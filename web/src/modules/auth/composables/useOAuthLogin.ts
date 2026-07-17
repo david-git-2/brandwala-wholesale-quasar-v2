@@ -703,8 +703,7 @@ export function useOAuthLogin(
     });
     const redirectPath =
       typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
-    const tenantSlug =
-      normalizeTenantSlug(options?.tenantSlug) ?? getTenantSlugFromRoute(route);
+    const tenantSlug = normalizeTenantSlug(options?.tenantSlug) ?? getTenantSlugFromRoute(route);
 
     if (redirectPath) {
       callbackSearchParams.set('redirect', redirectPath);

@@ -1,5 +1,5 @@
 <template>
-<q-page class="bw-page storefront-page">
+  <q-page class="bw-page storefront-page">
     <!-- ACCESS DENIED STATE -->
     <div
       v-if="accessDenied"
@@ -143,7 +143,9 @@
         v-if="hasActiveFilters"
         class="row items-center q-gutter-xs q-mb-md active-filters-section"
       >
-        <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">{{ $t('shop.active_filters') }}</span>
+        <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">{{
+          $t('shop.active_filters')
+        }}</span>
         <q-chip
           v-if="search"
           removable
@@ -194,7 +196,10 @@
 
       <!-- PRODUCT GRID WITH INFINITE SCROLL -->
       <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
-        <div v-if="shopStorefrontStore.catalogItems.length > 0" class="row q-col-gutter-md product-grid">
+        <div
+          v-if="shopStorefrontStore.catalogItems.length > 0"
+          class="row q-col-gutter-md product-grid"
+        >
           <div
             v-for="item in shopStorefrontStore.catalogItems"
             :key="item.product_id + '-' + (item.global_stock_allocation_id || '')"
@@ -250,7 +255,11 @@
                     </template>
 
                     <div
-                      v-if="shopStorefrontStore.permissions?.can_view_quantity && item.available_units !== null && item.available_units !== undefined"
+                      v-if="
+                        shopStorefrontStore.permissions?.can_view_quantity &&
+                        item.available_units !== null &&
+                        item.available_units !== undefined
+                      "
                       class="text-caption"
                       :class="
                         item.available_units > 0
@@ -264,12 +273,17 @@
                     </div>
                   </div>
 
-                   <div class="row items-center no-wrap q-gutter-x-sm">
+                  <div class="row items-center no-wrap q-gutter-x-sm">
                     <!-- Qty adjuster shown only when NOT in cart -->
                     <div
                       v-if="!isInCart(item)"
                       class="row items-center no-wrap quantity-controls"
-                      style="border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15)); border-radius: 10px; padding: 4px; background: rgba(0,0,0,0.02);"
+                      style="
+                        border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15));
+                        border-radius: 10px;
+                        padding: 4px;
+                        background: rgba(0, 0, 0, 0.02);
+                      "
                     >
                       <q-btn
                         flat
@@ -278,10 +292,13 @@
                         size="sm"
                         icon="remove"
                         color="grey-8"
-                        style="min-width: 32px; min-height: 32px;"
+                        style="min-width: 32px; min-height: 32px"
                         @click="decrementQty(item)"
                       />
-                      <div class="text-weight-bold text-center text-grey-9" style="width: 36px; font-size: 15px; user-select: none;">
+                      <div
+                        class="text-weight-bold text-center text-grey-9"
+                        style="width: 36px; font-size: 15px; user-select: none"
+                      >
                         {{ selectedQuantities[itemKey(item)] || getMinQty(item) }}
                       </div>
                       <q-btn
@@ -291,7 +308,7 @@
                         size="sm"
                         icon="add"
                         color="grey-8"
-                        style="min-width: 32px; min-height: 32px;"
+                        style="min-width: 32px; min-height: 32px"
                         @click="incrementQty(item)"
                       />
                     </div>
@@ -489,7 +506,6 @@ const getShopTypeColor = (type?: string) => {
   if (type === 'dropship') return 'orange-8';
   return 'grey';
 };
-
 
 const loadBrands = async (vendorCode?: string | null, tenantId?: number | null) => {
   const result = await productStore.fetchBrandOptions({
@@ -739,7 +755,11 @@ onMounted(async () => {
   position: relative;
   height: 160px;
   flex: 0 0 160px;
-  background: color-mix(in srgb, var(--bw-theme-base, #fafafa) 90%, var(--bw-theme-surface, #fff) 10%);
+  background: color-mix(
+    in srgb,
+    var(--bw-theme-base, #fafafa) 90%,
+    var(--bw-theme-surface, #fff) 10%
+  );
   border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
   display: flex;
   align-items: center;
@@ -759,7 +779,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--bw-theme-base, #eef2f6) 88%, var(--bw-theme-surface, #fff) 12%);
+  background: color-mix(
+    in srgb,
+    var(--bw-theme-base, #eef2f6) 88%,
+    var(--bw-theme-surface, #fff) 12%
+  );
   border-radius: 8px;
 }
 .product-body {

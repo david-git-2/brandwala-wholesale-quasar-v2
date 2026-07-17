@@ -195,7 +195,11 @@
                   filled
                   dense
                   :readonly="isCargoRateAutoCalculated"
-                  :hint="isCargoRateAutoCalculated ? 'Auto-calculated from total ÷ weight' : 'Enter manually or fill total & weight'"
+                  :hint="
+                    isCargoRateAutoCalculated
+                      ? 'Auto-calculated from total ÷ weight'
+                      : 'Enter manually or fill total & weight'
+                  "
                   :class="{ 'bg-green-1': isCargoRateAutoCalculated }"
                 />
               </div>

@@ -283,9 +283,7 @@ const loadAllocations = async () => {
     childTenantId: isParentContext.value ? childTenantFilter.value : null,
     stockTypeId: stockTypeFilter.value,
   });
-  await costingCache.prefetchShipmentItems(
-    allocationStore.rows.map((row) => row.shipment_id),
-  );
+  await costingCache.prefetchShipmentItems(allocationStore.rows.map((row) => row.shipment_id));
 };
 
 const onTableRequest = async (props: any) => {

@@ -117,22 +117,22 @@ const onBrandChanged = (id: number | null) => {
   }
 };
 
-const combineInvoiceItemsForPreview = (
-  itemList: GlobalInvoiceItemRow[],
-  isDropship: boolean,
-) => {
-  const grouped: Record<string, {
-    id: number;
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    lineTotal: number;
-    imageUrl: string | null;
-  }> = {};
+const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[], isDropship: boolean) => {
+  const grouped: Record<
+    string,
+    {
+      id: number;
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+      imageUrl: string | null;
+    }
+  > = {};
 
   for (const row of itemList) {
     const key = row.name_snapshot;
-    
+
     const unit = isDropship
       ? Number(row.recipient_price_amount ?? row.sell_price_amount)
       : Number(row.sell_price_amount);

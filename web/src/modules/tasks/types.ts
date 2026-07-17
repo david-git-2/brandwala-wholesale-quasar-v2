@@ -1,12 +1,5 @@
 export type ItemType =
-  | 'project'
-  | 'module'
-  | 'submodule'
-  | 'task'
-  | 'note'
-  | 'discussion'
-  | 'bug'
-  | 'feature';
+  'project' | 'module' | 'submodule' | 'task' | 'note' | 'discussion' | 'bug' | 'feature';
 
 export type ItemStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'blocked' | 'archived';
 

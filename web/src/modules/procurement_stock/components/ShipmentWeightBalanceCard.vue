@@ -310,7 +310,9 @@
           </q-card-section>
 
           <q-card-section class="q-pa-md">
-            <div style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden">
+            <div
+              style="border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; overflow: hidden"
+            >
               <q-markup-table dense flat class="weight-preview-table bg-grey-1">
                 <thead>
                   <tr>
@@ -322,7 +324,10 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in previewItems" :key="item.id">
-                    <td class="text-left text-caption text-weight-medium ellipsis" style="max-width: 250px">
+                    <td
+                      class="text-left text-caption text-weight-medium ellipsis"
+                      style="max-width: 250px"
+                    >
                       {{ item.name }}
                     </td>
                     <td class="text-right text-caption text-mono">{{ item.qty }}</td>

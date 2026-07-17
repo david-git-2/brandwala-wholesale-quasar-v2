@@ -105,15 +105,22 @@
                                 class="q-py-xs"
                               >
                                 <q-item-section>
-                                  <q-item-label class="text-caption text-weight-medium text-grey-8">{{ sub.name }}</q-item-label>
-                                  <q-item-label caption class="text-caption">{{ sub.key }}</q-item-label>
+                                  <q-item-label
+                                    class="text-caption text-weight-medium text-grey-8"
+                                    >{{ sub.name }}</q-item-label
+                                  >
+                                  <q-item-label caption class="text-caption">{{
+                                    sub.key
+                                  }}</q-item-label>
                                 </q-item-section>
                               </q-item>
                             </q-list>
                           </div>
                         </template>
                         <q-item v-if="availableModules.length === 0">
-                          <q-item-section class="text-grey-7">No available features.</q-item-section>
+                          <q-item-section class="text-grey-7"
+                            >No available features.</q-item-section
+                          >
                         </q-item>
                       </q-list>
                     </div>
@@ -1393,9 +1400,7 @@ const loadTenantModules = async () => {
 
 const availableModules = computed(() => {
   const activeKeys = modules.value.map((m) => m.module_key);
-  return allCatalogModules.value.filter(
-    (m) => !m.parent_module_key && !activeKeys.includes(m.key),
-  );
+  return allCatalogModules.value.filter((m) => !m.parent_module_key && !activeKeys.includes(m.key));
 });
 
 const addTenantFeature = async (moduleKey: string) => {

@@ -185,7 +185,9 @@ const browseShopCatalog = async (
 
 const listShopsForCustomer = async (
   tenantId?: number | null,
-): Promise<ShopServiceResult<Awaited<ReturnType<typeof shopOrderRepository.listShopsForCustomer>>>> => {
+): Promise<
+  ShopServiceResult<Awaited<ReturnType<typeof shopOrderRepository.listShopsForCustomer>>>
+> => {
   try {
     const data = await shopOrderRepository.listShopsForCustomer(tenantId);
     return { success: true, data };

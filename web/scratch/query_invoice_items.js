@@ -42,7 +42,11 @@ async function inspectInvoiceItems() {
     console.log('Global Stock:', stock);
   }
 
-  console.log('\n=== INSPECTING SHIPMENT ITEM WITH ID', item.shipment_item_id, '(FROM INVOICE ITEM) ===');
+  console.log(
+    '\n=== INSPECTING SHIPMENT ITEM WITH ID',
+    item.shipment_item_id,
+    '(FROM INVOICE ITEM) ===',
+  );
   if (item.shipment_item_id) {
     const { data: shipmentItem, error: shipmentItemErr } = await supabase
       .from('global_shipment_items')
@@ -59,7 +63,11 @@ async function inspectInvoiceItems() {
     console.log('No shipment_item_id on global_invoice_items.');
   }
 
-  console.log('\n=== INSPECTING SHIPMENT ITEM WITH ID', stock?.shipment_item_id, '(FROM GLOBAL STOCK) ===');
+  console.log(
+    '\n=== INSPECTING SHIPMENT ITEM WITH ID',
+    stock?.shipment_item_id,
+    '(FROM GLOBAL STOCK) ===',
+  );
   if (stock?.shipment_item_id) {
     const { data: shipmentItemStock, error: shipmentItemStockErr } = await supabase
       .from('global_shipment_items')

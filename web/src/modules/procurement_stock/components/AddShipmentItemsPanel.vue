@@ -3,320 +3,339 @@
     class="add-items-panel column no-wrap"
     :class="{ 'add-items-panel--drawer': layout === 'drawer' }"
   >
-   <div class="panel-body col">
-    <!-- LEFT COLUMN: search + catalog -->
-    <div class="search-col column no-wrap">
-    <!-- Top compact toolbar -->
-    <div class="q-pa-md toolbar-section column q-gutter-y-sm">
-      <div class="row items-center q-col-gutter-sm">
-        <div class="col-auto">
-          <q-btn-dropdown
-            flat
-            dense
-            :label="searchFieldLabel"
-            class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-            no-caps
+    <div class="panel-body col">
+      <!-- LEFT COLUMN: search + catalog -->
+      <div class="search-col column no-wrap">
+        <!-- Top compact toolbar -->
+        <div class="q-pa-md toolbar-section column q-gutter-y-sm">
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col-auto">
+              <q-btn-dropdown
+                flat
+                dense
+                :label="searchFieldLabel"
+                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+                no-caps
+              >
+                <q-list dense>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'name'">
+                    <q-item-section>Name</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
+                    <q-item-section>Barcode</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
+                    <q-item-section>Product Code</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
+            <div class="col">
+              <q-input
+                v-model="browseSearch"
+                :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
+                outlined
+                dense
+                clearable
+                class="full-width"
+              />
+            </div>
+            <div class="col-auto">
+              <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
+                <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+                  {{ activeFilterCount }}
+                </q-badge>
+              </q-btn>
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm">
+            <div class="col">
+              <q-btn
+                unelevated
+                no-caps
+                color="primary"
+                icon="add"
+                label="New Product"
+                class="new-product-btn full-width"
+                @click="showNewProductSidebar = true"
+              />
+            </div>
+            <div class="col-auto">
+              <q-btn
+                outline
+                no-caps
+                icon="playlist_add"
+                label="Bulk codes"
+                class="full-height"
+                :color="showBulkCodes ? 'secondary' : 'primary'"
+                @click="showBulkCodes = !showBulkCodes"
+              />
+            </div>
+          </div>
+
+          <div
+            v-if="showBulkCodes"
+            class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
           >
-            <q-list dense>
-              <q-item clickable v-close-popup @click="browseSearchField = 'name'">
-                <q-item-section>Name</q-item-section>
+            <q-input
+              v-model="bulkCodesText"
+              type="textarea"
+              outlined
+              dense
+              class="bulk-codes-input"
+              :input-style="{
+                height: '120px',
+                maxHeight: '120px',
+                overflowY: 'auto',
+                resize: 'none',
+              }"
+              placeholder="Paste one barcode or product code per line&#10;8711000279502&#10;8711000279380"
+            />
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-auto">
+                <q-input
+                  v-model.number="bulkDefaultQty"
+                  type="number"
+                  outlined
+                  dense
+                  label="Qty"
+                  style="width: 90px"
+                  min="1"
+                  step="1"
+                />
+              </div>
+              <div class="col">
+                <q-btn
+                  unelevated
+                  no-caps
+                  color="secondary"
+                  icon="add_shopping_cart"
+                  label="Add to cart"
+                  class="full-width"
+                  :loading="bulkLoading"
+                  :disable="!bulkCodesText.trim()"
+                  @click="onBulkAddCodes"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Catalog Browse list -->
+        <div class="browse-section col column q-px-md q-pb-sm">
+          <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog Products</div>
+          <div class="col scroll browse-list-container relative-position">
+            <q-inner-loading :showing="browseLoading" />
+            <q-list dense bordered separator class="rounded-borders browse-list">
+              <q-item v-for="product in browseList" :key="product.id">
+                <q-item-section avatar>
+                  <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
+                    <SmartImage
+                      :src="product.image_url"
+                      style="width: 1in; height: 1in; object-fit: contain"
+                      :enable-edit="false"
+                      :enable-lightbox="false"
+                    />
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
+                  <q-item-label caption>
+                    {{
+                      [product.product_code, product.barcode].filter(Boolean).join(' · ') ||
+                      'No code'
+                    }}
+                  </q-item-label>
+                  <q-item-label
+                    v-if="product.list_price_amount != null"
+                    caption
+                    class="text-secondary"
+                  >
+                    £{{ product.list_price_amount.toFixed(2) }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
+                  <q-input
+                    :model-value="browseQtyById[product.id]"
+                    type="number"
+                    outlined
+                    dense
+                    placeholder="Qty"
+                    style="width: 70px"
+                    min="1"
+                    step="1"
+                    @update:model-value="
+                      (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
+                    "
+                  />
+                  <q-btn
+                    unelevated
+                    dense
+                    no-caps
+                    color="secondary"
+                    icon="add"
+                    class="q-px-sm"
+                    label="Add"
+                    @click="addProductToCart(product, browseQtyById[product.id])"
+                  />
+                </q-item-section>
               </q-item>
-              <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
-                <q-item-section>Barcode</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
-                <q-item-section>Product Code</q-item-section>
+              <q-item v-if="!browseLoading && browseList.length === 0">
+                <q-item-section class="text-grey-6 text-center q-pa-md"
+                  >No products found</q-item-section
+                >
               </q-item>
             </q-list>
-          </q-btn-dropdown>
-        </div>
-        <div class="col">
-          <q-input
-            v-model="browseSearch"
-            :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
-            outlined
-            dense
-            clearable
-            class="full-width"
-          />
-        </div>
-        <div class="col-auto">
-          <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
-            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-              {{ activeFilterCount }}
-            </q-badge>
-          </q-btn>
-        </div>
-      </div>
-      <div class="row q-col-gutter-sm">
-        <div class="col">
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            icon="add"
-            label="New Product"
-            class="new-product-btn full-width"
-            @click="showNewProductSidebar = true"
-          />
-        </div>
-        <div class="col-auto">
-          <q-btn
-            outline
-            no-caps
-            icon="playlist_add"
-            label="Bulk codes"
-            class="full-height"
-            :color="showBulkCodes ? 'secondary' : 'primary'"
-            @click="showBulkCodes = !showBulkCodes"
-          />
+            <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                label="Load more"
+                :loading="browseLoading"
+                @click="loadMoreBrowse"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div v-if="showBulkCodes" class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders">
-        <q-input
-          v-model="bulkCodesText"
-          type="textarea"
-          outlined
-          dense
-          class="bulk-codes-input"
-          :input-style="{ height: '120px', maxHeight: '120px', overflowY: 'auto', resize: 'none' }"
-          placeholder="Paste one barcode or product code per line&#10;8711000279502&#10;8711000279380"
-        />
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-auto">
-            <q-input
-              v-model.number="bulkDefaultQty"
-              type="number"
-              outlined
+      <!-- RIGHT COLUMN: cart + footer -->
+      <div class="cart-col column no-wrap">
+        <!-- Cart -->
+        <div class="cart-section col q-pa-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle1 text-weight-bold">
+              Cart
+              <q-badge v-if="cart.length" color="primary" :label="cart.length" class="q-ml-xs" />
+            </div>
+            <q-btn
+              v-if="cart.length"
+              flat
               dense
-              label="Qty"
-              style="width: 90px"
-              min="1"
-              step="1"
+              no-caps
+              color="negative"
+              label="Clear"
+              @click="confirmClearCart"
             />
           </div>
-          <div class="col">
+
+          <div v-if="cart.length === 0" class="text-center text-grey-6 q-py-lg">
+            <q-icon name="shopping_cart" size="36px" color="grey-4" />
+            <div class="q-mt-sm">Search catalog or add a new product</div>
+          </div>
+
+          <div v-else class="cart-scroll">
+            <div
+              v-for="item in cart"
+              :key="item.key"
+              class="cart-line q-mb-sm q-pa-sm rounded-borders"
+            >
+              <div class="row items-start no-wrap q-col-gutter-sm">
+                <div class="col-auto">
+                  <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
+                    <SmartImage
+                      :src="item.image_url"
+                      style="width: 1in; height: 1in; object-fit: contain"
+                      :enable-edit="false"
+                      :enable-lightbox="false"
+                    />
+                  </q-avatar>
+                </div>
+                <div class="col" style="min-width: 0">
+                  <div class="text-weight-medium ellipsis-2-lines">
+                    {{ item.name }}
+                    <q-badge v-if="item.isNewProduct" color="orange" label="New" class="q-ml-xs" />
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    <span v-if="item.product_code || item.barcode">
+                      {{ [item.product_code, item.barcode].filter(Boolean).join(' · ') }}
+                    </span>
+                    <span class="q-ml-sm text-weight-bold text-grey-6">
+                      (Wt: {{ item.product_weight }}g / Pkg: {{ item.package_weight }}g)
+                    </span>
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    color="negative"
+                    icon="close"
+                    @click="removeFromCart(item)"
+                  />
+                </div>
+              </div>
+              <div class="row q-col-gutter-xs q-mt-xs">
+                <div class="col-6">
+                  <q-input
+                    v-model.number="item.ordered_quantity"
+                    type="number"
+                    label="Qty"
+                    outlined
+                    dense
+                    min="1"
+                    step="1"
+                    @update:model-value="(v) => onCartQtyUpdated(item, Number(v))"
+                  />
+                </div>
+                <div class="col-6">
+                  <q-input
+                    v-model.number="item.purchase_price"
+                    type="number"
+                    step="0.01"
+                    label="Price £"
+                    outlined
+                    dense
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div class="text-caption text-grey-7 text-right q-mt-xs">
+                £{{ formatMoney(lineSubtotal(item)) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="panel-footer q-pa-md">
+          <div v-if="cart.length" class="row justify-between text-body2 q-mb-xs">
+            <span class="text-grey-7"
+              >{{ totalCartUnits }} units · {{ totalCartWeightKg.toFixed(2) }} kg</span
+            >
+            <span class="text-weight-bold text-primary">£{{ formatMoney(totalCartPriceGbp) }}</span>
+          </div>
+          <div class="row q-gutter-sm">
+            <q-btn
+              v-if="showCancel"
+              flat
+              no-caps
+              color="grey-8"
+              label="Cancel"
+              class="col"
+              @click="onCancel"
+            />
             <q-btn
               unelevated
               no-caps
-              color="secondary"
-              icon="add_shopping_cart"
-              label="Add to cart"
-              class="full-width"
-              :loading="bulkLoading"
-              :disable="!bulkCodesText.trim()"
-              @click="onBulkAddCodes"
+              color="primary"
+              icon="save"
+              :label="
+                cart.length ? `Save ${cart.length} item${cart.length === 1 ? '' : 's'}` : 'Save'
+              "
+              class="col"
+              :loading="submitting"
+              :disable="cart.length === 0"
+              @click="onCommitCart"
             />
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Catalog Browse list -->
-    <div class="browse-section col column q-px-md q-pb-sm">
-      <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog Products</div>
-      <div class="col scroll browse-list-container relative-position">
-        <q-inner-loading :showing="browseLoading" />
-        <q-list dense bordered separator class="rounded-borders browse-list">
-          <q-item v-for="product in browseList" :key="product.id">
-            <q-item-section avatar>
-              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
-                <SmartImage
-                  :src="product.image_url"
-                  style="width: 1in; height: 1in; object-fit: contain"
-                  :enable-edit="false"
-                  :enable-lightbox="false"
-                />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
-              <q-item-label caption>
-                {{
-                  [product.product_code, product.barcode].filter(Boolean).join(' · ') || 'No code'
-                }}
-              </q-item-label>
-              <q-item-label v-if="product.list_price_amount != null" caption class="text-secondary">
-                £{{ product.list_price_amount.toFixed(2) }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
-              <q-input
-                :model-value="browseQtyById[product.id]"
-                type="number"
-                outlined
-                dense
-                placeholder="Qty"
-                style="width: 70px"
-                min="1"
-                step="1"
-                @update:model-value="
-                  (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
-                "
-              />
-              <q-btn
-                unelevated
-                dense
-                no-caps
-                color="secondary"
-                icon="add"
-                class="q-px-sm"
-                label="Add"
-                @click="addProductToCart(product, browseQtyById[product.id])"
-              />
-            </q-item-section>
-          </q-item>
-          <q-item v-if="!browseLoading && browseList.length === 0">
-            <q-item-section class="text-grey-6 text-center q-pa-md"
-              >No products found</q-item-section
-            >
-          </q-item>
-        </q-list>
-        <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="primary"
-            label="Load more"
-            :loading="browseLoading"
-            @click="loadMoreBrowse"
-          />
-        </div>
-      </div>
-    </div>
-    </div>
-
-    <!-- RIGHT COLUMN: cart + footer -->
-    <div class="cart-col column no-wrap">
-    <!-- Cart -->
-    <div class="cart-section col q-pa-md">
-      <div class="row items-center justify-between q-mb-sm">
-        <div class="text-subtitle1 text-weight-bold">
-          Cart
-          <q-badge v-if="cart.length" color="primary" :label="cart.length" class="q-ml-xs" />
-        </div>
-        <q-btn
-          v-if="cart.length"
-          flat
-          dense
-          no-caps
-          color="negative"
-          label="Clear"
-          @click="confirmClearCart"
-        />
-      </div>
-
-      <div v-if="cart.length === 0" class="text-center text-grey-6 q-py-lg">
-        <q-icon name="shopping_cart" size="36px" color="grey-4" />
-        <div class="q-mt-sm">Search catalog or add a new product</div>
-      </div>
-
-      <div v-else class="cart-scroll">
-        <div v-for="item in cart" :key="item.key" class="cart-line q-mb-sm q-pa-sm rounded-borders">
-          <div class="row items-start no-wrap q-col-gutter-sm">
-            <div class="col-auto">
-              <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
-                <SmartImage
-                  :src="item.image_url"
-                  style="width: 1in; height: 1in; object-fit: contain"
-                  :enable-edit="false"
-                  :enable-lightbox="false"
-                />
-              </q-avatar>
-            </div>
-            <div class="col" style="min-width: 0">
-              <div class="text-weight-medium ellipsis-2-lines">
-                {{ item.name }}
-                <q-badge v-if="item.isNewProduct" color="orange" label="New" class="q-ml-xs" />
-              </div>
-              <div class="text-caption text-grey-7">
-                <span v-if="item.product_code || item.barcode">
-                  {{ [item.product_code, item.barcode].filter(Boolean).join(' · ') }}
-                </span>
-                <span class="q-ml-sm text-weight-bold text-grey-6">
-                  (Wt: {{ item.product_weight }}g / Pkg: {{ item.package_weight }}g)
-                </span>
-              </div>
-            </div>
-            <div class="col-auto">
-              <q-btn
-                flat
-                round
-                dense
-                size="sm"
-                color="negative"
-                icon="close"
-                @click="removeFromCart(item)"
-              />
-            </div>
-          </div>
-          <div class="row q-col-gutter-xs q-mt-xs">
-            <div class="col-6">
-              <q-input
-                v-model.number="item.ordered_quantity"
-                type="number"
-                label="Qty"
-                outlined
-                dense
-                min="1"
-                step="1"
-                @update:model-value="(v) => onCartQtyUpdated(item, Number(v))"
-              />
-            </div>
-            <div class="col-6">
-              <q-input
-                v-model.number="item.purchase_price"
-                type="number"
-                step="0.01"
-                label="Price £"
-                outlined
-                dense
-                min="0"
-              />
-            </div>
-          </div>
-          <div class="text-caption text-grey-7 text-right q-mt-xs">
-            £{{ formatMoney(lineSubtotal(item)) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="panel-footer q-pa-md">
-      <div v-if="cart.length" class="row justify-between text-body2 q-mb-xs">
-        <span class="text-grey-7"
-          >{{ totalCartUnits }} units · {{ totalCartWeightKg.toFixed(2) }} kg</span
-        >
-        <span class="text-weight-bold text-primary">£{{ formatMoney(totalCartPriceGbp) }}</span>
-      </div>
-      <div class="row q-gutter-sm">
-        <q-btn
-          v-if="showCancel"
-          flat
-          no-caps
-          color="grey-8"
-          label="Cancel"
-          class="col"
-          @click="onCancel"
-        />
-        <q-btn
-          unelevated
-          no-caps
-          color="primary"
-          icon="save"
-          :label="cart.length ? `Save ${cart.length} item${cart.length === 1 ? '' : 's'}` : 'Save'"
-          class="col"
-          :loading="submitting"
-          :disable="cart.length === 0"
-          @click="onCommitCart"
-        />
-      </div>
-    </div>
-    </div>
-   </div>
 
     <!-- Catalog Filters Sidebar -->
     <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
@@ -686,7 +705,10 @@ const onBulkAddCodes = async () => {
     }
 
     if (missing.length === 0) {
-      $q.notify({ type: 'positive', message: `Added ${added} item${added === 1 ? '' : 's'} to cart.` });
+      $q.notify({
+        type: 'positive',
+        message: `Added ${added} item${added === 1 ? '' : 's'} to cart.`,
+      });
     } else if (added > 0) {
       $q.notify({
         type: 'warning',

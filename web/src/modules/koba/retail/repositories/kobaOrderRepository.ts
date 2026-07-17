@@ -1,12 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 
 export type KobaOrderStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'processing'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled';
+  'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface KobaOrder {
   id: number;

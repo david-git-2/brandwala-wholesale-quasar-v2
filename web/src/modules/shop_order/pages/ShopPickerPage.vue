@@ -4,9 +4,7 @@
       <section>
         <div class="text-overline text-primary">Shop</div>
         <h1 class="text-h5 text-weight-bold q-my-none">Browse shops</h1>
-        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-          Open a shop your group can access.
-        </p>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Open a shop your group can access.</p>
       </section>
 
       <div v-if="loading" class="column items-center justify-center q-pa-xl">
@@ -67,7 +65,9 @@ const openShop = (shop: CustomerAccessibleShop) => {
   localStorage.setItem('last_visited_shop_id', String(shop.id));
   localStorage.setItem('last_visited_shop_slug', shop.slug);
   const tenantSlug = authStore.tenantSlug;
-  void router.push(tenantSlug ? `/${tenantSlug}/shop/browse/${shop.slug}` : `/shop/browse/${shop.slug}`);
+  void router.push(
+    tenantSlug ? `/${tenantSlug}/shop/browse/${shop.slug}` : `/shop/browse/${shop.slug}`,
+  );
 };
 
 onMounted(async () => {

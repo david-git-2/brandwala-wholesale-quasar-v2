@@ -542,10 +542,7 @@
     </q-dialog>
 
     <!-- Bulk Import Dialog -->
-    <BulkImportDialog
-      v-model="bulkImportDialogOpen"
-      @success="onApplyFilters"
-    />
+    <BulkImportDialog v-model="bulkImportDialogOpen" @success="onApplyFilters" />
   </q-page>
 </template>
 

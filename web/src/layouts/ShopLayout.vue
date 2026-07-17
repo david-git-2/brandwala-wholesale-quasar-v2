@@ -9,14 +9,7 @@
     <template #header-extra>
       <div class="row items-center q-gutter-sm">
         <!-- Language Dropdown -->
-        <q-btn
-          flat
-          round
-          dense
-          color="primary"
-          icon="language"
-          class="q-mr-xs"
-        >
+        <q-btn flat round dense color="primary" icon="language" class="q-mr-xs">
           <q-menu auto-close style="min-width: 120px">
             <q-list dense class="q-py-xs">
               <q-item

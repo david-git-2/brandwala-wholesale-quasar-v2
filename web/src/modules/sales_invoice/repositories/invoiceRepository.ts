@@ -112,8 +112,10 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
     name_snapshot: row.name_snapshot,
     quantity: Number(row.quantity),
     sell_price_amount: Number(row.sell_price_amount),
-    recipient_price_amount: row.recipient_price_amount == null ? null : Number(row.recipient_price_amount),
-    line_face_total_amount: row.line_face_total_amount == null ? null : Number(row.line_face_total_amount),
+    recipient_price_amount:
+      row.recipient_price_amount == null ? null : Number(row.recipient_price_amount),
+    line_face_total_amount:
+      row.line_face_total_amount == null ? null : Number(row.line_face_total_amount),
     line_discount_amount: Number(row.line_discount_amount),
     line_total_amount: Number(row.line_total_amount),
     return_quantity: Number(row.return_quantity),
@@ -391,7 +393,12 @@ const convertWholesaleDraftToRetail = async (invoiceId: number): Promise<void> =
 };
 
 const updateInvoiceItemsBulk = async (
-  updates: Array<{ id: number; quantity: number; sell_price_amount: number; recipient_price_amount?: number }>,
+  updates: Array<{
+    id: number;
+    quantity: number;
+    sell_price_amount: number;
+    recipient_price_amount?: number;
+  }>,
 ) => Promise.all(updates.map(updateGlobalInvoiceItem));
 
 export type InvoiceBrand = {

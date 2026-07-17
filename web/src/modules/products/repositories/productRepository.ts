@@ -443,10 +443,7 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
 
 const bulkCreateProducts = async (payloads: ProductCreateInput[]): Promise<Product[]> => {
   const formatted = payloads.map(buildProductPayload);
-  const { data, error } = await supabase
-    .from('products')
-    .insert(formatted)
-    .select();
+  const { data, error } = await supabase.from('products').insert(formatted).select();
 
   if (error) {
     throw error;
@@ -679,9 +676,7 @@ const lookupProductsByCodes = async ({
   codes: string[];
   tenantId: number;
 }): Promise<Product[]> => {
-  const uniqueCodes = [
-    ...new Set(codes.map((c) => c.trim()).filter((c) => c.length > 0)),
-  ];
+  const uniqueCodes = [...new Set(codes.map((c) => c.trim()).filter((c) => c.length > 0))];
   if (uniqueCodes.length === 0) return [];
 
   const scopeTenantId = await resolveProductScopeTenantId(tenantId);

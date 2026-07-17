@@ -184,7 +184,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'select', row: StockNetworkRow): void;
   (e: 'view', row: StockNetworkRow): void;
- }>();
+}>();
 
 const searchField = ref<GlobalStockSearchField>('all');
 const searchQuery = ref(props.initialSearch);
@@ -206,7 +206,7 @@ const loadShipments = async () => {
   try {
     const { data: parentTenantId, error: resolveError } = await supabase.rpc(
       'resolve_parent_tenant_id',
-      { p_tenant_id: props.contextTenantId }
+      { p_tenant_id: props.contextTenantId },
     );
     if (resolveError) throw resolveError;
 

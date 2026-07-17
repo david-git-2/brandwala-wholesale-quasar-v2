@@ -13,9 +13,9 @@
           <template #avatar>
             <q-icon name="info" size="sm" />
           </template>
-          Copy cells from Excel or Google Sheets (columns containing Quantity, Sell Price,
-          or Recipient Price) and paste them below. Values will be applied to items
-          sequentially from top to bottom.
+          Copy cells from Excel or Google Sheets (columns containing Quantity, Sell Price, or
+          Recipient Price) and paste them below. Values will be applied to items sequentially from
+          top to bottom.
         </q-banner>
 
         <!-- Step 1: Text Area for pasting -->
@@ -86,9 +86,11 @@
                 <td class="text-left text-weight-medium ellipsis" style="max-width: 250px">
                   {{ item.name_snapshot }}
                   <div class="text-caption text-grey-6">
-                    Current: Qty {{ item.quantity }} · Sell {{ formatAmount(item.sell_price_amount) }}
+                    Current: Qty {{ item.quantity }} · Sell
+                    {{ formatAmount(item.sell_price_amount) }}
                     <template v-if="isDropship">
-                      · Recipient {{ formatAmount(item.recipient_price_amount ?? item.sell_price_amount) }}
+                      · Recipient
+                      {{ formatAmount(item.recipient_price_amount ?? item.sell_price_amount) }}
                     </template>
                   </div>
                 </td>

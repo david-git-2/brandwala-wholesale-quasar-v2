@@ -15,7 +15,8 @@ export default {
     title: 'Shop',
     language: 'Language',
     access_denied: 'Access Denied',
-    access_denied_desc: 'You do not have permission to access this shop. Please contact your administrator.',
+    access_denied_desc:
+      'You do not have permission to access this shop. Please contact your administrator.',
     shop_not_found: 'Shop Not Found',
     shop_not_found_desc: 'The shop you are trying to browse could not be found or is inactive.',
     go_back: 'Go Back',

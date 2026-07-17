@@ -44,7 +44,7 @@ export async function applyShipmentPurchaseBalance(
       purchase_price: item.purchase_price,
       ordered_quantity: item.ordered_quantity,
     })),
-    actualTotal
+    actualTotal,
   );
 
   const updatedItems = items.map((item) => {
@@ -68,7 +68,7 @@ export async function applyShipmentPurchaseBalance(
         product_weight: item.product_weight,
         package_weight: item.package_weight,
         ordered_quantity: item.ordered_quantity,
-      }))
+      })),
     );
   }
 
@@ -78,7 +78,7 @@ export async function applyShipmentPurchaseBalance(
       item_id: adj.itemId,
       purchase_price: adj.newPurchasePrice,
     })),
-    transactionRate
+    transactionRate,
   );
 
   return {

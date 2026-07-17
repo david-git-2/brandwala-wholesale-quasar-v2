@@ -78,9 +78,7 @@
               >
                 <template #no-option>
                   <q-item>
-                    <q-item-section class="text-grey">
-                      No products found
-                    </q-item-section>
+                    <q-item-section class="text-grey"> No products found </q-item-section>
                   </q-item>
                 </template>
               </q-select>
@@ -111,10 +109,22 @@
 
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="form.product_code" label="Product Code" filled dense :disable="isReceived" />
+                  <q-input
+                    v-model="form.product_code"
+                    label="Product Code"
+                    filled
+                    dense
+                    :disable="isReceived"
+                  />
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="form.barcode" label="Barcode" filled dense :disable="isReceived" />
+                  <q-input
+                    v-model="form.barcode"
+                    label="Barcode"
+                    filled
+                    dense
+                    :disable="isReceived"
+                  />
                 </div>
               </div>
 
@@ -199,11 +209,13 @@
       <q-card style="width: 450px; max-width: 90vw">
         <q-form @submit="handleCreateProduct">
           <q-card-section class="row items-center">
-            <div class="text-subtitle1 text-weight-bold text-primary">Create New Catalog Product</div>
+            <div class="text-subtitle1 text-weight-bold text-primary">
+              Create New Catalog Product
+            </div>
             <q-space />
             <q-btn icon="close" flat round dense v-close-popup />
           </q-card-section>
-          
+
           <q-separator />
 
           <q-card-section class="q-pa-md q-gutter-y-sm">
@@ -214,18 +226,8 @@
               dense
               :rules="[(val) => !!val?.trim() || 'Name is required']"
             />
-            <q-input
-              v-model="newProductForm.product_code"
-              label="Product Code"
-              filled
-              dense
-            />
-            <q-input
-              v-model="newProductForm.barcode"
-              label="Barcode"
-              filled
-              dense
-            />
+            <q-input v-model="newProductForm.product_code" label="Product Code" filled dense />
+            <q-input v-model="newProductForm.barcode" label="Barcode" filled dense />
             <div class="row q-col-gutter-xs">
               <div class="col-6">
                 <q-input
@@ -248,12 +250,7 @@
                 />
               </div>
             </div>
-            <q-input
-              v-model="newProductForm.image_url"
-              label="Image URL"
-              filled
-              dense
-            />
+            <q-input v-model="newProductForm.image_url" label="Image URL" filled dense />
           </q-card-section>
 
           <q-card-actions align="right" class="q-pa-md bg-grey-1">
@@ -475,7 +472,10 @@ onMounted(async () => {
 
     if (props.item.product_id) {
       try {
-        const prod = await productRepository.getProductById(props.item.product_id, authStore.tenantId);
+        const prod = await productRepository.getProductById(
+          props.item.product_id,
+          authStore.tenantId,
+        );
         if (prod) {
           productOptions.value = [prod];
         }

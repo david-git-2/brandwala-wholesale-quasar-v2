@@ -7,7 +7,9 @@
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
             <div>
-              <div class="text-overline">{{ $t('shop.title') }} &amp; {{ $t('navigation.orders') }}</div>
+              <div class="text-overline">
+                {{ $t('shop.title') }} &amp; {{ $t('navigation.orders') }}
+              </div>
               <h1 class="text-h5 q-my-none">{{ $t('shop.checkout') }}</h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
                 {{ $t('shop.checkout_subtitle') }}
@@ -22,8 +24,15 @@
         <div class="col-xs-12 col-md-8">
           <div class="column q-gutter-md">
             <!-- Shipping Information -->
-            <q-card v-if="shopType === 'dropship' || (shopType === 'fixed_price' && allowDelivery)" flat bordered class="form-card">
-              <q-card-section class="q-px-md q-py-sm border-bottom row items-center justify-between">
+            <q-card
+              v-if="shopType === 'dropship' || (shopType === 'fixed_price' && allowDelivery)"
+              flat
+              bordered
+              class="form-card"
+            >
+              <q-card-section
+                class="q-px-md q-py-sm border-bottom row items-center justify-between"
+              >
                 <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                   <q-icon name="local_shipping" size="18px" class="q-mr-xs text-primary" />
                   {{ $t('shop.shipping_info') }}
@@ -40,10 +49,20 @@
               <q-card-section v-if="requestDelivery" class="q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-sm-6">
-                    <q-input v-model="recipientName" outlined dense :label="$t('shop.recipient_name') + ' *'" />
+                    <q-input
+                      v-model="recipientName"
+                      outlined
+                      dense
+                      :label="$t('shop.recipient_name') + ' *'"
+                    />
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model="recipientPhone" outlined dense :label="$t('shop.recipient_phone') + ' *'" />
+                    <q-input
+                      v-model="recipientPhone"
+                      outlined
+                      dense
+                      :label="$t('shop.recipient_phone') + ' *'"
+                    />
                   </div>
                 </div>
                 <q-input
@@ -87,7 +106,9 @@
         <div class="col-xs-12 col-md-4">
           <q-card flat bordered class="summary-card sticky-card">
             <q-card-section class="q-px-md q-py-sm border-bottom">
-              <div class="text-subtitle2 text-weight-bold text-grey-9">{{ $t('shop.items_summary') }}</div>
+              <div class="text-subtitle2 text-weight-bold text-grey-9">
+                {{ $t('shop.items_summary') }}
+              </div>
             </q-card-section>
 
             <q-list class="item-list-compact" separator>
@@ -102,7 +123,9 @@
                   <div class="text-caption text-weight-bold text-grey-9 item-name">
                     {{ item.name }}
                   </div>
-                  <div class="text-caption text-grey-6">{{ $t('shop.qty') }}: {{ item.quantity }}</div>
+                  <div class="text-caption text-grey-6">
+                    {{ $t('shop.qty') }}: {{ item.quantity }}
+                  </div>
                 </q-item-section>
                 <q-item-section side v-if="cartStore.cart?.see_price_snapshot">
                   <div class="text-caption text-weight-bold text-grey-9">
@@ -114,16 +137,20 @@
 
             <q-separator />
 
-             <q-card-section class="q-py-md">
+            <q-card-section class="q-py-md">
               <div class="row justify-between items-baseline q-mb-lg">
-                <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.estimated_total') }}</span>
+                <span class="text-subtitle1 text-weight-bold text-grey-9">{{
+                  $t('shop.estimated_total')
+                }}</span>
                 <span
                   v-if="cartStore.cart?.see_price_snapshot"
                   class="text-h6 text-weight-bold text-primary"
                 >
                   {{ formatCartTotal() }}
                 </span>
-                <span v-else class="text-subtitle1 text-grey-5 italic"> {{ $t('shop.prices_hidden') }} </span>
+                <span v-else class="text-subtitle1 text-grey-5 italic">
+                  {{ $t('shop.prices_hidden') }}
+                </span>
               </div>
 
               <!-- PLACE ORDER -->
@@ -134,7 +161,10 @@
                 :label="$t('shop.place_order')"
                 class="full-width pill-btn text-weight-bold q-py-sm"
                 :loading="orderStore.saving"
-                :disabled="requestDelivery && (!recipientName.trim() || !recipientPhone.trim() || !shippingAddress.trim())"
+                :disabled="
+                  requestDelivery &&
+                  (!recipientName.trim() || !recipientPhone.trim() || !shippingAddress.trim())
+                "
                 @click="submitOrder"
               />
             </q-card-section>
@@ -208,13 +238,7 @@ const submitOrder = async () => {
   const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
   const address = requestDelivery.value ? shippingAddress.value.trim() : '';
 
-  const res = await orderStore.submitOrder(
-    cartStore.cart.id,
-    name,
-    phone,
-    address,
-    null,
-  );
+  const res = await orderStore.submitOrder(cartStore.cart.id, name, phone, address, null);
   if (res.success) {
     cartStore.clearCart();
     const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';

@@ -102,7 +102,12 @@
                     }"
                   />
                   {{ shipmentStore.currentShipment.status }}
-                  <q-icon v-if="shipmentStore.currentShipment.status !== 'Ready Stock'" name="arrow_drop_down" class="q-ml-xs" size="16px" />
+                  <q-icon
+                    v-if="shipmentStore.currentShipment.status !== 'Ready Stock'"
+                    name="arrow_drop_down"
+                    class="q-ml-xs"
+                    size="16px"
+                  />
                   <q-menu v-if="shipmentStore.currentShipment.status !== 'Ready Stock'">
                     <q-list dense style="min-width: 180px">
                       <q-item
@@ -136,17 +141,18 @@
                 </q-chip>
 
                 <!-- Edit / Delete flat buttons with icons only -->
+                <q-btn color="primary" flat round dense icon="download" @click="downloadExcel">
+                  <q-tooltip>Download Excel</q-tooltip>
+                </q-btn>
                 <q-btn
-                  color="primary"
+                  v-if="isEditable"
+                  color="secondary"
                   flat
                   round
                   dense
-                  icon="download"
-                  @click="downloadExcel"
+                  icon="edit"
+                  @click="openEditShipment"
                 >
-                  <q-tooltip>Download Excel</q-tooltip>
-                </q-btn>
-                <q-btn v-if="isEditable" color="secondary" flat round dense icon="edit" @click="openEditShipment">
                   <q-tooltip>Edit Details</q-tooltip>
                 </q-btn>
                 <q-btn
@@ -794,8 +800,10 @@
                 />
 
                 <q-separator class="q-my-xs" />
-                <div class="text-subtitle2 text-weight-bold text-grey-7">Cargo Rate Calculation</div>
-                <div class="text-caption text-grey-6" style="margin-top: -8px; font-size: 11px;">
+                <div class="text-subtitle2 text-weight-bold text-grey-7">
+                  Cargo Rate Calculation
+                </div>
+                <div class="text-caption text-grey-6" style="margin-top: -8px; font-size: 11px">
                   Cargo Rate = Cargo Invoice Total ÷ Cargo Weight (kg)
                 </div>
 
@@ -825,7 +833,11 @@
                   filled
                   dense
                   :readonly="isCargoRateAutoCalculated"
-                  :hint="isCargoRateAutoCalculated ? 'Auto-calculated from invoice total ÷ weight' : 'Enter manually or fill invoice total & weight above'"
+                  :hint="
+                    isCargoRateAutoCalculated
+                      ? 'Auto-calculated from invoice total ÷ weight'
+                      : 'Enter manually or fill invoice total & weight above'
+                  "
                   :class="{ 'bg-green-1': isCargoRateAutoCalculated }"
                 />
               </div>
@@ -1185,10 +1197,7 @@ const shipmentForLiveCosting = computed(() => {
 const isEditable = computed(() => {
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return false;
-  return (
-    shipment.status !== 'Ready Stock' &&
-    shipment.status !== 'Warehouse Received'
-  );
+  return shipment.status !== 'Ready Stock' && shipment.status !== 'Warehouse Received';
 });
 
 const ratesPreview = computed(() => {
@@ -1282,7 +1291,9 @@ const changeStatus = (newStatus: string) => {
   if (shipmentStore.currentShipment.status === newStatus) return;
 
   if (shipmentStore.currentShipment.status === 'Ready Stock') {
-    showWarningNotification('To change status, please use the Rollback option to revert the shipment to Draft.');
+    showWarningNotification(
+      'To change status, please use the Rollback option to revert the shipment to Draft.',
+    );
     return;
   }
 
@@ -1437,7 +1448,9 @@ const downloadExcel = async () => {
     });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
-    const fileTitle = safeNamePart(shipmentStore.currentShipment.name ?? `shipment_${shipmentStore.currentShipment.id}`);
+    const fileTitle = safeNamePart(
+      shipmentStore.currentShipment.name ?? `shipment_${shipmentStore.currentShipment.id}`,
+    );
     anchor.href = url;
     anchor.download = `${fileTitle || `shipment_${shipmentStore.currentShipment.id}`}.xlsx`;
     anchor.click();

@@ -9,7 +9,9 @@
               <div class="row items-center q-gutter-x-sm no-wrap">
                 <q-btn flat round dense icon="arrow_back" color="grey-7" @click="goBack" />
                 <div>
-                  <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.cart_title') }}</div>
+                  <div class="text-subtitle1 text-weight-bold text-grey-9">
+                    {{ $t('shop.cart_title') }}
+                  </div>
                   <div class="text-caption text-grey-7">
                     {{ $t('shop.cart_subtitle') }}
                   </div>
@@ -108,7 +110,11 @@
                 </q-item-section>
 
                 <!-- Price and Subtotal -->
-                <q-item-section v-if="cartStore.cart?.see_price_snapshot" side class="text-right subtotal-section item-price-section">
+                <q-item-section
+                  v-if="cartStore.cart?.see_price_snapshot"
+                  side
+                  class="text-right subtotal-section item-price-section"
+                >
                   <div class="text-subtitle2 text-weight-bold text-grey-9">
                     {{ formatItemTotal(item) }}
                   </div>
@@ -140,13 +146,18 @@
         <div class="col-xs-12 col-md-4">
           <q-card flat bordered class="summary-card sticky-card">
             <q-card-section class="q-px-md q-py-sm border-bottom">
-              <div class="text-subtitle2 text-weight-bold text-grey-9">{{ $t('shop.order_summary') }}</div>
+              <div class="text-subtitle2 text-weight-bold text-grey-9">
+                {{ $t('shop.order_summary') }}
+              </div>
             </q-card-section>
 
             <q-card-section class="q-py-md">
               <template v-if="cartStore.cart?.see_price_snapshot">
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                  <span>{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
+                  <span
+                    >{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }}
+                    {{ $t('shop.items').toLowerCase() }})</span
+                  >
                   <span class="text-weight-medium">
                     {{ formatCartTotal() }}
                   </span>
@@ -155,7 +166,9 @@
                 <q-separator class="q-my-md" />
 
                 <div class="row justify-between items-baseline q-mb-lg">
-                  <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.estimated_total') }}</span>
+                  <span class="text-subtitle1 text-weight-bold text-grey-9">{{
+                    $t('shop.estimated_total')
+                  }}</span>
                   <span class="text-h6 text-weight-bold text-primary">
                     {{ formatCartTotal() }}
                   </span>
@@ -166,7 +179,11 @@
                 color="primary"
                 unelevated
                 no-caps
-                :label="cartStore.cart?.shop_type === 'vendor_catalog' ? $t('shop.place_order') : $t('shop.proceed_to_checkout')"
+                :label="
+                  cartStore.cart?.shop_type === 'vendor_catalog'
+                    ? $t('shop.place_order')
+                    : $t('shop.proceed_to_checkout')
+                "
                 class="full-width pill-btn text-weight-bold q-py-sm"
                 :loading="cartStore.saving || placingOrder"
                 @click="handleButtonClick"
@@ -370,8 +387,8 @@ export default {
     display: grid !important;
     grid-template-columns: 64px 1fr;
     grid-template-areas:
-      "img details"
-      "qty price";
+      'img details'
+      'qty price';
     gap: 12px;
     padding: 12px 8px !important;
     position: relative;

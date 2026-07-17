@@ -152,8 +152,8 @@ function formatPrice(amount: number): string {
 }
 
 const TAG_COLS = 3;
-const TAG_HEIGHT = '42mm';
-const TAG_GAP = '3mm';
+const TAG_HEIGHT = '39mm';
+const TAG_GAP = '8mm';
 // A4 printable height ~267mm (297 − 15mm top/bottom @page margins)
 const TAG_ROWS_PER_PAGE = 6;
 const TAGS_PER_PAGE = TAG_COLS * TAG_ROWS_PER_PAGE;
@@ -264,8 +264,8 @@ onMounted(() => {
 
 .tag-sheet {
   position: relative;
-  --tag-height: 42mm;
-  --tag-gap: 3mm;
+  --tag-height: 39mm;
+  --tag-gap: 8mm;
 }
 
 .tag-sheet--break {
@@ -331,7 +331,7 @@ onMounted(() => {
 @media print {
   @page {
     size: A4;
-    margin: 15mm 10mm 15mm 10mm;
+    margin: 11.5mm 10mm 11.5mm 10mm;
   }
 
   * {
@@ -369,12 +369,15 @@ onMounted(() => {
   }
 
   .tag-grid {
-    gap: var(--tag-gap);
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-auto-rows: var(--tag-height) !important;
+    gap: var(--tag-gap) !important;
   }
 
   .tag-cut-line--v {
-    top: -15mm;
-    bottom: -15mm;
+    top: -11.5mm;
+    bottom: -11.5mm;
     height: auto;
     border-left-color: #000;
   }
@@ -386,8 +389,8 @@ onMounted(() => {
   }
 
   :deep(.marketing-tag-card) {
-    height: 42mm !important;
-    max-height: 42mm !important;
+    height: var(--tag-height) !important;
+    max-height: var(--tag-height) !important;
     border: 1.5px solid #000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

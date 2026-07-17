@@ -141,7 +141,9 @@
                   </q-item>
 
                   <q-item
-                    v-if="invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'"
+                    v-if="
+                      invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'
+                    "
                     clickable
                     class="text-primary"
                     :disable="convertingInvoice"
@@ -595,7 +597,11 @@
               @click="noteOverflows && (viewNoteDialog = true)"
             />
             <div v-else class="text-body2 text-grey-8">—</div>
-            <div v-if="noteOverflows" class="text-caption text-primary q-mt-xs cursor-pointer" @click="viewNoteDialog = true">
+            <div
+              v-if="noteOverflows"
+              class="text-caption text-primary q-mt-xs cursor-pointer"
+              @click="viewNoteDialog = true"
+            >
               View full note
             </div>
           </q-card>
@@ -623,7 +629,9 @@
                 color="secondary"
                 icon="content_paste"
                 label="Bulk Paste"
-                unelevated dense no-caps
+                unelevated
+                dense
+                no-caps
                 class="q-ml-sm"
                 @click="openBulkPaste"
               />
@@ -798,7 +806,13 @@
     <!-- Add From Stock Dialog -->
     <q-dialog v-model="stockDialog" persistent>
       <q-card
-        style="width: 1100px; max-width: 95vw; border-radius: 16px; background: var(--bw-theme-surface); border: 1px solid var(--bw-theme-border);"
+        style="
+          width: 1100px;
+          max-width: 95vw;
+          border-radius: 16px;
+          background: var(--bw-theme-surface);
+          border: 1px solid var(--bw-theme-border);
+        "
         class="q-pa-sm shadow-2"
       >
         <q-card-section class="text-h6 text-weight-bold row items-center justify-between q-pb-none">
@@ -1205,7 +1219,10 @@
 
     <!-- View Note Dialog -->
     <q-dialog v-model="viewNoteDialog">
-      <q-card class="q-pa-md" style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px">
+      <q-card
+        class="q-pa-md"
+        style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px"
+      >
         <q-card-section class="text-h6 text-weight-bold">Invoice Note</q-card-section>
         <q-card-section class="invoice-note-preview invoice-note-preview--full scroll">
           <div v-html="invoice?.note || '—'"></div>
@@ -1218,7 +1235,10 @@
 
     <!-- Edit Note Dialog -->
     <q-dialog v-model="editNoteDialog" persistent>
-      <q-card class="q-pa-md" style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px">
+      <q-card
+        class="q-pa-md"
+        style="min-width: 500px; width: 90vw; max-width: 800px; border-radius: 16px"
+      >
         <q-card-section class="text-h6 text-weight-bold">Edit Invoice Note</q-card-section>
         <q-card-section>
           <RichTextEditor v-model="noteEditValue" min-height="12rem" />
@@ -1418,10 +1438,7 @@ const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
   });
 
 const totalCost = computed(() => {
-  return items.value.reduce(
-    (sum, row) => sum + (getItemUnitCost(row) ?? 0) * row.quantity,
-    0,
-  );
+  return items.value.reduce((sum, row) => sum + (getItemUnitCost(row) ?? 0) * row.quantity, 0);
 });
 const totalQuantity = computed(() => {
   return items.value.reduce((sum, row) => sum + row.quantity, 0);

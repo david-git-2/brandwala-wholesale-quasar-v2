@@ -72,7 +72,29 @@ const HEADERS = [
 ] as const;
 
 const COLUMN_LETTERS = [
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'H',
+  'I',
+  'J',
+  'K',
+  'L',
+  'M',
+  'N',
+  'O',
+  'P',
+  'Q',
+  'R',
+  'S',
+  'T',
+  'U',
+  'V',
+  'W',
 ] as const;
 
 const COLUMN_WIDTHS = [
@@ -115,14 +137,29 @@ const pixelsToEmu = (px: number) => Math.round(px * EMU_PER_PIXEL);
 
 type ExcelCell = {
   fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } } | undefined;
-  font?: { bold?: boolean | undefined; color?: { argb: string } | undefined; size?: number | undefined; name?: string | undefined } | undefined;
-  alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean | undefined } | undefined;
-  border?: {
-    top?: { style: 'thin' } | undefined;
-    left?: { style: 'thin' } | undefined;
-    bottom?: { style: 'thin' } | undefined;
-    right?: { style: 'thin' } | undefined;
-  } | undefined;
+  font?:
+    | {
+        bold?: boolean | undefined;
+        color?: { argb: string } | undefined;
+        size?: number | undefined;
+        name?: string | undefined;
+      }
+    | undefined;
+  alignment?:
+    | {
+        vertical: 'middle' | 'top';
+        horizontal: 'center' | 'left' | 'right';
+        wrapText?: boolean | undefined;
+      }
+    | undefined;
+  border?:
+    | {
+        top?: { style: 'thin' } | undefined;
+        left?: { style: 'thin' } | undefined;
+        bottom?: { style: 'thin' } | undefined;
+        right?: { style: 'thin' } | undefined;
+      }
+    | undefined;
   numFmt?: string | undefined;
   value?: any;
 };
@@ -141,7 +178,13 @@ const applyCellStyle = (
     numFmt?: string | undefined;
     fontColorArgb?: string | undefined;
     fontSize?: number | undefined;
-    alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText?: boolean | undefined } | undefined;
+    alignment?:
+      | {
+          vertical: 'middle' | 'top';
+          horizontal: 'center' | 'left' | 'right';
+          wrapText?: boolean | undefined;
+        }
+      | undefined;
   } = {},
 ) => {
   if (opts.fillArgb !== undefined) {
@@ -236,12 +279,9 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Shipment costing');
 
-  const conversionRate = input.shipment.type === 'international' 
-    ? (input.shipment.product_conversion_rate ?? 140)
-    : 1;
-  const cargoRate = input.shipment.type === 'international'
-    ? (input.shipment.cargo_rate ?? 0)
-    : 0;
+  const conversionRate =
+    input.shipment.type === 'international' ? (input.shipment.product_conversion_rate ?? 140) : 1;
+  const cargoRate = input.shipment.type === 'international' ? (input.shipment.cargo_rate ?? 0) : 0;
   const items = input.items;
 
   COLUMN_WIDTHS.forEach((width, index) => {
@@ -346,7 +386,8 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     row.height = DATA_ROW_HEIGHT;
   }
 
-  const lastDataRow = items.length > 0 ? items.length + FIRST_DATA_ROW_NUMBER - 1 : FIRST_DATA_ROW_NUMBER - 1;
+  const lastDataRow =
+    items.length > 0 ? items.length + FIRST_DATA_ROW_NUMBER - 1 : FIRST_DATA_ROW_NUMBER - 1;
   const totalRow = lastDataRow + 1;
 
   if (items.length > 0) {
@@ -399,24 +440,28 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     for (let r = startRow; r <= endRow; r++) {
       for (let c = startCol; c <= endCol; c++) {
         const cell = ws.getCell(r, c);
-        
+
         const cellOpts: {
           fillArgb?: string;
           bold?: boolean;
           numFmt?: string;
-          alignment?: { vertical: 'middle' | 'top'; horizontal: 'center' | 'left' | 'right'; wrapText: boolean };
+          alignment?: {
+            vertical: 'middle' | 'top';
+            horizontal: 'center' | 'left' | 'right';
+            wrapText: boolean;
+          };
         } = {};
-        
+
         if (options.fillArgb !== undefined) cellOpts.fillArgb = options.fillArgb;
         if (options.bold !== undefined) cellOpts.bold = options.bold;
         if (options.numFmt !== undefined) cellOpts.numFmt = options.numFmt;
-        
+
         cellOpts.alignment = {
           vertical: options.vertical ?? 'middle',
           horizontal: options.horizontal ?? 'center',
           wrapText: true,
         };
-        
+
         applyCellStyle(cell, cellOpts);
         cell.border = thinBorderSet;
       }
@@ -443,7 +488,10 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   overviewData.forEach((row, i) => {
     const curRow = summaryStartRow + 1 + i;
     // Label cell (Col B = Column 2)
-    mergeAndStyleRange(worksheet, 2, curRow, 2, curRow, row.label, { horizontal: 'left', bold: true });
+    mergeAndStyleRange(worksheet, 2, curRow, 2, curRow, row.label, {
+      horizontal: 'left',
+      bold: true,
+    });
     // Value cell (Cols C to E = 3 to 5)
     mergeAndStyleRange(worksheet, 3, curRow, 5, curRow, row.val, { horizontal: 'left' });
   });

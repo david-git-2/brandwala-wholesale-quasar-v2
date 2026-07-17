@@ -41,7 +41,11 @@ type QEditorRef = {
   $el?: HTMLElement;
 };
 
-export const insertTableAtCaret = (editorRef: QEditorRef | null | undefined, rows: number, cols: number) => {
+export const insertTableAtCaret = (
+  editorRef: QEditorRef | null | undefined,
+  rows: number,
+  cols: number,
+) => {
   const editor = editorRef;
   if (!editor || rows <= 0 || cols <= 0) return;
 
