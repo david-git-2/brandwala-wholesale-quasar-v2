@@ -30,9 +30,10 @@
       <div class="marketing-tag-card__barcode">
         <BarcodeRenderer
           :value="stock.barcode || ''"
-          :height="32"
+          :height="24"
           :width="1.25"
           :display-value="false"
+          :margin="0"
         />
       </div>
       <div v-if="tagConfig.show_barcode_text" class="marketing-tag-card__barcode-text">
@@ -77,11 +78,11 @@ const showHeader = computed(() => {
 .marketing-tag-card {
   --tag-accent: #1565c0;
   border: 1.5px solid #1a1a1a;
-  padding: 1.2mm 3mm;
+  padding: 1mm 2.5mm;
   background: #fff;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 1mm;
+  gap: 0.75mm;
   box-sizing: border-box;
   height: var(--tag-height, 39mm);
   width: 100%;
@@ -93,18 +94,18 @@ const showHeader = computed(() => {
 
 .marketing-tag-card__header {
   display: flex;
-  align-items: flex-start;
-  gap: 2mm;
+  align-items: center;
+  gap: 1.5mm;
   min-height: 0;
   flex-shrink: 0;
-  padding-bottom: 1mm;
+  padding-bottom: 0.75mm;
   border-bottom: 1px solid #e0e0e0;
 }
 
 .marketing-tag-card__logo {
-  height: 6.5mm;
+  height: 5.5mm;
   width: auto;
-  max-width: 14mm;
+  max-width: 13mm;
   object-fit: contain;
   flex-shrink: 0;
   display: block;
@@ -113,10 +114,10 @@ const showHeader = computed(() => {
 .marketing-tag-card__brand {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: 0.03em;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: #111;
   overflow-wrap: anywhere;
@@ -128,27 +129,28 @@ const showHeader = computed(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1mm;
+  gap: 0.5mm;
 }
 
 .marketing-tag-card__price {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1;
   text-align: center;
   color: var(--tag-accent);
   letter-spacing: -0.01em;
   flex-shrink: 0;
+  margin-top: 0.5mm;
 }
 
 .marketing-tag-card__label {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: #666;
   flex-shrink: 0;
-  min-width: 7mm;
+  min-width: 6.5mm;
 }
 
 .marketing-tag-card__size-line,
@@ -162,7 +164,7 @@ const showHeader = computed(() => {
 }
 
 .marketing-tag-card__size-value {
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 800;
   line-height: 1.15;
   color: #111;
@@ -173,7 +175,7 @@ const showHeader = computed(() => {
 }
 
 .marketing-tag-card__additional-value {
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 600;
   line-height: 1.15;
   color: #333;
@@ -186,20 +188,20 @@ const showHeader = computed(() => {
 .marketing-tag-card__barcode-wrap {
   flex-shrink: 0;
   width: 100%;
-  padding-top: 1mm;
+  padding-top: 0.75mm;
   border-top: 1px dashed #ccc;
 }
 
 .marketing-tag-card__barcode {
   width: 100%;
-  height: 9.5mm;
+  height: 8mm;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .marketing-tag-card__barcode-text {
-  font-size: 14px;
+  font-size: 11px;
   font-family: ui-monospace, monospace;
   font-weight: 800;
   letter-spacing: 0.06em;

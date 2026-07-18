@@ -246,7 +246,7 @@ onMounted(() => {
   max-width: 210mm;
   margin: 0 auto;
   background: #fff;
-  padding: 15mm;
+  padding: 11.5mm 10mm;
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
   border: 1px solid #d9dce3;
   border-radius: 8px;

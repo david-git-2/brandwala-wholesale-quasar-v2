@@ -36,7 +36,7 @@
             <q-checkbox v-model="form.show_barcode_text" label="Show Barcode Text" dense />
           </div>
           <div class="col-12 col-md-6 flex justify-center items-center">
-            <div style="width: 70mm">
+            <div style="width: 58mm">
               <div class="text-caption text-weight-bold text-grey-7 q-mb-xs text-center">
                 Preview
               </div>

@@ -241,9 +241,9 @@ body {
 }
 
 .floating-surface {
-  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-theme-base) 6%);
+  background: color-mix(in srgb, var(--bw-theme-surface, var(--bw-brand-surface, #ffffff)) 94%, var(--bw-theme-base, var(--bw-brand-base, #fbfaf7)) 6%);
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bw-theme-border, var(--bw-brand-border, #e7e1d8)) 40%, transparent);
 }
 
 .hero-surface {

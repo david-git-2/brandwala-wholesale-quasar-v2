@@ -11,6 +11,7 @@ const props = defineProps<{
   height?: number;
   width?: number;
   displayValue?: boolean;
+  margin?: number;
 }>();
 
 const svgRef = ref<SVGElement | null>(null);
@@ -24,7 +25,7 @@ const renderBarcode = () => {
       width: props.width ?? 1.5,
       height: props.height ?? 40,
       displayValue: props.displayValue ?? false,
-      margin: 10,
+      margin: props.margin ?? 10,
     });
   } catch (err) {
     console.error('JsBarcode rendering error:', err);
