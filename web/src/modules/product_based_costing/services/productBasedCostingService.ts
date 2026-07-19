@@ -161,6 +161,29 @@ const updateProductBasedCostingItem = async (
   }
 };
 
+const updateProductBasedCostingItemsBulk = async (
+  payloads: ProductBasedCostingItemUpdateInput[],
+): Promise<ProductBasedCostingServiceResult<ProductBasedCostingItem[]>> => {
+  try {
+    const data = await Promise.all(
+      payloads.map((payload) => productBasedCostingRepository.updateProductBasedCostingItem(payload)),
+    );
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to bulk update product based costing items.',
+    };
+  }
+};
+
 const deleteProductBasedCostingItem = async (
   id: number,
 ): Promise<ProductBasedCostingServiceResult<ProductBasedCostingItem>> => {
@@ -208,6 +231,7 @@ export const productBasedCostingService = {
   listProductBasedCostingItems,
   createProductBasedCostingItem,
   updateProductBasedCostingItem,
+  updateProductBasedCostingItemsBulk,
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
 };

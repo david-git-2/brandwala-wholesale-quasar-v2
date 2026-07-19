@@ -98,6 +98,12 @@ def parse_args() -> argparse.Namespace:
         help="Tenant id scope. Empty value means tenant_id IS NULL.",
     )
     parser.add_argument(
+        "--parent-tenant-id",
+        dest="parent_tenant_id",
+        default=os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "").strip(),
+        help="Parent tenant id for inserts. Empty value means parent_tenant_id IS NULL.",
+    )
+    parser.add_argument(
         "--vendor-id",
         dest="vendor_id",
         default=os.getenv("PY_PRODUCTS_VENDOR_ID", "").strip(),
@@ -165,29 +171,23 @@ def to_text(value: Any) -> str:
     return str(value if value is not None else "").strip()
 
 
-def prompt_tenant_id(default_raw: str) -> int | None:
-    default_text = to_text(default_raw)
-    
-    # Skip prompting if a valid tenant id was passed as an argument
-    if default_text.isdigit() and int(default_text) > 0:
-        return int(default_text)
-        
-    label = "Enter tenant id"
-    if default_text:
-        label += f" [{default_text}]"
-    label += ": "
-
+def prompt_optional_positive_id(label: str, default_raw: str) -> int | None:
+    """Prompt for a positive int when stdin is a TTY; otherwise use default/env/CLI."""
     import sys
+
+    default_text = to_text(default_raw)
+    prompt = label
+    if default_text:
+        prompt += f" [{default_text}]"
+    prompt += ": "
+
     while True:
-        # If not running in a TTY, don't try to read input
         if not sys.stdin.isatty():
-            if default_text == "":
-                return None
             if default_text.isdigit() and int(default_text) > 0:
                 return int(default_text)
             return None
-            
-        raw = input(label).strip()
+
+        raw = input(prompt).strip()
         if raw == "":
             raw = default_text
 
@@ -197,7 +197,7 @@ def prompt_tenant_id(default_raw: str) -> int | None:
         if raw.isdigit() and int(raw) > 0:
             return int(raw)
 
-        print("Invalid tenant id. Use a positive integer, or leave blank for NULL.", flush=True)
+        print(f"Invalid {label.lower()}. Use a positive integer, or leave blank for NULL.", flush=True)
 
 
 def to_int_or_none(value: Any) -> int | None:
@@ -306,6 +306,8 @@ def build_sync_payloads(
     vendor_id: int,
     market_code: str,
     tenant_id: int | None,
+    parent_tenant_id: int | None,
+    gbp_currency_id: int,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
     barcode = to_text(row.get("barcode"))
     product_code = to_text(row.get("product_code"))
@@ -319,17 +321,21 @@ def build_sync_payloads(
     if minimum_order_quantity is not None and minimum_order_quantity < 1:
         minimum_order_quantity = 1
 
+    price = to_float_or_none(row.get("price"))
+
     # Insert payload can include null-capable values for new rows.
     image_url = row.get("imageUrl") or row.get("image_url") or row.get("original_image_url") or row.get("image")
     insert_payload: dict[str, Any] = {
         "tenant_id": tenant_id,
+        "parent_tenant_id": parent_tenant_id,
         "vendor_id": vendor_id,
         "vendor_code": vendor_code,
         "market_code": market_code,
         "barcode": barcode,
         "product_code": product_code,
         "name": normalize_nullable_text(row.get("name") or row.get("title")),
-        "price_gbp": to_float_or_none(row.get("price")),
+        "list_price_amount": price,
+        "list_price_currency_id": gbp_currency_id if price is not None else None,
         "country_of_origin": normalize_nullable_text(row.get("country_of_origin")),
         "brand": normalize_nullable_text(row.get("brand")),
         "category": normalize_nullable_text(row.get("category")),
@@ -349,7 +355,15 @@ def build_sync_payloads(
     # so existing DB values (e.g. prefilled product_weight/package_weight) stay untouched.
     update_payload: dict[str, Any] = {}
     for key, value in insert_payload.items():
-        if key in ("tenant_id", "vendor_id", "vendor_code", "market_code", "barcode", "product_code"):
+        if key in (
+            "tenant_id",
+            "parent_tenant_id",
+            "vendor_id",
+            "vendor_code",
+            "market_code",
+            "barcode",
+            "product_code",
+        ):
             continue
         if value is not None:
             update_payload[key] = value
@@ -809,6 +823,18 @@ def utc_now() -> datetime:
 
 def main() -> int:
     args = parse_args()
+
+    print("Tenant scope (required for product inserts):", flush=True)
+    tenant_id = prompt_optional_positive_id("Enter tenant id", to_text(args.tenant_id))
+    parent_tenant_id = prompt_optional_positive_id(
+        "Enter parent tenant id", to_text(args.parent_tenant_id)
+    )
+    print(
+        f"Using tenant_id={'NULL' if tenant_id is None else tenant_id}, "
+        f"parent_tenant_id={'NULL' if parent_tenant_id is None else parent_tenant_id}",
+        flush=True,
+    )
+
     input_path = Path(args.input_path).expanduser().resolve()
     if not input_path.exists():
         raise FileNotFoundError(f"Input JSON not found: {input_path}")
@@ -819,10 +845,6 @@ def main() -> int:
         raise ValueError("Vendor code cannot be empty.")
     if not market_code:
         raise ValueError("Market code cannot be empty.")
-
-    tenant_id = prompt_tenant_id(to_text(args.tenant_id))
-    if vendor_code == PC_VENDOR_CODE:
-        tenant_id = 10
 
     supabase_url = to_text(os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL"))
     supabase_admin_key = to_text(
@@ -840,6 +862,21 @@ def main() -> int:
 
     client = SupabaseRestClient(supabase_url, supabase_admin_key)
     ensure_market_exists(client, market_code)
+
+    gbp_currency_id_env = to_text(os.getenv("PY_GBP_CURRENCY_ID"))
+    if gbp_currency_id_env:
+        gbp_currency_id = int(gbp_currency_id_env)
+    else:
+        gbp_currency_rows = client.get_rows(
+            "global_currencies",
+            {"code": "eq.GBP", "select": "id", "limit": "1"},
+        )
+        if not gbp_currency_rows:
+            raise RuntimeError(
+                "Currency GBP not found in global_currencies. "
+                "Apply grant migration or set PY_GBP_CURRENCY_ID."
+            )
+        gbp_currency_id = int(gbp_currency_rows[0]["id"])
 
     if args.vendor_id and str(args.vendor_id).strip():
         resolved_vendor_id = int(args.vendor_id)
@@ -872,6 +909,8 @@ def main() -> int:
             resolved_vendor_id,
             market_code,
             tenant_id,
+            parent_tenant_id,
+            gbp_currency_id,
         )
         if payloads is None:
             skipped_missing_key += 1
@@ -958,11 +997,10 @@ def main() -> int:
                     updates.append((row_id, final_update_payload))
                     existing_excel_needs_image.add((row_id, key))
         else:
-            # If the product is not present, add that in the DB with the tenant id 10 and vendor id 3 
-            # and upload the image and use that url.
-            insert_payload["tenant_id"] = 10
-            insert_payload["vendor_id"] = 3
-            insert_payload["vendor_code"] = "PC"
+            insert_payload["tenant_id"] = tenant_id
+            insert_payload["parent_tenant_id"] = parent_tenant_id
+            insert_payload["vendor_id"] = resolved_vendor_id
+            insert_payload["vendor_code"] = resolved_vendor_code
             insert_payload["is_available"] = is_available
             inserts.append(insert_payload)
             newly_inserted_keys.add(key)
@@ -979,7 +1017,9 @@ def main() -> int:
     print(
         "Scope: "
         f"vendor_code={resolved_vendor_code} vendor_id={resolved_vendor_id} "
-        f"market={market_code} tenant_id={'NULL' if tenant_id is None else tenant_id}"
+        f"market={market_code} "
+        f"tenant_id={'NULL' if tenant_id is None else tenant_id} "
+        f"parent_tenant_id={'NULL' if parent_tenant_id is None else parent_tenant_id}"
     )
     print(f"Image upload phase: local_dir={images_dir}")
     print(f"Image URL source: backend storage path ({storage_bucket}/{storage_prefix}/<product_id><ext>)")
@@ -1182,7 +1222,7 @@ def main() -> int:
                 missing_image_keys += 1
                 continue
             
-            pids = [int(item["id"]) for item in rows_after_sync if (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper()) == key and item.get("tenant_id") == 10]
+            pids = [int(item["id"]) for item in rows_after_sync if (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper()) == key and item.get("tenant_id") == tenant_id]
             if not pids:
                 continue
             if len(pids) > 1:

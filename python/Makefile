@@ -31,13 +31,13 @@ wts:
 	python scripts/uk/normalize_pc_data.py --input "$(WTS_JSON)" --no-backup
 	python scripts/uk/remove_vat_from_names.py --input "$(WTS_JSON)" --fields name --no-backup
 	python scripts/uk/move_ml_to_end.py --input "$(WTS_JSON)" --fields name --no-backup
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --tenant-id 10 --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
 
 wts-scrape:
 	python scripts/uk/export_wts_data.py --skip-images
 
 wts-sync:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --tenant-id 10 --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
 
 KOBA_RETAIL_JSON ?= ../web/public/uk/koba_retail_data.json
 KOBA_RETAIL_VENDOR ?= KOBA_RETAIL

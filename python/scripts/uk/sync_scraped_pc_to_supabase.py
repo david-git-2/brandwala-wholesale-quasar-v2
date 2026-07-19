@@ -209,6 +209,21 @@ def main():
 
     client = SupabaseRestClient(supabase_url, supabase_key)
 
+    gbp_currency_id_env = to_text(os.getenv("PY_GBP_CURRENCY_ID"))
+    if gbp_currency_id_env:
+        gbp_currency_id = int(gbp_currency_id_env)
+    else:
+        gbp_currency_rows = client.get_rows(
+            "global_currencies",
+            {"code": "eq.GBP", "select": "id", "limit": "1"},
+        )
+        if not gbp_currency_rows:
+            raise RuntimeError(
+                "Currency GBP not found in global_currencies. "
+                "Apply grant migration or set PY_GBP_CURRENCY_ID."
+            )
+        gbp_currency_id = int(gbp_currency_rows[0]["id"])
+
     # 1. Ensure Brands & Categories lookup rows exist
     print("🔍 Syncing lookup tables (brands & categories)...")
     ensure_lookups(client, scraped_products)
@@ -264,9 +279,11 @@ def main():
         key = (barcode.upper(), sku.upper())
 
         # Construct payload matching db columns
+        price = to_float_or_none(row.get("price"))
         payload = {
             "name": to_text(row.get("name") or row.get("title")),
-            "price_gbp": to_float_or_none(row.get("price")),
+            "list_price_amount": price,
+            "list_price_currency_id": gbp_currency_id if price is not None else None,
             "brand": to_text(row.get("brand")) or None,
             "category": to_text(row.get("category")) or None,
             "available_units": int(row.get("available_units") or 0),

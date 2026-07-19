@@ -44,15 +44,6 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ProductBasedCostingFileDetailsPage.vue'),
         props: true,
       },
-      {
-        path: ':id/cart',
-        name: 'product-based-costing-file-cart-page',
-        component: () => import('../pages/ProductBasedCostingFileCartPage.vue'),
-        props: true,
-        meta: {
-          showHeaderBackButton: true,
-        },
-      },
     ],
   },
   {

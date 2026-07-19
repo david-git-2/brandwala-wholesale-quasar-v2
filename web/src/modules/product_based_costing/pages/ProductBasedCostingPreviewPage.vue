@@ -89,6 +89,7 @@
                   :alt="slotProps.row.name || 'Product image'"
                   img-class="preview-page__image"
                   fallback-class="preview-page__image preview-page__image--placeholder"
+                  :enable-edit="false"
                 />
               </q-td>
 

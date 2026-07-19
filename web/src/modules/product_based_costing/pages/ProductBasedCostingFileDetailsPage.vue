@@ -60,6 +60,28 @@
                 @click="openCreateDialog"
               />
               <q-btn
+                color="secondary"
+                outline
+                no-caps
+                size="sm"
+                icon="content_paste"
+                dense
+                label="Bulk Paste"
+                class="q-px-md q-py-sm action-button"
+                @click="openBulkPaste"
+              />
+              <q-btn
+                color="primary"
+                outline
+                no-caps
+                size="sm"
+                icon="shopping_cart"
+                dense
+                label="Add from Catalog"
+                class="q-px-md q-py-sm action-button"
+                @click="openCatalogDialog"
+              />
+              <q-btn
                 color="primary"
                 outline
                 no-caps
@@ -130,21 +152,6 @@
                       <q-icon name="table_view" />
                     </q-item-section>
                     <q-item-section>Download Excel</q-item-section>
-                  </q-item>
-                  <q-item
-                    clickable
-                    v-close-popup
-                    @click="
-                      router.push({
-                        name: 'product-based-costing-file-cart-page',
-                        params: { id: fileId },
-                      })
-                    "
-                  >
-                    <q-item-section avatar>
-                      <q-icon name="shopping_cart" />
-                    </q-item-section>
-                    <q-item-section>Cart</q-item-section>
                   </q-item>
                 </q-list>
               </q-btn-dropdown>
@@ -272,6 +279,8 @@ import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
+import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
+import BulkPasteCostingItemsDialog from '../components/BulkPasteCostingItemsDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
@@ -632,6 +641,28 @@ const openCreateDialog = () => {
   console.log('Opening create dialog');
   selectedItem.value = null;
   showItemDialog.value = true;
+};
+
+const openCatalogDialog = () => {
+  if (!fileId.value) return;
+
+  $q.dialog({
+    component: AddCostingItemsDrawer,
+    componentProps: { fileId: fileId.value },
+  }).onOk(() => {
+    void store.fetchProductBasedCostingItems(fileId.value!);
+  });
+};
+
+const openBulkPaste = () => {
+  if (!store.costingItems.length) {
+    $q.notify({ type: 'warning', message: 'No costing items to update.' });
+    return;
+  }
+
+  $q.dialog({
+    component: BulkPasteCostingItemsDialog,
+  });
 };
 
 const openPreview = () => {

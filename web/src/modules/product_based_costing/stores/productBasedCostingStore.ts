@@ -276,6 +276,37 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
       }
     },
 
+    async updateProductBasedCostingItemsBulk(payloads: ProductBasedCostingItemUpdateInput[]) {
+      this.saving = true;
+      this.error = null;
+
+      try {
+        const result =
+          await productBasedCostingService.updateProductBasedCostingItemsBulk(payloads);
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to bulk update product based costing items.';
+          handleApiFailure(result, this.error);
+          return result;
+        }
+
+        if (result.data?.length) {
+          const byId = new Map(result.data.map((item) => [item.id, item]));
+          this.costingItems = this.costingItems.map((item) => byId.get(item.id) ?? item);
+          if (this.costingItem && byId.has(this.costingItem.id)) {
+            this.costingItem = byId.get(this.costingItem.id) ?? this.costingItem;
+          }
+        }
+
+        showSuccessNotification(
+          `Updated ${result.data?.length ?? 0} costing item${(result.data?.length ?? 0) === 1 ? '' : 's'}.`,
+        );
+        return result;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async deleteProductBasedCostingItem(payload: number) {
       this.saving = true;
       this.error = null;
