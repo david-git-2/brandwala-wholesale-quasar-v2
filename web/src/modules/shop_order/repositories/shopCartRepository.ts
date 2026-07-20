@@ -34,6 +34,10 @@ export interface CartData {
     is_prepaid?: boolean;
     delivery_instructions?: string | null;
     deduct_charges_from_margin?: boolean;
+    deduct_cod_from_margin?: boolean;
+    deduct_delivery_from_margin?: boolean;
+    deduct_print_from_margin?: boolean;
+    deduct_packing_from_margin?: boolean;
   };
   items: Array<{
     id: number;

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
+import { supabase } from 'src/boot/supabase';
 
 export const useShopStorefrontStore = defineStore('shopStorefront', {
   state: () => ({
@@ -53,6 +54,15 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
 
         this.shopDetails = meta.shop ?? null;
         this.permissions = meta.permissions ?? null;
+
+        if (!this.permissions && this.shopDetails?.id) {
+          const { data: permData } = await supabase.rpc('get_shop_permissions_for_customer', {
+            p_shop_id: this.shopDetails.id,
+          });
+          if (permData && permData.length > 0) {
+            this.permissions = permData[0];
+          }
+        }
         this.totalItems = meta.total ?? 0;
         this.pageSize = meta.page_size ?? this.pageSize;
         this.currentPage = meta.page ?? 1;

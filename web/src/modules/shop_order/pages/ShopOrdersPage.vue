@@ -12,6 +12,24 @@
         </div>
       </section>
 
+      <!-- Shops Filter Button Group -->
+      <div v-if="orderStore.shops.length > 0" class="row items-center q-mb-xs">
+        <div class="col-12">
+          <q-btn-toggle
+            v-model="selectedShopId"
+            dense
+            unelevated
+            no-caps
+            toggle-color="primary"
+            color="white"
+            text-color="primary"
+            class="soft-btn-toggle border-all-1"
+            :options="shopToggleOptions"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+      </div>
+
       <!-- Filters Toolbar -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-12 col-sm-5">
@@ -147,6 +165,7 @@ const orderStore = useShopOrderStore();
 
 const search = ref('');
 const statusFilter = ref(null);
+const selectedShopId = ref<number | null>(null);
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
@@ -162,16 +181,30 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_cancelled'), value: 'cancelled' },
 ]);
 
+const shopToggleOptions = computed(() => {
+  const options: Array<{ label: string; value: number | null }> = [{ label: t('shop_admin.all_shops'), value: null }];
+  orderStore.shops.forEach((shop) => {
+    options.push({ label: shop.name, value: shop.id });
+  });
+  return options;
+});
+
 const loadOrders = async () => {
   if (tenantId.value) {
     await orderStore.fetchStaffOrders(tenantId.value, {
       search: search.value || null,
       status: statusFilter.value || null,
+      shopId: selectedShopId.value,
     });
   }
 };
 
-onMounted(loadOrders);
+onMounted(async () => {
+  if (tenantId.value) {
+    void orderStore.fetchShopsByTenant(tenantId.value);
+  }
+  await loadOrders();
+});
 
 const onFilterChange = () => {
   void loadOrders();

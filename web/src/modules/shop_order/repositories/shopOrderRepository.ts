@@ -56,6 +56,10 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_default_packing_charge_amount: (payload as any).default_packing_charge_amount ?? 0,
     p_deduct_charges_from_margin: payload.deduct_charges_from_margin ?? false,
     p_vendor_filters: payload.vendor_filters ?? null,
+    p_deduct_cod_from_margin: (payload as any).deduct_cod_from_margin ?? false,
+    p_deduct_delivery_from_margin: (payload as any).deduct_delivery_from_margin ?? false,
+    p_deduct_print_from_margin: (payload as any).deduct_print_from_margin ?? false,
+    p_deduct_packing_from_margin: (payload as any).deduct_packing_from_margin ?? false,
   });
 
   if (error) {
@@ -210,7 +214,7 @@ const listShopOrdersForCustomer = async (
 
 const listShopOrdersForStaff = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; search?: string | null; status?: string | null } = {},
+  opts: { limit?: number; offset?: number; search?: string | null; status?: string | null; shopId?: number | null } = {},
 ): Promise<ShopOrder[]> => {
   const { data, error } = await supabase.rpc('list_shop_orders_for_staff', {
     p_tenant_id: tenantId,
@@ -218,6 +222,7 @@ const listShopOrdersForStaff = async (
     p_offset: opts.offset ?? 0,
     p_search: opts.search ?? null,
     p_status: opts.status ?? null,
+    p_shop_id: opts.shopId ?? null,
   });
   if (error) throw error;
   return (data as ShopOrder[] | null) ?? [];
@@ -261,6 +266,26 @@ const fulfillShopOrderToInvoice = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const updateOrderCharges = async (
+  orderId: number,
+  payload: {
+    delivery_charge_amount: number;
+    deduct_delivery_from_margin: boolean;
+    cod_charge_amount: number;
+    deduct_cod_from_margin: boolean;
+    print_charge_amount: number;
+    deduct_print_from_margin: boolean;
+    packing_charge_amount: number;
+    deduct_packing_from_margin: boolean;
+  },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('shop_orders')
+    .update(payload)
+    .eq('id', orderId);
+  if (error) throw error;
+};
+
 const deleteShopOrder = async (orderId: number): Promise<void> => {
   const { error } = await supabase.rpc('delete_shop_order', {
     p_order_id: orderId,
@@ -284,4 +309,5 @@ export const shopOrderRepository = {
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
   deleteShopOrder,
+  updateOrderCharges,
 };

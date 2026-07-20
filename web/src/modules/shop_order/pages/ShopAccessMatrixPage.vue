@@ -92,88 +92,60 @@
                 <div v-if="editForm.status" class="q-gutter-y-md q-mt-sm">
                   <div class="text-subtitle2 text-grey-8">{{ $t('shop_admin.capabilities') }}</div>
 
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12 col-sm-4">
-                      <q-select
+                  <div class="row q-col-gutter-md items-center">
+                    <div class="col-12 col-sm-4" v-if="shopType !== 'dropship'">
+                      <q-toggle
                         v-model="editForm.can_browse"
                         :label="$t('shop_admin.browse_catalog')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
                     <div class="col-12 col-sm-4">
-                      <q-select
+                      <q-toggle
                         v-model="editForm.see_price"
                         :label="$t('shop_admin.see_prices')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
                     <div class="col-12 col-sm-4">
-                      <q-select
+                      <q-toggle
                         v-model="editForm.can_view_quantity"
                         :label="$t('shop_admin.view_stock_qty')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
                     <div class="col-12 col-sm-4">
-                      <q-select
+                      <q-toggle
                         v-model="editForm.can_add_to_cart"
                         :label="$t('shop_admin.add_to_cart')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
                     <div class="col-12 col-sm-4">
-                      <q-select
+                      <q-toggle
                         v-model="editForm.can_place_order"
                         :label="$t('shop_admin.place_order')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
-                    <div class="col-12 col-sm-4">
-                      <q-select
+                    <div class="col-12 col-sm-4" v-if="shopType !== 'dropship'">
+                      <q-toggle
                         v-model="editForm.can_negotiate"
                         :label="$t('shop_admin.negotiate')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
                     <div class="col-12 col-sm-4">
-                      <q-select
+                      <q-toggle
                         v-model="editForm.can_set_dropship_price"
                         :label="$t('shop_admin.set_dropship_price')"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        :options="allowDenyOptions"
+                        color="primary"
                       />
                     </div>
 
@@ -257,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
@@ -276,6 +248,7 @@ const shopId = computed(() => Number(route.params.shopId));
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const shopName = ref<string>('');
+const shopType = ref<string>('');
 const activeGroupId = ref<number | null>(null);
 
 const editForm = ref<UpsertAccessPayload>({
@@ -293,11 +266,6 @@ const editForm = ref<UpsertAccessPayload>({
   credit_limit_amount: null,
   credit_limit_currency_id: null,
 });
-
-const allowDenyOptions = computed(() => [
-  { label: t('shop_admin.allow'), value: true },
-  { label: t('shop_admin.deny'), value: false },
-]);
 
 const coerceBool = (value: boolean | null | undefined, fallback = false) =>
   value === true ? true : value === false ? false : fallback;
@@ -357,11 +325,12 @@ const load = async () => {
 
   const { data: shopData } = await supabase
     .from('shops')
-    .select('name')
+    .select('name, shop_type')
     .eq('id', shopId.value)
     .single();
   if (shopData) {
     shopName.value = shopData.name;
+    shopType.value = shopData.shop_type;
   }
 
   void store.fetchCustomerGroups(tenantId.value);
@@ -391,6 +360,10 @@ const goBack = () => {
     params: { tenantSlug: tenantSlug.value },
   });
 };
+
+watch(tenantId, (v) => {
+  if (v) load();
+});
 
 onMounted(load);
 </script>

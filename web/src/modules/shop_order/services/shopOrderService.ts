@@ -127,7 +127,7 @@ const fetchCustomerOrders = async (
 
 const fetchStaffOrders = async (
   tenantId: number,
-  opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null },
+  opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null; shopId?: number | null },
 ): Promise<ShopServiceResult<ShopOrder[]>> => {
   try {
     const data = await shopOrderRepository.listShopOrdersForStaff(tenantId, opts);
@@ -213,6 +213,30 @@ const listShopsForCustomer = async (
   }
 };
 
+const updateOrderCharges = async (
+  orderId: number,
+  payload: {
+    delivery_charge_amount: number;
+    deduct_delivery_from_margin: boolean;
+    cod_charge_amount: number;
+    deduct_cod_from_margin: boolean;
+    print_charge_amount: number;
+    deduct_print_from_margin: boolean;
+    packing_charge_amount: number;
+    deduct_packing_from_margin: boolean;
+  },
+): Promise<ShopServiceResult<void>> => {
+  try {
+    await shopOrderRepository.updateOrderCharges(orderId, payload);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update order charges.',
+    };
+  }
+};
+
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
@@ -227,4 +251,5 @@ export const shopOrderService = {
   deleteOrder,
   browseShopCatalog,
   listShopsForCustomer,
+  updateOrderCharges,
 };

@@ -168,25 +168,39 @@
 
                 <!-- Charges Section -->
                 <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
-                  <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">{{ $t('shop.dropship_charges') }}</div>
+                  <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                    {{ $t('shop.dropship_charges') }}
+                  </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>
+                      {{ $t('shop.delivery_charge') }}
+                      <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(deliveryCharge) }}</span>
                   </div>
                   
                   <div v-if="!isPrepaid" class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>{{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}</span>
+                    <span>
+                      {{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}
+                      <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(codCharge) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>{{ $t('shop.print_charge') }}</span>
+                    <span>
+                      {{ $t('shop.print_charge') }}
+                      <span class="text-grey-5">({{ deductPrintFromMargin ? 'deducted' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(printCharge) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7">
-                    <span>{{ $t('shop.packing_charge') }}</span>
+                    <span>
+                      {{ $t('shop.packing_charge') }}
+                      <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(packingCharge) }}</span>
                   </div>
                 </div>
@@ -301,23 +315,26 @@ const totalCharges = computed(() => {
   return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
 });
 
-const deductChargesFromMargin = computed(() => !!cartStore.cart?.deduct_charges_from_margin);
+const deductCodFromMargin = computed(() => !!cartStore.cart?.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!cartStore.cart?.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!cartStore.cart?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!cartStore.cart?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
-  if (deductChargesFromMargin.value) {
-    return cartStore.cartTotal;
-  }
-  return cartStore.cartTotal + totalCharges.value;
+  return cartStore.cartTotal
+    + (deductDeliveryFromMargin.value ? 0 : deliveryCharge.value)
+    + (deductPrintFromMargin.value ? 0 : printCharge.value)
+    + (deductPackingFromMargin.value ? 0 : packingCharge.value)
+    + (deductCodFromMargin.value ? 0 : codCharge.value);
 });
 
 const estimatedProfit = computed(() => {
-  if (deductChargesFromMargin.value) {
-    const buyerCost = cartStore.buyerCartTotal + totalCharges.value;
-    return recipientGrandTotal.value - buyerCost;
-  } else {
-    const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
-    return recipientGrandTotal.value - buyerCost;
-  }
+  const buyerCost = cartStore.buyerCartTotal
+    + deliveryCharge.value
+    + printCharge.value
+    + packingCharge.value
+    + (deductCodFromMargin.value ? codCharge.value : 0);
+  return recipientGrandTotal.value - buyerCost;
 });
 
 const currencySymbol = computed(() => {

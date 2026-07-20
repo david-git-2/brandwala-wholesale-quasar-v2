@@ -354,20 +354,26 @@ const deliveryChargeVal = computed(() => Number(orderStore.currentOrder?.deliver
 const printChargeVal = computed(() => Number(orderStore.currentOrder?.print_charge_amount || 0));
 const packingChargeVal = computed(() => Number(orderStore.currentOrder?.packing_charge_amount || 0));
 const discountVal = computed(() => Number(orderStore.currentOrder?.discount_amount || 0));
-const deductChargesFromMargin = computed(() => !!orderStore.currentOrder?.deduct_charges_from_margin);
+const deductCodFromMargin = computed(() => !!orderStore.currentOrder?.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!orderStore.currentOrder?.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!orderStore.currentOrder?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
-  if (deductChargesFromMargin.value) {
-    return recipientSubtotal.value - discountVal.value;
-  }
-  return recipientSubtotal.value + codChargeVal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value - discountVal.value;
+  return recipientSubtotal.value
+    + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
+    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
+    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
+    + (deductCodFromMargin.value ? 0 : codChargeVal.value)
+    - discountVal.value;
 });
 
 const middlemanTotalCost = computed(() => {
-  if (deductChargesFromMargin.value) {
-    return accountingSubtotal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value + codChargeVal.value;
-  }
-  return accountingSubtotal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value;
+  return accountingSubtotal.value
+    + deliveryChargeVal.value
+    + printChargeVal.value
+    + packingChargeVal.value
+    + (deductCodFromMargin.value ? codChargeVal.value : 0);
 });
 
 const estimatedProfit = computed(() => {

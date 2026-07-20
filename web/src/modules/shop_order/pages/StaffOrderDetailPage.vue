@@ -65,7 +65,7 @@
                     class="text-caption text-amber-9 text-weight-bold"
                     v-if="item.customer_offer_amount"
                   >
-                    {{ $t('shop_admin.customer_offer') }} £{{ Number(item.customer_offer_amount).toFixed(2) }}
+                    {{ $t('shop_admin.customer_offer') }} {{ currencySymbol }}{{ Number(item.customer_offer_amount).toFixed(2) }}
                   </div>
                 </q-item-section>
 
@@ -75,19 +75,19 @@
                     <div class="column text-right q-mb-xs">
                       <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.middle_man_cost') }}</span>
                       <span class="text-body2 text-weight-medium text-grey-8">
-                        £{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                        {{ currencySymbol }}{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
                       </span>
                       <span class="text-caption text-grey-6" style="font-size: 10px;">
-                        Total: £{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                        Total: {{ currencySymbol }}{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
                       </span>
                     </div>
                     <div class="column text-right">
                       <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.recipient_price') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
-                        £{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                        {{ currencySymbol }}{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
                       </span>
                       <span class="text-caption text-weight-bold text-primary" style="font-size: 11px;">
-                        Total: £{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                        Total: {{ currencySymbol }}{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
                       </span>
                     </div>
                   </template>
@@ -95,7 +95,7 @@
                     <div class="column text-right">
                       <span class="text-caption text-grey-6">{{ $t('shop_admin.catalog_sell_price') }}</span>
                       <span class="text-body2 text-weight-bold text-grey-8">
-                        £{{
+                        {{ currencySymbol }}{{
                           (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2)
                         }}
                       </span>
@@ -111,7 +111,7 @@
                       outlined
                       dense
                       class="counter-input"
-                      prefix="£"
+                      :prefix="currencySymbol"
                       style="width: 100px"
                     />
                   </div>
@@ -119,7 +119,7 @@
                     v-else-if="item.final_price_amount"
                     class="q-mt-xs text-weight-bold text-primary"
                   >
-                    {{ $t('shop_admin.final_price') }} £{{ Number(item.final_price_amount).toFixed(2) }}
+                    {{ $t('shop_admin.final_price') }} {{ currencySymbol }}{{ Number(item.final_price_amount).toFixed(2) }}
                   </div>
                 </q-item-section>
               </q-item>
@@ -278,32 +278,32 @@
 
                   <div class="row justify-between text-body2 text-grey-7">
                     <span>{{ $t('shop.items_subtotal') }}</span>
-                    <span>£{{ recipientSubtotal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ recipientSubtotal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="deliveryChargeVal > 0">
                     <span>{{ $t('shop.delivery_charge') }}</span>
-                    <span>£{{ deliveryChargeVal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ deliveryChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="codChargeVal > 0">
                     <span>{{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}</span>
-                    <span>£{{ codChargeVal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ codChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
                     <span>{{ $t('shop.print_charge') }}</span>
-                    <span>£{{ printChargeVal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ printChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
                     <span>{{ $t('shop.packing_charge') }}</span>
-                    <span>£{{ packingChargeVal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ packingChargeVal.toFixed(2) }}</span>
                   </div>
 
                   <div class="row justify-between text-body2 text-negative" v-if="discountVal > 0">
                     <span>{{ $t('shop_admin.discount') }}</span>
-                    <span>-£{{ discountVal.toFixed(2) }}</span>
+                    <span>-{{ currencySymbol }}{{ discountVal.toFixed(2) }}</span>
                   </div>
 
                   <q-separator class="q-my-sm" />
@@ -311,25 +311,37 @@
                   <div class="row justify-between items-baseline q-mb-xs">
                     <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.recipient_pay_total') }}</span>
                     <span class="text-h6 text-weight-bold text-primary">
-                      £{{ recipientGrandTotal.toFixed(2) }}
+                      {{ currencySymbol }}{{ recipientGrandTotal.toFixed(2) }}
                     </span>
                   </div>
 
                   <div class="row justify-between text-caption text-grey-6">
                     <span>{{ $t('shop_admin.middle_man_cost') }}</span>
-                    <span>£{{ middlemanTotalCost.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ middlemanTotalCost.toFixed(2) }}</span>
                   </div>
 
                   <div class="row justify-between text-body2 text-weight-bold text-positive q-mt-xs">
                     <span>Middle-man Payout</span>
-                    <span>£{{ estimatedProfit.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ estimatedProfit.toFixed(2) }}</span>
+                  </div>
+
+                  <div class="row justify-center q-mt-md" v-if="orderStore.currentOrder.status !== 'fulfilled' && orderStore.currentOrder.status !== 'cancelled'">
+                    <q-btn
+                      outline
+                      color="primary"
+                      icon="edit"
+                      label="Edit Charges"
+                      size="sm"
+                      class="full-width pill-btn"
+                      @click="openChargesDialog"
+                    />
                   </div>
                 </template>
                 <template v-else>
                   <div class="row justify-between items-baseline">
                     <span class="text-subtitle1 text-weight-bold text-grey-9">Current Value</span>
                     <span class="text-h6 text-weight-bold text-primary">
-                      £{{ orderTotal.toFixed(2) }}
+                      {{ currencySymbol }}{{ orderTotal.toFixed(2) }}
                     </span>
                   </div>
                 </template>
@@ -373,6 +385,115 @@
           </div>
         </div>
       </div>
+
+      <!-- Edit Charges Dialog -->
+      <q-dialog v-model="chargesDialogOpen" persistent>
+        <q-card style="min-width: 350px; border-radius: 14px;">
+          <q-card-section class="row items-center border-bottom q-py-md">
+            <div class="text-h6 text-weight-bold">Edit Charges</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
+          </q-card-section>
+
+          <q-card-section class="q-pa-lg q-gutter-y-md">
+            <!-- Delivery -->
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="chargesForm.delivery_charge_amount"
+                  type="number"
+                  label="Delivery Charge"
+                  outlined
+                  dense
+                  :prefix="currencySymbol"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-toggle
+                  v-model="chargesForm.deduct_delivery_from_margin"
+                  label="Deduct from Profit"
+                  dense
+                />
+              </div>
+            </div>
+
+            <!-- COD -->
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="chargesForm.cod_charge_amount"
+                  type="number"
+                  label="COD Charge"
+                  outlined
+                  dense
+                  :prefix="currencySymbol"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-toggle
+                  v-model="chargesForm.deduct_cod_from_margin"
+                  label="Deduct from Profit"
+                  dense
+                />
+              </div>
+            </div>
+
+            <!-- Print -->
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="chargesForm.print_charge_amount"
+                  type="number"
+                  label="Print Charge"
+                  outlined
+                  dense
+                  :prefix="currencySymbol"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-toggle
+                  v-model="chargesForm.deduct_print_from_margin"
+                  label="Deduct from Profit"
+                  dense
+                />
+              </div>
+            </div>
+
+            <!-- Packing -->
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="chargesForm.packing_charge_amount"
+                  type="number"
+                  label="Packaging Charge"
+                  outlined
+                  dense
+                  :prefix="currencySymbol"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-toggle
+                  v-model="chargesForm.deduct_packing_from_margin"
+                  label="Deduct from Profit"
+                  dense
+                />
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right" class="q-px-lg q-pb-md">
+            <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+            <q-btn
+              unelevated
+              label="Save"
+              color="primary"
+              :loading="savingCharges"
+              @click="saveCharges"
+              class="pill-btn q-px-md"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
   </q-page>
 </template>
@@ -383,22 +504,48 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { date, useQuasar } from 'quasar';
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { supabase } from 'src/boot/supabase';
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const orderStore = useShopOrderStore();
+const currencyStore = useThriftCurrencyStore();
 const $q = useQuasar();
 
 const orderItems = ref<any[]>([]);
+const shopSellCurrencyId = ref<number | null>(null);
 
 const orderId = computed(() => Number(route.params.id));
 
+const currencySymbol = computed(() => {
+  if (shopSellCurrencyId.value) {
+    const curr = currencyStore.currencyById(shopSellCurrencyId.value);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '£';
+});
+
 onMounted(async () => {
+  await currencyStore.loadCurrencies();
   if (orderId.value) {
     const res = await orderStore.fetchOrderDetails(orderId.value);
     if (res.success && res.data) {
       orderItems.value = JSON.parse(JSON.stringify(res.data.items));
+
+      // Fetch shop sell currency
+      const shopId = res.data.order?.shop_id;
+      if (shopId) {
+        const { data: shopData } = await supabase
+          .from('shops')
+          .select('sell_currency_id')
+          .eq('id', shopId)
+          .single();
+        if (shopData?.sell_currency_id) {
+          shopSellCurrencyId.value = shopData.sell_currency_id;
+        }
+      }
     }
   }
 });
@@ -505,20 +652,26 @@ const deliveryChargeVal = computed(() => Number(orderStore.currentOrder?.deliver
 const printChargeVal = computed(() => Number(orderStore.currentOrder?.print_charge_amount || 0));
 const packingChargeVal = computed(() => Number(orderStore.currentOrder?.packing_charge_amount || 0));
 const discountVal = computed(() => Number(orderStore.currentOrder?.discount_amount || 0));
-const deductChargesFromMargin = computed(() => !!orderStore.currentOrder?.deduct_charges_from_margin);
+const deductCodFromMargin = computed(() => !!orderStore.currentOrder?.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!orderStore.currentOrder?.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!orderStore.currentOrder?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
-  if (deductChargesFromMargin.value) {
-    return recipientSubtotal.value - discountVal.value;
-  }
-  return recipientSubtotal.value + codChargeVal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value - discountVal.value;
+  return recipientSubtotal.value
+    + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
+    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
+    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
+    + (deductCodFromMargin.value ? 0 : codChargeVal.value)
+    - discountVal.value;
 });
 
 const middlemanTotalCost = computed(() => {
-  if (deductChargesFromMargin.value) {
-    return accountingSubtotal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value + codChargeVal.value;
-  }
-  return accountingSubtotal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value;
+  return accountingSubtotal.value
+    + deliveryChargeVal.value
+    + printChargeVal.value
+    + packingChargeVal.value
+    + (deductCodFromMargin.value ? codChargeVal.value : 0);
 });
 
 const estimatedProfit = computed(() => {
@@ -569,6 +722,49 @@ const goBack = () => {
 
 const formatDate = (dateStr: string) => {
   return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
+};
+
+const chargesDialogOpen = ref(false);
+const savingCharges = ref(false);
+const chargesForm = ref({
+  delivery_charge_amount: 0,
+  deduct_delivery_from_margin: false,
+  cod_charge_amount: 0,
+  deduct_cod_from_margin: false,
+  print_charge_amount: 0,
+  deduct_print_from_margin: false,
+  packing_charge_amount: 0,
+  deduct_packing_from_margin: false,
+});
+
+const openChargesDialog = () => {
+  const o = orderStore.currentOrder;
+  if (o) {
+    chargesForm.value = {
+      delivery_charge_amount: Number(o.delivery_charge_amount || 0),
+      deduct_delivery_from_margin: !!o.deduct_delivery_from_margin,
+      cod_charge_amount: Number(o.cod_charge_amount || 0),
+      deduct_cod_from_margin: !!o.deduct_cod_from_margin,
+      print_charge_amount: Number(o.print_charge_amount || 0),
+      deduct_print_from_margin: !!o.deduct_print_from_margin,
+      packing_charge_amount: Number(o.packing_charge_amount || 0),
+      deduct_packing_from_margin: !!o.deduct_packing_from_margin,
+    };
+    chargesDialogOpen.value = true;
+  }
+};
+
+const saveCharges = async () => {
+  if (!orderId.value) return;
+  savingCharges.value = true;
+  try {
+    const res = await orderStore.updateOrderCharges(orderId.value, chargesForm.value);
+    if (res.success) {
+      chargesDialogOpen.value = false;
+    }
+  } finally {
+    savingCharges.value = false;
+  }
 };
 
 const getStatusColor = (status: string) => {

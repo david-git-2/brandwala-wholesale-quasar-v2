@@ -100,29 +100,42 @@
 
                 <!-- Quantity Adjuster -->
                 <q-item-section class="col-auto item-qty-section">
-                  <div class="row items-center no-wrap quantity-controls">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      size="sm"
-                      icon="remove"
-                      color="grey-7"
-                      :disabled="cartStore.saving"
-                      @click="updateItemQty(item, item.quantity - (cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
-                    />
-                    <div class="quantity-value text-weight-bold text-center text-grey-8">
-                      {{ item.quantity }}
+                  <div class="column items-center q-gutter-y-xs">
+                    <div class="row items-center no-wrap quantity-controls">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        icon="remove"
+                        color="grey-7"
+                        :disabled="cartStore.saving"
+                        @click="adjustItemQtyLocal(item, -(cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
+                      />
+                      <div class="quantity-value text-weight-bold text-center text-grey-8">
+                        {{ getItemQty(item) }}
+                      </div>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        icon="add"
+                        color="grey-7"
+                        :disabled="cartStore.saving"
+                        @click="adjustItemQtyLocal(item, cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1))"
+                      />
                     </div>
                     <q-btn
-                      flat
-                      round
-                      dense
-                      size="sm"
-                      icon="add"
-                      color="grey-7"
-                      :disabled="cartStore.saving"
-                      @click="updateItemQty(item, item.quantity + (cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
+                      v-if="editedQuantities[item.id] !== undefined && editedQuantities[item.id] !== item.quantity"
+                      color="primary"
+                      size="xs"
+                      unelevated
+                      no-caps
+                      class="pill-btn q-px-sm"
+                      :label="$t('shop.save_qty')"
+                      :loading="cartStore.saving"
+                      @click="saveItemQty(item)"
                     />
                   </div>
                 </q-item-section>
@@ -204,67 +217,81 @@
                   
                   <!-- Charges Section -->
                   <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
-                    <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">{{ $t('shop.dropship_charges') }}</div>
+                    <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                      {{ $t('shop.dropship_charges') }}
+                    </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                      <span>{{ $t('shop.delivery_charge') }}</span>
+                      <span>
+                        {{ $t('shop.delivery_charge') }}
+                        <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      </span>
                       <span>{{ formatAmount(deliveryCharge) }}</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                      <span>{{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}</span>
+                      <span>
+                        {{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}
+                        <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      </span>
                       <span>{{ formatAmount(codCharge) }}</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                      <span>{{ $t('shop.print_charge') }}</span>
+                      <span>
+                        {{ $t('shop.print_charge') }}
+                        <span class="text-grey-5">({{ deductPrintFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      </span>
                       <span>{{ formatAmount(printCharge) }}</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7">
-                      <span>{{ $t('shop.packing_charge') }}</span>
+                      <span>
+                        {{ $t('shop.packing_charge') }}
+                        <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      </span>
                       <span>{{ formatAmount(packingCharge) }}</span>
                     </div>
                   </div>
 
-                  <!-- Buyer Cost -->
-                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                    <span>{{ $t('shop.your_cost_buyer') }}</span>
-                    <span class="text-weight-medium text-grey-9">
-                      {{ formatAmount(cartStore.buyerCartTotal + deliveryCharge + printCharge + packingCharge) }}
-                    </span>
-                  </div>
-                  
-                  <!-- Profit -->
-                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                    <span>{{ $t('shop.estimated_profit') }}</span>
-                    <span class="text-weight-medium text-positive text-weight-bold">
-                      {{ formatEstimatedProfit() }}
-                    </span>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                    <span
-                      >{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }}
-                      {{ $t('shop.items').toLowerCase() }})</span
-                    >
-                    <span class="text-weight-medium">
-                      {{ formatCartTotal() }}
-                    </span>
-                  </div>
-                </template>
-
-                <q-separator class="q-my-md" />
-
-                <div class="row justify-between items-baseline q-mb-lg">
-                  <span class="text-subtitle1 text-weight-bold text-grey-9">{{
-                    cartStore.cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
-                  }}</span>
-                  <span class="text-h6 text-weight-bold text-primary">
-                    {{ cartStore.cart?.shop_type === 'dropship' ? formatAmount(cartStore.cartTotal + totalCharges) : formatCartTotal() }}
-                  </span>
-                </div>
+                   <!-- Buyer Cost -->
+                   <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                     <span>{{ $t('shop.your_cost_buyer') }}</span>
+                     <span class="text-weight-medium text-grey-9">
+                       {{ formatAmount(buyerTotal) }}
+                     </span>
+                   </div>
+                   
+                   <!-- Profit -->
+                   <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                     <span>{{ $t('shop.estimated_profit') }}</span>
+                     <span class="text-weight-medium text-positive text-weight-bold">
+                       {{ formatAmount(estimatedProfit) }}
+                     </span>
+                   </div>
+                 </template>
+                 <template v-else>
+                   <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                     <span
+                       >{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }}
+                       {{ $t('shop.items').toLowerCase() }})</span
+                     >
+                     <span class="text-weight-medium">
+                       {{ formatCartTotal() }}
+                     </span>
+                   </div>
+                 </template>
+ 
+                 <q-separator class="q-my-md" />
+ 
+                 <div class="row justify-between items-baseline q-mb-lg">
+                   <span class="text-subtitle1 text-weight-bold text-grey-9">{{
+                     cartStore.cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
+                   }}</span>
+                   <span class="text-h6 text-weight-bold text-primary">
+                     {{ cartStore.cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
+                   </span>
+                 </div>
               </template>
 
               <q-btn
@@ -368,11 +395,35 @@ const handleButtonClick = async () => {
   }
 };
 
-const updateItemQty = async (item: any, newQty: number) => {
-  await cartStore.updateQty(item.id, newQty);
+const editedQuantities = ref<Record<number, number>>({});
+
+const getItemQty = (item: any) => {
+  return editedQuantities.value[item.id] !== undefined
+    ? editedQuantities.value[item.id]
+    : item.quantity;
+};
+
+const adjustItemQtyLocal = (item: any, delta: number) => {
+  const currentVal = getItemQty(item);
+  let newVal = currentVal + delta;
+  if (newVal < 1) newVal = 1;
+
+  if (newVal === item.quantity) {
+    delete editedQuantities.value[item.id];
+  } else {
+    editedQuantities.value[item.id] = newVal;
+  }
+};
+
+const saveItemQty = async (item: any) => {
+  const targetQty = editedQuantities.value[item.id];
+  if (targetQty === undefined) return;
+  await cartStore.updateQty(item.id, targetQty);
+  delete editedQuantities.value[item.id];
 };
 
 const removeItem = async (item: any) => {
+  delete editedQuantities.value[item.id];
   await cartStore.removeItem(item.id);
 };
 
@@ -428,15 +479,34 @@ const totalCharges = computed(() => {
   return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
 });
 
-const formatAmount = (val: number) => {
-  return `${currencySymbol.value}${val.toFixed(2)}`;
-};
+const deductCodFromMargin = computed(() => !!cartStore.cart?.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!cartStore.cart?.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!cartStore.cart?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!cartStore.cart?.deduct_packing_from_margin);
 
-const formatEstimatedProfit = () => {
-  const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
-  const grandTotal = cartStore.cartTotal + totalCharges.value;
-  const profit = grandTotal - buyerCost;
-  return `${currencySymbol.value}${profit.toFixed(2)}`;
+const recipientGrandTotal = computed(() => {
+  return cartStore.cartTotal
+    + (deductDeliveryFromMargin.value ? 0 : deliveryCharge.value)
+    + (deductPrintFromMargin.value ? 0 : printCharge.value)
+    + (deductPackingFromMargin.value ? 0 : packingCharge.value)
+    + (deductCodFromMargin.value ? 0 : codCharge.value);
+});
+
+const buyerTotal = computed(() => {
+  return cartStore.buyerCartTotal
+    + deliveryCharge.value
+    + printCharge.value
+    + packingCharge.value
+    + (deductCodFromMargin.value ? codCharge.value : 0);
+});
+
+const estimatedProfit = computed(() => {
+  return recipientGrandTotal.value - buyerTotal.value;
+});
+
+const formatAmount = (val: number | any) => {
+  const num = typeof val === 'number' ? val : (val?.value ?? 0);
+  return `${currencySymbol.value}${num.toFixed(2)}`;
 };
 
 const formatCartTotal = () => {
@@ -444,6 +514,7 @@ const formatCartTotal = () => {
 };
 
 onMounted(async () => {
+  editedQuantities.value = {};
   await currencyStore.loadCurrencies();
   if (shopId.value) {
     await cartStore.fetchCart(shopId.value);

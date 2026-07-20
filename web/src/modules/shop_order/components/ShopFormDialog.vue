@@ -25,9 +25,14 @@
             </q-chip>
           </div>
         </div>
-        <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
-          <q-tooltip>{{ $t('shop_admin.shop_functionality_guide') }}</q-tooltip>
-        </q-btn>
+        <div class="row items-center q-gutter-x-sm">
+          <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
+            <q-tooltip>{{ $t('shop_admin.shop_functionality_guide') }}</q-tooltip>
+          </q-btn>
+          <q-btn flat round dense icon="close" color="grey-7" v-close-popup>
+            <q-tooltip>{{ $t('shop_admin.close') || 'Close' }}</q-tooltip>
+          </q-btn>
+        </div>
       </q-card-section>
 
       <!-- Form Body -->
@@ -341,15 +346,36 @@
             </div>
           </div>
           <div class="row q-col-gutter-md q-mt-sm">
-            <div class="col-12">
+            <div class="col-12 text-grey-8 text-weight-medium q-mb-xs">
+              {{ $t('shop_admin.margin_deductions_title') }}
+            </div>
+            <div class="col-6 q-py-xs">
               <q-toggle
-                v-model="form.deduct_charges_from_margin"
-                :label="$t('shop_admin.deduct_charges_from_margin')"
+                v-model="form.deduct_delivery_from_margin"
+                :label="$t('shop_admin.deduct_delivery_from_margin')"
                 color="primary"
               />
-              <div class="text-caption text-grey-6 q-ml-md" style="margin-top: -4px;">
-                {{ $t('shop_admin.deduct_charges_from_margin_hint') }}
-              </div>
+            </div>
+            <div class="col-6 q-py-xs">
+              <q-toggle
+                v-model="form.deduct_print_from_margin"
+                :label="$t('shop_admin.deduct_print_from_margin')"
+                color="primary"
+              />
+            </div>
+            <div class="col-6 q-py-xs">
+              <q-toggle
+                v-model="form.deduct_cod_from_margin"
+                :label="$t('shop_admin.deduct_cod_from_margin')"
+                color="primary"
+              />
+            </div>
+            <div class="col-6 q-py-xs">
+              <q-toggle
+                v-model="form.deduct_packing_from_margin"
+                :label="$t('shop_admin.deduct_packing_from_margin')"
+                color="primary"
+              />
             </div>
           </div>
         </div>
@@ -726,6 +752,10 @@ type ShopForm = {
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin: boolean;
+  deduct_cod_from_margin: boolean;
+  deduct_delivery_from_margin: boolean;
+  deduct_print_from_margin: boolean;
+  deduct_packing_from_margin: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
 };
 
@@ -791,6 +821,10 @@ const defaultForm = (): ShopForm => ({
   default_print_charge_amount: 0,
   default_packing_charge_amount: 0,
   deduct_charges_from_margin: false,
+  deduct_cod_from_margin: false,
+  deduct_delivery_from_margin: false,
+  deduct_print_from_margin: false,
+  deduct_packing_from_margin: false,
   vendor_filters: [],
 });
 
@@ -1018,6 +1052,10 @@ watch(
         default_print_charge_amount: initialData.default_print_charge_amount || 0,
         default_packing_charge_amount: initialData.default_packing_charge_amount || 0,
         deduct_charges_from_margin: initialData.deduct_charges_from_margin || false,
+        deduct_cod_from_margin: initialData.deduct_cod_from_margin || false,
+        deduct_delivery_from_margin: initialData.deduct_delivery_from_margin || false,
+        deduct_print_from_margin: initialData.deduct_print_from_margin || false,
+        deduct_packing_from_margin: initialData.deduct_packing_from_margin || false,
         vendor_filters: initialData.vendor_filters || [],
       });
       if (initialData.vendor_filters) {
@@ -1150,6 +1188,10 @@ const onSave = () => {
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
       deduct_charges_from_margin: form.deduct_charges_from_margin,
+      deduct_cod_from_margin: form.deduct_cod_from_margin,
+      deduct_delivery_from_margin: form.deduct_delivery_from_margin,
+      deduct_print_from_margin: form.deduct_print_from_margin,
+      deduct_packing_from_margin: form.deduct_packing_from_margin,
       vendor_filters: form.vendor_filters,
     });
   } else {
@@ -1174,6 +1216,10 @@ const onSave = () => {
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
       deduct_charges_from_margin: form.deduct_charges_from_margin,
+      deduct_cod_from_margin: form.deduct_cod_from_margin,
+      deduct_delivery_from_margin: form.deduct_delivery_from_margin,
+      deduct_print_from_margin: form.deduct_print_from_margin,
+      deduct_packing_from_margin: form.deduct_packing_from_margin,
       vendor_filters: form.shop_type === 'vendor_catalog' ? form.vendor_filters : null,
     });
   }

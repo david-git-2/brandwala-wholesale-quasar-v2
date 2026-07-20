@@ -113,7 +113,7 @@ export const useShopOrderStore = defineStore('shopOrder', {
 
     async fetchStaffOrders(
       tenantId: number,
-      opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null },
+      opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null; shopId?: number | null },
     ) {
       this.loading = true;
       this.error = null;
@@ -245,6 +245,36 @@ export const useShopOrderStore = defineStore('shopOrder', {
           return res;
         }
         showSuccessNotification('Order fulfilled to invoice successfully.');
+        await this.fetchOrderDetails(orderId);
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async updateOrderCharges(
+      orderId: number,
+      payload: {
+        delivery_charge_amount: number;
+        deduct_delivery_from_margin: boolean;
+        cod_charge_amount: number;
+        deduct_cod_from_margin: boolean;
+        print_charge_amount: number;
+        deduct_print_from_margin: boolean;
+        packing_charge_amount: number;
+        deduct_packing_from_margin: boolean;
+      },
+    ) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopOrderService.updateOrderCharges(orderId, payload);
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        showSuccessNotification('Order charges updated successfully.');
         await this.fetchOrderDetails(orderId);
         return res;
       } finally {

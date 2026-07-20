@@ -4424,6 +4424,10 @@ export type Database = {
           created_at: string
           customer_group_id: number
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
           delivery_charge_amount: number
           delivery_instructions: string | null
           discount_amount: number
@@ -4442,6 +4446,10 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4460,6 +4468,10 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4758,6 +4770,10 @@ export type Database = {
           created_by_email: string
           customer_group_id: number
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
           delivery_charge_amount: number
           delivery_instructions: string | null
           discount_amount: number
@@ -4793,6 +4809,10 @@ export type Database = {
           created_by_email: string
           customer_group_id: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4828,6 +4848,10 @@ export type Database = {
           created_by_email?: string
           customer_group_id?: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -5047,6 +5071,10 @@ export type Database = {
           buy_currency_id: number
           created_at: string
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
           default_cod_charge_pct: number
           default_currency_id: number | null
           default_delivery_charge_amount: number
@@ -5075,6 +5103,10 @@ export type Database = {
           buy_currency_id: number
           created_at?: string
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           default_cod_charge_pct?: number
           default_currency_id?: number | null
           default_delivery_charge_amount?: number
@@ -5103,6 +5135,10 @@ export type Database = {
           buy_currency_id?: number
           created_at?: string
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
+          deduct_packing_from_margin?: boolean
+          deduct_print_from_margin?: boolean
           default_cod_charge_pct?: number
           default_currency_id?: number | null
           default_delivery_charge_amount?: number
@@ -9112,7 +9148,16 @@ export type Database = {
           allow_delivery: boolean
           buy_currency_id: number
           created_at: string
+          deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
+          default_cod_charge_pct: number
           default_currency_id: number
+          default_delivery_charge_amount: number
+          default_packing_charge_amount: number
+          default_print_charge_amount: number
           global_stock_type_id: number
           id: number
           is_active: boolean
@@ -9130,6 +9175,7 @@ export type Database = {
           total_count: number
           updated_at: string
           vendor_code: string
+          vendor_filters: Json
         }[]
       }
       list_shops_for_customer: {
@@ -10475,6 +10521,10 @@ export type Database = {
           p_allow_delivery?: boolean
           p_buy_currency_id?: number
           p_deduct_charges_from_margin?: boolean
+          p_deduct_cod_from_margin?: boolean
+          p_deduct_delivery_from_margin?: boolean
+          p_deduct_packing_from_margin?: boolean
+          p_deduct_print_from_margin?: boolean
           p_default_cod_charge_pct?: number
           p_default_currency_id?: number
           p_default_delivery_charge_amount?: number
@@ -10502,6 +10552,10 @@ export type Database = {
           buy_currency_id: number
           created_at: string
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
           default_cod_charge_pct: number
           default_currency_id: number | null
           default_delivery_charge_amount: number

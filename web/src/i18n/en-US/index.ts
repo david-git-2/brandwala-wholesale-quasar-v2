@@ -110,6 +110,7 @@ export default {
     in_stock: 'In Stock',
     out_of_stock: 'Out of Stock',
     apply: 'Apply',
+    save_qty: 'Save',
   },
   shop_admin: shopAdmin,
 };

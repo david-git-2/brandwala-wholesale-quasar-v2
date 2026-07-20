@@ -112,6 +112,7 @@ export default {
     in_stock: 'স্টকে আছে',
     out_of_stock: 'স্টকে নেই',
     apply: 'প্রয়োগ করুন',
+    save_qty: 'সংরক্ষণ',
   },
   shop_admin: shopAdmin,
 };

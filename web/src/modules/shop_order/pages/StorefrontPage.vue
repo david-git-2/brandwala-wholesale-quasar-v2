@@ -227,74 +227,73 @@
                 <div class="product-name text-subtitle2 text-weight-bold">
                   {{ item.product_name }}
                 </div>
-                <div class="product-codes text-caption">
-                  Code: {{ item.product_code || 'N/A' }}
-                  <span v-if="item.product_category" class="product-codes__secondary">
-                    · {{ item.product_category }}
-                  </span>
+
+                <!-- Available Quantity placed after Name -->
+                <div
+                  v-if="
+                    shopStorefrontStore.permissions?.can_view_quantity &&
+                    item.available_units !== null &&
+                    item.available_units !== undefined
+                  "
+                  class="text-caption q-mt-xs"
+                  :class="
+                    item.available_units > 0
+                      ? 'text-positive'
+                      : item.available_units === 0
+                        ? 'text-negative'
+                        : 'text-grey-6'
+                  "
+                >
+                  {{ item.available_units }} {{ $t('shop.avail') }}
                 </div>
 
-                <div class="product-footer">
-                  <div class="product-pricing">
-                    <template v-if="shopStorefrontStore.permissions?.see_price">
-                      <div class="text-subtitle1 text-weight-bold text-primary">
-                        <span v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'" class="text-caption text-grey-6 block text-weight-medium">{{ $t('shop.wholesale_price') }}</span>
-                        {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
-                      </div>
-                      <div
-                        v-if="item.minimum_sell_price_amount != null"
-                        class="text-caption text-grey-6"
-                      >
-                        <template v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'">
-                          {{ $t('shop.min_sell_price') }}
+                <!-- Pricing Section -->
+                <div class="product-pricing q-mt-sm">
+                  <template v-if="shopStorefrontStore.permissions?.see_price">
+                    <div class="text-subtitle1 text-weight-bold text-primary">
+                      <span v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'" class="text-caption text-grey-6 block text-weight-medium">{{ $t('shop.wholesale_price') }}</span>
+                      {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
+                    </div>
+                    <div
+                      v-if="item.minimum_sell_price_amount != null"
+                      class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
+                    >
+                      <template v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'">
+                        {{ $t('shop.min_sell_price') }}:
+                        <span class="text-secondary text-weight-bold">
                           {{
                             formatMoney(
                               item.minimum_sell_price_amount,
                               item.minimum_sell_price_currency_symbol,
                             )
                           }}
-                        </template>
-                        <template v-else>
-                          {{
-                            $t('shop.min_price_hint', {
-                              amount: formatMoney(
-                                item.minimum_sell_price_amount,
-                                item.minimum_sell_price_currency_symbol,
-                              ),
-                            })
-                          }}
-                        </template>
-                      </div>
-                    </template>
-
-                    <div
-                      v-if="
-                        shopStorefrontStore.permissions?.can_view_quantity &&
-                        item.available_units !== null &&
-                        item.available_units !== undefined
-                      "
-                      class="text-caption"
-                      :class="
-                        item.available_units > 0
-                          ? 'text-positive'
-                          : item.available_units === 0
-                            ? 'text-negative'
-                            : 'text-grey-6'
-                      "
-                    >
-                      {{ item.available_units }} {{ $t('shop.avail') }}
+                        </span>
+                      </template>
+                      <template v-else>
+                        {{
+                          $t('shop.min_price_hint', {
+                            amount: formatMoney(
+                              item.minimum_sell_price_amount,
+                              item.minimum_sell_price_currency_symbol,
+                            ),
+                          })
+                        }}
+                      </template>
                     </div>
-                  </div>
+                  </template>
+                </div>
 
-                  <div class="row items-center no-wrap q-gutter-x-sm">
+                <!-- Separate Actions Row below everything -->
+                <div class="product-actions q-mt-auto q-pt-sm">
+                  <div class="row items-center no-wrap justify-between q-gutter-x-xs">
                     <!-- Qty adjuster shown only when NOT in cart -->
                     <div
                       v-if="!isInCart(item)"
-                      class="row items-center no-wrap quantity-controls"
+                      class="row items-center no-wrap quantity-controls col-auto"
                       style="
                         border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15));
-                        border-radius: 10px;
-                        padding: 4px;
+                        border-radius: 8px;
+                        padding: 2px;
                         background: rgba(0, 0, 0, 0.02);
                       "
                     >
@@ -302,15 +301,15 @@
                         flat
                         round
                         dense
-                        size="sm"
+                        size="xs"
                         icon="remove"
                         color="grey-8"
-                        style="min-width: 32px; min-height: 32px"
+                        style="min-width: 28px; min-height: 28px"
                         @click="decrementQty(item)"
                       />
                       <div
                         class="text-weight-bold text-center text-grey-9"
-                        style="width: 36px; font-size: 15px; user-select: none"
+                        style="width: 28px; font-size: 13px; user-select: none"
                       >
                         {{ selectedQuantities[itemKey(item)] || getMinQty(item) }}
                       </div>
@@ -318,13 +317,14 @@
                         flat
                         round
                         dense
-                        size="sm"
+                        size="xs"
                         icon="add"
                         color="grey-8"
-                        style="min-width: 32px; min-height: 32px"
+                        style="min-width: 28px; min-height: 28px"
                         @click="incrementQty(item)"
                       />
                     </div>
+                    <div v-else class="col-auto"></div>
 
                     <q-btn
                       v-if="!isInCart(item)"
@@ -659,9 +659,6 @@ const onAddToCart = async (item: any) => {
     qty,
   );
   if (result.success) {
-    if (item.available_units !== null) {
-      item.available_units = Math.max(0, item.available_units - qty);
-    }
     delete selectedQuantities[key];
   }
 };
@@ -686,12 +683,7 @@ const isInCart = (catalogItem: any) => {
 const onRemoveFromCart = async (catalogItem: any) => {
   const cartItem = cartItemFor(catalogItem);
   if (!cartItem) return;
-  const result = await shopCartStore.removeItem(cartItem.id);
-  if (result.success) {
-    if (catalogItem.available_units !== null) {
-      catalogItem.available_units += cartItem.quantity;
-    }
-  }
+  await shopCartStore.removeItem(cartItem.id);
 };
 
 const onSearchClick = () => {
@@ -833,12 +825,8 @@ onMounted(async () => {
 .product-codes__secondary {
   opacity: 0.75;
 }
-.product-footer {
+.product-actions {
   margin-top: auto;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.06));
 }
@@ -846,10 +834,8 @@ onMounted(async () => {
   min-width: 0;
 }
 .add-cart-btn {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  padding-left: 12px;
-  padding-right: 12px;
+  flex: 1 1 auto;
+  border-radius: 8px;
 }
 
 .empty-state {
@@ -916,17 +902,14 @@ onMounted(async () => {
     -webkit-line-clamp: 2;
     font-size: 14px;
   }
-  .product-codes {
-    margin-bottom: 4px;
-  }
-  .product-footer {
+  .product-actions {
     border-top: none;
     padding-top: 4px;
   }
   .add-cart-btn {
-    min-width: 40px;
-    padding-left: 8px;
-    padding-right: 8px;
+    min-width: 36px;
+    padding-left: 4px;
+    padding-right: 4px;
   }
 }
 </style>
