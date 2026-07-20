@@ -104,6 +104,38 @@
         <q-space />
 
         <div class="workspace-shell__actions">
+          <q-btn
+            outline
+            dense
+            no-caps
+            color="primary"
+            class="locale-selector-btn q-mr-sm"
+            padding="xs sm"
+            icon="translate"
+          >
+            <span class="locale-selector-btn__label">{{ localeLabel }}</span>
+            <q-icon name="arrow_drop_down" size="sm" />
+            <q-menu auto-close style="min-width: 140px">
+              <q-list dense class="q-py-xs">
+                <q-item
+                  clickable
+                  :active="locale === 'en-US'"
+                  active-class="bg-primary text-white"
+                  @click="setLocale('en-US')"
+                >
+                  <q-item-section>Eng</q-item-section>
+                </q-item>
+                <q-item
+                  clickable
+                  :active="locale === 'bn'"
+                  active-class="bg-primary text-white"
+                  @click="setLocale('bn')"
+                >
+                  <q-item-section class="locale-bn">বাংলা</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
           <slot name="header-extra" />
         </div>
       </q-toolbar>
@@ -701,6 +733,14 @@ const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = 
 const drawerHovered = ref(false);
 
 const i18n = useI18n();
+const { locale } = i18n;
+
+const localeLabel = computed(() => (locale.value === 'bn' ? 'বাংলা' : 'Eng'));
+
+const setLocale = (lang: string) => {
+  locale.value = lang;
+  localStorage.setItem('locale', lang);
+};
 
 const getTransKey = (title: string) => {
   return title.toLowerCase().replace(/\s+/g, '_');
@@ -1009,6 +1049,26 @@ const confirmLogout = async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.locale-selector-btn {
+  border-width: 1.5px !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--q-primary) 12%, transparent);
+}
+
+.locale-selector-btn__label {
+  margin-left: 0.15rem;
+  margin-right: 0.05rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.locale-bn {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .workspace-shell__summary-label,

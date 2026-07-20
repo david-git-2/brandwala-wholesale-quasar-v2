@@ -1,0 +1,272 @@
+{
+  "tenant_id": 10,
+  "mode": "apply",
+  "planned": [
+    {
+      "id": 4261,
+      "name": "Remington Hair Straightener Shine Therapy - S8500",
+      "old_product_code": "RE-S8500",
+      "old_barcode": null,
+      "new_product_code": "ELF_5601",
+      "new_barcode": "4008496759347",
+      "scrape_name": "Remington S8500 Hair Straighteners",
+      "match_reason": "code:RE-S8500"
+    },
+    {
+      "id": 4263,
+      "name": "Remington Straightener Slim Ceramic -S1510",
+      "old_product_code": "RE-S1510",
+      "old_barcode": null,
+      "new_product_code": "ELF_5594",
+      "new_barcode": "4008496716852",
+      "scrape_name": "Remington S1510 Hair Straighteners",
+      "match_reason": "code:RE-S1510"
+    },
+    {
+      "id": 4264,
+      "name": "Remington Air Styler -AS7700",
+      "old_product_code": "RE-AS7700",
+      "old_barcode": null,
+      "new_product_code": "ELF_5545",
+      "new_barcode": "5038061142402",
+      "scrape_name": "Remington AS7700 Air Styler",
+      "match_reason": "code:RE-AS7700"
+    },
+    {
+      "id": 4265,
+      "name": "Remington Air Styler -AS7500",
+      "old_product_code": "RE-AS7500",
+      "old_barcode": null,
+      "new_product_code": "ELF_5544",
+      "new_barcode": "5038061142426",
+      "scrape_name": "Remington AS7500 Air Styler",
+      "match_reason": "code:RE-AS7500"
+    },
+    {
+      "id": 4266,
+      "name": "Revlon Hot Air Styler Curl Release 19&25mm Brush Atta -RVHA6017UK2",
+      "old_product_code": "REV-RVHA6017UK2",
+      "old_barcode": null,
+      "new_product_code": "ELF_5620",
+      "new_barcode": "0761318160175",
+      "scrape_name": "Revlon RVHA6017UK2 Hair Styling",
+      "match_reason": "code:REV-RVHA6017UK2"
+    },
+    {
+      "id": 4267,
+      "name": "Revlon One Step Volumiser - Dryer/Styler  Multi Heat -RVDR5222UK4",
+      "old_product_code": "REV-RVDR5222UK4 BLAC",
+      "old_barcode": null,
+      "new_product_code": "ELF_5612",
+      "new_barcode": "0761318452225",
+      "scrape_name": "Revlon RVDR5222UK4 BLAC Hair Styling",
+      "match_reason": "code:RVDR5222UK4"
+    },
+    {
+      "id": 6922,
+      "name": "Remington Hair Dryer Shine Therapy 2300w  Diffuser -D5216",
+      "old_product_code": null,
+      "old_barcode": null,
+      "new_product_code": "ELF_5558",
+      "new_barcode": "4008496870042",
+      "scrape_name": "Remington D5216 Hair Dryer",
+      "match_reason": "code:D5216"
+    },
+    {
+      "id": 6926,
+      "name": "Remington Hair Straightener -S5500",
+      "old_product_code": "S5500",
+      "old_barcode": null,
+      "new_product_code": "ELF_5596",
+      "new_barcode": "4008496652723",
+      "scrape_name": "Remington S5500 Hair Straighteners",
+      "match_reason": "code:S5500"
+    },
+    {
+      "id": 6927,
+      "name": "Remington Pro Ceramic Extra Wide Digital Ceramic Straightener -S5525",
+      "old_product_code": "S5525",
+      "old_barcode": null,
+      "new_product_code": "ELF_5597",
+      "new_barcode": "4008496817368",
+      "scrape_name": "Remington S5525 Hair Straighteners",
+      "match_reason": "code:S5525"
+    },
+    {
+      "id": 6928,
+      "name": "Remington Power Dry Hairdryer 2000w-D3010",
+      "old_product_code": "D3010",
+      "old_barcode": null,
+      "new_product_code": "ELF_5555",
+      "new_barcode": "4008496759675",
+      "scrape_name": "Remington D3010 Hair Dryer",
+      "match_reason": "code:D3010"
+    },
+    {
+      "id": 6929,
+      "name": "Remington Proluxe Straightener -S9100",
+      "old_product_code": "S9100",
+      "old_barcode": null,
+      "new_product_code": "ELF_5603",
+      "new_barcode": "4008496936892",
+      "scrape_name": "Remington S9100 Hair Straighteners",
+      "match_reason": "code:S9100"
+    },
+    {
+      "id": 6930,
+      "name": "Remington Air Styler CI52WO",
+      "old_product_code": "CI52WO",
+      "old_barcode": null,
+      "new_product_code": "ELF_5548",
+      "new_barcode": "4008496763399",
+      "scrape_name": "Remington CI52WO Air Styler",
+      "match_reason": "code:CI52WO"
+    },
+    {
+      "id": 6931,
+      "name": "Remington Hair Dryer Travel 2000w Folding Handle -D1500",
+      "old_product_code": null,
+      "old_barcode": null,
+      "new_product_code": "ELF_5554",
+      "new_barcode": "4008496877485",
+      "scrape_name": "Remington D1500 Hair Dryer",
+      "match_reason": "code:D1500"
+    },
+    {
+      "id": 6935,
+      "name": "Revlon Copper Ceramic Dual Plate Straightener -RVST2204UK",
+      "old_product_code": "RVST2204UK",
+      "old_barcode": null,
+      "new_product_code": "ELF_5623",
+      "new_barcode": "0761318922049",
+      "scrape_name": "Revlon RVST2204UK Hair Straighteners",
+      "match_reason": "code:RVST2204UK"
+    },
+    {
+      "id": 6937,
+      "name": "Revlon Paddle Dryer Pro Collection 2in1 iOnic-RVDR5212UK2",
+      "old_product_code": "RVDR5212UK2",
+      "old_barcode": null,
+      "new_product_code": "ELF_5609",
+      "new_barcode": "0761318252122",
+      "scrape_name": "Revlon RVDR5212UK2 Hair Styling",
+      "match_reason": "code:RVDR5212UK2"
+    },
+    {
+      "id": 6938,
+      "name": "Revlon Paddle Dryer Perfectionist 2in1 2Heat 1Kw -RVHA6475UK3",
+      "old_product_code": "RVHA6475UK3",
+      "old_barcode": null,
+      "new_product_code": "ELF_5621",
+      "new_barcode": "0761318264750",
+      "scrape_name": "Revlon RVHA6475UK3 Hair Styling",
+      "match_reason": "code:RVHA6475UK3"
+    },
+    {
+      "id": 6939,
+      "name": "Revlon Hair Dryer Harmony  2000w  Dry & Style - RVDR5823UK4",
+      "old_product_code": "RVDR5823UK4",
+      "old_barcode": null,
+      "new_product_code": "ELF_5618",
+      "new_barcode": "0761318058236",
+      "scrape_name": "Revlon RVDR5823UK4 Hair Dryers",
+      "match_reason": "code:RVDR5823UK4"
+    },
+    {
+      "id": 6940,
+      "name": "Revlon One Step Style Booster  Round Brush Dry+Style38mm- RVDR5292UKE",
+      "old_product_code": "RVDR5292UKE",
+      "old_barcode": null,
+      "new_product_code": "ELF_5617",
+      "new_barcode": "0761318952923",
+      "scrape_name": "Revlon RVDR5292UKE Hair Styling",
+      "match_reason": "code:RVDR5292UKE"
+    },
+    {
+      "id": 6943,
+      "name": "Revlon Hair Straightener Perfect Heat 230* ionic RVST2165UK",
+      "old_product_code": "RVST2165UK",
+      "old_barcode": null,
+      "new_product_code": "ELF_5622",
+      "new_barcode": "0761318221654",
+      "scrape_name": "Revlon RVST2165UK Hair Straighteners",
+      "match_reason": "code:RVST2165UK"
+    },
+    {
+      "id": 7904,
+      "name": "Remington Hair Straightener Shine Therapy Wide Plate -S8550",
+      "old_product_code": "S8550",
+      "old_barcode": null,
+      "new_product_code": "ELF_5602",
+      "new_barcode": "4008496985623",
+      "scrape_name": "Remington S8550 Hair Straighteners",
+      "match_reason": "code:S8550"
+    },
+    {
+      "id": 7905,
+      "name": "Remington Hair Straightener Ceramic -S3500",
+      "old_product_code": "S3500",
+      "old_barcode": null,
+      "new_product_code": "ELF_5595",
+      "new_barcode": "4008496716913",
+      "scrape_name": "Remington S3500 Hair Straighteners",
+      "match_reason": "code:S3500"
+    },
+    {
+      "id": 7906,
+      "name": "Revlon One Step Volumiser-Dryer/Styler Rose Pink - RVDR5222VUK ROSE",
+      "old_product_code": "RVDR5222VUK ROSE",
+      "old_barcode": null,
+      "new_product_code": "ELF_5613",
+      "new_barcode": "0761318523260",
+      "scrape_name": "Revlon RVDR5222VUK ROSE Hair Styling",
+      "match_reason": "code:REV-RVDR5222VUK-ROSE"
+    }
+  ],
+  "skipped_same": [],
+  "unmatched": [
+    {
+      "id": 6932,
+      "name": "Remington My Stylist Hairdryer 1900w -D2000",
+      "product_code": "D2000",
+      "barcode": null,
+      "reason": "no_match"
+    },
+    {
+      "id": 6933,
+      "name": "Remington Style Essentials Gift Set -D3016GP",
+      "product_code": "",
+      "barcode": null,
+      "reason": "no_match"
+    },
+    {
+      "id": 6934,
+      "name": "Remington Wet 2 Straight Pro Straightener -S7970",
+      "product_code": "",
+      "barcode": null,
+      "reason": "no_match"
+    },
+    {
+      "id": 6942,
+      "name": "Revlon One-Step Blow-Dry Multi Styler - 3 in 1 Tool -  RVDR5333",
+      "product_code": "",
+      "barcode": null,
+      "reason": "no_match"
+    },
+    {
+      "id": 7902,
+      "name": "Revlon Ultra Straight and Smooth Styler Set  RVST2176GP",
+      "product_code": "RVST2176GP",
+      "barcode": null,
+      "reason": "no_match"
+    },
+    {
+      "id": 7903,
+      "name": "Revlon One Step Volumiser Plus RVDR5298UK",
+      "product_code": "RVDR5298UK",
+      "barcode": null,
+      "reason": "no_match"
+    }
+  ],
+  "ambiguous": []
+}

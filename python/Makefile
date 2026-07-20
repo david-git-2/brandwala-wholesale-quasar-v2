@@ -65,3 +65,40 @@ koba-wholesale-scrape:
 koba-wholesale-sync:
 	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_WHOLESALE_JSON)" --vendor "$(KOBA_WHOLESALE_VENDOR)" --market "$(KOBA_WHOLESALE_MARKET)" --tenant-id 10 --skip-image-upload
 
+ELF_JSON ?= ../web/public/uk/elf_data.json
+ELF_VENDOR ?= ELF
+ELF_MARKET ?= GB
+
+# Full pipeline: scrape → remap existing keys → sync (update/insert)
+# Locked scope: vendor_id=5, tenant_id=10, parent_tenant_id=15
+elf:
+	python scripts/uk/export_elf_data.py
+	python scripts/uk/remap_elf_product_keys.py --tenant-id 10 --apply
+	python scripts/uk/sync_pc_products_to_supabase.py \
+		--input "$(ELF_JSON)" \
+		--vendor "$(ELF_VENDOR)" \
+		--market "$(ELF_MARKET)" \
+		--tenant-id 10 \
+		--parent-tenant-id 15 \
+		--vendor-id 5 \
+		--skip-image-upload
+
+elf-scrape:
+	python scripts/uk/export_elf_data.py
+
+elf-remap-keys:
+	python scripts/uk/remap_elf_product_keys.py --tenant-id 10
+
+elf-remap-keys-apply:
+	python scripts/uk/remap_elf_product_keys.py --tenant-id 10 --apply
+
+elf-sync:
+	python scripts/uk/sync_pc_products_to_supabase.py \
+		--input "$(ELF_JSON)" \
+		--vendor "$(ELF_VENDOR)" \
+		--market "$(ELF_MARKET)" \
+		--tenant-id 10 \
+		--parent-tenant-id 15 \
+		--vendor-id 5 \
+		--skip-image-upload
+

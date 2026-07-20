@@ -172,6 +172,7 @@
         clearable
         class="soft-input q-mb-sm"
         label="Vendor"
+        @update:model-value="onFilterVendorChange"
       />
       <q-select
         v-model="marketCode"
@@ -659,6 +660,22 @@ const onApplyFilters = async () => {
   await loadProducts();
 };
 
+const reloadFilterLookups = async (vendorCodeValue?: string | null) => {
+  const tenantId = authStore.tenantId ?? null;
+  const [brandResult, categoryResult] = await Promise.all([
+    productService.listBrands({ vendorCode: vendorCodeValue || null, tenantId }),
+    productService.listCategories({ vendorCode: vendorCodeValue || null, tenantId }),
+  ]);
+  if (brandResult.success) brands.value = brandResult.data ?? [];
+  if (categoryResult.success) categories.value = categoryResult.data ?? [];
+};
+
+const onFilterVendorChange = async (nextVendor: string | null) => {
+  brand.value = null;
+  category.value = null;
+  await reloadFilterLookups(nextVendor);
+};
+
 const onResetFilters = async () => {
   search.value = '';
   searchField.value = 'name';
@@ -668,6 +685,7 @@ const onResetFilters = async () => {
   marketCode.value = null;
   availability.value = 'all';
   page.value = 1;
+  await reloadFilterLookups(null);
   await loadProducts();
 };
 
@@ -1074,19 +1092,11 @@ onMounted(async () => {
     console.error('Error fetching currencies:', e);
   }
 
-  const [brandResult, categoryResult] = await Promise.all([
-    productStore.fetchBrandOptions({ tenantId: authStore.tenantId ?? null }),
-    productStore.fetchCategoryOptions({ tenantId: authStore.tenantId ?? null }),
+  await Promise.all([
+    reloadFilterLookups(vendorCode.value),
     vendorStore.fetchVendors(authStore.tenantId ?? null),
     marketStore.fetchMarkets(),
   ]);
-
-  if (brandResult.success) {
-    brands.value = productStore.brandOptions;
-  }
-  if (categoryResult.success) {
-    categories.value = productStore.categoryOptions;
-  }
 
   await loadProducts();
 });

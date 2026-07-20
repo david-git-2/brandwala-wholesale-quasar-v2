@@ -8,31 +8,6 @@
 
     <template #header-extra>
       <div class="row items-center q-gutter-sm">
-        <!-- Language Dropdown -->
-        <q-btn flat round dense color="primary" icon="language" class="q-mr-xs">
-          <q-menu auto-close style="min-width: 120px">
-            <q-list dense class="q-py-xs">
-              <q-item
-                clickable
-                :active="locale === 'en-US'"
-                active-class="text-primary text-weight-bold"
-                @click="setLocale('en-US')"
-              >
-                <q-item-section>English</q-item-section>
-              </q-item>
-              <q-item
-                clickable
-                :active="locale === 'bn'"
-                active-class="text-primary text-weight-bold"
-                @click="setLocale('bn')"
-              >
-                <q-item-section>বাংলা</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-          <q-tooltip>{{ $t('shop.language') }}</q-tooltip>
-        </q-btn>
-
         <q-btn
           v-if="canShowCartIcon"
           color="primary"
@@ -63,7 +38,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -77,12 +51,6 @@ const kobaCartStore = useKobaCartStore();
 const router = useRouter();
 const route = useRoute();
 const { links } = useShopWorkspaceLinks();
-const { locale } = useI18n();
-
-const setLocale = (lang: string) => {
-  locale.value = lang;
-  localStorage.setItem('locale', lang);
-};
 
 const tenantName = computed(() => authStore.tenant?.name ?? '');
 const logoutTo = computed(() =>
