@@ -4423,6 +4423,7 @@ export type Database = {
           cod_charge_amount: number
           created_at: string
           customer_group_id: number
+          deduct_charges_from_margin: boolean
           delivery_charge_amount: number
           delivery_instructions: string | null
           discount_amount: number
@@ -4440,6 +4441,7 @@ export type Database = {
           cod_charge_amount?: number
           created_at?: string
           customer_group_id: number
+          deduct_charges_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4457,6 +4459,7 @@ export type Database = {
           cod_charge_amount?: number
           created_at?: string
           customer_group_id?: number
+          deduct_charges_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4754,6 +4757,7 @@ export type Database = {
           created_at: string
           created_by_email: string
           customer_group_id: number
+          deduct_charges_from_margin: boolean
           delivery_charge_amount: number
           delivery_instructions: string | null
           discount_amount: number
@@ -4788,6 +4792,7 @@ export type Database = {
           created_at?: string
           created_by_email: string
           customer_group_id: number
+          deduct_charges_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -4822,6 +4827,7 @@ export type Database = {
           created_at?: string
           created_by_email?: string
           customer_group_id?: number
+          deduct_charges_from_margin?: boolean
           delivery_charge_amount?: number
           delivery_instructions?: string | null
           discount_amount?: number
@@ -5040,6 +5046,7 @@ export type Database = {
           allow_delivery: boolean
           buy_currency_id: number
           created_at: string
+          deduct_charges_from_margin: boolean
           default_cod_charge_pct: number
           default_currency_id: number | null
           default_delivery_charge_amount: number
@@ -5061,11 +5068,13 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_filters: Json | null
         }
         Insert: {
           allow_delivery?: boolean
           buy_currency_id: number
           created_at?: string
+          deduct_charges_from_margin?: boolean
           default_cod_charge_pct?: number
           default_currency_id?: number | null
           default_delivery_charge_amount?: number
@@ -5087,11 +5096,13 @@ export type Database = {
           tenant_id: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_filters?: Json | null
         }
         Update: {
           allow_delivery?: boolean
           buy_currency_id?: number
           created_at?: string
+          deduct_charges_from_margin?: boolean
           default_cod_charge_pct?: number
           default_currency_id?: number | null
           default_delivery_charge_amount?: number
@@ -5113,6 +5124,7 @@ export type Database = {
           tenant_id?: number
           updated_at?: string
           vendor_code?: string | null
+          vendor_filters?: Json | null
         }
         Relationships: [
           {
@@ -9040,6 +9052,7 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_search?: string
+          p_shop_id?: number
           p_status?: string
           p_tenant_id: number
         }
@@ -10461,6 +10474,7 @@ export type Database = {
         Args: {
           p_allow_delivery?: boolean
           p_buy_currency_id?: number
+          p_deduct_charges_from_margin?: boolean
           p_default_cod_charge_pct?: number
           p_default_currency_id?: number
           p_default_delivery_charge_amount?: number
@@ -10481,11 +10495,13 @@ export type Database = {
           p_slug: string
           p_tenant_id: number
           p_vendor_code?: string
+          p_vendor_filters?: Json
         }
         Returns: {
           allow_delivery: boolean
           buy_currency_id: number
           created_at: string
+          deduct_charges_from_margin: boolean
           default_cod_charge_pct: number
           default_currency_id: number | null
           default_delivery_charge_amount: number
@@ -10507,6 +10523,7 @@ export type Database = {
           tenant_id: number
           updated_at: string
           vendor_code: string | null
+          vendor_filters: Json | null
         }[]
         SetofOptions: {
           from: "*"

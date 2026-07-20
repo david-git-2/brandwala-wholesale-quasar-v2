@@ -301,13 +301,23 @@ const totalCharges = computed(() => {
   return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
 });
 
+const deductChargesFromMargin = computed(() => !!cartStore.cart?.deduct_charges_from_margin);
+
 const recipientGrandTotal = computed(() => {
+  if (deductChargesFromMargin.value) {
+    return cartStore.cartTotal;
+  }
   return cartStore.cartTotal + totalCharges.value;
 });
 
 const estimatedProfit = computed(() => {
-  const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
-  return recipientGrandTotal.value - buyerCost;
+  if (deductChargesFromMargin.value) {
+    const buyerCost = cartStore.buyerCartTotal + totalCharges.value;
+    return recipientGrandTotal.value - buyerCost;
+  } else {
+    const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
+    return recipientGrandTotal.value - buyerCost;
+  }
 });
 
 const currencySymbol = computed(() => {

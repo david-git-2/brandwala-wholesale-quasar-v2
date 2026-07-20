@@ -137,6 +137,15 @@
             </q-td>
           </template>
 
+          <!-- Actual Qty -->
+          <template #body-cell-actual_quantity="props">
+            <q-td :props="props" class="text-center">
+              <div class="text-grey-8">
+                {{ props.row.available_to_sell }}
+              </div>
+            </q-td>
+          </template>
+
           <!-- Visibility -->
           <template #body-cell-show_quantity="props">
             <q-td :props="props" class="text-center">
@@ -403,6 +412,13 @@ const columns = computed(() => [
     label: t('shop_admin.col_display_qty'),
     field: 'display_quantity_override',
     align: 'center' as const,
+  },
+  {
+    name: 'actual_quantity',
+    label: t('shop_admin.col_actual_qty'),
+    field: 'available_to_sell',
+    align: 'center' as const,
+    sortable: true,
   },
   {
     name: 'show_quantity',

@@ -86,32 +86,91 @@
           :error-message="errors.shop_type"
         />
 
-        <!-- vendor_code — only for vendor_catalog, create-only -->
-        <q-select
-          v-if="!isEdit && form.shop_type === 'vendor_catalog'"
-          v-model="form.vendor_code"
-          :options="vendorOptions"
-          option-value="code"
-          option-label="label"
-          emit-value
-          map-options
-          :loading="loadingVendors"
-          :label="$t('shop_admin.vendor') + ' *'"
-          outlined
-          dense
-          class="q-mb-md"
-          :hint="$t('shop_admin.vendor_hint')"
-          :error="!!errors.vendor_code"
-          :error-message="errors.vendor_code"
-        >
-          <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey-6">
-                {{ loadingVendors ? $t('shop_admin.loading_vendors') : $t('shop_admin.no_vendors') }}
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-select>
+        <!-- vendor_code / vendor_filters — only for vendor_catalog -->
+        <div v-if="form.shop_type === 'vendor_catalog'" class="q-mb-md">
+          <div class="text-subtitle2 text-grey-8 q-mb-xs">{{ $t('shop_admin.vendor_brand_settings') || 'Vendor & Brand Settings' }} *</div>
+          
+          <!-- Selected Vendors List -->
+          <div v-if="form.vendor_filters && form.vendor_filters.length > 0" class="q-gutter-y-sm q-mb-sm">
+            <div 
+              v-for="(vf, idx) in form.vendor_filters" 
+              :key="vf.vendor_code" 
+              class="q-pa-md bg-grey-2 rounded-borders relative-position"
+              style="border: 1px solid #e0e0e0; border-radius: 8px;"
+            >
+              <div class="row items-center justify-between q-mb-sm">
+                <div class="text-weight-bold text-primary">
+                  {{ getVendorLabel(vf.vendor_code) }}
+                </div>
+                <q-btn 
+                  flat 
+                  round 
+                  dense 
+                  color="negative" 
+                  icon="delete" 
+                  size="sm" 
+                  @click="removeVendorFilter(idx)"
+                />
+              </div>
+
+              <!-- Brand selection for this vendor -->
+              <q-select
+                v-model="vf.brands"
+                multiple
+                use-chips
+                outlined
+                dense
+                :options="vendorBrandsMap[vf.vendor_code] || []"
+                :loading="loadingBrandsMap[vf.vendor_code]"
+                label="Select Brands (leave empty to show all)"
+                class="bg-white"
+                @focus="loadBrandsForVendor(vf.vendor_code)"
+              />
+            </div>
+          </div>
+          <div v-else class="q-pa-md bg-amber-5 text-amber-9 text-caption rounded-borders q-mb-sm" style="background-color: #fff9e6; border: 1px solid #ffe0b2; color: #b26a00;">
+            Please add at least one vendor to configure products for this shop.
+          </div>
+
+          <!-- Add Vendor Dropdown -->
+          <div class="row q-col-gutter-sm items-center">
+            <div class="col">
+              <q-select
+                v-model="newVendorCode"
+                :options="availableVendorOptions"
+                option-value="code"
+                option-label="label"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Add Vendor"
+                :loading="loadingVendors"
+              >
+                <template #no-option>
+                  <q-item>
+                    <q-item-section class="text-grey-6">
+                      {{ loadingVendors ? $t('shop_admin.loading_vendors') : $t('shop_admin.no_vendors') }}
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
+            <div class="col-auto">
+              <q-btn 
+                color="primary" 
+                icon="add" 
+                label="Add" 
+                unelevated 
+                :disable="!newVendorCode" 
+                @click="addVendorFilter"
+              />
+            </div>
+          </div>
+          <div v-if="errors.vendor_code" class="text-negative text-caption q-mt-xs">
+            {{ errors.vendor_code }}
+          </div>
+        </div>
 
         <!-- Shop type locked label when editing -->
         <div v-if="isEdit && shopTypeLabel" class="q-mb-md q-pa-sm bg-grey-2 rounded-borders">
@@ -279,6 +338,18 @@
                 outlined
                 dense
               />
+            </div>
+          </div>
+          <div class="row q-col-gutter-md q-mt-sm">
+            <div class="col-12">
+              <q-toggle
+                v-model="form.deduct_charges_from_margin"
+                :label="$t('shop_admin.deduct_charges_from_margin')"
+                color="primary"
+              />
+              <div class="text-caption text-grey-6 q-ml-md" style="margin-top: -4px;">
+                {{ $t('shop_admin.deduct_charges_from_margin_hint') }}
+              </div>
             </div>
           </div>
         </div>
@@ -626,10 +697,10 @@ import { showErrorNotification } from 'src/utils/appFeedback';
 import { useShopLocale } from '../composables/useShopLocale';
 import ShopScenarioFinder from 'src/modules/shop_order/components/ShopScenarioFinder.vue';
 import ShopPresetPicker from 'src/modules/shop_order/components/ShopPresetPicker.vue';
-import { vendorService } from 'src/modules/vendor/services/vendorService';
-import type { Vendor } from 'src/modules/vendor/types';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
+import { productService } from 'src/modules/products/services/productService';
+import type { Vendor } from 'src/modules/vendor/types';
 
 // ---- types ---------------------------------------------------------
 
@@ -654,6 +725,8 @@ type ShopForm = {
   default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
+  deduct_charges_from_margin: boolean;
+  vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
 };
 
 type FormErrors = {
@@ -717,6 +790,8 @@ const defaultForm = (): ShopForm => ({
   default_delivery_charge_amount: 0,
   default_print_charge_amount: 0,
   default_packing_charge_amount: 0,
+  deduct_charges_from_margin: false,
+  vendor_filters: [],
 });
 
 const form = reactive<ShopForm>(defaultForm());
@@ -773,11 +848,66 @@ const onHelpScenarioSelect = (id: ShopConfigurationPresetId) => {
   showHelpDialog.value = false;
 };
 
+const vendorBrandsMap = reactive<Record<string, string[]>>({});
+const loadingBrandsMap = reactive<Record<string, boolean>>({});
+const newVendorCode = ref<string | null>(null);
+
+const availableVendorOptions = computed(() => {
+  const selected = new Set(form.vendor_filters?.map((v) => v.vendor_code) || []);
+  return vendorOptions.value.filter((opt: { code: string; label: string }) => !selected.has(opt.code));
+});
+
+const getVendorLabel = (code: string) => {
+  const opt = vendorOptions.value.find((o: { code: string; label: string }) => o.code === code);
+  return opt ? opt.label : code;
+};
+
+const addVendorFilter = () => {
+  if (!newVendorCode.value) return;
+  if (!form.vendor_filters) {
+    form.vendor_filters = [];
+  }
+  form.vendor_filters.push({
+    vendor_code: newVendorCode.value,
+    brands: [],
+  });
+  void loadBrandsForVendor(newVendorCode.value);
+  newVendorCode.value = null;
+};
+
+const removeVendorFilter = (index: number) => {
+  form.vendor_filters?.splice(index, 1);
+};
+
+const loadBrandsForVendor = async (vendorCode: string) => {
+  if (vendorBrandsMap[vendorCode]) return;
+  loadingBrandsMap[vendorCode] = true;
+  try {
+    const res = await productService.listBrands({ vendorCode, tenantId: props.tenantId });
+    if (res.success && res.data) {
+      vendorBrandsMap[vendorCode] = res.data;
+    } else {
+      vendorBrandsMap[vendorCode] = [];
+    }
+  } catch (e) {
+    console.error('Failed to load brands for vendor', vendorCode, e);
+    vendorBrandsMap[vendorCode] = [];
+  } finally {
+    loadingBrandsMap[vendorCode] = false;
+  }
+};
+
 const vendors = ref<Vendor[]>([]);
 const loadingVendors = ref(false);
+const vendorService = {
+  listVendors: async (tenantId: number) => {
+    const { vendorService: vs } = await import('src/modules/vendor/services/vendorService');
+    return vs.listVendors(tenantId);
+  }
+};
 
 const vendorOptions = computed(() =>
-  vendors.value.map((v) => ({ code: v.code, label: `${v.name} (${v.code})` })),
+  vendors.value.map((v: Vendor) => ({ code: v.code, label: `${v.name} (${v.code})` })),
 );
 
 const loadVendors = async () => {
@@ -887,7 +1017,14 @@ watch(
         default_delivery_charge_amount: initialData.default_delivery_charge_amount || 0,
         default_print_charge_amount: initialData.default_print_charge_amount || 0,
         default_packing_charge_amount: initialData.default_packing_charge_amount || 0,
+        deduct_charges_from_margin: initialData.deduct_charges_from_margin || false,
+        vendor_filters: initialData.vendor_filters || [],
       });
+      if (initialData.vendor_filters) {
+        initialData.vendor_filters.forEach((vf) => {
+          void loadBrandsForVendor(vf.vendor_code);
+        });
+      }
     } else {
       shopTypeSnapshot.value = null;
       selectedPresetId.value = null;
@@ -953,8 +1090,8 @@ const validate = (): boolean => {
     errors.shop_type = t('shop_admin.shop_type_required');
     ok = false;
   }
-  if (!isEdit.value && form.shop_type === 'vendor_catalog' && !form.vendor_code.trim()) {
-    errors.vendor_code = t('shop_admin.vendor_required');
+  if (form.shop_type === 'vendor_catalog' && (!form.vendor_filters || form.vendor_filters.length === 0) && !form.vendor_code.trim()) {
+    errors.vendor_code = t('shop_admin.vendor_required') || 'At least one vendor is required';
     ok = false;
   }
   if (!form.buy_currency_id) {
@@ -986,6 +1123,10 @@ const onSave = () => {
     form.is_negotiable = false;
   }
 
+  if (form.shop_type === 'vendor_catalog' && form.vendor_filters && form.vendor_filters.length > 0 && form.vendor_filters[0]) {
+    form.vendor_code = form.vendor_filters[0].vendor_code;
+  }
+
   if (!validate()) return;
 
   if (isEdit.value) {
@@ -1008,6 +1149,8 @@ const onSave = () => {
       default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
+      deduct_charges_from_margin: form.deduct_charges_from_margin,
+      vendor_filters: form.vendor_filters,
     });
   } else {
     emit('save', {
@@ -1015,7 +1158,7 @@ const onSave = () => {
       name: form.name.trim(),
       slug: form.slug.trim(),
       shop_type: form.shop_type,
-      vendor_code: form.shop_type === 'vendor_catalog' ? form.vendor_code.trim() : null,
+      vendor_code: form.shop_type === 'vendor_catalog' ? (form.vendor_filters?.[0]?.vendor_code || form.vendor_code.trim()) : null,
       order_mode: form.order_mode,
       is_negotiable: form.is_negotiable,
       show_stock_quantity: form.show_stock_quantity,
@@ -1030,6 +1173,8 @@ const onSave = () => {
       default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
+      deduct_charges_from_margin: form.deduct_charges_from_margin,
+      vendor_filters: form.shop_type === 'vendor_catalog' ? form.vendor_filters : null,
     });
   }
 };

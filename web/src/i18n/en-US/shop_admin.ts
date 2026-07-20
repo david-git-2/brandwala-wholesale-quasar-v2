@@ -76,6 +76,8 @@ export default {
   default_delivery_charge: 'Default Delivery Charge',
   default_print_charge: 'Default Print Charge',
   default_packing_charge: 'Default Packing Charge',
+  deduct_charges_from_margin: 'Deduct COD & Delivery charges from profit margin',
+  deduct_charges_from_margin_hint: 'If enabled, the customer will only pay the item prices, and COD/delivery/packing/print charges will be deducted from your profit margin. If disabled, these charges will be added to the customer\'s total bill.',
   negotiable: 'Negotiable',
   show_stock_qty: 'Show stock qty',
   allow_delivery: 'Allow Delivery',
@@ -321,6 +323,7 @@ export default {
   col_sell_price: 'Sell Price',
   col_min_sell_price: 'Min Sell Price',
   col_display_qty: 'Display Qty',
+  col_actual_qty: 'Actual Qty',
   col_listing_active: 'Active',
 
   no_orders_match: 'No orders match the current search or status filter.',

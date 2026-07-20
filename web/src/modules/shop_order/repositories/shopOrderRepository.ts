@@ -54,6 +54,8 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_default_delivery_charge_amount: (payload as any).default_delivery_charge_amount ?? 0,
     p_default_print_charge_amount: (payload as any).default_print_charge_amount ?? 0,
     p_default_packing_charge_amount: (payload as any).default_packing_charge_amount ?? 0,
+    p_deduct_charges_from_margin: payload.deduct_charges_from_margin ?? false,
+    p_vendor_filters: payload.vendor_filters ?? null,
   });
 
   if (error) {

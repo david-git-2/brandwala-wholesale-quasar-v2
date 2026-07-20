@@ -75,6 +75,8 @@ export default {
   default_delivery_charge: 'ডিফল্ট ডেলিভারি চার্জ',
   default_print_charge: 'ডিফল্ট প্রিন্ট চার্জ',
   default_packing_charge: 'ডিফল্ট প্যাকিং চার্জ',
+  deduct_charges_from_margin: 'প্রফিট মার্জিন থেকে COD এবং ডেলিভারি চার্জ কর্তন করুন',
+  deduct_charges_from_margin_hint: 'সক্রিয় করা হলে, কাস্টমার শুধু পণ্যের দাম পরিশোধ করবে এবং COD/ডেলিভারি/প্যাকিং/প্রিন্ট চার্জ আপনার প্রফিট মার্জিন থেকে কেটে নেওয়া হবে। নিষ্ক্রিয় করা হলে, এই চার্জগুলো কাস্টমারের মোট বিলের সাথে যোগ করা হবে।',
   negotiable: 'দরকষাকষি',
   show_stock_qty: 'স্টক সংখ্যা দেখান',
   allow_delivery: 'ডেলিভারি অনুমতি',
@@ -309,6 +311,7 @@ export default {
   col_sell_price: 'বিক্রয় মূল্য',
   col_min_sell_price: 'ন্যূনতম বিক্রয়মূল্য',
   col_display_qty: 'প্রদর্শন পরিমাণ',
+  col_actual_qty: 'আসল পরিমাণ',
   col_listing_active: 'সক্রিয়',
 
   no_orders_match: 'বর্তমান অনুসন্ধান বা স্ট্যাটাস ফিল্টারের সাথে কোনো অর্ডার মিলছে না।',

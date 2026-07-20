@@ -29,6 +29,7 @@ export interface CartData {
     discount_amount?: number;
     is_prepaid?: boolean;
     delivery_instructions?: string | null;
+    deduct_charges_from_margin?: boolean;
   };
   items: Array<{
     id: number;

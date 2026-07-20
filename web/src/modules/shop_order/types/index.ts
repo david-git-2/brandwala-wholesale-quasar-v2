@@ -28,6 +28,8 @@ export interface Shop {
   default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
+  deduct_charges_from_margin?: boolean;
+  vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +58,8 @@ export interface CreateShopPayload {
   default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
+  deduct_charges_from_margin?: boolean;
+  vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
 }
 
 export interface UpdateShopPayload {
@@ -79,6 +83,8 @@ export interface UpdateShopPayload {
   default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
+  deduct_charges_from_margin?: boolean;
+  vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
 }
 
 // ---- Service result wrapper -----------------------------------------
@@ -139,6 +145,7 @@ export interface ShopOrder {
   discount_amount?: number;
   is_prepaid_snapshot?: boolean;
   delivery_instructions?: string | null;
+  deduct_charges_from_margin?: boolean;
   item_count?: number;
   total_amount?: number;
 }
