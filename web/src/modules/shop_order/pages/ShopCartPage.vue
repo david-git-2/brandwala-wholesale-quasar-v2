@@ -89,7 +89,7 @@
                       :prefix="currencySymbol"
                       :min="item.unit_minimum_sell_price_amount || 0"
                       :disable="!storefrontStore.permissions?.can_set_dropship_price"
-                      @change="(val) => updateSellingPrice(item, Number(val))"
+                      @change="(val: string | number | null) => updateSellingPrice(item, Number(val))"
                     >
                       <template #hint v-if="item.unit_minimum_sell_price_amount">
                         {{ $t('shop.min_price_hint', { amount: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}
@@ -427,10 +427,6 @@ const codCharge = computed(() => {
 const totalCharges = computed(() => {
   return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
 });
-
-const formatBuyerCartTotal = () => {
-  return `${currencySymbol.value}${cartStore.buyerCartTotal.toFixed(2)}`;
-};
 
 const formatAmount = (val: number) => {
   return `${currencySymbol.value}${val.toFixed(2)}`;

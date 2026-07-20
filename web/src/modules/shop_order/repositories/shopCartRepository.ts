@@ -26,6 +26,10 @@ export interface CartData {
     delivery_charge_amount?: number;
     print_charge_amount?: number;
     packing_charge_amount?: number;
+    default_cod_charge_pct?: number;
+    default_delivery_charge_amount?: number;
+    default_print_charge_amount?: number;
+    default_packing_charge_amount?: number;
     discount_amount?: number;
     is_prepaid?: boolean;
     delivery_instructions?: string | null;

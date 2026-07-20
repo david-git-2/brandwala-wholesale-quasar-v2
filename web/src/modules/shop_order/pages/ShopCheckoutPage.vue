@@ -427,15 +427,6 @@ const formatBuyerItemTotal = (item: any) => {
   return `${currencySymbol.value}${total.toFixed(2)}`;
 };
 
-const formatBuyerCartTotal = () => {
-  return `${currencySymbol.value}${cartStore.buyerCartTotal.toFixed(2)}`;
-};
-
-const formatEstimatedProfit = () => {
-  const profit = cartStore.cartTotal - cartStore.buyerCartTotal;
-  return `${currencySymbol.value}${profit.toFixed(2)}`;
-};
-
 const formatCartTotal = () => {
   return `${currencySymbol.value}${cartStore.cartTotal.toFixed(2)}`;
 };

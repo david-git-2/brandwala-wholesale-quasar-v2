@@ -442,13 +442,14 @@ const submitLinkProfile = async () => {
   
   const res = await billingProfileStore.updateBillingProfile({
     id: profile.id,
-    tenant_id: profile.tenant_id,
-    name: profile.name,
-    customer_group_id: activeGroupForLink.value.id,
-    email: profile.email || null,
-    phone: profile.phone || null,
-    address: profile.address || null,
-    color: profile.color || null,
+    patch: {
+      name: profile.name,
+      customer_group_id: activeGroupForLink.value.id,
+      email: profile.email || null,
+      phone: profile.phone || null,
+      address: profile.address || null,
+      color: profile.color || null,
+    },
   });
   if (res.success) {
     linkProfileDialogOpen.value = false;
@@ -459,13 +460,14 @@ const submitLinkProfile = async () => {
 const unlinkProfile = async (profile: any) => {
   const res = await billingProfileStore.updateBillingProfile({
     id: profile.id,
-    tenant_id: profile.tenant_id,
-    name: profile.name,
-    customer_group_id: null,
-    email: profile.email || null,
-    phone: profile.phone || null,
-    address: profile.address || null,
-    color: profile.color || null,
+    patch: {
+      name: profile.name,
+      customer_group_id: null,
+      email: profile.email || null,
+      phone: profile.phone || null,
+      address: profile.address || null,
+      color: profile.color || null,
+    },
   });
   if (res.success) {
     load();

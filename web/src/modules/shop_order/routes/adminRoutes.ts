@@ -49,6 +49,18 @@ const adminRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/shop/shops/:shopId/preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-preview-page',
+        component: () => import('src/modules/shop_order/pages/ShopPreviewPage.vue'),
+        beforeEnter: guard('shop_config'),
+      },
+    ],
+  },
 
   // shop_permissions — Customer Access
   {

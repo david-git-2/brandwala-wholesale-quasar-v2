@@ -65,9 +65,25 @@ const listCurrencies = async (): Promise<ShopServiceResult<Currency[]>> => {
   }
 };
 
+const fetchPreviewProducts = async (
+  vendorFilters: Array<{ vendor_code: string; brands: string[] }>
+): Promise<ShopServiceResult<any[]>> => {
+  try {
+    const data = await shopPricingRepository.fetchPreviewProducts(vendorFilters);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch preview products.',
+    };
+  }
+};
+
 export const shopPricingService = {
   listListings,
   upsertListing,
   listCandidateAllocations,
   listCurrencies,
+  fetchPreviewProducts,
 };
+

@@ -149,6 +149,16 @@
               >
                 <q-tooltip>{{ $t('shop_admin.manage_access_matrix') }}</q-tooltip>
               </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                icon="visibility"
+                color="indigo"
+                @click="goToPreview(props.row.id)"
+              >
+                <q-tooltip>Preview Storefront</q-tooltip>
+              </q-btn>
               <q-btn flat round dense icon="edit" color="primary" @click="openEdit(props.row)">
                 <q-tooltip>{{ $t('shop_admin.edit') }}</q-tooltip>
               </q-btn>
@@ -166,6 +176,8 @@
       :save-error="dialogError"
       @save="onSave"
     />
+
+
   </q-page>
 </template>
 
@@ -254,6 +266,13 @@ watch(tenantId, (v) => {
 const dialogOpen = ref(false);
 const editingShop = ref<Shop | null>(null);
 const dialogError = ref<string | null>(null);
+
+const goToPreview = (shopId: number) => {
+  void router.push({
+    name: 'app-shop-preview-page',
+    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
+  });
+};
 
 const openCreate = () => {
   editingShop.value = null;

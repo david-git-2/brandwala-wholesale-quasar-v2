@@ -74,9 +74,60 @@ const listCurrencies = async (): Promise<Currency[]> => {
   return data ?? [];
 };
 
+const fetchPreviewProducts = async (
+  vendorFilters: Array<{ vendor_code: string; brands: string[] }>
+): Promise<any[]> => {
+  if (!vendorFilters || vendorFilters.length === 0) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .limit(12);
+
+    if (error) {
+      throw error;
+    }
+    return data ?? [];
+  }
+
+  const vendorCodes = vendorFilters.map(f => f.vendor_code);
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .in('vendor_code', vendorCodes)
+    .limit(100);
+
+  if (error) {
+    throw error;
+  }
+
+  const products = data ?? [];
+  const filtered = products.filter(product => {
+    const filterConfig = vendorFilters.find(
+      f => f.vendor_code.toUpperCase() === product.vendor_code?.toUpperCase()
+    );
+    if (!filterConfig) return false;
+    if (!filterConfig.brands || filterConfig.brands.length === 0) return true;
+    return filterConfig.brands.some(
+      b => b.toLowerCase() === product.brand?.toLowerCase()
+    );
+  });
+
+  if (filtered.length === 0) {
+    const { data: fallbackData } = await supabase
+      .from('products')
+      .select('*')
+      .limit(12);
+    return fallbackData ?? [];
+  }
+
+  return filtered.slice(0, 12);
+};
+
 export const shopPricingRepository = {
   listListings,
   upsertListing,
   listCandidateAllocations,
   listCurrencies,
+  fetchPreviewProducts,
 };
+

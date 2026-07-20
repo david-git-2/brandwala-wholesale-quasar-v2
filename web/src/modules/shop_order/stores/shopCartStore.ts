@@ -46,7 +46,7 @@ export const useShopCartStore = defineStore('shopCart', {
       // In a real application we would look up from global currencies, but we can return the first item's currency symbol/code if snapshot is available
       return '';
     },
-    faceSubtotal(state): number {
+    faceSubtotal(): number {
       return this.cartTotal;
     },
     chargeTotal(state): number {
