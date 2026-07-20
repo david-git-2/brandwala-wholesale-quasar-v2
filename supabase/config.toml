@@ -16,12 +16,3 @@ port = 54323
 
 [functions.image-proxy]
 verify_jwt = false
-
-[functions.drive-upload]
-verify_jwt = false
-
-[functions.drive-delete]
-verify_jwt = false
-
-[functions.drive-sync-shipment]
-verify_jwt = false

@@ -91,7 +91,7 @@ export const DOCUMENTATION_REGISTRY: readonly DocItem[] = [
     key: 'frontend_style_guide',
     title: 'Frontend Style Guide',
     description: 'Visual components, UI layout policies, and Quasar design tokens.',
-    filename: 'doc/frontend style guilde.md',
+    filename: 'docs/UI_CONSISTENCY.md',
     scope: 'platform',
   },
   {

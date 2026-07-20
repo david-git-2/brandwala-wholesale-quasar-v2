@@ -1,0 +1,33 @@
+---
+description: Strict UI rules for Quasar frontend generation. Always active when editing Vue/SCSS.
+globs: ["**/*.vue", "**/*.scss", "**/app.scss"]
+alwaysApply: false
+---
+
+# UI Consistency Rules
+
+- Use Quasar defaults first; no custom layout shells when `q-page` + `q-card` + `q-table` fit.
+- Page wrapper: `q-page.bw-page` > `.bw-page__stack` > content.
+- Page header: `AppPageHeader` from `components/ui/AppPageHeader.vue` with `action` slot.
+- Section container: `q-card flat bordered`.
+- List data: `q-table`; card grids: `.bw-entity-grid` with plain `q-card`.
+- Colors: use `var(--bw-theme-*)` tokens from `web/src/css/app.scss`; never hardcode except domain table highlights.
+- Primary button: max one `color="primary" unelevated` per page header.
+- Secondary: `flat` or `outline`; danger: `color="negative"`.
+- No default refresh buttons on app management pages.
+- No FABs when header action is sufficient.
+- Errors: `q-banner.bw-status-banner` with `bg-negative text-white` (or scope-appropriate).
+- Empty lists: `.empty-state-block.floating-surface` or centered `.empty-state` column with muted text.
+- Loading (page): `PageInitialLoader`; background requests: `GlobalAjaxBar`.
+- In-table loading: `q-skeleton` rows only for high-density ops tables (Thrift pattern).
+- Toasts/dialogs: `showSuccessNotification`, `showErrorNotification`, `showWarningNotification`, `requestConfirmation` from `utils/appFeedback.ts` only.
+- Forms: match page `outlined`/`filled` style; use `.soft-input` for themed fields.
+- Spacing: `.bw-page` padding, `.bw-page__stack` gap `1.25rem`, `.bw-entity-grid` gap `1rem`.
+- Border radius: buttons `8px`, surfaces `14px` (`.floating-surface`), hero `16px` (`.hero-surface`).
+- `q-page` max-width `1200px`; treasury/report pages need `min-width: 0` on flex/grid parents.
+- Treasury pages: `TreasuryPageShell` > `TreasuryStatGrid` > `TreasuryTableWrap` > `q-table` with explicit `min-width`.
+- Dense ops detail: compact padding (`q-pa-xs`), hero card header, icon-only secondary actions with tooltips.
+- High-density table column pastels: weight `#e8d7f7`, price `#daf3e4`, cost `#ffe8d1`, qty `#d0e6ff`.
+- No `backdrop-filter` on static headers/cards/toolbars.
+- New shared component only if used on 2+ pages; place in `web/src/components/ui/`.
+- Reference implementations: `TenantPage.vue`, `AdminTenantPage.vue`, `ModulesPage.vue`.

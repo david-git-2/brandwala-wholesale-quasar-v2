@@ -6,16 +6,9 @@ import {
   deleteCloudinaryImageStrict,
   uploadToCloudinary,
 } from './cloudinaryClient';
-import {
-  buildThriftShipmentDriveFolderPath,
-  deleteDriveFile,
-  getDefaultThriftDriveFolder,
-  uploadToDrive,
-} from './driveClient';
 
 export type StockImageUploadResult = {
   secureUrl: string;
-  driveFileId?: string | undefined;
   deleteToken?: string | undefined;
 };
 
@@ -32,11 +25,7 @@ export type StockImageUploadOptions = {
   stockId?: number;
   shipmentId?: number;
   replaceImageUrl?: string | null;
-  replaceDriveFileId?: string | null;
-  alsoUploadToDrive?: boolean;
-  driveFolderPath?: string;
   cloudinaryFolder?: string;
-  onDriveUploadFailed?: (error: Error) => void;
 };
 
 async function assertNoDuplicateStockImage(params: {
@@ -110,10 +99,7 @@ export async function uploadStockImage(
   );
 
   if (isReplace) {
-    await cleanupStockImageAssets({
-      imageUrl: replaceImageUrl,
-      ...(options.replaceDriveFileId ? { driveFileId: options.replaceDriveFileId } : {}),
-    });
+    await cleanupStockImageAssets({ imageUrl: replaceImageUrl });
   }
 
   const cloudinaryResult = await uploadToCloudinary(blob, fileName, uploadTarget.shipmentFolder, {
@@ -122,50 +108,17 @@ export async function uploadStockImage(
     assetFolder: uploadTarget.shipmentFolder,
   });
 
-  if (!options.alsoUploadToDrive) {
-    return {
-      secureUrl: cloudinaryResult.secureUrl,
-      ...(cloudinaryResult.deleteToken ? { deleteToken: cloudinaryResult.deleteToken } : {}),
-    };
-  }
-
-  const driveFolderPath = options.shipmentId
-    ? buildThriftShipmentDriveFolderPath(options.shipmentId)
-    : options.driveFolderPath || getDefaultThriftDriveFolder();
-
-  try {
-    const driveResult = await uploadToDrive(blob, fileName, driveFolderPath);
-    return {
-      secureUrl: cloudinaryResult.secureUrl,
-      driveFileId: driveResult.fileId,
-      ...(cloudinaryResult.deleteToken ? { deleteToken: cloudinaryResult.deleteToken } : {}),
-    };
-  } catch (err) {
-    const error = err instanceof Error ? err : new Error('Drive upload failed');
-    console.warn('Drive mirror upload failed:', error);
-    options.onDriveUploadFailed?.(error);
-    return {
-      secureUrl: cloudinaryResult.secureUrl,
-      ...(cloudinaryResult.deleteToken ? { deleteToken: cloudinaryResult.deleteToken } : {}),
-    };
-  }
+  return {
+    secureUrl: cloudinaryResult.secureUrl,
+    ...(cloudinaryResult.deleteToken ? { deleteToken: cloudinaryResult.deleteToken } : {}),
+  };
 }
 
 export async function cleanupStockImageAssets(payload: {
   imageUrl?: string | undefined;
-  driveFileId?: string | undefined;
 }): Promise<void> {
-  const tasks: Promise<void>[] = [];
-
-  if (payload.imageUrl) {
-    tasks.push(deleteCloudinaryImage(payload.imageUrl));
-  }
-
-  if (payload.driveFileId) {
-    tasks.push(deleteDriveFile(payload.driveFileId));
-  }
-
-  await Promise.all(tasks);
+  if (!payload.imageUrl) return;
+  await deleteCloudinaryImage(payload.imageUrl);
 }
 
 /** Delete Cloudinary image first; throws if delete fails. Skips when no Cloudinary URL. */

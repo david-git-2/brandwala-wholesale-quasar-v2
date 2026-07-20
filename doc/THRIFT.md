@@ -285,13 +285,13 @@ erDiagram
 
 ### 3.5 `thrift_stock_images`
 
-**Use case:** Product photos (Cloudinary URL + optional Google Drive `drive_file_id`). Primary flag for list thumbnail. **Unchanged by costing work.**
+**Use case:** Product photos (Cloudinary URL). Primary flag for list thumbnail. **Unchanged by costing work.**
 
 | Column | Notes |
 |--------|-------|
 | `stock_id` | FK → `thrift_stocks` |
 | `image_url` | Cloudinary URL |
-| `drive_file_id` | Optional Drive sync |
+| `drive_file_id` | Legacy column (unused) |
 | `is_primary` | boolean |
 
 ---
@@ -599,7 +599,7 @@ sequenceDiagram
 | Stock catalog | Yes | Yes | Yes |
 | Garment measurements (web) | Yes | — | Yes |
 | Barcode generate/print/scan | Yes | Yes | Yes |
-| Images / Drive sync | Yes | Yes | Yes |
+| Images | Yes | Yes | Yes |
 | Settings (hand tag / sticker) | Yes | — | Yes |
 | Box, shelf, category, type | Yes | Partial | Yes |
 | Invoice UI | No | No | Yes |

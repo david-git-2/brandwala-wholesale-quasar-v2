@@ -704,7 +704,7 @@ stateDiagram-v2
 | **F-SH5** | `/shop/cart`, `/shop/checkout` |
 | **F-SH6** | `/shop/orders`, `/app/shop/orders/:id` |
 
-All new pages follow [frontend style guide](frontend%20style%20guilde.md) and [UI_CONSISTENCY_GUIDE.md](../web/UI_CONSISTENCY_GUIDE.md).
+All new pages follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 
 ---
 

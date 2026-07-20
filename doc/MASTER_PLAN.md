@@ -161,7 +161,7 @@ Full decision log: §14.3.
 
 ### Frontend stages
 
-All new/updated pages **must** follow [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) and [UI_CONSISTENCY_GUIDE.md](../web/UI_CONSISTENCY_GUIDE.md).
+All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 
 | Stage | Deliverables | Domain doc | Status |
 |-------|--------------|------------|--------|
@@ -244,8 +244,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
-| [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | Mandatory UI patterns for new pages |
-| [web/UI_CONSISTENCY_GUIDE.md](../web/UI_CONSISTENCY_GUIDE.md) | `bw-page`, tables, cards |
+| [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
+| [docs/AI_WORKFLOW_SOP.md](../docs/AI_WORKFLOW_SOP.md) | Deterministic AI development protocol |
 
 **Hierarchy:** This file = index + cross-cutting rules. Domain docs = detailed design per area. Implementation how-to = LOGIN_NAV_PERMISSION_FLOW.
 
@@ -537,4 +537,4 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Reports and treasury |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor capital and portal |
-| [doc/frontend style guilde.md](doc/frontend%20style%20guilde.md) | UI patterns |
+| [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | UI patterns |

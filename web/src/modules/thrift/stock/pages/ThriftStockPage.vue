@@ -1463,7 +1463,6 @@
     <CloudinaryUploaderDialog
       v-model="isUploaderOpen"
       :folder="uploaderCloudinaryFolder"
-      drive-folder-path="thrift"
       defer-upload
       @selected="onImageSelected"
     />
@@ -1497,7 +1496,6 @@ import {
   uploadStockImage as uploadStockImageAssets,
   type StockImageUploadResult,
 } from 'src/utils/stockImageClient';
-import { deleteDriveFile } from 'src/utils/driveClient';
 import {
   thriftStockRepository,
   type ThriftStockDeleteTarget,
@@ -1703,7 +1701,6 @@ const quickAddForm = ref({
   product_weight: 250,
   imagePreviewUrl: '',
   pendingBlob: null as Blob | null,
-  alsoUploadToDrive: false,
 });
 
 const quickAddBarcodeLoading = ref(false);
@@ -1724,11 +1721,9 @@ const canSubmitQuickAdd = computed(() => {
 const editImage = ref({
   url: '',
   originalUrl: '',
-  originalDriveFileId: '',
   pendingBlob: null as Blob | null,
   pendingPreviewUrl: null as string | null,
   removed: false,
-  alsoUploadToDrive: false,
 });
 
 const stocks = computed(() => store.stocks);
@@ -2483,13 +2478,6 @@ function confirmBulkDelete() {
 async function deleteStockTarget(target: ThriftStockDeleteTarget): Promise<void> {
   await deleteStockCloudinaryImageStrict(target.imageUrl);
   await store.deleteStock(target.id);
-  if (target.driveFileId) {
-    try {
-      await deleteDriveFile(target.driveFileId);
-    } catch (err) {
-      console.warn('Drive cleanup failed after stock delete:', err);
-    }
-  }
 }
 
 async function cleanupAndDeleteStockTargets(targets: ThriftStockDeleteTarget[]) {
@@ -2645,7 +2633,6 @@ async function openAddDialog() {
     product_weight: 250,
     imagePreviewUrl: '',
     pendingBlob: null,
-    alsoUploadToDrive: false,
   };
   uploaderTarget.value = 'quick';
   if (authStore.tenantId) {
@@ -2658,9 +2645,8 @@ async function uploadStockImageBlob(
   barcode: string,
   stockId: number,
   blob: Blob,
-  alsoUploadToDrive = false,
   shipmentId?: number | null,
-  replace?: { imageUrl?: string; driveFileId?: string | null },
+  replace?: { imageUrl?: string },
 ): Promise<StockImageUploadResult> {
   if (!authStore.tenantId) {
     throw new Error('Tenant is required to upload an image.');
@@ -2674,15 +2660,7 @@ async function uploadStockImageBlob(
     stockId,
     tenantId: authStore.tenantId,
     ...(shipmentId ? { shipmentId } : {}),
-    alsoUploadToDrive,
     ...(replace?.imageUrl ? { replaceImageUrl: replace.imageUrl } : {}),
-    ...(replace?.driveFileId ? { replaceDriveFileId: replace.driveFileId } : {}),
-    onDriveUploadFailed: (error) => {
-      $q.notify({
-        type: 'warning',
-        message: error.message || 'Google Drive upload failed. Image saved to Cloudinary only.',
-      });
-    },
   });
 }
 
@@ -2706,7 +2684,6 @@ function onQuickImageSelected(payload: CloudinarySelectedImage) {
   }
   quickAddForm.value.imagePreviewUrl = payload.previewUrl;
   quickAddForm.value.pendingBlob = payload.blob;
-  quickAddForm.value.alsoUploadToDrive = payload.alsoUploadToDrive ?? false;
 }
 
 function openEditUploader() {
@@ -2720,7 +2697,6 @@ function onEditImageSelected(payload: CloudinarySelectedImage) {
   editImage.value.pendingBlob = payload.blob;
   editImage.value.pendingPreviewUrl = payload.previewUrl;
   editImage.value.removed = false;
-  editImage.value.alsoUploadToDrive = payload.alsoUploadToDrive ?? false;
 }
 
 function onImageSelected(payload: CloudinarySelectedImage) {
@@ -2764,11 +2740,9 @@ function resetEditImage() {
   editImage.value = {
     url: '',
     originalUrl: '',
-    originalDriveFileId: '',
     pendingBlob: null,
     pendingPreviewUrl: null,
     removed: false,
-    alsoUploadToDrive: false,
   };
 }
 
@@ -2778,7 +2752,6 @@ function onQuickAddDialogHide() {
   }
   quickAddForm.value.imagePreviewUrl = '';
   quickAddForm.value.pendingBlob = null;
-  quickAddForm.value.alsoUploadToDrive = false;
 }
 
 function onEditDialogHide() {
@@ -2822,7 +2795,6 @@ async function submitQuickAdd() {
   }
 
   quickSubmitting.value = true;
-  const alsoUploadToDrive = quickAddForm.value.alsoUploadToDrive;
   let uploadedImage: StockImageUploadResult | null = null;
 
   try {
@@ -2881,14 +2853,12 @@ async function submitQuickAdd() {
       barcode,
       draftStock.id,
       pendingBlob,
-      alsoUploadToDrive,
       quickAddForm.value.shipment_id,
     );
     await store.attachStockImage(
       draftStock.id,
       uploadedImage.secureUrl,
       draftStock.inserted_by,
-      uploadedImage.driveFileId,
     );
 
     $q.notify({
@@ -2898,19 +2868,16 @@ async function submitQuickAdd() {
 
     quickAddForm.value.imagePreviewUrl = '';
     quickAddForm.value.pendingBlob = null;
-    quickAddForm.value.alsoUploadToDrive = false;
     quickAddDialogOpen.value = false;
 
     openEditDialog({
       ...draftStock,
       image_url: uploadedImage.secureUrl,
-      drive_file_id: uploadedImage.driveFileId,
     });
   } catch (err: unknown) {
     if (uploadedImage) {
       await cleanupStockImageAssets({
         imageUrl: uploadedImage.secureUrl,
-        ...(uploadedImage.driveFileId ? { driveFileId: uploadedImage.driveFileId } : {}),
       });
     }
     $q.notify({
@@ -2927,11 +2894,9 @@ function openEditDialog(row: ThriftStock) {
   editImage.value = {
     url: row.image_url || '',
     originalUrl: row.image_url || '',
-    originalDriveFileId: row.drive_file_id || '',
     pendingBlob: null,
     pendingPreviewUrl: null,
     removed: false,
-    alsoUploadToDrive: false,
   };
   form.value = {
     category_id: row.category_id,
@@ -3150,28 +3115,22 @@ async function onSubmit() {
     if (editingId.value) {
       const imageChanged = editImage.value.removed || !!editImage.value.pendingBlob;
       let imagePayload: string | null | undefined;
-      let driveFilePayload: string | null | undefined;
       const previousImageUrl = editImage.value.originalUrl;
-      const previousDriveFileId = editImage.value.originalDriveFileId;
 
       if (editImage.value.removed) {
         imagePayload = null;
-        driveFilePayload = null;
       } else if (editImage.value.pendingBlob) {
         const uploaded = await uploadStockImageBlob(
           form.value.barcode,
           editingId.value,
           editImage.value.pendingBlob,
-          editImage.value.alsoUploadToDrive,
           form.value.shipment_id,
           {
             imageUrl: previousImageUrl,
-            driveFileId: previousDriveFileId,
           },
         );
         orphanImage = uploaded;
         imagePayload = uploaded.secureUrl;
-        driveFilePayload = uploaded.driveFileId ?? null;
       }
 
       await store.updateStock(
@@ -3179,13 +3138,12 @@ async function onSubmit() {
         stockData satisfies Partial<ThriftStock>,
         finalPricing,
         imageChanged ? imagePayload : undefined,
-        imageChanged ? driveFilePayload : undefined,
+        imageChanged ? null : undefined,
       );
 
-      if (imageChanged && (previousImageUrl || previousDriveFileId)) {
+      if (imageChanged && previousImageUrl) {
         await cleanupStockImageAssets({
           imageUrl: previousImageUrl,
-          driveFileId: previousDriveFileId,
         });
       }
 
@@ -3224,7 +3182,6 @@ async function onSubmit() {
           form.value.barcode,
           created.id,
           editImage.value.pendingBlob,
-          editImage.value.alsoUploadToDrive,
           form.value.shipment_id,
         );
         orphanImage = uploaded;
@@ -3232,7 +3189,6 @@ async function onSubmit() {
           created.id,
           uploaded.secureUrl,
           created.inserted_by,
-          uploaded.driveFileId,
         );
       }
 
@@ -3255,7 +3211,6 @@ async function onSubmit() {
     if (orphanImage) {
       await cleanupStockImageAssets({
         imageUrl: orphanImage.secureUrl,
-        ...(orphanImage.driveFileId ? { driveFileId: orphanImage.driveFileId } : {}),
       });
     }
     $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });

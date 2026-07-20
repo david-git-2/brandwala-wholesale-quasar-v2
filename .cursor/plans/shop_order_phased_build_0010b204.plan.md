@@ -73,7 +73,7 @@ Implement SHOP_ORDER P{N} only.
 |------|--------|
 | Canon | [doc/SHOP_ORDER.md](../../doc/SHOP_ORDER.md) — read **only** § listed for that phase |
 | Pattern | [web/src/modules/procurement_stock/](../../web/src/modules/procurement_stock/) — repository → service → store → page |
-| UI | `bw-page`, `AppPageHeader`, `q-card flat bordered` — [UI_CONSISTENCY_GUIDE.md](../../web/UI_CONSISTENCY_GUIDE.md) |
+| UI | `bw-page`, `AppPageHeader`, `q-card flat bordered` — [docs/UI_CONSISTENCY.md](../../docs/UI_CONSISTENCY.md) |
 | New code | `web/src/modules/shop_order/` + `supabase/migrations/` only |
 | Forbidden | `commerce_*`, legacy `store`, `cart`, `order` imports in **new** shop_order files |
 | No legacy FK | No FK to `stores`, `carts`, `orders`, `commerce_*` (D-SH1) |

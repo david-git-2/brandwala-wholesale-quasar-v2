@@ -1,0 +1,89 @@
+---
+description: Project stack, domain rules, architecture constraints, and development conventions. Always active.
+globs:
+alwaysApply: true
+---
+
+# Development Flow — BrandWala / TradeFlow BD
+
+## Stack
+- Frontend: Quasar 2 SPA (Vue 3 + TypeScript) in `web/`
+- Backend: Supabase (Postgres, Auth, Storage, RPCs) in `supabase/`
+- Auth: Google OAuth via Supabase; scoped login (`platform` | `app` | `shop`)
+- Deploy: Cloudflare Pages (`web/` root, `npm run build`, output `dist/spa`)
+- Python ETL: `python/` scripts (PC/WTS product sync) — env shared via `web/.env`
+- Types: generated at `web/src/types/supabase.ts` via `npm run backend:types`
+
+## App surfaces
+- `platform` — superadmin (`/auth/platform/login` → `/platform/dashboard`)
+- `app` — tenant admin/staff/viewer (`/:slug/app/*`)
+- `shop` — customer storefront (`/:slug/shop/*` or `public_domain` hostname resolve)
+- `investor` — read-only investor portal (`/:slug/investor/*`)
+
+## Architecture constraints
+- Module pattern: `page → store → service → repository` (see `web/src/modules/tenant/`)
+- DB writes: prefer Supabase RPCs over direct client mutations when RLS depends on computed access
+- New tables: migration → indexes → RLS → helper functions (`security definer` if cross-table) → RPCs → regenerate types
+- Permissions: `authStore.effectiveGrants` + `createAccessGuard`; server via `has_module_action()` / `membership_has_module_action()`
+- Data contract order: DB schema → UI data shapes → API/RPC contracts (backend fulfills UI, not vice versa)
+- Phased features: read domain doc + phase tracker before implementing (e.g. `doc/SHOP_ORDER_PHASES.md`)
+
+## Domain docs (read before implementing)
+- Index: `doc/MASTER_PLAN.md`
+- Scopes/auth: `doc/APP_SCOPES_AND_ACCESS.md`, `doc/LOGIN_NAV_PERMISSION_FLOW.md`
+- Tenants: `doc/TENANT_MODEL_AND_ACCESS.md`
+- Permissions: `doc/PERMISSION_SYSTEM.md`
+- Modules: `doc/PROCUREMENT_STOCK.md`, `doc/SALES_INVOICE.md`, `doc/SHOP_ORDER.md`, `doc/REPORTING_TREASURY.md`, `doc/INVESTOR_CAPITAL.md`, `doc/THRIFT.md`, `doc/GLOBAL_REFERENCE_DATA.md`
+- UI: `docs/UI_CONSISTENCY.md` + `.cursor/rules/.ui-consistency.mdc`
+- Workflow: `docs/AI_WORKFLOW_SOP.md`
+
+## File structure
+- `web/src/modules/<module>/` — pages, components, stores, services, repositories, routes
+- `web/src/components/` — cross-module shared UI (`ui/` subfolder for primitives)
+- `web/src/css/app.scss` — global tokens, layout utilities, theme scopes
+- `supabase/migrations/` — ordered SQL migrations (idempotent seeds where noted)
+- `doc/` — domain specifications (not `docs/` except UI + workflow + archive)
+
+## Naming conventions
+- Vue SFCs: PascalCase (`TenantPage.vue`)
+- Stores: `<module>Store.ts` (Pinia)
+- Repositories/services: `<entity>Repository.ts`, `<entity>Service.ts`
+- SQL: snake_case identifiers; migration prefix `YYYYMMDDHHMMSS_description.sql`
+- RPCs: verb_noun_for_scope pattern (e.g. `list_tenants_for_superadmin`)
+- Routes: scope-prefixed (`/:tenantSlug/app/...`, `/platform/...`)
+
+## Patterns & libraries
+- Feedback: `web/src/utils/appFeedback.ts` (`showSuccessNotification`, `showErrorNotification`, `requestConfirmation`)
+- Images: `SmartImage.vue`, Cloudinary uploader dialog
+- Loading bar: `GlobalAjaxBar.vue`
+- Shell: `WorkspaceShell.vue` with theme classes (`theme-platform`, `theme-app`, `theme-shop`)
+- Treasury pages: `TreasuryPageShell`, `TreasuryStatGrid`, `TreasuryTableWrap`
+- Batch costing: `useShipmentItemsCostingCache` / `listShipmentItemsBatch` — never `listShipmentItems` in loops
+- List pagination: pass `skip_count: true` on large search/list queries
+- Performance: no `backdrop-filter` on static surfaces; opaque surfaces preferred
+
+## Business rules (locked)
+- Multi-tenant parent/child hierarchy; stock owned by parent, child display via allocations
+- Shop sells from `global_stock_allocations` only (stock-backed shops)
+- Four login scopes unchanged; grants from bootstrap `effectiveGrants` + `permissionVersion`
+- Thrift vertical is tenant-scoped, standalone in phase 1 (not integrated with global entity model)
+- Investor portal v1 is read-only (no withdrawal request flow)
+- Commerce legacy modules retire toward `shop_order`
+
+## Scope guard for agents
+- Tasks touching >3 files or >150 lines: narrow scope or use phased `task.md` per `docs/AI_WORKFLOW_SOP.md`
+- Do not copy Thrift composable architecture into web — keep module/repository/store pattern
+- Do not add README/docs unless asked
+- Regenerate `supabase.ts` after every schema migration
+- Deploy backend: `npm run deploy:backend` (push migrations + types)
+
+## Key paths
+- Entry: `web/src/App.vue`, `web/src/router/`
+- Config: `web/quasar.config.ts`, `web/.env`
+- Auth: `web/src/modules/auth/`
+- Generated types: `web/src/types/supabase.ts`
+- Migrations: `supabase/migrations/`
+
+## Do NOT touch without explicit request
+- Generated `web/src/types/supabase.ts` (edit via migrations + `backend:types`)
+- Legacy cutover migrations until tenant cutover (`20260709000600_b7_cleanup.sql` chain)

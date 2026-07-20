@@ -343,7 +343,7 @@ Register in `router/routes.ts`, `moduleRegistry.ts`, and `modulePermissions.ts`.
 ## 9. Investor portal UI (read-only)
 
 **Layout:** `InvestorLayout.vue` — minimal shell, separate from App.  
-**UI pattern:** Report-style — hero summary + stat cards + sectioned tables ([UI_CONSISTENCY_GUIDE.md](../web/UI_CONSISTENCY_GUIDE.md) + `floating-surface` / `hero-surface` for dense financial views).
+**UI pattern:** Report-style — hero summary + stat cards + sectioned tables ([docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) + `floating-surface` / `hero-surface` for dense financial views).
 
 ### Routes
 
