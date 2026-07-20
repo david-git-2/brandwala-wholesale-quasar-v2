@@ -145,12 +145,12 @@ For simple CRUD RPCs:
 
 ## Files To Look At First
 
-- [`web/src/modules/tenant/repositories/tenantRepository.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/modules/tenant/repositories/tenantRepository.ts)
-- [`web/src/modules/tenant/services/tenantService.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/modules/tenant/services/tenantService.ts)
-- [`web/src/modules/tenant/stores/tenantStore.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/modules/tenant/stores/tenantStore.ts)
-- [`web/src/modules/auth/composables/useOAuthLogin.ts`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/web/src/modules/auth/composables/useOAuthLogin.ts)
-- [`supabase/migrations/20260331120000_initial_schema.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331120000_initial_schema.sql)
-- [`supabase/migrations/20260331125000_membership_rls_definer.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331125000_membership_rls_definer.sql)
-- [`supabase/migrations/20260331125500_tenant_list_rpc.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331125500_tenant_list_rpc.sql)
-- [`supabase/migrations/20260331130500_redefine_create_tenant_rpc.sql`](/Users/david/Desktop/projects/group/brandwala-wholesale-quasar-v2/supabase/migrations/20260331130500_redefine_create_tenant_rpc.sql)
-- [`supabase/migrations/20260731000001_bootstrap_tenant_preference.sql`](/Users/daviditc/Documents/Personal Project/brandwala-wholesale-quasar-v2/supabase/migrations/20260731000001_bootstrap_tenant_preference.sql)
+- `web/src/modules/tenant/repositories/tenantRepository.ts`
+- `web/src/modules/tenant/services/tenantService.ts`
+- `web/src/modules/tenant/stores/tenantStore.ts`
+- `web/src/modules/auth/composables/useOAuthLogin.ts`
+- `supabase/migrations/20260331120000_initial_schema.sql`
+- `supabase/migrations/20260331125000_membership_rls_definer.sql`
+- `supabase/migrations/20260331125500_tenant_list_rpc.sql`
+- `supabase/migrations/20260331130500_redefine_create_tenant_rpc.sql`
+- `supabase/migrations/20260731000001_bootstrap_tenant_preference.sql`

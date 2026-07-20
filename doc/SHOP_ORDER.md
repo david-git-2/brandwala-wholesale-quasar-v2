@@ -300,6 +300,150 @@ Every shop must configure dual currencies to distinguish origin costing from ret
 2. **Sell Currency** (`sell_currency_id` / `default_currency_id`): The currency in which the product will be listed, sold, and checked out (e.g., BDT).
 3. **Negotiation Currency Rule**: All counter-offers, negotiations, and pricing agreements must happen in the **Sell Currency** (`sell_currency_id`).
 
+### 3.6 Shop Configuration Examples
+
+Use this section to pick a named real-world configuration without reading the full spec. Each scenario maps a complete set of `shops` field values to a customer experience and downstream order path.
+
+#### Decision tree
+
+Answer three questions in order — **shop type → order mode → negotiable?** — to land on a named scenario.
+
+```mermaid
+flowchart TD
+  Start([Configure a shop]) --> Q1{Shop type?}
+  Q1 -->|vendor_catalog| Q3a{Negotiable?}
+  Q3a -->|Yes| A["Scenario A — Supplier Catalog / Procurement Portal"]
+  Q3a -->|No| B["Scenario B — Direct Catalog Order"]
+  Q1 -->|fixed_price| Q2{Order mode?}
+  Q2 -->|checkout_wholesale| E["Scenario E — Wholesale Account Shop"]
+  Q2 -->|checkout_fixed| Q3b{Pricing method?}
+  Q3b -->|markup| C["Scenario C — Retail Storefront (markup)"]
+  Q3b -->|direct_cost| D["Scenario D — Retail Storefront (direct cost)"]
+  Q1 -->|dropship| F["Scenario F — Dropship Reseller Portal"]
+```
+
+> **Note:** `vendor_catalog` shops always use `order_mode = procurement_intent`. `dropship` shops always use `order_mode = checkout_fixed` and `is_negotiable = false`.
+
+#### Scenario A — Supplier Catalog / Procurement Portal
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `vendor_catalog` |
+| `order_mode` | `procurement_intent` |
+| `is_negotiable` | `true` |
+| `vendor_code` | Required — links catalog to `products.vendor_code` |
+| `buy_currency_id` | Supplier origin currency (e.g. GBP, USD) |
+| `sell_currency_id` / `default_currency_id` | Customer-facing currency (e.g. BDT) |
+
+**English:** A B2B procurement portal where the customer browses a supplier's catalog for products not yet in local inventory. Customers with the `can_negotiate` permission can counter-offer on line prices; all negotiation happens in the Sell Currency. Once agreed, the order moves to `placed` and staff pull items into a parent shipment.
+
+**বাংলা:** একটি B2B ক্রয় পোর্টাল যেখানে কাস্টমার স্থানীয় স্টকে নেই এমন পণ্যের জন্য সাপ্লায়ারের ক্যাটালগ ব্রাউজ করে। `can_negotiate` পারমিশন থাকলে কাস্টমার লাইন প্রাইসে দরকষাকষি করতে পারে; সমস্ত দরকষাকষি বিক্রয় কারেন্সিতে হয়। চুক্তি হলে অর্ডার `placed` হয় এবং স্টাফ প্যারেন্ট শিপমেন্টে পুল করে।
+
+**Downstream:** Negotiate → `placed` → procurement pull
+
+#### Scenario B — Direct Catalog Order
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `vendor_catalog` |
+| `order_mode` | `procurement_intent` |
+| `is_negotiable` | `false` |
+| `vendor_code` | Required — links catalog to `products.vendor_code` |
+| `buy_currency_id` | Supplier origin currency (e.g. GBP, USD) |
+| `sell_currency_id` / `default_currency_id` | Customer-facing currency (e.g. BDT) |
+
+**English:** A supplier catalog where customers submit intent-to-buy requests without negotiating. Staff review each order, set final prices, confirm with the customer, then place the order for procurement pull. Suitable when pricing is staff-controlled or catalog prices are indicative only.
+
+**বাংলা:** একটি সাপ্লায়ার ক্যাটালগ যেখানে কাস্টমার দরকষাকষি ছাড়াই ক্রয়ের অনুরোধ জমা দেয়। স্টাফ প্রতিটি অর্ডার পর্যালোচনা করে চূড়ান্ত দাম নির্ধারণ করে, কাস্টমারের সাথে নিশ্চিত করে, তারপর ক্রয় পুলের জন্য অর্ডার প্লেস করে। স্টাফ-নিয়ন্ত্রিত মূল্য বা ইঙ্গিতমূলক ক্যাটালগ দামের ক্ষেত্রে উপযুক্ত।
+
+**Downstream:** Staff prices → `confirmed` → `placed` → procurement pull
+
+#### Scenario C — Retail Storefront (markup)
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `fixed_price` |
+| `order_mode` | `checkout_fixed` |
+| `is_negotiable` | `false` |
+| `pricing_method` | `markup` |
+| `markup_percentage` | Admin-defined (e.g. `25` for 25%) |
+| `quantity_display_mode` | `original` or `custom_override` |
+| `show_stock_quantity` | `true` (default) |
+| `buy_currency_id` | Origin cost currency |
+| `sell_currency_id` / `default_currency_id` | Retail checkout currency |
+
+**English:** A stock-backed retail storefront where checkout prices are calculated by applying a percentage markup over the allocation cost. Customers add items to cart, confirm, and receive a retail invoice. Admins can show actual warehouse stock or a custom marketing quantity override on the storefront.
+
+**বাংলা:** একটি স্টক-ব্যাকড খুচরা দোকান যেখানে চেকআউট দাম অ্যালোকেশন খরচের উপর পার্সেন্টেজ মার্কআপ যোগ করে গণনা করা হয়। কাস্টমার কার্টে পণ্য যোগ করে নিশ্চিত করে এবং খুচরা ইনভয়েস পায়। অ্যাডমিন ওয়্যারহাউসের আসল স্টক বা কাস্টম মার্কেটিং পরিমাণ ওভাররাইড দেখাতে পারেন।
+
+**Downstream:** `confirmed` → `fulfilled` → `global_invoice` (retail)
+
+#### Scenario D — Retail Storefront (direct cost)
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `fixed_price` |
+| `order_mode` | `checkout_fixed` |
+| `is_negotiable` | `false` |
+| `pricing_method` | `direct_cost` |
+| `quantity_display_mode` | `original` or `custom_override` |
+| `show_stock_quantity` | `true` (default) |
+| `buy_currency_id` | Origin cost currency |
+| `sell_currency_id` / `default_currency_id` | Retail checkout currency |
+
+**English:** A stock-backed retail storefront where checkout prices display the baseline allocation cost directly — no markup applied. Useful for internal transfers, cost-recovery sales, or shops where margin is handled outside the storefront. Cart → confirm → retail invoice flow is identical to Scenario C.
+
+**বাংলা:** একটি স্টক-ব্যাকড খুচরা দোকান যেখানে চেকআউট দাম সরাসরি বেসলাইন অ্যালোকেশন খরচে দেখানো হয় — কোনো মার্কআপ প্রয়োগ হয় না। অভ্যন্তরীণ স্থানান্তর, খরচ পুনরুদ্ধার বিক্রয়, বা মার্জিন দোকানের বাইরে পরিচালিত হয় এমন দোকানের জন্য উপযোগী। কার্ট → নিশ্চিত → খুচরা ইনভয়েস ফ্লো Scenario C-এর মতোই।
+
+**Downstream:** `confirmed` → `fulfilled` → `global_invoice` (retail)
+
+#### Scenario E — Wholesale Account Shop
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `fixed_price` |
+| `order_mode` | `checkout_wholesale` |
+| `is_negotiable` | `true` or `false` |
+| `pricing_method` | `direct_cost` or `markup` (display pricing) |
+| `quantity_display_mode` | `original` or `custom_override` |
+| `show_stock_quantity` | `true` (default) |
+| `buy_currency_id` | Origin cost currency |
+| `sell_currency_id` / `default_currency_id` | Wholesale checkout currency |
+
+**English:** An account-based wholesale storefront for registered trade customers. Orders follow the wholesale invoice path instead of retail checkout — suitable for B2B buyers with credit terms, volume pricing, or account-managed billing. Negotiation is optional depending on `is_negotiable` and customer group permissions.
+
+**বাংলা:** নিবন্ধিত ট্রেড কাস্টমারদের জন্য অ্যাকাউন্ট-ভিত্তিক পাইকারি দোকান। অর্ডার খুচরা চেকআউটের পরিবর্তে পাইকারি ইনভয়েস পথ অনুসরণ করে — ক্রেডিট শর্ত, ভলিউম প্রাইসিং, বা অ্যাকাউন্ট-পরিচালিত বিলিং সহ B2B ক্রেতাদের জন্য উপযুক্ত। `is_negotiable` এবং কাস্টমার গ্রুপ পারমিশন অনুযায়ী দরকষাকষি ঐচ্ছিক।
+
+**Downstream:** `global_invoice` (wholesale)
+
+#### Scenario F — Dropship Reseller Portal
+
+| Field | Value |
+|-------|-------|
+| `shop_type` | `dropship` |
+| `order_mode` | `checkout_fixed` |
+| `is_negotiable` | `false` (enforced) |
+| `show_stock_quantity` | `true` (default) |
+| `buy_currency_id` | Origin cost currency |
+| `sell_currency_id` / `default_currency_id` | Reseller checkout currency |
+
+**English:** A reseller portal where the buyer sets their own customer-facing sell price on each line (subject to a minimum sell price floor). The storefront shows both the suggested sell price and the floor constraint. On fulfillment, the invoice records dual amounts — accounting sell price and recipient face price — per [SALES_INVOICE.md](SALES_INVOICE.md).
+
+**বাংলা:** একটি রিসেলার পোর্টাল যেখানে ক্রেতা প্রতিটি লাইনে নিজের কাস্টমার-ফেসিং বিক্রয়মূল্য সেট করতে পারে (ন্যূনতম বিক্রয়মূল্য ফ্লোর সাপেক্ষে)। স্টোরফ্রন্টে প্রস্তাবিত বিক্রয়মূল্য এবং ফ্লোর সীমা উভয়ই দেখানো হয়। ফুলফিলমেন্টে ইনভয়েসে দ্বৈত পরিমাণ রেকর্ড হয় — অ্যাকাউন্টিং বিক্রয়মূল্য এবং প্রাপকের ফেস প্রাইস — [SALES_INVOICE.md](SALES_INVOICE.md) অনুযায়ী।
+
+**Downstream:** `global_invoice` type `dropship` (dual amounts)
+
+#### Quick-reference matrix
+
+| Scenario | `shop_type` | `order_mode` | `is_negotiable` | `pricing_method` | `quantity_display_mode` | Downstream |
+|----------|-------------|--------------|-----------------|----------------|-------------------------|------------|
+| **A** — Supplier Catalog / Procurement Portal | `vendor_catalog` | `procurement_intent` | `true` | — | — | Negotiate → `placed` → procurement pull |
+| **B** — Direct Catalog Order | `vendor_catalog` | `procurement_intent` | `false` | — | — | Staff prices → `confirmed` → `placed` → pull |
+| **C** — Retail Storefront (markup) | `fixed_price` | `checkout_fixed` | `false` | `markup` | `original` / `custom_override` | `confirmed` → `fulfilled` → retail invoice |
+| **D** — Retail Storefront (direct cost) | `fixed_price` | `checkout_fixed` | `false` | `direct_cost` | `original` / `custom_override` | `confirmed` → `fulfilled` → retail invoice |
+| **E** — Wholesale Account Shop | `fixed_price` | `checkout_wholesale` | `true` / `false` | `direct_cost` / `markup` | `original` / `custom_override` | `global_invoice` (wholesale) |
+| **F** — Dropship Reseller Portal | `dropship` | `checkout_fixed` | `false` | — | — | `global_invoice` type `dropship` (dual amounts) |
+
 ---
 
 ## 4. Stock-backed shops (fixed price & dropship)
@@ -728,17 +872,17 @@ All new pages follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 
 ## 12a. Bilingual Information Guide (I Button)
 
-To ensure admin users understand all configuration choices, a bilingual Help Dialog ("I" button) is integrated directly into the Shop Create and Edit forms. The content covers:
+To ensure admin users understand all configuration choices, a bilingual Help Dialog ("I" button) is integrated directly into the Shop Create and Edit forms. The content covers shop types, currencies, and pricing/quantity settings. For complete named configuration examples with all field values, see **§3.6 Shop Configuration Examples**.
 
 ### 1. Shop Types (দোকানের ধরন)
 *   **English**: 
-    *   **Procurement Intent (Vendor Catalog)**: Used when the product is not physically present in inventory. The customer browses the supplier's catalog and places an order. Order negotiation is optional and governed by the user's profile permission for that shop.
-    *   **Retail Shop (Fixed Price)**: Stock-backed storefront. Products are sold directly from branch inventory. Admins configure how prices are calculated (direct cost vs markup) and how quantities are shown (original quantity vs custom display quantity).
-    *   **Dropship Shop**: Reseller portal where the buyer sets their own customer price. The listing displays both the Sell Price and the Minimum Sell Price (floor price constraint) to prevent price undercutting.
+    *   **Procurement Intent (Vendor Catalog)**: Used when the product is not physically present in inventory. The customer browses the supplier's catalog and places an order. Order negotiation is optional and governed by the user's profile permission for that shop. See **§3.6 Scenario A** (negotiable) or **Scenario B** (staff-priced).
+    *   **Retail Shop (Fixed Price)**: Stock-backed storefront. Products are sold directly from branch inventory. Admins configure how prices are calculated (direct cost vs markup) and how quantities are shown (original quantity vs custom display quantity). See **§3.6 Scenario C** (markup), **Scenario D** (direct cost), or **Scenario E** (wholesale account).
+    *   **Dropship Shop**: Reseller portal where the buyer sets their own customer price. The listing displays both the Sell Price and the Minimum Sell Price (floor price constraint) to prevent price undercutting. See **§3.6 Scenario F**.
 *   **Bangla (বাংলা)**:
-    *   **ক্রয় অনুরোধ (ভেন্ডর ক্যাটালগ)**: পণ্য যখন স্টকে থাকে না তখন ব্যবহৃত হয়। কাস্টমার সাপ্লায়ারের ক্যাটালগ দেখে অর্ডারের অনুরোধ করে। দরকষাকষির বিষয়টি ঐচ্ছিক এবং দোকানের জন্য ব্যবহারকারীর প্রোফাইল পারমিশন দ্বারা নির্ধারিত হয়।
-    *   **খুচরা দোকান (নির্ধারিত দাম)**: ফিজিক্যাল স্টক-ব্যাকড দোকান। শাখা বা চাইল্ড টেন্যান্টের স্টক থেকে সরাসরি বিক্রি। অ্যাডমিন নির্ধারণ করতে পারেন দাম কীভাবে দেখানো হবে (সরাসরি খরচ নাকি মার্কআপ সহ) এবং স্টকের পরিমাণ কীভাবে প্রদর্শিত হবে (আসল স্টক নাকি কাস্টম সংখ্যা)।
-    *   **ড্রপশিপ দোকান**: রিসেলার পোর্টাল যেখানে রিসেলার ক্রেতার কাছে নিজের বিক্রয়মূল্য সেট করতে পারেন। এখানে দুটি মূল্য দেখানো হয়: বিক্রয়মূল্য এবং ন্যূনতম বিক্রয়মূল্য (ফ্লোর প্রাইস), যা রিসেলারকে ন্যূনতম মূল্যের নিচে পণ্য বিক্রি করতে বাধা দেয়।
+    *   **ক্রয় অনুরোধ (ভেন্ডর ক্যাটালগ)**: পণ্য যখন স্টকে থাকে না তখন ব্যবহৃত হয়। কাস্টমার সাপ্লায়ারের ক্যাটালগ দেখে অর্ডারের অনুরোধ করে। দরকষাকষির বিষয়টি ঐচ্ছিক এবং দোকানের জন্য ব্যবহারকারীর প্রোফাইল পারমিশন দ্বারা নির্ধারিত হয়। সম্পূর্ণ কনফিগারেশনের জন্য **§3.6 Scenario A** (দরকষাকষি সহ) বা **Scenario B** (স্টাফ-নির্ধারিত দাম) দেখুন।
+    *   **খুচরা দোকান (নির্ধারিত দাম)**: ফিজিক্যাল স্টক-ব্যাকড দোকান। শাখা বা চাইল্ড টেন্যান্টের স্টক থেকে সরাসরি বিক্রি। অ্যাডমিন নির্ধারণ করতে পারেন দাম কীভাবে দেখানো হবে (সরাসরি খরচ নাকি মার্কআপ সহ) এবং স্টকের পরিমাণ কীভাবে প্রদর্শিত হবে (আসল স্টক নাকি কাস্টম সংখ্যা)। **§3.6 Scenario C** (মার্কআপ), **Scenario D** (সরাসরি খরচ), বা **Scenario E** (পাইকারি অ্যাকাউন্ট) দেখুন।
+    *   **ড্রপশিপ দোকান**: রিসেলার পোর্টাল যেখানে রিসেলার ক্রেতার কাছে নিজের বিক্রয়মূল্য সেট করতে পারেন। এখানে দুটি মূল্য দেখানো হয়: বিক্রয়মূল্য এবং ন্যূনতম বিক্রয়মূল্য (ফ্লোর প্রাইস), যা রিসেলারকে ন্যূনতম মূল্যের নিচে পণ্য বিক্রি করতে বাধা দেয়। **§3.6 Scenario F** দেখুন।
 
 ### 2. Shop Currencies (দোকানের কারেন্সি সেটিংস)
 *   **English**: 
@@ -754,11 +898,11 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 
 ### 3. Retail & Quantity Pricing Configurations (খুচরা মূল্য ও পরিমাণ সেটিংস)
 *   **English**:
-    *   **Direct Cost vs. Markup**: Decide if checkout price displays the baseline cost directly or applies a customized percentage markup.
-    *   **Original vs. Custom Quantity**: Choose to expose actual physical stock availability or define a custom marketing override quantity to show in the storefront.
+    *   **Direct Cost vs. Markup**: Decide if checkout price displays the baseline cost directly or applies a customized percentage markup. See **§3.6 Scenario C** (markup) or **Scenario D** (direct cost).
+    *   **Original vs. Custom Quantity**: Choose to expose actual physical stock availability or define a custom marketing override quantity to show in the storefront. Applies to Scenarios C, D, and E in **§3.6**.
 *   **Bangla (বাংলা)**:
-    *   **সরাসরি খরচ বনাম মার্কআপ**: বিক্রয়মূল্য সরাসরি বেসলাইন খরচে নাকি কাস্টম পার্সেন্টেজ মার্কআপ যোগ করে দেখানো হবে তা নির্ধারণ করুন।
-    *   **আসল বনাম কাস্টম স্টক**: ওয়্যারহাউজের ফিজিক্যাল আসল স্টক কাস্টমারকে সরাসরি দেখানো হবে নাকি একটি কাস্টম মার্কেটিং সংখ্যা ওভাররাইড হিসেবে দেখানো হবে তা বেছে নিন।
+    *   **সরাসরি খরচ বনাম মার্কআপ**: বিক্রয়মূল্য সরাসরি বেসলাইন খরচে নাকি কাস্টম পার্সেন্টেজ মার্কআপ যোগ করে দেখানো হবে তা নির্ধারণ করুন। **§3.6 Scenario C** (মার্কআপ) বা **Scenario D** (সরাসরি খরচ) দেখুন।
+    *   **আসল বনাম কাস্টম স্টক**: ওয়্যারহাউজের ফিজিক্যাল আসল স্টক কাস্টমারকে সরাসরি দেখানো হবে নাকি একটি কাস্টম মার্কেটিং সংখ্যা ওভাররাইড হিসেবে দেখানো হবে তা বেছে নিন। **§3.6**-এর Scenario C, D, এবং E-তে প্রযোজ্য।
 
 ---
 

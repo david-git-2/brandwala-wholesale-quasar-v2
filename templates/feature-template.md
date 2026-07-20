@@ -11,3 +11,7 @@
 ## 10. Explicit Out of Scope
 ## 11. Testing Strategy
 ## 12. Definition of Done
+
+---
+*Installed 2026-07-20. Do not overwrite — extend sections in place only.*
+*Step 4 install verified 2026-07-20 — paired with templates/task-template.md.*

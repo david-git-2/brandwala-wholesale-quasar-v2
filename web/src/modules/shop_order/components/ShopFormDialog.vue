@@ -5,8 +5,22 @@
       <q-card-section class="row items-center justify-between q-px-lg q-py-md">
         <div>
           <div class="text-h6 text-weight-medium">{{ isEdit ? 'Edit Shop' : 'Create Shop' }}</div>
-          <div v-if="isEdit" class="text-caption text-grey-6 q-mt-xs">
-            Shop type is locked after creation.
+          <div v-if="isEdit" class="q-mt-xs">
+            <div class="text-caption text-grey-6 q-mb-xs">
+              Shop type is locked after creation.
+            </div>
+            <q-chip
+              clickable
+              dense
+              :color="detectedPresetId ? 'blue-1' : 'grey-2'"
+              :text-color="detectedPresetId ? 'primary' : 'grey-8'"
+              icon="category"
+              size="sm"
+              @click="openScenariosHelp"
+            >
+              {{ detectedPresetBadgeLabel }}
+              <q-tooltip>View scenario guide / সিনারিও গাইড দেখুন</q-tooltip>
+            </q-chip>
           </div>
         </div>
         <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
@@ -16,6 +30,14 @@
 
       <!-- Form Body -->
       <q-card-section class="q-px-lg q-pt-none q-pb-md">
+        <ShopPresetPicker
+          v-if="!isEdit"
+          :model-value="selectedPresetId"
+          :presets="SHOP_CONFIGURATION_PRESETS"
+          :banner-text="appliedPresetBanner"
+          @update:model-value="onPresetSelect"
+        />
+
         <!-- Name + Slug -->
         <div class="row q-col-gutter-md items-start q-mb-md">
           <div class="col-7">
@@ -119,6 +141,8 @@
               label="Buy Currency (ক্রয় কারেন্সি) *"
               outlined
               dense
+              :error="!!errors.buy_currency_id"
+              :error-message="errors.buy_currency_id"
               :rules="[(val) => !!val || 'Buy currency is required']"
             />
           </div>
@@ -132,6 +156,8 @@
               label="Sell Currency (বিক্রয় কারেন্সি) *"
               outlined
               dense
+              :error="!!errors.sell_currency_id"
+              :error-message="errors.sell_currency_id"
               :rules="[(val) => !!val || 'Sell currency is required']"
             />
           </div>
@@ -170,6 +196,8 @@
                 suffix="%"
                 outlined
                 dense
+                :error="!!errors.markup_percentage"
+                :error-message="errors.markup_percentage"
                 :rules="[
                   (val) => (val !== null && val !== undefined) || 'Markup % is required',
                   (val) => val >= 0 || 'Markup % must be non-negative',
@@ -247,7 +275,7 @@
 
   <!-- Help Dialog explaining functionalities -->
   <q-dialog v-model="showHelpDialog">
-    <q-card style="min-width: 500px; max-width: 90vw; border-radius: 12px">
+    <q-card style="min-width: 650px; max-width: 95vw; border-radius: 12px">
       <!-- Header -->
       <q-card-section class="row items-center justify-between q-py-md bg-primary text-white">
         <div class="text-h6 row items-center no-wrap">
@@ -270,6 +298,7 @@
         <q-tab name="types" label="Shop Types / ধরন" />
         <q-tab name="modes" label="Order Modes / অর্ডার" />
         <q-tab name="settings" label="Settings / সেটিংস" />
+        <q-tab name="scenarios" label="Scenarios / উদাহরণ" />
       </q-tabs>
 
       <q-separator />
@@ -544,6 +573,18 @@
             </div>
           </div>
         </q-tab-panel>
+
+        <!-- Scenarios -->
+        <q-tab-panel name="scenarios" class="q-gutter-y-sm">
+          <ShopScenarioFinder
+            :presets="SHOP_CONFIGURATION_PRESETS"
+            show-all-cards
+            :highlight-id="scenarioHighlightId"
+            :apply-disabled="isEdit"
+            apply-disabled-tooltip="Shop type is locked after creation."
+            @select="onHelpScenarioSelect"
+          />
+        </q-tab-panel>
       </q-tab-panels>
 
       <q-separator />
@@ -559,6 +600,18 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { Shop, ShopType, ShopOrderMode } from 'src/modules/shop_order/types';
+import {
+  SHOP_CONFIGURATION_PRESETS,
+  applyPresetToForm,
+  detectPresetFromShop,
+  formMatchesPreset,
+  getAllowedOrderModes,
+  getPresetById,
+  type ShopConfigurationPresetId,
+} from 'src/modules/shop_order/constants/shopConfigurationPresets';
+import { showErrorNotification } from 'src/utils/appFeedback';
+import ShopScenarioFinder from 'src/modules/shop_order/components/ShopScenarioFinder.vue';
+import ShopPresetPicker from 'src/modules/shop_order/components/ShopPresetPicker.vue';
 import { vendorService } from 'src/modules/vendor/services/vendorService';
 import type { Vendor } from 'src/modules/vendor/types';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
@@ -590,6 +643,9 @@ type FormErrors = {
   slug?: string;
   shop_type?: string;
   vendor_code?: string;
+  buy_currency_id?: string;
+  sell_currency_id?: string;
+  markup_percentage?: string;
 };
 
 // ---- props / emits -------------------------------------------------
@@ -616,6 +672,81 @@ const localModelValue = computed({
 
 const showHelpDialog = ref(false);
 const helpTab = ref('types');
+
+const errors = reactive<FormErrors>({});
+const shopTypeSnapshot = ref<ShopType | null>(null);
+
+const defaultForm = (): ShopForm => ({
+  tenant_id: props.tenantId,
+  name: '',
+  slug: '',
+  shop_type: null,
+  vendor_code: '',
+  order_mode: 'procurement_intent',
+  is_negotiable: false,
+  show_stock_quantity: true,
+  is_active: true,
+  allow_delivery: false,
+  buy_currency_id: null,
+  sell_currency_id: null,
+  pricing_method: 'direct_cost',
+  markup_percentage: 0,
+  quantity_display_mode: 'original',
+});
+
+const form = reactive<ShopForm>(defaultForm());
+const isEdit = computed(() => typeof form.id === 'number');
+
+const detectedPresetId = computed(() => {
+  if (!isEdit.value || !props.initialData) return null;
+  return detectPresetFromShop(props.initialData);
+});
+
+const detectedPresetBadgeLabel = computed(() => {
+  const id = detectedPresetId.value;
+  if (!id) return 'Custom configuration';
+  const preset = getPresetById(id);
+  return preset ? `Matches ${preset.name}` : 'Custom configuration';
+});
+
+const scenarioHighlightId = computed((): ShopConfigurationPresetId | null => {
+  if (isEdit.value) return detectedPresetId.value;
+  const id = selectedPresetId.value;
+  if (!id || id === 'custom') return null;
+  return id;
+});
+
+const openScenariosHelp = () => {
+  helpTab.value = 'scenarios';
+  showHelpDialog.value = true;
+};
+
+const selectedPresetId = ref<ShopConfigurationPresetId | 'custom' | null>(null);
+
+const appliedPresetBanner = computed(() => {
+  if (!selectedPresetId.value || selectedPresetId.value === 'custom') return null;
+  const preset = getPresetById(selectedPresetId.value);
+  if (!preset) return null;
+  const markupHint =
+    preset.fields.pricing_method === 'markup' ? ' and markup %' : '';
+  return `Preset ${preset.id} applied — set currencies${markupHint} before saving.`;
+});
+
+function onPresetSelect(value: ShopConfigurationPresetId | 'custom') {
+  selectedPresetId.value = value;
+  if (value === 'custom') return;
+  applyPresetToForm(form, value);
+}
+
+const onHelpScenarioSelect = (id: ShopConfigurationPresetId) => {
+  if (isEdit.value) {
+    showErrorNotification('Shop type is locked after creation. Presets cannot be applied when editing.');
+    return;
+  }
+  applyPresetToForm(form, id);
+  selectedPresetId.value = id;
+  showHelpDialog.value = false;
+};
 
 const vendors = ref<Vendor[]>([]);
 const loadingVendors = ref(false);
@@ -649,32 +780,6 @@ const loadCurrencies = async () => {
   }
 };
 
-const errors = reactive<FormErrors>({});
-// snapshot of shop_type on edit open (immutable field guard)
-const shopTypeSnapshot = ref<ShopType | null>(null);
-
-const defaultForm = (): ShopForm => ({
-  tenant_id: props.tenantId,
-  name: '',
-  slug: '',
-  shop_type: null,
-  vendor_code: '',
-  order_mode: 'procurement_intent',
-  is_negotiable: false,
-  show_stock_quantity: true,
-  is_active: true,
-  allow_delivery: false,
-  buy_currency_id: null,
-  sell_currency_id: null,
-  pricing_method: 'direct_cost',
-  markup_percentage: 0,
-  quantity_display_mode: 'original',
-});
-
-const form = reactive<ShopForm>(defaultForm());
-
-const isEdit = computed(() => typeof form.id === 'number');
-
 // ---- label helpers -------------------------------------------------
 
 const shopTypeOptions = [
@@ -683,11 +788,17 @@ const shopTypeOptions = [
   { value: 'dropship', label: 'Dropship' },
 ];
 
-const orderModeOptions = [
+const allOrderModeOptions: { value: ShopOrderMode; label: string }[] = [
   { value: 'procurement_intent', label: 'Procurement Intent' },
   { value: 'checkout_fixed', label: 'Checkout Fixed' },
   { value: 'checkout_wholesale', label: 'Checkout Wholesale' },
 ];
+
+const orderModeOptions = computed(() => {
+  if (!form.shop_type) return allOrderModeOptions;
+  const allowed = getAllowedOrderModes(form.shop_type);
+  return allOrderModeOptions.filter((o) => allowed.includes(o.value));
+});
 
 const shopTypeLabel = computed(() => {
   const found = shopTypeOptions.find((o) => o.value === shopTypeSnapshot.value);
@@ -740,10 +851,49 @@ watch(
       });
     } else {
       shopTypeSnapshot.value = null;
+      selectedPresetId.value = null;
       Object.assign(form, { ...defaultForm(), tenant_id: tenantId });
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => form.shop_type,
+  (shopType) => {
+    if (!shopType) return;
+
+    if (shopType === 'vendor_catalog') {
+      form.order_mode = 'procurement_intent';
+    } else if (shopType === 'dropship') {
+      form.order_mode = 'checkout_fixed';
+      form.is_negotiable = false;
+    } else if (shopType === 'fixed_price') {
+      const allowed = getAllowedOrderModes('fixed_price');
+      if (!allowed.includes(form.order_mode)) {
+        form.order_mode = 'checkout_fixed';
+      }
+    }
+  },
+);
+
+watch(
+  () => [
+    form.shop_type,
+    form.order_mode,
+    form.is_negotiable,
+    form.pricing_method,
+    form.markup_percentage,
+    form.quantity_display_mode,
+    form.show_stock_quantity,
+  ],
+  () => {
+    const id = selectedPresetId.value;
+    if (!id || id === 'custom') return;
+    if (!formMatchesPreset(form, id)) {
+      selectedPresetId.value = 'custom';
+    }
+  },
 );
 
 // ---- validation + save ---------------------------------------------
@@ -768,11 +918,35 @@ const validate = (): boolean => {
     errors.vendor_code = 'Vendor code is required for vendor catalog shops.';
     ok = false;
   }
+  if (!form.buy_currency_id) {
+    errors.buy_currency_id = 'Buy currency is required.';
+    ok = false;
+  }
+  if (!form.sell_currency_id) {
+    errors.sell_currency_id = 'Sell currency is required.';
+    ok = false;
+  }
+  const isFixedPrice =
+    form.shop_type === 'fixed_price' || shopTypeSnapshot.value === 'fixed_price';
+  if (
+    isFixedPrice &&
+    form.pricing_method === 'markup' &&
+    (form.markup_percentage === null ||
+      form.markup_percentage === undefined ||
+      form.markup_percentage < 0)
+  ) {
+    errors.markup_percentage = 'Markup % is required and must be non-negative.';
+    ok = false;
+  }
 
   return ok;
 };
 
 const onSave = () => {
+  if (form.shop_type === 'dropship' || shopTypeSnapshot.value === 'dropship') {
+    form.is_negotiable = false;
+  }
+
   if (!validate()) return;
 
   if (isEdit.value) {

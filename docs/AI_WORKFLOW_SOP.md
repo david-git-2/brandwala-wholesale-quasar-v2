@@ -29,3 +29,7 @@ Review and confirm after each phase before proceeding to the next.
 3. Open a new chat session.
 4. Document what drifted in task.md.
 5. Tighten the file list and re-run.
+
+---
+*Installed 2026-07-20. Do not overwrite — update in place only.*
+*Step 4 install verified 2026-07-20 — workflow commands and prompts added.*

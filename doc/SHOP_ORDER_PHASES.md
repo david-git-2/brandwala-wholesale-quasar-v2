@@ -1,6 +1,6 @@
 # Shop & Order — Phase Progress & Deliverables
 
-**Agent index:** [.cursor/plans/shop_order_phased_build_0010b204.plan.md](../.cursor/plans/shop_order_phased_build_0010b204.plan.md)  
+**Agent index (archived):** [docs/archive/shop_order_phased_build_0010b204.plan.md](../docs/archive/shop_order_phased_build_0010b204.plan.md) — canonical tracker is this file.  
 **Canon:** [SHOP_ORDER.md](SHOP_ORDER.md)
 
 Update this file when a phase completes. Agent: set status to `done` and stop.
@@ -319,11 +319,20 @@ Retire the legacy `/app/commerce-shop` and `/shop/commerce-shop/*` paths. Ensure
     *   Add pricing configuration toggles: Pricing Method (Direct Cost / Markup) and Markup Percentage input field.
     *   Add Quantity Display options (Original / Override).
     *   Update the Help Dialog ("I" button) to contain the bilingual (Bangla & English) descriptions for Shop Types (Procurement, Retail, Dropship), Currencies (Buy, Sell), and pricing options.
+*   Shop configuration presets configurator (§3.6):
+    *   `shopConfigurationPresets.ts` — scenarios A–F data, `applyPresetToForm`, `detectPresetFromShop`, `getAllowedOrderModes`.
+    *   `ShopPresetPicker.vue` — create-flow chip picker with one-click apply.
+    *   `ShopScenarioFinder.vue` — interactive decision-tree finder in help dialog; "Use this preset" on create.
+    *   Edit mode: detected scenario badge (read-only); `shop_type` constraint watchers; preset selection clears on manual divergence.
 
 ### Exit
 
 - [ ] Shop settings form handles the new fields during create and edit.
 - [ ] Help Dialog shows clear, bilingual instructions.
+- [ ] Create flow: preset picker applies scenarios A–F; Custom bypasses presets.
+- [ ] Edit flow: scenario badge from `detectPresetFromShop`; presets not re-applicable.
+- [ ] `shop_type` changes auto-correct `order_mode` / `is_negotiable`; order mode options filtered per type.
+- [ ] Validation requires both currencies; markup % when pricing method is markup.
 
 ---
 

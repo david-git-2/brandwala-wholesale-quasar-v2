@@ -69,9 +69,9 @@ Use the root `package.json` scripts to run and build the app.
 - `npm run build`
 - `npm run lint`
 
-For the **combined platform reference** (feature matrix, all module details, permissions, redesign entities), see **[MASTER_PLAN.md](MASTER_PLAN.md)** §14–§18.
+For the **combined platform reference** (feature matrix, all module details, permissions, redesign entities), see **[doc/MASTER_PLAN.md](doc/MASTER_PLAN.md)** §14–§18.
 
-Other docs: `document/`, `doc/`.
+Other docs: `doc/` (domain specs), `docs/` (UI + AI workflow).
 
 ## Database Optimization (Reclaiming Space)
 
