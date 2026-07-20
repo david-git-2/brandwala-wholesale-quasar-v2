@@ -1,4 +1,4 @@
-import { shopCartRepository, type CartData } from '../repositories/shopCartRepository';
+import { shopCartRepository, type CartData, type CartChargesPayload } from '../repositories/shopCartRepository';
 import type { ShopServiceResult } from '../types';
 
 const getOrCreateCart = async (shopId: number): Promise<ShopServiceResult<CartData>> => {
@@ -66,9 +66,42 @@ const removeCartItem = async (cartItemId: number): Promise<ShopServiceResult<Car
   }
 };
 
+const updateCartItemPrice = async (
+  cartItemId: number,
+  price: number,
+): Promise<ShopServiceResult<CartData>> => {
+  try {
+    const data = await shopCartRepository.updateCartItemPrice(cartItemId, price);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update item price.',
+    };
+  }
+};
+
+const updateShopCartCharges = async (
+  shopId: number,
+  cartId: number,
+  charges: CartChargesPayload,
+): Promise<ShopServiceResult<CartData>> => {
+  try {
+    const data = await shopCartRepository.updateShopCartCharges(shopId, cartId, charges);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update cart charges.',
+    };
+  }
+};
+
 export const shopCartService = {
   getOrCreateCart,
   addToCart,
   updateCartItemQty,
   removeCartItem,
+  updateCartItemPrice,
+  updateShopCartCharges,
 };

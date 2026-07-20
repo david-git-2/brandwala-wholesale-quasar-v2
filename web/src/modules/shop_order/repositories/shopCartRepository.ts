@@ -1,5 +1,15 @@
 import { supabase } from 'src/boot/supabase';
 
+export interface CartChargesPayload {
+  cod_charge_amount?: number;
+  delivery_charge_amount?: number;
+  print_charge_amount?: number;
+  packing_charge_amount?: number;
+  discount_amount?: number;
+  is_prepaid?: boolean;
+  delivery_instructions?: string | null;
+}
+
 export interface CartData {
   cart: {
     id: number;
@@ -12,6 +22,13 @@ export interface CartData {
     allow_delivery: boolean;
     created_at: string;
     updated_at: string;
+    cod_charge_amount?: number;
+    delivery_charge_amount?: number;
+    print_charge_amount?: number;
+    packing_charge_amount?: number;
+    discount_amount?: number;
+    is_prepaid?: boolean;
+    delivery_instructions?: string | null;
   };
   items: Array<{
     id: number;
@@ -95,9 +112,41 @@ const removeCartItem = async (cartItemId: number): Promise<CartData> => {
   return data as CartData;
 };
 
+const updateCartItemPrice = async (cartItemId: number, price: number): Promise<CartData> => {
+  const { data, error } = await supabase.rpc('update_shop_cart_item_price', {
+    p_cart_item_id: cartItemId,
+    p_price: price,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as CartData;
+};
+
+const updateShopCartCharges = async (
+  shopId: number,
+  cartId: number,
+  charges: CartChargesPayload,
+): Promise<CartData> => {
+  const { error } = await supabase
+    .from('shop_carts')
+    .update(charges)
+    .eq('id', cartId);
+
+  if (error) {
+    throw error;
+  }
+
+  return getOrCreateCart(shopId);
+};
+
 export const shopCartRepository = {
   getOrCreateCart,
   addToCart,
   updateCartItemQty,
   removeCartItem,
+  updateCartItemPrice,
+  updateShopCartCharges,
 };

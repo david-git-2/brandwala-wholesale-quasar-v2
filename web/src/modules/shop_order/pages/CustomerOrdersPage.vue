@@ -4,10 +4,10 @@
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline text-primary">Customer Portal</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">My Orders</h1>
+          <div class="text-overline text-primary">{{ $t('shop_admin.customer_portal') }}</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.my_orders') }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Track status, view items, and negotiate pricing for your active storefront orders.
+            {{ $t('shop_admin.my_orders_subtitle') }}
           </p>
         </div>
       </section>
@@ -15,7 +15,7 @@
       <!-- Content -->
       <div v-if="orderStore.loading" class="column items-center justify-center q-pa-xl">
         <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">Loading orders...</div>
+        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_orders') }}</div>
       </div>
 
       <div
@@ -23,14 +23,14 @@
         class="column items-center justify-center empty-state q-pa-xl text-center"
       >
         <q-icon name="receipt_long" size="80px" color="grey-4" class="q-mb-md" />
-        <div class="text-h6 text-grey-6">No Orders Placed Yet</div>
+        <div class="text-h6 text-grey-6">{{ $t('shop_admin.no_orders_yet') }}</div>
         <p class="text-body2 text-grey-5 q-mt-sm q-mb-md">
-          Browse the catalog, add items to your cart, and place an order to get started. p
+          {{ $t('shop_admin.no_orders_hint') }}
         </p>
         <q-btn
           color="primary"
           no-caps
-          label="Go Browse Catalog"
+          :label="$t('shop_admin.go_browse_catalog')"
           class="pill-btn"
           @click="goToStorefront"
         />
@@ -48,20 +48,20 @@
                       order.order_no
                     }}</span>
                     <span class="text-caption text-grey-6">
-                      Placed on: {{ formatDate(order.created_at) }}
+                      {{ $t('shop_admin.placed_on') }} {{ formatDate(order.created_at) }}
                     </span>
                   </div>
 
                   <!-- Details (Qty & Total) -->
                   <div class="col-xs-12 col-sm-4 row items-center q-gutter-x-lg">
                     <div class="column">
-                      <span class="text-caption text-grey-6">Items Count</span>
-                      <span class="text-body2 text-weight-bold text-grey-8"
-                        >{{ order.item_count }} items</span
-                      >
+                      <span class="text-caption text-grey-6">{{ $t('shop_admin.items_count') }}</span>
+                      <span class="text-body2 text-weight-bold text-grey-8">{{
+                        $t('shop_admin.items_count_value', { count: order.item_count })
+                      }}</span>
                     </div>
                     <div class="column">
-                      <span class="text-caption text-grey-6">Total Amount</span>
+                      <span class="text-caption text-grey-6">{{ $t('shop_admin.total_amount') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
                         £{{ Number(order.total_amount || 0).toFixed(2) }}
                       </span>
@@ -82,7 +82,7 @@
                       color="primary"
                       no-caps
                       dense
-                      label="View Details"
+                      :label="$t('shop_admin.view_details')"
                       class="q-px-md pill-btn"
                       @click="goToOrderDetails(order.id)"
                     />

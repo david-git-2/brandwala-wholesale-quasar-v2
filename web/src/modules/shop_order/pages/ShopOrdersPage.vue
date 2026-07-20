@@ -4,10 +4,10 @@
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline">Shop &amp; Order</div>
-          <h1 class="text-h5 q-my-none">Shop Orders Desk</h1>
+          <div class="text-overline">{{ $t('shop_admin.shop_and_order') }}</div>
+          <h1 class="text-h5 q-my-none">{{ $t('shop_admin.shop_orders_title') }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Price, negotiate, confirm, and manage customer orders across all tenant shops.
+            {{ $t('shop_admin.shop_orders_subtitle') }}
           </p>
         </div>
       </section>
@@ -21,7 +21,7 @@
             debounce="350"
             dense
             outlined
-            placeholder="Search by order no, shop, customer..."
+            :placeholder="$t('shop_admin.search_orders_placeholder')"
             @update:model-value="onFilterChange"
           >
             <template #prepend>
@@ -36,7 +36,7 @@
             outlined
             emit-value
             map-options
-            label="Filter by Status"
+            :label="$t('shop_admin.filter_by_status')"
             :options="statusOptions"
             style="min-width: 150px"
             @update:model-value="onFilterChange"
@@ -47,7 +47,7 @@
       <!-- Main Content -->
       <div v-if="orderStore.loading" class="column items-center justify-center q-pa-xl">
         <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">Loading orders...</div>
+        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_orders') }}</div>
       </div>
 
       <div
@@ -55,9 +55,9 @@
         class="column items-center justify-center empty-state q-pa-xl text-center"
       >
         <q-icon name="receipt_long" size="80px" color="grey-3" class="q-mb-md" />
-        <div class="text-h6 text-grey-6">No Orders Found</div>
+        <div class="text-h6 text-grey-6">{{ $t('shop_admin.no_orders_found') }}</div>
         <p class="text-body2 text-grey-5 q-mt-sm">
-          No orders match the current search or status filter.
+          {{ $t('shop_admin.no_orders_match') }}
         </p>
       </div>
 
@@ -80,23 +80,23 @@
                   <!-- Shop & Group Context -->
                   <div class="col-xs-12 col-sm-3 column">
                     <span class="text-body2 text-weight-medium text-grey-9"
-                      >Shop: {{ order.shop_name }}</span
+                      >{{ $t('shop_admin.shop_label') }} {{ order.shop_name }}</span
                     >
                     <span class="text-caption text-grey-6">
-                      Group: {{ order.customer_group_name }}
+                      {{ $t('shop_admin.group_label') }} {{ order.customer_group_name }}
                     </span>
                   </div>
 
                   <!-- Item Stats -->
                   <div class="col-xs-12 col-sm-3 row items-center q-gutter-x-lg">
                     <div class="column">
-                      <span class="text-caption text-grey-6">Items</span>
+                      <span class="text-caption text-grey-6">{{ $t('shop_admin.items_label') }}</span>
                       <span class="text-body2 text-weight-bold text-grey-8">{{
                         order.item_count
                       }}</span>
                     </div>
                     <div class="column">
-                      <span class="text-caption text-grey-6">Total Value</span>
+                      <span class="text-caption text-grey-6">{{ $t('shop_admin.total_value') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
                         £{{ Number(order.total_amount || 0).toFixed(2) }}
                       </span>
@@ -117,7 +117,7 @@
                       color="primary"
                       no-caps
                       dense
-                      label="Manage"
+                      :label="$t('shop_admin.manage')"
                       class="q-px-md pill-btn"
                       @click="goToOrderDetails(order.id)"
                     />
@@ -135,11 +135,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { date } from 'quasar';
 
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const orderStore = useShopOrderStore();
 
@@ -149,16 +151,16 @@ const statusFilter = ref(null);
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
-const statusOptions = [
-  { label: 'All Statuses', value: null },
-  { label: 'Submitted', value: 'submitted' },
-  { label: 'Negotiating', value: 'negotiating' },
-  { label: 'Priced', value: 'priced' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Placed', value: 'placed' },
-  { label: 'Fulfilled', value: 'fulfilled' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
+const statusOptions = computed(() => [
+  { label: t('shop_admin.all_statuses'), value: null },
+  { label: t('shop_admin.status_submitted'), value: 'submitted' },
+  { label: t('shop_admin.status_negotiating'), value: 'negotiating' },
+  { label: t('shop_admin.status_priced'), value: 'priced' },
+  { label: t('shop_admin.status_confirmed'), value: 'confirmed' },
+  { label: t('shop_admin.status_placed'), value: 'placed' },
+  { label: t('shop_admin.status_fulfilled'), value: 'fulfilled' },
+  { label: t('shop_admin.status_cancelled'), value: 'cancelled' },
+]);
 
 const loadOrders = async () => {
   if (tenantId.value) {

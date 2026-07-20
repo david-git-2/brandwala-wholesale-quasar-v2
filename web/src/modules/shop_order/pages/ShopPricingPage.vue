@@ -7,11 +7,12 @@
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
             <div>
-              <div class="text-overline">Shops</div>
-              <h1 class="text-h5 q-my-none">Shop Pricing: {{ shopName }}</h1>
+              <div class="text-overline">{{ $t('navigation.shops') }}</div>
+              <h1 class="text-h5 q-my-none">
+                {{ $t('shop_admin.shop_pricing_title', { name: shopName }) }}
+              </h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Manage product listings, set sell/dropship pricing, and configure display
-                quantities.
+                {{ $t('shop_admin.shop_pricing_subtitle') }}
               </p>
             </div>
           </div>
@@ -20,7 +21,7 @@
           <q-btn
             color="primary"
             icon="add"
-            label="Add Product Listing"
+            :label="$t('shop_admin.add_product_listing')"
             unelevated
             @click="openPickDialog"
           />
@@ -30,7 +31,13 @@
       <!-- Toolbar / Search -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-12 col-sm-5">
-          <q-input v-model="search" clearable dense outlined placeholder="Search listed products…">
+          <q-input
+            v-model="search"
+            clearable
+            dense
+            outlined
+            :placeholder="$t('shop_admin.search_listings_placeholder')"
+          >
             <template #prepend>
               <q-icon name="search" />
             </template>
@@ -42,7 +49,7 @@
       <q-banner v-if="store.error" class="text-white bg-negative" rounded>
         {{ store.error }}
         <template #action>
-          <q-btn flat color="white" label="Dismiss" @click="store.clearError()" />
+          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
         </template>
       </q-banner>
 
@@ -50,7 +57,7 @@
       <q-card flat bordered>
         <q-card-section v-if="store.loadingListings" class="text-grey-7 text-center q-pa-xl">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
-          Loading product listings…
+          {{ $t('shop_admin.loading_listings') }}
         </q-card-section>
 
         <q-card-section
@@ -58,7 +65,7 @@
           class="text-grey-6 text-center q-pa-xl"
         >
           <q-icon name="list_alt" size="48px" class="q-mb-sm block" />
-          No products listed on this shop. Click "Add Product Listing" to start.
+          {{ $t('shop_admin.no_listings') }}
         </q-card-section>
 
         <q-table
@@ -120,9 +127,9 @@
                 class="text-primary text-weight-bold"
               >
                 {{ props.row.display_quantity_override }}
-                <q-tooltip
-                  >Marketing override (Actual: {{ props.row.available_to_sell }})</q-tooltip
-                >
+                <q-tooltip>{{
+                  $t('shop_admin.marketing_override', { qty: props.row.available_to_sell })
+                }}</q-tooltip>
               </div>
               <div v-else class="text-grey-8">
                 {{ props.row.available_to_sell }}
@@ -144,10 +151,10 @@
               >
                 {{
                   props.row.show_quantity === null
-                    ? 'Inherit'
+                    ? $t('shop_admin.inherit')
                     : props.row.show_quantity
-                      ? 'Show'
-                      : 'Hide'
+                      ? $t('shop_admin.show')
+                      : $t('shop_admin.hide')
                 }}
               </q-badge>
             </q-td>
@@ -175,7 +182,7 @@
                 color="primary"
                 @click="openEditListing(props.row)"
               >
-                <q-tooltip>Edit settings</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.edit_settings') }}</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -194,7 +201,9 @@
     <q-dialog v-model="editDialogOpen">
       <q-card style="width: 500px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ form.id ? 'Edit Listing' : 'Add Listing' }}</div>
+          <div class="text-h6">
+            {{ form.id ? $t('shop_admin.edit_listing') : $t('shop_admin.add_listing') }}
+          </div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -212,16 +221,16 @@
                 v-model.number="form.sell_price_amount"
                 type="number"
                 step="0.01"
-                label="Sell Price Amount"
+                :label="$t('shop_admin.sell_price_amount')"
                 outlined
                 dense
-                :rules="[(val) => !!val || 'Amount is required']"
+                :rules="[(val) => !!val || t('shop_admin.amount_required')]"
               />
             </div>
             <div class="col-5">
               <q-select
                 v-model="form.sell_price_currency_id"
-                label="Currency"
+                :label="$t('shop_admin.currency')"
                 outlined
                 dense
                 emit-value
@@ -229,7 +238,7 @@
                 option-value="id"
                 option-label="code"
                 :options="store.currencies"
-                :rules="[(val) => !!val || 'Currency is required']"
+                :rules="[(val) => !!val || t('shop_admin.currency_required')]"
               />
             </div>
           </div>
@@ -241,16 +250,16 @@
                 v-model.number="form.minimum_sell_price_amount"
                 type="number"
                 step="0.01"
-                label="Minimum Dropship Price"
+                :label="$t('shop_admin.min_dropship_price')"
                 outlined
                 dense
-                :rules="[(val) => !!val || 'Min dropship floor amount is required']"
+                :rules="[(val) => !!val || t('shop_admin.min_dropship_required')]"
               />
             </div>
             <div class="col-5">
               <q-select
                 v-model="form.minimum_sell_price_currency_id"
-                label="Currency"
+                :label="$t('shop_admin.currency')"
                 outlined
                 dense
                 emit-value
@@ -258,7 +267,7 @@
                 option-value="id"
                 option-label="code"
                 :options="store.currencies"
-                :rules="[(val) => !!val || 'Currency is required']"
+                :rules="[(val) => !!val || t('shop_admin.currency_required')]"
               />
             </div>
           </div>
@@ -269,11 +278,11 @@
               <q-input
                 v-model.number="form.display_quantity_override"
                 type="number"
-                label="Display Quantity Override"
+                :label="$t('shop_admin.display_qty_override')"
                 outlined
                 dense
                 clearable
-                placeholder="Inherits available quantity"
+                :placeholder="$t('shop_admin.inherits_available_qty')"
               />
             </div>
           </div>
@@ -283,29 +292,25 @@
             <div class="col-12">
               <q-select
                 v-model="form.show_quantity"
-                label="Show Quantity to Customer"
+                :label="$t('shop_admin.show_qty_to_customer')"
                 outlined
                 dense
                 emit-value
                 map-options
-                :options="[
-                  { label: 'Inherit Shop Settings', value: null },
-                  { label: 'Force Show', value: true },
-                  { label: 'Force Hide', value: false },
-                ]"
+                :options="showQuantityOptions"
               />
             </div>
           </div>
 
           <!-- Active Switch -->
-          <q-toggle v-model="form.is_active" label="Listing Active" color="primary" />
+          <q-toggle v-model="form.is_active" :label="$t('shop_admin.listing_active')" color="primary" />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md border-top bg-grey-1">
-          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+          <q-btn flat :label="$t('shop_admin.cancel')" color="grey-7" v-close-popup />
           <q-btn
             unelevated
-            label="Save Listing"
+            :label="$t('shop_admin.save_listing')"
             color="primary"
             :loading="store.saving"
             @click="onSaveListing"
@@ -319,6 +324,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopPricingStore } from '../stores/shopPricingStore';
@@ -327,6 +333,7 @@ import type { ShopProductListing, CandidateAllocation, UpsertListingPayload } fr
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const store = useShopPricingStore();
 
@@ -358,44 +365,65 @@ const form = ref<UpsertListingPayload>({
   id: null,
 });
 
-const columns = [
+const columns = computed(() => [
   {
     name: 'product_name',
-    label: 'Product',
+    label: t('shop_admin.col_product'),
     field: 'product_name',
     align: 'left' as const,
     sortable: true,
   },
   {
     name: 'product_code',
-    label: 'Code',
+    label: t('shop_admin.col_code'),
     field: 'product_code',
     align: 'left' as const,
     sortable: true,
   },
-  { name: 'product_barcode', label: 'Barcode', field: 'product_barcode', align: 'left' as const },
-  { name: 'sell_price', label: 'Sell Price', field: 'sell_price_amount', align: 'left' as const },
+  {
+    name: 'product_barcode',
+    label: t('shop_admin.col_barcode'),
+    field: 'product_barcode',
+    align: 'left' as const,
+  },
+  {
+    name: 'sell_price',
+    label: t('shop_admin.col_sell_price'),
+    field: 'sell_price_amount',
+    align: 'left' as const,
+  },
   {
     name: 'min_sell_price',
-    label: 'Dropship Floor',
+    label: t('shop_admin.dropship_floor'),
     field: 'minimum_sell_price_amount',
     align: 'left' as const,
   },
   {
     name: 'display_quantity',
-    label: 'Display Qty',
+    label: t('shop_admin.col_display_qty'),
     field: 'display_quantity_override',
     align: 'center' as const,
   },
   {
     name: 'show_quantity',
-    label: 'Quantity Visibility',
+    label: t('shop_admin.qty_visibility'),
     field: 'show_quantity',
     align: 'center' as const,
   },
-  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
+  {
+    name: 'is_active',
+    label: t('shop_admin.col_listing_active'),
+    field: 'is_active',
+    align: 'center' as const,
+  },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
-];
+]);
+
+const showQuantityOptions = computed(() => [
+  { label: t('shop_admin.inherit_shop_settings'), value: null },
+  { label: t('shop_admin.force_show'), value: true },
+  { label: t('shop_admin.force_hide'), value: false },
+]);
 
 const formatMoney = (amount: number | null, currencyId: number | null): string => {
   if (amount === null || currencyId === null) return '—';

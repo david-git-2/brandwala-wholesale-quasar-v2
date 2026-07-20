@@ -39,6 +39,13 @@ export const useShopOrderStore = defineStore('shopOrder', {
       recipientPhone: string,
       shippingAddress: string,
       billingProfileId: number | null,
+      isPrepaid?: boolean,
+      deliveryInstructions?: string | null,
+      codChargeAmount?: number,
+      deliveryChargeAmount?: number,
+      printChargeAmount?: number,
+      packingChargeAmount?: number,
+      discountAmount?: number,
     ) {
       this.saving = true;
       this.error = null;
@@ -49,6 +56,13 @@ export const useShopOrderStore = defineStore('shopOrder', {
           recipientPhone,
           shippingAddress,
           billingProfileId,
+          isPrepaid,
+          deliveryInstructions,
+          codChargeAmount,
+          deliveryChargeAmount,
+          printChargeAmount,
+          packingChargeAmount,
+          discountAmount,
         );
         if (!res.success) {
           this.error = res.error;

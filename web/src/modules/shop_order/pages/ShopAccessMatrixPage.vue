@@ -7,15 +7,12 @@
           <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
-          <div class="text-overline">Shops / শপ</div>
-          <h1 class="text-h5 q-my-none">Shop Access Matrix: {{ shopName }}</h1>
+          <div class="text-overline">{{ $t('navigation.shops') }}</div>
+          <h1 class="text-h5 q-my-none">
+            {{ $t('shop_admin.access_matrix_title', { name: shopName }) }}
+          </h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Turn on access for each customer group on this shop. Use Allow or Deny for each
-            capability — this screen is the source of truth.
-          </p>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            এই শপে প্রতিটি কাস্টমার গ্রুপকে অ্যাক্সেস দিন। প্রতিটি সুবিধার জন্য Allow (অনুমতি) বা
-            Deny (নিষেধ) বেছে নিন — কনফিগারেশন এখানেই করা হবে।
+            {{ $t('shop_admin.access_matrix_subtitle') }}
           </p>
         </div>
       </section>
@@ -24,7 +21,7 @@
       <q-banner v-if="store.error" class="text-white bg-negative" rounded>
         {{ store.error }}
         <template #action>
-          <q-btn flat color="white" label="Dismiss" @click="store.clearError()" />
+          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
         </template>
       </q-banner>
 
@@ -36,7 +33,7 @@
       >
         <q-card-section class="text-center q-pa-xl text-grey-7">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
-          Loading access settings…
+          {{ $t('shop_admin.loading_access') }}
         </q-card-section>
       </q-card>
 
@@ -50,8 +47,8 @@
                 <q-badge :color="getAccessRow(group.id)?.status ? 'positive' : 'grey-5'">
                   {{
                     getAccessRow(group.id)?.status
-                      ? 'Access Granted / অ্যাক্সেস আছে'
-                      : 'No Access / অ্যাক্সেস নেই'
+                      ? $t('shop_admin.access_granted')
+                      : $t('shop_admin.no_access')
                   }}
                 </q-badge>
               </span>
@@ -60,7 +57,7 @@
               <q-btn
                 v-if="!activeGroupId || activeGroupId !== group.id"
                 flat
-                label="Configure / কনফিগার"
+                :label="$t('shop_admin.configure')"
                 color="primary"
                 icon="settings"
                 @click="editGroup(group.id)"
@@ -68,7 +65,7 @@
               <q-btn
                 v-else
                 flat
-                label="Collapse / বন্ধ"
+                :label="$t('shop_admin.collapse')"
                 color="grey-7"
                 icon="expand_less"
                 @click="editGroup(null)"
@@ -84,8 +81,8 @@
                   <div class="col-12 col-sm-6">
                     <q-toggle
                       v-model="editForm.status"
-                      label="Grant Catalog Access / ক্যাটালগ অ্যাক্সেস দিন"
-                      caption="Master switch for this shop + group. / এই শপ ও গ্রুপের মূল সুইচ।"
+                      :label="$t('shop_admin.grant_catalog_access')"
+                      :caption="$t('shop_admin.grant_catalog_caption')"
                       color="primary"
                       @update:model-value="onStatusToggle"
                     />
@@ -93,13 +90,13 @@
                 </div>
 
                 <div v-if="editForm.status" class="q-gutter-y-md q-mt-sm">
-                  <div class="text-subtitle2 text-grey-8">Capabilities / সুবিধাসমূহ</div>
+                  <div class="text-subtitle2 text-grey-8">{{ $t('shop_admin.capabilities') }}</div>
 
                   <div class="row q-col-gutter-md">
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_browse"
-                        label="Browse Catalog / ক্যাটালগ দেখা"
+                        :label="$t('shop_admin.browse_catalog')"
                         outlined
                         dense
                         emit-value
@@ -111,7 +108,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.see_price"
-                        label="See Prices / দাম দেখা"
+                        :label="$t('shop_admin.see_prices')"
                         outlined
                         dense
                         emit-value
@@ -123,7 +120,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_view_quantity"
-                        label="View Stock Qty / স্টক পরিমাণ দেখা"
+                        :label="$t('shop_admin.view_stock_qty')"
                         outlined
                         dense
                         emit-value
@@ -135,7 +132,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_add_to_cart"
-                        label="Add to Cart / কার্টে যোগ"
+                        :label="$t('shop_admin.add_to_cart')"
                         outlined
                         dense
                         emit-value
@@ -147,7 +144,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_place_order"
-                        label="Place Order / অর্ডার দেওয়া"
+                        :label="$t('shop_admin.place_order')"
                         outlined
                         dense
                         emit-value
@@ -159,7 +156,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_negotiate"
-                        label="Negotiate / দরকষাকষি"
+                        :label="$t('shop_admin.negotiate')"
                         outlined
                         dense
                         emit-value
@@ -171,7 +168,7 @@
                     <div class="col-12 col-sm-4">
                       <q-select
                         v-model="editForm.can_set_dropship_price"
-                        label="Set Dropship Price / ড্রপশিপ দাম সেট"
+                        :label="$t('shop_admin.set_dropship_price')"
                         outlined
                         dense
                         emit-value
@@ -183,20 +180,19 @@
                     <div class="col-12 col-sm-4">
                       <q-input
                         v-model="editForm.price_tier_code"
-                        label="Price Tier Code / প্রাইস টিয়ার"
+                        :label="$t('shop_admin.price_tier_code')"
                         outlined
                         dense
-                        placeholder="e.g. tier1"
+                        :placeholder="$t('shop_admin.price_tier_placeholder')"
                       />
                     </div>
                   </div>
 
                   <div class="text-subtitle2 text-grey-8 q-mt-lg">
-                    Commercial Credit Limit / বাণিজ্যিক ক্রেডিট সীমা
+                    {{ $t('shop_admin.commercial_credit_limit') }}
                   </div>
                   <p class="text-caption text-grey-7 q-mb-none">
-                    Max unpaid balance this group may hold on this shop. Leave empty for unlimited.
-                    এই গ্রুপ এই শপে কত টাকা পর্যন্ত বাকি/ক্রেডিটে রাখতে পারবে। খালি = সীমা নেই।
+                    {{ $t('shop_admin.credit_limit_hint') }}
                   </p>
 
                   <div class="row q-col-gutter-md">
@@ -205,18 +201,18 @@
                         v-model.number="editForm.credit_limit_amount"
                         type="number"
                         step="0.01"
-                        label="Credit Amount / ক্রেডিট পরিমাণ"
+                        :label="$t('shop_admin.credit_amount')"
                         outlined
                         dense
                         clearable
-                        placeholder="Unlimited / সীমা নেই"
+                        :placeholder="$t('shop_admin.unlimited')"
                       />
                     </div>
 
                     <div class="col-12 col-sm-6">
                       <q-select
                         v-model="editForm.credit_limit_currency_id"
-                        label="Credit Currency / ক্রেডিট মুদ্রা"
+                        :label="$t('shop_admin.credit_currency')"
                         outlined
                         dense
                         emit-value
@@ -229,7 +225,7 @@
                           (val) =>
                             !editForm.credit_limit_amount ||
                             !!val ||
-                            'Currency required / মুদ্রা লাগবে',
+                            $t('shop_admin.currency_required'),
                         ]"
                       />
                     </div>
@@ -238,10 +234,15 @@
               </q-card-section>
 
               <q-card-actions align="right" class="q-pa-md border-top bg-grey-1">
-                <q-btn flat label="Cancel / বাতিল" color="grey-7" @click="editGroup(null)" />
+                <q-btn
+                  flat
+                  :label="$t('shop_admin.cancel')"
+                  color="grey-7"
+                  @click="editGroup(null)"
+                />
                 <q-btn
                   unelevated
-                  label="Save / সেভ"
+                  :label="$t('shop_admin.save')"
                   color="primary"
                   :loading="store.saving"
                   @click="onSave"
@@ -257,6 +258,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -267,6 +269,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const store = useShopPermissionsStore();
+const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
@@ -291,10 +294,10 @@ const editForm = ref<UpsertAccessPayload>({
   credit_limit_currency_id: null,
 });
 
-const allowDenyOptions = [
-  { label: 'Allow / অনুমতি', value: true },
-  { label: 'Deny / নিষেধ', value: false },
-];
+const allowDenyOptions = computed(() => [
+  { label: t('shop_admin.allow'), value: true },
+  { label: t('shop_admin.deny'), value: false },
+]);
 
 const coerceBool = (value: boolean | null | undefined, fallback = false) =>
   value === true ? true : value === false ? false : fallback;
@@ -352,7 +355,6 @@ const editGroup = (groupId: number | null) => {
 const load = async () => {
   if (!tenantId.value || !shopId.value) return;
 
-  // Fetch shop details for header
   const { data: shopData } = await supabase
     .from('shops')
     .select('name')
@@ -368,7 +370,6 @@ const load = async () => {
 };
 
 const onSave = async () => {
-  // Clear currency if amount is null to satisfy constraint
   if (
     editForm.value.credit_limit_amount === null ||
     editForm.value.credit_limit_amount === undefined ||

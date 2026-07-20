@@ -3,7 +3,7 @@
     <div class="bw-page__stack" v-if="orderStore.loading">
       <div class="column items-center justify-center q-pa-xl">
         <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">Loading order details...</div>
+        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_order_details') }}</div>
       </div>
     </div>
 
@@ -14,8 +14,8 @@
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
             <div>
-              <div class="text-overline text-primary">Order Portal</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">Order Details</h1>
+              <div class="text-overline text-primary">{{ $t('shop_admin.order_portal') }}</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.order_details') }}</h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
                 Details for Order
                 <span class="text-weight-bold">{{ orderStore.currentOrder.order_no }}</span>
@@ -40,12 +40,12 @@
         <div class="col-xs-12 col-md-8">
           <q-card flat bordered class="details-card">
             <q-card-section class="q-px-lg q-py-md border-bottom row items-center justify-between">
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Items in Order</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.items_in_order') }}</div>
               <div
                 class="text-caption text-grey-6"
                 v-if="orderStore.currentOrder.is_negotiable_snapshot"
               >
-                Negotiation Round: {{ orderStore.currentOrder.negotiate_round }}
+                {{ $t('shop_admin.negotiation_round') }} {{ orderStore.currentOrder.negotiate_round }}
               </div>
             </q-card-section>
 
@@ -60,21 +60,46 @@
 
                 <q-item-section>
                   <div class="text-body1 text-weight-bold text-grey-9">{{ item.name }}</div>
-                  <div class="text-caption text-grey-6">Quantity: {{ item.quantity }}</div>
+                  <div class="text-caption text-grey-6">{{ $t('shop_admin.quantity') }}: {{ item.quantity }}</div>
                 </q-item-section>
 
                 <q-item-section side class="column items-end justify-center">
                   <!-- Pricing display -->
-                  <div class="column text-right">
-                    <span class="text-caption text-grey-6">Unit Price</span>
-                    <span class="text-body2 text-weight-bold text-grey-8">
-                      £{{ getDisplayUnitPrice(item).toFixed(2) }}
-                    </span>
-                  </div>
+                  <template v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
+                    <div class="column text-right q-mb-xs">
+                      <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.accounting_cost') }}</span>
+                      <span class="text-body2 text-weight-medium text-grey-8">
+                        £{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                      </span>
+                      <span class="text-caption text-grey-6" style="font-size: 10px;">
+                        Total Cost: £{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                      </span>
+                    </div>
+                    <div class="column text-right">
+                      <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.recipient_price') }}</span>
+                      <span class="text-body2 text-weight-bold text-primary">
+                        £{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                      </span>
+                      <span class="text-caption text-weight-bold text-primary" style="font-size: 11px;">
+                        Total Recipient: £{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="column text-right">
+                      <span class="text-caption text-grey-6">{{ $t('shop_admin.unit_price') }}</span>
+                      <span class="text-body2 text-weight-bold text-grey-8">
+                        £{{ getDisplayUnitPrice(item).toFixed(2) }}
+                      </span>
+                      <span class="text-caption text-grey-6">
+                        Total: £{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
+                      </span>
+                    </div>
+                  </template>
 
                   <!-- Offer editing if in negotiation status -->
                   <div v-if="isNegotiationOpen" class="q-mt-sm row items-center q-gutter-x-sm">
-                    <span class="text-caption text-grey-7">Your Counter:</span>
+                    <span class="text-caption text-grey-7">{{ $t('shop_admin.your_counter') }}</span>
                     <q-input
                       v-model.number="item.customer_offer_amount"
                       type="number"
@@ -111,7 +136,7 @@
                   color="amber-9"
                   unelevated
                   no-caps
-                  label="Submit Counter Offer"
+                  :label="$t('shop_admin.submit_counter_offer')"
                   class="pill-btn text-weight-bold"
                   :loading="orderStore.saving"
                   @click="submitCounterOffer"
@@ -127,30 +152,44 @@
             <!-- Summary Info -->
             <q-card flat bordered class="details-card">
               <q-card-section class="q-px-lg q-py-md border-bottom">
-                <div class="text-subtitle1 text-weight-bold text-grey-9">Order Summary</div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.order_summary') }}</div>
               </q-card-section>
 
               <q-card-section class="q-px-lg q-py-md q-gutter-y-sm">
                 <div class="row justify-between">
-                  <span class="text-grey-6">Order No:</span>
+                  <span class="text-grey-6">{{ $t('shop_admin.order_no') }}</span>
                   <span class="text-weight-bold text-grey-8">{{
                     orderStore.currentOrder.order_no
                   }}</span>
                 </div>
                 <div class="row justify-between">
-                  <span class="text-grey-6">Date:</span>
+                  <span class="text-grey-6">{{ $t('shop_admin.date') }}</span>
                   <span class="text-grey-8">{{
                     formatDate(orderStore.currentOrder.created_at)
                   }}</span>
                 </div>
                 <div class="row justify-between">
-                  <span class="text-grey-6">Shop Type:</span>
+                  <span class="text-grey-6">{{ $t('shop_admin.shop_type_label') }}</span>
                   <span class="text-grey-8 text-capitalize">{{
                     orderStore.currentOrder.shop_type_snapshot
                   }}</span>
                 </div>
-                <div class="row justify-between">
-                  <span class="text-grey-6">Order Mode:</span>
+                <div class="row justify-between" v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
+                  <span class="text-grey-6">{{ $t('shop_admin.payment_mode') }}</span>
+                  <q-badge
+                    :color="orderStore.currentOrder.is_prepaid_snapshot ? 'positive' : 'warning'"
+                    text-color="white"
+                    class="q-py-xs q-px-sm"
+                  >
+                    {{
+                      orderStore.currentOrder.is_prepaid_snapshot
+                        ? $t('shop_admin.payment_prepaid')
+                        : $t('shop_admin.payment_cod')
+                    }}
+                  </q-badge>
+                </div>
+                <div class="row justify-between" v-else>
+                  <span class="text-grey-6">{{ $t('shop_admin.order_mode_label') }}</span>
                   <span class="text-grey-8 text-capitalize">{{
                     orderStore.currentOrder.order_mode_snapshot
                   }}</span>
@@ -158,19 +197,72 @@
 
                 <q-separator class="q-my-sm" />
 
-                <div class="row justify-between items-baseline">
-                  <span class="text-subtitle1 text-weight-bold text-grey-9">Total Amount</span>
-                  <span class="text-h6 text-weight-bold text-primary">
-                    £{{ orderTotal.toFixed(2) }}
-                  </span>
-                </div>
+                <!-- Dropship detailed receipt footer -->
+                <template v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
+                  <div class="row justify-between text-body2 text-grey-7">
+                    <span>{{ $t('shop.items_subtotal') }}</span>
+                    <span>£{{ recipientSubtotal.toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-body2 text-grey-7" v-if="deliveryChargeVal > 0">
+                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>£{{ deliveryChargeVal.toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-body2 text-grey-7" v-if="codChargeVal > 0">
+                    <span>{{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}</span>
+                    <span>£{{ codChargeVal.toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
+                    <span>{{ $t('shop.print_charge') }}</span>
+                    <span>£{{ printChargeVal.toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
+                    <span>{{ $t('shop.packing_charge') }}</span>
+                    <span>£{{ packingChargeVal.toFixed(2) }}</span>
+                  </div>
+
+                  <div class="row justify-between text-body2 text-negative" v-if="discountVal > 0">
+                    <span>{{ $t('shop_admin.discount') }}</span>
+                    <span>-£{{ discountVal.toFixed(2) }}</span>
+                  </div>
+
+                  <q-separator class="q-my-sm" />
+
+                  <div class="row justify-between items-baseline q-mb-xs">
+                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.recipient_pay_total') }}</span>
+                    <span class="text-h6 text-weight-bold text-primary">
+                      £{{ recipientGrandTotal.toFixed(2) }}
+                    </span>
+                  </div>
+
+                  <div class="row justify-between text-caption text-grey-6">
+                    <span>{{ $t('shop_admin.your_cost_accounting') }}</span>
+                    <span>£{{ middlemanTotalCost.toFixed(2) }}</span>
+                  </div>
+
+                  <div class="row justify-between text-body2 text-weight-bold text-positive q-mt-xs">
+                    <span>{{ $t('shop_admin.your_estimated_profit') }}</span>
+                    <span>£{{ estimatedProfit.toFixed(2) }}</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="row justify-between items-baseline">
+                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.total_amount_label') }}</span>
+                    <span class="text-h6 text-weight-bold text-primary">
+                      £{{ orderTotal.toFixed(2) }}
+                    </span>
+                  </div>
+                </template>
               </q-card-section>
             </q-card>
 
             <!-- Shipping Info -->
             <q-card flat bordered class="details-card">
               <q-card-section class="q-px-lg q-py-md border-bottom">
-                <div class="text-subtitle1 text-weight-bold text-grey-9">Shipping Details</div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.shipping_details') }}</div>
               </q-card-section>
 
               <q-card-section class="q-px-lg q-py-md text-body2 text-grey-8">
@@ -183,6 +275,15 @@
                   style="white-space: pre-wrap"
                 >
                   {{ orderStore.currentOrder.shipping_address }}
+                </div>
+                
+                <div
+                  v-if="orderStore.currentOrder.delivery_instructions"
+                  class="q-mt-sm q-pa-sm bg-blue-50 text-blue-9 text-caption rounded-borders"
+                  style="border: 1px solid #90caf9;"
+                >
+                  <div class="text-weight-bold">{{ $t('shop_admin.delivery_instructions_notes') }}</div>
+                  <div style="white-space: pre-wrap">{{ orderStore.currentOrder.delivery_instructions }}</div>
                 </div>
               </q-card-section>
             </q-card>
@@ -234,6 +335,42 @@ const getDisplayUnitPrice = (item: any) => {
 
 const orderTotal = computed(() => {
   return orderItems.value.reduce((sum, item) => sum + getDisplayUnitPrice(item) * item.quantity, 0);
+});
+
+// Dropship calculations
+const recipientSubtotal = computed(() => {
+  return orderItems.value.reduce((sum, item) => sum + (item.customer_sell_price_amount ?? 0) * item.quantity, 0);
+});
+
+const accountingSubtotal = computed(() => {
+  return orderItems.value.reduce((sum, item) => {
+    const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+    return sum + price * item.quantity;
+  }, 0);
+});
+
+const codChargeVal = computed(() => Number(orderStore.currentOrder?.cod_charge_amount || 0));
+const deliveryChargeVal = computed(() => Number(orderStore.currentOrder?.delivery_charge_amount || 0));
+const printChargeVal = computed(() => Number(orderStore.currentOrder?.print_charge_amount || 0));
+const packingChargeVal = computed(() => Number(orderStore.currentOrder?.packing_charge_amount || 0));
+const discountVal = computed(() => Number(orderStore.currentOrder?.discount_amount || 0));
+
+const recipientGrandTotal = computed(() => {
+  return recipientSubtotal.value + codChargeVal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value - discountVal.value;
+});
+
+const middlemanTotalCost = computed(() => {
+  return accountingSubtotal.value + deliveryChargeVal.value + printChargeVal.value + packingChargeVal.value;
+});
+
+const estimatedProfit = computed(() => {
+  return recipientGrandTotal.value - middlemanTotalCost.value;
+});
+
+const codFeePctLabel = computed(() => {
+  const sub = recipientSubtotal.value;
+  if (!sub) return 0;
+  return Number(((codChargeVal.value / sub) * 100).toFixed(1));
 });
 
 const submitCounterOffer = async () => {

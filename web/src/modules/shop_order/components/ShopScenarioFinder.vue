@@ -8,14 +8,14 @@
       <div class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center justify-between">
         <span class="row items-center">
           <q-icon name="explore" class="q-mr-xs" />
-          Interactive Scenario Finder / সিনারিও ফাইন্ডার
+          {{ $t('shop_admin.scenario_finder') }}
         </span>
         <q-btn
           flat
           dense
           color="grey-7"
           icon="restart_alt"
-          label="Reset / রিসেট"
+          :label="$t('shop_admin.reset')"
           size="sm"
           @click="resetFinder"
         />
@@ -24,7 +24,7 @@
       <!-- Question 1: Shop Type -->
       <div class="q-mb-md">
         <div class="text-subtitle2 text-grey-8 q-mb-xs">
-          1. What is the shop type? (দোকানের ধরন কী?)
+          {{ $t('shop_admin.finder_q1_shop_type') }}
         </div>
         <div class="row q-col-gutter-sm">
           <div class="col-4">
@@ -32,7 +32,7 @@
               :outline="finderShopType !== 'vendor_catalog'"
               color="primary"
               class="full-width"
-              label="Vendor Catalog"
+              :label="$t('shop_admin.shop_type_vendor_catalog')"
               no-caps
               @click="selectShopType('vendor_catalog')"
             />
@@ -42,7 +42,7 @@
               :outline="finderShopType !== 'fixed_price'"
               color="primary"
               class="full-width"
-              label="Fixed Price"
+              :label="$t('shop_admin.shop_type_fixed_price')"
               no-caps
               @click="selectShopType('fixed_price')"
             />
@@ -52,7 +52,7 @@
               :outline="finderShopType !== 'dropship'"
               color="primary"
               class="full-width"
-              label="Dropship"
+              :label="$t('shop_admin.shop_type_dropship')"
               no-caps
               @click="selectShopType('dropship')"
             />
@@ -63,7 +63,7 @@
       <!-- Question 2a: Negotiable (for vendor_catalog) -->
       <div v-if="finderShopType === 'vendor_catalog'" class="q-mb-md">
         <div class="text-subtitle2 text-grey-8 q-mb-xs">
-          2. Is it negotiable? (দরকষাকষি করা যাবে?)
+          {{ $t('shop_admin.finder_q2_negotiable') }}
         </div>
         <div class="row q-col-gutter-sm">
           <div class="col-6">
@@ -71,7 +71,7 @@
               :outline="finderNegotiable !== true"
               color="primary"
               class="full-width"
-              label="Yes (হ্যাঁ)"
+              :label="$t('shop_admin.yes')"
               no-caps
               @click="finderNegotiable = true"
             />
@@ -81,7 +81,7 @@
               :outline="finderNegotiable !== false"
               color="primary"
               class="full-width"
-              label="No (না)"
+              :label="$t('shop_admin.no')"
               no-caps
               @click="finderNegotiable = false"
             />
@@ -92,7 +92,7 @@
       <!-- Question 2b: Order Mode (for fixed_price) -->
       <div v-if="finderShopType === 'fixed_price'" class="q-mb-md">
         <div class="text-subtitle2 text-grey-8 q-mb-xs">
-          2. What is the order mode? (অর্ডার মোড কী?)
+          {{ $t('shop_admin.finder_q2_order_mode') }}
         </div>
         <div class="row q-col-gutter-sm">
           <div class="col-6">
@@ -100,7 +100,7 @@
               :outline="finderOrderMode !== 'checkout_fixed'"
               color="primary"
               class="full-width"
-              label="Fixed Checkout (খুচরা)"
+              :label="$t('shop_admin.finder_fixed_checkout')"
               no-caps
               @click="selectOrderMode('checkout_fixed')"
             />
@@ -110,7 +110,7 @@
               :outline="finderOrderMode !== 'checkout_wholesale'"
               color="primary"
               class="full-width"
-              label="Wholesale Checkout (পাইকারি)"
+              :label="$t('shop_admin.finder_wholesale_checkout')"
               no-caps
               @click="selectOrderMode('checkout_wholesale')"
             />
@@ -124,7 +124,7 @@
         class="q-mb-md"
       >
         <div class="text-subtitle2 text-grey-8 q-mb-xs">
-          3. What is the pricing method? (মূল্য নির্ধারণ পদ্ধতি?)
+          {{ $t('shop_admin.finder_q3_pricing') }}
         </div>
         <div class="row q-col-gutter-sm">
           <div class="col-6">
@@ -132,7 +132,7 @@
               :outline="finderPricingMethod !== 'markup'"
               color="primary"
               class="full-width"
-              label="Markup % (মার্কআপ)"
+              :label="$t('shop_admin.finder_markup')"
               no-caps
               @click="finderPricingMethod = 'markup'"
             />
@@ -142,7 +142,7 @@
               :outline="finderPricingMethod !== 'direct_cost'"
               color="primary"
               class="full-width"
-              label="Direct Cost (সরাসরি খরচ)"
+              :label="$t('shop_admin.finder_direct_cost')"
               no-caps
               @click="finderPricingMethod = 'direct_cost'"
             />
@@ -157,19 +157,16 @@
         style="border-radius: 8px"
       >
         <div class="text-subtitle2 text-weight-bold">
-          Recommended Scenario / প্রস্তাবিত সিনারিও:
+          {{ $t('shop_admin.recommended_scenario') }}
         </div>
-        <div class="text-h6 text-weight-medium q-mb-sm">{{ finderResultPreset.name }}</div>
-        <div class="text-body2">{{ finderResultPreset.description }}</div>
-        <div class="text-body2 q-mt-xs text-italic">
-          বাংলা: {{ finderResultPreset.descriptionBn }}
-        </div>
+        <div class="text-h6 text-weight-medium q-mb-sm">{{ presetName(finderResultPreset) }}</div>
+        <div class="text-body2">{{ presetDescription(finderResultPreset) }}</div>
         <div class="q-mt-md">
           <q-btn
             unelevated
             color="white"
             text-color="primary"
-            label="Use this preset / এই প্রিসেট ব্যবহার করুন"
+            :label="$t('shop_admin.use_this_preset')"
             no-caps
             :disable="applyDisabled"
             @click="emitSelect(finderResultPreset.id)"
@@ -184,7 +181,7 @@
 
     <template v-if="showAllCards">
       <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md">
-        All Shop Configuration Scenarios / সকল কনফিগারেশন সিনারিও
+        {{ $t('shop_admin.all_scenarios') }}
       </div>
 
       <div class="q-gutter-y-md">
@@ -198,40 +195,38 @@
         >
           <q-card-section class="q-pb-xs">
             <div class="text-subtitle2 text-weight-bold text-primary">
-              {{ sc.name }}
+              {{ presetName(sc) }}
             </div>
             <div class="text-caption text-grey-6 q-mt-xs">
-              <strong>Downstream Path:</strong> {{ sc.downstream }}
+              <strong>{{ $t('shop_admin.downstream_path') }}</strong> {{ sc.downstream }}
             </div>
           </q-card-section>
 
           <q-card-section class="q-pt-xs q-pb-md">
-            <div class="text-body2 text-grey-8">{{ sc.description }}</div>
-            <div class="text-body2 text-grey-7 q-mt-xs text-italic">
-              বাংলা: {{ sc.descriptionBn }}
-            </div>
+            <div class="text-body2 text-grey-8">{{ presetDescription(sc) }}</div>
 
             <div class="q-mt-sm bg-grey-1 q-pa-sm rounded-borders">
               <div class="row q-col-gutter-sm text-caption text-grey-8">
                 <div class="col-4">
-                  <strong>Shop Type:</strong> {{ sc.fields.shop_type }}
+                  <strong>{{ $t('shop_admin.field_shop_type') }}</strong> {{ sc.fields.shop_type }}
                 </div>
                 <div class="col-4">
-                  <strong>Order Mode:</strong> {{ sc.fields.order_mode }}
+                  <strong>{{ $t('shop_admin.field_order_mode') }}</strong> {{ sc.fields.order_mode }}
                 </div>
                 <div class="col-4">
-                  <strong>Negotiable:</strong>
-                  {{ sc.fields.is_negotiable ? 'Yes' : 'No' }}
+                  <strong>{{ $t('shop_admin.field_negotiable') }}</strong>
+                  {{ sc.fields.is_negotiable ? $t('shop_admin.yes') : $t('shop_admin.no') }}
                 </div>
                 <div v-if="sc.fields.shop_type === 'fixed_price'" class="col-4">
-                  <strong>Pricing Method:</strong> {{ sc.fields.pricing_method }}
+                  <strong>{{ $t('shop_admin.pricing_method') }}:</strong> {{ sc.fields.pricing_method }}
                 </div>
                 <div v-if="sc.fields.shop_type === 'fixed_price'" class="col-4">
-                  <strong>Qty Display:</strong> {{ sc.fields.quantity_display_mode }}
+                  <strong>{{ $t('shop_admin.qty_display_mode') }}:</strong>
+                  {{ sc.fields.quantity_display_mode }}
                 </div>
                 <div class="col-4">
-                  <strong>Show Stock Qty:</strong>
-                  {{ sc.fields.show_stock_quantity ? 'Yes' : 'No' }}
+                  <strong>{{ $t('shop_admin.show_stock_qty') }}:</strong>
+                  {{ sc.fields.show_stock_quantity ? $t('shop_admin.yes') : $t('shop_admin.no') }}
                 </div>
               </div>
             </div>
@@ -241,7 +236,7 @@
                 outline
                 color="primary"
                 size="sm"
-                label="Use this preset / এই প্রিসেট ব্যবহার করুন"
+                :label="$t('shop_admin.use_this_preset')"
                 no-caps
                 :disable="applyDisabled"
                 @click="emitSelect(sc.id)"
@@ -265,6 +260,7 @@ import type {
   ShopConfigurationPresetId,
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
 import type { ShopOrderMode, ShopType } from 'src/modules/shop_order/types';
+import { useShopLocale } from '../composables/useShopLocale';
 
 const props = withDefaults(
   defineProps<{
@@ -285,6 +281,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   select: [id: ShopConfigurationPresetId];
 }>();
+
+const { presetName, presetDescription } = useShopLocale();
 
 const finderShopType = ref<ShopType | null>(null);
 const finderNegotiable = ref<boolean | null>(null);

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopCartService } from '../services/shopCartService';
-import type { CartData } from '../repositories/shopCartRepository';
+import type { CartData, CartChargesPayload } from '../repositories/shopCartRepository';
 
 export interface ShopCartState {
   cart: CartData['cart'] | null;
@@ -33,11 +33,52 @@ export const useShopCartStore = defineStore('shopCart', {
         return sum + price * item.quantity;
       }, 0);
     },
+    buyerCartTotal: (state) => {
+      // Calculate total based only on the wholesale cost (buyer purchase cost)
+      return state.items.reduce((sum, item) => {
+        const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+        return sum + price * item.quantity;
+      }, 0);
+    },
     currencyCode: (state) => {
       // Find currency code from items (or return default/empty)
       if (state.items.length === 0) return '';
       // In a real application we would look up from global currencies, but we can return the first item's currency symbol/code if snapshot is available
       return '';
+    },
+    faceSubtotal(state): number {
+      return this.cartTotal;
+    },
+    chargeTotal(state): number {
+      if (!state.cart) return 0;
+      const cod = Number(state.cart.cod_charge_amount || 0);
+      const delivery = Number(state.cart.delivery_charge_amount || 0);
+      const print = Number(state.cart.print_charge_amount || 0);
+      const packing = Number(state.cart.packing_charge_amount || 0);
+      return cod + delivery + print + packing;
+    },
+    recipientGrandTotal(state): number {
+      const subtotal = this.faceSubtotal;
+      if (!state.cart) return subtotal;
+      const cod = Number(state.cart.cod_charge_amount || 0);
+      const delivery = Number(state.cart.delivery_charge_amount || 0);
+      const print = Number(state.cart.print_charge_amount || 0);
+      const packing = Number(state.cart.packing_charge_amount || 0);
+      const discount = Number(state.cart.discount_amount || 0);
+      return subtotal + cod + delivery + print + packing - discount;
+    },
+    estimatedProfit(state): number {
+      const subtotal = this.faceSubtotal;
+      const buyerTotal = this.buyerCartTotal;
+      if (!state.cart) return subtotal - buyerTotal;
+      const cod = Number(state.cart.cod_charge_amount || 0);
+      const delivery = Number(state.cart.delivery_charge_amount || 0);
+      const print = Number(state.cart.print_charge_amount || 0);
+      const packing = Number(state.cart.packing_charge_amount || 0);
+      const discount = Number(state.cart.discount_amount || 0);
+      const grandTotal = subtotal + cod + delivery + print + packing - discount;
+      const buyerCost = buyerTotal + delivery + print + packing;
+      return grandTotal - buyerCost;
     },
   },
 
@@ -130,6 +171,42 @@ export const useShopCartStore = defineStore('shopCart', {
         this.cart = res.data?.cart ?? null;
         this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         showSuccessNotification('Item removed from cart.');
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async updatePrice(cartItemId: number, price: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopCartService.updateCartItemPrice(cartItemId, price);
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        this.cart = res.data?.cart ?? null;
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async updateCharges(shopId: number, cartId: number, charges: CartChargesPayload) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopCartService.updateShopCartCharges(shopId, cartId, charges);
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        this.cart = res.data?.cart ?? null;
+        this.items = (res.data?.items ?? []).sort((a, b) => a.id - b.id);
         return res;
       } finally {
         this.saving = false;

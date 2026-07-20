@@ -7,6 +7,13 @@ const submitOrder = async (
   recipientPhone: string,
   shippingAddress: string,
   billingProfileId: number | null,
+  isPrepaid?: boolean,
+  deliveryInstructions?: string | null,
+  codChargeAmount?: number,
+  deliveryChargeAmount?: number,
+  printChargeAmount?: number,
+  packingChargeAmount?: number,
+  discountAmount?: number,
 ): Promise<ShopServiceResult<{ order_id: number; order_no: string; status: string }>> => {
   try {
     const data = await shopOrderRepository.submitShopOrderFromCart(
@@ -15,6 +22,13 @@ const submitOrder = async (
       recipientPhone,
       shippingAddress,
       billingProfileId,
+      isPrepaid,
+      deliveryInstructions,
+      codChargeAmount,
+      deliveryChargeAmount,
+      printChargeAmount,
+      packingChargeAmount,
+      discountAmount,
     );
     return { success: true, data };
   } catch (error) {

@@ -6,10 +6,10 @@
           <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
-          <div class="text-overline">Customer Groups</div>
-          <h1 class="text-h5 q-my-none">{{ groupName || 'Members' }}</h1>
+          <div class="text-overline">{{ $t('navigation.customer_groups') }}</div>
+          <h1 class="text-h5 q-my-none">{{ groupName || $t('shop_admin.members') }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Add members and assign shop roles for this customer group.
+            {{ $t('shop_admin.members_subtitle') }}
           </p>
         </div>
         <div class="col-auto row q-gutter-sm">
@@ -18,7 +18,7 @@
             unelevated
             no-caps
             icon="person_add"
-            label="Add Member"
+            :label="$t('shop_admin.add_member')"
             @click="openCreateDialog"
           />
         </div>
@@ -27,26 +27,26 @@
       <q-banner v-if="error" class="text-white bg-negative" rounded>
         {{ error }}
         <template #action>
-          <q-btn flat color="white" label="Dismiss" @click="error = null" />
+          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="error = null" />
         </template>
       </q-banner>
 
       <q-card flat bordered>
         <q-card-section v-if="loading" class="text-grey-7 text-center q-pa-xl">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
-          Loading members…
+          {{ $t('shop_admin.loading_members') }}
         </q-card-section>
 
         <q-card-section v-else-if="members.length === 0" class="text-grey-6 text-center q-pa-xl">
           <q-icon name="person_off" size="48px" class="q-mb-sm block" />
-          No members in this group yet.
+          {{ $t('shop_admin.no_members') }}
           <div class="q-mt-md">
             <q-btn
               color="primary"
               outline
               no-caps
               icon="person_add"
-              label="Add Member"
+              :label="$t('shop_admin.add_member')"
               @click="openCreateDialog"
             />
           </div>
@@ -99,7 +99,7 @@
                 color="grey-7"
                 @click="openEditDialog(props.row)"
               >
-                <q-tooltip>Edit member</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.edit_member_tooltip') }}</q-tooltip>
               </q-btn>
               <q-btn
                 flat
@@ -109,7 +109,7 @@
                 color="negative"
                 @click="openDeleteDialog(props.row)"
               >
-                <q-tooltip>Delete member</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.delete_member_tooltip') }}</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -120,7 +120,9 @@
     <q-dialog v-model="dialogOpen" persistent>
       <q-card style="min-width: 400px">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ form.id ? 'Edit Member' : 'Add Member' }}</div>
+          <div class="text-h6">
+            {{ form.id ? $t('shop_admin.edit_member') : $t('shop_admin.add_member') }}
+          </div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -128,18 +130,18 @@
         <q-card-section class="q-gutter-md">
           <q-input
             v-model="form.email"
-            label="Email *"
+            :label="$t('shop_admin.email') + ' *'"
             type="email"
             outlined
             dense
             :disable="!!form.id"
           />
-          <q-input v-model="form.name" label="Name (optional)" outlined dense />
+          <q-input v-model="form.name" :label="$t('shop_admin.name_optional')" outlined dense />
           <q-select
             v-if="!form.id"
             v-model="form.tenantRoleId"
             :options="shopRoleOptions"
-            label="Shop role"
+            :label="$t('shop_admin.shop_role')"
             outlined
             dense
             emit-value
@@ -147,10 +149,10 @@
             clearable
           />
           <div class="row items-center justify-between">
-            <div class="text-subtitle2 text-grey-8">Status</div>
+            <div class="text-subtitle2 text-grey-8">{{ $t('shop_admin.status') }}</div>
             <q-toggle
               v-model="form.isActive"
-              :label="form.isActive ? 'Active' : 'Inactive'"
+              :label="form.isActive ? $t('shop_admin.active') : $t('shop_admin.inactive')"
               color="positive"
               keep-color
             />
@@ -158,12 +160,12 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
           <q-btn
             color="primary"
             unelevated
             no-caps
-            label="Save"
+            :label="$t('shop_admin.save')"
             :loading="saving"
             :disable="!form.email.trim()"
             @click="saveMember"
@@ -176,18 +178,20 @@
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="warning" text-color="white" />
-          <span class="q-ml-sm text-subtitle1 text-weight-bold">Delete Member</span>
+          <span class="q-ml-sm text-subtitle1 text-weight-bold">{{
+            $t('shop_admin.delete_member')
+          }}</span>
         </q-card-section>
         <q-card-section class="q-pt-none">
-          Remove <strong>{{ memberToDelete?.email }}</strong> from this group?
+          {{ $t('shop_admin.delete_member_confirm', { email: memberToDelete?.email }) }}
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
           <q-btn
             color="negative"
             unelevated
             no-caps
-            label="Delete"
+            :label="$t('shop_admin.delete')"
             :loading="saving"
             @click="confirmDelete"
           />
@@ -200,6 +204,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
@@ -213,6 +218,7 @@ interface ShopRole {
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const groupStore = useCustomerGroupStore();
 
@@ -239,13 +245,13 @@ const form = reactive({
   tenantRoleId: null as number | null,
 });
 
-const columns = [
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, sortable: true },
-  { name: 'email', label: 'Email', field: 'email', align: 'left' as const, sortable: true },
-  { name: 'role', label: 'Shop Role', field: 'tenant_role_id', align: 'left' as const },
-  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
+const columns = computed(() => [
+  { name: 'name', label: t('shop_admin.col_name'), field: 'name', align: 'left' as const, sortable: true },
+  { name: 'email', label: t('shop_admin.email'), field: 'email', align: 'left' as const, sortable: true },
+  { name: 'role', label: t('shop_admin.shop_role_col'), field: 'tenant_role_id', align: 'left' as const },
+  { name: 'is_active', label: t('shop_admin.active'), field: 'is_active', align: 'center' as const },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
-];
+]);
 
 const sortedMembers = computed(() =>
   [...members.value].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email)),

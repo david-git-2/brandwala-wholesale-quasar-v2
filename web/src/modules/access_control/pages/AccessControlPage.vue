@@ -792,6 +792,72 @@
                       </q-card-section>
                     </template>
                   </q-card>
+
+                  <!-- Associated Billing Profiles Card -->
+                  <q-card flat class="floating-surface shadow-1 q-mt-md">
+                    <q-card-section class="row items-center justify-between">
+                      <div>
+                        <div class="text-subtitle1 text-weight-bold text-grey-9">
+                          Associated Billing Profiles (Pricing Tier)
+                        </div>
+                        <div class="text-caption text-grey-7">
+                          Billing profiles that automatically receive this customer group's tier pricing.
+                        </div>
+                      </div>
+                      <q-btn
+                        color="primary"
+                        class="pill-btn slim-btn"
+                        no-caps
+                        size="sm"
+                        icon="link"
+                        label="Link Billing Profile"
+                        :disable="!selectedCustomerGroup"
+                        @click="openLinkProfileDialog"
+                      />
+                    </q-card-section>
+
+                    <q-separator />
+
+                    <q-card-section v-if="billingProfileStore.loading" class="text-center text-grey-7">
+                      <q-spinner-dots size="30px" color="primary" />
+                    </q-card-section>
+
+                    <q-card-section v-else-if="linkedBillingProfiles.length === 0" class="text-grey-7 text-center">
+                      No associated billing profiles found for this customer group.
+                    </q-card-section>
+
+                    <q-card-section v-else class="q-pa-none">
+                      <q-table
+                        flat
+                        row-key="id"
+                        :rows="linkedBillingProfiles"
+                        :columns="[
+                          { name: 'name', label: 'Name', field: 'name', align: 'left' },
+                          { name: 'email', label: 'Email', field: 'email', align: 'left' },
+                          { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
+                          { name: 'actions', label: 'Actions', field: 'actions', align: 'right' }
+                        ]"
+                        :pagination="{ rowsPerPage: 0 }"
+                        hide-bottom
+                        class="costing-list-table"
+                      >
+                        <template #body-cell-actions="props">
+                          <q-td :props="props">
+                            <q-btn
+                              flat
+                              round
+                              dense
+                              color="negative"
+                              icon="link_off"
+                              @click="unlinkProfile(props.row)"
+                            >
+                              <q-tooltip>Unlink from Group</q-tooltip>
+                            </q-btn>
+                          </q-td>
+                        </template>
+                      </q-table>
+                    </q-card-section>
+                  </q-card>
                 </div>
               </div>
             </q-tab-panel>
@@ -1311,6 +1377,67 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Link Billing Profile Dialog -->
+    <q-dialog v-model="linkProfileDialogOpen" persistent>
+      <q-card style="min-width: 400px; border-radius: 12px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-weight-bold">Link Billing Profile</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-py-md">
+          <div class="text-caption text-grey-7 q-mb-md">
+            Select a billing profile to associate with customer group: <strong>{{ selectedCustomerGroup?.name }}</strong>
+          </div>
+          
+          <template v-if="unassociatedProfileOptions.length > 0">
+            <q-select
+              v-model="profileToLink"
+              :options="unassociatedProfileOptions"
+              label="Billing Profile"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="soft-input"
+              :rules="[v => !!v || 'Please select a profile']"
+            />
+          </template>
+          
+          <template v-else>
+            <div class="text-center q-pa-md text-grey-7">
+              <div class="q-mb-md">No billing profiles are available to link.</div>
+              <q-btn
+                color="primary"
+                no-caps
+                unelevated
+                class="pill-btn"
+                icon="add"
+                label="Create Billing Profile"
+                @click="goToBillingProfileCreate"
+              />
+            </div>
+          </template>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            v-if="unassociatedProfileOptions.length > 0"
+            color="primary"
+            unelevated
+            class="pill-btn"
+            no-caps
+            label="Link"
+            :loading="billingProfileStore.saving"
+            :disable="!profileToLink"
+            @click="submitLinkProfile"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -1326,6 +1453,7 @@ import { useMembershipStore } from 'src/modules/membership/stores/membershipStor
 import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
+import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
 import { useTenantModuleStore } from 'src/modules/tenant/stores/tenantModuleStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import SubmoduleAccessPanel from 'src/modules/tenant/components/SubmoduleAccessPanel.vue';
@@ -1362,6 +1490,7 @@ const tenantModuleStore = useTenantModuleStore();
 const moduleStore = useModuleStore();
 const membershipStore = useMembershipStore();
 const customerGroupStore = useCustomerGroupStore();
+const billingProfileStore = useBillingProfileStore();
 
 const tenantId = computed(() => authStore.tenantId);
 const tenant = computed<Tenant | null>(
@@ -1767,7 +1896,87 @@ const sortedCustomerGroupMembers = computed(() => {
 
 const selectCustomerGroup = async (groupId: number) => {
   selectedCustomerGroupId.value = groupId;
-  await loadCustomerGroupMembers(groupId);
+  await Promise.all([
+    loadCustomerGroupMembers(groupId),
+    loadBillingProfilesForTenant()
+  ]);
+};
+
+const loadBillingProfilesForTenant = async () => {
+  if (!tenantId.value) return;
+  await billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId.value, page_size: 1000 });
+};
+
+const linkedBillingProfiles = computed(() => {
+  if (!selectedCustomerGroupId.value) return [];
+  return billingProfileStore.items.filter(
+    (p) => p.customer_group_id === selectedCustomerGroupId.value
+  );
+});
+
+const unassociatedProfileOptions = computed(() => {
+  return billingProfileStore.items
+    .filter((p) => p.customer_group_id !== selectedCustomerGroupId.value)
+    .map((p) => ({
+      label: p.customer_group_id 
+        ? `${p.name} (Group #${p.customer_group_id})` 
+        : p.name,
+      value: p.id,
+    }));
+});
+
+const linkProfileDialogOpen = ref(false);
+const profileToLink = ref<number | null>(null);
+
+const openLinkProfileDialog = () => {
+  profileToLink.value = null;
+  linkProfileDialogOpen.value = true;
+};
+
+const goToBillingProfileCreate = () => {
+  linkProfileDialogOpen.value = false;
+  void router.push({
+    name: 'app-global-billing-profiles',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+    },
+    query: {
+      create: 'true',
+    },
+  });
+};
+
+const submitLinkProfile = async () => {
+  if (!profileToLink.value || !selectedCustomerGroupId.value) return;
+  const profile = billingProfileStore.items.find(p => p.id === profileToLink.value);
+  if (!profile) return;
+  
+  const res = await billingProfileStore.updateBillingProfile({
+    id: profile.id,
+    tenant_id: profile.tenant_id,
+    name: profile.name,
+    customer_group_id: selectedCustomerGroupId.value,
+    email: profile.email || null,
+    phone: profile.phone || null,
+    address: profile.address || null,
+    color: profile.color || null,
+  });
+  if (res.success) {
+    linkProfileDialogOpen.value = false;
+  }
+};
+
+const unlinkProfile = async (profile: any) => {
+  await billingProfileStore.updateBillingProfile({
+    id: profile.id,
+    tenant_id: profile.tenant_id,
+    name: profile.name,
+    customer_group_id: null,
+    email: profile.email || null,
+    phone: profile.phone || null,
+    address: profile.address || null,
+    color: profile.color || null,
+  });
 };
 
 const loadCustomerGroupMembers = async (groupId: number) => {

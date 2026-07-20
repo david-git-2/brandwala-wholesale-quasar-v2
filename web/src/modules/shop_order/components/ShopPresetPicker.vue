@@ -1,7 +1,7 @@
 <template>
   <div class="shop-preset-picker q-mb-md">
     <div class="text-subtitle2 text-weight-medium q-mb-xs">
-      Start from a preset / প্রিসেট থেকে শুরু করুন
+      {{ $t('shop_admin.start_from_preset') }}
     </div>
     <div class="row q-gutter-sm">
       <q-chip
@@ -15,9 +15,6 @@
         @click="emit('update:modelValue', preset.id)"
       >
         <span class="text-weight-medium">{{ preset.id }} — {{ shortLabel(preset.id) }}</span>
-        <span v-if="shortLabelBn(preset.id)" class="q-ml-xs text-caption opacity-80">
-          {{ shortLabelBn(preset.id) }}
-        </span>
       </q-chip>
       <q-chip
         clickable
@@ -27,8 +24,8 @@
         :text-color="modelValue === 'custom' ? 'white' : undefined"
         @click="emit('update:modelValue', 'custom')"
       >
-        <span class="text-weight-medium">Custom</span>
-        <span class="q-ml-xs text-caption opacity-80">ম্যানুয়ালি কনফিগার</span>
+        <span class="text-weight-medium">{{ $t('shop_admin.custom') }}</span>
+        <span class="q-ml-xs text-caption opacity-80">{{ $t('shop_admin.configure_manually') }}</span>
       </q-chip>
     </div>
     <q-banner
@@ -47,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import type {
   ShopConfigurationPreset,
   ShopConfigurationPresetId,
@@ -62,29 +60,18 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: ShopConfigurationPresetId | 'custom'): void;
 }>();
 
-const SHORT_LABELS: Record<ShopConfigurationPresetId, string> = {
-  A: 'Procurement',
-  B: 'Catalog',
-  C: 'Retail markup',
-  D: 'Direct cost',
-  E: 'Wholesale',
-  F: 'Dropship',
-};
+const { t } = useI18n();
 
-const SHORT_LABELS_BN: Record<ShopConfigurationPresetId, string> = {
-  A: 'ক্রয়',
-  B: 'ক্যাটালগ',
-  C: 'মার্কআপ',
-  D: 'সরাসরি খরচ',
-  E: 'পাইকারি',
-  F: 'ড্রপশিপ',
+const SHORT_LABEL_KEYS: Record<ShopConfigurationPresetId, string> = {
+  A: 'shop_admin.preset_short_a',
+  B: 'shop_admin.preset_short_b',
+  C: 'shop_admin.preset_short_c',
+  D: 'shop_admin.preset_short_d',
+  E: 'shop_admin.preset_short_e',
+  F: 'shop_admin.preset_short_f',
 };
 
 function shortLabel(id: ShopConfigurationPresetId): string {
-  return SHORT_LABELS[id];
-}
-
-function shortLabelBn(id: ShopConfigurationPresetId): string {
-  return SHORT_LABELS_BN[id];
+  return t(SHORT_LABEL_KEYS[id]);
 }
 </script>

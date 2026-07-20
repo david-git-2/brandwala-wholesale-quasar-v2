@@ -4420,9 +4420,16 @@ export type Database = {
       }
       shop_carts: {
         Row: {
+          cod_charge_amount: number
           created_at: string
           customer_group_id: number
+          delivery_charge_amount: number
+          delivery_instructions: string | null
+          discount_amount: number
           id: number
+          is_prepaid: boolean
+          packing_charge_amount: number
+          print_charge_amount: number
           see_price_snapshot: boolean
           shop_id: number
           status: Database["public"]["Enums"]["shop_cart_status"]
@@ -4430,9 +4437,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cod_charge_amount?: number
           created_at?: string
           customer_group_id: number
+          delivery_charge_amount?: number
+          delivery_instructions?: string | null
+          discount_amount?: number
           id?: never
+          is_prepaid?: boolean
+          packing_charge_amount?: number
+          print_charge_amount?: number
           see_price_snapshot?: boolean
           shop_id: number
           status?: Database["public"]["Enums"]["shop_cart_status"]
@@ -4440,9 +4454,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cod_charge_amount?: number
           created_at?: string
           customer_group_id?: number
+          delivery_charge_amount?: number
+          delivery_instructions?: string | null
+          discount_amount?: number
           id?: never
+          is_prepaid?: boolean
+          packing_charge_amount?: number
+          print_charge_amount?: number
           see_price_snapshot?: boolean
           shop_id?: number
           status?: Database["public"]["Enums"]["shop_cart_status"]
@@ -4728,19 +4749,26 @@ export type Database = {
           billing_profile_id: number | null
           cargo_rate: number | null
           cart_id: number | null
+          cod_charge_amount: number
           conversion_rate: number | null
           created_at: string
           created_by_email: string
           customer_group_id: number
+          delivery_charge_amount: number
+          delivery_instructions: string | null
+          discount_amount: number
           fulfilled_at: string | null
           global_invoice_id: number | null
           id: number
           is_negotiable_snapshot: boolean
+          is_prepaid_snapshot: boolean
           name: string
           negotiate_round: number
           order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no: string
+          packing_charge_amount: number
           placed_at: string | null
+          print_charge_amount: number
           profit_rate: number | null
           recipient_name: string | null
           recipient_phone: string | null
@@ -4755,19 +4783,26 @@ export type Database = {
           billing_profile_id?: number | null
           cargo_rate?: number | null
           cart_id?: number | null
+          cod_charge_amount?: number
           conversion_rate?: number | null
           created_at?: string
           created_by_email: string
           customer_group_id: number
+          delivery_charge_amount?: number
+          delivery_instructions?: string | null
+          discount_amount?: number
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
           is_negotiable_snapshot?: boolean
+          is_prepaid_snapshot?: boolean
           name: string
           negotiate_round?: number
           order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no: string
+          packing_charge_amount?: number
           placed_at?: string | null
+          print_charge_amount?: number
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -4782,19 +4817,26 @@ export type Database = {
           billing_profile_id?: number | null
           cargo_rate?: number | null
           cart_id?: number | null
+          cod_charge_amount?: number
           conversion_rate?: number | null
           created_at?: string
           created_by_email?: string
           customer_group_id?: number
+          delivery_charge_amount?: number
+          delivery_instructions?: string | null
+          discount_amount?: number
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
           is_negotiable_snapshot?: boolean
+          is_prepaid_snapshot?: boolean
           name?: string
           negotiate_round?: number
           order_mode_snapshot?: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no?: string
+          packing_charge_amount?: number
           placed_at?: string | null
+          print_charge_amount?: number
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -4998,7 +5040,11 @@ export type Database = {
           allow_delivery: boolean
           buy_currency_id: number
           created_at: string
+          default_cod_charge_pct: number
           default_currency_id: number | null
+          default_delivery_charge_amount: number
+          default_packing_charge_amount: number
+          default_print_charge_amount: number
           global_stock_type_id: number | null
           id: number
           is_active: boolean
@@ -5020,7 +5066,11 @@ export type Database = {
           allow_delivery?: boolean
           buy_currency_id: number
           created_at?: string
+          default_cod_charge_pct?: number
           default_currency_id?: number | null
+          default_delivery_charge_amount?: number
+          default_packing_charge_amount?: number
+          default_print_charge_amount?: number
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
@@ -5042,7 +5092,11 @@ export type Database = {
           allow_delivery?: boolean
           buy_currency_id?: number
           created_at?: string
+          default_cod_charge_pct?: number
           default_currency_id?: number | null
+          default_delivery_charge_amount?: number
+          default_packing_charge_amount?: number
+          default_print_charge_amount?: number
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
@@ -9605,6 +9659,10 @@ export type Database = {
         Returns: undefined
       }
       remove_shop_cart_item: { Args: { p_cart_item_id: number }; Returns: Json }
+      resolve_billing_profile_for_customer_group: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: number
+      }
       resolve_costing_file_creator_label: {
         Args: {
           p_created_by_email: string
@@ -9737,6 +9795,13 @@ export type Database = {
         Args: {
           p_billing_profile_id?: number
           p_cart_id: number
+          p_cod_charge_amount?: number
+          p_delivery_charge_amount?: number
+          p_delivery_instructions?: string
+          p_discount_amount?: number
+          p_is_prepaid?: boolean
+          p_packing_charge_amount?: number
+          p_print_charge_amount?: number
           p_recipient_name: string
           p_recipient_phone: string
           p_shipping_address: string
@@ -10103,6 +10168,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_shop_cart_item_price: {
+        Args: { p_cart_item_id: number; p_price: number }
+        Returns: Json
+      }
       update_shop_cart_item_qty: {
         Args: { p_cart_item_id: number; p_quantity: number }
         Returns: Json
@@ -10392,7 +10461,11 @@ export type Database = {
         Args: {
           p_allow_delivery?: boolean
           p_buy_currency_id?: number
+          p_default_cod_charge_pct?: number
           p_default_currency_id?: number
+          p_default_delivery_charge_amount?: number
+          p_default_packing_charge_amount?: number
+          p_default_print_charge_amount?: number
           p_global_stock_type_id?: number
           p_id?: number
           p_is_active: boolean
@@ -10413,7 +10486,11 @@ export type Database = {
           allow_delivery: boolean
           buy_currency_id: number
           created_at: string
+          default_cod_charge_pct: number
           default_currency_id: number | null
+          default_delivery_charge_amount: number
+          default_packing_charge_amount: number
+          default_print_charge_amount: number
           global_stock_type_id: number | null
           id: number
           is_active: boolean

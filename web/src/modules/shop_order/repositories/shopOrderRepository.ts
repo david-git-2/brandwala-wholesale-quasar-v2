@@ -50,6 +50,10 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_pricing_method: payload.pricing_method ?? null,
     p_markup_percentage: payload.markup_percentage ?? 0,
     p_quantity_display_mode: payload.quantity_display_mode ?? null,
+    p_default_cod_charge_pct: (payload as any).default_cod_charge_pct ?? 0,
+    p_default_delivery_charge_amount: (payload as any).default_delivery_charge_amount ?? 0,
+    p_default_print_charge_amount: (payload as any).default_print_charge_amount ?? 0,
+    p_default_packing_charge_amount: (payload as any).default_packing_charge_amount ?? 0,
   });
 
   if (error) {
@@ -122,6 +126,13 @@ const submitShopOrderFromCart = async (
   recipientPhone: string,
   shippingAddress: string,
   billingProfileId: number | null,
+  isPrepaid?: boolean,
+  deliveryInstructions?: string | null,
+  codChargeAmount?: number,
+  deliveryChargeAmount?: number,
+  printChargeAmount?: number,
+  packingChargeAmount?: number,
+  discountAmount?: number,
 ): Promise<{ order_id: number; order_no: string; status: string }> => {
   const { data, error } = await supabase.rpc('submit_shop_order_from_cart', {
     p_cart_id: cartId,
@@ -129,6 +140,13 @@ const submitShopOrderFromCart = async (
     p_recipient_phone: recipientPhone,
     p_shipping_address: shippingAddress,
     p_billing_profile_id: billingProfileId || null,
+    p_is_prepaid: isPrepaid ?? false,
+    p_delivery_instructions: deliveryInstructions ?? null,
+    p_cod_charge_amount: codChargeAmount ?? 0,
+    p_delivery_charge_amount: deliveryChargeAmount ?? 0,
+    p_print_charge_amount: printChargeAmount ?? 0,
+    p_packing_charge_amount: packingChargeAmount ?? 0,
+    p_discount_amount: discountAmount ?? 0,
   });
 
   if (error) throw error;

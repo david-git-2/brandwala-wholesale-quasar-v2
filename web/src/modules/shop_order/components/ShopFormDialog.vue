@@ -4,10 +4,12 @@
       <!-- Header -->
       <q-card-section class="row items-center justify-between q-px-lg q-py-md">
         <div>
-          <div class="text-h6 text-weight-medium">{{ isEdit ? 'Edit Shop' : 'Create Shop' }}</div>
+          <div class="text-h6 text-weight-medium">
+            {{ isEdit ? $t('shop_admin.edit_shop') : $t('shop_admin.create_shop') }}
+          </div>
           <div v-if="isEdit" class="q-mt-xs">
             <div class="text-caption text-grey-6 q-mb-xs">
-              Shop type is locked after creation.
+              {{ $t('shop_admin.shop_type_locked') }}
             </div>
             <q-chip
               clickable
@@ -19,12 +21,12 @@
               @click="openScenariosHelp"
             >
               {{ detectedPresetBadgeLabel }}
-              <q-tooltip>View scenario guide / সিনারিও গাইড দেখুন</q-tooltip>
+              <q-tooltip>{{ $t('shop_admin.view_scenario_guide') }}</q-tooltip>
             </q-chip>
           </div>
         </div>
         <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
-          <q-tooltip>Shop Functionality Guide</q-tooltip>
+          <q-tooltip>{{ $t('shop_admin.shop_functionality_guide') }}</q-tooltip>
         </q-btn>
       </q-card-section>
 
@@ -43,7 +45,7 @@
           <div class="col-7">
             <q-input
               v-model="form.name"
-              label="Shop name *"
+              :label="$t('shop_admin.shop_name') + ' *'"
               outlined
               dense
               :error="!!errors.name"
@@ -54,10 +56,10 @@
           <div class="col-5">
             <q-input
               v-model="form.slug"
-              label="Slug *"
+              :label="$t('shop_admin.slug') + ' *'"
               outlined
               dense
-              hint="URL-safe identifier"
+              :hint="$t('shop_admin.slug_hint')"
               :error="!!errors.slug"
               :error-message="errors.slug"
               @update:model-value="
@@ -76,7 +78,7 @@
           :options="shopTypeOptions"
           emit-value
           map-options
-          label="Shop type *"
+          :label="$t('shop_admin.shop_type') + ' *'"
           outlined
           dense
           class="q-mb-md"
@@ -94,18 +96,18 @@
           emit-value
           map-options
           :loading="loadingVendors"
-          label="Vendor *"
+          :label="$t('shop_admin.vendor') + ' *'"
           outlined
           dense
           class="q-mb-md"
-          hint="Products will be filtered to this vendor"
+          :hint="$t('shop_admin.vendor_hint')"
           :error="!!errors.vendor_code"
           :error-message="errors.vendor_code"
         >
           <template #no-option>
             <q-item>
               <q-item-section class="text-grey-6">
-                {{ loadingVendors ? 'Loading vendors…' : 'No vendors available' }}
+                {{ loadingVendors ? $t('shop_admin.loading_vendors') : $t('shop_admin.no_vendors') }}
               </q-item-section>
             </q-item>
           </template>
@@ -113,7 +115,7 @@
 
         <!-- Shop type locked label when editing -->
         <div v-if="isEdit && shopTypeLabel" class="q-mb-md q-pa-sm bg-grey-2 rounded-borders">
-          <div class="text-caption text-grey-6">Shop type</div>
+          <div class="text-caption text-grey-6">{{ $t('shop_admin.shop_type') }}</div>
           <div class="text-body2 text-weight-medium text-grey-8">{{ shopTypeLabel }}</div>
         </div>
 
@@ -123,7 +125,7 @@
           :options="orderModeOptions"
           emit-value
           map-options
-          label="Order mode *"
+          :label="$t('shop_admin.order_mode') + ' *'"
           outlined
           dense
           class="q-mb-md"
@@ -138,12 +140,12 @@
               emit-value
               map-options
               :loading="loadingCurrencies"
-              label="Buy Currency (ক্রয় কারেন্সি) *"
+              :label="$t('shop_admin.buy_currency') + ' *'"
               outlined
               dense
               :error="!!errors.buy_currency_id"
               :error-message="errors.buy_currency_id"
-              :rules="[(val) => !!val || 'Buy currency is required']"
+              :rules="[(val) => !!val || $t('shop_admin.buy_currency_required')]"
             />
           </div>
           <div class="col-6">
@@ -153,37 +155,45 @@
               emit-value
               map-options
               :loading="loadingCurrencies"
-              label="Sell Currency (বিক্রয় কারেন্সি) *"
+              :label="$t('shop_admin.sell_currency') + ' *'"
               outlined
               dense
               :error="!!errors.sell_currency_id"
               :error-message="errors.sell_currency_id"
-              :rules="[(val) => !!val || 'Sell currency is required']"
+              :rules="[(val) => !!val || $t('shop_admin.sell_currency_required')]"
             />
           </div>
         </div>
 
-        <!-- Retail Shop Specific Configurations -->
+        <!-- Retail & Dropship Specific Configurations -->
         <div
-          v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')"
+          v-if="
+            form.shop_type === 'fixed_price' ||
+            form.shop_type === 'dropship' ||
+            (isEdit && (shopTypeSnapshot === 'fixed_price' || shopTypeSnapshot === 'dropship'))
+          "
           class="q-pa-md bg-blue-50 rounded-borders q-mb-md border-blue-100"
           style="background-color: #f0f7ff; border: 1px solid #d0e7ff; border-radius: 8px"
         >
           <div class="text-subtitle2 text-blue-9 text-weight-medium q-mb-sm">
-            Retail Pricing & Quantity (খুচরা মূল্য ও পরিমাণ সেটিংস)
+            {{
+              form.shop_type === 'dropship'
+                ? $t('shop_admin.dropship_qty_settings')
+                : $t('shop_admin.retail_pricing_qty')
+            }}
           </div>
 
-          <div class="row q-col-gutter-md items-center q-mb-sm">
+          <div
+            v-if="form.shop_type === 'fixed_price' || (isEdit && shopTypeSnapshot === 'fixed_price')"
+            class="row q-col-gutter-md items-center q-mb-sm"
+          >
             <div class="col-6">
               <q-select
                 v-model="form.pricing_method"
-                :options="[
-                  { value: 'direct_cost', label: 'Direct Cost (সরাসরি খরচ)' },
-                  { value: 'markup', label: 'Markup Percentage (মার্কআপ)' },
-                ]"
+                :options="pricingMethodOptions"
                 emit-value
                 map-options
-                label="Pricing Method *"
+                :label="$t('shop_admin.pricing_method') + ' *'"
                 outlined
                 dense
               />
@@ -192,15 +202,15 @@
               <q-input
                 v-model.number="form.markup_percentage"
                 type="number"
-                label="Markup % *"
+                :label="$t('shop_admin.markup_pct') + ' *'"
                 suffix="%"
                 outlined
                 dense
                 :error="!!errors.markup_percentage"
                 :error-message="errors.markup_percentage"
                 :rules="[
-                  (val) => (val !== null && val !== undefined) || 'Markup % is required',
-                  (val) => val >= 0 || 'Markup % must be non-negative',
+                  (val) => (val !== null && val !== undefined) || $t('shop_admin.markup_required'),
+                  (val) => val >= 0 || $t('shop_admin.markup_non_negative'),
                 ]"
               />
             </div>
@@ -210,13 +220,62 @@
             <div class="col-12">
               <q-select
                 v-model="form.quantity_display_mode"
-                :options="[
-                  { value: 'original', label: 'Show Original Stock Qty (আসল স্টক)' },
-                  { value: 'custom_override', label: 'Show Custom Override Qty (কাস্টম সংখ্যা)' },
-                ]"
+                :options="qtyDisplayOptions"
                 emit-value
                 map-options
-                label="Quantity Display Mode *"
+                :label="$t('shop_admin.qty_display_mode') + ' *'"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Dropship specific charge defaults configuration -->
+        <div
+          v-if="form.shop_type === 'dropship' || (isEdit && shopTypeSnapshot === 'dropship')"
+          class="q-pa-md bg-orange-50 rounded-borders q-mb-md border-orange-100"
+          style="background-color: #fffaf0; border: 1px solid #ffe0b2; border-radius: 8px"
+        >
+          <div class="text-subtitle2 text-orange-9 text-weight-medium q-mb-sm">
+            {{ $t('shop_admin.dropship_default_charges') }}
+          </div>
+          <div class="row q-col-gutter-md q-mb-sm">
+            <div class="col-6">
+              <q-input
+                v-model.number="form.default_cod_charge_pct"
+                type="number"
+                :label="$t('shop_admin.default_cod_charge_pct')"
+                suffix="%"
+                outlined
+                dense
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model.number="form.default_delivery_charge_amount"
+                type="number"
+                :label="$t('shop_admin.default_delivery_charge')"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input
+                v-model.number="form.default_print_charge_amount"
+                type="number"
+                :label="$t('shop_admin.default_print_charge')"
+                outlined
+                dense
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model.number="form.default_packing_charge_amount"
+                type="number"
+                :label="$t('shop_admin.default_packing_charge')"
                 outlined
                 dense
               />
@@ -232,15 +291,15 @@
               :disable="
                 form.shop_type === 'dropship' || (isEdit && shopTypeSnapshot === 'dropship')
               "
-              label="Negotiable"
+              :label="$t('shop_admin.negotiable')"
               color="primary"
             />
           </div>
           <div class="col-auto">
-            <q-toggle v-model="form.show_stock_quantity" label="Show stock qty" color="primary" />
+            <q-toggle v-model="form.show_stock_quantity" :label="$t('shop_admin.show_stock_qty')" color="primary" />
           </div>
           <div class="col-auto">
-            <q-toggle v-model="form.is_active" label="Active" color="positive" />
+            <q-toggle v-model="form.is_active" :label="$t('shop_admin.active')" color="positive" />
           </div>
           <div
             v-if="
@@ -248,7 +307,7 @@
             "
             class="col-auto"
           >
-            <q-toggle v-model="form.allow_delivery" label="Allow Delivery" color="primary" />
+            <q-toggle v-model="form.allow_delivery" :label="$t('shop_admin.allow_delivery')" color="primary" />
           </div>
         </div>
 
@@ -260,11 +319,11 @@
 
       <!-- Actions -->
       <q-card-actions align="right" class="q-px-lg q-pb-md q-pt-none">
-        <q-btn flat label="Cancel" :disable="saving" @click="localModelValue = false" />
+        <q-btn flat :label="$t('shop_admin.cancel')" :disable="saving" @click="localModelValue = false" />
         <q-btn
           color="primary"
           unelevated
-          :label="isEdit ? 'Update' : 'Create Shop'"
+          :label="isEdit ? $t('shop_admin.update') : $t('shop_admin.create_shop')"
           :loading="saving"
           :disable="saving"
           @click="onSave"
@@ -280,7 +339,7 @@
       <q-card-section class="row items-center justify-between q-py-md bg-primary text-white">
         <div class="text-h6 row items-center no-wrap">
           <q-icon name="help_outline" class="q-mr-sm" size="24px" />
-          Shop Features Guide / দোকানের ফিচার গাইড
+          {{ $t('shop_admin.help_features_guide') }}
         </div>
         <q-btn icon="close" flat round dense v-close-popup color="white" />
       </q-card-section>
@@ -295,10 +354,10 @@
         align="justify"
         narrow-indicator
       >
-        <q-tab name="types" label="Shop Types / ধরন" />
-        <q-tab name="modes" label="Order Modes / অর্ডার" />
-        <q-tab name="settings" label="Settings / সেটিংস" />
-        <q-tab name="scenarios" label="Scenarios / উদাহরণ" />
+        <q-tab name="types" :label="$t('shop_admin.help_tab_types')" />
+        <q-tab name="modes" :label="$t('shop_admin.help_tab_modes')" />
+        <q-tab name="settings" :label="$t('shop_admin.help_tab_settings')" />
+        <q-tab name="scenarios" :label="$t('shop_admin.help_tab_scenarios')" />
       </q-tabs>
 
       <q-separator />
@@ -317,15 +376,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Vendor Catalog / ভেন্ডর ক্যাটালগ
+                {{ $t('shop_admin.help_vendor_catalog_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Shows a supplier's product list directly. Customers request what they want to buy
-                (bulk or low MOQ). You do not need allocated stock.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                সাপ্লায়ারের পণ্য তালিকা সরাসরি দেখায়। কাস্টমার কি কিনতে চায় অনুরোধ করে। আগে থেকে
-                স্টক বরাদ্দ লাগে না।
+                {{ $t('shop_admin.help_vendor_catalog_desc') }}
               </div>
             </div>
           </div>
@@ -341,15 +395,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Fixed Price / নির্ধারিত দাম
+                {{ $t('shop_admin.help_fixed_price_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Sells from your branch/child-tenant stock at a fixed retail price. Price cannot be
-                changed by the customer.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                আপনার শাখা/চাইল্ড-টেন্যান্টের স্টক থেকে নির্ধারিত খুচরা দামে বিক্রি। কাস্টমার দাম
-                বদলাতে পারে না।
+                {{ $t('shop_admin.help_fixed_price_desc') }}
               </div>
             </div>
           </div>
@@ -364,14 +413,11 @@
               class="q-mr-md"
             />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Dropship / ড্রপশিপ</div>
-              <div class="text-caption text-grey-7">
-                Reseller sets their own selling price on allocated stock, but cannot go below a
-                minimum floor price. Negotiation stays off.
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                {{ $t('shop_admin.help_dropship_title') }}
               </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                রিসেলার বরাদ্দ স্টকে নিজের বিক্রয়মূল্য সেট করে, তবে ন্যূনতম দামের নিচে নামতে পারে
-                না। দরকষাকষি বন্ধ থাকে।
+              <div class="text-caption text-grey-7">
+                {{ $t('shop_admin.help_dropship_desc') }}
               </div>
             </div>
           </div>
@@ -389,15 +435,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Procurement Intent / ক্রয় অনুরোধ
+                {{ $t('shop_admin.help_procurement_intent_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Customer picks products and asks for a quote. Staff review, set price, then turn it
-                into a warehouse procurement order.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                কাস্টমার পণ্য বেছে কোটেশন চায়। স্টাফ দেখে দাম নির্ধারণ করে, তারপর ওয়্যারহাউজ
-                প্রকিউরমেন্ট অর্ডারে রূপান্তর করে।
+                {{ $t('shop_admin.help_procurement_intent_desc') }}
               </div>
             </div>
           </div>
@@ -413,13 +454,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Fixed Checkout / নির্ধারিত চেকআউট
+                {{ $t('shop_admin.help_fixed_checkout_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Normal retail buy: cart → pay at listed price → invoice is created right away.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                সাধারণ খুচরা কেনা: কার্ট → তালিকাভুক্ত দামে কেনা → সাথে সাথে ইনভয়েস তৈরি।
+                {{ $t('shop_admin.help_fixed_checkout_desc') }}
               </div>
             </div>
           </div>
@@ -435,15 +473,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Wholesale Checkout / পাইকারি চেকআউট
+                {{ $t('shop_admin.help_wholesale_checkout_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                For bulk B2B orders with accounts: custom invoice/order flow instead of simple
-                retail checkout.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                অ্যাকাউন্টভিত্তিক বাল্ক B2B অর্ডারের জন্য: সাধারণ খুচরা চেকআউটের বদলে কাস্টম
-                ইনভয়েস/অর্ডার প্রক্রিয়া।
+                {{ $t('shop_admin.help_wholesale_checkout_desc') }}
               </div>
             </div>
           </div>
@@ -454,13 +487,11 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="forum" color="pink-1" text-color="pink-8" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Negotiable / দরকষাকষি</div>
-              <div class="text-caption text-grey-7">
-                On: buyers and staff can send counter-offers. Off for Dropship shops (required).
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                {{ $t('shop_admin.help_negotiable_title') }}
               </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                চালু থাকলে ক্রেতা ও স্টাফ কাউন্টার অফার পাঠাতে পারে। ড্রপশিপ দোকানে অবশ্যই বন্ধ
-                রাখতে হবে।
+              <div class="text-caption text-grey-7">
+                {{ $t('shop_admin.help_negotiable_desc') }}
               </div>
             </div>
           </div>
@@ -476,13 +507,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Show Stock Qty / স্টক সংখ্যা দেখান
+                {{ $t('shop_admin.help_show_stock_qty_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                On: show exact stock number. Off: only show “In Stock / Out of Stock”.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                চালু: সঠিক স্টক সংখ্যা দেখায়। বন্ধ: শুধু “স্টকে আছে / নেই” দেখায়।
+                {{ $t('shop_admin.help_show_stock_qty_desc') }}
               </div>
             </div>
           </div>
@@ -498,15 +526,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Shop Currencies / কারেন্সি সেটিংস
+                {{ $t('shop_admin.help_currencies_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Buy Currency: original purchase costing currency. Sell Currency: display & checkout
-                currency. Negotiations must happen in Sell Currency.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                ক্রয় কারেন্সি: কেনা দামের আসল কারেন্সি। বিক্রয় কারেন্সি: কাস্টমারের প্রদর্শন ও
-                পেমেন্ট কারেন্সি। সমস্ত দরকষাকষি বিক্রয় কারেন্সিতে হতে হবে।
+                {{ $t('shop_admin.help_currencies_desc') }}
               </div>
             </div>
           </div>
@@ -522,15 +545,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Retail Pricing Method / খুচরা মূল্য সেটিংস
+                {{ $t('shop_admin.help_retail_pricing_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Direct Cost: sell price equals original procurement cost. Markup: sell price
-                includes the set markup percentage.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                সরাসরি খরচ: ক্রয়মূল্যই বিক্রয়মূল্য হিসেবে দেখাবে। মার্কআপ: ক্রয়মূল্যের সাথে
-                নির্দিষ্ট মার্কআপ শতাংশ যোগ হয়ে দেখাবে।
+                {{ $t('shop_admin.help_retail_pricing_desc') }}
               </div>
             </div>
           </div>
@@ -546,15 +564,10 @@
             />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
-                Quantity Display Mode / স্টক পরিমাণ সেটিংস
+                {{ $t('shop_admin.help_qty_display_title') }}
               </div>
               <div class="text-caption text-grey-7">
-                Show Original Stock Qty: displays warehouse physical stock. Custom Override:
-                displays custom marketing override value if set.
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                আসল স্টক: গুদামের ফিজিক্যাল আসল স্টক দেখাবে। কাস্টম সংখ্যা: নির্দিষ্ট কাস্টম
-                ওভাররাইড সংখ্যা মার্কেটিং হিসেবে দেখাবে।
+                {{ $t('shop_admin.help_qty_display_desc') }}
               </div>
             </div>
           </div>
@@ -563,12 +576,11 @@
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar icon="check_circle" color="positive" size="md" class="q-mr-md" />
             <div>
-              <div class="text-weight-bold text-grey-9 text-subtitle2">Active / সক্রিয়</div>
-              <div class="text-caption text-grey-7">
-                On: shop is visible to customers. Off: customers cannot open or view the shop.
+              <div class="text-weight-bold text-grey-9 text-subtitle2">
+                {{ $t('shop_admin.help_active_title') }}
               </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                চালু: কাস্টমার দোকান দেখতে পায়। বন্ধ: কাস্টমার দোকান খুলতে বা দেখতে পারে না।
+              <div class="text-caption text-grey-7">
+                {{ $t('shop_admin.help_active_desc') }}
               </div>
             </div>
           </div>
@@ -581,7 +593,7 @@
             show-all-cards
             :highlight-id="scenarioHighlightId"
             :apply-disabled="isEdit"
-            apply-disabled-tooltip="Shop type is locked after creation."
+            :apply-disabled-tooltip="$t('shop_admin.shop_type_locked')"
             @select="onHelpScenarioSelect"
           />
         </q-tab-panel>
@@ -591,7 +603,7 @@
 
       <!-- Footer Actions -->
       <q-card-actions align="right" class="q-pr-md q-pb-md">
-        <q-btn label="Got It / বুঝেছি" color="primary" unelevated v-close-popup />
+        <q-btn :label="$t('shop_admin.got_it')" color="primary" unelevated v-close-popup />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -599,6 +611,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { Shop, ShopType, ShopOrderMode } from 'src/modules/shop_order/types';
 import {
   SHOP_CONFIGURATION_PRESETS,
@@ -610,6 +623,7 @@ import {
   type ShopConfigurationPresetId,
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
 import { showErrorNotification } from 'src/utils/appFeedback';
+import { useShopLocale } from '../composables/useShopLocale';
 import ShopScenarioFinder from 'src/modules/shop_order/components/ShopScenarioFinder.vue';
 import ShopPresetPicker from 'src/modules/shop_order/components/ShopPresetPicker.vue';
 import { vendorService } from 'src/modules/vendor/services/vendorService';
@@ -636,6 +650,10 @@ type ShopForm = {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
+  default_cod_charge_pct?: number;
+  default_delivery_charge_amount?: number;
+  default_print_charge_amount?: number;
+  default_packing_charge_amount?: number;
 };
 
 type FormErrors = {
@@ -662,6 +680,9 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'save', value: any): void;
 }>();
+
+const { t } = useI18n();
+const { presetName } = useShopLocale();
 
 // ---- local state ---------------------------------------------------
 
@@ -692,6 +713,10 @@ const defaultForm = (): ShopForm => ({
   pricing_method: 'direct_cost',
   markup_percentage: 0,
   quantity_display_mode: 'original',
+  default_cod_charge_pct: 0,
+  default_delivery_charge_amount: 0,
+  default_print_charge_amount: 0,
+  default_packing_charge_amount: 0,
 });
 
 const form = reactive<ShopForm>(defaultForm());
@@ -704,9 +729,9 @@ const detectedPresetId = computed(() => {
 
 const detectedPresetBadgeLabel = computed(() => {
   const id = detectedPresetId.value;
-  if (!id) return 'Custom configuration';
+  if (!id) return t('shop_admin.custom_configuration');
   const preset = getPresetById(id);
-  return preset ? `Matches ${preset.name}` : 'Custom configuration';
+  return preset ? t('shop_admin.matches_preset', { name: presetName(preset) }) : t('shop_admin.custom_configuration');
 });
 
 const scenarioHighlightId = computed((): ShopConfigurationPresetId | null => {
@@ -728,8 +753,8 @@ const appliedPresetBanner = computed(() => {
   const preset = getPresetById(selectedPresetId.value);
   if (!preset) return null;
   const markupHint =
-    preset.fields.pricing_method === 'markup' ? ' and markup %' : '';
-  return `Preset ${preset.id} applied — set currencies${markupHint} before saving.`;
+    preset.fields.pricing_method === 'markup' ? t('shop_admin.preset_markup_hint') : '';
+  return t('shop_admin.preset_applied', { id: preset.id, markup: markupHint });
 });
 
 function onPresetSelect(value: ShopConfigurationPresetId | 'custom') {
@@ -740,7 +765,7 @@ function onPresetSelect(value: ShopConfigurationPresetId | 'custom') {
 
 const onHelpScenarioSelect = (id: ShopConfigurationPresetId) => {
   if (isEdit.value) {
-    showErrorNotification('Shop type is locked after creation. Presets cannot be applied when editing.');
+    showErrorNotification(t('shop_admin.preset_locked_edit'));
     return;
   }
   applyPresetToForm(form, id);
@@ -782,26 +807,36 @@ const loadCurrencies = async () => {
 
 // ---- label helpers -------------------------------------------------
 
-const shopTypeOptions = [
-  { value: 'vendor_catalog', label: 'Vendor Catalog' },
-  { value: 'fixed_price', label: 'Fixed Price' },
-  { value: 'dropship', label: 'Dropship' },
-];
+const shopTypeOptions = computed(() => [
+  { value: 'vendor_catalog', label: t('shop_admin.shop_type_vendor_catalog') },
+  { value: 'fixed_price', label: t('shop_admin.shop_type_fixed_price') },
+  { value: 'dropship', label: t('shop_admin.shop_type_dropship') },
+]);
 
-const allOrderModeOptions: { value: ShopOrderMode; label: string }[] = [
-  { value: 'procurement_intent', label: 'Procurement Intent' },
-  { value: 'checkout_fixed', label: 'Checkout Fixed' },
-  { value: 'checkout_wholesale', label: 'Checkout Wholesale' },
-];
+const allOrderModeOptions = computed(() => [
+  { value: 'procurement_intent' as ShopOrderMode, label: t('shop_admin.order_mode_procurement_intent') },
+  { value: 'checkout_fixed' as ShopOrderMode, label: t('shop_admin.order_mode_checkout_fixed') },
+  { value: 'checkout_wholesale' as ShopOrderMode, label: t('shop_admin.order_mode_checkout_wholesale') },
+]);
+
+const pricingMethodOptions = computed(() => [
+  { value: 'direct_cost', label: t('shop_admin.pricing_direct_cost') },
+  { value: 'markup', label: t('shop_admin.pricing_markup') },
+]);
+
+const qtyDisplayOptions = computed(() => [
+  { value: 'original', label: t('shop_admin.qty_display_original') },
+  { value: 'custom_override', label: t('shop_admin.qty_display_override') },
+]);
 
 const orderModeOptions = computed(() => {
-  if (!form.shop_type) return allOrderModeOptions;
+  if (!form.shop_type) return allOrderModeOptions.value;
   const allowed = getAllowedOrderModes(form.shop_type);
-  return allOrderModeOptions.filter((o) => allowed.includes(o.value));
+  return allOrderModeOptions.value.filter((o) => allowed.includes(o.value));
 });
 
 const shopTypeLabel = computed(() => {
-  const found = shopTypeOptions.find((o) => o.value === shopTypeSnapshot.value);
+  const found = shopTypeOptions.value.find((o) => o.value === shopTypeSnapshot.value);
   return found?.label ?? shopTypeSnapshot.value ?? '';
 });
 
@@ -848,6 +883,10 @@ watch(
         pricing_method: initialData.pricing_method || 'direct_cost',
         markup_percentage: initialData.markup_percentage || 0,
         quantity_display_mode: initialData.quantity_display_mode || 'original',
+        default_cod_charge_pct: initialData.default_cod_charge_pct || 0,
+        default_delivery_charge_amount: initialData.default_delivery_charge_amount || 0,
+        default_print_charge_amount: initialData.default_print_charge_amount || 0,
+        default_packing_charge_amount: initialData.default_packing_charge_amount || 0,
       });
     } else {
       shopTypeSnapshot.value = null;
@@ -903,27 +942,27 @@ const validate = (): boolean => {
   let ok = true;
 
   if (!form.name.trim()) {
-    errors.name = 'Name is required.';
+    errors.name = t('shop_admin.name_required');
     ok = false;
   }
   if (!form.slug.trim()) {
-    errors.slug = 'Slug is required.';
+    errors.slug = t('shop_admin.slug_required');
     ok = false;
   }
   if (!isEdit.value && !form.shop_type) {
-    errors.shop_type = 'Shop type is required.';
+    errors.shop_type = t('shop_admin.shop_type_required');
     ok = false;
   }
   if (!isEdit.value && form.shop_type === 'vendor_catalog' && !form.vendor_code.trim()) {
-    errors.vendor_code = 'Vendor code is required for vendor catalog shops.';
+    errors.vendor_code = t('shop_admin.vendor_required');
     ok = false;
   }
   if (!form.buy_currency_id) {
-    errors.buy_currency_id = 'Buy currency is required.';
+    errors.buy_currency_id = t('shop_admin.buy_currency_required');
     ok = false;
   }
   if (!form.sell_currency_id) {
-    errors.sell_currency_id = 'Sell currency is required.';
+    errors.sell_currency_id = t('shop_admin.sell_currency_required');
     ok = false;
   }
   const isFixedPrice =
@@ -935,7 +974,7 @@ const validate = (): boolean => {
       form.markup_percentage === undefined ||
       form.markup_percentage < 0)
   ) {
-    errors.markup_percentage = 'Markup % is required and must be non-negative.';
+    errors.markup_percentage = t('shop_admin.markup_non_negative');
     ok = false;
   }
 
@@ -965,6 +1004,10 @@ const onSave = () => {
       pricing_method: form.pricing_method,
       markup_percentage: Number(form.markup_percentage || 0),
       quantity_display_mode: form.quantity_display_mode,
+      default_cod_charge_pct: Number(form.default_cod_charge_pct || 0),
+      default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
+      default_print_charge_amount: Number(form.default_print_charge_amount || 0),
+      default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
     });
   } else {
     emit('save', {
@@ -983,6 +1026,10 @@ const onSave = () => {
       pricing_method: form.pricing_method,
       markup_percentage: Number(form.markup_percentage || 0),
       quantity_display_mode: form.quantity_display_mode,
+      default_cod_charge_pct: Number(form.default_cod_charge_pct || 0),
+      default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
+      default_print_charge_amount: Number(form.default_print_charge_amount || 0),
+      default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
     });
   }
 };

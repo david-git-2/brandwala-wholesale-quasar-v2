@@ -2,9 +2,11 @@
   <q-page class="q-pa-md">
     <section class="bw-page__stack">
       <section>
-        <div class="text-overline text-primary">Shop</div>
-        <h1 class="text-h5 text-weight-bold q-my-none">Browse shops</h1>
-        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Open a shop your group can access.</p>
+        <div class="text-overline text-primary">{{ $t('shop.title') }}</div>
+        <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.browse_shops') }}</h1>
+        <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+          {{ $t('shop_admin.browse_shops_subtitle') }}
+        </p>
       </section>
 
       <div v-if="loading" class="column items-center justify-center q-pa-xl">
@@ -20,9 +22,9 @@
         class="column items-center justify-center q-pa-xl text-center text-grey-6"
       >
         <q-icon name="storefront" size="64px" color="grey-4" class="q-mb-md" />
-        <div class="text-h6">No shops available</div>
+        <div class="text-h6">{{ $t('shop_admin.no_shops_available') }}</div>
         <p class="text-body2 text-grey-5 q-mb-none">
-          Your group does not have browse access to any shop yet.
+          {{ $t('shop_admin.no_shops_access') }}
         </p>
       </div>
 
@@ -49,6 +51,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderService } from '../services/shopOrderService';
@@ -56,6 +59,7 @@ import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository
 
 const authStore = useAuthStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const shops = ref<CustomerAccessibleShop[]>([]);
 const loading = ref(true);
@@ -77,7 +81,7 @@ onMounted(async () => {
   loading.value = false;
 
   if (!result.success) {
-    error.value = result.error ?? 'Failed to load shops.';
+    error.value = result.error ?? t('shop_admin.failed_load_shops');
     return;
   }
 

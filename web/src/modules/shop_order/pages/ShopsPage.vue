@@ -1,21 +1,25 @@
 <template>
   <q-page class="bw-page">
     <section class="bw-page__stack">
-      <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline">Shop &amp; Order</div>
-          <h1 class="text-h5 q-my-none">Shops</h1>
+          <div class="text-overline">{{ $t('shop_admin.shop_and_order') }}</div>
+          <h1 class="text-h5 q-my-none">{{ $t('navigation.shops') }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Create and manage shops — type, order mode, stock display, and vendor link.
+            {{ $t('shop_admin.shops_subtitle') }}
           </p>
         </div>
         <div class="col-auto">
-          <q-btn color="primary" icon="add" label="New Shop" unelevated @click="openCreate" />
+          <q-btn
+            color="primary"
+            icon="add"
+            :label="$t('shop_admin.new_shop')"
+            unelevated
+            @click="openCreate"
+          />
         </div>
       </section>
 
-      <!-- Toolbar -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-12 col-sm-5">
           <q-input
@@ -24,7 +28,7 @@
             debounce="350"
             dense
             outlined
-            placeholder="Search by name or slug…"
+            :placeholder="$t('shop_admin.search_shops_placeholder')"
             prepend-icon="search"
             @update:model-value="onSearchChange"
           >
@@ -41,29 +45,23 @@
             rounded
             unelevated
             toggle-color="primary"
-            :options="[
-              { value: null, label: 'All' },
-              { value: true, label: 'Active' },
-              { value: false, label: 'Inactive' },
-            ]"
+            :options="filterOptions"
             @update:model-value="onFilterChange"
           />
         </div>
       </section>
 
-      <!-- Error banner -->
       <q-banner v-if="store.error" class="text-white bg-negative" rounded>
         {{ store.error }}
         <template #action>
-          <q-btn flat color="white" label="Dismiss" @click="store.clearError()" />
+          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
         </template>
       </q-banner>
 
-      <!-- Table -->
       <q-card flat bordered>
         <q-card-section v-if="store.loadingShops" class="text-grey-7 text-center q-pa-xl">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
-          Loading shops…
+          {{ $t('shop_admin.loading_shops') }}
         </q-card-section>
 
         <q-card-section
@@ -71,12 +69,12 @@
           class="text-grey-6 text-center q-pa-xl"
         >
           <q-icon name="storefront" size="48px" class="q-mb-sm block" />
-          No shops found.
+          {{ $t('shop_admin.no_shops_found') }}
           <br />
           <q-btn
             class="q-mt-md"
             color="primary"
-            label="Create your first shop"
+            :label="$t('shop_admin.create_first_shop')"
             unelevated
             @click="openCreate"
           />
@@ -91,7 +89,6 @@
           :pagination="{ rowsPerPage: 25 }"
           :dense="$q.screen.lt.md"
         >
-          <!-- shop_type chip -->
           <template #body-cell-shop_type="props">
             <q-td :props="props">
               <q-chip
@@ -103,14 +100,12 @@
             </q-td>
           </template>
 
-          <!-- order_mode chip -->
           <template #body-cell-order_mode="props">
             <q-td :props="props">
               <q-chip dense outline :label="orderModeLabel(props.row.order_mode)" />
             </q-td>
           </template>
 
-          <!-- is_active indicator -->
           <template #body-cell-is_active="props">
             <q-td :props="props" class="text-center">
               <q-icon
@@ -121,7 +116,6 @@
             </q-td>
           </template>
 
-          <!-- is_negotiable indicator -->
           <template #body-cell-is_negotiable="props">
             <q-td :props="props" class="text-center">
               <q-icon
@@ -132,7 +126,6 @@
             </q-td>
           </template>
 
-          <!-- Actions -->
           <template #body-cell-actions="props">
             <q-td :props="props" class="q-gutter-x-sm">
               <q-btn
@@ -144,7 +137,7 @@
                 color="orange"
                 @click="goToPricing(props.row.id)"
               >
-                <q-tooltip>Manage Product Listings &amp; Pricing</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.manage_pricing') }}</q-tooltip>
               </q-btn>
               <q-btn
                 flat
@@ -154,10 +147,10 @@
                 color="teal"
                 @click="goToAccessMatrix(props.row.id)"
               >
-                <q-tooltip>Manage Access Matrix</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.manage_access_matrix') }}</q-tooltip>
               </q-btn>
               <q-btn flat round dense icon="edit" color="primary" @click="openEdit(props.row)">
-                <q-tooltip>Edit</q-tooltip>
+                <q-tooltip>{{ $t('shop_admin.edit') }}</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -165,7 +158,6 @@
       </q-card>
     </section>
 
-    <!-- Create / Edit dialog -->
     <ShopFormDialog
       v-model="dialogOpen"
       :initial-data="editingShop"
@@ -179,6 +171,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore';
@@ -193,16 +186,13 @@ import type {
   UpdateShopPayload,
 } from 'src/modules/shop_order/types';
 
-// ---- auth / store --------------------------------------------------
-
 const authStore = useAuthStore();
 const store = useShopOrderStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
-
-// ---- vendors -------------------------------------------------------
 
 const vendors = ref<Vendor[]>([]);
 
@@ -218,26 +208,28 @@ const getVendorName = (code: string | null) => {
   return vendor ? `${vendor.name} (${code})` : code;
 };
 
-// ---- table columns -------------------------------------------------
-
-const columns = [
-  { name: 'name', label: 'Name', field: 'name', align: 'left' as const, sortable: true },
-  { name: 'slug', label: 'Slug', field: 'slug', align: 'left' as const, sortable: true },
-  { name: 'shop_type', label: 'Type', field: 'shop_type', align: 'left' as const },
+const columns = computed(() => [
+  { name: 'name', label: t('shop_admin.col_name'), field: 'name', align: 'left' as const, sortable: true },
+  { name: 'slug', label: t('shop_admin.slug'), field: 'slug', align: 'left' as const, sortable: true },
+  { name: 'shop_type', label: t('shop_admin.col_type'), field: 'shop_type', align: 'left' as const },
   {
     name: 'vendor_name',
-    label: 'Vendor',
+    label: t('shop_admin.col_vendor'),
     field: (row: Shop) => getVendorName(row.vendor_code),
     align: 'left' as const,
     sortable: true,
   },
-  { name: 'order_mode', label: 'Order mode', field: 'order_mode', align: 'left' as const },
-  { name: 'is_negotiable', label: 'Negotiable', field: 'is_negotiable', align: 'center' as const },
-  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' as const },
+  { name: 'order_mode', label: t('shop_admin.col_order_mode'), field: 'order_mode', align: 'left' as const },
+  { name: 'is_negotiable', label: t('shop_admin.col_negotiable'), field: 'is_negotiable', align: 'center' as const },
+  { name: 'is_active', label: t('shop_admin.active'), field: 'is_active', align: 'center' as const },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
-];
+]);
 
-// ---- filters -------------------------------------------------------
+const filterOptions = computed(() => [
+  { value: null, label: t('shop_admin.all') },
+  { value: true, label: t('shop_admin.active') },
+  { value: false, label: t('shop_admin.inactive') },
+]);
 
 const search = ref<string>('');
 const activeFilter = ref<boolean | null>(null);
@@ -259,8 +251,6 @@ watch(tenantId, (v) => {
   if (v) load();
 });
 
-// ---- dialog --------------------------------------------------------
-
 const dialogOpen = ref(false);
 const editingShop = ref<Shop | null>(null);
 const dialogError = ref<string | null>(null);
@@ -279,13 +269,9 @@ const openEdit = (shop: Shop) => {
 
 const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
   dialogError.value = null;
-
   const isEdit = 'id' in payload;
-
   const result = isEdit ? await store.updateShop(payload) : await store.createShop(payload);
-
   if (!result) return;
-
   if (result.success) {
     dialogOpen.value = false;
   } else {
@@ -296,43 +282,39 @@ const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
 const goToAccessMatrix = (shopId: number) => {
   void router.push({
     name: 'app-shop-access-matrix-page',
-    params: {
-      tenantSlug: tenantSlug.value,
-      shopId: String(shopId),
-    },
+    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
   });
 };
 
 const goToPricing = (shopId: number) => {
   void router.push({
     name: 'app-shop-pricing-page',
-    params: {
-      tenantSlug: tenantSlug.value,
-      shopId: String(shopId),
-    },
+    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
   });
 };
 
-// ---- label helpers -------------------------------------------------
+const shopTypeLabel = (type: ShopType) => {
+  const map: Record<ShopType, string> = {
+    vendor_catalog: t('shop_admin.shop_type_vendor_catalog'),
+    fixed_price: t('shop_admin.shop_type_fixed_price'),
+    dropship: t('shop_admin.shop_type_dropship'),
+  };
+  return map[type] ?? type;
+};
 
-const shopTypeLabel = (t: ShopType) =>
-  ({
-    vendor_catalog: 'Vendor Catalog',
-    fixed_price: 'Fixed Price',
-    dropship: 'Dropship',
-  })[t] ?? t;
-
-const shopTypeColor = (t: ShopType) =>
+const shopTypeColor = (type: ShopType) =>
   ({
     vendor_catalog: 'indigo',
     fixed_price: 'teal',
     dropship: 'deep-orange',
-  })[t] ?? 'grey';
+  })[type] ?? 'grey';
 
-const orderModeLabel = (m: ShopOrderMode) =>
-  ({
-    procurement_intent: 'Procurement Intent',
-    checkout_fixed: 'Checkout Fixed',
-    checkout_wholesale: 'Checkout Wholesale',
-  })[m] ?? m;
+const orderModeLabel = (mode: ShopOrderMode) => {
+  const map: Record<ShopOrderMode, string> = {
+    procurement_intent: t('shop_admin.order_mode_procurement_intent'),
+    checkout_fixed: t('shop_admin.order_mode_checkout_fixed'),
+    checkout_wholesale: t('shop_admin.order_mode_checkout_wholesale'),
+  };
+  return map[mode] ?? mode;
+};
 </script>

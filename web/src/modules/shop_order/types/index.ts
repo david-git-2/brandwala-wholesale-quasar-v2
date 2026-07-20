@@ -24,6 +24,10 @@ export interface Shop {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
+  default_cod_charge_pct?: number;
+  default_delivery_charge_amount?: number;
+  default_print_charge_amount?: number;
+  default_packing_charge_amount?: number;
   created_at: string;
   updated_at: string;
 }
@@ -48,6 +52,10 @@ export interface CreateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
+  default_cod_charge_pct?: number;
+  default_delivery_charge_amount?: number;
+  default_print_charge_amount?: number;
+  default_packing_charge_amount?: number;
 }
 
 export interface UpdateShopPayload {
@@ -67,6 +75,10 @@ export interface UpdateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
+  default_cod_charge_pct?: number;
+  default_delivery_charge_amount?: number;
+  default_print_charge_amount?: number;
+  default_packing_charge_amount?: number;
 }
 
 // ---- Service result wrapper -----------------------------------------
@@ -120,6 +132,13 @@ export interface ShopOrder {
   created_by_email: string;
   created_at: string;
   updated_at: string;
+  cod_charge_amount?: number;
+  delivery_charge_amount?: number;
+  print_charge_amount?: number;
+  packing_charge_amount?: number;
+  discount_amount?: number;
+  is_prepaid_snapshot?: boolean;
+  delivery_instructions?: string | null;
   item_count?: number;
   total_amount?: number;
 }

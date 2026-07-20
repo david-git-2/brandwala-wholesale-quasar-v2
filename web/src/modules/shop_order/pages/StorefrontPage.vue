@@ -168,7 +168,7 @@
           class="q-ma-xs"
           @remove="brand = null"
         >
-          Brand: {{ brand }}
+          {{ $t('shop.brand_filter', { name: brand }) }}
         </q-chip>
         <q-chip
           v-if="category"
@@ -180,7 +180,7 @@
           class="q-ma-xs"
           @remove="category = null"
         >
-          Category: {{ category }}
+          {{ $t('shop.category_filter', { name: category }) }}
         </q-chip>
         <q-btn
           flat
@@ -238,19 +238,32 @@
                   <div class="product-pricing">
                     <template v-if="shopStorefrontStore.permissions?.see_price">
                       <div class="text-subtitle1 text-weight-bold text-primary">
+                        <span v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'" class="text-caption text-grey-6 block text-weight-medium">{{ $t('shop.wholesale_price') }}</span>
                         {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
                       </div>
                       <div
                         v-if="item.minimum_sell_price_amount != null"
                         class="text-caption text-grey-6"
                       >
-                        Min:
-                        {{
-                          formatMoney(
-                            item.minimum_sell_price_amount,
-                            item.minimum_sell_price_currency_symbol,
-                          )
-                        }}
+                        <template v-if="shopStorefrontStore.shopDetails?.shop_type === 'dropship'">
+                          {{ $t('shop.min_sell_price') }}
+                          {{
+                            formatMoney(
+                              item.minimum_sell_price_amount,
+                              item.minimum_sell_price_currency_symbol,
+                            )
+                          }}
+                        </template>
+                        <template v-else>
+                          {{
+                            $t('shop.min_price_hint', {
+                              amount: formatMoney(
+                                item.minimum_sell_price_amount,
+                                item.minimum_sell_price_currency_symbol,
+                              ),
+                            })
+                          }}
+                        </template>
                       </div>
                     </template>
 
@@ -352,9 +365,9 @@
           class="column items-center justify-center empty-state q-pa-xl text-center"
         >
           <q-icon name="o_shopping_bag" size="64px" color="grey-5" class="q-mb-md" />
-          <div class="text-h6 text-weight-bold text-grey-8">No Products Found</div>
+          <div class="text-h6 text-weight-bold text-grey-8">{{ $t('shop.no_products_found') }}</div>
           <p class="text-body2 text-grey-6 q-mt-sm">
-            There are no products matching the current criteria.
+            {{ $t('shop.no_products_desc') }}
           </p>
         </div>
 
@@ -367,7 +380,7 @@
     </div>
 
     <!-- FILTER SIDEBAR DRAWERS -->
-    <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+    <FilterSidebar v-model="filterDrawerOpen" :title="$t('shop.filters')">
       <div class="q-pa-md">
         <q-select
           v-model="brand"
@@ -381,7 +394,7 @@
           map-options
           :options="filteredBrandOptions"
           class="soft-input q-mb-sm"
-          label="Brand"
+          :label="$t('shop.brand')"
           @filter="filterBrands"
         />
 
@@ -397,16 +410,16 @@
           map-options
           :options="filteredCategoryOptions"
           class="soft-input q-mb-md"
-          label="Category"
+          :label="$t('shop.category')"
           @filter="filterCategories"
         />
 
         <div class="row q-gutter-sm justify-end q-mt-md">
-          <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
+          <q-btn flat no-caps :label="$t('shop_admin.reset')" color="grey-7" @click="onResetFilters" />
           <q-btn
             unelevated
             no-caps
-            label="Apply"
+            :label="$t('shop.apply')"
             color="primary"
             class="pill-btn"
             @click="filterDrawerOpen = false"
@@ -420,6 +433,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useShopCartStore } from '../stores/shopCartStore';
@@ -430,6 +444,7 @@ import { useQuasar, type QInfiniteScroll } from 'quasar';
 const quasar = useQuasar();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const shopStorefrontStore = useShopStorefrontStore();
 const productStore = useProductStore();
 const shopCartStore = useShopCartStore();
@@ -455,16 +470,16 @@ const suppressFilterWatch = ref(false);
 const selectedQuantities = reactive<Record<string, number>>({});
 const infiniteScrollRef = ref<QInfiniteScroll | null>(null);
 
-const allBrandOption = { label: 'All brands', value: null };
-const allCategoryOption = { label: 'All categories', value: null };
+const allBrandOption = computed(() => ({ label: t('shop.all_brands'), value: null }));
+const allCategoryOption = computed(() => ({ label: t('shop.all_categories'), value: null }));
 
 const filteredBrandOptions = computed(() => [
-  allBrandOption,
+  allBrandOption.value,
   ...filteredBrandNames.value.map((item) => ({ label: item, value: item })),
 ]);
 
 const filteredCategoryOptions = computed(() => [
-  allCategoryOption,
+  allCategoryOption.value,
   ...filteredCategoryNames.value.map((item) => ({ label: item, value: item })),
 ]);
 
@@ -609,6 +624,9 @@ const onResetFilters = () => {
 };
 
 const getMinQty = (item: any) => {
+  if (shopStorefrontStore.shopDetails?.shop_type === 'dropship') {
+    return 1;
+  }
   return item.minimum_order_quantity || 1;
 };
 

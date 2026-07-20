@@ -2,18 +2,17 @@
   <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
     <q-card style="width: 700px; max-width: 90vw">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">Select Allocation to List</div>
+        <div class="text-h6">{{ $t('shop_admin.select_allocation') }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <!-- Search bar -->
       <q-card-section class="q-pt-sm">
         <q-input
           v-model="search"
           outlined
           dense
-          placeholder="Filter by product name, code, brand…"
+          :placeholder="$t('shop_admin.filter_allocations_placeholder')"
           clearable
         >
           <template #prepend>
@@ -22,7 +21,6 @@
         </q-input>
       </q-card-section>
 
-      <!-- Table list -->
       <q-card-section class="q-pt-none" style="max-height: 450px; overflow-y: auto">
         <q-table
           flat
@@ -33,7 +31,6 @@
           :columns="columns"
           :pagination="{ rowsPerPage: 10 }"
         >
-          <!-- image / name -->
           <template #body-cell-product_name="props">
             <q-td :props="props">
               <div class="row items-center no-wrap">
@@ -51,12 +48,11 @@
             </q-td>
           </template>
 
-          <!-- Actions -->
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-right">
               <q-btn
                 color="primary"
-                label="Pick"
+                :label="$t('shop_admin.pick')"
                 dense
                 unelevated
                 no-caps
@@ -72,6 +68,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { CandidateAllocation } from '../types';
 
 const props = defineProps<{
@@ -84,33 +81,39 @@ const emit = defineEmits<{
   (e: 'pick', value: CandidateAllocation): void;
 }>();
 
+const { t } = useI18n();
 const search = ref('');
 
-const columns = [
+const columns = computed(() => [
   {
     name: 'product_name',
-    label: 'Product',
+    label: t('shop_admin.col_product'),
     field: 'product_name',
     align: 'left' as const,
     sortable: true,
   },
   {
     name: 'product_code',
-    label: 'Code',
+    label: t('shop_admin.col_code'),
     field: 'product_code',
     align: 'left' as const,
     sortable: true,
   },
-  { name: 'product_barcode', label: 'Barcode', field: 'product_barcode', align: 'left' as const },
+  {
+    name: 'product_barcode',
+    label: t('shop_admin.col_barcode'),
+    field: 'product_barcode',
+    align: 'left' as const,
+  },
   {
     name: 'allocated_quantity',
-    label: 'Allocated',
+    label: t('shop_admin.col_allocated'),
     field: 'allocated_quantity',
     align: 'center' as const,
     sortable: true,
   },
   { name: 'actions', label: '', field: 'allocation_id', align: 'right' as const },
-];
+]);
 
 const filteredCandidates = computed(() => {
   const query = search.value.trim().toLowerCase();

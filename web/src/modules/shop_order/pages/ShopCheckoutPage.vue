@@ -73,30 +73,39 @@
                   :label="$t('shop.shipping_address') + ' *'"
                   rows="3"
                 />
-              </q-card-section>
-            </q-card>
 
-            <!-- Billing Info -->
-            <q-card flat bordered class="form-card">
-              <q-card-section class="q-px-md q-py-sm border-bottom">
-                <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                  <q-icon name="payment" size="18px" class="q-mr-xs text-primary" />
-                  {{ $t('shop.billing_profile') }}
-                </div>
-              </q-card-section>
+                <!-- Payment Mode and Delivery Instructions for Dropship -->
+                <template v-if="shopType === 'dropship'">
+                  <q-separator class="q-my-md" />
+                  
+                  <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">
+                    {{ $t('shop.payment_mode') }}
+                  </div>
+                  <div class="q-gutter-sm q-mb-md">
+                    <q-radio
+                      v-model="isPrepaid"
+                      :val="false"
+                      :label="$t('shop.payment_mode_cod')"
+                      color="primary"
+                    />
+                    <q-radio
+                      v-model="isPrepaid"
+                      :val="true"
+                      :label="$t('shop.payment_mode_prepaid')"
+                      color="primary"
+                    />
+                  </div>
 
-              <q-card-section>
-                <q-select
-                  v-model="billingProfile"
-                  outlined
-                  dense
-                  :label="$t('shop.select_billing_profile')"
-                  :options="billingOptions"
-                  class="full-width"
-                />
-                <p class="text-caption text-grey-6 q-mt-sm q-mb-none">
-                  {{ $t('shop.billing_profile_desc') }}
-                </p>
+                  <q-input
+                    v-model="deliveryInstructions"
+                    outlined
+                    dense
+                    type="textarea"
+                    :label="$t('shop.delivery_instructions')"
+                    rows="2"
+                    class="q-mt-md"
+                  />
+                </template>
               </q-card-section>
             </q-card>
           </div>
@@ -127,10 +136,20 @@
                     {{ $t('shop.qty') }}: {{ item.quantity }}
                   </div>
                 </q-item-section>
-                <q-item-section side v-if="cartStore.cart?.see_price_snapshot">
-                  <div class="text-caption text-weight-bold text-grey-9">
-                    {{ formatItemTotal(item) }}
-                  </div>
+                <q-item-section side v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'">
+                  <template v-if="cartStore.cart?.shop_type === 'dropship'">
+                    <div class="text-caption text-grey-6 text-right" style="font-size: 10px;">
+                      {{ $t('shop.cost_label') }} {{ formatBuyerItemTotal(item) }}
+                    </div>
+                    <div class="text-caption text-weight-bold text-primary text-right">
+                      {{ $t('shop.pay_label') }} {{ formatItemTotal(item) }}
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="text-caption text-weight-bold text-grey-9">
+                      {{ formatItemTotal(item) }}
+                    </div>
+                  </template>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -138,15 +157,68 @@
             <q-separator />
 
             <q-card-section class="q-py-md">
+              <template v-if="cartStore.cart?.shop_type === 'dropship'">
+                <!-- Items Subtotal -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.items_subtotal') }}</span>
+                  <span class="text-weight-medium text-grey-9">
+                    {{ formatAmount(cartStore.cartTotal) }}
+                  </span>
+                </div>
+
+                <!-- Charges Section -->
+                <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
+                  <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">{{ $t('shop.dropship_charges') }}</div>
+                  
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>{{ formatAmount(deliveryCharge) }}</span>
+                  </div>
+                  
+                  <div v-if="!isPrepaid" class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>{{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}</span>
+                    <span>{{ formatAmount(codCharge) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>{{ $t('shop.print_charge') }}</span>
+                    <span>{{ formatAmount(printCharge) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7">
+                    <span>{{ $t('shop.packing_charge') }}</span>
+                    <span>{{ formatAmount(packingCharge) }}</span>
+                  </div>
+                </div>
+
+                <!-- Buyer Cost -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.your_cost_buyer') }}</span>
+                  <span class="text-weight-medium text-grey-9">
+                    {{ formatAmount(cartStore.buyerCartTotal + deliveryCharge + printCharge + packingCharge) }}
+                  </span>
+                </div>
+
+                <!-- Profit -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.estimated_profit') }}</span>
+                  <span class="text-weight-bold text-positive">
+                    {{ formatAmount(estimatedProfit) }}
+                  </span>
+                </div>
+                
+                <q-separator class="q-my-sm" />
+              </template>
+
               <div class="row justify-between items-baseline q-mb-lg">
                 <span class="text-subtitle1 text-weight-bold text-grey-9">{{
-                  $t('shop.estimated_total')
+                  cartStore.cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                 }}</span>
                 <span
-                  v-if="cartStore.cart?.see_price_snapshot"
+                  v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'"
                   class="text-h6 text-weight-bold text-primary"
                 >
-                  {{ formatCartTotal() }}
+                  {{ cartStore.cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
                 </span>
                 <span v-else class="text-subtitle1 text-grey-5 italic">
                   {{ $t('shop.prices_hidden') }}
@@ -181,24 +253,70 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
+import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+
+import { showErrorNotification } from 'src/utils/appFeedback';
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const cartStore = useShopCartStore();
 const orderStore = useShopOrderStore();
+const storefrontStore = useShopStorefrontStore();
+const currencyStore = useThriftCurrencyStore();
 
 const recipientName = ref('');
 const recipientPhone = ref('');
 const shippingAddress = ref('');
-const billingProfile = ref(null);
 const requestDelivery = ref(false);
+
+const isPrepaid = ref(false);
+const deliveryInstructions = ref('');
 
 const shopType = computed(() => cartStore.cart?.shop_type);
 const allowDelivery = computed(() => cartStore.cart?.allow_delivery);
 
 const shopId = computed(() => {
   return route.query.shopId ? Number(route.query.shopId) : null;
+});
+
+// Retrieve default charge parameters from cartStore.cart
+const defaultCodChargePct = computed(() => Number(cartStore.cart?.default_cod_charge_pct || 0));
+const defaultDeliveryCharge = computed(() => Number(cartStore.cart?.default_delivery_charge_amount || 0));
+const defaultPrintCharge = computed(() => Number(cartStore.cart?.default_print_charge_amount || 0));
+const defaultPackingCharge = computed(() => Number(cartStore.cart?.default_packing_charge_amount || 0));
+
+// Computed charges
+const deliveryCharge = computed(() => (shopType.value === 'dropship' ? defaultDeliveryCharge.value : 0));
+const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
+const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value : 0));
+
+const codCharge = computed(() => {
+  if (shopType.value !== 'dropship' || isPrepaid.value) return 0;
+  return (cartStore.cartTotal * defaultCodChargePct.value) / 100;
+});
+
+const totalCharges = computed(() => {
+  return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
+});
+
+const recipientGrandTotal = computed(() => {
+  return cartStore.cartTotal + totalCharges.value;
+});
+
+const estimatedProfit = computed(() => {
+  const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
+  return recipientGrandTotal.value - buyerCost;
+});
+
+const currencySymbol = computed(() => {
+  const shop = storefrontStore.shopDetails;
+  if (shop?.sell_currency_id) {
+    const curr = currencyStore.currencyById(shop.sell_currency_id);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '£';
 });
 
 // Watch for cart changes to initialize requestDelivery
@@ -217,15 +335,17 @@ watch(
 );
 
 onMounted(async () => {
+  await currencyStore.loadCurrencies();
   if (!cartStore.cart && shopId.value) {
     await cartStore.fetchCart(shopId.value);
   }
+  if (!storefrontStore.shopDetails) {
+    const lastSlug = localStorage.getItem('last_visited_shop_slug');
+    if (lastSlug) {
+      await storefrontStore.fetchCatalog(lastSlug, { limit: 1, offset: 0 });
+    }
+  }
 });
-
-const billingOptions = computed(() => [
-  { label: t('shop.billing_option_default'), value: 'default' },
-  { label: t('shop.billing_option_proforma'), value: 'proforma' },
-]);
 
 const goBack = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
@@ -234,19 +354,53 @@ const goBack = () => {
 
 const submitOrder = async () => {
   if (!cartStore.cart?.id) return;
+
+  if (shopType.value === 'dropship') {
+    for (const item of cartStore.items) {
+      const minPrice = item.unit_minimum_sell_price_amount || 0;
+      const sellPrice = item.customer_sell_price_amount ?? 0;
+      if (sellPrice < minPrice) {
+        showErrorNotification(
+          t('shop.price_below_min', {
+            name: item.name,
+            amount: `${currencySymbol.value}${minPrice.toFixed(2)}`,
+          }),
+        );
+        return;
+      }
+    }
+  }
+
   const name = requestDelivery.value ? recipientName.value.trim() : '';
   const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
   const address = requestDelivery.value ? shippingAddress.value.trim() : '';
 
-  const res = await orderStore.submitOrder(cartStore.cart.id, name, phone, address, null);
-  if (res.success) {
+  const res = await orderStore.submitOrder(
+    cartStore.cart.id,
+    name,
+    phone,
+    address,
+    null,
+    isPrepaid.value,
+    deliveryInstructions.value,
+    codCharge.value,
+    deliveryCharge.value,
+    printCharge.value,
+    packingCharge.value,
+    0
+  );
+  if (res.success && res.data) {
     cartStore.clearCart();
     const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-    void router.push(`${tenantSlug}/shop/orders`);
+    void router.push(`${tenantSlug}/shop/orders/${res.data.order_id}`);
   }
 };
 
 // Formatting helpers
+const formatAmount = (val: number) => {
+  return `${currencySymbol.value}${val.toFixed(2)}`;
+};
+
 const formatItemTotal = (item: any) => {
   const price =
     item.customer_sell_price_amount ??
@@ -254,11 +408,26 @@ const formatItemTotal = (item: any) => {
     item.unit_list_price_amount ??
     0;
   const total = price * item.quantity;
-  return `£${total.toFixed(2)}`;
+  return `${currencySymbol.value}${total.toFixed(2)}`;
+};
+
+const formatBuyerItemTotal = (item: any) => {
+  const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+  const total = price * item.quantity;
+  return `${currencySymbol.value}${total.toFixed(2)}`;
+};
+
+const formatBuyerCartTotal = () => {
+  return `${currencySymbol.value}${cartStore.buyerCartTotal.toFixed(2)}`;
+};
+
+const formatEstimatedProfit = () => {
+  const profit = cartStore.cartTotal - cartStore.buyerCartTotal;
+  return `${currencySymbol.value}${profit.toFixed(2)}`;
 };
 
 const formatCartTotal = () => {
-  return `£${cartStore.cartTotal.toFixed(2)}`;
+  return `${currencySymbol.value}${cartStore.cartTotal.toFixed(2)}`;
 };
 </script>
 

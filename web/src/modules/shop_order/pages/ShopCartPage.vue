@@ -78,6 +78,24 @@
                   >
                     {{ $t('shop.listing_id') }}: {{ item.global_stock_allocation_id }}
                   </div>
+                  <!-- Dropship Selling Price Input -->
+                  <div v-if="cartStore.cart?.shop_type === 'dropship'" class="q-mt-sm" style="max-width: 210px">
+                    <q-input
+                      :model-value="item.customer_sell_price_amount"
+                      type="number"
+                      :label="$t('shop.your_selling_price')"
+                      outlined
+                      dense
+                      :prefix="currencySymbol"
+                      :min="item.unit_minimum_sell_price_amount || 0"
+                      :disable="!storefrontStore.permissions?.can_set_dropship_price"
+                      @change="(val) => updateSellingPrice(item, Number(val))"
+                    >
+                      <template #hint v-if="item.unit_minimum_sell_price_amount">
+                        {{ $t('shop.min_price_hint', { amount: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}
+                      </template>
+                    </q-input>
+                  </div>
                 </q-item-section>
 
                 <!-- Quantity Adjuster -->
@@ -91,7 +109,7 @@
                       icon="remove"
                       color="grey-7"
                       :disabled="cartStore.saving"
-                      @click="updateItemQty(item, item.quantity - (item.minimum_quantity || 1))"
+                      @click="updateItemQty(item, item.quantity - (cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
                     />
                     <div class="quantity-value text-weight-bold text-center text-grey-8">
                       {{ item.quantity }}
@@ -104,23 +122,45 @@
                       icon="add"
                       color="grey-7"
                       :disabled="cartStore.saving"
-                      @click="updateItemQty(item, item.quantity + (item.minimum_quantity || 1))"
+                      @click="updateItemQty(item, item.quantity + (cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
                     />
                   </div>
                 </q-item-section>
 
                 <!-- Price and Subtotal -->
                 <q-item-section
-                  v-if="cartStore.cart?.see_price_snapshot"
+                  v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'"
                   side
                   class="text-right subtotal-section item-price-section"
                 >
-                  <div class="text-subtitle2 text-weight-bold text-grey-9">
-                    {{ formatItemTotal(item) }}
-                  </div>
-                  <div class="text-caption text-grey-6">
-                    {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
-                  </div>
+                  <template v-if="cartStore.cart?.shop_type === 'dropship'">
+                    <div class="q-mb-xs">
+                      <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.your_cost') }}</span>
+                      <div class="text-subtitle2 text-weight-bold text-grey-9" style="line-height: 1.2">
+                        {{ formatBuyerItemTotal(item) }}
+                      </div>
+                      <div class="text-caption text-grey-6" style="font-size: 10px; line-height: 1">
+                        {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
+                      </div>
+                    </div>
+                    <div class="q-mt-xs">
+                      <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.recipient_pay') }}</span>
+                      <div class="text-subtitle2 text-weight-bold text-primary" style="line-height: 1.2">
+                        {{ formatItemTotal(item) }}
+                      </div>
+                      <div class="text-caption text-grey-6" style="font-size: 10px; line-height: 1">
+                        {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="text-subtitle2 text-weight-bold text-grey-9">
+                      {{ formatItemTotal(item) }}
+                    </div>
+                    <div class="text-caption text-grey-6">
+                      {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
+                    </div>
+                  </template>
                 </q-item-section>
 
                 <!-- Delete Action -->
@@ -152,25 +192,77 @@
             </q-card-section>
 
             <q-card-section class="q-py-md">
-              <template v-if="cartStore.cart?.see_price_snapshot">
-                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                  <span
-                    >{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }}
-                    {{ $t('shop.items').toLowerCase() }})</span
-                  >
-                  <span class="text-weight-medium">
-                    {{ formatCartTotal() }}
-                  </span>
-                </div>
+              <template v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'">
+                <template v-if="cartStore.cart?.shop_type === 'dropship'">
+                  <!-- Recipient Subtotal -->
+                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                    <span>{{ $t('shop.items_subtotal') }}</span>
+                    <span class="text-weight-medium text-grey-9">
+                      {{ formatCartTotal() }}
+                    </span>
+                  </div>
+                  
+                  <!-- Charges Section -->
+                  <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
+                    <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">{{ $t('shop.dropship_charges') }}</div>
+                    
+                    <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                      <span>{{ $t('shop.delivery_charge') }}</span>
+                      <span>{{ formatAmount(deliveryCharge) }}</span>
+                    </div>
+                    
+                    <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                      <span>{{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}</span>
+                      <span>{{ formatAmount(codCharge) }}</span>
+                    </div>
+                    
+                    <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                      <span>{{ $t('shop.print_charge') }}</span>
+                      <span>{{ formatAmount(printCharge) }}</span>
+                    </div>
+                    
+                    <div class="row justify-between text-caption text-grey-7">
+                      <span>{{ $t('shop.packing_charge') }}</span>
+                      <span>{{ formatAmount(packingCharge) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Buyer Cost -->
+                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                    <span>{{ $t('shop.your_cost_buyer') }}</span>
+                    <span class="text-weight-medium text-grey-9">
+                      {{ formatAmount(cartStore.buyerCartTotal + deliveryCharge + printCharge + packingCharge) }}
+                    </span>
+                  </div>
+                  
+                  <!-- Profit -->
+                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                    <span>{{ $t('shop.estimated_profit') }}</span>
+                    <span class="text-weight-medium text-positive text-weight-bold">
+                      {{ formatEstimatedProfit() }}
+                    </span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                    <span
+                      >{{ $t('shop.subtotal') }} ({{ cartStore.itemCount }}
+                      {{ $t('shop.items').toLowerCase() }})</span
+                    >
+                    <span class="text-weight-medium">
+                      {{ formatCartTotal() }}
+                    </span>
+                  </div>
+                </template>
 
                 <q-separator class="q-my-md" />
 
                 <div class="row justify-between items-baseline q-mb-lg">
                   <span class="text-subtitle1 text-weight-bold text-grey-9">{{
-                    $t('shop.estimated_total')
+                    cartStore.cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                   }}</span>
                   <span class="text-h6 text-weight-bold text-primary">
-                    {{ formatCartTotal() }}
+                    {{ cartStore.cart?.shop_type === 'dropship' ? formatAmount(cartStore.cartTotal + totalCharges) : formatCartTotal() }}
                   </span>
                 </div>
               </template>
@@ -202,12 +294,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
+import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
 
 const route = useRoute();
 const router = useRouter();
 const cartStore = useShopCartStore();
 const storefrontStore = useShopStorefrontStore();
 const orderStore = useShopOrderStore();
+const currencyStore = useThriftCurrencyStore();
 
 const placingOrder = ref(false);
 
@@ -221,6 +315,15 @@ const shopId = computed(() => {
 
   const storedId = localStorage.getItem('last_visited_shop_id');
   return storedId ? Number(storedId) : null;
+});
+
+const currencySymbol = computed(() => {
+  const shop = storefrontStore.shopDetails;
+  if (shop?.sell_currency_id) {
+    const curr = currencyStore.currencyById(shop.sell_currency_id);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '£';
 });
 
 const goBack = () => {
@@ -273,6 +376,11 @@ const removeItem = async (item: any) => {
   await cartStore.removeItem(item.id);
 };
 
+const updateSellingPrice = async (item: any, newPrice: number) => {
+  if (isNaN(newPrice) || newPrice < 0) return;
+  await cartStore.updatePrice(item.id, newPrice);
+};
+
 // Formatting helpers
 const formatUnitPrice = (item: any) => {
   const price =
@@ -280,8 +388,7 @@ const formatUnitPrice = (item: any) => {
     item.unit_sell_price_amount ??
     item.unit_list_price_amount ??
     0;
-  // Simple format, currency prefix could be resolved from database metadata.
-  return `£${Number(price).toFixed(2)}`;
+  return `${currencySymbol.value}${Number(price).toFixed(2)}`;
 };
 
 const formatItemTotal = (item: any) => {
@@ -291,16 +398,65 @@ const formatItemTotal = (item: any) => {
     item.unit_list_price_amount ??
     0;
   const total = price * item.quantity;
-  return `£${total.toFixed(2)}`;
+  return `${currencySymbol.value}${total.toFixed(2)}`;
+};
+
+const formatBuyerUnitPrice = (item: any) => {
+  const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+  return `${currencySymbol.value}${Number(price).toFixed(2)}`;
+};
+
+const formatBuyerItemTotal = (item: any) => {
+  const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+  const total = price * item.quantity;
+  return `${currencySymbol.value}${total.toFixed(2)}`;
+};
+
+const defaultCodChargePct = computed(() => Number(cartStore.cart?.default_cod_charge_pct || 0));
+const defaultDeliveryCharge = computed(() => Number(cartStore.cart?.default_delivery_charge_amount || 0));
+const defaultPrintCharge = computed(() => Number(cartStore.cart?.default_print_charge_amount || 0));
+const defaultPackingCharge = computed(() => Number(cartStore.cart?.default_packing_charge_amount || 0));
+
+const deliveryCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultDeliveryCharge.value : 0));
+const printCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultPrintCharge.value : 0));
+const packingCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultPackingCharge.value : 0));
+const codCharge = computed(() => {
+  if (cartStore.cart?.shop_type !== 'dropship') return 0;
+  return (cartStore.cartTotal * defaultCodChargePct.value) / 100;
+});
+const totalCharges = computed(() => {
+  return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
+});
+
+const formatBuyerCartTotal = () => {
+  return `${currencySymbol.value}${cartStore.buyerCartTotal.toFixed(2)}`;
+};
+
+const formatAmount = (val: number) => {
+  return `${currencySymbol.value}${val.toFixed(2)}`;
+};
+
+const formatEstimatedProfit = () => {
+  const buyerCost = cartStore.buyerCartTotal + deliveryCharge.value + printCharge.value + packingCharge.value;
+  const grandTotal = cartStore.cartTotal + totalCharges.value;
+  const profit = grandTotal - buyerCost;
+  return `${currencySymbol.value}${profit.toFixed(2)}`;
 };
 
 const formatCartTotal = () => {
-  return `£${cartStore.cartTotal.toFixed(2)}`;
+  return `${currencySymbol.value}${cartStore.cartTotal.toFixed(2)}`;
 };
 
 onMounted(async () => {
+  await currencyStore.loadCurrencies();
   if (shopId.value) {
     await cartStore.fetchCart(shopId.value);
+    if (!storefrontStore.permissions || !storefrontStore.shopDetails) {
+      const lastSlug = localStorage.getItem('last_visited_shop_slug');
+      if (lastSlug) {
+        await storefrontStore.fetchCatalog(lastSlug, { limit: 1, offset: 0 });
+      }
+    }
   }
 });
 </script>

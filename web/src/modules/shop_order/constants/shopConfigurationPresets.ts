@@ -110,8 +110,8 @@ export const SHOP_CONFIGURATION_PRESETS: ShopConfigurationPreset[] = [
     id: 'F',
     name: 'Scenario F — Dropship Reseller Portal',
     nameBn: 'সিনারিও F — ড্রপশিপ রিসেলার পোর্টাল',
-    description: 'A reseller portal where the buyer sets their own customer-facing sell price on each line (subject to a minimum sell price floor). The storefront shows both suggested and floor prices.',
-    descriptionBn: 'একটি রিসেলার পোর্টাল যেখানে ক্রেতা প্রতিটি লাইনে নিজের বিক্রয়মূল্য সেট করতে পারে (ন্যূনতম বিক্রয়মূল্য ফ্লোর সাপেক্ষে)। স্টোরফ্রন্টে দুটি মূল্যই দেখানো হয়।',
+    description: 'A reseller portal where the buyer sets their own customer-facing sell price on each line (subject to a minimum sell price floor). The storefront shows both suggested and floor prices. Supports configuring default shop charges (COD %, delivery, print, packing) which auto-apply during checkout.',
+    descriptionBn: 'একটি রিসেলার পোর্টাল যেখানে ক্রেতা প্রতিটি লাইনে নিজের বিক্রয়মূল্য সেট করতে পারে (ন্যূনতম বিক্রয়মূল্য ফ্লোর সাপেক্ষে)। স্টোরফ্রন্টে দুটি মূল্যই দেখানো হয়। ডিফল্ট শপ চার্জ (COD %, ডেলিভারি, প্রিন্ট, প্যাকিং) কনফিগার করা সমর্থন করে যা চেকআউটের সময় স্বয়ংক্রিয়ভাবে প্রয়োগ হয়।',
     downstream: 'global_invoice type dropship (dual amounts)',
     fields: {
       shop_type: 'dropship',
