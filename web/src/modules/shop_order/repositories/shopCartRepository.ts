@@ -26,16 +26,12 @@ export interface CartData {
     delivery_charge_amount?: number;
     print_charge_amount?: number;
     packing_charge_amount?: number;
-    default_cod_charge_pct?: number;
-    default_delivery_charge_amount?: number;
     default_print_charge_amount?: number;
     default_packing_charge_amount?: number;
     discount_amount?: number;
     is_prepaid?: boolean;
     delivery_instructions?: string | null;
     deduct_charges_from_margin?: boolean;
-    deduct_cod_from_margin?: boolean;
-    deduct_delivery_from_margin?: boolean;
     deduct_print_from_margin?: boolean;
     deduct_packing_from_margin?: boolean;
   };

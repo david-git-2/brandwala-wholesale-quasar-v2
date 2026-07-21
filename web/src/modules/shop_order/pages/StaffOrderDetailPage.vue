@@ -205,6 +205,17 @@
                   @click="placeForProcurement"
                 />
                 <q-btn
+                  v-else-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'"
+                  color="primary"
+                  unelevated
+                  no-caps
+                  icon="local_shipping"
+                  :label="$t('shop_admin.add_to_dropship_desk')"
+                  class="pill-btn text-weight-bold q-px-lg q-py-sm"
+                  :loading="orderStore.saving"
+                  @click="addToDropshipDesk"
+                />
+                <q-btn
                   v-else
                   color="teal-7"
                   unelevated
@@ -726,9 +737,12 @@ const availableStatuses = computed(() => {
   if (orderStore.currentOrder?.shop_type_snapshot === 'dropship') {
     return [
       'submitted',
+      'confirmed',
       'processing',
+      'ready_for_pickup',
       'shipped',
       'delivered',
+      'returned',
       'payment_received',
       'cancelled',
     ];
@@ -874,6 +888,22 @@ const fulfillToInvoice = async () => {
     }
   }
 };
+
+const addToDropshipDesk = async () => {
+  if (orderId.value) {
+    const res = await orderStore.processDropshipOrder(orderId.value);
+    if (res.success) {
+      void router.push({
+        name: 'app-shop-dropship-order-detail-page',
+        params: {
+          tenantSlug: route.params.tenantSlug,
+          id: orderId.value,
+        },
+      });
+    }
+  }
+};
+
 
 const codFeePctLabel = computed(() => {
   const sub = recipientSubtotal.value;

@@ -31,10 +31,10 @@ const submitOrder = async (
       discountAmount,
     );
     return { success: true, data };
-  } catch (error) {
+  } catch (error: any) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to submit order.',
+      error: error?.message || (typeof error === 'string' ? error : 'Failed to submit order.'),
     };
   }
 };
@@ -140,6 +140,21 @@ const fetchStaffOrders = async (
   }
 };
 
+const fetchDropshipStaffOrders = async (
+  tenantId: number,
+  opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null },
+): Promise<ShopServiceResult<ShopOrder[]>> => {
+  try {
+    const data = await shopOrderRepository.listDropshipShopOrdersForStaff(tenantId, opts);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to list dropship desk orders.',
+    };
+  }
+};
+
 const placeOrderForProcurement = async (orderId: number): Promise<ShopServiceResult<void>> => {
   try {
     await shopOrderRepository.placeShopOrderForProcurement(orderId);
@@ -237,6 +252,23 @@ const updateOrderCharges = async (
   }
 };
 
+const processDropshipOrder = async (
+  orderId: number,
+): Promise<ShopServiceResult<any>> => {
+  try {
+    const res = await shopOrderRepository.processDropshipShopOrder(orderId);
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to process dropship order handoff.' };
+    }
+    return { success: true, data: res };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to process dropship order handoff.',
+    };
+  }
+};
+
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
@@ -246,10 +278,13 @@ export const shopOrderService = {
   getOrderDetails,
   fetchCustomerOrders,
   fetchStaffOrders,
+  fetchDropshipStaffOrders,
   placeOrderForProcurement,
   fulfillOrderToInvoice,
   deleteOrder,
   browseShopCatalog,
   listShopsForCustomer,
   updateOrderCharges,
+  processDropshipOrder,
 };
+

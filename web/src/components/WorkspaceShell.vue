@@ -619,17 +619,23 @@
                 <q-icon :name="link.icon" size="sm" />
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-medium">
-                  {{ translateTitle(link.title) }}
-                </q-item-label>
-                <q-item-label caption v-if="link.caption">
-                  {{ translateCaption(link.title, link.caption) }}
-                </q-item-label>
+                <q-item-label
+                  class="text-weight-medium"
+                  v-html="highlightMatch(translateTitle(link.title), searchQuery)"
+                />
+                <q-item-label
+                  v-if="link.caption"
+                  caption
+                  v-html="highlightMatch(translateCaption(link.title, link.caption), searchQuery)"
+                />
               </q-item-section>
               <q-item-section side v-if="link.parentTitle">
-                <q-badge outline color="primary" size="sm">{{
-                  translateTitle(link.parentTitle)
-                }}</q-badge>
+                <q-badge
+                  outline
+                  color="primary"
+                  size="sm"
+                  v-html="highlightMatch(translateTitle(link.parentTitle), searchQuery)"
+                />
               </q-item-section>
             </q-item>
           </q-list>
@@ -838,17 +844,57 @@ const flattenedLinks = computed(() => {
   return result;
 });
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const highlightMatch = (text: string, rawQuery: string) => {
+  const query = rawQuery.trim();
+  if (!query || !text) return escapeHtml(text);
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let result = '';
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const matchIndex = lowerText.indexOf(lowerQuery, cursor);
+    if (matchIndex === -1) {
+      result += escapeHtml(text.slice(cursor));
+      break;
+    }
+    result += escapeHtml(text.slice(cursor, matchIndex));
+    result += `<mark class="command-palette-match">${escapeHtml(
+      text.slice(matchIndex, matchIndex + query.length),
+    )}</mark>`;
+    cursor = matchIndex + query.length;
+  }
+
+  return result;
+};
+
 const filteredLinks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (!query) {
     return flattenedLinks.value;
   }
-  return flattenedLinks.value.filter((link) => {
-    const title = translateTitle(link.title).toLowerCase();
-    const caption = translateCaption(link.title, link.caption ?? '').toLowerCase();
-    const parentTitle = link.parentTitle ? translateTitle(link.parentTitle).toLowerCase() : '';
-    return title.includes(query) || caption.includes(query) || parentTitle.includes(query);
-  });
+  return flattenedLinks.value
+    .map((link) => {
+      const title = translateTitle(link.title).toLowerCase();
+      const caption = translateCaption(link.title, link.caption ?? '').toLowerCase();
+      const parentTitle = link.parentTitle ? translateTitle(link.parentTitle).toLowerCase() : '';
+      const titleMatch = title.includes(query);
+      const captionMatch = caption.includes(query);
+      const parentMatch = parentTitle.includes(query);
+      if (!titleMatch && !captionMatch && !parentMatch) return null;
+      return { link, rank: titleMatch ? 0 : 1 };
+    })
+    .filter((entry): entry is { link: FlattenedLink; rank: number } => entry !== null)
+    .sort((a, b) => a.rank - b.rank)
+    .map((entry) => entry.link);
 });
 
 watch(searchQuery, () => {
@@ -1323,6 +1369,14 @@ const confirmLogout = async () => {
 .command-palette-item--active {
   background: var(--shell-accent-soft) !important;
   color: var(--shell-ink) !important;
+}
+
+.command-palette-match {
+  background: color-mix(in srgb, var(--q-primary) 28%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
 }
 
 .command-palette-input :deep(.q-field__control) {

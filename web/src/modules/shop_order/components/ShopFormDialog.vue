@@ -304,27 +304,6 @@
           <div class="text-subtitle2 text-orange-9 text-weight-medium q-mb-sm">
             {{ $t('shop_admin.dropship_default_charges') }}
           </div>
-          <div class="row q-col-gutter-md q-mb-sm">
-            <div class="col-6">
-              <q-input
-                v-model.number="form.default_cod_charge_pct"
-                type="number"
-                :label="$t('shop_admin.default_cod_charge_pct')"
-                suffix="%"
-                outlined
-                dense
-              />
-            </div>
-            <div class="col-6">
-              <q-input
-                v-model.number="form.default_delivery_charge_amount"
-                type="number"
-                :label="$t('shop_admin.default_delivery_charge')"
-                outlined
-                dense
-              />
-            </div>
-          </div>
           <div class="row q-col-gutter-md">
             <div class="col-6">
               <q-input
@@ -351,22 +330,8 @@
             </div>
             <div class="col-6 q-py-xs">
               <q-toggle
-                v-model="form.deduct_delivery_from_margin"
-                :label="$t('shop_admin.deduct_delivery_from_margin')"
-                color="primary"
-              />
-            </div>
-            <div class="col-6 q-py-xs">
-              <q-toggle
                 v-model="form.deduct_print_from_margin"
                 :label="$t('shop_admin.deduct_print_from_margin')"
-                color="primary"
-              />
-            </div>
-            <div class="col-6 q-py-xs">
-              <q-toggle
-                v-model="form.deduct_cod_from_margin"
-                :label="$t('shop_admin.deduct_cod_from_margin')"
                 color="primary"
               />
             </div>
@@ -377,6 +342,9 @@
                 color="primary"
               />
             </div>
+          </div>
+          <div class="text-caption text-grey-6 q-mt-sm">
+            {{ $t('shop_admin.courier_charges_note') }}
           </div>
         </div>
 
@@ -747,13 +715,9 @@ type ShopForm = {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
-  default_cod_charge_pct?: number;
-  default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin: boolean;
-  deduct_cod_from_margin: boolean;
-  deduct_delivery_from_margin: boolean;
   deduct_print_from_margin: boolean;
   deduct_packing_from_margin: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
@@ -787,8 +751,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { presetName } = useShopLocale();
 
-// ---- local state ---------------------------------------------------
-
 const localModelValue = computed({
   get: () => props.modelValue,
   set: (v: boolean) => emit('update:modelValue', v),
@@ -816,13 +778,9 @@ const defaultForm = (): ShopForm => ({
   pricing_method: 'direct_cost',
   markup_percentage: 0,
   quantity_display_mode: 'original',
-  default_cod_charge_pct: 0,
-  default_delivery_charge_amount: 0,
   default_print_charge_amount: 0,
   default_packing_charge_amount: 0,
   deduct_charges_from_margin: false,
-  deduct_cod_from_margin: false,
-  deduct_delivery_from_margin: false,
   deduct_print_from_margin: false,
   deduct_packing_from_margin: false,
   vendor_filters: [],
@@ -1047,13 +1005,9 @@ watch(
         pricing_method: initialData.pricing_method || 'direct_cost',
         markup_percentage: initialData.markup_percentage || 0,
         quantity_display_mode: initialData.quantity_display_mode || 'original',
-        default_cod_charge_pct: initialData.default_cod_charge_pct || 0,
-        default_delivery_charge_amount: initialData.default_delivery_charge_amount || 0,
         default_print_charge_amount: initialData.default_print_charge_amount || 0,
         default_packing_charge_amount: initialData.default_packing_charge_amount || 0,
         deduct_charges_from_margin: initialData.deduct_charges_from_margin || false,
-        deduct_cod_from_margin: initialData.deduct_cod_from_margin || false,
-        deduct_delivery_from_margin: initialData.deduct_delivery_from_margin || false,
         deduct_print_from_margin: initialData.deduct_print_from_margin || false,
         deduct_packing_from_margin: initialData.deduct_packing_from_margin || false,
         vendor_filters: initialData.vendor_filters || [],
@@ -1183,13 +1137,9 @@ const onSave = () => {
       pricing_method: form.pricing_method,
       markup_percentage: Number(form.markup_percentage || 0),
       quantity_display_mode: form.quantity_display_mode,
-      default_cod_charge_pct: Number(form.default_cod_charge_pct || 0),
-      default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
       deduct_charges_from_margin: form.deduct_charges_from_margin,
-      deduct_cod_from_margin: form.deduct_cod_from_margin,
-      deduct_delivery_from_margin: form.deduct_delivery_from_margin,
       deduct_print_from_margin: form.deduct_print_from_margin,
       deduct_packing_from_margin: form.deduct_packing_from_margin,
       vendor_filters: form.vendor_filters,
@@ -1211,13 +1161,9 @@ const onSave = () => {
       pricing_method: form.pricing_method,
       markup_percentage: Number(form.markup_percentage || 0),
       quantity_display_mode: form.quantity_display_mode,
-      default_cod_charge_pct: Number(form.default_cod_charge_pct || 0),
-      default_delivery_charge_amount: Number(form.default_delivery_charge_amount || 0),
       default_print_charge_amount: Number(form.default_print_charge_amount || 0),
       default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
       deduct_charges_from_margin: form.deduct_charges_from_margin,
-      deduct_cod_from_margin: form.deduct_cod_from_margin,
-      deduct_delivery_from_margin: form.deduct_delivery_from_margin,
       deduct_print_from_margin: form.deduct_print_from_margin,
       deduct_packing_from_margin: form.deduct_packing_from_margin,
       vendor_filters: form.shop_type === 'vendor_catalog' ? form.vendor_filters : null,

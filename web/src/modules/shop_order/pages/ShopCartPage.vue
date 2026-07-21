@@ -222,19 +222,13 @@
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                      <span>
-                        {{ $t('shop.delivery_charge') }}
-                        <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted' : 'customer pays' }})</span>
-                      </span>
-                      <span>{{ formatAmount(deliveryCharge) }}</span>
+                      <span>{{ $t('shop.delivery_charge') }}</span>
+                      <span>{{ formatAmount(0) }}</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                      <span>
-                        {{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}
-                        <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted' : 'customer pays' }})</span>
-                      </span>
-                      <span>{{ formatAmount(codCharge) }}</span>
+                      <span>{{ $t('shop.cod_fee') }}</span>
+                      <span>{{ formatAmount(0) }}</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
@@ -251,6 +245,12 @@
                         <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
                       </span>
                       <span>{{ formatAmount(packingCharge) }}</span>
+                    </div>
+
+                    <div class="text-caption text-grey-6 q-mt-sm">
+                      {{ $t('shop.courier_charges_may_vary') }}
+                      <div>{{ $t('shop.courier_delivery_estimate', { min: formatAmount(courierEstimate.deliveryMin), max: formatAmount(courierEstimate.deliveryMax) }) }}</div>
+                      <div v-if="codEstimateSummary">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</div>
                     </div>
                   </div>
 
@@ -322,6 +322,7 @@ import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 
 const route = useRoute();
 const router = useRouter();
@@ -463,45 +464,58 @@ const formatBuyerItemTotal = (item: any) => {
   return `${currencySymbol.value}${total.toFixed(2)}`;
 };
 
-const defaultCodChargePct = computed(() => Number(cartStore.cart?.default_cod_charge_pct || 0));
-const defaultDeliveryCharge = computed(() => Number(cartStore.cart?.default_delivery_charge_amount || 0));
 const defaultPrintCharge = computed(() => Number(cartStore.cart?.default_print_charge_amount || 0));
 const defaultPackingCharge = computed(() => Number(cartStore.cart?.default_packing_charge_amount || 0));
 
-const deliveryCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultDeliveryCharge.value : 0));
 const printCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultPrintCharge.value : 0));
 const packingCharge = computed(() => (cartStore.cart?.shop_type === 'dropship' ? defaultPackingCharge.value : 0));
-const codCharge = computed(() => {
-  if (cartStore.cart?.shop_type !== 'dropship') return 0;
-  return (cartStore.cartTotal * defaultCodChargePct.value) / 100;
-});
-const totalCharges = computed(() => {
-  return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
-});
 
-const deductCodFromMargin = computed(() => !!cartStore.cart?.deduct_cod_from_margin);
-const deductDeliveryFromMargin = computed(() => !!cartStore.cart?.deduct_delivery_from_margin);
 const deductPrintFromMargin = computed(() => !!cartStore.cart?.deduct_print_from_margin);
 const deductPackingFromMargin = computed(() => !!cartStore.cart?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
   return cartStore.cartTotal
-    + (deductDeliveryFromMargin.value ? 0 : deliveryCharge.value)
     + (deductPrintFromMargin.value ? 0 : printCharge.value)
-    + (deductPackingFromMargin.value ? 0 : packingCharge.value)
-    + (deductCodFromMargin.value ? 0 : codCharge.value);
+    + (deductPackingFromMargin.value ? 0 : packingCharge.value);
 });
 
 const buyerTotal = computed(() => {
   return cartStore.buyerCartTotal
-    + deliveryCharge.value
     + printCharge.value
-    + packingCharge.value
-    + (deductCodFromMargin.value ? codCharge.value : 0);
+    + packingCharge.value;
 });
 
 const estimatedProfit = computed(() => {
   return recipientGrandTotal.value - buyerTotal.value;
+});
+
+const courierEstimate = ref({
+  deliveryMin: 60,
+  deliveryMax: 130,
+  codPercentMin: 1 as number | null,
+  codPercentMax: 1 as number | null,
+  codFlatMin: null as number | null,
+  codFlatMax: null as number | null,
+});
+
+const codEstimateSummary = computed(() => {
+  const e = courierEstimate.value;
+  const parts: string[] = [];
+  if (e.codPercentMin != null && e.codPercentMax != null) {
+    parts.push(
+      e.codPercentMin === e.codPercentMax
+        ? `~${e.codPercentMin}%`
+        : `~${e.codPercentMin}–${e.codPercentMax}%`
+    );
+  }
+  if (e.codFlatMin != null && e.codFlatMax != null) {
+    parts.push(
+      e.codFlatMin === e.codFlatMax
+        ? formatAmount(e.codFlatMin)
+        : `${formatAmount(e.codFlatMin)}–${formatAmount(e.codFlatMax)}`
+    );
+  }
+  return parts.join(' / ') || '~1%';
 });
 
 const formatAmount = (val: number | any) => {
@@ -524,6 +538,9 @@ onMounted(async () => {
         await storefrontStore.fetchCatalog(lastSlug, { limit: 1, offset: 0 });
       }
     }
+  }
+  if (cartStore.cart?.shop_type === 'dropship') {
+    courierEstimate.value = await fetchCourierChargeEstimate();
   }
 });
 </script>

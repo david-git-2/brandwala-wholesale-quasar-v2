@@ -10,6 +10,16 @@
             {{ $t('shop_admin.shop_orders_subtitle') }}
           </p>
         </div>
+        <div class="col-auto row q-gutter-sm">
+          <q-btn
+            outline
+            color="primary"
+            icon="local_shipping"
+            label="Dropship Ops Desk"
+            no-caps
+            :to="{ name: 'app-shop-dropship-orders-page' }"
+          />
+        </div>
       </section>
 
       <!-- Shops Filter Button Group -->
@@ -131,8 +141,21 @@
                       {{ order.status.toUpperCase() }}
                     </q-badge>
                     <q-btn
+                      v-if="order.shop_type_snapshot === 'dropship' && order.status === 'confirmed'"
                       unelevated
                       color="primary"
+                      no-caps
+                      dense
+                      icon="local_shipping"
+                      :label="$t('shop_admin.add_to_dropship_desk')"
+                      class="q-px-md pill-btn text-weight-bold"
+                      :loading="orderStore.saving"
+                      @click="addToDropshipDesk(order.id)"
+                    />
+                    <q-btn
+                      unelevated
+                      color="secondary"
+                      outline
                       no-caps
                       dense
                       :label="$t('shop_admin.manage')"
@@ -218,6 +241,15 @@ const goToOrderDetails = (orderId: number) => {
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
   void router.push(`${slug}/app/shop/orders/${orderId}`);
 };
+
+const addToDropshipDesk = async (orderId: number) => {
+  const res = await orderStore.processDropshipOrder(orderId);
+  if (res.success) {
+    const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
+    void router.push(`${slug}/app/shop/dropship/orders/${orderId}`);
+  }
+};
+
 
 const formatDate = (dateStr: string) => {
   return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');

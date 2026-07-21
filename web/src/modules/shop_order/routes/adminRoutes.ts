@@ -141,6 +141,44 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
 
+  // shop_dropship — Dropship Ops Desk (app scope)
+  {
+    path: '/:tenantSlug?/app/shop/dropship',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-dropship-orders-page',
+        component: () => import('src/modules/shop_order/pages/DropshipOrdersPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'couriers',
+        name: 'app-shop-dropship-couriers-page',
+        component: () => import('src/modules/shop_order/pages/DropshipCouriersPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'ledger',
+        name: 'app-shop-dropship-ledger-page',
+        component: () => import('src/modules/shop_order/pages/DropshipLedgerPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'merchants',
+        name: 'app-shop-dropship-merchants-page',
+        component: () => import('src/modules/shop_order/pages/DropshipMerchantsPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: ':id',
+        name: 'app-shop-dropship-order-detail-page',
+        component: () => import('src/modules/shop_order/pages/DropshipOrderDetailPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+    ],
+  },
+
   // Legacy redirects (Phase 9)
   {
     path: '/:tenantSlug?/app/commerce/shop',

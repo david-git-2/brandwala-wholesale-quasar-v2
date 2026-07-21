@@ -180,6 +180,11 @@
             <span class="text-h5 text-weight-bold text-primary">${{ cartTotalAmount.toFixed(2) }}</span>
           </div>
 
+          <div v-if="shopType === 'dropship'" class="text-caption text-grey-6">
+            COD and delivery are set by the courier after processing and may vary.
+            Estimated delivery: $60–$130; COD typically ~1%.
+          </div>
+
           <!-- CTA based on Order Mode -->
           <q-btn
             color="primary"

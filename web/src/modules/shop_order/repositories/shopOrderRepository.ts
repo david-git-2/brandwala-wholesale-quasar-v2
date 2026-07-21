@@ -50,14 +50,10 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_pricing_method: payload.pricing_method ?? null,
     p_markup_percentage: payload.markup_percentage ?? 0,
     p_quantity_display_mode: payload.quantity_display_mode ?? null,
-    p_default_cod_charge_pct: (payload as any).default_cod_charge_pct ?? 0,
-    p_default_delivery_charge_amount: (payload as any).default_delivery_charge_amount ?? 0,
     p_default_print_charge_amount: (payload as any).default_print_charge_amount ?? 0,
     p_default_packing_charge_amount: (payload as any).default_packing_charge_amount ?? 0,
     p_deduct_charges_from_margin: payload.deduct_charges_from_margin ?? false,
     p_vendor_filters: payload.vendor_filters ?? null,
-    p_deduct_cod_from_margin: (payload as any).deduct_cod_from_margin ?? false,
-    p_deduct_delivery_from_margin: (payload as any).deduct_delivery_from_margin ?? false,
     p_deduct_print_from_margin: (payload as any).deduct_print_from_margin ?? false,
     p_deduct_packing_from_margin: (payload as any).deduct_packing_from_margin ?? false,
   });
@@ -228,6 +224,21 @@ const listShopOrdersForStaff = async (
   return (data as ShopOrder[] | null) ?? [];
 };
 
+const listDropshipShopOrdersForStaff = async (
+  tenantId: number,
+  opts: { limit?: number; offset?: number; search?: string | null; status?: string | null } = {},
+): Promise<ShopOrder[]> => {
+  const { data, error } = await supabase.rpc('list_dropship_shop_orders_for_staff', {
+    p_tenant_id: tenantId,
+    p_limit: opts.limit ?? 20,
+    p_offset: opts.offset ?? 0,
+    p_status: opts.status ?? null,
+    p_search: opts.search ?? null,
+  });
+  if (error) throw error;
+  return (data as ShopOrder[] | null) ?? [];
+};
+
 const getShopOrderById = async (
   orderId: number,
 ): Promise<{ order: ShopOrder; items: ShopOrderItem[] }> => {
@@ -293,6 +304,14 @@ const deleteShopOrder = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const processDropshipShopOrder = async (orderId: number): Promise<{ success: boolean; order_id?: number; new_status?: string; error?: string }> => {
+  const { data, error } = await supabase.rpc('process_dropship_shop_order', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return data as { success: boolean; order_id?: number; new_status?: string; error?: string };
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -305,9 +324,12 @@ export const shopOrderRepository = {
   confirmShopOrder,
   listShopOrdersForCustomer,
   listShopOrdersForStaff,
+  listDropshipShopOrdersForStaff,
   getShopOrderById,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
   deleteShopOrder,
   updateOrderCharges,
+  processDropshipShopOrder,
 };
+

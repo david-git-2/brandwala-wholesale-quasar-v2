@@ -24,13 +24,9 @@ export interface Shop {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
-  default_cod_charge_pct?: number;
-  default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;
-  deduct_cod_from_margin?: boolean;
-  deduct_delivery_from_margin?: boolean;
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
@@ -58,13 +54,9 @@ export interface CreateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
-  default_cod_charge_pct?: number;
-  default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;
-  deduct_cod_from_margin?: boolean;
-  deduct_delivery_from_margin?: boolean;
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
@@ -87,13 +79,9 @@ export interface UpdateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
-  default_cod_charge_pct?: number;
-  default_delivery_charge_amount?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;
-  deduct_cod_from_margin?: boolean;
-  deduct_delivery_from_margin?: boolean;
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
@@ -122,9 +110,12 @@ export type ShopOrderStatus =
   | 'placed'
   | 'fulfilled'
   | 'processing'
+  | 'ready_for_pickup'
   | 'shipped'
   | 'delivered'
+  | 'returned'
   | 'payment_received';
+
 
 export interface ShopOrder {
   id: number;

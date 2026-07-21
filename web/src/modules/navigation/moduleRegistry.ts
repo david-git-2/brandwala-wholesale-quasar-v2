@@ -48,6 +48,7 @@ export type ModuleKey =
   | 'shop_cart'
   | 'shop_order_mgmt'
   | 'shop_fulfillment'
+  | 'shop_dropship'
   | 'sales_invoice'
   | 'billing_profile'
   | 'recipient_profile';
@@ -908,6 +909,46 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Fulfill orders via procurement or invoice',
         icon: 'local_shipping',
         routeSegment: 'shop/fulfillment',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shop_dropship',
+    name: 'Dropship Ops Desk',
+    description: 'Manage dropship consignments, couriers, return policies, and payout ledger.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Dropship Desk',
+        caption: 'Process dropship orders and courier shipments',
+        icon: 'local_shipping',
+        routeSegment: 'shop/dropship',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Couriers',
+        caption: 'Courier catalog & return policies',
+        icon: 'local_shipping',
+        routeSegment: 'shop/dropship/couriers',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Payout Ledger',
+        caption: 'Middle-man profit & COD remittance ledger',
+        icon: 'account_balance_wallet',
+        routeSegment: 'shop/dropship/ledger',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Merchants & Pickup',
+        caption: 'Manage merchant sender profiles & pickup locations',
+        icon: 'storefront',
+        routeSegment: 'shop/dropship/merchants',
         requiredAction: 'view',
       },
     ],

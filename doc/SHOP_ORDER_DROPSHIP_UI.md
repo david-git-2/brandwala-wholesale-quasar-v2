@@ -60,11 +60,11 @@ Work in this order. Later steps depend on routes, types, and mock store from ste
 
 | ID | Task | Status |
 |----|------|--------|
-| `i0-routes-nav` | `adminRoutes` + `moduleRegistry` + i18n + dummy store | pending |
-| `i0-checkout-recipient` | `ShopCheckoutPage` + `RecipientProfilesPage` block A fields | pending |
-| `i0-merchant-courier` | `ShopFormDialog` sender defaults + `DropshipCouriersPage` | pending |
-| `i0-desk-process` | `DropshipOrdersPage` + `DropshipOrderDetailPage` Process Order / print stubs | pending |
-| `i0-dual-settle` | Dual invoice CTA stubs + `DropshipLedgerPage` + customer tracking | pending |
+| `i0-routes-nav` | `adminRoutes` + `moduleRegistry` + i18n + dummy store | completed |
+| `i0-checkout-recipient` | `ShopCheckoutPage` + `RecipientProfilesPage` block A fields | completed |
+| `i0-merchant-courier` | `ShopFormDialog` sender defaults + `DropshipCouriersPage` | completed |
+| `i0-desk-process` | `DropshipOrdersPage` + `DropshipOrderDetailPage` Process Order / print stubs | completed |
+| `i0-dual-settle` | Dual invoice CTA stubs + `DropshipLedgerPage` + customer tracking | completed |
 
 ---
 

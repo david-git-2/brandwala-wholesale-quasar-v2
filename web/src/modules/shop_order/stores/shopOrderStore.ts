@@ -252,6 +252,24 @@ export const useShopOrderStore = defineStore('shopOrder', {
       }
     },
 
+    async processDropshipOrder(orderId: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopOrderService.processDropshipOrder(orderId);
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        showSuccessNotification('Added to Dropship Desk successfully.');
+        await this.fetchOrderDetails(orderId);
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async updateOrderCharges(
       orderId: number,
       payload: {

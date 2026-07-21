@@ -1,0 +1,578 @@
+[
+  {
+    "id": "496",
+    "district_id": "1",
+    "name": "Uttara",
+    "bn_name": "উত্তরা"
+  },
+  {
+    "id": "497",
+    "district_id": "1",
+    "name": "Uttara West",
+    "bn_name": "উত্তরা পশ্চিম"
+  },
+  {
+    "id": "498",
+    "district_id": "1",
+    "name": "Uttarkhan",
+    "bn_name": "উত্তরখান"
+  },
+  {
+    "id": "499",
+    "district_id": "1",
+    "name": "Dakshinkhan",
+    "bn_name": "দক্ষিণখান"
+  },
+  {
+    "id": "500",
+    "district_id": "1",
+    "name": "Mirpur",
+    "bn_name": "মিরপুর"
+  },
+  {
+    "id": "501",
+    "district_id": "1",
+    "name": "Pallabi",
+    "bn_name": "পল্লবী"
+  },
+  {
+    "id": "502",
+    "district_id": "1",
+    "name": "Rupnagar",
+    "bn_name": "রূপনগর"
+  },
+  {
+    "id": "503",
+    "district_id": "1",
+    "name": "Kafrul",
+    "bn_name": "কাফরুল"
+  },
+  {
+    "id": "504",
+    "district_id": "1",
+    "name": "Dhanmondi",
+    "bn_name": "ধানমন্ডি"
+  },
+  {
+    "id": "505",
+    "district_id": "1",
+    "name": "Kalabagan",
+    "bn_name": "কলাবাগান"
+  },
+  {
+    "id": "506",
+    "district_id": "1",
+    "name": "Hazaribagh",
+    "bn_name": "হাজারীবাগ"
+  },
+  {
+    "id": "507",
+    "district_id": "1",
+    "name": "New Market",
+    "bn_name": "নিউ মার্কেট"
+  },
+  {
+    "id": "508",
+    "district_id": "1",
+    "name": "Gulshan",
+    "bn_name": "গুলশান"
+  },
+  {
+    "id": "509",
+    "district_id": "1",
+    "name": "Banani",
+    "bn_name": "বনানী"
+  },
+  {
+    "id": "510",
+    "district_id": "1",
+    "name": "Badda",
+    "bn_name": "বাড্ডা"
+  },
+  {
+    "id": "511",
+    "district_id": "1",
+    "name": "Vatara",
+    "bn_name": "ভাটারা"
+  },
+  {
+    "id": "512",
+    "district_id": "1",
+    "name": "Tejgaon",
+    "bn_name": "তেজগাঁও"
+  },
+  {
+    "id": "513",
+    "district_id": "1",
+    "name": "Tejgaon Industrial Area",
+    "bn_name": "তেজগাঁও শিল্পাঞ্চল"
+  },
+  {
+    "id": "514",
+    "district_id": "1",
+    "name": "Mohammadpur",
+    "bn_name": "মোহাম্মদপুর"
+  },
+  {
+    "id": "515",
+    "district_id": "1",
+    "name": "Adabor",
+    "bn_name": "আদাবর"
+  },
+  {
+    "id": "516",
+    "district_id": "1",
+    "name": "Sher-e-Bangla Nagar",
+    "bn_name": "শের-ই-বাংলা নগর"
+  },
+  {
+    "id": "517",
+    "district_id": "1",
+    "name": "Ramna",
+    "bn_name": "রামনা"
+  },
+  {
+    "id": "518",
+    "district_id": "1",
+    "name": "Shahbagh",
+    "bn_name": "শাহবাগ"
+  },
+  {
+    "id": "519",
+    "district_id": "1",
+    "name": "Paltan",
+    "bn_name": "পল্টন"
+  },
+  {
+    "id": "520",
+    "district_id": "1",
+    "name": "Motijheel",
+    "bn_name": "মতিঝিল"
+  },
+  {
+    "id": "521",
+    "district_id": "1",
+    "name": "Khilgaon",
+    "bn_name": "খিলগাঁও"
+  },
+  {
+    "id": "522",
+    "district_id": "1",
+    "name": "Rampura",
+    "bn_name": "রামপুরা"
+  },
+  {
+    "id": "523",
+    "district_id": "1",
+    "name": "Mugda",
+    "bn_name": "মুগদা"
+  },
+  {
+    "id": "524",
+    "district_id": "1",
+    "name": "Sabujbagh",
+    "bn_name": "সবুজবাগ"
+  },
+  {
+    "id": "525",
+    "district_id": "1",
+    "name": "Jatrabari",
+    "bn_name": "যাত্রাবাড়ী"
+  },
+  {
+    "id": "526",
+    "district_id": "1",
+    "name": "Demra",
+    "bn_name": "ডেমরা"
+  },
+  {
+    "id": "527",
+    "district_id": "1",
+    "name": "Kadamtali",
+    "bn_name": "কদমতলী"
+  },
+  {
+    "id": "528",
+    "district_id": "1",
+    "name": "Shyampur",
+    "bn_name": "শ্যামপুর"
+  },
+  {
+    "id": "529",
+    "district_id": "1",
+    "name": "Sutrapur",
+    "bn_name": "সূত্রাপুর"
+  },
+  {
+    "id": "530",
+    "district_id": "1",
+    "name": "Kotwali",
+    "bn_name": "কোতোয়ালী"
+  },
+  {
+    "id": "531",
+    "district_id": "1",
+    "name": "Wari",
+    "bn_name": "ওয়ারী"
+  },
+  {
+    "id": "532",
+    "district_id": "1",
+    "name": "Gendaria",
+    "bn_name": "গেণ্ডারিয়া"
+  },
+  {
+    "id": "533",
+    "district_id": "1",
+    "name": "Lalbagh",
+    "bn_name": "লালবাগ"
+  },
+  {
+    "id": "534",
+    "district_id": "1",
+    "name": "Chawkbazar",
+    "bn_name": "চকবাজার"
+  },
+  {
+    "id": "535",
+    "district_id": "1",
+    "name": "Kamrangirchar",
+    "bn_name": "কামরাঙ্গীরচর"
+  },
+  {
+    "id": "536",
+    "district_id": "1",
+    "name": "Bhashantek",
+    "bn_name": "ভাষানটেক"
+  },
+  {
+    "id": "537",
+    "district_id": "1",
+    "name": "Cantonment",
+    "bn_name": "ক্যান্টনমেন্ট"
+  },
+  {
+    "id": "538",
+    "district_id": "1",
+    "name": "Khilkhet",
+    "bn_name": "খিলক্ষেত"
+  },
+  {
+    "id": "539",
+    "district_id": "1",
+    "name": "Turag",
+    "bn_name": "তুরাগ"
+  },
+  {
+    "id": "540",
+    "district_id": "43",
+    "name": "Pahartali",
+    "bn_name": "পাহাড়তলী"
+  },
+  {
+    "id": "541",
+    "district_id": "43",
+    "name": "Panchlaish",
+    "bn_name": "পাঁচলাইশ"
+  },
+  {
+    "id": "542",
+    "district_id": "43",
+    "name": "Patenga",
+    "bn_name": "পতেঙ্গা"
+  },
+  {
+    "id": "543",
+    "district_id": "43",
+    "name": "Double Mooring",
+    "bn_name": "ডাবল মুরিং"
+  },
+  {
+    "id": "544",
+    "district_id": "43",
+    "name": "Kotwali (Chattogram)",
+    "bn_name": "কোতোয়ালী"
+  },
+  {
+    "id": "545",
+    "district_id": "43",
+    "name": "Halishahar",
+    "bn_name": "হালিশহর"
+  },
+  {
+    "id": "546",
+    "district_id": "43",
+    "name": "Bayezid Bostami",
+    "bn_name": "বায়োজিদ বোস্তামী"
+  },
+  {
+    "id": "547",
+    "district_id": "43",
+    "name": "Chandgaon",
+    "bn_name": "চান্দগাঁও"
+  },
+  {
+    "id": "548",
+    "district_id": "43",
+    "name": "Khulshi",
+    "bn_name": "খুলশী"
+  },
+  {
+    "id": "549",
+    "district_id": "43",
+    "name": "Bakalia",
+    "bn_name": "বাকলিয়া"
+  },
+  {
+    "id": "550",
+    "district_id": "24",
+    "name": "Boalia",
+    "bn_name": "বোয়ালিয়া"
+  },
+  {
+    "id": "551",
+    "district_id": "24",
+    "name": "Rajpara",
+    "bn_name": "রাজপাড়া"
+  },
+  {
+    "id": "552",
+    "district_id": "24",
+    "name": "Motihar",
+    "bn_name": "মতিহার"
+  },
+  {
+    "id": "553",
+    "district_id": "24",
+    "name": "Shah Mokdum",
+    "bn_name": "শাহ মখদুম"
+  },
+  {
+    "id": "554",
+    "district_id": "24",
+    "name": "Chandrima",
+    "bn_name": "চন্দ্রিমা"
+  },
+  {
+    "id": "555",
+    "district_id": "24",
+    "name": "Katakhali",
+    "bn_name": "কাটাখালী"
+  },
+  {
+    "id": "556",
+    "district_id": "24",
+    "name": "Belpukur",
+    "bn_name": "বেলপুকুর"
+  },
+  {
+    "id": "557",
+    "district_id": "24",
+    "name": "Airport (Rajshahi)",
+    "bn_name": "বিমানবন্দর"
+  },
+  {
+    "id": "558",
+    "district_id": "24",
+    "name": "Kashiadanga",
+    "bn_name": "কাশিয়াডাঙ্গা"
+  },
+  {
+    "id": "559",
+    "district_id": "24",
+    "name": "Karnafuli (Rajshahi)",
+    "bn_name": "কর্ণহার"
+  },
+  {
+    "id": "560",
+    "district_id": "24",
+    "name": "Damkura",
+    "bn_name": "দামকুড়া"
+  },
+  {
+    "id": "561",
+    "district_id": "54",
+    "name": "Kotwali (Sylhet)",
+    "bn_name": "কোতোয়ালী"
+  },
+  {
+    "id": "562",
+    "district_id": "54",
+    "name": "Jalalabad",
+    "bn_name": "জালালাবাদ"
+  },
+  {
+    "id": "563",
+    "district_id": "54",
+    "name": "Airport (Sylhet)",
+    "bn_name": "বিমানবন্দর"
+  },
+  {
+    "id": "564",
+    "district_id": "54",
+    "name": "Moglabazar",
+    "bn_name": "মোগলাবাজার"
+  },
+  {
+    "id": "565",
+    "district_id": "54",
+    "name": "Shah Poran",
+    "bn_name": "শাহ পরান"
+  },
+  {
+    "id": "566",
+    "district_id": "59",
+    "name": "Khulna Sadar Thana",
+    "bn_name": "খুলনা সদর থানা"
+  },
+  {
+    "id": "567",
+    "district_id": "59",
+    "name": "Sonadanga",
+    "bn_name": "সোনাডাঙ্গা"
+  },
+  {
+    "id": "568",
+    "district_id": "59",
+    "name": "Khalishpur",
+    "bn_name": "খালিশপুর"
+  },
+  {
+    "id": "569",
+    "district_id": "59",
+    "name": "Daulatpur (Khulna)",
+    "bn_name": "দৌলতপুর"
+  },
+  {
+    "id": "570",
+    "district_id": "59",
+    "name": "Khan Jahan Ali",
+    "bn_name": "খান জাহান আলী"
+  },
+  {
+    "id": "571",
+    "district_id": "59",
+    "name": "Harintana",
+    "bn_name": "হরিণটানা"
+  },
+  {
+    "id": "572",
+    "district_id": "59",
+    "name": "Aranghata",
+    "bn_name": "আড়ংঘাটা"
+  },
+  {
+    "id": "573",
+    "district_id": "59",
+    "name": "Labanchara",
+    "bn_name": "লবণচরা"
+  },
+  {
+    "id": "574",
+    "district_id": "35",
+    "name": "Kotwali (Barishal)",
+    "bn_name": "কোতোয়ালী"
+  },
+  {
+    "id": "575",
+    "district_id": "35",
+    "name": "Kawnia",
+    "bn_name": "কাউনিয়া"
+  },
+  {
+    "id": "576",
+    "district_id": "35",
+    "name": "Airport (Barishal)",
+    "bn_name": "বিমানবন্দর"
+  },
+  {
+    "id": "577",
+    "district_id": "35",
+    "name": "Bandar (Barishal)",
+    "bn_name": "বন্দর"
+  },
+  {
+    "id": "578",
+    "district_id": "3",
+    "name": "Gachha",
+    "bn_name": "গাছা"
+  },
+  {
+    "id": "579",
+    "district_id": "3",
+    "name": "Basan",
+    "bn_name": "বাসন"
+  },
+  {
+    "id": "580",
+    "district_id": "3",
+    "name": "Konabari",
+    "bn_name": "কৈনাবাড়ী"
+  },
+  {
+    "id": "581",
+    "district_id": "3",
+    "name": "Kasimpur",
+    "bn_name": "কাশিমপুর"
+  },
+  {
+    "id": "582",
+    "district_id": "3",
+    "name": "Tongi East",
+    "bn_name": "টঙ্গী পূর্ব"
+  },
+  {
+    "id": "583",
+    "district_id": "3",
+    "name": "Tongi West",
+    "bn_name": "টঙ্গী পশ্চিম"
+  },
+  {
+    "id": "584",
+    "district_id": "3",
+    "name": "Puba",
+    "bn_name": "পূবাইল"
+  },
+  {
+    "id": "585",
+    "district_id": "32",
+    "name": "Kotwali (Rangpur)",
+    "bn_name": "কোতোয়ালী"
+  },
+  {
+    "id": "586",
+    "district_id": "32",
+    "name": "Parshuram (Rangpur)",
+    "bn_name": "পরশুরাম"
+  },
+  {
+    "id": "587",
+    "district_id": "32",
+    "name": "Tajhat",
+    "bn_name": "তাজহাট"
+  },
+  {
+    "id": "588",
+    "district_id": "32",
+    "name": "Mahiganj",
+    "bn_name": "মাহিগঞ্জ"
+  },
+  {
+    "id": "589",
+    "district_id": "32",
+    "name": "Haragach",
+    "bn_name": "হারাগাছ"
+  },
+  {
+    "id": "590",
+    "district_id": "32",
+    "name": "Hajirhat",
+    "bn_name": "হাজীরহাট"
+  },
+  {
+    "id": "591",
+    "district_id": "11",
+    "name": "Fatullah",
+    "bn_name": "ফতুল্লা"
+  }
+]

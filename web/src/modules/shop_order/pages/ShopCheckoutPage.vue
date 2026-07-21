@@ -46,8 +46,9 @@
                 />
               </q-card-section>
 
-              <q-card-section v-if="requestDelivery" class="q-gutter-md">
+              <q-card-section v-if="requestDelivery">
                 <div class="row q-col-gutter-md">
+                  <!-- Recipient Name -->
                   <div class="col-12 col-sm-6">
                     <q-input
                       v-model="recipientName"
@@ -56,6 +57,8 @@
                       :label="$t('shop.recipient_name') + ' *'"
                     />
                   </div>
+
+                  <!-- Recipient Phone -->
                   <div class="col-12 col-sm-6">
                     <q-input
                       v-model="recipientPhone"
@@ -64,38 +67,141 @@
                       :label="$t('shop.recipient_phone') + ' *'"
                     />
                   </div>
+
+                  <!-- Secondary Phone (Dropship) -->
+                  <div v-if="shopType === 'dropship'" class="col-12 col-sm-6">
+                    <q-input
+                      v-model="secondaryPhone"
+                      outlined
+                      dense
+                      label="Secondary Phone (Optional)"
+                    />
+                  </div>
+
+                  <!-- District (Searchable Dropdown) -->
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="district"
+                      outlined
+                      dense
+                      use-input
+                      fill-input
+                      hide-selected
+                      input-debounce="0"
+                      label="District *"
+                      :options="districtOptions"
+                      option-label="name"
+                      option-value="name"
+                      emit-value
+                      map-options
+                      @filter="filterDistrict"
+                      @update:model-value="onDistrictChange"
+                    >
+                      <template #no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">No matching district</q-item-section>
+                        </q-item>
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.name }}</q-item-label>
+                            <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Thana / Upazila (Searchable Dropdown) -->
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="thana"
+                      outlined
+                      dense
+                      use-input
+                      fill-input
+                      hide-selected
+                      input-debounce="0"
+                      label="Thana / Upazila *"
+                      :options="thanaOptions"
+                      option-label="name"
+                      option-value="name"
+                      emit-value
+                      map-options
+                      @filter="filterThana"
+                      @update:model-value="onThanaChange"
+                    >
+                      <template #no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
+                        </q-item>
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.name }}</q-item-label>
+                            <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Post Code / Post Office (Searchable Select or Manual Input) -->
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="postCode"
+                      outlined
+                      dense
+                      use-input
+                      fill-input
+                      hide-selected
+                      input-debounce="0"
+                      label="Post Code / Post Office"
+                      :options="postcodeOptions"
+                      option-label="displayLabel"
+                      option-value="postCode"
+                      emit-value
+                      map-options
+                      @filter="filterPostcode"
+                      @new-value="createPostcode"
+                    >
+                      <template #no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">Type custom post code or office</q-item-section>
+                        </q-item>
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Detailed Address -->
+                  <div class="col-12">
+                    <q-input
+                      v-model="shippingAddress"
+                      outlined
+                      dense
+                      type="textarea"
+                      :label="$t('shop.shipping_address') + ' *'"
+                      rows="3"
+                    />
+                  </div>
                 </div>
-                <q-input
-                  v-model="shippingAddress"
-                  outlined
-                  dense
-                  type="textarea"
-                  :label="$t('shop.shipping_address') + ' *'"
-                  rows="3"
-                />
+
+                <div v-if="shopType === 'dropship'" class="text-caption text-grey-7 q-mt-sm">
+                  <q-icon name="info" size="14px" class="q-mr-xs text-primary" />
+                  Inside Dhaka standard delivery: 60-70 BDT | Outside Dhaka: 120-130 BDT
+                </div>
 
                 <!-- Payment Mode and Delivery Instructions for Dropship -->
                 <template v-if="shopType === 'dropship'">
-                  <q-separator class="q-my-md" />
-                  
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">
-                    {{ $t('shop.payment_mode') }}
-                  </div>
-                  <div class="q-gutter-sm q-mb-md">
-                    <q-radio
-                      v-model="isPrepaid"
-                      :val="false"
-                      :label="$t('shop.payment_mode_cod')"
-                      color="primary"
-                    />
-                    <q-radio
-                      v-model="isPrepaid"
-                      :val="true"
-                      :label="$t('shop.payment_mode_prepaid')"
-                      color="primary"
-                    />
-                  </div>
-
                   <q-input
                     v-model="deliveryInstructions"
                     outlined
@@ -173,19 +279,13 @@
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>
-                      {{ $t('shop.delivery_charge') }}
-                      <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted' : 'customer pays' }})</span>
-                    </span>
-                    <span>{{ formatAmount(deliveryCharge) }}</span>
+                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>{{ formatAmount(0) }}</span>
                   </div>
                   
                   <div v-if="!isPrepaid" class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>
-                      {{ $t('shop.cod_fee', { pct: defaultCodChargePct }) }}
-                      <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted' : 'customer pays' }})</span>
-                    </span>
-                    <span>{{ formatAmount(codCharge) }}</span>
+                    <span>{{ $t('shop.cod_fee') }}</span>
+                    <span>{{ formatAmount(0) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
@@ -203,13 +303,19 @@
                     </span>
                     <span>{{ formatAmount(packingCharge) }}</span>
                   </div>
+
+                  <div class="text-caption text-grey-6 q-mt-sm">
+                    {{ $t('shop.courier_charges_may_vary') }}
+                    <div>{{ $t('shop.courier_delivery_estimate', { min: formatAmount(courierEstimate.deliveryMin), max: formatAmount(courierEstimate.deliveryMax) }) }}</div>
+                    <div v-if="!isPrepaid && codEstimateSummary">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</div>
+                  </div>
                 </div>
 
                 <!-- Buyer Cost -->
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
                   <span>{{ $t('shop.your_cost_buyer') }}</span>
                   <span class="text-weight-medium text-grey-9">
-                    {{ formatAmount(cartStore.buyerCartTotal + deliveryCharge + printCharge + packingCharge) }}
+                    {{ formatAmount(cartStore.buyerCartTotal + printCharge + packingCharge) }}
                   </span>
                 </div>
 
@@ -271,6 +377,14 @@ import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
 
 import { showErrorNotification } from 'src/utils/appFeedback';
+import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
+import {
+  getBDDistricts,
+  getBDUpazilas,
+  getBDPostcodes,
+  type BDLocationOption,
+  type BDPostcodeOption,
+} from 'src/utils/bdAddressService';
 
 const route = useRoute();
 const router = useRouter();
@@ -282,11 +396,23 @@ const currencyStore = useThriftCurrencyStore();
 
 const recipientName = ref('');
 const recipientPhone = ref('');
+const secondaryPhone = ref('');
+const district = ref('Dhaka');
+const thana = ref('Uttara');
+const postCode = ref('');
 const shippingAddress = ref('');
 const requestDelivery = ref(false);
 
 const isPrepaid = ref(false);
 const deliveryInstructions = ref('');
+
+// District & Thana/Upazila Options for Dropdown
+const rawDistricts = ref<BDLocationOption[]>([]);
+const rawThanas = ref<BDLocationOption[]>([]);
+const rawPostcodes = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
+const districtOptions = ref<BDLocationOption[]>([]);
+const thanaOptions = ref<BDLocationOption[]>([]);
+const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
 
 const shopType = computed(() => cartStore.cart?.shop_type);
 const allowDelivery = computed(() => cartStore.cart?.allow_delivery);
@@ -295,47 +421,164 @@ const shopId = computed(() => {
   return route.query.shopId ? Number(route.query.shopId) : null;
 });
 
-// Retrieve default charge parameters from cartStore.cart
-const defaultCodChargePct = computed(() => Number(cartStore.cart?.default_cod_charge_pct || 0));
-const defaultDeliveryCharge = computed(() => Number(cartStore.cart?.default_delivery_charge_amount || 0));
+// Load BD Districts and Upazilas
+const loadLocationData = async () => {
+  rawDistricts.value = await getBDDistricts();
+  districtOptions.value = rawDistricts.value;
+  await updateThanaList(district.value);
+};
+
+const updateThanaList = async (distName: string) => {
+  if (!distName) {
+    rawThanas.value = await getBDUpazilas();
+  } else {
+    rawThanas.value = await getBDUpazilas(distName);
+  }
+  thanaOptions.value = rawThanas.value;
+  await updatePostcodeList(distName, thana.value);
+};
+
+const updatePostcodeList = async (distName: string, thanaName: string) => {
+  if (!distName) {
+    rawPostcodes.value = [];
+    postcodeOptions.value = [];
+    return;
+  }
+  const fetched = await getBDPostcodes(distName, thanaName);
+  const mapped = fetched.map((p) => ({
+    ...p,
+    displayLabel: `${p.postOffice} - ${p.postCode}`,
+  }));
+  rawPostcodes.value = mapped;
+  postcodeOptions.value = mapped;
+};
+
+const filterDistrict = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      districtOptions.value = rawDistricts.value;
+    } else {
+      districtOptions.value = rawDistricts.value.filter(
+        (d) =>
+          d.name.toLowerCase().includes(needle) ||
+          d.bnName.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const filterThana = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      thanaOptions.value = rawThanas.value;
+    } else {
+      thanaOptions.value = rawThanas.value.filter(
+        (t) =>
+          t.name.toLowerCase().includes(needle) ||
+          t.bnName.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const filterPostcode = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      postcodeOptions.value = rawPostcodes.value;
+    } else {
+      postcodeOptions.value = rawPostcodes.value.filter(
+        (p) =>
+          p.postCode.toLowerCase().includes(needle) ||
+          p.postOffice.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const createPostcode = (val: string, done: (item: any) => void) => {
+  const custom = {
+    id: 0,
+    districtId: 0,
+    postOffice: val,
+    postCode: val,
+    displayLabel: val,
+  };
+  done(custom);
+};
+
+const onDistrictChange = async (newDistName: string) => {
+  thana.value = '';
+  postCode.value = '';
+  await updateThanaList(newDistName);
+};
+
+const onThanaChange = async (newThanaName: string) => {
+  postCode.value = '';
+  await updatePostcodeList(district.value, newThanaName);
+};
+
+// Print/packing from shop; COD/delivery confirmed later by courier
 const defaultPrintCharge = computed(() => Number(cartStore.cart?.default_print_charge_amount || 0));
 const defaultPackingCharge = computed(() => Number(cartStore.cart?.default_packing_charge_amount || 0));
 
-// Computed charges
-const deliveryCharge = computed(() => (shopType.value === 'dropship' ? defaultDeliveryCharge.value : 0));
+const deliveryCharge = computed(() => 0);
 const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
 const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value : 0));
+const codCharge = computed(() => 0);
 
-const codCharge = computed(() => {
-  if (shopType.value !== 'dropship' || isPrepaid.value) return 0;
-  return (cartStore.cartTotal * defaultCodChargePct.value) / 100;
-});
-
-const totalCharges = computed(() => {
-  return deliveryCharge.value + printCharge.value + packingCharge.value + codCharge.value;
-});
-
-const deductCodFromMargin = computed(() => !!cartStore.cart?.deduct_cod_from_margin);
-const deductDeliveryFromMargin = computed(() => !!cartStore.cart?.deduct_delivery_from_margin);
 const deductPrintFromMargin = computed(() => !!cartStore.cart?.deduct_print_from_margin);
 const deductPackingFromMargin = computed(() => !!cartStore.cart?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
   return cartStore.cartTotal
-    + (deductDeliveryFromMargin.value ? 0 : deliveryCharge.value)
     + (deductPrintFromMargin.value ? 0 : printCharge.value)
-    + (deductPackingFromMargin.value ? 0 : packingCharge.value)
-    + (deductCodFromMargin.value ? 0 : codCharge.value);
+    + (deductPackingFromMargin.value ? 0 : packingCharge.value);
 });
 
 const estimatedProfit = computed(() => {
   const buyerCost = cartStore.buyerCartTotal
-    + deliveryCharge.value
     + printCharge.value
-    + packingCharge.value
-    + (deductCodFromMargin.value ? codCharge.value : 0);
+    + packingCharge.value;
   return recipientGrandTotal.value - buyerCost;
 });
+
+const courierEstimate = ref({
+  deliveryMin: 60,
+  deliveryMax: 130,
+  codPercentMin: 1 as number | null,
+  codPercentMax: 1 as number | null,
+  codFlatMin: null as number | null,
+  codFlatMax: null as number | null,
+});
+
+const codEstimateSummary = computed(() => {
+  const e = courierEstimate.value;
+  const parts: string[] = [];
+  if (e.codPercentMin != null && e.codPercentMax != null) {
+    parts.push(
+      e.codPercentMin === e.codPercentMax
+        ? `~${e.codPercentMin}%`
+        : `~${e.codPercentMin}–${e.codPercentMax}%`
+    );
+  }
+  if (e.codFlatMin != null && e.codFlatMax != null) {
+    parts.push(
+      e.codFlatMin === e.codFlatMax
+        ? formatAmount(e.codFlatMin)
+        : `${formatAmount(e.codFlatMin)}–${formatAmount(e.codFlatMax)}`
+    );
+  }
+  return parts.join(' / ') || '~1%';
+});
+
+watch(shopType, async (type) => {
+  if (type === 'dropship') {
+    courierEstimate.value = await fetchCourierChargeEstimate();
+  }
+}, { immediate: true });
 
 const currencySymbol = computed(() => {
   const shop = storefrontStore.shopDetails;
@@ -362,6 +605,7 @@ watch(
 );
 
 onMounted(async () => {
+  await loadLocationData();
   await currencyStore.loadCurrencies();
   if (!cartStore.cart && shopId.value) {
     await cartStore.fetchCart(shopId.value);
@@ -400,13 +644,29 @@ const submitOrder = async () => {
 
   const name = requestDelivery.value ? recipientName.value.trim() : '';
   const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
-  const address = requestDelivery.value ? shippingAddress.value.trim() : '';
+  
+  // Format full combined shipping address if district/thana/postcode are specified
+  let formattedAddress = requestDelivery.value ? shippingAddress.value.trim() : '';
+  if (requestDelivery.value && (district.value || thana.value || postCode.value)) {
+    const parts = [
+      thana.value ? `Thana: ${thana.value}` : '',
+      district.value ? `District: ${district.value}` : '',
+      postCode.value ? `Post Code: ${postCode.value}` : '',
+    ].filter(Boolean);
+    const locationPart = parts.join(', ');
+
+    if (formattedAddress && !formattedAddress.toLowerCase().includes(district.value.toLowerCase())) {
+      formattedAddress = `${formattedAddress}\n${locationPart}`;
+    } else if (!formattedAddress) {
+      formattedAddress = locationPart;
+    }
+  }
 
   const res = await orderStore.submitOrder(
     cartStore.cart.id,
     name,
     phone,
-    address,
+    formattedAddress,
     null,
     isPrepaid.value,
     deliveryInstructions.value,

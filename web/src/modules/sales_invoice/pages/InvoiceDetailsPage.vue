@@ -90,6 +90,19 @@
 
           <!-- Lifecycle Action Buttons -->
           <div class="row items-center q-gutter-sm">
+            <q-btn-toggle
+              v-model="invoiceViewMode"
+              toggle-color="primary"
+              flat
+              dense
+              no-caps
+              size="sm"
+              :options="[
+                { label: 'Accounting View', value: 'accounting' },
+                { label: 'Recipient View', value: 'recipient' },
+              ]"
+            />
+
             <q-btn
               v-if="showPreview"
               flat
@@ -551,6 +564,32 @@
               <span :class="invoice.due_amount > 0 ? 'text-negative' : 'text-positive'">{{
                 formatAmount(invoice.due_amount)
               }}</span>
+            </div>
+          </q-card>
+
+          <!-- Dropship Settlement / Courier Remittance Stub -->
+          <q-card v-if="isDropship" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Courier Remittance Ref (Stub)</div>
+            <div class="q-gutter-y-xs">
+              <q-input
+                dense
+                outlined
+                readonly
+                model-value="REMIT-2026-892"
+                label="Remittance Batch ID"
+                class="soft-input text-caption"
+              />
+              <q-input
+                dense
+                outlined
+                readonly
+                model-value="BANK-TRX-99410"
+                label="Bank / MFS Trx Ref"
+                class="soft-input text-caption"
+              />
+              <q-badge color="grey-3" text-color="grey-8" class="q-mt-xs full-width text-center justify-center">
+                Remittance Posting (Available in I1)
+              </q-badge>
             </div>
           </q-card>
 
@@ -1290,6 +1329,7 @@ const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
+const invoiceViewMode = ref<'accounting' | 'recipient'>('accounting');
 const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);

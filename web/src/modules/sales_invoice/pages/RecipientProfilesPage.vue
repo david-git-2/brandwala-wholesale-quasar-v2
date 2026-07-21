@@ -60,24 +60,25 @@
 
     <!-- Main Table Card -->
     <q-card flat class="floating-surface shadow-1">
-      <q-markup-table flat wrap-cells class="recipient-profiles-table">
+      <q-markup-table flat borderless class="q-mb-none soft-table">
         <thead>
           <tr>
             <th class="text-left">Name</th>
             <th class="text-left">Phone</th>
-            <th class="text-left">Address</th>
-            <th class="text-right" style="width: 80px">Actions</th>
+            <th class="text-left">District / Thana</th>
+            <th class="text-left">Delivery Address</th>
+            <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="store.loading">
-            <td colspan="4" class="text-center q-py-lg">
+            <td colspan="5" class="text-center q-py-lg">
               <q-spinner color="primary" size="2em" />
               <div class="text-caption text-grey-6 q-mt-xs">Loading profiles...</div>
             </td>
           </tr>
           <tr v-else-if="!filteredItems.length">
-            <td colspan="4" class="text-center text-grey-7 q-py-xl">
+            <td colspan="5" class="text-center text-grey-7 q-py-xl">
               <q-icon name="contacts" size="36px" class="text-grey-4 q-mb-xs" />
               <div>No recipient profiles found.</div>
             </td>
@@ -92,10 +93,19 @@
               </div>
             </td>
             <td>
-              <div class="row items-center no-wrap">
-                <q-icon name="phone" size="14px" class="text-grey-6 q-mr-xs" />
-                <span>{{ row.phone }}</span>
+              <div class="column">
+                <div class="row items-center no-wrap">
+                  <q-icon name="phone" size="14px" class="text-grey-6 q-mr-xs" />
+                  <span>{{ row.phone }}</span>
+                </div>
+                <span v-if="(row as any).secondary_phone" class="text-caption text-grey-6">
+                  Alt: {{ (row as any).secondary_phone }}
+                </span>
               </div>
+            </td>
+            <td>
+              <span class="text-weight-medium">{{ (row as any).district || 'Dhaka' }}</span>
+              <span class="text-caption text-grey-6 block">{{ (row as any).thana || 'Uttara' }}</span>
             </td>
             <td>
               <div class="row items-center">
@@ -130,16 +140,16 @@
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="min-width: 420px; border-radius: 16px">
+      <q-card style="min-width: 480px; border-radius: 16px">
         <q-card-section class="q-pb-none">
           <div class="text-h6 text-weight-bold">
             {{ isEditMode ? 'Edit Recipient Profile' : 'Create Recipient Profile' }}
           </div>
-          <div class="text-caption text-grey-6">Fill in the delivery details below</div>
+          <div class="text-caption text-grey-6">Fill in courier-ready delivery details below</div>
         </q-card-section>
 
-        <q-form @submit="onFormSubmit">
-          <q-card-section class="q-gutter-md q-pt-md">
+        <q-form @submit.prevent="onFormSubmit">
+          <q-card-section class="q-gutter-sm">
             <q-input
               v-model="form.name"
               label="Recipient Name *"
@@ -149,15 +159,48 @@
               lazy-rules
               :rules="[(val) => (val && val.trim().length > 0) || 'Name is required']"
             />
-            <q-input
-              v-model="form.phone"
-              label="Phone Number *"
-              filled
-              dense
-              class="soft-input"
-              lazy-rules
-              :rules="[(val) => (val && val.trim().length > 0) || 'Phone is required']"
-            />
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model="form.phone"
+                  label="Primary Phone *"
+                  filled
+                  dense
+                  class="soft-input"
+                  lazy-rules
+                  :rules="[(val) => (val && val.trim().length > 0) || 'Phone is required']"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model="form.secondary_phone"
+                  label="Secondary Phone"
+                  filled
+                  dense
+                  class="soft-input"
+                />
+              </div>
+            </div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model="form.district"
+                  label="District *"
+                  filled
+                  dense
+                  class="soft-input"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model="form.thana"
+                  label="Thana / Upazila *"
+                  filled
+                  dense
+                  class="soft-input"
+                />
+              </div>
+            </div>
             <q-input
               v-model="form.address"
               label="Delivery Address *"
@@ -228,6 +271,9 @@ const selectedId = ref<number | null>(null);
 const form = reactive({
   name: '',
   phone: '',
+  secondary_phone: '',
+  district: 'Dhaka',
+  thana: 'Uttara',
   address: '',
 });
 
@@ -248,15 +294,21 @@ const openCreateDialog = () => {
   isEditMode.value = false;
   form.name = '';
   form.phone = '';
+  form.secondary_phone = '';
+  form.district = 'Dhaka';
+  form.thana = 'Uttara';
   form.address = '';
   dialogOpen.value = true;
 };
 
-const onOpenEdit = (row: RecipientProfile) => {
+const onOpenEdit = (row: RecipientProfile & { secondary_phone?: string; district?: string; thana?: string }) => {
   isEditMode.value = true;
   selectedId.value = row.id;
   form.name = row.name;
   form.phone = row.phone;
+  form.secondary_phone = row.secondary_phone || '';
+  form.district = row.district || 'Dhaka';
+  form.thana = row.thana || 'Uttara';
   form.address = row.address;
   dialogOpen.value = true;
 };

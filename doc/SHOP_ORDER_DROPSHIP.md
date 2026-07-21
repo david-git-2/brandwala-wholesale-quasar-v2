@@ -184,19 +184,19 @@ Statuses already seeded include `processing`, `shipped`, `delivered`, `payment_r
 
 | Status | Meaning |
 |--------|---------|
-| `submitted` / `confirmed` | Middle man checkout complete (full recipient A) |
-| `processing` | Staff started Process Order; consignment editable; packing slip printable |
-| `ready_for_pickup` | Parcel packed; packing slip / courier label available; awaiting courier pickup *(add if missing)* |
+| `submitted` / `confirmed` | Middle man checkout complete (lives on Orders / Service Desk queue; not yet on Dropship Operations Desk) |
+| `processing` | Staff clicked **Add to Dropship Desk** (`confirmed` → `processing`); order enters Dropship Operations Desk queue; consignment editable |
+| `ready_for_pickup` | Parcel packed; packing slip / courier label available; awaiting courier pickup |
 | `shipped` | Courier has the parcel |
 | `delivered` | Successful delivery; stamps `delivered_at`; unlocks posted Create Dual Invoice |
 | `payment_received` | COD remitted / reconciled (`courier_remittance_ref` / `courier_bank_trx_id`); enough to close ops money state |
-| `returned` | Refused, failed delivery, or post-delivery return; stamps `returned_at` *(add if missing)* |
+| `returned` | Refused, failed delivery, or post-delivery return; stamps `returned_at` |
 | `cancelled` | Aborted before ship |
 
 ```mermaid
 stateDiagram-v2
   [*] --> confirmed: middleManCheckout
-  confirmed --> processing: ProcessOrder
+  confirmed --> processing: addToDropshipDeskHandoff
   processing --> ready_for_pickup: parcelPacked
   ready_for_pickup --> shipped: courierPickup
   shipped --> delivered: successfulDelivery

@@ -1072,6 +1072,89 @@ export type Database = {
           },
         ]
       }
+      courier_services: {
+        Row: {
+          cod_fee_flat_amount: number | null
+          cod_fee_mode: string
+          cod_fee_notes: string | null
+          cod_fee_percent: number | null
+          code: string
+          created_at: string
+          deduct_cod_from_margin_default: boolean
+          delivery_attempt_count: number
+          hub_hold_days: number
+          id: string
+          inside_dhaka_fee: number
+          inside_dhaka_return_fee: number | null
+          is_active: boolean
+          name: string
+          notes: string | null
+          open_box_default_allowed: boolean
+          outside_dhaka_fee: number
+          outside_dhaka_return_fee: number | null
+          return_fee_mode: string
+          return_fee_percent: number | null
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          cod_fee_flat_amount?: number | null
+          cod_fee_mode?: string
+          cod_fee_notes?: string | null
+          cod_fee_percent?: number | null
+          code: string
+          created_at?: string
+          deduct_cod_from_margin_default?: boolean
+          delivery_attempt_count?: number
+          hub_hold_days?: number
+          id?: string
+          inside_dhaka_fee?: number
+          inside_dhaka_return_fee?: number | null
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          open_box_default_allowed?: boolean
+          outside_dhaka_fee?: number
+          outside_dhaka_return_fee?: number | null
+          return_fee_mode?: string
+          return_fee_percent?: number | null
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cod_fee_flat_amount?: number | null
+          cod_fee_mode?: string
+          cod_fee_notes?: string | null
+          cod_fee_percent?: number | null
+          code?: string
+          created_at?: string
+          deduct_cod_from_margin_default?: boolean
+          delivery_attempt_count?: number
+          hub_hold_days?: number
+          id?: string
+          inside_dhaka_fee?: number
+          inside_dhaka_return_fee?: number | null
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          open_box_default_allowed?: boolean
+          outside_dhaka_fee?: number
+          outside_dhaka_return_fee?: number | null
+          return_fee_mode?: string
+          return_fee_percent?: number | null
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_services_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_group_member_grants: {
         Row: {
           action: string
@@ -3191,6 +3274,126 @@ export type Database = {
           },
         ]
       }
+      merchant_profiles: {
+        Row: {
+          created_at: string
+          district: string
+          id: string
+          is_active: boolean
+          merchant_name: string
+          notes: string | null
+          phone_primary: string
+          phone_secondary: string | null
+          pickup_address: string
+          store_name: string | null
+          tenant_id: number
+          thana: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          district?: string
+          id?: string
+          is_active?: boolean
+          merchant_name: string
+          notes?: string | null
+          phone_primary: string
+          phone_secondary?: string | null
+          pickup_address: string
+          store_name?: string | null
+          tenant_id: number
+          thana: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          district?: string
+          id?: string
+          is_active?: boolean
+          merchant_name?: string
+          notes?: string | null
+          phone_primary?: string
+          phone_secondary?: string | null
+          pickup_address?: string
+          store_name?: string | null
+          tenant_id?: number
+          thana?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      middle_man_payout_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          created_by: string | null
+          customer_group_member_id: string
+          entry_type: string
+          global_invoice_id: number | null
+          id: string
+          reference_notes: string | null
+          shop_order_id: number | null
+          tenant_id: number
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          created_by?: string | null
+          customer_group_member_id: string
+          entry_type: string
+          global_invoice_id?: number | null
+          id?: string
+          reference_notes?: string | null
+          shop_order_id?: number | null
+          tenant_id: number
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          created_by?: string | null
+          customer_group_member_id?: string
+          entry_type?: string
+          global_invoice_id?: number | null
+          id?: string
+          reference_notes?: string | null
+          shop_order_id?: number | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "middle_man_payout_ledger_global_invoice_id_fkey"
+            columns: ["global_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "middle_man_payout_ledger_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "middle_man_payout_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_actions: {
         Row: {
           action: string
@@ -4424,8 +4627,6 @@ export type Database = {
           created_at: string
           customer_group_id: number
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
           delivery_charge_amount: number
@@ -4446,8 +4647,6 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -4468,8 +4667,6 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -4761,11 +4958,22 @@ export type Database = {
       }
       shop_orders: {
         Row: {
+          allow_open_box: boolean | null
           billing_profile_id: number | null
           cargo_rate: number | null
           cart_id: number | null
           cod_charge_amount: number
+          cod_collect_amount: number | null
           conversion_rate: number | null
+          courier_awb_number: string | null
+          courier_bank_trx_id: string | null
+          courier_consignment_id: string | null
+          courier_cost_amount: number | null
+          courier_name: string | null
+          courier_order_ref: string | null
+          courier_remittance_ref: string | null
+          courier_service_id: string | null
+          courier_tracking_number: string | null
           created_at: string
           created_by_email: string
           customer_group_id: number
@@ -4774,37 +4982,75 @@ export type Database = {
           deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
+          deduct_return_charge_from_middle_man: boolean | null
+          default_payout_account_info: string | null
+          default_payout_account_type: string | null
+          default_pickup_address: string | null
+          default_pickup_phone: string | null
+          default_sender_name: string | null
+          delivered_at: string | null
           delivery_charge_amount: number
+          delivery_instruction_notes: string | null
           delivery_instructions: string | null
+          delivery_zone: string | null
           discount_amount: number
+          driver_notes: string | null
           fulfilled_at: string | null
           global_invoice_id: number | null
           id: number
           is_negotiable_snapshot: boolean
           is_prepaid_snapshot: boolean
+          item_category: string | null
+          middle_man_reference: string | null
           name: string
           negotiate_round: number
           order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no: string
+          package_weight_band: string | null
+          package_weight_kg: number | null
           packing_charge_amount: number
+          parcel_description: string | null
+          payout_account_info: string | null
+          payout_account_type: string | null
+          pickup_address: string | null
+          pickup_phone: string | null
           placed_at: string | null
           print_charge_amount: number
           profit_rate: number | null
           recipient_name: string | null
           recipient_phone: string | null
+          recipient_phone_secondary: string | null
+          replacement_of_order_id: number | null
+          return_charge_amount: number | null
+          returned_at: string | null
+          sender_name: string | null
           shipping_address: string | null
+          shipping_district: string | null
+          shipping_thana: string | null
           shop_id: number
           shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
           status: Database["public"]["Enums"]["shop_order_status"]
           tenant_id: number
+          tracking_url: string | null
           updated_at: string
         }
         Insert: {
+          allow_open_box?: boolean | null
           billing_profile_id?: number | null
           cargo_rate?: number | null
           cart_id?: number | null
           cod_charge_amount?: number
+          cod_collect_amount?: number | null
           conversion_rate?: number | null
+          courier_awb_number?: string | null
+          courier_bank_trx_id?: string | null
+          courier_consignment_id?: string | null
+          courier_cost_amount?: number | null
+          courier_name?: string | null
+          courier_order_ref?: string | null
+          courier_remittance_ref?: string | null
+          courier_service_id?: string | null
+          courier_tracking_number?: string | null
           created_at?: string
           created_by_email: string
           customer_group_id: number
@@ -4813,37 +5059,75 @@ export type Database = {
           deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
+          deduct_return_charge_from_middle_man?: boolean | null
+          default_payout_account_info?: string | null
+          default_payout_account_type?: string | null
+          default_pickup_address?: string | null
+          default_pickup_phone?: string | null
+          default_sender_name?: string | null
+          delivered_at?: string | null
           delivery_charge_amount?: number
+          delivery_instruction_notes?: string | null
           delivery_instructions?: string | null
+          delivery_zone?: string | null
           discount_amount?: number
+          driver_notes?: string | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
           is_negotiable_snapshot?: boolean
           is_prepaid_snapshot?: boolean
+          item_category?: string | null
+          middle_man_reference?: string | null
           name: string
           negotiate_round?: number
           order_mode_snapshot: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no: string
+          package_weight_band?: string | null
+          package_weight_kg?: number | null
           packing_charge_amount?: number
+          parcel_description?: string | null
+          payout_account_info?: string | null
+          payout_account_type?: string | null
+          pickup_address?: string | null
+          pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          recipient_phone_secondary?: string | null
+          replacement_of_order_id?: number | null
+          return_charge_amount?: number | null
+          returned_at?: string | null
+          sender_name?: string | null
           shipping_address?: string | null
+          shipping_district?: string | null
+          shipping_thana?: string | null
           shop_id: number
           shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
           status?: Database["public"]["Enums"]["shop_order_status"]
           tenant_id: number
+          tracking_url?: string | null
           updated_at?: string
         }
         Update: {
+          allow_open_box?: boolean | null
           billing_profile_id?: number | null
           cargo_rate?: number | null
           cart_id?: number | null
           cod_charge_amount?: number
+          cod_collect_amount?: number | null
           conversion_rate?: number | null
+          courier_awb_number?: string | null
+          courier_bank_trx_id?: string | null
+          courier_consignment_id?: string | null
+          courier_cost_amount?: number | null
+          courier_name?: string | null
+          courier_order_ref?: string | null
+          courier_remittance_ref?: string | null
+          courier_service_id?: string | null
+          courier_tracking_number?: string | null
           created_at?: string
           created_by_email?: string
           customer_group_id?: number
@@ -4852,32 +5136,66 @@ export type Database = {
           deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
+          deduct_return_charge_from_middle_man?: boolean | null
+          default_payout_account_info?: string | null
+          default_payout_account_type?: string | null
+          default_pickup_address?: string | null
+          default_pickup_phone?: string | null
+          default_sender_name?: string | null
+          delivered_at?: string | null
           delivery_charge_amount?: number
+          delivery_instruction_notes?: string | null
           delivery_instructions?: string | null
+          delivery_zone?: string | null
           discount_amount?: number
+          driver_notes?: string | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
           is_negotiable_snapshot?: boolean
           is_prepaid_snapshot?: boolean
+          item_category?: string | null
+          middle_man_reference?: string | null
           name?: string
           negotiate_round?: number
           order_mode_snapshot?: Database["public"]["Enums"]["shop_order_mode_enum"]
           order_no?: string
+          package_weight_band?: string | null
+          package_weight_kg?: number | null
           packing_charge_amount?: number
+          parcel_description?: string | null
+          payout_account_info?: string | null
+          payout_account_type?: string | null
+          pickup_address?: string | null
+          pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          recipient_phone_secondary?: string | null
+          replacement_of_order_id?: number | null
+          return_charge_amount?: number | null
+          returned_at?: string | null
+          sender_name?: string | null
           shipping_address?: string | null
+          shipping_district?: string | null
+          shipping_thana?: string | null
           shop_id?: number
           shop_type_snapshot?: Database["public"]["Enums"]["shop_type_enum"]
           status?: Database["public"]["Enums"]["shop_order_status"]
           tenant_id?: number
+          tracking_url?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_shop_orders_courier_service"
+            columns: ["courier_service_id"]
+            isOneToOne: false
+            referencedRelation: "courier_services"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shop_orders_billing_profile_id_fkey"
             columns: ["billing_profile_id"]
@@ -4904,6 +5222,13 @@ export type Database = {
             columns: ["global_invoice_id"]
             isOneToOne: false
             referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_replacement_of_order_id_fkey"
+            columns: ["replacement_of_order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
             referencedColumns: ["id"]
           },
           {
@@ -5071,13 +5396,10 @@ export type Database = {
           buy_currency_id: number
           created_at: string
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
-          default_cod_charge_pct: number
+          deduct_return_charge_from_middle_man: boolean | null
           default_currency_id: number | null
-          default_delivery_charge_amount: number
           default_packing_charge_amount: number
           default_print_charge_amount: number
           global_stock_type_id: number | null
@@ -5103,13 +5425,10 @@ export type Database = {
           buy_currency_id: number
           created_at?: string
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
-          default_cod_charge_pct?: number
+          deduct_return_charge_from_middle_man?: boolean | null
           default_currency_id?: number | null
-          default_delivery_charge_amount?: number
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
           global_stock_type_id?: number | null
@@ -5135,13 +5454,10 @@ export type Database = {
           buy_currency_id?: number
           created_at?: string
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
-          default_cod_charge_pct?: number
+          deduct_return_charge_from_middle_man?: boolean | null
           default_currency_id?: number | null
-          default_delivery_charge_amount?: number
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
           global_stock_type_id?: number | null
@@ -7027,6 +7343,15 @@ export type Database = {
         Args: { p_delta: number; p_product_id: number; p_tenant_id: number }
         Returns: undefined
       }
+      advance_dropship_order_status: {
+        Args: {
+          p_bank_trx_id?: string
+          p_order_id: number
+          p_remittance_ref?: string
+          p_target_status: Database["public"]["Enums"]["shop_order_status"]
+        }
+        Returns: Json
+      }
       allocate_payment_to_global_invoice: {
         Args: {
           p_amount: number
@@ -7660,6 +7985,15 @@ export type Database = {
               website_url: string
             }[]
           }
+      create_dual_invoice_from_dropship_order: {
+        Args: {
+          p_billing_profile_id?: number
+          p_invoice_no?: string
+          p_note?: string
+          p_order_id: number
+        }
+        Returns: Json
+      }
       create_global_invoice: {
         Args: {
           p_billing_profile_id?: number
@@ -8673,6 +9007,29 @@ export type Database = {
           module_key: string
         }[]
       }
+      list_dropship_shop_orders_for_staff: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          cod_collect_amount: number
+          courier_awb_number: string
+          courier_name: string
+          created_at: string
+          created_by_email: string
+          customer_group_name: string
+          id: number
+          order_no: string
+          recipient_name: string
+          recipient_phone: string
+          status: Database["public"]["Enums"]["shop_order_status"]
+          total_amount: number
+        }[]
+      }
       list_global_currencies: {
         Args: never
         Returns: {
@@ -9149,13 +9506,9 @@ export type Database = {
           buy_currency_id: number
           created_at: string
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
-          default_cod_charge_pct: number
           default_currency_id: number
-          default_delivery_charge_amount: number
           default_packing_charge_amount: number
           default_print_charge_amount: number
           global_stock_type_id: number
@@ -9392,6 +9745,15 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mark_dropship_order_returned: {
+        Args: {
+          p_actual_return_charge: number
+          p_deduct_from_middle_man: boolean
+          p_order_id: number
+          p_reason?: string
+        }
+        Returns: Json
+      }
       mark_thrift_items_as_sold: {
         Args: {
           p_address: string
@@ -9473,6 +9835,10 @@ export type Database = {
       post_global_invoice: {
         Args: { p_invoice_id: number }
         Returns: undefined
+      }
+      process_dropship_shop_order: {
+        Args: { p_order_id: number }
+        Returns: Json
       }
       recalculate_shipment_transaction_rate: {
         Args: { p_shipment_id: number }
@@ -10078,6 +10444,31 @@ export type Database = {
           updated_at: string
         }[]
       }
+      update_dropship_consignment: {
+        Args: {
+          p_allow_open_box?: boolean
+          p_cod_collect_amount?: number
+          p_courier_awb_number?: string
+          p_courier_consignment_id?: string
+          p_courier_cost_amount?: number
+          p_courier_order_ref?: string
+          p_courier_service_id?: string
+          p_courier_tracking_number?: string
+          p_delivery_instruction_notes?: string
+          p_delivery_zone?: string
+          p_item_category?: string
+          p_order_id: number
+          p_package_weight_band?: string
+          p_parcel_description?: string
+          p_payout_account_info?: string
+          p_payout_account_type?: string
+          p_pickup_address?: string
+          p_pickup_phone?: string
+          p_sender_name?: string
+          p_tracking_url?: string
+        }
+        Returns: Json
+      }
       update_global_invoice_header: {
         Args: {
           p_cod_charge?: number
@@ -10521,13 +10912,9 @@ export type Database = {
           p_allow_delivery?: boolean
           p_buy_currency_id?: number
           p_deduct_charges_from_margin?: boolean
-          p_deduct_cod_from_margin?: boolean
-          p_deduct_delivery_from_margin?: boolean
           p_deduct_packing_from_margin?: boolean
           p_deduct_print_from_margin?: boolean
-          p_default_cod_charge_pct?: number
           p_default_currency_id?: number
-          p_default_delivery_charge_amount?: number
           p_default_packing_charge_amount?: number
           p_default_print_charge_amount?: number
           p_global_stock_type_id?: number
@@ -10552,13 +10939,10 @@ export type Database = {
           buy_currency_id: number
           created_at: string
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
-          default_cod_charge_pct: number
+          deduct_return_charge_from_middle_man: boolean | null
           default_currency_id: number | null
-          default_delivery_charge_amount: number
           default_packing_charge_amount: number
           default_print_charge_amount: number
           global_stock_type_id: number | null
@@ -10778,6 +11162,12 @@ export type Database = {
         | "confirmed"
         | "placed"
         | "fulfilled"
+        | "processing"
+        | "shipped"
+        | "delivered"
+        | "payment_received"
+        | "ready_for_pickup"
+        | "returned"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
@@ -10998,6 +11388,12 @@ export const Constants = {
         "confirmed",
         "placed",
         "fulfilled",
+        "processing",
+        "shipped",
+        "delivered",
+        "payment_received",
+        "ready_for_pickup",
+        "returned",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
