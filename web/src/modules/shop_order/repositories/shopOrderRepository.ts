@@ -135,12 +135,18 @@ const submitShopOrderFromCart = async (
   printChargeAmount?: number,
   packingChargeAmount?: number,
   discountAmount?: number,
+  recipientPhoneSecondary?: string | null,
+  shippingDistrict?: string | null,
+  shippingThana?: string | null,
 ): Promise<{ order_id: number; order_no: string; status: string }> => {
   const { data, error } = await supabase.rpc('submit_shop_order_from_cart', {
     p_cart_id: cartId,
     p_recipient_name: recipientName,
     p_recipient_phone: recipientPhone,
     p_shipping_address: shippingAddress,
+    p_recipient_phone_secondary: recipientPhoneSecondary ?? null,
+    p_shipping_district: shippingDistrict ?? null,
+    p_shipping_thana: shippingThana ?? null,
     p_billing_profile_id: billingProfileId || null,
     p_is_prepaid: isPrepaid ?? false,
     p_delivery_instructions: deliveryInstructions ?? null,

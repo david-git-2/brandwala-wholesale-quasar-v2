@@ -72,13 +72,15 @@ Shadow: `--bw-theme-shadow` (scope-specific; light: soft stone tint, dark: deepe
 
 1. `q-page.bw-page`
 2. `.bw-page__stack`
-3. `AppPageHeader` (or simple heading)
+3. Optional breadcrumbs (detail/nested only) → `AppPageHeader` (or simple heading)
 4. Optional `q-banner.bw-status-banner` for errors
 5. `q-card flat bordered` for sections
 6. `q-table` or `.bw-entity-grid` card grid
 7. Empty state (see below)
 
 Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` suffice.
+
+**Page headers (list + detail):** follow [PAGE_HEADER.md](./PAGE_HEADER.md) — flat `AppPageHeader`, breadcrumbs on detail only, filters in `FilterSidebar` (side / phone bottom sheet).
 
 ## Component inventory
 
@@ -87,7 +89,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 |-----------|------|-------------|
 | `WorkspaceShell` | `components/WorkspaceShell.vue` | App shell, theme scope, nav layout |
 | `GlobalAjaxBar` | `components/GlobalAjaxBar.vue` | Top progress bar for in-flight requests |
-| `AppPageHeader` | `components/ui/AppPageHeader.vue` | Title, subtitle, eyebrow, action slot |
+| `AppPageHeader` | `components/ui/AppPageHeader.vue` | Title, subtitle, eyebrow, action slot — see [PAGE_HEADER.md](./PAGE_HEADER.md) |
 | `PageInitialLoader` | `components/PageInitialLoader.vue` | Full-page / overlay spinner (`q-spinner-tail`) |
 | `PageInitialLoader` | `components/ui/PageInitialLoader.vue` | Same pattern (prefer consolidating imports) |
 | `ModuleNavBadge` | `components/ui/ModuleNavBadge.vue` | Nav badge for module state |

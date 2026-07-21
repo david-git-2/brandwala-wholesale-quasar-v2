@@ -1,6 +1,11 @@
 import type { Database } from 'src/types/supabase';
 
-export type RecipientProfile = Database['public']['Tables']['recipient_profiles']['Row'];
+type DbRow = Database['public']['Tables']['recipient_profiles']['Row'];
+
+export interface RecipientProfile extends Omit<DbRow, 'addresses'> {
+  addresses: any;
+}
+
 export type CreateRecipientProfileInput =
   Database['public']['Tables']['recipient_profiles']['Insert'];
 export type UpdateRecipientProfileInput = {

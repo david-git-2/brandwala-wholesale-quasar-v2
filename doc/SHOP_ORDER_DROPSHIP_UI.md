@@ -127,25 +127,25 @@ Work in this order. Later steps depend on routes, types, and mock store from ste
 | **Feature** | Process Order → enter parcel/payment (B), sender (C), driver notes (D), courier tracking (E); print packing slip/label stubs |
 | **Create** | `web/src/modules/shop_order/pages/DropshipOrderDetailPage.vue` (preferred) **or** heavy branch on [StaffOrderDetailPage.vue](../web/src/modules/shop_order/pages/StaffOrderDetailPage.vue) |
 | **Route** | `/:slug/app/shop/dropship/:id` |
-| **UI** | Replace primary **Fulfill to Invoice** with **Process Order**. Sections: editable recipient A; parcel + COD; sender; open-box + notes; courier picker + AWB / consignment id / tracking URL. Status stepper (processing → ready_for_pickup → shipped → delivered / returned). Buttons: Print packing slip, Print label (window.print stubs). **Create Dual Invoice** visible only after delivered (navigates stub or toast). |
+| **UI** | Replace primary **Fulfill to Invoice** with **Process Order**. Status stepper (processing → ready_for_pickup → shipped → delivered / returned). Buttons: Print packing slip, Print label, **Download/Print Customer Invoice** from `processing`+. **Create Accounting Invoice** from `ready_for_pickup`+. Settlement after `delivered`. |
 
-### 8. Dual invoice (create + views)
+### 8. Accounting invoice + customer print
 
 | | |
 |--|--|
-| **Feature** | From delivered order, open dual invoice (accounting vs recipient face) |
-| **Update** | Process desk CTA → [CreateDropshipInvoiceDialog.vue](../web/src/modules/sales_invoice/components/CreateDropshipInvoiceDialog.vue) / [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) / [InvoicePreviewPage.vue](../web/src/modules/sales_invoice/pages/InvoicePreviewPage.vue) |
-| **UI** | I0: CTA + confirm dialog prefilled from order mock; on details page, toggle **Accounting / Recipient** print view (brand + face prices). No post RPC yet — toast “dummy create”. |
+| **Feature** | Customer invoice print from order at `processing`; accounting invoice at `ready_for_pickup` |
+| **Update** | Process desk CTAs → [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue); order-based print sheet for customer copy |
+| **UI** | Download/Print Customer Invoice (order face). Create Accounting Invoice confirm (dual amounts). Settlement after delivered — see §9. |
 
 ### 9. Middle-man payout + courier COD collection
 
 | | |
 |--|--|
-| **Feature** | Settlement desk: ledger credits/debits; record courier remittance vs middle-man payout |
+| **Feature** | Settlement desk: ledger; courier net remittance; middle-man payout; reportable trail |
 | **Create** | `web/src/modules/shop_order/pages/DropshipLedgerPage.vue` |
 | **Route** | `/:slug/app/shop/dropship/ledger` |
-| **Update (light)** | [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) payout/collection panels already show middle-man — keep; add remittance ref fields as disabled stubs until I1 |
-| **UI** | Ledger table: order, type (credit profit / return_fee_uninvoiced / clawback), amount, balance. Actions: **Record courier remittance** (batch id + bank trx), **Settle middle-man payout** (dummy confirm). |
+| **Update (light)** | [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) payout/collection panels — remittance refs |
+| **UI** | Ledger table: order, type (profit credit / payout paid / return_fee_uninvoiced / clawback), amount, balance. Actions: **Record courier remittance** (net + batch id + bank trx), **Settle middle-man payout**. |
 
 ### 10. Customer / middle-man order visibility
 

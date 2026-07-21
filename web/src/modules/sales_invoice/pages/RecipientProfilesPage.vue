@@ -98,19 +98,25 @@
                   <q-icon name="phone" size="14px" class="text-grey-6 q-mr-xs" />
                   <span>{{ row.phone }}</span>
                 </div>
-                <span v-if="(row as any).secondary_phone" class="text-caption text-grey-6">
-                  Alt: {{ (row as any).secondary_phone }}
+                <span v-if="row.secondary_phone" class="text-caption text-grey-6">
+                  Alt: {{ row.secondary_phone }}
                 </span>
               </div>
             </td>
             <td>
-              <span class="text-weight-medium">{{ (row as any).district || 'Dhaka' }}</span>
-              <span class="text-caption text-grey-6 block">{{ (row as any).thana || 'Uttara' }}</span>
+              <span class="text-weight-medium">{{ row.district || '—' }}</span>
+              <span class="text-caption text-grey-6 block">{{ row.thana || '—' }}</span>
             </td>
             <td>
               <div class="row items-center">
                 <q-icon name="place" size="14px" class="text-grey-6 q-mr-xs" />
                 <span class="ellipsis-2-lines">{{ row.address }}</span>
+              </div>
+              <div
+                v-if="Array.isArray(row.addresses) && (row.addresses as unknown[]).length > 1"
+                class="text-caption text-grey-6"
+              >
+                {{ (row.addresses as unknown[]).length }} addresses
               </div>
             </td>
             <td class="text-right">
@@ -281,7 +287,9 @@ const filteredItems = computed(() => {
   const search = searchText.value.trim().toLowerCase();
   if (!search) return store.items;
   return store.items.filter((row) =>
-    [row.name, row.phone, row.address].some((val) => val.toLowerCase().includes(search)),
+    [row.name, row.phone, row.address, row.district || '', row.thana || '', row.secondary_phone || ''].some(
+      (val) => val.toLowerCase().includes(search),
+    ),
   );
 });
 
@@ -301,14 +309,14 @@ const openCreateDialog = () => {
   dialogOpen.value = true;
 };
 
-const onOpenEdit = (row: RecipientProfile & { secondary_phone?: string; district?: string; thana?: string }) => {
+const onOpenEdit = (row: RecipientProfile) => {
   isEditMode.value = true;
   selectedId.value = row.id;
   form.name = row.name;
   form.phone = row.phone;
   form.secondary_phone = row.secondary_phone || '';
-  form.district = row.district || 'Dhaka';
-  form.thana = row.thana || 'Uttara';
+  form.district = row.district || '';
+  form.thana = row.thana || '';
   form.address = row.address;
   dialogOpen.value = true;
 };
@@ -321,6 +329,10 @@ const onOpenDelete = (id: number) => {
 const onFormSubmit = async () => {
   if (!authStore.tenantId) return;
 
+  const secondary = form.secondary_phone.trim() || null;
+  const districtVal = form.district.trim() || null;
+  const thanaVal = form.thana.trim() || null;
+
   if (isEditMode.value && selectedId.value) {
     const res = await store.updateRecipientProfile({
       id: selectedId.value,
@@ -328,17 +340,23 @@ const onFormSubmit = async () => {
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
+        secondary_phone: secondary,
+        district: districtVal,
+        thana: thanaVal,
       },
     });
     if (res.success) {
       dialogOpen.value = false;
     }
   } else {
-    const res = await store.createRecipientProfile({
+    const res = await store.upsertByPhone({
       tenant_id: authStore.tenantId,
       name: form.name.trim(),
       phone: form.phone.trim(),
       address: form.address.trim(),
+      secondary_phone: secondary,
+      district: districtVal,
+      thana: thanaVal,
     });
     if (res.success) {
       dialogOpen.value = false;

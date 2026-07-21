@@ -137,7 +137,11 @@ export interface ShopOrder {
   profit_rate: number | null;
   recipient_name: string | null;
   recipient_phone: string | null;
+  recipient_phone_secondary?: string | null;
   shipping_address: string | null;
+  shipping_district?: string | null;
+  shipping_thana?: string | null;
+  recipient_profile_id?: number | null;
   billing_profile_id: number | null;
   placed_at: string | null;
   fulfilled_at: string | null;

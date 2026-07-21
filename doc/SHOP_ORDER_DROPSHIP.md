@@ -1,6 +1,6 @@
-# Shop & Order — Dropship Ops & Dual Invoice
+# Shop & Order — Dropship Ops, Invoice Timing & Settlement
 
-BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; the seller runs an **ops desk** (Process Order → courier consignment → deliver/return) and then creates a **dual invoice** on `global_invoices` — one accounting view and one recipient-facing view.
+BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; the seller runs an **ops desk** (Process Order → courier consignment → deliver/return). **Recipient (customer) invoice** is print/download from the order at `processing`. **Accounting invoice** is one posted `global_invoices` dropship row (dual amounts) created at `ready_for_pickup`. After `delivered`, courier remits COD **net of charges** and middle-man profit is settled on the **payout ledger** for reporting.
 
 This document is the domain design for that ops + settlement path. Catalog, cart, pricing floor, and non-COD outbound charge toggles remain in [SHOP_ORDER.md](SHOP_ORDER.md). Desk invoice field shapes and payment RPCs remain in [SALES_INVOICE.md](SALES_INVOICE.md).
 
@@ -14,7 +14,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SALE
 
 **As a** child-tenant admin or staff member,  
 **I want** a dedicated Dropship Orders desk under Shop & Order,  
-**So that** I process courier consignments and dual invoices without mixing vendor-catalog or fixed-price order workflows.
+**So that** I process courier consignments, customer prints, accounting invoices, and settlement without mixing vendor-catalog or fixed-price order workflows.
 
 ---
 
@@ -24,14 +24,16 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SALE
 | **Process order** | **As** staff, **I want** a **Process Order** action (not immediate fulfill-to-invoice), **so that** I confirm recipient, pick courier, and enter parcel/sender details before the parcel leaves. |
 | **Consignment** | **As** staff, **I want** to record parcel & payment (COD collect, weight, category, description), sender/merchant pickup, tracking (AWB, consignment id, tracking URL), and driver notes, **so that** the parcel is ready for pickup and statuses stay visible on the order. |
 | **Packing slip / label** | **As** staff, **I want** to print a packing slip and courier label before pickup, **so that** the parcel can leave with recipient face details and an AWB without posting books. |
+| **Recipient invoice print** | **As** staff, **I want** to download/print the **customer (recipient) invoice** from `processing`, **so that** the end customer / courier slip shows face prices and middle-man brand **without** creating a `global_invoices` row. |
 | **Courier policies** | **As** admin, **I want** a maintainable courier catalog (Steadfast / Pathao / REDX) with COD and return-fee rules, **so that** each courier’s policy drives suggestions instead of hard-coded shop defaults. |
 | **COD on courier** | **As** staff, **I want** COD fee rules to come from the **selected courier**, not the shop, **so that** Pathao vs Steadfast COD pricing stays accurate — and prepaid orders (`cod_collect_amount = 0`) skip courier COD fees. |
-| **Dual invoice** | **As** staff, **I want** to create a dual invoice from a **delivered** order, **so that** accounting uses middle-man sell price + shipment cost while the recipient document shows face prices and the middle man’s brand. |
+| **Accounting invoice** | **As** staff, **I want** to create the **accounting invoice** when the order reaches **`ready_for_pickup`**, **so that** books use middle-man sell price + shipment cost (dual amounts on one dropship row) while the customer copy stays the ops print from the order. |
 | **Outbound margin (non-COD)** | **As** admin, **I want** delivery / print / packing toggles on the shop to bill the recipient or deduct from middle-man margin, **so that** commercial terms match the shop (COD is separate — on courier; only when collect > 0). |
 | **Return bearer** | **As** admin, **I want** a shop setting for whether return courier fees are deducted from the middle man or absorbed by the seller, **so that** failed-delivery risk is explicit. |
 | **Return on desk** | **As** staff, **I want** return fee suggested from the courier policy + zone, then confirm actual fee and who pays, **so that** stock and the payout ledger stay correct. |
-| **Payout ledger** | **As** staff, **I want** a middle-man payout ledger of credits (delivered profit) and debits (return charges / clawbacks, including uninvoiced return fees), **so that** I settle one balance across many orders. |
-| **COD remittance** | **As** staff, **I want** to record courier remittance batch / bank trx ids when COD lands, **so that** bulk Pathao/Steadfast/REDX deposits reconcile to individual orders. |
+| **Payout ledger** | **As** staff, **I want** a middle-man payout ledger of credits (profit at accounting invoice) and debits (return charges / clawbacks, including uninvoiced return fees), **so that** I settle one balance across many orders and can generate a settlement report. |
+| **COD remittance** | **As** staff, **I want** after **delivery** to record what the courier paid us **net after cutting charges** (batch / bank trx + collection amount), **so that** money-in is on the ledger/payments trail and reconciles to the accounting invoice. |
+| **Middle-man settle** | **As** staff, **I want** to pay the middle-man profit margin and post a **payout ledger** entry, **so that** money-out is reportable against the same order/invoice. |
 | **Middle-man visibility** | **As** a middle man, **I want** order status (including returned), tracking URL, and any charge cut from my profit to be visible on my orders, **so that** payouts are transparent. |
 
 ---
@@ -42,8 +44,9 @@ This document answers:
 - What recipient fields are required at cart → order confirm?
 - What statuses and consignment fields does the Process Order path use?
 - Why is COD owned by the courier catalog, not the shop — and when is the COD fee skipped?
-- How do packing-slip print and posted dual invoice stay decoupled?
-- How do Regular (accounting) and Recipient invoices share one `global_invoices` row?
+- How do recipient print (order) and posted accounting invoice stay decoupled?
+- When is the accounting invoice created vs when is customer invoice printed?
+- How do courier net remittance and middle-man payout land on the ledger for reports?
 - How do courier return policies (Steadfast / Pathao / REDX) drive suggested return fees?
 - What are the return scenarios, exchange, uninvoiced ledger debits, and locked defaults?
 
@@ -60,9 +63,10 @@ This document answers:
 | Primary UI (target) | `/:slug/app/shop/dropship/*` |
 | Order rows | `shop_orders` / `shop_order_items` (same tables; dropship status + consignment fields) |
 | Courier catalog | `courier_services` — COD + return/attempt/open-box policies |
-| Invoice write | `global_invoices` type `dropship` via Create Dual Invoice — sole **invoice** write path (not a parallel commerce ledger) |
-| Settlement journal | Middle-man payout ledger — separate from invoices; may debit uninvoiced return fees |
-| Settlements | Recipient COD + middle-man payout → [SALES_INVOICE.md](SALES_INVOICE.md) / [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
+| Invoice write | `global_invoices` type `dropship` via **Create Accounting Invoice** (dual amounts) — sole **invoice** write path (not a parallel commerce ledger) |
+| Recipient customer copy | Print/download from `shop_orders` at `processing`+ — **not** a second invoice table |
+| Settlement journal | Middle-man payout ledger + recipient collections — separate from invoice create; reportable money-in / money-out |
+| Settlements | Courier COD remittance (net) + middle-man payout → [SALES_INVOICE.md](SALES_INVOICE.md) / [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 
 ### What this feature is
 
@@ -72,9 +76,11 @@ This document answers:
 | Checkout recipient | Courier-ready recipient block at order confirm |
 | Process Order | Consignment entry; packing slip / label print before pickup |
 | Courier catalog | Per-courier COD + return policies |
-| Dual invoice handoff | Posted accounting + recipient views on one `global_invoices` row at **delivered** |
+| Recipient invoice print | Download/print customer face copy from order at **`processing`** (no books post) |
+| Accounting invoice handoff | Posted dual-amount `global_invoices` dropship row at **`ready_for_pickup`** |
 | Charge policy | Shop toggles for delivery/print/packing (non-COD); **COD on courier** only when `cod_collect_amount > 0`; independent return-fee bearer |
-| Middle-man ledger | Credits/debits for profit and return clawbacks (including `return_fee_uninvoiced`) |
+| Courier remittance + ledger | After **`delivered`**: courier pays seller net of charges → collection ledger; then middle-man profit payout ledger |
+| Middle-man ledger | Credits/debits for profit, remittance trail, payouts, return clawbacks (including `return_fee_uninvoiced`) |
 
 ### What this feature is not
 
@@ -82,7 +88,7 @@ This document answers:
 |-------|--------|
 | **Vendor-catalog / fixed-price orders** | Stay on `shop_order_mgmt` / `shop_fulfillment` paths |
 | **Desk-created dropship without a shop order** | Remains available under `sales_invoice` desk create — this doc covers the **shop-order-originated** path |
-| **Separate recipient invoice table** | Dual amounts on one invoice; print/view switches brand and price set |
+| **Separate recipient invoice table** | Customer copy is **order print**; books are one dropship row with dual amounts (**D-SD1**) |
 | **Shop-owned COD fee rules** | Deprecated for dropship — COD lives on `courier_services` (**D-SD11**) |
 | **GAAP chart of accounts** | Operational invoices + COD + payout ledger only |
 | **Live courier API sync (v1)** | Catalog is admin-editable; fields match future API payload shape |
@@ -90,7 +96,7 @@ This document answers:
 
 ### Design principle
 
-> **Ops before books.** Recipient data at checkout; courier reality on Process Order; packing slip printable before ship; **posted** Create Dual Invoice only when delivery outcome is known. Failed consignments should not invent a clean paid sale. **COD is a courier commercial rule, not a shop default** — and only applies when collect amount > 0.
+> **Ops print, then books at pickup-ready, then money after delivery.** Recipient data at checkout; courier reality on Process Order; **customer invoice printable at `processing`** without posting books; **accounting invoice posted at `ready_for_pickup`**. After **`delivered`**, courier remits COD net of charges (collection ledger), then seller pays middle-man profit (payout ledger) for reports. Returns before or after invoice follow §10. **COD is a courier commercial rule, not a shop default** — and only applies when collect amount > 0.
 
 ```mermaid
 flowchart TB
@@ -99,29 +105,27 @@ flowchart TB
     place["Order placed"]
     process["Process Order desk"]
     consign["Courier E + parcel B C D"]
-    opsPrint["Packing slip / courier label"]
+    recipPrint["Recipient invoice print download"]
+    ready["ready_for_pickup"]
     outcome["Delivered or Returned"]
   end
 
   subgraph invoice [sales_invoice handoff]
-    dual["Create Dual Invoice posted"]
-    face["Recipient invoice print / COD face"]
-    acct["Accounting sell + landed cost"]
+    acct["Create Accounting Invoice posted"]
   end
 
   subgraph settle [Settlement]
-    cod["Recipient COD remittance"]
+    cod["Courier net remittance ledger"]
     payout["Middle-man payout ledger"]
     ret["Return charge from courier policy"]
+    report["Settlement report"]
   end
 
   checkout --> place --> process --> consign
-  consign --> opsPrint
-  consign --> outcome
-  outcome -->|delivered| dual
-  dual --> face
-  dual --> acct
-  dual --> cod --> payout
+  consign --> recipPrint
+  consign --> ready --> acct
+  ready --> outcome
+  outcome -->|delivered| cod --> payout --> report
   outcome -->|returned| ret --> payout
 ```
 
@@ -141,7 +145,7 @@ Dropship ops is a **submodule of `shop_order`**, not a new parent module.
 |------|--------|
 | Assignment | Enabled when parent `shop_order` is assigned; platform may disable via `tenant_module_submodules` |
 | Separation | Generic **Orders** list stays for vendor/fixed paths; **Dropship Orders** filters `shop_type_snapshot = dropship` |
-| Fulfillment | Dropship desk **does not** use the fixed-price “Fulfill to Invoice” as the primary CTA — use **Process Order** then **Create Dual Invoice** |
+| Fulfillment | Dropship desk **does not** use the fixed-price “Fulfill to Invoice” as the primary CTA — use **Process Order**; print customer invoice at `processing`; **Create Accounting Invoice** at `ready_for_pickup` |
 
 ---
 
@@ -185,11 +189,11 @@ Statuses already seeded include `processing`, `shipped`, `delivered`, `payment_r
 | Status | Meaning |
 |--------|---------|
 | `submitted` / `confirmed` | Middle man checkout complete (lives on Orders / Service Desk queue; not yet on Dropship Operations Desk) |
-| `processing` | Staff clicked **Add to Dropship Desk** (`confirmed` → `processing`); order enters Dropship Operations Desk queue; consignment editable |
-| `ready_for_pickup` | Parcel packed; packing slip / courier label available; awaiting courier pickup |
+| `processing` | Staff clicked **Add to Dropship Desk** (`confirmed` → `processing`); order enters Dropship Operations Desk queue; consignment editable; **Download/Print Customer (recipient) Invoice** available (order face — no books) |
+| `ready_for_pickup` | Parcel packed; packing slip / courier label available; awaiting courier pickup; unlocks **Create Accounting Invoice** (posted dual-amount dropship row) |
 | `shipped` | Courier has the parcel |
-| `delivered` | Successful delivery; stamps `delivered_at`; unlocks posted Create Dual Invoice |
-| `payment_received` | COD remitted / reconciled (`courier_remittance_ref` / `courier_bank_trx_id`); enough to close ops money state |
+| `delivered` | Successful delivery; stamps `delivered_at`; unlocks **courier remittance / settlement** (not invoice create) |
+| `payment_received` | COD remitted / reconciled (`courier_remittance_ref` / `courier_bank_trx_id`); collection ledger written; enough to close ops money-in state |
 | `returned` | Refused, failed delivery, or post-delivery return; stamps `returned_at` |
 | `cancelled` | Aborted before ship |
 
@@ -210,11 +214,13 @@ stateDiagram-v2
 
 Block advance to `ready_for_pickup` / `shipped` if mandatory B/C fields or `courier_service_id` are missing.
 
-**Ops print (print ≠ post):** From `processing` / `ready_for_pickup`, staff may **Print packing slip** (recipient face prices + parcel B/C from the order) and **Print / download courier label** when AWB is present. Label print is encouraged before pickup but **not** a hard gate in v1 (manual AWB entry is enough). Packing slip does **not** create a `global_invoices` row.
+**Ops print (print ≠ post):** From `processing`+, staff may **Print packing slip**, **Print / download courier label** (when AWB present), and **Download / Print Customer (recipient) Invoice** — face prices + recipient A from the **order**. None of these create a `global_invoices` row.
+
+**Books (status → invoice):** When status reaches **`ready_for_pickup`** (or later if not yet linked), staff **Create Accounting Invoice** → posted `global_invoices` dropship with dual amounts; sets `shop_orders.global_invoice_id`. No draft invoice earlier. Failed delivery **after** books post uses void/return (§10) — not “never invent a sale”; product accepts books at pickup-ready (**D-SD4**).
 
 Status transitions stamp timestamps: `delivered` → `delivered_at`; `returned` → `returned_at` (SLA and payout eligibility).
 
-`shop_orders.global_invoice_id` is set **only** when **posted** Create Dual Invoice succeeds (from `delivered`). No early draft invoice on `global_invoices` — avoids void churn on failed consignments.
+`shop_orders.global_invoice_id` is set **only** when **posted** Create Accounting Invoice succeeds (from **`ready_for_pickup`**+).
 
 ---
 
@@ -375,25 +381,25 @@ Couriers do **not** share one COD or return rule. Maintain **`courier_services`*
 
 ---
 
-## 8. Dual invoice (Regular + Recipient)
+## 8. Accounting invoice + recipient print
 
-**One** `global_invoices` row with `invoice_type = dropship` (existing dual-amount model). Two **views / print modes**, not two tables.
+**One** posted `global_invoices` row with `invoice_type = dropship` (dual-amount model) for **books**. The **recipient / customer invoice** is an ops **print/download** from the order — not a second table and not required to wait for post (**D-SD1**, **D-SD4**, **D-SD16**).
 
-| View | Audience | Line prices | Header totals | Brand |
-|------|----------|-------------|---------------|-------|
-| **Regular (accounting)** | Seller books / margin | `sell_price_amount` (middle-man buy / accounting sell) | `accounting_subtotal_amount` | Seller / tenant invoice brand |
-| **Recipient** | End customer + courier COD slip | `recipient_price_amount` | `face_subtotal_amount` + face charges | Middle man custom brand name / logo on billing profile |
+| Document | Audience | Line prices | When | Storage |
+|----------|----------|-------------|------|---------|
+| **Recipient (customer) invoice** | End customer + courier COD slip | Face / `customer_sell_price` on order | From **`processing`** | Order print only — no `global_invoices` row |
+| **Accounting invoice** | Seller books / margin / payout | `sell_price_amount` + `recipient_price_amount` on one row | From **`ready_for_pickup`** | Posted `global_invoices` dropship |
 
 | Rule | Detail |
 |------|--------|
 | Cost | `unit_cost_price` from shipment item landed cost on post — same as other invoice types |
-| Charges on face | Delivery / print / packing per shop toggles; **COD fee per courier policy** only when `cod_collect_amount > 0` and not deducted from margin |
-| Recipient snapshot | Copy expanded recipient A fields (+ secondary phone, district, thana) onto invoice |
-| Payout | `middle_man_payout_amount` from spread and policy (see §9) |
-| Collection | `collection_source = recipient` for COD; middle-man settlement via payout RPCs |
-| **Ops print (print ≠ post)** | Packing slip / recipient **preview** from `shop_orders` at `processing` / `ready_for_pickup` — face prices + consignment; **no** `global_invoices` row |
-| **Books (posted)** | Create Dual Invoice from **`delivered`** only; sets `global_invoice_id`. Prefer **not** posting a sale for failed consignments. Formal recipient invoice print uses the posted dual-invoice recipient view |
-| Remittance snapshot | When COD remits, copy `courier_remittance_ref` / `courier_bank_trx_id` onto related collection fields on the invoice where present — see [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Charges on face (books) | Delivery / print / packing per shop toggles; **COD fee per courier policy** only when `cod_collect_amount > 0` |
+| Recipient snapshot on books | Copy recipient A (name/phone/address; profile id when set) onto invoice at create |
+| Payout amount | `middle_man_payout_amount` from spread and policy (see §9); profit credit may land on ledger at invoice create |
+| Collection | `collection_source = recipient`; after delivery courier remits net → §11 |
+| **Ops print (print ≠ post)** | Packing slip / **Download Customer Invoice** from `shop_orders` at `processing`+ — face prices + consignment; **no** `global_invoices` row |
+| **Books (posted)** | Create Accounting Invoice from **`ready_for_pickup`**+; sets `global_invoice_id`. Optional later print of accounting document from invoice detail |
+| Remittance snapshot | When COD remits, copy `courier_remittance_ref` / `courier_bank_trx_id` onto collection fields — see [SALES_INVOICE.md](SALES_INVOICE.md) / §11 |
 
 Desk-only dropship create (no shop order) remains in [SALES_INVOICE.md](SALES_INVOICE.md) §5.4; this submodule **wires shop orders into that invoice type**.
 
@@ -431,8 +437,9 @@ middle_man_payout =
 | Stage | Invoice | Stock | COD | Action |
 |-------|---------|-------|-----|--------|
 | **A. Before ship** | None | Release reservation | None | Cancel |
-| **B. Shipped, refused / failed** | None (no draft invoice) | Restore when parcel received | None collected | `returned` + `returned_at`; return fee from **courier policy**; ledger `return_fee_uninvoiced` if middle man bears |
-| **C. After delivery / posted invoice** | Posted dual invoice | `global_return_items` | May be remitted | Dual return amounts + return charge; rebalance COD and payout |
+| **B. Shipped, refused / failed (no accounting invoice yet)** | None | Restore when parcel received | None collected | `returned` + `returned_at`; return fee from **courier policy**; ledger `return_fee_uninvoiced` if middle man bears |
+| **B2. Failed after accounting invoice** (`ready_for_pickup`+ already invoiced) | Posted accounting invoice | Restore / void or return lines | None or reverse collection | Void or dual return per [SALES_INVOICE.md](SALES_INVOICE.md); rebalance payout |
+| **C. After delivery / remittance** | Posted accounting invoice | `global_return_items` if return | May be remitted | Dual return amounts + return charge; rebalance COD and payout |
 | **D. Partial accept** | Adjust lines | Partial restore | Partial COD | Per-line face/accounting/payout recalc |
 
 ### 10.2 Charge types on return
@@ -465,12 +472,14 @@ revised_middle_man_payout =
   ± COD already collected / refunded / short-paid adjustments
 ```
 
-### 10.5 Failed delivery before dual invoice
+### 10.5 Failed delivery before accounting invoice
 
 - Status → `returned`; stamp `returned_at`
-- **Do not** invent a posted paid sale; no draft `global_invoices` row to void
+- **Do not** invent a posted sale if `global_invoice_id` is still null
 - Restore stock when warehouse confirms
-- If middle man bears return fee → ledger debit only with entry type **`return_fee_uninvoiced`** (may go negative; offset on future success). This is a settlement-journal write, **not** an invoice write.
+- If middle man bears return fee → ledger debit **`return_fee_uninvoiced`** (settlement journal, not invoice write)
+
+If an accounting invoice was already posted at `ready_for_pickup`, use void/return (§10.1 B2 / §10.4) instead.
 
 ### 10.6 Edge cases
 
@@ -485,19 +494,34 @@ revised_middle_man_payout =
 
 ---
 
-## 11. Middle-man payout ledger
+## 11. Ledger infrastructure (courier money + middle-man settlement)
 
-The ledger is a **settlement journal**, not an invoice path. Entries reference `shop_order_id` (and `global_invoice_id` when a dual invoice exists). `global_invoices` remains the sole **invoice** write path (§1).
+The ledger is a **settlement journal**, not an invoice path. Entries reference `shop_order_id` (and `global_invoice_id` when an accounting invoice exists). `global_invoices` remains the sole **invoice** write path (§1). Together with `record_recipient_invoice_collection` / payments, this trail supports a **settlement report**.
+
+### 11.1 After delivery — courier pays seller (net)
+
+1. Recipient paid COD to courier (face collect on order / invoice due).
+2. Courier remits to seller **after cutting courier charges** — staff records the **net remitted** amount (variance vs face due is visible).
+3. Advance toward **`payment_received`** with `courier_remittance_ref` + `courier_bank_trx_id`.
+4. Write money-in via **`record_recipient_invoice_collection`** against the linked accounting invoice (and remittance refs on order/invoice where supported).
+
+### 11.2 Middle-man profit payout
+
+1. Accounting invoice already holds `middle_man_payout_amount` (and may have posted a **profit credit** on create).
+2. When seller pays the middle man, call **`create_middle_man_payout`** → **Payout paid** ledger entry (reduces payable).
+
+### 11.3 Ledger entry types
 
 | Entry type | When | Sign |
 |------------|------|------|
-| Profit credit | Dual invoice settled / eligible payout | + |
-| Return fee debit | Return with middle-man bearer **after** dual invoice | − |
-| `return_fee_uninvoiced` | Failed delivery **before** dual invoice; middle man bears return fee | − |
+| Profit credit | Accounting invoice created / eligible payout | + |
+| Collection / remittance | Courier net COD lands (`payment_received` path) | money-in via payments + invoice collection (not always a ledger row type — see payments) |
+| Return fee debit | Return with middle-man bearer **after** accounting invoice | − |
+| `return_fee_uninvoiced` | Failed / returned **before** accounting invoice; middle man bears return fee | − |
 | Clawback | Post-payout return | − |
 | Payout paid | Admin settles cash/transfer to middle man | reduces payable |
 
-UI: under Dropship desk or billing-profile-linked ledger. Integrates with `create_middle_man_payout` / invoice payout fields from [SALES_INVOICE.md](SALES_INVOICE.md).
+UI: Dropship **ledger** page + process-desk settlement actions after `delivered`. Integrates with `create_middle_man_payout` / `record_recipient_invoice_collection` from [SALES_INVOICE.md](SALES_INVOICE.md). Report = filterable ledger + payment list by middle man / date / order / invoice.
 
 ---
 
@@ -508,7 +532,7 @@ UI: under Dropship desk or billing-profile-linked ledger. Integrates with `creat
 | Custom brand name | Middle man’s `billing_profiles` (or shop-linked profile) |
 | Custom logo URL | Same |
 
-Recipient print mode uses middle-man brand; accounting print uses tenant `invoice_brands` as today.
+Recipient customer print uses middle-man brand (billing profile name / target custom logo); accounting print uses tenant `invoice_brands` as today.
 
 ---
 
@@ -531,7 +555,7 @@ See §7.2. Seed Steadfast, Pathao, REDX.
 
 | Group | Fields |
 |-------|--------|
-| Recipient A | `recipient_name`, `recipient_phone`, `recipient_phone_secondary`, `shipping_address`, `shipping_district`, `shipping_thana` |
+| Recipient A | `recipient_name`, `recipient_phone`, `recipient_phone_secondary`, `shipping_address`, `shipping_district`, `shipping_thana` (**snapshots**); `recipient_profile_id` FK → `recipient_profiles` (upsert by phone on submit / process desk; multi-address in profile `addresses` jsonb) |
 | Parcel B | `cod_collect_amount`, `package_weight_band`, `item_category`, `parcel_description`, `courier_order_ref`, `delivery_zone` |
 | Sender C | `sender_name`, `pickup_phone`, `pickup_address`, `payout_account_type`, `payout_account_info` |
 | Instructions D | `allow_open_box`, `delivery_instruction_notes` |
@@ -540,7 +564,7 @@ See §7.2. Seed Steadfast, Pathao, REDX.
 | Remittance | `courier_remittance_ref`, `courier_bank_trx_id` (set at `payment_received`) |
 | Exchange | `replacement_of_order_id` (optional FK to original returned order) |
 | Return | `return_charge_amount`, `deduct_return_charge_from_middle_man` (snapshot/override) |
-| Invoice | `global_invoice_id` — set on **posted** Create Dual Invoice only |
+| Invoice | `global_invoice_id` — set on **posted** Create Accounting Invoice only (`ready_for_pickup`+) |
 
 ### 13.4 Status enum
 
@@ -548,7 +572,7 @@ Ensure: `processing`, `ready_for_pickup`, `shipped`, `delivered`, `payment_recei
 
 ### 13.5 Invoice / returns
 
-Reuse `global_invoices`, `global_invoice_items`, `global_return_items` dual columns — no second invoice table (**D-SD1**). Extend recipient snapshots with secondary phone, district, thana.
+Reuse `global_invoices`, `global_invoice_items`, `global_return_items` dual columns — no second invoice table (**D-SD1**). Recipient customer copy does not require extra invoice snapshot columns beyond existing name/phone/address.
 
 ---
 
@@ -562,11 +586,11 @@ Reuse `global_invoices`, `global_invoice_items`, `global_return_items` dual colu
 | `update_dropship_consignment` | Staff | A–E fields (incl. AWB, consignment id, tracking URL); load courier COD suggestion only if collect > 0 |
 | `advance_dropship_order_status` | Staff | ready_for_pickup / shipped / delivered / payment_received; stamps `delivered_at` / remittance refs on `payment_received` |
 | `mark_dropship_order_returned` | Staff | Suggest return fee from courier policy; bearer + stock; `returned_at`; ledger `return_fee_uninvoiced` when no invoice |
-| `create_dual_invoice_from_dropship_order` | Staff | From **delivered** only → posted `global_invoices` dropship; set `global_invoice_id` |
+| `create_dual_invoice_from_dropship_order` | Staff | From **`ready_for_pickup`**+ → posted `global_invoices` dropship (accounting dual amounts); set `global_invoice_id` |
 | `list/upsert_courier_services` | Admin | Maintain courier catalog |
-| Existing recipient collection / middle-man payout | Finance | Per [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Existing recipient collection / middle-man payout | Finance | `record_recipient_invoice_collection` (courier net remit) + `create_middle_man_payout` — [SALES_INVOICE.md](SALES_INVOICE.md) |
 
-Packing slip / courier label print is **client-side** from the order payload on the process desk (no courier API in v1).
+Packing slip / courier label / **customer invoice** print is **client-side** from the order payload on the process desk (no courier API in v1).
 
 ---
 
@@ -576,13 +600,13 @@ Packing slip / courier label print is **client-side** from the order payload on 
 |--------|------|-----------|
 | Dropship order confirm | `/shop/checkout` (dropship shop) | `shop_cart` — full recipient A |
 | Dropship order list | `/app/shop/dropship` | `shop_dropship` |
-| Dropship process desk | `/app/shop/dropship/:id` | `shop_dropship` — Process Order, packing slip / label print, status stepper |
+| Dropship process desk | `/app/shop/dropship/:id` | `shop_dropship` — Process Order; customer invoice print @ `processing`; accounting invoice @ `ready_for_pickup`; remittance/payout @ `delivered`+ |
 | Courier services admin | `/app/shop/dropship/couriers` | `shop_dropship` |
-| Middle-man payout ledger | `/app/shop/dropship/ledger` | `shop_dropship` |
+| Middle-man payout ledger | `/app/shop/dropship/ledger` | `shop_dropship` — settlement report surface |
 | Customer order status | `/shop/orders/:id` | `shop_order_mgmt` — status + `tracking_url` |
-| Dual invoice detail / print | `/app/sales/invoices/:id` | `global_invoice` — formal recipient/accounting print after post |
+| Accounting invoice detail | `/app/sales/invoices/:id` | `global_invoice` — books view after post |
 
-Replace primary **Fulfill to Invoice** on dropship order detail with **Process Order**; show **Print packing slip** from `processing`+; show **Create Dual Invoice** after `delivered`. Expand [ShopCheckoutPage.vue](../web/src/modules/shop_order/pages/ShopCheckoutPage.vue) for block A on dropship.
+Replace primary **Fulfill to Invoice** on dropship order detail with **Process Order**; show **Download/Print Customer Invoice** from `processing`+; show **Create Accounting Invoice** from `ready_for_pickup`+; settlement actions after `delivered`. Expand [ShopCheckoutPage.vue](../web/src/modules/shop_order/pages/ShopCheckoutPage.vue) for block A on dropship.
 
 ---
 
@@ -597,9 +621,9 @@ Replace primary **Fulfill to Invoice** on dropship order detail with **Process O
 | **D1 — Recipient + status** | Checkout A fields; enum gaps (`ready_for_pickup`, `returned`); `delivered_at` / `returned_at` |
 | **D2 — Courier catalog** | `courier_services` + seeds; COD on courier (skip fee when collect = 0); deprecate shop COD for dropship |
 | **D3 — Dropship desk UI** | Menu, list, Process Order (B–E incl. AWB / tracking URL), packing slip / label print, status stepper — wire §16a shells to RPCs |
-| **D4 — Create Dual Invoice** | Handoff RPC from **delivered** + brand + expanded recipient snapshot (print ≠ post) |
-| **D5 — Returns** | Policy-suggested fee, bearer, stock restore, dual return when invoiced; `return_fee_uninvoiced` ledger; exchange = replacement order |
-| **D6 — Payout ledger** | Credits/debits, clawbacks, remittance refs on `payment_received`, settle payout |
+| **D4 — Create Accounting Invoice** | Handoff RPC from **`ready_for_pickup`**+; recipient print remains order-only (print ≠ post) |
+| **D5 — Returns** | Policy-suggested fee, bearer, stock restore, dual return when invoiced; `return_fee_uninvoiced` ledger when no invoice yet; exchange = replacement order |
+| **D6 — Ledger + courier settlement** | Profit credit, courier net remittance → collection, middle-man payout paid, remittance refs on `payment_received`, settlement report |
 | **I2 — Wire-up** | Replace remaining mocks with repository/service calls after D1–D6 RPCs land |
 
 ```mermaid
@@ -607,12 +631,14 @@ flowchart LR
   checkout[Checkout_A]
   desk[Dropship_desk]
   process[Process_Order_BCE]
+  recipPrint[Customer_invoice_print]
   courierAdmin[Courier_catalog]
-  dual[Dual_invoice_CTA]
+  acct[Accounting_invoice_CTA]
   settle[Ledger_COD_payout]
   checkout --> desk --> process
+  process --> recipPrint
   courierAdmin --> process
-  process --> dual --> settle
+  process --> acct --> settle
 ```
 
 ---
@@ -628,7 +654,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | Iter | Goal |
 |------|------|
 | **I0 Dummy UI** | Routes, forms, steppers, print stubs with local/mock state — no new RPCs |
-| **I1 Backend** | Migrations + RPCs per §14 (status, consignment, courier, dual invoice, ledger) — aligns with D1–D6 |
+| **I1 Backend** | Migrations + RPCs per §14 (status, consignment, courier, accounting invoice, ledger) — aligns with D1–D6 |
 | **I2 Wire-up** | Replace mocks with real repository/service calls |
 
 ### Pages to create or update
@@ -645,9 +671,9 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 
 | | |
 |--|--|
-| **Feature** | Reusable recipient profile matches courier fields (desk + future save-from-checkout) |
+| **Feature** | Reusable recipient profile matches courier fields (desk + save-from-checkout via phone upsert) |
 | **Update** | [RecipientProfilesPage.vue](../web/src/modules/sales_invoice/pages/RecipientProfilesPage.vue) + create/edit dialog; types under `sales_invoice` |
-| **UI** | Add secondary phone, district, thana to list columns and form. Dummy: client-only fields until schema lands. |
+| **UI** | Secondary phone, district, thana persisted; unique `(tenant_id, phone)`; checkout blur autofills from profile |
 
 #### 3. Merchant / sender (pickup defaults)
 
@@ -681,7 +707,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | **Feature** | Dropship-only order queue (separate from vendor/fixed-price) |
 | **Create** | `web/src/modules/shop_order/pages/DropshipOrdersPage.vue` |
 | **Route** | `/:slug/app/shop/dropship` |
-| **UI** | Status filter chips; columns: order no, middle man, recipient, courier, AWB, status, COD collect. Row → process desk. Dummy: filter by `shop_type_snapshot === 'dropship'` or mock list. |
+| **UI** | Status filter chips; columns: order no, middle man, recipient, courier, AWB, status, COD collect. Row → process desk. **Quick Actions**: <br>1. **Mark Collected / Delivered** for `shipped` orders. <br>2. **Create Accounting Invoice** for `ready_for_pickup`+ without `global_invoice_id`. <br>3. **Record remittance / settle** for `delivered`+ with invoice. |
 
 #### 7. Courier shipment entry (Process Order desk)
 
@@ -690,25 +716,25 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | **Feature** | Process Order → parcel/payment (B), sender (C), driver notes (D), courier tracking (E); packing slip / label print stubs |
 | **Create** | `web/src/modules/shop_order/pages/DropshipOrderDetailPage.vue` (preferred over branching [StaffOrderDetailPage.vue](../web/src/modules/shop_order/pages/StaffOrderDetailPage.vue)) |
 | **Route** | `/:slug/app/shop/dropship/:id` |
-| **UI** | Primary CTA **Process Order** (not Fulfill to Invoice). Sections: editable recipient A; parcel + COD; sender; open-box + notes; courier picker + AWB / consignment id / tracking URL. Status stepper (`processing` → `ready_for_pickup` → `shipped` → `delivered` / `returned`). Print packing slip / label (`window.print` stubs). **Create Dual Invoice** only after `delivered` (stub/toast in I0). |
+| **UI** | Primary CTA **Process Order** (not Fulfill to Invoice). Sections: editable recipient A; parcel + COD; sender; open-box + notes; courier picker + AWB / consignment id / tracking URL. Status stepper (`processing` → `ready_for_pickup` → `shipped` → `delivered` / `returned`). **Download/Print Customer Invoice** from `processing`+. **Create Accounting Invoice** from `ready_for_pickup`+. Settlement (courier remittance / middle-man payout) from `delivered`+. <br>**Items & Margins Table**: quantity, accounting sell, recipient face, margin per item. |
 
-#### 8. Dual invoice (create + views)
+#### 8. Accounting invoice + customer print
 
 | | |
 |--|--|
-| **Feature** | From delivered order, dual invoice (accounting vs recipient face) |
-| **Update** | Process desk CTA → [CreateDropshipInvoiceDialog.vue](../web/src/modules/sales_invoice/components/CreateDropshipInvoiceDialog.vue) / [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) / [InvoicePreviewPage.vue](../web/src/modules/sales_invoice/pages/InvoicePreviewPage.vue) |
-| **UI** | CTA + confirm dialog prefilled from order mock; details page toggle **Accounting / Recipient** print view (brand + face prices). No post RPC yet — toast “dummy create”. |
+| **Feature** | Customer invoice print from order at `processing`; accounting invoice create at `ready_for_pickup` |
+| **Update** | Process desk CTAs → invoice detail [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue); print sheet from order for customer copy |
+| **UI** | Confirm dialog for accounting create (dual amounts preview). Customer print = `window.print` / download from order face. |
 
 #### 9. Middle-man payout + courier COD collection
 
 | | |
 |--|--|
-| **Feature** | Settlement desk: ledger credits/debits; courier remittance vs middle-man payout |
+| **Feature** | Settlement desk: ledger; courier net remittance; middle-man payout; reportable trail |
 | **Create** | `web/src/modules/shop_order/pages/DropshipLedgerPage.vue` |
 | **Route** | `/:slug/app/shop/dropship/ledger` |
-| **Update (light)** | [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) payout/collection panels — add remittance ref fields as disabled stubs until D6 |
-| **UI** | Ledger table: order, type (credit profit / `return_fee_uninvoiced` / clawback), amount, balance. Actions: **Record courier remittance** (batch id + bank trx), **Settle middle-man payout** (dummy confirm). |
+| **Update (light)** | [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) payout/collection panels — remittance refs |
+| **UI** | Ledger table: order, type (profit credit / payout paid / `return_fee_uninvoiced` / clawback), amount, balance. Actions: **Record courier remittance** (net amount + batch id + bank trx), **Settle middle-man payout**. |
 
 #### 10. Customer / middle-man order visibility
 
@@ -743,11 +769,11 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 |---|-------|----------|
 | D-SD1 | Invoice storage | Single `global_invoices` dropship row with dual amounts — not two physical invoice tables |
 | D-SD2 | Module home | Feature lives under **`shop_order`** as submodule `shop_dropship` |
-| D-SD3 | Primary CTA | **Process Order** before Create Dual Invoice for shop-originated dropship |
-| D-SD4 | Invoice timing | **Posted** Create Dual Invoice from **`delivered`** only; packing slip printable earlier from order |
+| D-SD3 | Primary CTA | **Process Order**; customer print at `processing`; accounting invoice at `ready_for_pickup` |
+| D-SD4 | Invoice timing | **Recipient print** from order at **`processing`+** (no books). **Posted accounting invoice** from **`ready_for_pickup`+**. After **`delivered`**: courier net remittance + middle-man payout on ledger |
 | D-SD5 | Return fee bearer | Shop flag `deduct_return_charge_from_middle_man` default **true**; per-return override |
 | D-SD6 | Return vs outbound toggles | Return fee independent of `deduct_delivery_from_margin` |
-| D-SD7 | Failed before invoice | No fake posted sale; stock + optional ledger debit `return_fee_uninvoiced` |
+| D-SD7 | Failed before accounting invoice | No fake posted sale if still pre-`ready_for_pickup`; stock + optional ledger debit `return_fee_uninvoiced`. After invoice: void/return path |
 | D-SD8 | Negative ledger | Allowed; net on future payouts |
 | D-SD9 | Cost source | Unchanged — shipment landed cost on invoice post |
 | D-SD10 | Desk dropship without shop order | Remains `sales_invoice` path; this doc owns shop-order path |
@@ -756,10 +782,11 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | D-SD13 | Courier policy catalog | Maintainable `courier_services` with return/COD/attempts/open-box; seed Steadfast, Pathao, REDX |
 | D-SD14 | Open-box default | `allow_open_box = false` unless staff authorizes |
 | D-SD15 | Consignment storage | Columns on `shop_orders` for v1 |
-| D-SD16 | Print ≠ post | Packing slip / courier label from order at `processing`+; no early draft on `global_invoices` |
+| D-SD16 | Print ≠ post | Packing slip / courier label / **customer invoice** from order at `processing`+; no early draft on `global_invoices` |
 | D-SD17 | Prepaid COD fee | Apply courier COD fee **only when `cod_collect_amount > 0`** |
 | D-SD18 | Uninvoiced return ledger | Entry type `return_fee_uninvoiced`; ledger is settlement journal, not invoice write |
 | D-SD19 | Exchange | v1: original → `returned` + replacement shop order via `replacement_of_order_id`; no single-order exchange state machine |
+| D-SD20 | Settlement report | Courier net remittance (collection) + middle-man payout ledger entries are the reportable money trail after delivery |
 
 ---
 

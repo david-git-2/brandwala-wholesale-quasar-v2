@@ -518,7 +518,7 @@ const codEstimateSummary = computed(() => {
   return parts.join(' / ') || '~1%';
 });
 
-const formatAmount = (val: number | any) => {
+const formatAmount = (val: any) => {
   const num = typeof val === 'number' ? val : (val?.value ?? 0);
   return `${currencySymbol.value}${num.toFixed(2)}`;
 };

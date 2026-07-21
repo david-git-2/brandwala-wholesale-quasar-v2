@@ -230,7 +230,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -241,7 +240,6 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const store = useShopPermissionsStore();
-const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
@@ -362,7 +360,7 @@ const goBack = () => {
 };
 
 watch(tenantId, (v) => {
-  if (v) load();
+  if (v) void load();
 });
 
 onMounted(load);

@@ -51,3 +51,46 @@ export async function fetchCourierChargeEstimate(): Promise<CourierChargeEstimat
   if (!res.success || !res.data?.length) return { ...FALLBACK };
   return estimateFromCouriers(res.data);
 }
+
+export type DeliveryZone = 'inside_dhaka' | 'outside_dhaka';
+
+export function resolveDeliveryZone(district: string): DeliveryZone {
+  return district.trim().toLowerCase().includes('dhaka') ? 'inside_dhaka' : 'outside_dhaka';
+}
+
+export function suggestDeliveryFee(
+  courier: Pick<CourierServiceRow, 'inside_dhaka_fee' | 'outside_dhaka_fee'>,
+  zone: DeliveryZone,
+): number {
+  const fee = zone === 'inside_dhaka' ? courier.inside_dhaka_fee : courier.outside_dhaka_fee;
+  return Number(fee || 0);
+}
+
+export interface SuggestCodFeeInput {
+  faceSubtotal: number;
+  deliveryCharge: number;
+  deductDeliveryFromMargin: boolean;
+  prepaid: boolean;
+}
+
+export function suggestCodFee(
+  courier: Pick<CourierServiceRow, 'cod_fee_mode' | 'cod_fee_percent' | 'cod_fee_flat_amount'>,
+  input: SuggestCodFeeInput,
+): number {
+  if (input.prepaid) return 0;
+
+  const collectBase = input.faceSubtotal
+    + (input.deductDeliveryFromMargin ? 0 : input.deliveryCharge);
+  if (collectBase <= 0) return 0;
+
+  switch (courier.cod_fee_mode) {
+    case 'percent_of_collect':
+      return Math.round(collectBase * Number(courier.cod_fee_percent || 0) / 100 * 100) / 100;
+    case 'flat':
+      return Number(courier.cod_fee_flat_amount || 0);
+    case 'none':
+    case 'tiered_manual':
+    default:
+      return 0;
+  }
+}

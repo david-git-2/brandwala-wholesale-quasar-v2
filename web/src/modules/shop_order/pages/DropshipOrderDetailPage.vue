@@ -115,7 +115,9 @@
                     <q-icon name="person" size="18px" class="q-mr-xs text-primary" />
                     Block A: Recipient Delivery Information
                   </div>
-                  <q-chip dense color="blue-1" text-color="primary" size="sm">Editable at Desk</q-chip>
+                  <div class="row items-center q-gutter-x-sm">
+                    <q-chip dense color="blue-1" text-color="primary" size="sm">Editable at Desk</q-chip>
+                  </div>
                 </q-card-section>
                 <q-card-section>
                   <div class="row q-col-gutter-md">
@@ -123,7 +125,14 @@
                       <q-input v-model="form.recipient_name" label="Recipient Name *" outlined dense hide-bottom-space />
                     </div>
                     <div class="col-12 col-sm-6">
-                      <q-input v-model="form.recipient_phone" label="Recipient Phone *" outlined dense hide-bottom-space />
+                      <q-input
+                        v-model="form.recipient_phone"
+                        label="Recipient Phone *"
+                        outlined
+                        dense
+                        hide-bottom-space
+                        @blur="onRecipientPhoneBlur"
+                      />
                     </div>
                     <div class="col-12 col-sm-6">
                       <q-input v-model="form.secondary_phone" label="Secondary Phone" outlined dense hide-bottom-space />
@@ -238,7 +247,7 @@
 
               <!-- Block B: Parcel & COD Details -->
               <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom">
+                <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                     <q-icon name="inventory_2" size="18px" class="q-mr-xs text-primary" />
                     Block B: Parcel Weight &amp; COD Collection
@@ -246,10 +255,18 @@
                 </q-card-section>
                 <q-card-section>
                   <div class="row q-col-gutter-md">
-                    <div class="col-12 col-sm-6">
-                      <q-input v-model.number="form.cod_collect_amount" type="number" label="COD Collection Amount (BDT) *" outlined dense hide-bottom-space />
+                    <div class="col-12 col-sm-3">
+                      <q-input
+                        v-model.number="form.delivery_charge"
+                        type="number"
+                        label="Delivery Charge (BDT)"
+                        outlined
+                        dense
+                        hide-bottom-space
+                        @update:model-value="onDeliveryChargeManualEdit"
+                      />
                     </div>
-                    <div class="col-12 col-sm-6">
+                    <div class="col-12 col-sm-3">
                       <q-select
                         v-model="form.package_weight_band"
                         :options="['under_1kg', '1_2kg', '2_3kg', 'over_3kg']"
@@ -259,13 +276,37 @@
                         hide-bottom-space
                       />
                     </div>
+                    <div class="col-12 col-sm-3">
+                      <q-input
+                        v-model.number="form.cod_fee_percent"
+                        type="number"
+                        label="COD Fee (%)"
+                        outlined
+                        dense
+                        hide-bottom-space
+                        :readonly="selectedCourier?.cod_fee_mode !== 'percent_of_collect'"
+                        @update:model-value="calculateCodCharge"
+                      />
+                    </div>
+                    <div class="col-12 col-sm-3">
+                      <q-input
+                        v-model.number="form.cod_charge"
+                        type="number"
+                        label="Courier COD Fee (BDT)"
+                        outlined
+                        dense
+                        hide-bottom-space
+                        hint="Editable; included in collect when not deducted from margin"
+                        @update:model-value="recalculateCollectAmount"
+                      />
+                    </div>
                   </div>
                 </q-card-section>
               </q-card>
 
               <!-- Block C: Merchant Sender Pickup Defaults -->
               <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom">
+                <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                     <q-icon name="storefront" size="18px" class="q-mr-xs text-primary" />
                     Block C: Merchant Sender Pickup Info
@@ -302,7 +343,7 @@
 
               <!-- Block D: Delivery & Driver Notes -->
               <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom">
+                <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                     <q-icon name="note" size="18px" class="q-mr-xs text-primary" />
                     Block D: Driver Notes &amp; Policy Flags
@@ -326,7 +367,7 @@
           <div class="col-xs-12 col-md-4">
             <div class="q-gutter-y-md">
               <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom">
+                <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
                     <q-icon name="local_shipping" size="18px" class="q-mr-xs text-primary" />
                     Block E: Courier &amp; Tracking Assignment
@@ -344,6 +385,7 @@
                         outlined
                         dense
                         hide-bottom-space
+                        @update:model-value="onCourierChange"
                       />
                     </div>
                     <div class="col-12">
@@ -357,23 +399,124 @@
                     <div v-if="selectedCourier" class="col-12">
                       <div class="q-pa-sm bg-blue-50 rounded-borders text-caption text-grey-8" style="border: 1px solid #d0e7ff">
                         <div class="text-weight-bold text-primary q-mb-xs">Selected Courier: {{ selectedCourier.name }}</div>
+                        <div>Zone: {{ deliveryZoneLabel }} | Delivery: {{ formatBdt(suggestedDeliveryFee) }}</div>
+                        <div>COD Rate: {{ codRateLabel }} | Suggested COD Fee: {{ formatBdt(form.cod_charge) }}</div>
                         <div>Inside Dhaka Return: {{ selectedCourier.inside_dhaka_return_fee }} BDT | Outside: {{ selectedCourier.outside_dhaka_return_fee }} BDT</div>
                         <div>Max Attempts: {{ selectedCourier.delivery_attempt_count }} | Open Box: {{ form.allow_open_box ? 'Yes' : 'No' }}</div>
                       </div>
                     </div>
+                  </div>
+                </q-card-section>
+              </q-card>
 
-                    <div class="col-12">
-                      <q-btn
-                        color="primary"
-                        unelevated
-                        no-caps
-                        label="Save Consignment Changes"
-                        class="full-width text-weight-bold"
-                        :loading="saving"
-                        @click="saveChanges"
+              <q-card flat bordered class="form-card">
+                <q-card-section class="border-bottom">
+                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
+                    <q-icon name="account_balance_wallet" size="18px" class="q-mr-xs text-primary" />
+                    Totals &amp; Profit Breakdown
+                  </div>
+                </q-card-section>
+                <q-card-section class="q-gutter-y-xs text-body2">
+                  <div class="row justify-between text-grey-7 q-py-xs">
+                    <span>Face Items Subtotal</span>
+                    <span>{{ formatBdt(recipientSubtotal) }}</span>
+                  </div>
+
+                  <div v-if="deliveryChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
+                    <div class="row justify-between text-grey-7 items-center">
+                      <span>Delivery Charge</span>
+                      <span>{{ formatBdt(deliveryChargeVal) }}</span>
+                    </div>
+                    <div class="row justify-end q-mt-xs">
+                      <q-toggle
+                        v-model="form.deduct_delivery_from_margin"
+                        label="Deduct from Profit"
+                        dense
+                        size="xs"
+                        class="text-caption text-grey-6"
+                        @update:model-value="onToggleDeduct"
                       />
                     </div>
                   </div>
+
+                  <div v-if="codChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
+                    <div class="row justify-between text-grey-7 items-center">
+                      <span>COD Fee</span>
+                      <span>{{ formatBdt(codChargeVal) }}</span>
+                    </div>
+                    <div class="row justify-end q-mt-xs">
+                      <q-toggle
+                        v-model="form.deduct_cod_from_margin"
+                        label="Deduct from Profit"
+                        dense
+                        size="xs"
+                        class="text-caption text-grey-6"
+                        @update:model-value="onToggleDeduct"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-if="printChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
+                    <div class="row justify-between text-grey-7 items-center">
+                      <span>Print Charge</span>
+                      <span>{{ formatBdt(printChargeVal) }}</span>
+                    </div>
+                    <div class="row justify-end q-mt-xs">
+                      <q-toggle
+                        v-model="form.deduct_print_from_margin"
+                        label="Deduct from Profit"
+                        dense
+                        size="xs"
+                        class="text-caption text-grey-6"
+                        @update:model-value="onToggleDeduct"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-if="packingChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
+                    <div class="row justify-between text-grey-7 items-center">
+                      <span>Packing Charge</span>
+                      <span>{{ formatBdt(packingChargeVal) }}</span>
+                    </div>
+                    <div class="row justify-end q-mt-xs">
+                      <q-toggle
+                        v-model="form.deduct_packing_from_margin"
+                        label="Deduct from Profit"
+                        dense
+                        size="xs"
+                        class="text-caption text-grey-6"
+                        @update:model-value="onToggleDeduct"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-if="discountVal > 0" class="row justify-between text-negative q-py-xs">
+                    <span>Discount</span>
+                    <span>-{{ formatBdt(discountVal) }}</span>
+                  </div>
+                  <q-separator class="q-my-sm" />
+                  <div class="row justify-between items-baseline">
+                    <span class="text-subtitle2 text-weight-bold text-grey-9">Recipient Pay Total</span>
+                    <span class="text-h6 text-weight-bold text-primary">{{ formatBdt(recipientGrandTotal) }}</span>
+                  </div>
+                  <div class="row justify-between text-caption text-grey-6">
+                    <span>Middle-Man Cost</span>
+                    <span>{{ formatBdt(middlemanTotalCost) }}</span>
+                  </div>
+                  <div class="row justify-between text-body2 text-weight-bold" :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
+                    <span>Estimated Profit</span>
+                    <span>{{ formatBdt(estimatedProfit) }}</span>
+                  </div>
+                  <q-btn
+                    v-if="order"
+                    outline
+                    color="primary"
+                    icon="open_in_new"
+                    label="View Order"
+                    no-caps
+                    class="full-width q-mt-md"
+                    :to="{ name: 'app-shop-order-detail-page', params: { tenantSlug: route.params.tenantSlug, id: order.id } }"
+                  />
                 </q-card-section>
               </q-card>
             </div>
@@ -404,6 +547,45 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+      <!-- Spacer to prevent content blocking by the floating footer -->
+      <div v-if="isFormDirty && !loading" style="height: 100px;"></div>
+
+      <!-- Floating Unsaved Changes Footer Bar -->
+      <q-slide-transition>
+        <div v-if="isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
+          <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
+            <div class="row items-center q-gutter-x-md">
+              <q-icon name="warning" color="warning" size="32px" class="animate-flash" />
+              <div>
+                <div class="text-subtitle1 text-weight-bold text-white row items-center">
+                  Unsaved Changes in Consignment
+                </div>
+                <div class="text-caption text-grey-4">You have modified details on this page. Click Save to persist updates.</div>
+              </div>
+            </div>
+            <div class="row q-gutter-sm items-center">
+              <q-btn
+                flat
+                color="white"
+                label="Discard"
+                no-caps
+                @click="discardChanges"
+              />
+              <q-btn
+                color="warning"
+                text-color="dark"
+                unelevated
+                label="Save Changes"
+                no-caps
+                icon="save"
+                :loading="saving"
+                class="text-weight-bold"
+                @click="saveChanges"
+              />
+            </div>
+          </q-card>
+        </div>
+      </q-slide-transition>
     </section>
   </q-page>
 </template>
@@ -417,8 +599,14 @@ import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
-import type { ShopOrder } from '../types';
+import type { ShopOrder, ShopOrderItem } from '../types';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
+import {
+  resolveDeliveryZone,
+  suggestDeliveryFee,
+  type DeliveryZone,
+} from '../services/courierChargeEstimate';
 
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import {
@@ -431,12 +619,15 @@ import {
 
 const route = useRoute();
 const orderStore = useShopOrderStore();
+const recipientProfileStore = useRecipientProfileStore();
+const lastLookupPhone = ref('');
 
 const loading = ref(false);
 const saving = ref(false);
 const handingOff = ref(false);
 const updatingStatus = ref(false);
 const order = ref<ShopOrder | null>(null);
+const orderItems = ref<ShopOrderItem[]>([]);
 const couriers = ref<CourierServiceRow[]>([]);
 const merchants = ref<MerchantProfileRow[]>([]);
 const selectedMerchantId = ref<string | null>(null);
@@ -463,6 +654,111 @@ const performHandoff = async () => {
   }
 };
 
+const originalBlockB = reactive({
+  delivery_charge: 0,
+  package_weight_band: 'under_1kg',
+  cod_fee_percent: 0,
+  cod_charge: 0,
+});
+const isBlockBDirty = computed(() => {
+  return form.delivery_charge !== originalBlockB.delivery_charge ||
+         form.package_weight_band !== originalBlockB.package_weight_band ||
+         form.cod_fee_percent !== originalBlockB.cod_fee_percent ||
+         form.cod_charge !== originalBlockB.cod_charge;
+});
+
+// Block A: Recipient
+const originalBlockA = reactive({
+  recipient_name: '',
+  recipient_phone: '',
+  secondary_phone: '',
+  district: '',
+  thana: '',
+  post_code: '',
+  shipping_address: '',
+});
+const isBlockADirty = computed(() => {
+  return form.recipient_name !== originalBlockA.recipient_name ||
+         form.recipient_phone !== originalBlockA.recipient_phone ||
+         form.secondary_phone !== originalBlockA.secondary_phone ||
+         form.district !== originalBlockA.district ||
+         form.thana !== originalBlockA.thana ||
+         form.post_code !== originalBlockA.post_code ||
+         form.shipping_address !== originalBlockA.shipping_address;
+});
+
+// Block C: Merchant Sender
+const originalBlockC = reactive({
+  sender_name: '',
+  pickup_phone: '',
+  pickup_address: '',
+  merchant_id: null as string | null,
+});
+const isBlockCDirty = computed(() => {
+  return form.sender_name !== originalBlockC.sender_name ||
+         form.pickup_phone !== originalBlockC.pickup_phone ||
+         form.pickup_address !== originalBlockC.pickup_address ||
+         selectedMerchantId.value !== originalBlockC.merchant_id;
+});
+
+// Block D: Notes & Flags
+const originalBlockD = reactive({
+  allow_open_box: false,
+  delivery_instruction_notes: '',
+});
+const isBlockDDirty = computed(() => {
+  return form.allow_open_box !== originalBlockD.allow_open_box ||
+         form.delivery_instruction_notes !== originalBlockD.delivery_instruction_notes;
+});
+
+// Block E: Courier Assignment
+const originalBlockE = reactive({
+  courier_service_id: null as string | null,
+  courier_awb_number: '',
+  tracking_url: '',
+});
+const isBlockEDirty = computed(() => {
+  return form.courier_service_id !== originalBlockE.courier_service_id ||
+         form.courier_awb_number !== originalBlockE.courier_awb_number ||
+         form.tracking_url !== originalBlockE.tracking_url;
+});
+
+// Central save/dirty checks
+const isFormDirty = computed(() => {
+  return isBlockADirty.value ||
+         isBlockBDirty.value ||
+         isBlockCDirty.value ||
+         isBlockDDirty.value ||
+         isBlockEDirty.value;
+});
+
+const discardChanges = () => {
+  form.recipient_name = originalBlockA.recipient_name;
+  form.recipient_phone = originalBlockA.recipient_phone;
+  form.secondary_phone = originalBlockA.secondary_phone;
+  form.district = originalBlockA.district;
+  form.thana = originalBlockA.thana;
+  form.post_code = originalBlockA.post_code;
+  form.shipping_address = originalBlockA.shipping_address;
+
+  form.delivery_charge = originalBlockB.delivery_charge;
+  form.package_weight_band = originalBlockB.package_weight_band;
+  form.cod_fee_percent = originalBlockB.cod_fee_percent;
+  form.cod_charge = originalBlockB.cod_charge;
+
+  selectedMerchantId.value = originalBlockC.merchant_id;
+  form.sender_name = originalBlockC.sender_name;
+  form.pickup_phone = originalBlockC.pickup_phone;
+  form.pickup_address = originalBlockC.pickup_address;
+
+  form.allow_open_box = originalBlockD.allow_open_box;
+  form.delivery_instruction_notes = originalBlockD.delivery_instruction_notes;
+
+  form.courier_service_id = originalBlockE.courier_service_id;
+  form.courier_awb_number = originalBlockE.courier_awb_number;
+  form.tracking_url = originalBlockE.tracking_url;
+};
+
 
 const form = reactive({
   recipient_name: '',
@@ -473,6 +769,9 @@ const form = reactive({
   post_code: '',
   shipping_address: '',
   cod_collect_amount: 0,
+  delivery_charge: 0,
+  cod_charge: 0,
+  cod_fee_percent: 0,
   package_weight_band: 'under_1kg',
   sender_name: '',
   pickup_phone: '',
@@ -482,6 +781,10 @@ const form = reactive({
   courier_service_id: null as string | null,
   courier_awb_number: '',
   tracking_url: '',
+  deduct_delivery_from_margin: false,
+  deduct_cod_from_margin: false,
+  deduct_print_from_margin: false,
+  deduct_packing_from_margin: false,
 });
 
 const updateThanaList = async (distName: string) => {
@@ -505,6 +808,18 @@ const updatePostcodeList = async (distName: string, thanaName: string) => {
     ...p,
     displayLabel: `${p.postOffice} - ${p.postCode}`,
   }));
+
+  // If there's a current form.post_code, make sure it is represented in the options so it displays correctly
+  if (form.post_code && !mapped.some((m) => m.postCode === form.post_code)) {
+    mapped.push({
+      id: 0,
+      districtId: 0,
+      postOffice: form.post_code,
+      postCode: form.post_code,
+      displayLabel: form.post_code,
+    });
+  }
+
   rawPostcodes.value = mapped;
   postcodeOptions.value = mapped;
 };
@@ -569,6 +884,153 @@ const onDistrictChange = async (newDistName: string) => {
   form.thana = '';
   form.post_code = '';
   await updateThanaList(newDistName);
+  applySuggestedCharges();
+};
+
+const onCourierChange = () => {
+  applySuggestedCharges();
+};
+
+const deliveryZone = computed<DeliveryZone>(() => resolveDeliveryZone(form.district));
+
+const deliveryZoneLabel = computed(() =>
+  deliveryZone.value === 'inside_dhaka' ? 'Inside Dhaka' : 'Outside Dhaka',
+);
+
+const selectedCourier = computed(() =>
+  couriers.value.find((c) => c.id === form.courier_service_id),
+);
+
+const suggestedDeliveryFee = computed(() => {
+  if (!selectedCourier.value) return 0;
+  return suggestDeliveryFee(selectedCourier.value, deliveryZone.value);
+});
+
+const codRateLabel = computed(() => {
+  const courier = selectedCourier.value;
+  if (!courier) return '—';
+  if (courier.cod_fee_mode === 'percent_of_collect') return `${courier.cod_fee_percent}% of collect`;
+  if (courier.cod_fee_mode === 'flat') return `${courier.cod_fee_flat_amount} BDT flat`;
+  if (courier.cod_fee_mode === 'tiered_manual') return 'Tiered / manual';
+  return 'None';
+});
+
+const formatBdt = (amount: number) => `${Number(amount || 0).toFixed(2)} BDT`;
+
+const recipientSubtotal = computed(() =>
+  orderItems.value.reduce(
+    (sum, item) => sum + (item.customer_sell_price_amount ?? 0) * item.quantity,
+    0,
+  ),
+);
+
+const accountingSubtotal = computed(() =>
+  orderItems.value.reduce((sum, item) => {
+    const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+    return sum + price * item.quantity;
+  }, 0),
+);
+
+const deliveryChargeVal = computed(() => Number(form.delivery_charge || 0));
+const codChargeVal = computed(() => Number(form.cod_charge || 0));
+const printChargeVal = computed(() => Number(order.value?.print_charge_amount || 0));
+const packingChargeVal = computed(() => Number(order.value?.packing_charge_amount || 0));
+const discountVal = computed(() => Number(order.value?.discount_amount || 0));
+
+const deductCodFromMargin = computed(() => !!form.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!form.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!form.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!form.deduct_packing_from_margin);
+
+const recipientGrandTotal = computed(() =>
+  recipientSubtotal.value
+    + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
+    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
+    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
+    + (deductCodFromMargin.value ? 0 : codChargeVal.value)
+    - discountVal.value,
+);
+
+const middlemanTotalCost = computed(() =>
+  accountingSubtotal.value
+    + deliveryChargeVal.value
+    + printChargeVal.value
+    + packingChargeVal.value
+    + (deductCodFromMargin.value ? codChargeVal.value : 0),
+);
+
+const estimatedProfit = computed(() => recipientGrandTotal.value - middlemanTotalCost.value);
+
+const recalculateCollectAmount = () => {
+  form.cod_collect_amount = recipientSubtotal.value
+    + (deductDeliveryFromMargin.value ? 0 : form.delivery_charge)
+    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
+    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
+    + (deductCodFromMargin.value ? 0 : form.cod_charge)
+    - discountVal.value;
+};
+
+const calculateCodCharge = () => {
+  if (order.value?.is_prepaid_snapshot) {
+    form.cod_charge = 0;
+    return;
+  }
+  const courier = selectedCourier.value;
+  if (!courier) return;
+
+  if (courier.cod_fee_mode === 'percent_of_collect') {
+    const collectBase = recipientSubtotal.value
+      + (deductDeliveryFromMargin.value ? 0 : Number(form.delivery_charge || 0));
+    if (collectBase <= 0) {
+      form.cod_charge = 0;
+    } else {
+      form.cod_charge = Math.round(collectBase * Number(form.cod_fee_percent || 0) / 100 * 100) / 100;
+    }
+  } else if (courier.cod_fee_mode === 'flat') {
+    form.cod_charge = Number(courier.cod_fee_flat_amount || 0);
+  } else {
+    form.cod_charge = 0;
+  }
+
+  recalculateCollectAmount();
+};
+
+const onToggleDeduct = async () => {
+  if (!order.value) return;
+  try {
+    calculateCodCharge();
+
+    const { error } = await supabase
+      .from('shop_orders')
+      .update({
+        deduct_delivery_from_margin: form.deduct_delivery_from_margin,
+        deduct_cod_from_margin: form.deduct_cod_from_margin,
+        deduct_print_from_margin: form.deduct_print_from_margin,
+        deduct_packing_from_margin: form.deduct_packing_from_margin,
+        cod_collect_amount: form.cod_collect_amount,
+      })
+      .eq('id', order.value.id);
+
+    if (error) throw error;
+    showSuccessNotification('Order charge preferences updated');
+  } catch (err: any) {
+    showErrorNotification(err.message || 'Failed to update charge preferences');
+  }
+};
+
+const applySuggestedCharges = () => {
+  const courier = selectedCourier.value;
+  if (!courier) return;
+
+  const zone = deliveryZone.value;
+  form.delivery_charge = suggestDeliveryFee(courier, zone);
+  form.cod_fee_percent = Number(courier.cod_fee_percent || 0);
+
+  calculateCodCharge();
+};
+
+const onDeliveryChargeManualEdit = () => {
+  calculateCodCharge();
 };
 
 const onThanaChange = async (newThanaName: string) => {
@@ -578,10 +1040,6 @@ const onThanaChange = async (newThanaName: string) => {
 
 const courierOptions = computed(() =>
   couriers.value.map((c) => ({ label: c.name, value: c.id }))
-);
-
-const selectedCourier = computed(() =>
-  couriers.value.find((c) => c.id === form.courier_service_id)
 );
 
 const merchantOptions = computed(() =>
@@ -614,6 +1072,7 @@ const loadData = async () => {
     ]);
 
     order.value = orderRes.order;
+    orderItems.value = orderRes.items;
     if (courierRes.success) {
       couriers.value = courierRes.data;
     }
@@ -627,10 +1086,36 @@ const loadData = async () => {
     form.secondary_phone = o.recipient_phone_secondary || '';
     form.district = o.shipping_district || 'Dhaka';
     form.thana = o.shipping_thana || '';
-    form.post_code = o.shipping_post_code || o.post_code || '';
-    form.shipping_address = o.shipping_address || '';
+
+    // Extract postcode and clean address line
+    let baseAddress = o.shipping_address || '';
+    let extractedPostcode = '';
+    const pcMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
+    if (pcMatch) {
+      extractedPostcode = pcMatch[1].trim();
+    }
+    baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
+
+    form.post_code = o.shipping_post_code || o.post_code || extractedPostcode || '';
+    form.shipping_address = baseAddress;
+
     form.cod_collect_amount = o.cod_collect_amount ?? o.total_amount ?? 0;
+    form.delivery_charge = o.delivery_charge_amount ?? o.courier_cost_amount ?? 0;
+    form.cod_charge = o.cod_charge_amount ?? 0;
     form.package_weight_band = o.package_weight_band || 'under_1kg';
+
+    const activeCourier = courierRes.success ? courierRes.data.find((c: any) => c.id === o.courier_service_id) : null;
+    form.cod_fee_percent = activeCourier ? Number(activeCourier.cod_fee_percent || 0) : 0;
+
+    form.deduct_delivery_from_margin = !!o.deduct_delivery_from_margin;
+    form.deduct_cod_from_margin = o.deduct_cod_from_margin !== undefined ? !!o.deduct_cod_from_margin : !!activeCourier?.deduct_cod_from_margin_default;
+    form.deduct_print_from_margin = !!o.deduct_print_from_margin;
+    form.deduct_packing_from_margin = !!o.deduct_packing_from_margin;
+
+    originalBlockB.delivery_charge = form.delivery_charge;
+    originalBlockB.package_weight_band = form.package_weight_band;
+    originalBlockB.cod_fee_percent = form.cod_fee_percent;
+    originalBlockB.cod_charge = form.cod_charge;
     form.sender_name = o.sender_name || o.default_sender_name || '';
     form.pickup_phone = o.pickup_phone || o.default_pickup_phone || '';
     form.pickup_address = o.pickup_address || o.default_pickup_address || '';
@@ -653,6 +1138,27 @@ const loadData = async () => {
     if (matchedMerchant) {
       selectedMerchantId.value = matchedMerchant.id;
     }
+
+    // Populate original state references for block dirty checking
+    originalBlockA.recipient_name = form.recipient_name;
+    originalBlockA.recipient_phone = form.recipient_phone;
+    originalBlockA.secondary_phone = form.secondary_phone;
+    originalBlockA.district = form.district;
+    originalBlockA.thana = form.thana;
+    originalBlockA.post_code = form.post_code;
+    originalBlockA.shipping_address = form.shipping_address;
+
+    originalBlockC.sender_name = form.sender_name;
+    originalBlockC.pickup_phone = form.pickup_phone;
+    originalBlockC.pickup_address = form.pickup_address;
+    originalBlockC.merchant_id = selectedMerchantId.value;
+
+    originalBlockD.allow_open_box = form.allow_open_box;
+    originalBlockD.delivery_instruction_notes = form.delivery_instruction_notes;
+
+    originalBlockE.courier_service_id = form.courier_service_id;
+    originalBlockE.courier_awb_number = form.courier_awb_number;
+    originalBlockE.tracking_url = form.tracking_url;
   } catch (err: any) {
     showErrorNotification(err.message || 'Failed to load order details');
   } finally {
@@ -664,19 +1170,69 @@ onMounted(() => {
   void loadData();
 });
 
+const onRecipientPhoneBlur = async () => {
+  const phone = form.recipient_phone.replace(/\D/g, '');
+  const tenantId = order.value?.tenant_id;
+  if (!tenantId || !/^01\d{9}$/.test(phone)) return;
+  if (phone === lastLookupPhone.value) return;
+  lastLookupPhone.value = phone;
+
+  const profile = await recipientProfileStore.getByPhone(tenantId, phone);
+  if (!profile) return;
+
+  if (!form.recipient_name.trim()) form.recipient_name = profile.name || '';
+  if (!form.secondary_phone.trim() && profile.secondary_phone) {
+    form.secondary_phone = profile.secondary_phone;
+  }
+
+  let baseAddress = profile.address || '';
+  let extractedPostcode = '';
+  const pcMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
+  if (pcMatch) {
+    extractedPostcode = pcMatch[1]?.trim() || '';
+  }
+  baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
+
+  if (!form.shipping_address.trim() && baseAddress) {
+    form.shipping_address = baseAddress;
+  }
+  if (profile.district) {
+    form.district = profile.district;
+    await updateThanaList(profile.district);
+  }
+  if (profile.thana) {
+    form.thana = profile.thana;
+    await updatePostcodeList(form.district, profile.thana);
+  }
+  if (extractedPostcode) {
+    form.post_code = extractedPostcode;
+    await updatePostcodeList(form.district, form.thana);
+  }
+};
+
 const saveChanges = async () => {
   if (!order.value) return;
 
   saving.value = true;
   try {
-    const { data, error } = await supabase.rpc('update_dropship_consignment', {
+    let finalAddress = form.shipping_address.trim();
+    const parts = [
+      form.thana ? `Thana: ${form.thana}` : '',
+      form.district ? `District: ${form.district}` : '',
+      form.post_code ? `Post Code: ${form.post_code}` : '',
+    ].filter(Boolean);
+    if (parts.length > 0) {
+      finalAddress = `${finalAddress}\n${parts.join(', ')}`;
+    }
+
+    const { error: dbError } = await supabase.rpc('update_dropship_consignment', {
       p_order_id: order.value.id,
       p_cod_collect_amount: form.cod_collect_amount,
       p_package_weight_band: form.package_weight_band,
       p_item_category: null,
       p_parcel_description: null,
       p_courier_order_ref: order.value.order_no,
-      p_delivery_zone: form.district.toLowerCase().includes('dhaka') ? 'inside_dhaka' : 'outside_dhaka',
+      p_delivery_zone: resolveDeliveryZone(form.district),
       p_sender_name: form.sender_name,
       p_pickup_phone: form.pickup_phone,
       p_pickup_address: form.pickup_address,
@@ -689,10 +1245,31 @@ const saveChanges = async () => {
       p_courier_awb_number: form.courier_awb_number,
       p_courier_consignment_id: null,
       p_tracking_url: form.tracking_url,
-      p_courier_cost_amount: 0,
+      p_courier_cost_amount: form.delivery_charge,
+      p_recipient_name: form.recipient_name,
+      p_recipient_phone: form.recipient_phone,
+      p_recipient_phone_secondary: form.secondary_phone || null,
+      p_shipping_address: finalAddress,
+      p_shipping_district: form.district || null,
+      p_shipping_thana: form.thana || null,
+      p_delivery_charge_amount: form.delivery_charge,
+      p_cod_charge_amount: form.cod_charge,
     });
 
-    if (error) throw error;
+    if (dbError) throw dbError;
+
+    // Also update order deduct settings
+    const { error: chargesError } = await supabase
+      .from('shop_orders')
+      .update({
+        deduct_delivery_from_margin: form.deduct_delivery_from_margin,
+        deduct_cod_from_margin: form.deduct_cod_from_margin,
+        deduct_print_from_margin: form.deduct_print_from_margin,
+        deduct_packing_from_margin: form.deduct_packing_from_margin,
+      })
+      .eq('id', order.value.id);
+    if (chargesError) throw chargesError;
+
     showSuccessNotification('Consignment details saved successfully!');
     await loadData();
   } catch (err: any) {
@@ -801,3 +1378,19 @@ const confirmDualInvoice = async () => {
   }
 };
 </script>
+
+<style scoped>
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
+.animate-flash {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+</style>

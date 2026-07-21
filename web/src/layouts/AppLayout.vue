@@ -117,9 +117,9 @@
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="onMobileSignOut">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="logout" size="sm" color="negative" />
+                  <q-icon name="logout" size="sm" color="grey-7" />
                 </q-item-section>
-                <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
               </q-item>
             </q-list>
           </q-menu>

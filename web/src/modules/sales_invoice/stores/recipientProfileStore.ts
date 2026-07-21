@@ -30,6 +30,45 @@ export const useRecipientProfileStore = defineStore('recipientProfile', {
       }
     },
 
+    async getByPhone(tenantId: number, phone: string) {
+      try {
+        return await recipientProfileRepository.getByPhone(tenantId, phone);
+      } catch {
+        return null;
+      }
+    },
+
+    async upsertByPhone(payload: {
+      tenant_id: number;
+      name: string;
+      phone: string;
+      secondary_phone?: string | null;
+      address: string;
+      district?: string | null;
+      thana?: string | null;
+    }) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const data = await recipientProfileRepository.upsertByPhone(payload);
+        const index = this.items.findIndex((row) => row.id === data.id);
+        if (index >= 0) {
+          this.items.splice(index, 1, data);
+        } else {
+          this.items.unshift(data);
+        }
+        showSuccessNotification('Recipient profile saved successfully.');
+        return { success: true, data };
+      } catch (err: any) {
+        const errorMsg = err.message || 'Failed to save recipient profile';
+        this.error = errorMsg;
+        handleApiFailure(err, errorMsg);
+        return { success: false, error: errorMsg };
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async createRecipientProfile(payload: CreateRecipientProfileInput) {
       this.saving = true;
       this.error = null;

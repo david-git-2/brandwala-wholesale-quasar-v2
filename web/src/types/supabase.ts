@@ -4207,29 +4207,41 @@ export type Database = {
       recipient_profiles: {
         Row: {
           address: string
+          addresses: Json
           created_at: string
+          district: string | null
           id: number
           name: string
           phone: string
+          secondary_phone: string | null
           tenant_id: number
+          thana: string | null
           updated_at: string
         }
         Insert: {
           address: string
+          addresses?: Json
           created_at?: string
+          district?: string | null
           id?: number
           name: string
           phone: string
+          secondary_phone?: string | null
           tenant_id: number
+          thana?: string | null
           updated_at?: string
         }
         Update: {
           address?: string
+          addresses?: Json
           created_at?: string
+          district?: string | null
           id?: number
           name?: string
           phone?: string
+          secondary_phone?: string | null
           tenant_id?: number
+          thana?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5020,6 +5032,7 @@ export type Database = {
           recipient_name: string | null
           recipient_phone: string | null
           recipient_phone_secondary: string | null
+          recipient_profile_id: number | null
           replacement_of_order_id: number | null
           return_charge_amount: number | null
           returned_at: string | null
@@ -5097,6 +5110,7 @@ export type Database = {
           recipient_name?: string | null
           recipient_phone?: string | null
           recipient_phone_secondary?: string | null
+          recipient_profile_id?: number | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
           returned_at?: string | null
@@ -5174,6 +5188,7 @@ export type Database = {
           recipient_name?: string | null
           recipient_phone?: string | null
           recipient_phone_secondary?: string | null
+          recipient_profile_id?: number | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
           returned_at?: string | null
@@ -5222,6 +5237,13 @@ export type Database = {
             columns: ["global_invoice_id"]
             isOneToOne: false
             referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "recipient_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -8556,6 +8578,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_recipient_profile_by_phone: {
+        Args: { p_phone: string; p_tenant_id: number }
+        Returns: Json
+      }
       get_shipment_item_invoices: {
         Args: { p_shipment_id: number; p_tenant_id: number }
         Returns: Json
@@ -9783,6 +9809,7 @@ export type Database = {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: number
       }
+      normalize_bd_mobile: { Args: { p_phone: string }; Returns: string }
       parent_tenant_has_module_action: {
         Args: {
           p_action: string
@@ -10229,7 +10256,10 @@ export type Database = {
           p_print_charge_amount?: number
           p_recipient_name: string
           p_recipient_phone: string
+          p_recipient_phone_secondary?: string
           p_shipping_address: string
+          p_shipping_district?: string
+          p_shipping_thana?: string
         }
         Returns: Json
       }
@@ -10447,6 +10477,7 @@ export type Database = {
       update_dropship_consignment: {
         Args: {
           p_allow_open_box?: boolean
+          p_cod_charge_amount?: number
           p_cod_collect_amount?: number
           p_courier_awb_number?: string
           p_courier_consignment_id?: string
@@ -10454,6 +10485,7 @@ export type Database = {
           p_courier_order_ref?: string
           p_courier_service_id?: string
           p_courier_tracking_number?: string
+          p_delivery_charge_amount?: number
           p_delivery_instruction_notes?: string
           p_delivery_zone?: string
           p_item_category?: string
@@ -10464,7 +10496,13 @@ export type Database = {
           p_payout_account_type?: string
           p_pickup_address?: string
           p_pickup_phone?: string
+          p_recipient_name?: string
+          p_recipient_phone?: string
+          p_recipient_phone_secondary?: string
           p_sender_name?: string
+          p_shipping_address?: string
+          p_shipping_district?: string
+          p_shipping_thana?: string
           p_tracking_url?: string
         }
         Returns: Json
@@ -10875,6 +10913,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_recipient_profile_by_phone: {
+        Args: {
+          p_address?: string
+          p_district?: string
+          p_name: string
+          p_phone: string
+          p_secondary_phone?: string
+          p_tenant_id: number
+          p_thana?: string
+        }
+        Returns: Json
       }
       upsert_shipment_investment: {
         Args: {

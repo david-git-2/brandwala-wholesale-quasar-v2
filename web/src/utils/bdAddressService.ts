@@ -81,16 +81,16 @@ const postcodes: BDPostcodeOption[] = (postcodesData as RawPostcode[]).map((p) =
 /**
  * Get all 8 divisions of Bangladesh
  */
-export async function getBDDivisions(): Promise<BDLocationOption[]> {
-  return divisions;
+export function getBDDivisions(): Promise<BDLocationOption[]> {
+  return Promise.resolve(divisions);
 }
 
 /**
  * Get all 64 districts or filter by division ID / name
  */
-export async function getBDDistricts(divisionIdOrSlug?: number | string): Promise<BDLocationOption[]> {
+export function getBDDistricts(divisionIdOrSlug?: number | string): Promise<BDLocationOption[]> {
   if (divisionIdOrSlug === undefined || divisionIdOrSlug === null) {
-    return districts;
+    return Promise.resolve(districts);
   }
 
   let divIdStr: string | null = null;
@@ -106,23 +106,25 @@ export async function getBDDistricts(divisionIdOrSlug?: number | string): Promis
 
   if (divIdStr) {
     const filtered = (districtsData as RawDistrict[]).filter((d) => d.division_id === divIdStr);
-    return filtered.map((d) => ({
-      id: Number(d.id),
-      name: d.name,
-      bnName: d.bn_name || '',
-      slug: d.name.toLowerCase().replace(/\s+/g, '_'),
-    }));
+    return Promise.resolve(
+      filtered.map((d) => ({
+        id: Number(d.id),
+        name: d.name,
+        bnName: d.bn_name || '',
+        slug: d.name.toLowerCase().replace(/\s+/g, '_'),
+      }))
+    );
   }
 
-  return districts;
+  return Promise.resolve(districts);
 }
 
 /**
  * Get upazilas / thanas or filter by district ID / name
  */
-export async function getBDUpazilas(districtIdOrSlug?: number | string): Promise<BDLocationOption[]> {
+export function getBDUpazilas(districtIdOrSlug?: number | string): Promise<BDLocationOption[]> {
   if (districtIdOrSlug === undefined || districtIdOrSlug === null) {
-    return upazilas;
+    return Promise.resolve(upazilas);
   }
 
   let distIdStr: string | null = null;
@@ -138,26 +140,28 @@ export async function getBDUpazilas(districtIdOrSlug?: number | string): Promise
 
   if (distIdStr) {
     const filtered = (upazilasData as RawUpazila[]).filter((u) => u.district_id === distIdStr);
-    return filtered.map((u) => ({
-      id: Number(u.id),
-      name: u.name,
-      bnName: u.bn_name || '',
-      slug: u.name.toLowerCase().replace(/\s+/g, '_'),
-    }));
+    return Promise.resolve(
+      filtered.map((u) => ({
+        id: Number(u.id),
+        name: u.name,
+        bnName: u.bn_name || '',
+        slug: u.name.toLowerCase().replace(/\s+/g, '_'),
+      }))
+    );
   }
 
-  return upazilas;
+  return Promise.resolve(upazilas);
 }
 
 /**
  * Get postcodes or filter by district ID / name or upazila / thana name
  */
-export async function getBDPostcodes(
+export function getBDPostcodes(
   districtIdOrSlug?: number | string,
   upazilaOrThanaName?: string
 ): Promise<BDPostcodeOption[]> {
   if (!districtIdOrSlug) {
-    return postcodes;
+    return Promise.resolve(postcodes);
   }
 
   let distIdStr: string | null = null;
@@ -171,7 +175,7 @@ export async function getBDPostcodes(
     if (match) distIdStr = match.id;
   }
 
-  if (!distIdStr) return postcodes;
+  if (!distIdStr) return Promise.resolve(postcodes);
 
   let filteredRaw = (postcodesData as RawPostcode[]).filter((p) => p.district_id === distIdStr);
 
@@ -185,14 +189,16 @@ export async function getBDPostcodes(
     }
   }
 
-  return filteredRaw.map((p) => ({
-    id: Number(p.id),
-    districtId: Number(p.district_id),
-    upazilaId: p.upazila_id ? Number(p.upazila_id) : undefined,
-    thanaId: p.thana_id ? Number(p.thana_id) : undefined,
-    postOffice: p.post_office,
-    postCode: p.post_code,
-  }));
+  return Promise.resolve(
+    filteredRaw.map((p) => ({
+      id: Number(p.id),
+      districtId: Number(p.district_id),
+      upazilaId: p.upazila_id ? Number(p.upazila_id) : undefined,
+      thanaId: p.thana_id ? Number(p.thana_id) : undefined,
+      postOffice: p.post_office,
+      postCode: p.post_code,
+    }))
+  );
 }
 
 

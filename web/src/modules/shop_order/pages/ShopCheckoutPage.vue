@@ -65,6 +65,7 @@
                       outlined
                       dense
                       :label="$t('shop.recipient_phone') + ' *'"
+                      @blur="onRecipientPhoneBlur"
                     />
                   </div>
 
@@ -378,6 +379,7 @@ import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thrif
 
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
+import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import {
   getBDDistricts,
   getBDUpazilas,
@@ -393,6 +395,8 @@ const cartStore = useShopCartStore();
 const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
 const currencyStore = useThriftCurrencyStore();
+const recipientProfileStore = useRecipientProfileStore();
+const lastLookupPhone = ref('');
 
 const recipientName = ref('');
 const recipientPhone = ref('');
@@ -623,6 +627,33 @@ const goBack = () => {
   void router.push(`${tenantSlug}/shop/cart`);
 };
 
+const onRecipientPhoneBlur = async () => {
+  const phone = recipientPhone.value.replace(/\D/g, '');
+  const tenantId = cartStore.cart?.tenant_id;
+  if (!tenantId || !/^01\d{9}$/.test(phone)) return;
+  if (phone === lastLookupPhone.value) return;
+  lastLookupPhone.value = phone;
+
+  const profile = await recipientProfileStore.getByPhone(tenantId, phone);
+  if (!profile) return;
+
+  if (!recipientName.value.trim()) recipientName.value = profile.name || '';
+  if (!secondaryPhone.value.trim() && profile.secondary_phone) {
+    secondaryPhone.value = profile.secondary_phone;
+  }
+  if (!shippingAddress.value.trim() && profile.address) {
+    shippingAddress.value = profile.address;
+  }
+  if (profile.district) {
+    district.value = profile.district;
+    await updateThanaList(profile.district);
+  }
+  if (profile.thana) {
+    thana.value = profile.thana;
+    await updatePostcodeList(district.value, profile.thana);
+  }
+};
+
 const submitOrder = async () => {
   if (!cartStore.cart?.id) return;
 
@@ -674,7 +705,10 @@ const submitOrder = async () => {
     deliveryCharge.value,
     printCharge.value,
     packingCharge.value,
-    0
+    0,
+    requestDelivery.value ? secondaryPhone.value.trim() || null : null,
+    requestDelivery.value ? district.value || null : null,
+    requestDelivery.value ? thana.value || null : null,
   );
   if (res.success && res.data) {
     cartStore.clearCart();

@@ -1087,29 +1087,6 @@ const saveCharges = async () => {
     savingCharges.value = false;
   }
 };
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'draft':
-      return 'grey-7';
-    case 'submitted':
-      return 'blue-7';
-    case 'negotiating':
-      return 'amber-9';
-    case 'priced':
-      return 'cyan-8';
-    case 'confirmed':
-      return 'green-7';
-    case 'placed':
-      return 'indigo-7';
-    case 'fulfilled':
-      return 'teal-7';
-    case 'cancelled':
-      return 'red-7';
-    default:
-      return 'grey-7';
-  }
-};
 </script>
 
 <script lang="ts">

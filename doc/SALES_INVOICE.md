@@ -2,7 +2,7 @@
 
 BrandWala / TradeFlow BD uses a **parent module** for desk sales, customer profiles, and invoice output. Sister concerns (child tenants) issue wholesale, retail, and dropship invoices from parent-owned stock. Billing profiles identify the financial account for wholesale and account-based retail; recipient profiles identify the delivery endpoint. **Desk sales are the only invoice issuance path** — all types write to **`global_invoices`**. End-customer direct sales (no billing account) use **retail direct**.
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.6–16.9, §17 modules 10–11), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (shop-originated dropship Process Order → dual invoice), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.6–16.9, §17 modules 10–11), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (shop-originated dropship: customer print @ processing, accounting invoice @ ready_for_pickup, courier remittance + middle-man ledger after delivered), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
 ---
 
@@ -27,7 +27,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.
 | **Wholesale** | **As a** desk salesperson, **I want to** sell to a known billing account (buyer = recipient) at one price with optional credit terms, **so that** I can run the main B2B business and collect via the buyer's account balance. |
 | **Retail — account** | **As a** desk salesperson, **I want to** sell to an end customer (or ship to a different address) but bill and collect from a regular reseller or account, **so that** delivery/COD/print charges appear on the invoice while AR stays on the account. |
 | **Retail — direct** | **As a** desk salesperson, **I want to** sell once to a walk-in or one-time customer without creating a billing profile, **so that** the customer receives goods and pays me directly (cash or COD) without polluting the account catalog. |
-| **Dropship** | **As a** desk salesperson, **I want to** sell through a middle man at a face price to the end customer, **so that** the courier collects COD from the recipient, I track accounting margin separately, and settle the middle man's payout. Shop-originated dropship (Process Order → Create Dual Invoice) is specified in [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md). |
+| **Dropship** | **As a** desk salesperson, **I want to** sell through a middle man at a face price to the end customer, **so that** the courier collects COD from the recipient, I track accounting margin separately, and settle the middle man's payout. Shop-originated dropship timing (customer print → accounting invoice @ ready_for_pickup → remittance/payout after delivered) is specified in [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md). |
 
 **Shared invoice capabilities:**
 
@@ -598,8 +598,14 @@ Desk sales buyer / middle-man accounts for one sister concern. Submodule key: `b
 | `id` | bigint PK | |
 | `tenant_id` | bigint FK | **Child tenant owner** — not parent; not shared across sister concerns |
 | `name` | text | End consumer |
-| `address` | text | Delivery address |
-| `phone` | text | Driver coordination |
+| `phone` | text | Driver coordination; **unique with `tenant_id`** |
+| `secondary_phone` | text null | Alternate mobile |
+| `address` | text | Default / current delivery address (denormalized from `addresses`) |
+| `district` | text null | Default district |
+| `thana` | text null | Default thana |
+| `addresses` | jsonb | Multi-address history: `[{ id, line, district, thana, is_default, updated_at }]` |
+
+**Unique:** `(tenant_id, phone)`. Checkout / process-desk upserts via `upsert_recipient_profile_by_phone`; same phone + new address appends to `addresses` and promotes to default columns.
 
 Delivery-party catalog for one sister concern. `recipient_profile_id` on `global_invoices` is optional; snapshots retained at post time for audit. Profile `tenant_id` must match invoice `tenant_id`.
 

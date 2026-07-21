@@ -89,9 +89,9 @@
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="handleLogout">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon name="logout" size="xs" color="negative" />
+                  <q-icon name="logout" size="xs" color="grey-7" />
                 </q-item-section>
-                <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -269,9 +269,9 @@
                   <q-separator class="q-my-xs" />
                   <q-item clickable v-close-popup @click="handleLogout">
                     <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="logout" size="xs" color="negative" />
+                      <q-icon name="logout" size="xs" color="grey-7" />
                     </q-item-section>
-                    <q-item-section class="text-negative text-weight-medium"
+                    <q-item-section class="text-grey-8 text-weight-medium"
                       >Sign out</q-item-section
                     >
                   </q-item>
@@ -344,9 +344,9 @@
                 <q-separator class="q-my-xs" />
                 <q-item clickable v-close-popup @click="handleLogout">
                   <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="logout" size="xs" color="negative" />
+                    <q-icon name="logout" size="xs" color="grey-7" />
                   </q-item-section>
-                  <q-item-section class="text-negative text-weight-medium">Sign out</q-item-section>
+                  <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
                 </q-item>
               </q-list>
             </q-menu>
@@ -489,7 +489,7 @@
             no-caps
             icon="logout"
             :label="isMini ? '' : 'Sign out'"
-            color="negative"
+            color="grey-7"
             class="workspace-shell__logout"
             @click="handleLogout"
           >
@@ -619,23 +619,17 @@
                 <q-icon :name="link.icon" size="sm" />
               </q-item-section>
               <q-item-section>
-                <q-item-label
-                  class="text-weight-medium"
-                  v-html="highlightMatch(translateTitle(link.title), searchQuery)"
-                />
-                <q-item-label
-                  v-if="link.caption"
-                  caption
-                  v-html="highlightMatch(translateCaption(link.title, link.caption), searchQuery)"
-                />
+                <q-item-label class="text-weight-medium">
+                  <span v-html="highlightMatch(translateTitle(link.title), searchQuery)"></span>
+                </q-item-label>
+                <q-item-label v-if="link.caption" caption>
+                  <span v-html="highlightMatch(translateCaption(link.title, link.caption), searchQuery)"></span>
+                </q-item-label>
               </q-item-section>
               <q-item-section side v-if="link.parentTitle">
-                <q-badge
-                  outline
-                  color="primary"
-                  size="sm"
-                  v-html="highlightMatch(translateTitle(link.parentTitle), searchQuery)"
-                />
+                <q-badge outline color="primary" size="sm">
+                  <span v-html="highlightMatch(translateTitle(link.parentTitle), searchQuery)"></span>
+                </q-badge>
               </q-item-section>
             </q-item>
           </q-list>
@@ -1549,14 +1543,14 @@ const confirmLogout = async () => {
 }
 
 .signout-card__btn--confirm {
-  background: #dc2626;
+  background: var(--q-primary, #7c3aed);
   color: #ffffff;
 }
 
 .signout-card__btn--confirm:hover {
-  background: #b91c1c;
+  background: color-mix(in srgb, var(--q-primary, #7c3aed) 85%, black);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(220 38 38 / 0.35);
+  box-shadow: 0 4px 12px rgb(var(--bw-brand-accent-rgb, 124 58 237) / 0.35);
 }
 
 /* Mini Mode Specific Styles */
