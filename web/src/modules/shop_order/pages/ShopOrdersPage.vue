@@ -173,6 +173,10 @@ const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 const statusOptions = computed(() => [
   { label: t('shop_admin.all_statuses'), value: null },
   { label: t('shop_admin.status_submitted'), value: 'submitted' },
+  { label: t('shop_admin.status_processing'), value: 'processing' },
+  { label: t('shop_admin.status_shipped'), value: 'shipped' },
+  { label: t('shop_admin.status_delivered'), value: 'delivered' },
+  { label: t('shop_admin.status_payment_received'), value: 'payment_received' },
   { label: t('shop_admin.status_negotiating'), value: 'negotiating' },
   { label: t('shop_admin.status_priced'), value: 'priced' },
   { label: t('shop_admin.status_confirmed'), value: 'confirmed' },
@@ -235,6 +239,14 @@ const getStatusColor = (status: string) => {
       return 'indigo-7';
     case 'fulfilled':
       return 'teal-7';
+    case 'processing':
+      return 'purple-7';
+    case 'shipped':
+      return 'light-blue-7';
+    case 'delivered':
+      return 'green-8';
+    case 'payment_received':
+      return 'emerald-7';
     case 'cancelled':
       return 'red-7';
     default:

@@ -120,7 +120,11 @@ export type ShopOrderStatus =
   | 'negotiating'
   | 'confirmed'
   | 'placed'
-  | 'fulfilled';
+  | 'fulfilled'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'payment_received';
 
 export interface ShopOrder {
   id: number;

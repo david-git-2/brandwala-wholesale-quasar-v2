@@ -155,6 +155,14 @@ const getStatusColor = (status: string) => {
       return 'indigo-7';
     case 'fulfilled':
       return 'teal-7';
+    case 'processing':
+      return 'purple-7';
+    case 'shipped':
+      return 'light-blue-7';
+    case 'delivered':
+      return 'green-8';
+    case 'payment_received':
+      return 'emerald-7';
     case 'cancelled':
       return 'red-7';
     default:

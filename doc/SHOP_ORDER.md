@@ -4,7 +4,7 @@ BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefront
 
 This document is written as a **reusable domain pattern**: shop types, two-layer customer permissions, multi-currency amounts, and display-vs-sellable quantity are applicable beyond this codebase whenever a B2B portal must serve multiple catalog modes from shared inventory.
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [SALES_INVOICE.md](SALES_INVOICE.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [SALES_INVOICE.md](SALES_INVOICE.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (dropship Process Order + dual invoice), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
 ---
 
@@ -80,6 +80,16 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_ST
 
 ---
 
+### Submodule — `shop_dropship` (Dropship Orders)
+
+**As a** child-tenant admin or staff member,  
+**I want** a dedicated Dropship Orders desk (Process Order → courier → Create Dual Invoice → returns / payout),  
+**So that** dropship ops stay separate from vendor-catalog and fixed-price fulfillment.
+
+Full design: [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md).
+
+---
+
 This document answers:
 
 - What is the Shop & Order domain and how does it relate to stock, products, and invoices?
@@ -115,7 +125,8 @@ This document answers:
 | Storefront | `shop_storefront` | Customer browse with permission-masked fields |
 | Cart | `shop_cart` | Per-shop cart, reservations against allocations |
 | Orders | `shop_order_mgmt` | Place, negotiate, approve, cancel |
-| Fulfillment | `shop_fulfillment` | Procurement pull or `global_invoice` handoff |
+| Fulfillment | `shop_fulfillment` | Procurement pull or `global_invoice` handoff (fixed / vendor paths) |
+| Dropship ops | `shop_dropship` | Process Order, consignment, dual invoice, return bearer, payout ledger — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 
 ### What this domain is not
 
@@ -213,6 +224,7 @@ Before starting the full-scale implementation of shop order negotiation features
 | `shop_cart` | Cart | `shop_order` | shop | `shop/cart` |
 | `shop_order_mgmt` | Orders | `shop_order` | app + shop | `shop/orders`, `app/shop/orders` |
 | `shop_fulfillment` | Fulfillment | `shop_order` | app | `app/shop/orders/:id` |
+| `shop_dropship` | Dropship Orders | `shop_order` | app | `shop/dropship`, `app/shop/dropship` |
 
 Redirect legacy routes when cut over:
 
@@ -289,7 +301,7 @@ Shop **type** is set at create and **immutable**. Order **mode** and **negotiati
 | `vendor_catalog` | `procurement_intent` | false | Staff prices → `confirmed` → `placed` → pull |
 | `fixed_price` | `checkout_fixed` | false | `confirmed` → `fulfilled` → `global_invoice` retail |
 | `fixed_price` | `checkout_wholesale` | true/false | `global_invoice` wholesale |
-| `dropship` | `checkout_fixed` | false | `global_invoice` type `dropship` (dual amounts) |
+| `dropship` | `checkout_fixed` | false | Process Order desk → Create Dual Invoice (`global_invoice` type `dropship`) — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 
 Not every cart produces the same order path — the matrix above is enforced at `submit_shop_order_from_cart`.
 
@@ -431,7 +443,7 @@ flowchart TD
 
 **বাংলা:** একটি রিসেলার পোর্টাল যেখানে ক্রেতা প্রতিটি লাইনে নিজের কাস্টমার-ফেসিং বিক্রয়মূল্য সেট করতে পারে (ন্যূনতম বিক্রয়মূল্য ফ্লোর সাপেক্ষে)। স্টোরফ্রন্টে প্রস্তাবিত বিক্রয়মূল্য এবং ফ্লোর সীমা উভয়ই দেখানো হয়। ফুলফিলমেন্টে ইনভয়েসে দ্বৈত পরিমাণ রেকর্ড হয় — অ্যাকাউন্টিং বিক্রয়মূল্য এবং প্রাপকের ফেস প্রাইস — [SALES_INVOICE.md](SALES_INVOICE.md) অনুযায়ী।
 
-**Downstream:** `global_invoice` type `dropship` (dual amounts)
+**Downstream:** Dropship Process Order desk → Create Dual Invoice (`global_invoice` type `dropship`, dual amounts). See [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md).
 
 #### Quick-reference matrix
 
@@ -442,7 +454,7 @@ flowchart TD
 | **C** — Retail Storefront (markup) | `fixed_price` | `checkout_fixed` | `false` | `markup` | `original` / `custom_override` | `confirmed` → `fulfilled` → retail invoice |
 | **D** — Retail Storefront (direct cost) | `fixed_price` | `checkout_fixed` | `false` | `direct_cost` | `original` / `custom_override` | `confirmed` → `fulfilled` → retail invoice |
 | **E** — Wholesale Account Shop | `fixed_price` | `checkout_wholesale` | `true` / `false` | `direct_cost` / `markup` | `original` / `custom_override` | `global_invoice` (wholesale) |
-| **F** — Dropship Reseller Portal | `dropship` | `checkout_fixed` | `false` | — | — | `global_invoice` type `dropship` (dual amounts) |
+| **F** — Dropship Reseller Portal | `dropship` | `checkout_fixed` | `false` | — | — | Process Order → dual invoice ([SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md)) |
 
 ---
 
@@ -800,7 +812,8 @@ stateDiagram-v2
 | Domain | Integration |
 |--------|-------------|
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Stock-backed listings from `global_stock_allocations`; vendor `placed` lines join pull RPC |
-| [SALES_INVOICE.md](SALES_INVOICE.md) | `fulfill_shop_order_to_invoice` creates `global_invoices`; dropship dual amounts |
+| [SALES_INVOICE.md](SALES_INVOICE.md) | Fixed/vendor fulfill → `global_invoices`; dropship dual amounts via Create Dual Invoice |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, consignment, return bearer, payout ledger |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Payments on fulfilled invoices — no shadow commerce ledger |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | All `*_currency_id` columns |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | `customer_groups` child-only; shop actors from `customer_group_members` |
@@ -867,6 +880,8 @@ All new pages follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 | Customer orders | `/shop/orders` | `shop_order_mgmt` |
 | Staff order desk | `/app/shop/orders` | `shop_order_mgmt` |
 | Fulfillment | `/app/shop/orders/:id` | `shop_fulfillment` |
+| Dropship Orders | `/app/shop/dropship` | `shop_dropship` |
+| Dropship process desk | `/app/shop/dropship/:id` | `shop_dropship` |
 
 ---
 
@@ -936,7 +951,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | D-SH9 | Shop ownership | Child (or standalone) creates and owns `shops` |
 | D-SH10 | Listing FK | Stock-backed listings reference `global_stock_allocation_id` |
 | D-SH11 | Display qty | Override affects display only; checkout capped by `available_to_sell` |
-| D-SH12 | Dropship | `minimum_sell_price` floor; dual amounts on invoice per **D-SI*** |
+| D-SH12 | Dropship | `minimum_sell_price` floor; dual amounts on invoice per **D-SI***; ops desk per [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) **D-SD*** |
 
 ---
 
@@ -959,6 +974,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | [MASTER_PLAN.md](MASTER_PLAN.md) | Index, feature matrix, phases |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Allocations, parent pool |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoice types, dropship dual totals |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice handoff, returns & deduction |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Child tenants, customer groups |
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Shop scope guards |

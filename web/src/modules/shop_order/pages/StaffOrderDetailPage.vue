@@ -24,13 +24,42 @@
           </div>
         </div>
         <div class="col-auto row items-center q-gutter-x-sm">
-          <q-badge
-            :color="getStatusColor(orderStore.currentOrder.status)"
-            text-color="white"
-            class="status-badge text-weight-bold q-py-xs q-px-md text-subtitle2"
+          <q-chip
+            dense
+            square
+            clickable
+            :style="statusChipStyle(orderStore.currentOrder.status)"
+            class="q-px-md q-py-sm text-weight-bold q-ma-none text-uppercase text-caption cursor-pointer"
           >
-            {{ orderStore.currentOrder.status.toUpperCase() }}
-          </q-badge>
+            <span
+              class="status-chip-dot"
+              :style="{ backgroundColor: statusDotColor(orderStore.currentOrder.status) }"
+            />
+            {{ orderStore.currentOrder.status }}
+            <q-icon name="arrow_drop_down" class="q-ml-xs" size="16px" />
+            <q-menu>
+              <q-list dense style="min-width: 150px">
+                <q-item
+                  v-for="st in availableStatuses"
+                  :key="st"
+                  clickable
+                  v-close-popup
+                  :active="st === orderStore.currentOrder.status"
+                  @click="changeOrderStatus(st)"
+                >
+                  <q-item-section avatar style="min-width: 20px">
+                    <span
+                      class="status-chip-dot"
+                      :style="{ backgroundColor: statusDotColor(st) }"
+                    />
+                  </q-item-section>
+                  <q-item-section class="text-capitalize text-weight-medium">
+                    {{ st }}
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-chip>
         </div>
       </section>
 
@@ -357,15 +386,65 @@
               </q-card-section>
 
               <q-card-section class="q-px-lg q-py-md text-body2 text-grey-8">
-                <div class="text-weight-bold text-grey-9">
-                  {{ orderStore.currentOrder.recipient_name }}
+                <div class="row items-center justify-between">
+                  <div class="text-weight-bold text-grey-9">
+                    {{ orderStore.currentOrder.recipient_name }}
+                  </div>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    size="xs"
+                    color="grey-7"
+                    @click="copyToClipboard(orderStore.currentOrder.recipient_name, 'Name')"
+                  >
+                    <q-tooltip>Copy Name</q-tooltip>
+                  </q-btn>
                 </div>
-                <div class="q-mt-xs">{{ orderStore.currentOrder.recipient_phone }}</div>
-                <div
-                  class="q-mt-sm text-grey-6 bg-grey-1 q-pa-sm rounded-borders"
-                  style="white-space: pre-wrap"
-                >
-                  {{ orderStore.currentOrder.shipping_address }}
+
+                <div class="row items-center justify-between q-mt-xs">
+                  <div>{{ orderStore.currentOrder.recipient_phone }}</div>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    size="xs"
+                    color="grey-7"
+                    @click="copyToClipboard(orderStore.currentOrder.recipient_phone, 'Phone')"
+                  >
+                    <q-tooltip>Copy Phone</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div class="q-mt-sm text-grey-6 bg-grey-1 q-pa-sm rounded-borders relative-position">
+                  <div style="white-space: pre-wrap; padding-right: 24px;">{{ orderStore.currentOrder.shipping_address }}</div>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="content_copy"
+                    size="xs"
+                    color="grey-7"
+                    class="absolute-top-right q-ma-xs"
+                    @click="copyToClipboard(orderStore.currentOrder.shipping_address, 'Address')"
+                  >
+                    <q-tooltip>Copy Address</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div class="q-mt-sm">
+                  <q-btn
+                    outline
+                    dense
+                    size="sm"
+                    color="primary"
+                    icon="content_copy"
+                    label="Copy All Details"
+                    class="full-width pill-btn"
+                    @click="copyAllShippingDetails"
+                  />
                 </div>
                 
                 <div
@@ -503,7 +582,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useShopOrderStore } from '../stores/shopOrderStore';
-import { date, useQuasar } from 'quasar';
+import { date, useQuasar, copyToClipboard as quasarCopyToClipboard } from 'quasar';
 import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
 import { supabase } from 'src/boot/supabase';
 
@@ -513,6 +592,218 @@ const { t } = useI18n();
 const orderStore = useShopOrderStore();
 const currencyStore = useThriftCurrencyStore();
 const $q = useQuasar();
+
+const statusDotColor = (currentStatus: string) => {
+  const val = (currentStatus || '').toLowerCase();
+  switch (val) {
+    case 'draft':
+      return '#6b7280';
+    case 'submitted':
+      return '#2563eb';
+    case 'negotiating':
+      return '#d97706';
+    case 'priced':
+      return '#0891b2';
+    case 'confirmed':
+      return '#16a34a';
+    case 'placed':
+      return '#4f46e5';
+    case 'fulfilled':
+      return '#0d9488';
+    case 'processing':
+      return '#8b5cf6';
+    case 'shipped':
+      return '#0284c7';
+    case 'delivered':
+      return '#15803d';
+    case 'payment_received':
+      return '#059669';
+    case 'cancelled':
+      return '#dc2626';
+    default:
+      return '#6b7280';
+  }
+};
+
+const statusChipStyle = (currentStatus: string) => {
+  const val = (currentStatus || '').toLowerCase();
+  switch (val) {
+    case 'draft':
+      return {
+        backgroundColor: '#f3f4f6',
+        color: '#374151',
+        border: '1px solid #e5e7eb',
+        borderRadius: '6px',
+      };
+    case 'submitted':
+      return {
+        backgroundColor: '#eff6ff',
+        color: '#1d4ed8',
+        border: '1px solid #bfdbfe',
+        borderRadius: '6px',
+      };
+    case 'negotiating':
+      return {
+        backgroundColor: '#fffbe6',
+        color: '#d97706',
+        border: '1px solid #ffe58f',
+        borderRadius: '6px',
+      };
+    case 'priced':
+      return {
+        backgroundColor: '#ecfeff',
+        color: '#0e7490',
+        border: '1px solid #a5f3fc',
+        borderRadius: '6px',
+      };
+    case 'confirmed':
+      return {
+        backgroundColor: '#f0fdf4',
+        color: '#15803d',
+        border: '1px solid #bbf7d0',
+        borderRadius: '6px',
+      };
+    case 'placed':
+      return {
+        backgroundColor: '#eef2ff',
+        color: '#4338ca',
+        border: '1px solid #c7d2fe',
+        borderRadius: '6px',
+      };
+    case 'fulfilled':
+      return {
+        backgroundColor: '#f0fdfa',
+        color: '#0f766e',
+        border: '1px solid #99f6e4',
+        borderRadius: '6px',
+      };
+    case 'processing':
+      return {
+        backgroundColor: '#f5f3ff',
+        color: '#6d28d9',
+        border: '1px solid #ddd6fe',
+        borderRadius: '6px',
+      };
+    case 'shipped':
+      return {
+        backgroundColor: '#f0f9ff',
+        color: '#0369a1',
+        border: '1px solid #bae6fd',
+        borderRadius: '6px',
+      };
+    case 'delivered':
+      return {
+        backgroundColor: '#f0fdf4',
+        color: '#15803d',
+        border: '1px solid #bbf7d0',
+        borderRadius: '6px',
+      };
+    case 'payment_received':
+      return {
+        backgroundColor: '#ecfdf5',
+        color: '#047857',
+        border: '1px solid #a7f3d0',
+        borderRadius: '6px',
+      };
+    case 'cancelled':
+      return {
+        backgroundColor: '#fef2f2',
+        color: '#b91c1c',
+        border: '1px solid #fecaca',
+        borderRadius: '6px',
+      };
+    default:
+      return {
+        backgroundColor: '#f9fafb',
+        color: '#1f2937',
+        border: '1px solid #e5e7eb',
+        borderRadius: '6px',
+      };
+  }
+};
+
+const availableStatuses = computed(() => {
+  if (orderStore.currentOrder?.shop_type_snapshot === 'dropship') {
+    return [
+      'submitted',
+      'processing',
+      'shipped',
+      'delivered',
+      'payment_received',
+      'cancelled',
+    ];
+  }
+  return [
+    'draft',
+    'submitted',
+    'negotiating',
+    'priced',
+    'confirmed',
+    'placed',
+    'fulfilled',
+    'cancelled',
+  ];
+});
+const changingStatus = ref(false);
+
+const changeOrderStatus = async (newStatus: string) => {
+  if (!orderId.value || !orderStore.currentOrder) return;
+  if (orderStore.currentOrder.status === newStatus) return;
+
+  changingStatus.value = true;
+  try {
+    const { error } = await supabase
+      .from('shop_orders')
+      .update({ status: newStatus })
+      .eq('id', orderId.value);
+
+    if (error) {
+      $q.notify({
+        type: 'negative',
+        message: error.message || 'Failed to update order status',
+      });
+    } else {
+      $q.notify({
+        type: 'positive',
+        message: `Order status changed to ${newStatus.toUpperCase()}`,
+      });
+      await orderStore.fetchOrderDetails(orderId.value);
+    }
+  } finally {
+    changingStatus.value = false;
+  }
+};
+
+const copyToClipboard = (text: string | null | undefined, label: string) => {
+  if (!text) return;
+  quasarCopyToClipboard(text)
+    .then(() => {
+      $q.notify({
+        type: 'positive',
+        message: `${label} copied to clipboard`,
+        timeout: 1500,
+      });
+    })
+    .catch(() => {
+      $q.notify({
+        type: 'negative',
+        message: `Failed to copy ${label.toLowerCase()}`,
+        timeout: 1500,
+      });
+    });
+};
+
+const copyAllShippingDetails = () => {
+  const o = orderStore.currentOrder;
+  if (!o) return;
+  const parts = [];
+  if (o.recipient_name) parts.push(`Name: ${o.recipient_name}`);
+  if (o.recipient_phone) parts.push(`Phone: ${o.recipient_phone}`);
+  if (o.shipping_address) parts.push(`Address: ${o.shipping_address}`);
+  if (o.delivery_instructions) parts.push(`Instructions: ${o.delivery_instructions}`);
+
+  copyToClipboard(parts.join('\n'), 'Shipping details');
+};
 
 const orderItems = ref<any[]>([]);
 const shopSellCurrencyId = ref<number | null>(null);
@@ -814,6 +1105,14 @@ export default {
 
 .status-badge {
   border-radius: 8px;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
 }
 
 .counter-input :deep(.q-field__control) {

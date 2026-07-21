@@ -15,7 +15,7 @@ One system manages:
 - **Procurement** — child orders and product-based costing feed **parent shipments** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Stock** — parent-owned inventory with optional **child display allocations** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Sales** — parent or child invoices; desk sales from parent stock → [SALES_INVOICE.md](SALES_INVOICE.md)
-- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md)
+- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md)
 - **Reports & treasury** — margin reports and payment settlement (read-side P&L) → [REPORTING_TREASURY.md](REPORTING_TREASURY.md)
 - **Capital** — investors, cost-share per shipment, investor portal → [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md)
 
@@ -242,6 +242,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order desk, dual invoice, return bearer, middle-man payout |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
@@ -291,7 +292,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 19 | Ledger & Treasury | Accounting (Legacy UI) | accounting | STABLE | app | Child | Legacy tenant accounting views | — |
 | 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | IN PROGRESS | app | Varies | Margin reports, balances, dashboard | P0 |
 | 21 | Ledger & Treasury | Legacy ledger keys | global_accounting_ledger, global_*_accounting | LEGACY | app | Parent | Being retired — use reporting_treasury | P1 |
-| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Unified shops, cart, orders | P0 |
+| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Unified shops, cart, orders; dropship ops → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | P0 |
 | 23 | Shop & B2B | Store | store | LEGACY | app+shop | Child | Superseded by shop_order | — |
 | 24 | Shop & B2B | Cart | cart | LEGACY | shop | Child | Superseded by shop_order | — |
 | 25 | Commerce | Commerce Shop | commerce_shop | LEGACY | app+shop | Child | Superseded by shop_order | — |
@@ -317,7 +318,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | Profile & CRM | 13–14 | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Sales & Invoice | 15, 17 | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Ledger & Treasury | 18–21 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| Shop & Order | 22 | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| Shop & Order | 22 | [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 | Shop & B2B (legacy) | 23–24 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | Commerce (legacy) | 25–28 | [SHOP_ORDER.md](SHOP_ORDER.md) §13 |
 | Capital | 29–31 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
@@ -517,6 +518,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | Margin report | invoice lines + shipment batch P&L (read) | IN PROGRESS | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | Investor capital | cost-share → profit refresh → portal | IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Shop order | shop_cart → shop_order → invoice or procurement pull | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |
+| Dropship shop order | Process Order → dual invoice → COD / payout / return | NOT STARTED | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 | Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
 | Thrift | thrift_shipment → stock → invoice | DONE | [THRIFT.md](THRIFT.md) |
 
@@ -535,6 +537,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice, returns |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Reports and treasury |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor capital and portal |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | UI patterns |
