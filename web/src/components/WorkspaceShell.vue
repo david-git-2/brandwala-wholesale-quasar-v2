@@ -1250,6 +1250,7 @@ const confirmLogout = async () => {
 
 .workspace-shell__page-container {
   padding: clamp(0.5rem, 1.2vw, 0.9rem);
+  background: var(--bw-theme-surface, #ffffff);
 }
 
 .workspace-shell__bottom-nav {

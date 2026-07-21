@@ -80,7 +80,7 @@ Shadow: `--bw-theme-shadow` (scope-specific; light: soft stone tint, dark: deepe
 
 Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` suffice.
 
-**Page headers (list + detail):** follow [PAGE_HEADER.md](./PAGE_HEADER.md) — flat `AppPageHeader`, breadcrumbs on detail only, filters in `FilterSidebar` (side / phone bottom sheet).
+**Page headers (LOCKED):** [PAGE_HEADER.md](./PAGE_HEADER.md) — list golden ref `ProductBasedCostingPage.vue`; detail golden ref `ProductBasedCostingFileDetailsPage.vue`: `q-pa-md` + `q-gutter-y-md` + `text-overline text-primary` + `h1.text-h5`; list CTA `pill-btn`; detail CTA square (no `round`/`pill-btn`); list toolbar in `q-card flat bordered q-pa-sm`; **detail status = workflow button strip** (not chip menu); 1200px white page; no `AppPageHeader` drift.
 
 ## Component inventory
 
@@ -182,12 +182,21 @@ Use `web/src/utils/appFeedback.ts` — do not call `Notify.create` ad hoc.
 
 ## Compact operational detail pages
 
-For shipment/costing-style dense views:
-- Tighter padding: `q-pa-xs q-sm-pa-sm` + `q-gutter-y-sm` instead of `bw-page__stack`
-- Unified hero card header (metadata left, actions/status right)
-- Status as interactive `q-chip` dropdown (not stepper)
-- Collapsible side summary; main table expands full width
-- Tables: `table-style="min-width: 1200px"` inside card for internal scroll
+For shipment/costing-style dense views (LOCKED with [PAGE_HEADER.md](./PAGE_HEADER.md) detail + status workflow):
+
+- Page chrome: `q-pa-md` + `q-gutter-y-md` (not ad-hoc `q-pa-xs` / hero title cards on new work)
+- Header: overline + `h1` + optional meta; primary CTA + `more_vert` menu — no status chip in the header row
+- **Status selector:** horizontal workflow strip in `q-card flat bordered q-pa-sm` under the header
+  - Linear states as dense square `q-btn`s + `chevron_right`
+  - Current = filled + color + `check_circle`; passed = muted; others outline
+  - Abort/terminal state (`cancelled`, `returned`, …) aside after a vertical separator
+  - Humanized labels; loading on the clicked target only
+  - Golden refs: `ProductBasedCostingFileDetailsPage.vue`, `DropshipOrderDetailPage.vue`
+  - When modifying an older detail page that still uses chip+menu status, migrate to this strip
+- Secondary editors (rates, etc.): same toolbar card, **collapsed by default** (summary caption + expand); explicit Save when batch side-effects exist
+- Main table full width (no permanent rates/sidebar column); table height via Quasar `:style` / `table-style` so body scrolls inside the card — prefer `clamp(360px, calc(100vh - 300px), 78vh)` so bottom scrollbars stay visible under header + status toolbar
+- Tables: internal horizontal scroll; sticky identity columns as needed
+- No `round` / `pill-btn` on detail header or table row icon actions (8px square buttons)
 
 ## Treasury pages
 

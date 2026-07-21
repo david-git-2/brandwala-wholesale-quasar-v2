@@ -26,9 +26,9 @@
       row-key="id"
       hide-pagination
       :pagination="{ rowsPerPage: 0 }"
+      :style="{ height: 'clamp(360px, calc(100vh - 300px), 78vh)' }"
       :table-style="{ maxHeight: '100%' }"
       class="costing-q-table"
-      :grid="$q.screen.xs"
     >
       <template #item="slotProps">
         <div class="col-12 col-sm-6 q-pa-xs q-sm-pa-sm">
@@ -92,7 +92,6 @@
                   v-if="isColumnVisible('action')"
                   icon="o_edit"
                   flat
-                  round
                   dense
                   color="blue-10"
                   size="sm"
@@ -102,7 +101,6 @@
                   v-if="isColumnVisible('action')"
                   icon="o_delete"
                   flat
-                  round
                   dense
                   color="negative"
                   size="sm"
@@ -137,7 +135,6 @@
                         icon="local_shipping"
                         :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
                         flat
-                        round
                         dense
                         size="sm"
                         @click="onShip(slotProps.row)"
@@ -440,7 +437,6 @@
                   icon="local_shipping"
                   :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
                   flat
-                  round
                   dense
                   size="md"
                   @click="onShip(slotProps.row)"
@@ -874,7 +870,6 @@
               <q-btn
                 icon="o_edit"
                 flat
-                round
                 dense
                 color="blue-10"
                 @click="onEdit(slotProps.row)"
@@ -883,7 +878,6 @@
               <q-btn
                 icon="o_delete"
                 flat
-                round
                 dense
                 color="negative"
                 @click="onDelete(slotProps.row)"
@@ -1865,7 +1859,7 @@ const totals = computed(() => {
 }
 .costing-q-table {
   max-width: 100%;
-  height: clamp(400px, calc(100vh - 280px), 82vh);
+  /* height set via Quasar :style — keeps bottom scrollbars in viewport */
   background: var(--bw-theme-base, #eef2f5);
 }
 

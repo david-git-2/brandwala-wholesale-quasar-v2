@@ -26,7 +26,8 @@ alwaysApply: false
 - Border radius: buttons `8px`, surfaces `14px` (`.floating-surface`), hero `16px` (`.hero-surface`).
 - `q-page` max-width `1200px`; treasury/report pages need `min-width: 0` on flex/grid parents.
 - Treasury pages: `TreasuryPageShell` > `TreasuryStatGrid` > `TreasuryTableWrap` > `q-table` with explicit `min-width`.
-- Dense ops detail: compact padding (`q-pa-xs`), hero card header, icon-only secondary actions with tooltips.
+- Dense ops detail: follow `docs/PAGE_HEADER.md` DETAIL + status workflow strip (not chip menus); rates/secondary editors collapsed by default; table full width.
+- Page headers (list/detail): prefer `docs/PAGE_HEADER.md` over `AppPageHeader` for new app management pages.
 - High-density table column pastels: weight `#e8d7f7`, price `#daf3e4`, cost `#ffe8d1`, qty `#d0e6ff`.
 - No `backdrop-filter` on static headers/cards/toolbars.
 - New shared component only if used on 2+ pages; place in `web/src/components/ui/`.

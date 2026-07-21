@@ -62,12 +62,15 @@ defineProps<{
 }
 
 .app-page-header--dense .app-page-header__eyebrow {
-  margin: 0 0 0.1rem;
+  margin: 0;
   font-size: 0.65rem;
+  line-height: 1.2;
 }
 
 .app-page-header--dense .app-page-header__title {
+  margin: 0;
   font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.25;
 }
 
 .app-page-header--dense .app-page-header__subtitle {

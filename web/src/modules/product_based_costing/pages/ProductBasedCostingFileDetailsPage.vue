@@ -1,135 +1,82 @@
 <template>
-  <q-page class="q-pa-xs q-sm-pa-md costing-details-page">
+  <q-page class="q-pa-md costing-details-page">
     <PageInitialLoader v-if="store.loading" />
     <template v-else>
-      <q-card flat class="q-mb-sm q-sm-mb-md floating-surface hero-surface shadow-1">
-        <q-card-section class="q-py-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col-12 col-sm">
-              <div class="row items-center q-gutter-sm">
-                <q-badge color="primary" outline class="text-weight-medium">
-                  #{{ store?.item?.id ?? '-' }}
-                </q-badge>
-                <div class="text-subtitle1 text-weight-bold">
+      <div class="q-gutter-y-md">
+        <section class="row items-center justify-between q-col-gutter-md">
+          <div class="col">
+            <div class="row items-center q-gutter-x-sm">
+              <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+              <div>
+                <div class="text-overline text-primary">Product Based Costing</div>
+                <h1 class="text-h5 text-weight-bold q-my-none">
                   {{ store?.item?.name ?? 'Costing File' }}
-                </div>
-              </div>
-              <div class="text-caption text-grey-8 q-mt-xs">
-                Created for {{ store?.item?.order_for ?? '-' }}
+                </h1>
+                <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+                  Created for {{ store?.item?.order_for ?? '-' }}
+                </p>
               </div>
             </div>
-            <div
-              class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap"
-            >
-              <q-chip
-                v-if="store.item"
-                dense
-                square
-                clickable
-                :style="statusChipStyle(status)"
-                class="costing-file-status-chip q-px-md q-py-sm header-status-chip"
-              >
-                <span
-                  class="status-chip-dot"
-                  :style="{ backgroundColor: statusDotColor(status) }"
-                />
-                {{ status }}
-                <q-menu>
-                  <q-list dense style="min-width: 150px">
-                    <q-item
-                      v-for="option in statusOptions"
-                      :key="option"
-                      clickable
-                      v-close-popup
-                      @click="onStatusMenuSelect(option)"
-                    >
-                      <q-item-section>{{ option }}</q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-chip>
-              <q-btn
-                color="primary"
-                unelevated
-                no-caps
-                size="sm"
-                icon="add"
-                dense
-                label="Add Item"
-                class="q-px-md q-py-sm action-button"
-                @click="openCreateDialog"
-              />
-              <q-btn
-                color="secondary"
-                outline
-                no-caps
-                size="sm"
-                icon="content_paste"
-                dense
-                label="Bulk Paste"
-                class="q-px-md q-py-sm action-button"
-                @click="openBulkPaste"
-              />
-              <q-btn
-                color="primary"
-                outline
-                no-caps
-                size="sm"
-                icon="shopping_cart"
-                dense
-                label="Add from Catalog"
-                class="q-px-md q-py-sm action-button"
-                @click="openCatalogDialog"
-              />
-              <q-btn
-                color="primary"
-                outline
-                no-caps
-                size="sm"
-                icon="view_column"
-                dense
-                label="Columns"
-                aria-label="Select columns"
-                class="q-px-md q-py-sm action-button"
-              >
-                <q-menu>
-                  <q-list style="min-width: 240px">
-                    <q-item>
-                      <q-item-section>
-                        <div class="text-subtitle2">Show Columns</div>
-                      </q-item-section>
-                    </q-item>
-                    <q-item>
-                      <q-item-section>
-                        <q-checkbox
-                          v-model="allSelectableColumnsSelected"
-                          label="Select / Deselect All"
-                        />
-                      </q-item-section>
-                    </q-item>
-                    <q-item>
-                      <q-item-section>
-                        <q-option-group
-                          v-model="visibleColumns"
-                          type="checkbox"
-                          :options="columnSelectorOptions"
-                        />
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
-              <q-btn-dropdown
-                color="indigo-8"
-                outline
-                no-caps
-                size="sm"
-                dense
-                label="Actions"
-                class="q-px-md q-py-sm action-button"
-                dropdown-icon="expand_more"
-              >
+          </div>
+          <div class="col-auto row q-gutter-sm items-center">
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              label="Add Item"
+              @click="openCreateDialog"
+            />
+            <q-btn flat dense icon="more_vert" aria-label="Actions">
+              <q-menu style="min-width: 200px">
                 <q-list dense>
+                  <q-item clickable v-close-popup @click="openBulkPaste">
+                    <q-item-section avatar>
+                      <q-icon name="content_paste" />
+                    </q-item-section>
+                    <q-item-section>Bulk Paste</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="openCatalogDialog">
+                    <q-item-section avatar>
+                      <q-icon name="shopping_cart" />
+                    </q-item-section>
+                    <q-item-section>Add from Catalog</q-item-section>
+                  </q-item>
+                  <q-item clickable>
+                    <q-item-section avatar>
+                      <q-icon name="view_column" />
+                    </q-item-section>
+                    <q-item-section>Columns</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="keyboard_arrow_right" />
+                    </q-item-section>
+                    <q-menu anchor="top end" self="top start">
+                      <q-list style="min-width: 240px">
+                        <q-item>
+                          <q-item-section>
+                            <div class="text-subtitle2">Show Columns</div>
+                          </q-item-section>
+                        </q-item>
+                        <q-item clickable>
+                          <q-item-section>
+                            <q-checkbox
+                              v-model="allSelectableColumnsSelected"
+                              label="Select / Deselect All"
+                            />
+                          </q-item-section>
+                        </q-item>
+                        <q-item>
+                          <q-item-section>
+                            <q-option-group
+                              v-model="visibleColumns"
+                              type="checkbox"
+                              :options="columnSelectorOptions"
+                            />
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-item>
+                  <q-separator />
                   <q-item
                     clickable
                     v-close-popup
@@ -154,64 +101,132 @@
                     <q-item-section>Download Excel</q-item-section>
                   </q-item>
                 </q-list>
-              </q-btn-dropdown>
+              </q-menu>
+            </q-btn>
+          </div>
+        </section>
+
+        <q-card v-if="store.item" flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+              <template v-for="(st, idx) in workflowStatuses" :key="st">
+                <q-btn
+                  :color="status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
+                  :text-color="status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
+                  :outline="status !== st"
+                  :unelevated="status === st"
+                  dense
+                  no-caps
+                  class="q-px-md text-caption text-weight-bold"
+                  :loading="updatingStatus && targetUpdatingStatus === st"
+                  :disable="updatingStatus && targetUpdatingStatus !== st"
+                  @click="onUpdateStatus(st)"
+                >
+                  <q-icon
+                    v-if="status === st"
+                    name="check_circle"
+                    size="14px"
+                    class="q-mr-xs"
+                  />
+                  {{ formatStatusLabel(st) }}
+                </q-btn>
+                <q-icon
+                  v-if="idx < workflowStatuses.length - 1"
+                  name="chevron_right"
+                  color="grey-5"
+                  size="18px"
+                  class="status-workflow-chevron"
+                />
+              </template>
+              <q-separator vertical class="q-mx-sm status-workflow-sep" />
+              <q-btn
+                :color="status === 'cancelled' ? 'negative' : 'grey-3'"
+                :text-color="status === 'cancelled' ? 'white' : 'grey-7'"
+                :outline="status !== 'cancelled'"
+                :unelevated="status === 'cancelled'"
+                dense
+                no-caps
+                class="q-px-md text-caption text-weight-bold"
+                :loading="updatingStatus && targetUpdatingStatus === 'cancelled'"
+                :disable="updatingStatus && targetUpdatingStatus !== 'cancelled'"
+                @click="onUpdateStatus('cancelled')"
+              >
+                <q-icon
+                  v-if="status === 'cancelled'"
+                  name="cancel"
+                  size="14px"
+                  class="q-mr-xs"
+                />
+                Cancelled
+              </q-btn>
+            </div>
+
+            <div class="col-auto row items-center q-gutter-sm">
+              <div v-if="!ratesExpanded" class="text-caption text-grey-7 rates-summary">
+                {{ ratesSummary }}
+              </div>
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                :icon="ratesExpanded ? 'expand_less' : 'tune'"
+                :label="ratesExpanded ? 'Hide Rates' : 'Rates'"
+                @click="ratesExpanded = !ratesExpanded"
+              />
             </div>
           </div>
-        </q-card-section>
-      </q-card>
 
-      <q-card flat class="q-mb-xs q-sm-mb-sm floating-surface shadow-1">
-        <q-card-section class="q-py-xs">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col-12 col-sm-3">
+          <div v-if="ratesExpanded" class="row items-end q-col-gutter-sm q-mt-sm">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-input
                 v-model.number="conversion_rate"
                 dense
-                filled
+                outlined
                 type="number"
                 class="soft-input"
                 label="Conversion Rate"
               />
             </div>
-            <div class="col-12 col-sm-3">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-input
                 v-model.number="cargo_rate_kg_gbp"
                 dense
-                filled
+                outlined
                 type="number"
                 class="soft-input"
                 label="Cargo Rate (kg/GBP)"
               />
             </div>
-            <div class="col-12 col-sm-3">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-input
                 v-model.number="profit_rate"
                 dense
-                filled
+                outlined
                 type="number"
                 class="soft-input"
                 label="Profit Rate"
               />
             </div>
-            <div class="col-12 col-sm-auto row justify-end">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-btn
                 color="primary"
-                label="Save"
+                unelevated
                 no-caps
-                size="sm"
-                class="pill-btn slim-btn rates-save-btn full-width-xs"
+                dense
+                class="full-width"
+                label="Save Rates"
                 @click="onRateSave"
               />
             </div>
           </div>
-        </q-card-section>
-      </q-card>
+        </q-card>
 
-      <div v-if="!store.item" class="text-negative q-mb-md">File not found.</div>
-
-      <div class="q-pa-xs q-md-pa-sm">
-        <div v-if="!store.costingItems.length" class="text-grey-7 q-pa-md">No items found.</div>
-        <div v-else class="row q-col-gutter-md">
+        <div v-if="!store.item" class="text-negative">File not found.</div>
+        <div v-else-if="!store.costingItems.length" class="text-grey-7 q-pa-md">
+          No items found.
+        </div>
+        <q-card v-else flat bordered class="q-pa-none costing-items-surface">
           <ProductBasedCostingItemsTable
             :items="store.costingItems"
             :cargo-rate="cargoRateValue"
@@ -229,46 +244,46 @@
             @bulk-delete="onBulkDelete"
             @update:visible-columns="onVisibleColumnsUpdate"
           />
-        </div>
-      </div>
-
-      <ProductBasedCostingItemAddDialog
-        v-model="showItemDialog"
-        :product-based-costing-file-id="fileId"
-        :item-data="selectedItem"
-        :default-vendor-code="store.item?.vendor_code ?? null"
-        :default-market-code="store.item?.market_code ?? null"
-        @created="handleCreated"
-        @updated="handleUpdated"
-      />
-
-      <ShipmentItemCompactDialog
-        v-model="showAddShipmentDialog"
-        :quantity="selectedQuantity"
-        :price-gbp="selectedPriceGbp"
-        :loading="shipmentStore.saving"
-        :default-shipment-id="
-          (store.item?.default_shipment_id as number | null | undefined) ?? null
-        "
-        @shipment-change="onDefaultShipmentChange"
-        @save="onSaveShipment"
-      />
-
-      <q-dialog v-model="confirmRemoveShipmentOpen">
-        <q-card style="min-width: 360px">
-          <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
-          <q-card-section> This will remove the selected item from its shipment. </q-card-section>
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn
-              color="negative"
-              label="Remove"
-              :loading="shipmentStore.saving"
-              @click="onConfirmRemoveShipment"
-            />
-          </q-card-actions>
         </q-card>
-      </q-dialog>
+
+        <ProductBasedCostingItemAddDialog
+          v-model="showItemDialog"
+          :product-based-costing-file-id="fileId"
+          :item-data="selectedItem"
+          :default-vendor-code="store.item?.vendor_code ?? null"
+          :default-market-code="store.item?.market_code ?? null"
+          @created="handleCreated"
+          @updated="handleUpdated"
+        />
+
+        <ShipmentItemCompactDialog
+          v-model="showAddShipmentDialog"
+          :quantity="selectedQuantity"
+          :price-gbp="selectedPriceGbp"
+          :loading="shipmentStore.saving"
+          :default-shipment-id="
+            (store.item?.default_shipment_id as number | null | undefined) ?? null
+          "
+          @shipment-change="onDefaultShipmentChange"
+          @save="onSaveShipment"
+        />
+
+        <q-dialog v-model="confirmRemoveShipmentOpen">
+          <q-card style="min-width: 360px">
+            <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
+            <q-card-section> This will remove the selected item from its shipment. </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Cancel" v-close-popup />
+              <q-btn
+                color="negative"
+                label="Remove"
+                :loading="shipmentStore.saving"
+                @click="onConfirmRemoveShipment"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+      </div>
     </template>
   </q-page>
 </template>
@@ -305,7 +320,10 @@ const store = useProductBasedCostingStore();
 const cargo_rate_kg_gbp = ref<number | null>(null);
 const conversion_rate = ref<number | null>(null);
 const profit_rate = ref<number | null>(null);
+const ratesExpanded = ref(false);
 const status = ref<string>('pending');
+const updatingStatus = ref(false);
+const targetUpdatingStatus = ref<string | null>(null);
 const showAddShipmentDialog = ref(false);
 const selectedQuantity = ref<number | null>(null);
 const selectedPriceGbp = ref<number | null>(null);
@@ -391,6 +409,10 @@ const onVisibleColumnsUpdate = (columns: string[]) => {
 const cargoRateValue = computed(() => cargo_rate_kg_gbp.value ?? 0);
 const conversionRateValue = computed(() => conversion_rate.value ?? 140);
 const profitRateValue = computed(() => profit_rate.value ?? 25);
+const ratesSummary = computed(
+  () =>
+    `Conv ${conversionRateValue.value} · Cargo ${cargoRateValue.value} · Profit ${profitRateValue.value}%`,
+);
 const fileId = computed(() => {
   const parsed = Number(route.params.id);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
@@ -413,82 +435,61 @@ const onStatusChange = async () => {
   await recalculateAndPersistOfferPrices();
 };
 
-const onStatusMenuSelect = async (nextStatus: string) => {
-  if (status.value === nextStatus) {
+const workflowStatuses = [
+  'pending',
+  'offered',
+  'processing',
+  'ordered',
+  'invoicing',
+  'invoiced',
+] as const;
+
+const formatStatusLabel = (value: string) =>
+  value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+const isPassedStatus = (st: string) => {
+  if (status.value === 'cancelled') {
+    return false;
+  }
+  const currentIdx = workflowStatuses.indexOf(status.value as (typeof workflowStatuses)[number]);
+  const targetIdx = workflowStatuses.indexOf(st as (typeof workflowStatuses)[number]);
+  return currentIdx > -1 && targetIdx > -1 && targetIdx < currentIdx;
+};
+
+const getStatusColor = (st: string) => {
+  switch (st) {
+    case 'pending':
+      return 'orange-8';
+    case 'offered':
+      return 'blue-8';
+    case 'processing':
+      return 'teal-8';
+    case 'ordered':
+      return 'light-blue-9';
+    case 'invoicing':
+      return 'indigo-8';
+    case 'invoiced':
+      return 'green-8';
+    case 'cancelled':
+      return 'negative';
+    default:
+      return 'primary';
+  }
+};
+
+const onUpdateStatus = async (nextStatus: string) => {
+  if (status.value === nextStatus || updatingStatus.value) {
     return;
   }
-  status.value = nextStatus;
-  await onStatusChange();
-};
-
-const statusChipStyle = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase();
-  if (value === 'pending') {
-    return {
-      backgroundColor: '#efd399',
-      color: '#6a4a14',
-      border: '1px solid #d8b672',
-    };
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = nextStatus;
+  try {
+    status.value = nextStatus;
+    await onStatusChange();
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
   }
-  if (value === 'offered') {
-    return {
-      backgroundColor: '#c8d8f8',
-      color: '#27487a',
-      border: '1px solid #a9c4f3',
-    };
-  }
-  if (value === 'processing') {
-    return {
-      backgroundColor: '#c3e8d2',
-      color: '#1f5d3c',
-      border: '1px solid #9fd4b7',
-    };
-  }
-  if (value === 'ordered') {
-    return {
-      backgroundColor: '#d7e7f6',
-      color: '#1a4562',
-      border: '1px solid #9ebfdc',
-    };
-  }
-  if (value === 'invoicing') {
-    return {
-      backgroundColor: '#e8eaf6',
-      color: '#283593',
-      border: '1px solid #c5cae9',
-    };
-  }
-  if (value === 'invoiced') {
-    return {
-      backgroundColor: '#e0f2f1',
-      color: '#00695c',
-      border: '1px solid #b2dfdb',
-    };
-  }
-  if (value === 'cancelled') {
-    return {
-      backgroundColor: '#f2c7d0',
-      color: '#6f2b3a',
-      border: '1px solid #e3a6b3',
-    };
-  }
-  return {
-    backgroundColor: '#dbe5f3',
-    color: '#3b4b66',
-    border: '1px solid #b9c8dd',
-  };
-};
-
-const statusDotColor = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase();
-  if (value === 'pending') return '#9a6a24';
-  if (value === 'offered') return '#3f67b3';
-  if (value === 'processing') return '#2f8b5d';
-  if (value === 'ordered') return '#2f6e92';
-  if (value === 'invoicing') return '#3f51b5';
-  if (value === 'invoiced') return '#009688';
-  if (value === 'cancelled') return '#a64c62';
-  return '#66758c';
 };
 
 const recalculateAndPersistOfferPrices = async () => {
@@ -530,16 +531,6 @@ const loadData = async () => {
     store.fetchProductBasedCostingItems(fileId.value),
   ]);
 };
-
-const statusOptions = [
-  'pending',
-  'offered',
-  'processing',
-  'ordered',
-  'invoicing',
-  'invoiced',
-  'cancelled',
-];
 
 const handleCreated = async () => {
   if (!fileId.value) {
@@ -755,6 +746,7 @@ const onRateSave = async () => {
 
   await store.updateProductBasedCostingFile(payload);
   await recalculateAndPersistOfferPrices();
+  ratesExpanded.value = false;
 };
 
 const onProductWeightChange = async (payload: WeightChangePayload) => {
@@ -960,58 +952,47 @@ const onDefaultShipmentChange = async (shipmentId: number | null) => {
     default_shipment_id: shipmentId,
   });
 };
+
+const goBack = () => {
+  router.push({ name: 'product-based-costing-page' });
+};
 </script>
 
 <style scoped>
 .costing-details-page {
   background: transparent;
 }
-.costing-file-status-chip {
-  border-radius: 6px !important;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: capitalize;
-}
 
-.status-chip-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  margin-right: 6px;
-}
-
-.hero-surface {
-  border-radius: 16px;
-}
-
-.slim-btn {
-  min-height: 32px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.rates-save-btn {
-  min-width: 90px;
+.costing-items-surface {
+  overflow: hidden;
 }
 
 .soft-input :deep(.q-field__control) {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+}
+
+.status-workflow-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.status-workflow-sep {
+  align-self: stretch;
+  min-height: 24px;
+}
+
+.rates-summary {
+  white-space: nowrap;
 }
 
 @media (max-width: 599px) {
-  .full-width-xs {
-    width: 100%;
+  .status-workflow-chevron,
+  .status-workflow-sep {
+    display: none;
   }
-  .action-button {
-    flex: 1 1 auto;
-    min-width: 80px;
-  }
-  .header-status-chip {
-    flex: 1 1 100%;
-    justify-content: center;
-    margin-right: 0 !important;
+
+  .rates-summary {
+    white-space: normal;
   }
 }
 </style>

@@ -1,97 +1,98 @@
 <template>
-  <q-page class="q-pa-md costing-list-page">
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-sm">
-            <div class="text-h6 text-weight-bold">Product Based Costing</div>
-            <div class="text-caption text-grey-8">Manage costing files and open details</div>
-          </div>
-          <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
-            <q-btn
-              color="primary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn full-width-mobile"
-              label="Create Costing File"
-              @click="openCreateDialog"
-            />
-          </div>
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Costing</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Product Based Costing</h1>
         </div>
-      </q-card-section>
-    </q-card>
-
-    <PageInitialLoader v-if="store.loading" />
-
-    <div v-else-if="store.error">error: {{ store.error }}</div>
-
-    <div v-else>
-      <div class="row items-center justify-between q-mb-sm">
-        <div class="row items-center q-gutter-sm toolbar-left">
+        <div class="col-auto">
           <q-btn
-            v-if="!showSearchInput"
-            flat
-            round
-            dense
-            icon="search"
-            aria-label="Show search"
-            @click="showSearchInput = true"
+            color="primary"
+            unelevated
+            no-caps
+            class="pill-btn"
+            label="Create Costing File"
+            @click="openCreateDialog"
           />
+        </div>
+      </section>
 
-          <q-input
-            v-else
-            v-model="searchText"
-            outlined
-            dense
-            class="soft-input toolbar-search"
-            label="Search"
-            clearable
-            autofocus
-            @keyup.enter="onApplyFilters"
-            @clear="onApplyFilters"
-          >
-            <template #prepend>
-              <q-icon name="search" />
-            </template>
-            <template #append>
+      <PageInitialLoader v-if="store.loading" />
+
+      <div v-else-if="store.error">error: {{ store.error }}</div>
+
+      <template v-else>
+        <q-card flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-auto row items-center q-gutter-sm toolbar-left">
               <q-btn
+                v-if="!showSearchInput"
                 flat
                 round
                 dense
-                icon="close"
-                aria-label="Hide search"
-                @click="
-                  () => {
-                    searchText = '';
-                    showSearchInput = false;
-                    onApplyFilters();
-                  }
-                "
+                icon="search"
+                aria-label="Show search"
+                @click="showSearchInput = true"
               />
-            </template>
-          </q-input>
 
-          <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="openFilterDrawer">
-            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-              {{ activeFilterCount }}
-            </q-badge>
-          </q-btn>
-        </div>
+              <q-input
+                v-else
+                v-model="searchText"
+                outlined
+                dense
+                class="soft-input toolbar-search"
+                label="Search"
+                clearable
+                autofocus
+                @keyup.enter="onApplyFilters"
+                @clear="onApplyFilters"
+              >
+                <template #prepend>
+                  <q-icon name="search" />
+                </template>
+                <template #append>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="close"
+                    aria-label="Hide search"
+                    @click="
+                      () => {
+                        searchText = '';
+                        showSearchInput = false;
+                        onApplyFilters();
+                      }
+                    "
+                  />
+                </template>
+              </q-input>
 
-        <q-btn-toggle
-          v-model="viewMode"
-          dense
-          unelevated
-          no-caps
-          toggle-color="primary"
-          color="white"
-          text-color="primary"
-          :options="[
-            { icon: 'table_rows', value: 'table' },
-            { icon: 'grid_view', value: 'card' },
-          ]"
-        />
-      </div>
+              <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="openFilterDrawer">
+                <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+                  {{ activeFilterCount }}
+                </q-badge>
+              </q-btn>
+            </div>
+
+            <div class="col-auto">
+              <q-btn-toggle
+                v-model="viewMode"
+                dense
+                unelevated
+                no-caps
+                toggle-color="primary"
+                color="white"
+                text-color="primary"
+                :options="[
+                  { icon: 'table_rows', value: 'table' },
+                  { icon: 'grid_view', value: 'card' },
+                ]"
+              />
+            </div>
+          </div>
+        </q-card>
 
       <q-card v-if="viewMode === 'table'" flat class="floating-surface shadow-1">
         <q-table
@@ -177,7 +178,7 @@
           @update:model-value="onPageChange"
         />
       </div>
-    </div>
+      </template>
 
     <ProductBasedCostingFileDialog
       v-model="dialogOpen"
@@ -201,6 +202,7 @@
         <q-btn flat no-caps label="Reset" @click="onResetFilters" />
       </div>
     </FilterSidebar>
+    </div>
   </q-page>
 </template>
 
@@ -609,13 +611,6 @@ const onDrawerStatusChange = async () => {
 </script>
 
 <style scoped>
-.costing-list-page {
-  background: transparent;
-}
-.hero-surface {
-  border-radius: 16px;
-}
-
 .pill-btn {
   border-radius: 999px;
 }
@@ -631,7 +626,15 @@ const onDrawerStatusChange = async () => {
   background: rgba(255, 255, 255, 0.82);
 }
 
-.costing-list-table :deep(th) {
+.costing-list-table :deep(.q-table__middle) {
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+}
+
+.costing-list-table :deep(thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
