@@ -82,11 +82,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftSettingsStore } from '../../settings/stores/thriftSettingsStore';
-import { useThriftCurrencyStore } from '../../currency/stores/thriftCurrencyStore';
+import { useThriftSettingsQuery } from '../../settings/composables/useThriftSettingsQuery';
+import { useThriftCurrenciesQuery } from '../../currency/composables/useThriftCurrenciesQuery';
+import { useThriftShipmentDetailQuery } from '../../shipment/composables/useThriftShipmentQuery';
+import { useThriftStocksByShipmentQuery } from '../composables/useThriftStocksQuery';
+
 import { thriftShipmentRepository } from '../../shipment/repositories/thriftShipmentRepository';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
 import { expandStocksForTagPrint } from '../utils/expandStocksForTagPrint';
@@ -104,26 +108,41 @@ const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
-const settingsStore = useThriftSettingsStore();
-const currencyStore = useThriftCurrencyStore();
+const { tenantId } = storeToRefs(authStore);
 
-const loading = ref(false);
-const shipment = ref<ThriftShipment | null>(null);
-const stocks = ref<ThriftStock[]>([]);
+const { data: settingsData } = useThriftSettingsQuery(tenantId);
+const settings = computed(() => settingsData.value || null);
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 
-const shipmentId = computed(() => Number(route.params.shipmentId));
+const shipmentId = computed(() => Number(route.params.shipmentId) || null);
+
+const { data: shipmentData, isLoading: shipmentLoading } = useThriftShipmentDetailQuery(
+  tenantId,
+  shipmentId,
+);
+const shipment = computed(() => shipmentData.value || null);
+
+const { data: stocksData, isLoading: stocksLoading } = useThriftStocksByShipmentQuery(
+  tenantId,
+  shipmentId,
+);
+const stocks = computed(() => stocksData.value || []);
+
+const loading = computed(() => shipmentLoading.value || stocksLoading.value);
+
 
 const costCurrency = computed(() => {
   if (!shipment.value?.cost_currency_id) return undefined;
-  return currencyStore.currencyById(shipment.value.cost_currency_id);
+  return currencies.value.find((c) => c.id === shipment.value?.cost_currency_id);
 });
 
 const tagConfig = computed(() => resolveMarketingTagConfig(shipment.value?.marketing_tag_config));
 
 const breakdownByStockId = computed(() => {
   const sh = shipment.value;
-  const settings = settingsStore.settings;
-  if (!sh || !settings) return {};
+  const currentSettings = settings.value;
+  if (!sh || !currentSettings) return {};
 
   const shipmentMap = new Map([[sh.id, sh]]);
   const stocksInput = stocks.value.map((stock) => ({
@@ -144,7 +163,7 @@ const breakdownByStockId = computed(() => {
       : null,
   }));
 
-  return buildThriftCostBreakdownByStockId(stocksInput, shipmentMap, settings);
+  return buildThriftCostBreakdownByStockId(stocksInput, shipmentMap, currentSettings);
 });
 
 function formatPrice(amount: number): string {
@@ -194,45 +213,30 @@ function printPage() {
   window.print();
 }
 
+import { useQueryClient } from '@tanstack/vue-query';
+import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
+
+const queryClient = useQueryClient();
+
 function openConfigDialog() {
   const sh = shipment.value;
   if (!sh) return;
   $q.dialog({
     component: ShipmentMarketingTagConfigDialog,
     componentProps: {
-      shipmentId: sh.id,
       shipmentName: sh.name,
       initialConfig: sh.marketing_tag_config,
     },
-  }).onOk((updated: ThriftShipment) => {
-    shipment.value = updated;
+  }).onOk(async () => {
+    if (shipmentId.value) {
+      await queryClient.invalidateQueries({
+        queryKey: thriftQueryKeys.shipmentDetail(String(shipmentId.value)),
+      });
+    }
   });
 }
 
-async function loadData() {
-  const shId = shipmentId.value;
-  if (!authStore.tenantId || !Number.isFinite(shId)) return;
 
-  loading.value = true;
-  try {
-    const [shipmentData, stocksData] = await Promise.all([
-      thriftShipmentRepository.fetchShipmentById(authStore.tenantId, shId),
-      thriftStockRepository.fetchStocksByShipment(authStore.tenantId, shId),
-      settingsStore.loadSettings(authStore.tenantId),
-      currencyStore.loadCurrencies(),
-    ]);
-    shipment.value = shipmentData;
-    stocks.value = stocksData;
-  } catch (err) {
-    console.error('Failed to load print preview data:', err);
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  void loadData();
-});
 </script>
 
 <style scoped>

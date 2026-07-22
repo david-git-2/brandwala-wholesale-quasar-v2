@@ -7,7 +7,7 @@
       dense
       :label="field.label"
       :hint="field.hint"
-      :options="currencyStore.currencies"
+      :options="currencies"
       option-value="id"
       :option-label="currencyOptionLabel"
       emit-value
@@ -71,9 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { computed } from 'vue';
 
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import type { PreferenceFieldDefinition } from '../types/preferenceFields';
 
@@ -88,7 +88,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: unknown];
 }>();
 
-const currencyStore = useThriftCurrencyStore();
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 
 function currencyOptionLabel(option: ThriftCurrency) {
   return `${option.code} (${option.symbol}) — ${option.name}`;
@@ -97,10 +98,6 @@ function currencyOptionLabel(option: ThriftCurrency) {
 function requiredRule(value: unknown) {
   return value !== null && value !== undefined && value !== '' ? true : 'Required';
 }
-
-onMounted(async () => {
-  await currencyStore.loadCurrencies();
-});
 </script>
 
 <style scoped>

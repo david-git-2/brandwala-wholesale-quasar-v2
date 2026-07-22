@@ -1318,7 +1318,7 @@
               <div class="row justify-between">
                 <span>Default origin unit price:</span>
                 <span class="text-weight-bold">{{
-                  formatThriftAmount(settingsStore.defaultOriginUnitPrice, quickAddPurchaseCurrency)
+                  formatThriftAmount(settings?.default_origin_unit_price || 0, quickAddPurchaseCurrency)
                 }}</span>
               </div>
             </div>
@@ -1472,13 +1472,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStockStore } from '../stores/thriftStockStore';
+import { useThriftStocksQuery, type ThriftStockQueryParams } from '../composables/useThriftStocksQuery';
+import {
+  useCreateStockMutation,
+  useUpdateStockMutation,
+  useAttachStockImageMutation,
+  useUpdateStockStatusMutation,
+  useDeleteStockMutation,
+  useDeleteStocksMutation,
+} from '../composables/useThriftStockMutations';
 import { useThriftStore } from 'src/modules/thrift/shared/stores/thriftStore';
-import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import {
+  useThriftCategoriesQuery,
+  useThriftTypesQuery,
+  useThriftBoxesQuery,
+  useThriftShelvesQuery,
+} from 'src/modules/thrift/shared/composables/useThriftMasterDataQuery';
+import { useThriftSettingsQuery } from 'src/modules/thrift/settings/composables/useThriftSettingsQuery';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { useThriftShipmentsQuery } from 'src/modules/thrift/shipment/composables/useThriftShipmentQuery';
+
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
@@ -1527,8 +1545,45 @@ const route = useRoute();
 const authStore = useAuthStore();
 const store = useThriftStockStore();
 const thriftStore = useThriftStore();
-const settingsStore = useThriftSettingsStore();
-const currencyStore = useThriftCurrencyStore();
+
+const tenantIdRef = computed(() => authStore.tenantId ?? 0);
+const { data: settingsData } = useThriftSettingsQuery(tenantIdRef);
+const settings = computed(() => settingsData.value || null);
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
+
+const createStockMutation = useCreateStockMutation();
+const updateStockMutation = useUpdateStockMutation();
+const attachStockImageMutation = useAttachStockImageMutation();
+const updateStockStatusMutation = useUpdateStockStatusMutation();
+const deleteStockMutation = useDeleteStockMutation();
+const deleteStocksMutation = useDeleteStocksMutation();
+
+const queryParams = computed<ThriftStockQueryParams>(() => ({
+  tenantId: authStore.tenantId ?? 0,
+  page: store.page,
+  pageSize: store.pageSize,
+  search: store.search,
+  status: store.statusFilter,
+  condition: store.conditionFilter,
+}));
+
+const { data: stocksQueryData, isLoading: queryLoading, isFetching: queryFetching } = useThriftStocksQuery(queryParams);
+
+const stocks = computed(() => stocksQueryData.value?.data ?? []);
+const loading = computed(() => queryLoading.value || queryFetching.value);
+
+const tablePagination = computed({
+  get: () => ({
+    page: store.page,
+    rowsPerPage: store.pageSize,
+    rowsNumber: stocksQueryData.value?.meta?.total ?? 0,
+  }),
+  set: (val) => {
+    store.setPage(val.page);
+    store.setPageSize(val.rowsPerPage);
+  },
+});
 
 const shipmentStocksCache = ref<Map<number, ThriftStock[]>>(new Map());
 
@@ -1553,9 +1608,13 @@ async function loadShipmentStocksForPage() {
   shipmentStocksCache.value = new Map(shipmentStocksCache.value);
 }
 
+watch(stocks, () => {
+  void loadShipmentStocksForPage();
+}, { immediate: true });
+
 const costBreakdownByStockId = computed<Record<number, ThriftUnitCostBreakdown>>(() => {
-  const settings = settingsStore.settings;
-  if (!settings) return {};
+  const currentSettings = settings.value;
+  if (!currentSettings) return {};
 
   const pageShipmentIds = new Set(stocks.value.map((s) => s.shipment_id).filter(Boolean));
   const pageStocksMap = new Map(stocks.value.map((s) => [s.id, s]));
@@ -1609,7 +1668,7 @@ const costBreakdownByStockId = computed<Record<number, ThriftUnitCostBreakdown>>
     }
   }
 
-  return buildThriftCostBreakdownByStockId(mergedStocks, shipmentById.value, settings);
+  return buildThriftCostBreakdownByStockId(mergedStocks, shipmentById.value, currentSettings);
 });
 
 function openMeasurementsDialog(row: ThriftStock) {
@@ -1726,17 +1785,15 @@ const editImage = ref({
   removed: false,
 });
 
-const stocks = computed(() => store.stocks);
-const loading = computed(() => store.loading);
+const { data: categoriesData } = useThriftCategoriesQuery(tenantIdRef);
+const { data: typesData } = useThriftTypesQuery(tenantIdRef);
+const { data: boxesData } = useThriftBoxesQuery(tenantIdRef);
+const { data: shelvesData } = useThriftShelvesQuery(tenantIdRef);
 
-const tablePagination = ref({
-  page: 1,
-  rowsPerPage: 20,
-  rowsNumber: 0,
-});
-const categories = computed(() => thriftStore.categories);
-const types = computed(() => thriftStore.types);
-const shelves = computed(() => thriftStore.shelves);
+const categories = computed(() => categoriesData.value ?? []);
+const types = computed(() => typesData.value ?? []);
+const boxesList = computed(() => boxesData.value ?? []);
+const shelves = computed(() => shelvesData.value ?? []);
 
 const form = ref({
   category_id: null as number | null,
@@ -1770,15 +1827,20 @@ const originUnitPrice = ref(0);
 const extraOriginUnitPrice = ref(0);
 const additionalChargesCost = ref(0);
 
+function findCurrencyById(id: number | null | undefined): ThriftCurrency | undefined {
+  if (!id) return undefined;
+  return currencies.value.find((c) => c.id === id);
+}
+
 const purchaseCurrency = computed(() => {
   const shipmentId = form.value.shipment_id;
   if (!shipmentId) return undefined;
-  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+  return findCurrencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
 });
 const costCurrency = computed(() => {
   const shipmentId = form.value.shipment_id;
   if (!shipmentId) return undefined;
-  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
+  return findCurrencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
 });
 const purchaseCurrencySymbol = computed(() => purchaseCurrency.value?.symbol ?? '');
 const costCurrencySymbol = computed(() => costCurrency.value?.symbol ?? '');
@@ -1786,10 +1848,11 @@ const costCurrencySymbol = computed(() => costCurrency.value?.symbol ?? '');
 const quickAddPurchaseCurrency = computed(() => {
   const shipmentId = quickAddForm.value.shipment_id;
   if (!shipmentId) return undefined;
-  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+  return findCurrencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
 });
 
-const shipments = ref<ShipmentOption[]>([]);
+const { data: shipmentsData } = useThriftShipmentsQuery(tenantIdRef);
+const shipments = computed<ShipmentOption[]>(() => (shipmentsData.value || []) as ShipmentOption[]);
 
 const shipmentById = computed(() => {
   const map = new Map<number, ShipmentOption>();
@@ -1803,32 +1866,23 @@ function shipmentPurchaseCurrency(
   shipmentId: number | null | undefined,
 ): ThriftCurrency | undefined {
   if (!shipmentId) return undefined;
-  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
+  return findCurrencyById(shipmentById.value.get(shipmentId)?.purchase_currency_id);
 }
 
 function shipmentCostCurrency(shipmentId: number | null | undefined): ThriftCurrency | undefined {
   if (!shipmentId) return undefined;
-  return currencyStore.currencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
+  return findCurrencyById(shipmentById.value.get(shipmentId)?.cost_currency_id);
 }
 
-async function loadShipments() {
-  if (!authStore.tenantId) return;
-  const { data } = await supabase
-    .from('thrift_shipments')
-    .select('*')
-    .eq('tenant_id', authStore.tenantId)
-    .order('name', { ascending: true });
-  shipments.value = (data || []) as ShipmentOption[];
-}
 
 const filteredBoxes = computed(() => {
   if (!form.value.shipment_id) return [];
-  return thriftStore.boxes.filter((b) => b.shipment_id === form.value.shipment_id);
+  return boxesList.value.filter((b) => b.shipment_id === form.value.shipment_id);
 });
 
 const quickAddFilteredBoxes = computed(() => {
   if (!quickAddForm.value.shipment_id) return [];
-  return thriftStore.boxes.filter((b) => b.shipment_id === quickAddForm.value.shipment_id);
+  return boxesList.value.filter((b) => b.shipment_id === quickAddForm.value.shipment_id);
 });
 
 function onShipmentChange() {
@@ -1873,7 +1927,7 @@ async function loadFirstAvailableBarcode() {
 
 function getBoxName(boxId: number | undefined | null) {
   if (!boxId) return '—';
-  const bx = thriftStore.boxes.find((b) => b.id === boxId);
+  const bx = boxesList.value.find((b) => b.id === boxId);
   return bx ? bx.name : `#${boxId}`;
 }
 
@@ -2118,7 +2172,7 @@ function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
 }
 
 function boxesForShipment(shipmentId: number) {
-  return thriftStore.boxes.filter((box) => box.shipment_id === shipmentId);
+  return boxesList.value.filter((box) => box.shipment_id === shipmentId);
 }
 
 async function saveStockCell(
@@ -2141,7 +2195,7 @@ async function saveStockCell(
         ...pricingPatch,
         is_listed_price_manual: false,
       };
-      const settings = settingsStore.opsCostSettingsForEngine;
+      const currentSettings = settings.value;
 
       const updatedRow = { ...row, ...stockPatch, pricing: currentPricing };
       const cache = shipmentStocksCache.value.get(row.shipment_id) || [];
@@ -2151,7 +2205,7 @@ async function saveStockCell(
       const breakdown = computeThriftUnitCosts(
         updatedRow,
         shipment,
-        settings,
+        currentSettings || {},
         Math.max(U, 1),
         currentPricing,
         mergedStocks,
@@ -2163,7 +2217,11 @@ async function saveStockCell(
   }
 
   const pricing = { ...buildPricingFromRow(row), ...pricingPatch, ...finalPricingPatch };
-  const updated = await store.updateStock(row.id, stockPatch, pricing);
+  const updated = await updateStockMutation.mutateAsync({
+    id: row.id,
+    stock: stockPatch,
+    pricing,
+  });
   Object.assign(row, stockPatch);
   if (pricingPatch) {
     row.pricing = {
@@ -2217,7 +2275,6 @@ async function onTextCellSave(
     await saveStockCell(row, { [field]: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2231,7 +2288,6 @@ async function onNumberCellSave(
     await saveStockCell(row, { [field]: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2241,7 +2297,6 @@ async function onSectionSave(row: ThriftStock, value: ThriftSection | null) {
     await saveStockCell(row, { section: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2251,7 +2306,6 @@ async function onConditionSave(row: ThriftStock, value: ThriftCondition | null) 
     await saveStockCell(row, { condition: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2261,7 +2315,6 @@ async function onBoxSave(row: ThriftStock, boxId: number | null) {
     await saveStockCell(row, { box_id: boxId ?? undefined });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2271,7 +2324,6 @@ async function onOriginUnitPriceSave(row: ThriftStock, value: number) {
     await saveStockCell(row, { origin_unit_price: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2281,7 +2333,6 @@ async function onExtraOriginUnitPriceSave(row: ThriftStock, value: number) {
     await saveStockCell(row, { extra_origin_unit_price: value });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2304,7 +2355,6 @@ async function onListedUnitPriceSave(row: ThriftStock, value: number) {
     );
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2326,7 +2376,6 @@ async function onItemMarkupSave(row: ThriftStock, markupPct: number) {
     );
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2335,7 +2384,6 @@ async function resetPriceToSuggested(row: ThriftStock) {
     await saveStockCell(row, {}, { is_listed_price_manual: false });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Reset failed' });
-    await loadStockPage();
   }
 }
 
@@ -2356,17 +2404,15 @@ async function resetItemMarkupToShipment(row: ThriftStock) {
     );
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Reset failed' });
-    await loadStockPage();
   }
 }
 
 async function onStatusCellSave(row: ThriftStock, status: string) {
   try {
-    await store.updateStockStatus(row.id, status);
+    await updateStockStatusMutation.mutateAsync({ id: row.id, status });
     row.status = status as ThriftStock['status'];
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
-    await loadStockPage();
   }
 }
 
@@ -2400,40 +2446,10 @@ function tableCellClass(columnName: string): string {
   return classes.join(' ');
 }
 
-onMounted(async () => {
-  if (authStore.tenantId) {
-    await Promise.all([
-      loadStockPage(1),
-      thriftStore.loadModuleData(authStore.tenantId),
-      loadShipments(),
-      settingsStore.loadSettings(authStore.tenantId),
-      currencyStore.loadCurrencies(),
-    ]);
-  }
-});
-
-function syncTablePagination() {
-  tablePagination.value.page = store.page;
-  tablePagination.value.rowsPerPage = store.pageSize;
-  tablePagination.value.rowsNumber = store.total;
-}
-
-async function loadStockPage(nextPage = store.page) {
-  if (!authStore.tenantId) return;
-  await store.loadStocks(authStore.tenantId, {
-    page: nextPage,
-    pageSize: tablePagination.value.rowsPerPage,
-    search: searchText.value,
-    status: statusFilter.value,
-    condition: conditionFilter.value,
-  });
-  await loadShipmentStocksForPage();
-  syncTablePagination();
-}
 
 function onFiltersChanged() {
   selectedStockIds.value = [];
-  void loadStockPage(1);
+  store.setPage(1);
 }
 
 const allPageRowsSelected = computed(
@@ -2477,7 +2493,7 @@ function confirmBulkDelete() {
 
 async function deleteStockTarget(target: ThriftStockDeleteTarget): Promise<void> {
   await deleteStockCloudinaryImageStrict(target.imageUrl);
-  await store.deleteStock(target.id);
+  await deleteStockMutation.mutateAsync(target.id);
 }
 
 async function cleanupAndDeleteStockTargets(targets: ThriftStockDeleteTarget[]) {
@@ -2487,8 +2503,8 @@ async function cleanupAndDeleteStockTargets(targets: ThriftStockDeleteTarget[]) 
 }
 
 async function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
-  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage;
-  await loadStockPage(props.pagination.page);
+  store.setPage(props.pagination.page);
+  store.setPageSize(props.pagination.rowsPerPage);
 }
 
 function goToSettings() {
@@ -2538,15 +2554,10 @@ async function downloadStockCsv() {
   if (!authStore.tenantId) return;
   csvExportLoading.value = true;
   try {
-    const [stocks, settings] = await Promise.all([
-      thriftStockRepository.fetchStocks(authStore.tenantId),
-      settingsStore.settings
-        ? Promise.resolve(settingsStore.settings)
-        : settingsStore.loadSettings(authStore.tenantId).then(() => settingsStore.settings),
-    ]);
+    const stocks = await thriftStockRepository.fetchStocks(authStore.tenantId);
 
     let breakdownByStockId: Record<number, ThriftUnitCostBreakdown> = {};
-    if (settings) {
+    if (settings.value) {
       const stocksInput = stocks.map((stock) => ({
         id: stock.id,
         shipment_id: stock.shipment_id,
@@ -2567,7 +2578,7 @@ async function downloadStockCsv() {
       breakdownByStockId = buildThriftCostBreakdownByStockId(
         stocksInput,
         shipmentById.value,
-        settings,
+        settings.value,
       );
     }
 
@@ -2635,9 +2646,6 @@ async function openAddDialog() {
     pendingBlob: null,
   };
   uploaderTarget.value = 'quick';
-  if (authStore.tenantId) {
-    await settingsStore.loadSettings(authStore.tenantId);
-  }
   quickAddDialogOpen.value = true;
 }
 
@@ -2808,36 +2816,36 @@ async function submitQuickAdd() {
       throw new Error('Category or type is not available. Please refresh and try again.');
     }
 
-    const draftStock = await store.createStock(
-      authStore.tenantId,
-      quickAddForm.value.shipment_id!,
-      '',
+    const draftStock = await createStockMutation.mutateAsync({
+      tenantId: authStore.tenantId,
+      shipmentId: quickAddForm.value.shipment_id!,
+      name: '',
       brandName,
-      catId,
-      typId,
-      'UNISEX',
-      '',
-      '',
+      categoryId: catId,
+      typeId: typId,
+      section: 'UNISEX',
+      color: '',
+      size: '',
       condition,
       barcode,
-      'SINGLE',
-      1,
-      quickAddForm.value.box_id || undefined,
+      stockType: 'SINGLE',
+      quantity: 1,
+      boxId: quickAddForm.value.box_id || undefined,
       productWeight,
-      0,
-      'Quick register draft entry',
-      authStore.user?.email || 'admin@brandwala.com',
-      {
+      extraWeight: 0,
+      note: 'Quick register draft entry',
+      userEmail: authStore.user?.email || 'admin@brandwala.com',
+      pricing: {
         cost_of_goods_sold: 0,
         target_price: 0,
         listed_unit_price: 0,
         extra_expense_cost: 0,
       },
-      undefined,
-      null,
-      settingsStore.defaultOriginUnitPrice,
-      0,
-    );
+      imageUrl: undefined,
+      shelfId: null,
+      originUnitPrice: settings.value?.default_origin_unit_price ?? 0,
+      extraOriginUnitPrice: 0,
+    });
 
     const { error: barcodeUpdateError } = await supabase
       .from('thrift_barcodes')
@@ -2855,11 +2863,11 @@ async function submitQuickAdd() {
       pendingBlob,
       quickAddForm.value.shipment_id,
     );
-    await store.attachStockImage(
-      draftStock.id,
-      uploadedImage.secureUrl,
-      draftStock.inserted_by,
-    );
+    await attachStockImageMutation.mutateAsync({
+      id: draftStock.id,
+      imageUrl: uploadedImage.secureUrl,
+      insertedBy: draftStock.inserted_by,
+    });
 
     $q.notify({
       type: 'positive',
@@ -2916,7 +2924,7 @@ function openEditDialog(row: ThriftStock) {
     extra_weight: row.extra_weight || 0,
     note: row.note || '',
   };
-  originUnitPrice.value = row.origin_unit_price ?? settingsStore.defaultOriginUnitPrice;
+  originUnitPrice.value = row.origin_unit_price ?? settings.value?.default_origin_unit_price ?? 0;
   extraOriginUnitPrice.value = row.extra_origin_unit_price ?? 0;
   additionalChargesCost.value = row.additional_charges_cost ?? 0;
   pricing.value = buildPricingFromRow(row);
@@ -2926,9 +2934,8 @@ function openEditDialog(row: ThriftStock) {
 async function updateStatus(stockId: number, status: string) {
   actionLoading.value = true;
   try {
-    await store.updateStockStatus(stockId, status);
+    await updateStockStatusMutation.mutateAsync({ id: stockId, status });
     $q.notify({ type: 'positive', message: `Stock marked as ${status}` });
-    await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
   } finally {
@@ -2959,7 +2966,6 @@ async function deleteItem() {
     }
     selectedRow.value = null;
     selectedStockIds.value = selectedStockIds.value.filter((id) => id !== deletedId);
-    await loadStockPage();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {
@@ -2995,7 +3001,6 @@ async function deleteSelectedItems() {
       for (const shipmentId of shipmentIds) {
         invalidateShipmentCache(shipmentId);
       }
-      await loadStockPage();
     }
 
     if (failures.length === 0) {
@@ -3058,7 +3063,10 @@ async function onSubmit() {
     if (!finalPricing.is_listed_price_manual) {
       const shipment = shipmentById.value.get(form.value.shipment_id!);
       if (shipment) {
-        const settings = settingsStore.opsCostSettingsForEngine;
+        const opsCostSettings = {
+          hand_tag_unit_cost: settings.value?.hand_tag_unit_cost ?? 0,
+          sticker_unit_cost: settings.value?.sticker_unit_cost ?? 0,
+        };
         const stockInput: ThriftStockCostInput = {
           quantity: form.value.quantity || 0,
           product_weight: form.value.product_weight || 0,
@@ -3081,7 +3089,7 @@ async function onSubmit() {
         const breakdown = computeThriftUnitCosts(
           stockInput,
           shipment,
-          settings,
+          settings.value || {},
           Math.max(U, 1),
           finalPricing,
           mergedStocks,
@@ -3133,13 +3141,13 @@ async function onSubmit() {
         imagePayload = uploaded.secureUrl;
       }
 
-      await store.updateStock(
-        editingId.value,
-        stockData satisfies Partial<ThriftStock>,
-        finalPricing,
-        imageChanged ? imagePayload : undefined,
-        imageChanged ? null : undefined,
-      );
+      await updateStockMutation.mutateAsync({
+        id: editingId.value,
+        stock: stockData satisfies Partial<ThriftStock>,
+        pricing: finalPricing,
+        imageUrl: imageChanged ? imagePayload : undefined,
+        driveFileId: imageChanged ? null : undefined,
+      });
 
       if (imageChanged && previousImageUrl) {
         await cleanupStockImageAssets({
@@ -3150,32 +3158,32 @@ async function onSubmit() {
       orphanImage = null;
       $q.notify({ type: 'positive', message: 'Thrift stock updated successfully' });
     } else {
-      const created = await store.createStock(
-        authStore.tenantId,
-        form.value.shipment_id!,
-        form.value.name,
-        form.value.brand_name,
-        form.value.category_id!,
-        form.value.type_id!,
-        form.value.section || 'UNISEX',
-        form.value.color,
-        form.value.size,
-        form.value.condition || 'EXCELLENT',
-        form.value.barcode,
-        'SINGLE',
-        form.value.quantity,
-        form.value.box_id || undefined,
-        form.value.product_weight || undefined,
-        form.value.extra_weight || undefined,
-        form.value.note,
-        authStore.user?.email || 'admin@brandwala.com',
-        finalPricing,
-        undefined,
-        form.value.shelf_id,
-        originUnitPrice.value || undefined,
-        extraOriginUnitPrice.value || undefined,
-        additionalChargesCost.value || undefined,
-      );
+      const created = await createStockMutation.mutateAsync({
+        tenantId: authStore.tenantId,
+        shipmentId: form.value.shipment_id!,
+        name: form.value.name,
+        brandName: form.value.brand_name,
+        categoryId: form.value.category_id!,
+        typeId: form.value.type_id!,
+        section: form.value.section || 'UNISEX',
+        color: form.value.color,
+        size: form.value.size,
+        condition: form.value.condition || 'EXCELLENT',
+        barcode: form.value.barcode,
+        stockType: 'SINGLE',
+        quantity: form.value.quantity,
+        boxId: form.value.box_id || undefined,
+        productWeight: form.value.product_weight || undefined,
+        extraWeight: form.value.extra_weight || undefined,
+        note: form.value.note,
+        userEmail: authStore.user?.email || 'admin@brandwala.com',
+        pricing: finalPricing,
+        imageUrl: undefined,
+        shelfId: form.value.shelf_id,
+        originUnitPrice: originUnitPrice.value || undefined,
+        extraOriginUnitPrice: extraOriginUnitPrice.value || undefined,
+        additionalChargesCost: additionalChargesCost.value || undefined,
+      });
 
       if (editImage.value.pendingBlob && !editImage.value.removed) {
         const uploaded = await uploadStockImageBlob(
@@ -3185,11 +3193,11 @@ async function onSubmit() {
           form.value.shipment_id,
         );
         orphanImage = uploaded;
-        await store.attachStockImage(
-          created.id,
-          uploaded.secureUrl,
-          created.inserted_by,
-        );
+        await attachStockImageMutation.mutateAsync({
+          id: created.id,
+          imageUrl: uploaded.secureUrl,
+          insertedBy: created.inserted_by,
+        });
       }
 
       orphanImage = null;
@@ -3206,7 +3214,6 @@ async function onSubmit() {
     }
     resetEditImage();
     dialogOpen.value = false;
-    await loadStockPage();
   } catch (err: unknown) {
     if (orphanImage) {
       await cleanupStockImageAssets({

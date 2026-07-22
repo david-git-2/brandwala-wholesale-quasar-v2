@@ -311,7 +311,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 
 const route = useRoute();
@@ -319,7 +319,9 @@ const router = useRouter();
 const cartStore = useShopCartStore();
 const storefrontStore = useShopStorefrontStore();
 const orderStore = useShopOrderStore();
-const currencyStore = useThriftCurrencyStore();
+
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 
 const placingOrder = ref(false);
 
@@ -331,14 +333,14 @@ const shopId = computed(() => {
     return storefrontStore.shopDetails.id;
   }
 
-  const storedId = localStorage.getItem('last_visited_shop_id');
+  const storedId = localStorage.getItem('active_shop_id');
   return storedId ? Number(storedId) : null;
 });
 
 const currencySymbol = computed(() => {
   const shop = storefrontStore.shopDetails;
   if (shop?.sell_currency_id) {
-    const curr = currencyStore.currencyById(shop.sell_currency_id);
+    const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
     if (curr?.symbol) return curr.symbol;
   }
   return '£';
@@ -519,7 +521,6 @@ const formatCartTotal = () => {
 
 onMounted(async () => {
   editedQuantities.value = {};
-  await currencyStore.loadCurrencies();
   if (shopId.value) {
     await cartStore.fetchCart(shopId.value);
     if (!storefrontStore.permissions || !storefrontStore.shopDetails) {

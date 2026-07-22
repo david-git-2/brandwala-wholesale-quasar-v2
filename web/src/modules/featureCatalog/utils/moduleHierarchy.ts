@@ -101,6 +101,25 @@ const getSubmoduleSectionAndWeight = (
     }
   }
 
+  if (parentKey === 'thrift') {
+    switch (moduleKey) {
+      case 'thrift_stock':
+        return { section: 'Inventory & Tags', weight: 10 };
+      case 'thrift_shipment':
+      case 'thrift_box':
+      case 'thrift_shelf':
+        return { section: 'Logistics & Storage', weight: 20 };
+      case 'thrift_category':
+      case 'thrift_type':
+        return { section: 'Classification', weight: 30 };
+      case 'thrift_barcode':
+      case 'thrift_settings':
+        return { section: 'Tools & Settings', weight: 40 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
   return { section: '', weight: 99 };
 };
 

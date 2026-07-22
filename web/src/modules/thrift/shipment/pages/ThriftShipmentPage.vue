@@ -120,7 +120,7 @@
                 outlined
                 dense
                 label="Purchase currency *"
-                :options="currencyStore.currencies"
+                :options="currencies"
                 option-value="id"
                 :option-label="currencyOptionLabel"
                 emit-value
@@ -135,7 +135,7 @@
                 outlined
                 dense
                 label="Cost currency *"
-                :options="currencyStore.currencies"
+                :options="currencies"
                 option-value="id"
                 :option-label="currencyOptionLabel"
                 emit-value
@@ -279,26 +279,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { useThriftShipmentsQuery } from '../composables/useThriftShipmentQuery';
+import {
+  useCreateShipmentMutation,
+  useUpdateShipmentMutation,
+  useDeleteShipmentMutation,
+} from '../composables/useThriftShipmentMutations';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
-import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
 import { resolveActiveCurrencyId } from 'src/modules/tenant/utils/tenantPreferenceUtils';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
-import { thriftShipmentRepository } from '../repositories/thriftShipmentRepository';
 import type { ThriftShipment } from '../types';
 import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
-const currencyStore = useThriftCurrencyStore();
-const preferenceStore = useTenantPreferenceStore();
-const settingsStore = useThriftSettingsStore();
+const { tenantId } = storeToRefs(authStore);
 
-const shipments = ref<ThriftShipment[]>([]);
-const loading = ref(false);
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
+const { data: shipmentsData, isLoading: loading } = useThriftShipmentsQuery(tenantId);
+const shipments = computed(() => shipmentsData.value || []);
+
+const createMutation = useCreateShipmentMutation(tenantId);
+const updateMutation = useUpdateShipmentMutation(tenantId);
+const deleteMutation = useDeleteShipmentMutation(tenantId);
+
+const preferenceStore = useTenantPreferenceStore();
+
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
@@ -351,28 +363,6 @@ function currencyOptionLabel(option: ThriftCurrency) {
   return `${option.code} (${option.symbol}) — ${option.name}`;
 }
 
-async function loadShipments() {
-  if (!authStore.tenantId) return;
-  loading.value = true;
-  try {
-    const list = await thriftShipmentRepository.fetchShipments(authStore.tenantId);
-    shipments.value = list;
-  } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load shipments' });
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(async () => {
-  if (!authStore.tenantId) return;
-  await Promise.all([
-    currencyStore.loadCurrencies(),
-    settingsStore.loadSettings(authStore.tenantId),
-    loadShipments(),
-  ]);
-});
-
 function downloadShipmentImages(row: ThriftShipment) {
   $q.dialog({
     component: ShipmentImageDownloadDialog,
@@ -381,12 +371,12 @@ function downloadShipmentImages(row: ThriftShipment) {
 }
 
 function defaultPurchaseCurrencyId(): number | null {
-  const activeIds = currencyStore.currencies.map((currency) => currency.id);
+  const activeIds = currencies.value.map((currency) => currency.id);
   return resolveActiveCurrencyId(preferenceStore.thriftDefaultPurchaseCurrencyId, activeIds);
 }
 
 function defaultCostCurrencyId(): number | null {
-  const activeIds = currencyStore.currencies.map((currency) => currency.id);
+  const activeIds = currencies.value.map((currency) => currency.id);
   return resolveActiveCurrencyId(preferenceStore.thriftDefaultCostCurrencyId, activeIds);
 }
 
@@ -447,17 +437,16 @@ async function save() {
     };
 
     if (editingId.value) {
-      await thriftShipmentRepository.updateShipment(editingId.value, payload);
+      await updateMutation.mutateAsync({ id: editingId.value, input: payload });
       $q.notify({ type: 'positive', message: 'Shipment updated successfully' });
     } else {
-      await thriftShipmentRepository.createShipment({
+      await createMutation.mutateAsync({
         ...payload,
         inserted_by: authStore.user?.email || '',
       });
       $q.notify({ type: 'positive', message: 'Shipment created successfully' });
     }
     dialogOpen.value = false;
-    await loadShipments();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
   } finally {
@@ -474,11 +463,10 @@ async function deleteItem() {
   if (!selectedRow.value) return;
   $q.loading.show();
   try {
-    await thriftShipmentRepository.deleteShipment(selectedRow.value.id);
+    await deleteMutation.mutateAsync(selectedRow.value.id);
     $q.notify({ type: 'positive', message: 'Shipment deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
-    await loadShipments();
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {

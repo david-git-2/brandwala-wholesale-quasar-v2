@@ -10,12 +10,12 @@
     <q-card flat class="floating-surface shadow-1">
       <q-table
         flat
-        :rows="currencyStore.currencies"
+        :rows="currencies"
         :columns="columns"
         row-key="id"
         v-model:pagination="tablePagination"
         :rows-per-page-options="[10, 20, 50]"
-        :loading="currencyStore.loading"
+        :loading="isLoading"
         class="thrift-table"
       >
         <template #body-cell-sl="props">
@@ -29,11 +29,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useThriftCurrencyStore } from '../stores/thriftCurrencyStore';
+import { ref, computed } from 'vue';
+import { useThriftCurrenciesQuery } from '../composables/useThriftCurrenciesQuery';
 import type { QTableColumn } from 'quasar';
 
-const currencyStore = useThriftCurrencyStore();
+const { data: currenciesData, isLoading } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 
 const tablePagination = ref({ page: 1, rowsPerPage: 20 });
 
@@ -73,10 +74,6 @@ const columns: QTableColumn[] = [
   { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
   { name: 'country', align: 'left', label: 'Country', field: 'country', sortable: true },
 ];
-
-onMounted(async () => {
-  await currencyStore.loadCurrencies();
-});
 </script>
 
 <style scoped>

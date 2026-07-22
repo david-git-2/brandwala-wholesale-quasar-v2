@@ -594,14 +594,15 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { date, useQuasar, copyToClipboard as quasarCopyToClipboard } from 'quasar';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { supabase } from 'src/boot/supabase';
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const orderStore = useShopOrderStore();
-const currencyStore = useThriftCurrencyStore();
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 const $q = useQuasar();
 
 const statusDotColor = (currentStatus: string) => {
@@ -826,14 +827,13 @@ const orderId = computed(() => Number(route.params.id));
 
 const currencySymbol = computed(() => {
   if (shopSellCurrencyId.value) {
-    const curr = currencyStore.currencyById(shopSellCurrencyId.value);
+    const curr = currencies.value.find((c) => c.id === shopSellCurrencyId.value);
     if (curr?.symbol) return curr.symbol;
   }
   return '£';
 });
 
 onMounted(async () => {
-  await currencyStore.loadCurrencies();
   if (orderId.value) {
     const res = await orderStore.fetchOrderDetails(orderId.value);
     if (res.success && res.data) {

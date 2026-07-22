@@ -30,7 +30,7 @@ export interface ThriftBarcodeListParams {
   tenantId: number;
   page?: number;
   pageSize?: number;
-  search?: string;
+  search?: string | undefined;
   isPrinted?: number | null;
   status?: string | null;
 }

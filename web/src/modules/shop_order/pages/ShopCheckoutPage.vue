@@ -380,7 +380,7 @@ import { useI18n } from 'vue-i18n';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
@@ -399,7 +399,8 @@ const { t } = useI18n();
 const cartStore = useShopCartStore();
 const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
-const currencyStore = useThriftCurrencyStore();
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
 const recipientProfileStore = useRecipientProfileStore();
 const lastLookupPhone = ref('');
 
@@ -592,7 +593,7 @@ watch(shopType, async (type) => {
 const currencySymbol = computed(() => {
   const shop = storefrontStore.shopDetails;
   if (shop?.sell_currency_id) {
-    const curr = currencyStore.currencyById(shop.sell_currency_id);
+    const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
     if (curr?.symbol) return curr.symbol;
   }
   return '£';
@@ -615,7 +616,6 @@ watch(
 
 onMounted(async () => {
   await loadLocationData();
-  await currencyStore.loadCurrencies();
   if (!cartStore.cart && shopId.value) {
     await cartStore.fetchCart(shopId.value);
   }

@@ -170,17 +170,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
+import { useQueryClient } from '@tanstack/vue-query';
+import { useThriftBoxesQuery } from '../../shared/composables/useThriftMasterDataQuery';
+import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';
+import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
+const queryClient = useQueryClient();
 
-const boxes = ref<Array<Record<string, unknown>>>([]);
-const shipments = ref<Array<Record<string, unknown>>>([]);
-const loading = ref(false);
+const tenantIdRef = computed(() => authStore.tenantId ?? 0);
+
+const { data: boxesData, isLoading: loading } = useThriftBoxesQuery(tenantIdRef);
+const boxes = computed(() => (boxesData.value || []) as unknown as Array<Record<string, unknown>>);
+
+const { data: shipmentsData } = useThriftShipmentsQuery(tenantIdRef);
+const shipments = computed(() => (shipmentsData.value || []) as unknown as Array<Record<string, unknown>>);
+
+
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 const editingId = ref<number | null>(null);
@@ -225,42 +236,10 @@ const columns: QTableColumn[] = [
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
 
-async function loadShipments() {
-  if (!authStore.tenantId) return;
-  const { data } = await supabase
-    .from('thrift_shipments')
-    .select('id, name')
-    .eq('tenant_id', authStore.tenantId)
-    .order('name', { ascending: true });
-  shipments.value = data || [];
-}
-
-async function loadBoxes() {
-  if (!authStore.tenantId) return;
-  loading.value = true;
-  try {
-    const { data, error } = await supabase
-      .from('thrift_boxes')
-      .select('*')
-      .eq('tenant_id', authStore.tenantId)
-      .order('name', { ascending: true });
-    if (error) throw error;
-    boxes.value = (data || []) as Array<Record<string, unknown>>;
-  } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load boxes' });
-  } finally {
-    loading.value = false;
-  }
-}
-
 function getShipmentName(shipmentId: number) {
   const sh = shipments.value.find((s) => s.id === shipmentId);
   return sh ? (sh.name as string) : `Shipment #${shipmentId}`;
 }
-
-onMounted(async () => {
-  await Promise.all([loadShipments(), loadBoxes()]);
-});
 
 function openDialog(row?: Record<string, unknown>) {
   if (row) {
@@ -311,7 +290,7 @@ async function save() {
       $q.notify({ type: 'positive', message: 'Box created successfully' });
     }
     dialogOpen.value = false;
-    await loadBoxes();
+    await queryClient.invalidateQueries({ queryKey: thriftQueryKeys.boxes(tenantIdRef.value) });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
   } finally {
@@ -333,7 +312,7 @@ async function deleteItem() {
     $q.notify({ type: 'positive', message: 'Box deleted successfully' });
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
-    await loadBoxes();
+    await queryClient.invalidateQueries({ queryKey: thriftQueryKeys.boxes(tenantIdRef.value) });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
   } finally {

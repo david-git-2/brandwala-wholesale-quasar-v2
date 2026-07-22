@@ -87,10 +87,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore';
+import { useQuery } from '@tanstack/vue-query';
+import { useMarkBarcodesPrintedMutation } from '../composables/useThriftBarcodeMutations';
+import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';
 import BarcodeRenderer from '../components/BarcodeRenderer.vue';
 import type { ThriftBarcode } from '../types';
 import { isBarcodePrintEligible } from '../types';
@@ -98,9 +100,8 @@ import { isBarcodePrintEligible } from '../types';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const barcodeStore = useThriftBarcodeStore();
+const markPrintedMutation = useMarkBarcodesPrintedMutation();
 
-const loading = ref(false);
 const printList = ref<ThriftBarcode[]>([]);
 const showPostPrintDialog = ref(false);
 
@@ -112,6 +113,26 @@ const barcodeIds = computed(() => {
     .map(Number)
     .filter((n) => Number.isFinite(n) && n > 0);
 });
+
+const { data: barcodeRows, isLoading: isQueryLoading } = useQuery({
+  queryKey: computed(() => ['thrift', 'barcodes-by-ids', barcodeIds.value]),
+  queryFn: () => thriftBarcodeRepository.fetchBarcodesByIds(barcodeIds.value),
+  enabled: computed(() => !!authStore.tenantId && barcodeIds.value.length > 0),
+  staleTime: 2 * 60 * 1000,
+});
+
+watch(
+  barcodeRows,
+  (rows) => {
+    if (rows) {
+      printList.value = rows.filter(isBarcodePrintEligible);
+    }
+  },
+  { immediate: true },
+);
+
+const actionLoading = ref(false);
+const loading = computed(() => isQueryLoading.value || actionLoading.value);
 
 const goBack = () => {
   void router.push({ name: 'thrift-barcodes-page' });
@@ -126,35 +147,19 @@ const printPage = () => {
 const closePostPrint = async (markAsPrinted: boolean) => {
   showPostPrintDialog.value = false;
   if (markAsPrinted && authStore.tenantId && printList.value.length > 0) {
-    loading.value = true;
+    actionLoading.value = true;
     try {
       const ids = printList.value.map((b) => b.id);
-      await barcodeStore.markBarcodesPrinted(ids, authStore.tenantId);
+      await markPrintedMutation.mutateAsync(ids);
 
       printList.value = printList.value.map((b) => ({ ...b, is_printed: 1 }));
     } catch (err) {
       console.error('Failed to update printed status:', err);
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
 };
-
-onMounted(async () => {
-  if (!authStore.tenantId) return;
-  loading.value = true;
-
-  try {
-    if (barcodeIds.value.length > 0) {
-      const rows = await barcodeStore.fetchBarcodesByIds(barcodeIds.value);
-      printList.value = rows.filter(isBarcodePrintEligible);
-    }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    loading.value = false;
-  }
-});
 </script>
 
 <style scoped>

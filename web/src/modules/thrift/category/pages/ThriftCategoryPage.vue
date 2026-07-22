@@ -27,12 +27,12 @@
     <q-card flat class="floating-surface shadow-1">
       <q-table
         flat
-        :rows="thriftStore.categories"
+        :rows="categoriesList"
         :columns="columns"
         row-key="id"
         v-model:pagination="tablePagination"
         :rows-per-page-options="[10, 20, 50]"
-        :loading="thriftStore.loading"
+        :loading="categoriesLoading"
         class="thrift-table"
       >
         <template #body-cell-sl="props">
@@ -146,15 +146,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStore } from '../../shared/stores/thriftStore';
+import { useThriftCategoriesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftCategory } from '../types';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const thriftStore = useThriftStore();
+
+const tenantIdRef = computed(() => authStore.tenantId ?? 0);
+const { data: categoriesData, isLoading: categoriesLoading, refetch: refetchCategories } = useThriftCategoriesQuery(tenantIdRef);
+
+const categoriesList = computed(() => categoriesData.value ?? []);
 
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
@@ -188,12 +194,6 @@ const columns: QTableColumn[] = [
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
 
-onMounted(async () => {
-  if (authStore.tenantId) {
-    await thriftStore.loadModuleData(authStore.tenantId);
-  }
-});
-
 function openDialog(row?: ThriftCategory) {
   if (row) {
     editingId.value = row.id;
@@ -221,6 +221,7 @@ async function save() {
       );
       $q.notify({ type: 'positive', message: 'Category created' });
     }
+    await refetchCategories();
     dialogOpen.value = false;
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
@@ -240,6 +241,7 @@ async function deleteItem() {
   try {
     await thriftStore.deleteCategory(selectedRow.value.id);
     $q.notify({ type: 'positive', message: 'Category deleted' });
+    await refetchCategories();
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
   } catch (err: unknown) {

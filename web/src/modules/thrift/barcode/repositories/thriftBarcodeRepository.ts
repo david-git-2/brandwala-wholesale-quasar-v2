@@ -82,4 +82,16 @@ export const thriftBarcodeRepository = {
 
     if (error) throw error;
   },
+
+  async deleteBarcode(id: number): Promise<void> {
+    const { error } = await supabase.from('thrift_barcodes').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteBarcodes(ids: number[]): Promise<void> {
+    if (!ids.length) return;
+    const { error } = await supabase.from('thrift_barcodes').delete().in('id', ids);
+    if (error) throw error;
+  },
 };
+

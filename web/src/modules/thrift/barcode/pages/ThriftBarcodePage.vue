@@ -59,7 +59,7 @@
               icon="add"
               label="Generate"
               class="full-width pill-btn"
-              :loading="loading"
+              :loading="generateMutation.isPending.value"
             />
           </div>
         </q-form>
@@ -217,6 +217,7 @@
             label="Generate"
             color="primary"
             class="pill-btn"
+            :loading="generateMutation.isPending.value"
             @click="handleGenerate"
             v-close-popup
           />
@@ -326,6 +327,7 @@
       </q-card>
     </q-dialog>
 
+
     <!-- Single Barcode Preview Dialog -->
     <q-dialog v-model="previewDialog">
       <q-card style="min-width: 320px; text-align: center; border-radius: 14px">
@@ -372,28 +374,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue';
-import { storeToRefs } from 'pinia';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftBarcodeStore } from '../stores/thriftBarcodeStore';
+import { useThriftBarcodesQuery, type BarcodeQueryParams } from '../composables/useThriftBarcodesQuery';
+import { useGenerateBarcodesMutation } from '../composables/useThriftBarcodeMutations';
+import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';
 import BarcodeRenderer from '../components/BarcodeRenderer.vue';
-import type { ThriftBarcode } from '../types';
+import type { ThriftBarcode, ThriftBarcodeListMeta } from '../types';
 import { isBarcodePrintEligible } from '../types';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
-const barcodeStore = useThriftBarcodeStore();
-
-const { barcodes, loading, error, page, total, meta } = storeToRefs(barcodeStore);
-
-const tablePagination = ref({
-  page: 1,
-  rowsPerPage: 50,
-  rowsNumber: 0,
-});
 
 // Generator State
 const genQuantity = ref(50);
@@ -406,10 +400,12 @@ const previewBarcode = ref<ThriftBarcode | null>(null);
 const printDialog = ref(false);
 const printQty = ref(50);
 
-// Filter State
+// Filter & Pagination State
 const filterText = ref('');
 const filterPrinted = ref('ALL');
 const filterStatus = ref('ALL');
+const page = ref(1);
+const pageSize = ref(50);
 
 const printedOptions = [
   { label: 'All Printed Statuses', value: 'ALL' },
@@ -422,6 +418,52 @@ const statusOptions = [
   { label: 'Available', value: 'AVAILABLE' },
   { label: 'Used', value: 'USED' },
 ];
+
+function mapPrintedFilter(value: string): number | null {
+  if (value === 'PRINTED') return 1;
+  if (value === 'UNPRINTED') return 0;
+  return null;
+}
+
+function mapStatusFilter(value: string): string | null {
+  return value === 'ALL' ? null : value;
+}
+
+const queryParams = computed<BarcodeQueryParams>(() => ({
+  tenantId: authStore.tenantId ?? 0,
+  page: page.value,
+  pageSize: pageSize.value,
+  search: filterText.value.trim() || undefined,
+  isPrinted: mapPrintedFilter(filterPrinted.value),
+  status: mapStatusFilter(filterStatus.value),
+}));
+
+const { data: barcodeData, isLoading: loading, error: queryError } = useThriftBarcodesQuery(queryParams);
+
+const generateMutation = useGenerateBarcodesMutation();
+
+const barcodes = computed(() => barcodeData.value?.data ?? []);
+const meta = computed<ThriftBarcodeListMeta>(
+  () =>
+    barcodeData.value?.meta ?? {
+      total: 0,
+      page: 1,
+      page_size: 50,
+      total_pages: 0,
+      unprinted_total: 0,
+      available_total: 0,
+      printable_total: 0,
+      latest_current_year_barcode_id: null,
+    },
+);
+
+const error = computed(() => (queryError.value as Error | null)?.message ?? null);
+
+const tablePagination = computed(() => ({
+  page: page.value,
+  rowsPerPage: pageSize.value,
+  rowsNumber: meta.value.total,
+}));
 
 const selected = ref<ThriftBarcode[]>([]);
 
@@ -467,20 +509,20 @@ const printableCount = computed(() => meta.value.printable_total);
 const hasSufficientForBulk = computed(() => printableCount.value >= printQty.value);
 const selectedPrintableCount = computed(() => selected.value.filter(isBarcodePrintEligible).length);
 
-function mapPrintedFilter(value: string): number | null {
-  if (value === 'PRINTED') return 1;
-  if (value === 'UNPRINTED') return 0;
-  return null;
-}
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-function mapStatusFilter(value: string): string | null {
-  return value === 'ALL' ? null : value;
-}
+watch([filterText, filterPrinted, filterStatus], () => {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    page.value = 1;
+    selected.value = [];
+  }, 300);
+});
 
-function syncTablePagination() {
-  tablePagination.value.page = page.value;
-  tablePagination.value.rowsNumber = total.value;
-}
+const onTableRequest = (props: { pagination: { page: number; rowsPerPage: number } }) => {
+  page.value = props.pagination.page;
+  selected.value = [];
+};
 
 const estimatedRange = computed(() => {
   const yr = currentYear.value;
@@ -546,32 +588,6 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString();
 };
 
-async function loadBarcodes(requestedPage = 1) {
-  if (!authStore.tenantId) return;
-  selected.value = [];
-  await barcodeStore.loadBarcodes(authStore.tenantId, {
-    page: requestedPage,
-    pageSize: 50,
-    search: filterText.value,
-    isPrinted: mapPrintedFilter(filterPrinted.value),
-    status: mapStatusFilter(filterStatus.value),
-  });
-  syncTablePagination();
-}
-
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
-
-watch([filterText, filterPrinted, filterStatus], () => {
-  if (searchDebounce) clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    void loadBarcodes(1);
-  }, 300);
-});
-
-const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  await loadBarcodes(props.pagination.page);
-};
-
 const showConfirmGenDialog = () => {
   confirmGenDialog.value = true;
 };
@@ -579,15 +595,22 @@ const showConfirmGenDialog = () => {
 const handleGenerate = async () => {
   if (!authStore.tenantId) return;
   try {
-    await barcodeStore.generateBarcodes({
+    await generateMutation.mutateAsync({
       tenantId: authStore.tenantId,
       quantity: genQuantity.value,
       insertedBy: authStore.user?.email || 'System',
     });
     selected.value = [];
-    syncTablePagination();
-  } catch {
-    // Error handled by store
+    page.value = 1;
+    $q.notify({
+      type: 'positive',
+      message: `Successfully generated ${genQuantity.value} barcodes.`,
+    });
+  } catch (err: unknown) {
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Failed to generate barcodes',
+    });
   }
 };
 
@@ -629,7 +652,15 @@ const confirmSelectedPrint = () => {
 const confirmBulkPrint = async () => {
   if (!authStore.tenantId) return;
   try {
-    const toPrint = await barcodeStore.fetchPrintableForPrint(authStore.tenantId, printQty.value);
+    const result = await thriftBarcodeRepository.fetchBarcodesPaginated({
+      tenantId: authStore.tenantId,
+      page: 1,
+      pageSize: printQty.value,
+      isPrinted: 0,
+      status: 'AVAILABLE',
+    });
+
+    const toPrint = result.data;
 
     if (toPrint.length === 0) {
       $q.notify({
@@ -649,10 +680,6 @@ const confirmBulkPrint = async () => {
     $q.notify({ type: 'negative', message: 'Failed to load barcodes for printing.' });
   }
 };
-
-onMounted(() => {
-  void loadBarcodes(1);
-});
 </script>
 
 <style scoped>

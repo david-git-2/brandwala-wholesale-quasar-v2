@@ -220,7 +220,7 @@
               >
                 <div>
                   Sample Preview (using Default Origin:
-                  {{ formatPurchase(settingsStore.settings?.default_origin_unit_price || 0) }}):
+                  {{ formatPurchase(settings?.default_origin_unit_price || 0) }}):
                 </div>
                 <div class="row justify-between text-weight-bold text-grey-9 q-mt-xs">
                   <span>Suggested Sell:</span>
@@ -462,12 +462,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
-import { useThriftSettingsStore } from 'src/modules/thrift/settings/stores/thriftSettingsStore';
-import { thriftShipmentRepository } from '../repositories/thriftShipmentRepository';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { useThriftSettingsQuery } from 'src/modules/thrift/settings/composables/useThriftSettingsQuery';
+import { useThriftShipmentDetailQuery } from '../composables/useThriftShipmentQuery';
+import { useUpdateShipmentMutation } from '../composables/useThriftShipmentMutations';
+import { useThriftStocksByShipmentQuery } from '../../stock/composables/useThriftStocksQuery';
 import { thriftStockRepository } from '../../stock/repositories/thriftStockRepository';
 import type { ThriftShipment } from '../types';
 import type { ThriftStock, ThriftStockMeasurements } from '../../stock/types';
@@ -481,17 +484,33 @@ import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedP
 import { useQuasar } from 'quasar';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
+
 const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const currencyStore = useThriftCurrencyStore();
-const settingsStore = useThriftSettingsStore();
+const { tenantId } = storeToRefs(authStore);
 
-const shipmentId = Number(route.params.id);
-const shipment = ref<ThriftShipment | null>(null);
-const stocks = ref<ThriftStock[]>([]);
-const loading = ref(false);
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
+const { data: settingsData } = useThriftSettingsQuery(tenantId);
+const settings = computed(() => settingsData.value || null);
+
+const shipmentIdRef = computed(() => Number(route.params.id) || null);
+const { data: shipmentData, isLoading: shipmentLoading } = useThriftShipmentDetailQuery(
+  tenantId,
+  shipmentIdRef,
+);
+const shipment = computed(() => shipmentData.value || null);
+
+const { data: shipmentStocksData, isLoading: stocksLoading, refetch: refetchStocks } =
+  useThriftStocksByShipmentQuery(tenantId, shipmentIdRef);
+const stocks = computed(() => shipmentStocksData.value || []);
+
+const updateMutation = useUpdateShipmentMutation(tenantId);
+
+const loading = computed(() => shipmentLoading.value || stocksLoading.value);
+
 const searchText = ref('');
 const isLeftColumnVisible = ref(true);
 
@@ -509,6 +528,25 @@ const costForm = ref({
   product_conversion_rate: null as number | null,
 });
 
+watch(
+  shipment,
+  (newShipment) => {
+    if (newShipment) {
+      costForm.value = {
+        total_cargo_weight_kg: newShipment.total_cargo_weight_kg ?? null,
+        cargo_rate: newShipment.cargo_rate ?? null,
+        cargo_conversion_rate: newShipment.cargo_conversion_rate ?? null,
+        labor_total_cost: newShipment.labor_total_cost ?? null,
+        transportation_total_cost: newShipment.transportation_total_cost ?? null,
+        washing_total_cost: newShipment.washing_total_cost ?? null,
+        default_markup_rate: newShipment.default_markup_rate ?? null,
+        product_conversion_rate: newShipment.product_conversion_rate ?? null,
+      };
+    }
+  },
+  { immediate: true },
+);
+
 const markupPercentage = computed({
   get: () =>
     costForm.value.default_markup_rate != null
@@ -520,7 +558,7 @@ const markupPercentage = computed({
 });
 
 const sampleSuggestedPrice = computed(() => {
-  const origin = settingsStore.settings?.default_origin_unit_price ?? 0;
+  const origin = settings.value?.default_origin_unit_price ?? 0;
   const prodConv = costForm.value.product_conversion_rate ?? 1.0;
   const productCost = origin * prodConv;
   const cargoShare = cargoSharePerUnit.value;
@@ -533,12 +571,14 @@ const sampleSuggestedPrice = computed(() => {
 // Currencies mapping helpers
 const purchaseCurrency = computed<ThriftCurrency | undefined>(() => {
   return shipment.value
-    ? currencyStore.currencyById(shipment.value.purchase_currency_id)
+    ? currencies.value.find((c) => c.id === shipment.value?.purchase_currency_id)
     : undefined;
 });
 
 const costCurrency = computed<ThriftCurrency | undefined>(() => {
-  return shipment.value ? currencyStore.currencyById(shipment.value.cost_currency_id) : undefined;
+  return shipment.value
+    ? currencies.value.find((c) => c.id === shipment.value?.cost_currency_id)
+    : undefined;
 });
 
 // Costing engine integration
@@ -555,7 +595,7 @@ const {
 } = useThriftShipmentCosting(
   shipment,
   stocks,
-  computed(() => settingsStore.settings),
+  settings,
 );
 
 // Client-side stock filtering
@@ -627,7 +667,7 @@ function goBack() {
 }
 
 function currencyCode(id: unknown): string {
-  const currency = currencyStore.currencyById(id as number);
+  const currency = currencies.value.find((c) => c.id === Number(id));
   return currency?.code ?? '—';
 }
 
@@ -643,52 +683,9 @@ function formatThriftAmount(amount: number, currency: ThriftCurrency | undefined
   if (currency?.symbol === '৳' || currency?.code === 'BDT') {
     return `${currency.symbol || '৳'}${Math.round(amount)}`;
   }
-  return `${currency?.symbol || '$'}${amount.toFixed(2)}`;
+  return `${currency?.symbol || ''}${amount.toFixed(2)}`;
 }
 
-async function loadData() {
-  if (!authStore.tenantId || !shipmentId) return;
-  loading.value = true;
-  try {
-    const [shipmentRow, stockRows] = await Promise.all([
-      thriftShipmentRepository.fetchShipmentById(authStore.tenantId, shipmentId),
-      thriftStockRepository.fetchStocksByShipment(authStore.tenantId, shipmentId),
-    ]);
-
-    if (!shipmentRow) {
-      $q.notify({ type: 'negative', message: 'Shipment not found' });
-      goBack();
-      return;
-    }
-
-    shipment.value = shipmentRow;
-    stocks.value = stockRows;
-
-    costForm.value = {
-      total_cargo_weight_kg: shipmentRow.total_cargo_weight_kg ?? null,
-      cargo_rate: shipmentRow.cargo_rate ?? null,
-      cargo_conversion_rate: shipmentRow.cargo_conversion_rate ?? null,
-      labor_total_cost: shipmentRow.labor_total_cost ?? null,
-      transportation_total_cost: shipmentRow.transportation_total_cost ?? null,
-      washing_total_cost: shipmentRow.washing_total_cost ?? null,
-      default_markup_rate: shipmentRow.default_markup_rate ?? null,
-      product_conversion_rate: shipmentRow.product_conversion_rate ?? null,
-    };
-  } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to load details' });
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(async () => {
-  if (!authStore.tenantId) return;
-  await Promise.all([
-    currencyStore.loadCurrencies(),
-    settingsStore.loadSettings(authStore.tenantId),
-    loadData(),
-  ]);
-});
 
 async function saveShipmentCosts() {
   if (!shipment.value) return;
@@ -703,8 +700,7 @@ async function saveShipmentCosts() {
       default_markup_rate: costForm.value.default_markup_rate,
       product_conversion_rate: costForm.value.product_conversion_rate,
     };
-    const updated = await thriftShipmentRepository.updateShipment(shipment.value.id, payload);
-    shipment.value = updated;
+    await updateMutation.mutateAsync({ id: shipment.value.id, input: payload });
 
     // Wait for the cost calculations to propagate
     await nextTick();
@@ -717,13 +713,10 @@ async function saveShipmentCosts() {
           const breakdown = costingBreakdowns.value[stock.id];
           if (!breakdown) return;
           const pricing = buildAutoListedPricingPatch(stock, breakdown);
-          const updatedStock = await thriftStockRepository.updateStock(stock.id, {}, pricing);
-          if (updatedStock.pricing) {
-            stock.pricing = updatedStock.pricing;
-          }
+          await thriftStockRepository.updateStock(stock.id, {}, pricing);
         }),
       );
-      stocks.value = [...stocks.value];
+      await refetchStocks();
     }
 
     $q.notify({ type: 'positive', message: 'Shipment costs and auto-prices saved successfully' });
@@ -745,8 +738,8 @@ async function saveStockValue(row: ThriftStock, field: string, value: number) {
       extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
     };
 
-    const updated = await thriftStockRepository.updateStock(row.id, { [field]: value }, pricing);
-    Object.assign(row, updated);
+    await thriftStockRepository.updateStock(row.id, { [field]: value }, pricing);
+    await refetchStocks();
     $q.notify({ type: 'positive', message: 'Item updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
@@ -783,7 +776,6 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
         ...pricingPatch,
       };
 
-      const settings = settingsStore.opsCostSettingsForEngine;
       const mergedStocks = stocks.value.map((item) =>
         item.id === row.id ? { ...item, pricing: currentPricing } : item,
       );
@@ -791,7 +783,7 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
       const breakdown = computeThriftUnitCosts(
         row,
         shipment.value,
-        settings,
+        settings.value || {},
         Math.max(U, 1),
         currentPricing,
         mergedStocks,
@@ -810,15 +802,8 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
       ...pricingPatch,
     };
 
-    const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
-    if (updated.pricing) {
-      row.pricing = updated.pricing;
-      const idx = stocks.value.findIndex((s) => s.id === row.id);
-      if (idx !== -1) {
-        stocks.value[idx]!.pricing = updated.pricing;
-        stocks.value = [...stocks.value];
-      }
-    }
+    await thriftStockRepository.updateStock(row.id, {}, pricing);
+    await refetchStocks();
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
@@ -870,9 +855,9 @@ function onMeasurementsUpdated(payload: {
   }
 }
 watch(
-  () => route.params.id,
-  (newVal) => {
-    if (newVal && Number(newVal) !== shipmentId) {
+  shipmentIdRef,
+  (newVal, oldVal) => {
+    if (newVal && oldVal && newVal !== oldVal) {
       window.location.reload();
     }
   },

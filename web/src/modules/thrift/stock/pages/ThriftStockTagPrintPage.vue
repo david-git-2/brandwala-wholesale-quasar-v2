@@ -43,24 +43,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useQuery } from '@tanstack/vue-query';
 import type { QTableColumn } from 'quasar';
-import { thriftShipmentRepository } from '../../shipment/repositories/thriftShipmentRepository';
+import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
 import ShipmentMarketingTagConfigDialog from '../../shipment/components/ShipmentMarketingTagConfigDialog.vue';
 import type { ThriftShipment } from '../../shipment/types';
-import type { PrintableTagCounts, ShipmentTagPrintRow } from '../types/marketingTag';
+import type { ShipmentTagPrintRow } from '../types/marketingTag';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-const loading = ref(false);
-const shipments = ref<ThriftShipment[]>([]);
-const countsMap = ref<Map<number, PrintableTagCounts>>(new Map());
+const tenantIdRef = computed(() => authStore.tenantId ?? 0);
+const { data: shipmentsData, isLoading: shipmentsLoading } = useThriftShipmentsQuery(tenantIdRef);
+const shipments = computed(() => shipmentsData.value ?? []);
+
+const { data: countsMapData, isLoading: countsLoading } = useQuery({
+  queryKey: computed(() => ['thrift', 'printable-tag-counts', { tenantId: tenantIdRef.value }]),
+  queryFn: () => thriftStockRepository.fetchPrintableTagCountsByShipment(tenantIdRef.value),
+  enabled: computed(() => !!tenantIdRef.value),
+  staleTime: 2 * 60 * 1000,
+});
+const countsMap = computed(() => countsMapData.value ?? new Map());
+
+const loading = computed(() => shipmentsLoading.value || countsLoading.value);
 
 const columns: QTableColumn[] = [
   {
@@ -103,23 +114,6 @@ function shipmentById(id: number): ThriftShipment | undefined {
   return shipments.value.find((s) => s.id === id);
 }
 
-async function loadData() {
-  if (!authStore.tenantId) return;
-  loading.value = true;
-  try {
-    const [shipmentList, counts] = await Promise.all([
-      thriftShipmentRepository.fetchShipments(authStore.tenantId),
-      thriftStockRepository.fetchPrintableTagCountsByShipment(authStore.tenantId),
-    ]);
-    shipments.value = shipmentList;
-    countsMap.value = counts;
-  } catch (err) {
-    console.error('Failed to load tag print page data:', err);
-  } finally {
-    loading.value = false;
-  }
-}
-
 function openConfig(row: ShipmentTagPrintRow) {
   const shipment = shipmentById(row.shipmentId);
   if (!shipment) return;
@@ -130,12 +124,6 @@ function openConfig(row: ShipmentTagPrintRow) {
       shipmentName: shipment.name,
       initialConfig: shipment.marketing_tag_config,
     },
-  }).onOk((updated: ThriftShipment) => {
-    const idx = shipments.value.findIndex((s) => s.id === updated.id);
-    if (idx !== -1) {
-      shipments.value[idx] = updated;
-      shipments.value = [...shipments.value];
-    }
   });
 }
 
@@ -145,10 +133,6 @@ function goToPreview(shipmentId: number) {
     params: { shipmentId },
   });
 }
-
-onMounted(() => {
-  void loadData();
-});
 </script>
 
 <style scoped>

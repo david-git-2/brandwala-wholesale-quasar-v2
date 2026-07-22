@@ -57,7 +57,7 @@
               <div class="col-12 col-sm-6">
                 <q-select
                   v-model="form.handTagUnitCurrencyId"
-                  :options="currencyStore.currencies"
+                  :options="currencies"
                   option-value="id"
                   :option-label="currencyOptionLabel"
                   emit-value
@@ -87,7 +87,7 @@
               <div class="col-12 col-sm-6">
                 <q-select
                   v-model="form.stickerUnitCurrencyId"
-                  :options="currencyStore.currencies"
+                  :options="currencies"
                   option-value="id"
                   :option-label="currencyOptionLabel"
                   emit-value
@@ -116,7 +116,7 @@
         size="sm"
         class="pill-btn slim-btn"
         label="Save Settings"
-        :loading="settingsStore.loading"
+        :loading="updateSettingsMutation.isPending.value"
         @click="save"
       />
     </div>
@@ -124,19 +124,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, watchEffect } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useThriftSettingsStore } from '../stores/thriftSettingsStore';
-import { useThriftCurrencyStore } from 'src/modules/thrift/currency/stores/thriftCurrencyStore';
+import {
+  useThriftSettingsQuery,
+  useUpdateThriftSettingsMutation,
+} from '../composables/useThriftSettingsQuery';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useQuasar } from 'quasar';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
-const settingsStore = useThriftSettingsStore();
-const currencyStore = useThriftCurrencyStore();
+const { tenantId } = storeToRefs(authStore);
 const preferenceStore = useTenantPreferenceStore();
+
+const { data: settings, isPending: isSettingsPending } = useThriftSettingsQuery(tenantId);
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value || []);
+const updateSettingsMutation = useUpdateThriftSettingsMutation(tenantId);
 
 const form = ref({
   defaultOriginUnitPrice: 0,
@@ -146,22 +154,19 @@ const form = ref({
   stickerUnitCurrencyId: null as number | null,
 });
 
-onMounted(async () => {
-  if (!authStore.tenantId) return;
-
-  await Promise.all([
-    settingsStore.loadSettings(authStore.tenantId),
-    currencyStore.loadCurrencies(),
-    preferenceStore.ensureLoaded(authStore.tenantId),
-  ]);
-
-  form.value.defaultOriginUnitPrice = settingsStore.defaultOriginUnitPrice;
-  form.value.handTagUnitCost = settingsStore.handTagUnitCost ?? null;
-  form.value.handTagUnitCurrencyId =
-    settingsStore.handTagUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
-  form.value.stickerUnitCost = settingsStore.stickerUnitCost ?? null;
-  form.value.stickerUnitCurrencyId =
-    settingsStore.stickerUnitCurrencyId || preferenceStore.thriftDefaultCostCurrencyId;
+watchEffect(() => {
+  if (tenantId.value) {
+    preferenceStore.ensureLoaded(tenantId.value);
+  }
+  if (settings.value) {
+    form.value.defaultOriginUnitPrice = settings.value.default_origin_unit_price ?? 0;
+    form.value.handTagUnitCost = settings.value.hand_tag_unit_cost ?? null;
+    form.value.handTagUnitCurrencyId =
+      settings.value.hand_tag_unit_currency_id || preferenceStore.thriftDefaultCostCurrencyId;
+    form.value.stickerUnitCost = settings.value.sticker_unit_cost ?? null;
+    form.value.stickerUnitCurrencyId =
+      settings.value.sticker_unit_currency_id || preferenceStore.thriftDefaultCostCurrencyId;
+  }
 });
 
 function currencyOptionLabel(option: ThriftCurrency) {
@@ -176,7 +181,7 @@ async function save() {
   }
 
   try {
-    await settingsStore.saveSettings(authStore.tenantId, {
+    await updateSettingsMutation.mutateAsync({
       defaultOriginUnitPrice: form.value.defaultOriginUnitPrice,
       handTagUnitCost: form.value.handTagUnitCost,
       handTagUnitCurrencyId: form.value.handTagUnitCurrencyId,

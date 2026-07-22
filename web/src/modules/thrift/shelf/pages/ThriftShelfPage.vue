@@ -25,12 +25,12 @@
     <q-card flat class="floating-surface shadow-1">
       <q-table
         flat
-        :rows="thriftStore.shelves"
+        :rows="shelvesList"
         :columns="columns"
         row-key="id"
         v-model:pagination="tablePagination"
         :rows-per-page-options="[10, 20, 50]"
-        :loading="thriftStore.loading"
+        :loading="shelvesLoading"
         class="thrift-table"
       >
         <template #body-cell-sl="props">
@@ -133,15 +133,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStore } from '../../shared/stores/thriftStore';
+import { useThriftShelvesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShelf } from '../types';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const thriftStore = useThriftStore();
+
+const tenantIdRef = computed(() => authStore.tenantId ?? 0);
+const { data: shelvesData, isLoading: shelvesLoading, refetch: refetchShelves } = useThriftShelvesQuery(tenantIdRef);
+
+const shelvesList = computed(() => shelvesData.value ?? []);
 
 const dialogOpen = ref(false);
 const deleteConfirmOpen = ref(false);
@@ -174,12 +180,6 @@ const columns: QTableColumn[] = [
   { name: 'location_bay', align: 'left', label: 'Location / Bay', field: 'location_bay' },
   { name: 'actions', align: 'right', label: '', field: 'actions' },
 ];
-
-onMounted(async () => {
-  if (authStore.tenantId) {
-    await thriftStore.loadModuleData(authStore.tenantId);
-  }
-});
 
 function openDialog(row?: ThriftShelf) {
   if (row) {
@@ -218,6 +218,7 @@ async function save() {
       );
       $q.notify({ type: 'positive', message: 'Shelf created' });
     }
+    await refetchShelves();
     dialogOpen.value = false;
   } catch (err: unknown) {
     $q.notify({ type: 'negative', message: (err as Error).message || 'Save failed' });
@@ -237,6 +238,7 @@ async function deleteItem() {
   try {
     await thriftStore.deleteShelf(selectedRow.value.id);
     $q.notify({ type: 'positive', message: 'Shelf deleted' });
+    await refetchShelves();
     deleteConfirmOpen.value = false;
     selectedRow.value = null;
   } catch (err: unknown) {

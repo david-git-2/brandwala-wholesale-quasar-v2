@@ -9,6 +9,7 @@ export type ModuleKey =
   | 'koba_retail'
   | 'koba_wholesale'
   | 'tasks'
+  | 'thrift'
   | 'thrift_stock'
   | 'thrift_shipment'
   | 'thrift_box'
@@ -285,9 +286,18 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'thrift',
+    name: 'Thrift Model',
+    description:
+      'Parent module for thrift stock inventory, shipments, boxes, shelves, categories, types, barcodes, and settings.',
+    navIcon: 'checkroom',
+    routes: [],
+  },
+  {
     key: 'thrift_stock',
     name: 'Thrift Stock',
     description: 'Manage inventory stock items, brands, and quantities.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -311,6 +321,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_shipment',
     name: 'Thrift Shipment',
     description: 'Coordinate shipment logs and transport records within thrift workflows.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -326,6 +337,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_box',
     name: 'Thrift Box',
     description: 'Manage container boxes and weights under specific shipments.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -341,6 +353,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_shelf',
     name: 'Thrift Shelf',
     description: 'Track physical shelf storage and aisle locations in the warehouse.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -356,6 +369,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_category',
     name: 'Thrift Category',
     description: 'Manage classification categories for thrift stock items.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -371,6 +385,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_type',
     name: 'Thrift Type',
     description: 'Manage product styles and types within the thrift catalog.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -386,6 +401,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_settings',
     name: 'Thrift Settings',
     description: 'Configure default origin purchase price for new stock items.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
@@ -472,6 +488,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'thrift_barcode',
     name: 'Thrift Barcode',
     description: 'Manage and print barcodes in bulk.',
+    parentModuleKey: 'thrift',
     routes: [
       {
         scope: 'app',
