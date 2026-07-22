@@ -3336,7 +3336,7 @@ export type Database = {
           balance_after: number
           created_at: string
           created_by: string | null
-          customer_group_member_id: string
+          customer_group_member_id: number
           entry_type: string
           global_invoice_id: number | null
           id: string
@@ -3349,7 +3349,7 @@ export type Database = {
           balance_after: number
           created_at?: string
           created_by?: string | null
-          customer_group_member_id: string
+          customer_group_member_id: number
           entry_type: string
           global_invoice_id?: number | null
           id?: string
@@ -3362,7 +3362,7 @@ export type Database = {
           balance_after?: number
           created_at?: string
           created_by?: string | null
-          customer_group_member_id?: string
+          customer_group_member_id?: number
           entry_type?: string
           global_invoice_id?: number | null
           id?: string
@@ -3371,6 +3371,13 @@ export type Database = {
           tenant_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "middle_man_payout_ledger_customer_group_member_id_fkey"
+            columns: ["customer_group_member_id"]
+            isOneToOne: false
+            referencedRelation: "customer_group_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "middle_man_payout_ledger_global_invoice_id_fkey"
             columns: ["global_invoice_id"]
@@ -8360,6 +8367,13 @@ export type Database = {
         }[]
       }
       delete_tenant_role: { Args: { p_role_id: number }; Returns: undefined }
+      fetch_customer_shop_categories: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          count: number
+          name: string
+        }[]
+      }
       find_active_tenant_by_public_domain: {
         Args: { p_public_domain: string }
         Returns: {
@@ -9045,9 +9059,11 @@ export type Database = {
           cod_collect_amount: number
           courier_awb_number: string
           courier_name: string
+          courier_remittance_ref: string
           created_at: string
           created_by_email: string
           customer_group_name: string
+          global_invoice_id: number
           id: number
           order_no: string
           recipient_name: string
@@ -9882,6 +9898,18 @@ export type Database = {
       recompute_invoice_payment_status: {
         Args: { p_invoice_id: number }
         Returns: undefined
+      }
+      record_dropship_courier_remittance: {
+        Args: {
+          p_bank_trx_id?: string
+          p_method?: string
+          p_net_amount: number
+          p_note?: string
+          p_order_id: number
+          p_payment_date?: string
+          p_remittance_ref: string
+        }
+        Returns: Json
       }
       record_investor_capital_adjustment: {
         Args: {

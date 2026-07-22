@@ -5,198 +5,164 @@
     <div v-else-if="error" class="text-center q-pa-xl text-negative">{{ error }}</div>
 
     <div v-else-if="invoice" class="q-gutter-y-md">
-      <!-- Header Hero Card -->
-      <q-card flat class="hero-surface floating-surface shadow-1 q-pa-sm q-px-md">
-        <div class="row items-center justify-between wrap q-gutter-sm">
-          <div>
-            <div class="row items-center q-gutter-sm">
-              <template v-if="invoice.invoice_status === 'draft'">
-                <q-input
-                  v-model="form.invoice_no"
-                  label="Invoice Name / Number *"
-                  dense
-                  outlined
-                  class="soft-input text-subtitle1 text-weight-bold"
-                  style="min-width: 250px"
-                  @blur="onHeaderUpdate"
-                />
-                <q-input
-                  v-model="form.invoice_date"
-                  label="Invoice Date *"
-                  dense
-                  outlined
-                  readonly
-                  class="soft-input text-caption"
-                  style="width: 150px"
-                >
-                  <template #append>
-                    <q-icon name="event" class="cursor-pointer">
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <q-date
-                          v-model="form.invoice_date"
-                          mask="YYYY-MM-DD"
-                          @update:model-value="onDateChange"
-                        >
-                          <div class="row items-center justify-end">
-                            <q-btn v-close-popup label="Close" color="primary" flat />
-                          </div>
-                        </q-date>
-                      </q-popup-proxy>
-                    </q-icon>
-                  </template>
-                </q-input>
-              </template>
-              <template v-else>
-                <div class="text-h6 text-weight-bold text-black">{{ invoice.invoice_no }}</div>
-              </template>
-
-              <q-chip
-                dense
-                square
-                clickable
-                :style="statusChipStyle(invoice.invoice_status)"
-                class="q-px-md q-py-sm text-weight-bold q-ma-none text-uppercase"
-              >
-                <span
-                  class="status-chip-dot"
-                  :style="{ backgroundColor: statusDotColor(invoice.invoice_status) }"
-                />
-                {{ invoice.invoice_status }}
-                <q-icon name="arrow_drop_down" class="q-ml-xs" size="16px" />
-                <q-menu>
-                  <q-list dense style="min-width: 150px">
-                    <q-item
-                      v-for="status in ['draft', 'posted', 'voided']"
-                      :key="status"
-                      clickable
-                      v-close-popup
-                      :disable="isTransitionDisabled(status)"
-                      @click="changeInvoiceStatus(status)"
-                    >
-                      <q-item-section>
-                        <div class="row items-center justify-between no-wrap">
-                          <span class="text-uppercase">{{ status }}</span>
-                        </div>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-chip>
-            </div>
-            <div class="text-caption text-grey-8 q-mt-xs">
-              Invoice ID: {{ invoice.id }}-{{ form.invoice_date || invoice.invoice_date }}
+      <!-- Header Row -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+            <div>
+              <div class="text-overline text-primary">Sales Invoice</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">
+                {{ invoice.invoice_no || 'Draft Invoice' }}
+              </h1>
+              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+                Invoice ID: {{ invoice.id }}-{{ form.invoice_date || invoice.invoice_date }}
+              </p>
             </div>
           </div>
+        </div>
+        <div class="col-auto row q-gutter-sm items-center">
 
-          <!-- Lifecycle Action Buttons -->
-          <div class="row items-center q-gutter-sm">
-            <q-btn-toggle
-              v-model="invoiceViewMode"
-              toggle-color="primary"
-              flat
+
+          <q-btn
+            v-if="showPreview"
+            flat
+            dense
+            color="secondary"
+            icon="o_visibility"
+            @click="openPreview"
+          >
+            <q-tooltip>Preview</q-tooltip>
+          </q-btn>
+
+          <q-btn
+            v-if="invoice.invoice_status === 'draft'"
+            color="primary"
+            unelevated
+            no-caps
+            icon="add"
+            label="Add Stock"
+            @click="stockDialog = true"
+          />
+
+          <q-btn
+            v-if="
+              invoice.invoice_status === 'draft' ||
+              (invoice.invoice_status === 'posted' && canUnpostOrVoid)
+            "
+            flat
+            dense
+            icon="more_vert"
+            aria-label="Actions"
+          >
+            <q-tooltip>More Actions</q-tooltip>
+            <q-menu auto-close>
+              <q-list style="min-width: 150px">
+                <q-item
+                  v-if="invoice.invoice_status === 'draft'"
+                  clickable
+                  class="text-negative"
+                  :disable="deletingInvoice"
+                  @click="onDeleteInvoice"
+                >
+                  <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                    <q-icon name="delete" />
+                  </q-item-section>
+                  <q-item-section>Delete Draft</q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="
+                    invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'
+                  "
+                  clickable
+                  class="text-primary"
+                  :disable="convertingInvoice"
+                  @click="onConvertWholesaleToRetail"
+                >
+                  <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                    <q-icon name="swap_horiz" />
+                  </q-item-section>
+                  <q-item-section>Convert to Retail</q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                  clickable
+                  class="text-negative"
+                  :disable="voidingInvoice"
+                  @click="changeInvoiceStatus('voided')"
+                >
+                  <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                    <q-icon name="cancel" />
+                  </q-item-section>
+                  <q-item-section>Void Invoice</q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                  clickable
+                  class="text-warning"
+                  :disable="unpostingInvoice"
+                  @click="changeInvoiceStatus('draft')"
+                >
+                  <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                    <q-icon name="undo" />
+                  </q-item-section>
+                  <q-item-section>Undo Post (Draft)</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </div>
+      </section>
+
+      <!-- Status Workflow Strip -->
+      <q-card flat bordered class="q-pa-sm q-mb-md">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+            <template v-for="(st, idx) in ['draft', 'posted']" :key="st">
+              <q-btn
+                :color="invoice.invoice_status === st ? (st === 'posted' ? 'positive' : 'orange') : (invoice.invoice_status === 'posted' && st === 'draft' ? 'grey-5' : 'grey-3')"
+                :text-color="invoice.invoice_status === st ? 'white' : (invoice.invoice_status === 'posted' && st === 'draft' ? 'grey-9' : 'grey-7')"
+                :outline="invoice.invoice_status !== st"
+                :unelevated="invoice.invoice_status === st"
+                dense
+                no-caps
+                class="q-px-md text-caption text-weight-bold"
+                :loading="(st === 'posted' && postingInvoice) || (st === 'draft' && unpostingInvoice)"
+                :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || isTransitionDisabled(st)"
+                @click="changeInvoiceStatus(st)"
+              >
+                <q-icon v-if="invoice.invoice_status === st" name="check_circle" size="14px" class="q-mr-xs" />
+                {{ st.charAt(0).toUpperCase() + st.slice(1) }}
+              </q-btn>
+              <q-icon
+                v-if="idx === 0"
+                name="chevron_right"
+                color="grey-5"
+                size="18px"
+                class="status-workflow-chevron"
+              />
+            </template>
+            <q-separator vertical class="q-mx-sm status-workflow-sep" />
+            <q-btn
+              :color="invoice.invoice_status === 'voided' ? 'negative' : 'grey-3'"
+              :text-color="invoice.invoice_status === 'voided' ? 'white' : 'grey-7'"
+              :outline="invoice.invoice_status !== 'voided'"
+              :unelevated="invoice.invoice_status === 'voided'"
               dense
               no-caps
-              size="sm"
-              :options="[
-                { label: 'Accounting View', value: 'accounting' },
-                { label: 'Recipient View', value: 'recipient' },
-              ]"
-            />
-
-            <q-btn
-              v-if="showPreview"
-              flat
-              dense
-              color="secondary"
-              icon="o_visibility"
-              class="pill-btn slim-btn"
-              @click="openPreview"
+              class="q-px-md text-caption text-weight-bold"
+              :loading="voidingInvoice"
+              :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || (isTransitionDisabled('voided') && invoice.invoice_status !== 'voided')"
+              @click="changeInvoiceStatus('voided')"
             >
-              <q-tooltip>Preview</q-tooltip>
+              <q-icon v-if="invoice.invoice_status === 'voided'" name="cancel" size="14px" class="q-mr-xs" />
+              Voided
             </q-btn>
-
-            <q-btn
-              v-if="invoice.invoice_status === 'draft'"
-              color="primary"
-              icon="add"
-              no-caps
-              class="pill-btn slim-btn"
-              @click="stockDialog = true"
-            >
-              <q-tooltip>Add Stock</q-tooltip>
-            </q-btn>
-
-            <q-btn
-              v-if="
-                invoice.invoice_status === 'draft' ||
-                (invoice.invoice_status === 'posted' && canUnpostOrVoid)
-              "
-              flat
-              round
-              dense
-              icon="more_vert"
-              class="pill-btn slim-btn"
-            >
-              <q-tooltip>More Actions</q-tooltip>
-              <q-menu auto-close>
-                <q-list style="min-width: 150px">
-                  <q-item
-                    v-if="invoice.invoice_status === 'draft'"
-                    clickable
-                    class="text-negative"
-                    :disable="deletingInvoice"
-                    @click="onDeleteInvoice"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="delete" />
-                    </q-item-section>
-                    <q-item-section>Delete Draft</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="
-                      invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'
-                    "
-                    clickable
-                    class="text-primary"
-                    :disable="convertingInvoice"
-                    @click="onConvertWholesaleToRetail"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="swap_horiz" />
-                    </q-item-section>
-                    <q-item-section>Convert to Retail</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
-                    clickable
-                    class="text-negative"
-                    :disable="voidingInvoice"
-                    @click="changeInvoiceStatus('voided')"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="cancel" />
-                    </q-item-section>
-                    <q-item-section>Void Invoice</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
-                    clickable
-                    class="text-warning"
-                    :disable="unpostingInvoice"
-                    @click="changeInvoiceStatus('draft')"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="undo" />
-                    </q-item-section>
-                    <q-item-section>Undo Post (Draft)</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-menu>
-            </q-btn>
-
+          </div>
+          <div class="col-auto row items-center q-gutter-sm">
             <q-chip square dense class="status-chip text-weight-bold text-capitalize">
               {{ invoice.invoice_type }}
             </q-chip>
@@ -207,66 +173,463 @@
         </div>
       </q-card>
 
-      <div class="row q-col-gutter-md">
-        <!-- Sidebar Actions & Meta -->
-        <div v-if="showSidebar" class="col-12 col-md-4 q-gutter-y-md">
-          <!-- Billing Profile Details -->
-          <q-card flat class="floating-surface shadow-1 q-pa-md">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">Billing Profile</div>
-            <div class="text-body2 text-weight-medium">
-              {{ invoice.billing_profiles?.name || '—' }}
-            </div>
-            <div v-if="invoice.billing_profiles?.email" class="text-caption">
-              {{ invoice.billing_profiles.email }}
-            </div>
-            <div v-if="invoice.billing_profiles?.phone" class="text-caption">
-              {{ invoice.billing_profiles.phone }}
-            </div>
-          </q-card>
-
-          <!-- Recipient / Delivery Details -->
-          <q-card flat class="floating-surface shadow-1 q-pa-md">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">Recipient Delivery</div>
-            <div v-if="invoice.invoice_status === 'draft'" class="q-gutter-y-xs">
-              <q-input
-                v-model="form.recipient_name"
-                label="Name *"
-                dense
-                outlined
-                class="soft-input"
-                @blur="onHeaderUpdate"
-              />
-              <q-input
-                v-model="form.recipient_phone"
-                label="Phone"
-                dense
-                outlined
-                class="soft-input"
-                @blur="onHeaderUpdate"
-              />
-              <q-input
-                v-model="form.recipient_address"
-                label="Address"
-                type="textarea"
-                rows="2"
-                dense
-                outlined
-                class="soft-input"
-                @blur="onHeaderUpdate"
-              />
-            </div>
-            <div v-else>
-              <div class="text-body2 text-weight-medium">{{ invoice.recipient_name || '—' }}</div>
-              <div v-if="invoice.recipient_phone" class="text-caption">
-                {{ invoice.recipient_phone }}
+      <!-- Main Columns Layout -->
+      <div class="row q-col-gutter-lg invoice-details-page-container">
+        <!-- Left Side: Main content area (Items, note, hero stats) -->
+        <div :class="showSidebar ? 'col-12 col-md-8 transition-width' : 'col-12 transition-width'" class="q-gutter-y-md scroll-col">
+          
+          <!-- Hero Stats Banner -->
+          <q-card flat class="hero-stats-card text-white q-pa-lg">
+            <div class="row items-center justify-between q-col-gutter-md">
+              <div class="col-12 col-sm-5">
+                <div class="text-caption text-uppercase text-weight-medium opacity-80">Total Amount Due</div>
+                <div class="text-h4 text-weight-bolder q-mt-xs q-mb-none">
+                  {{ formatAmount(invoice.total_amount) }}
+                </div>
               </div>
-              <div v-if="invoice.recipient_address" class="text-caption">
-                {{ invoice.recipient_address }}
+              <div class="col-grow row items-center justify-end q-col-gutter-lg text-right gt-xs">
+                <div>
+                  <div class="text-caption text-uppercase opacity-80">Total Paid</div>
+                  <div class="text-h5 text-weight-bold q-mt-xs">{{ formatAmount(invoice.paid_amount) }}</div>
+                </div>
+                <q-separator vertical dark class="q-mx-md" style="height: 40px;" />
+                <div>
+                  <div class="text-caption text-uppercase opacity-80">Balance Due</div>
+                  <div class="text-h5 text-weight-bold q-mt-xs text-yellow-3">{{ formatAmount(invoice.due_amount) }}</div>
+                </div>
+              </div>
+              <!-- Mobile view fallback for sub stats -->
+              <div class="col-12 row items-center justify-between lt-sm q-mt-md">
+                <div>
+                  <div class="text-caption text-uppercase opacity-80">Paid</div>
+                  <div class="text-subtitle1 text-weight-bold">{{ formatAmount(invoice.paid_amount) }}</div>
+                </div>
+                <div>
+                  <div class="text-caption text-uppercase opacity-80">Balance Due</div>
+                  <div class="text-subtitle1 text-weight-bold text-yellow-3">{{ formatAmount(invoice.due_amount) }}</div>
+                </div>
               </div>
             </div>
           </q-card>
 
-          <!-- Editable Charges (Draft Only) -->
+          <!-- Items Table Card -->
+          <q-card flat class="floating-surface shadow-1">
+            <q-card-section class="row items-center q-py-md">
+              <q-btn
+                flat
+                round
+                dense
+                color="primary"
+                :icon="showSidebar ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'"
+                @click="showSidebar = !showSidebar"
+                class="q-mr-sm"
+              >
+                <q-tooltip>{{ showSidebar ? 'Hide Sidebar' : 'Show Sidebar' }}</q-tooltip>
+              </q-btn>
+              <div class="text-subtitle1 text-weight-bold">Invoice Items ({{ items.length }})</div>
+              <q-space />
+              
+              <div v-if="invoice.invoice_status === 'draft'" class="row q-gutter-sm">
+                <q-btn
+                  v-if="items.length > 0"
+                  color="secondary"
+                  icon="content_paste"
+                  label="Bulk Paste"
+                  unelevated
+                  dense
+                  no-caps
+                  class="pill-btn slim-btn"
+                  @click="openBulkPaste"
+                />
+              </div>
+            </q-card-section>
+            
+            <q-separator />
+            
+            <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-xl">
+              <q-icon name="inventory" size="48px" color="grey-4" class="q-mb-md" />
+              <div class="text-subtitle2 text-grey-6">No items yet. Add items from global stock.</div>
+            </q-card-section>
+            
+            <q-markup-table v-else flat dense wrap-cells class="invoice-items-table q-px-sm">
+              <thead>
+                <tr>
+                  <th class="text-left" style="width: 40px">SL</th>
+                  <th style="width: 60px"></th>
+                  <th class="text-left">Product</th>
+                  <th class="text-right">Qty</th>
+                  <th class="text-right">Cost</th>
+                  <th class="text-right">Sell</th>
+                  <th v-if="isDropship" class="text-right">Recipient</th>
+                  <th class="text-right">Total</th>
+                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
+                  <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in items" :key="row.id" class="invoice-item-row">
+                  <td class="text-left">{{ idx + 1 }}</td>
+                  <td>
+                    <div class="invoice-item-image-box shadow-1">
+                      <SmartImage
+                        :src="row.image_url"
+                        alt="item snapshot"
+                        img-class="invoice-item-image"
+                        fallback-class="invoice-item-image-fallback"
+                        :enable-edit="false"
+                      />
+                    </div>
+                  </td>
+                  <td class="text-weight-medium">
+                    <div style="white-space: normal; word-break: break-word; min-width: 150px; max-width: 300px;">{{ row.name_snapshot }}</div>
+                  </td>
+                  <td class="text-right">
+                    <span
+                      class="text-weight-bold"
+                      :class="{
+                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
+                      }"
+                    >
+                      {{ row.quantity }}
+                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.quantity"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'quantity', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="1"
+                        step="1"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                    <div
+                      v-if="row.return_quantity > 0"
+                      class="text-caption text-orange text-weight-bold"
+                    >
+                      Returned: {{ row.return_quantity }}
+                    </div>
+                  </td>
+                  <td class="text-right text-grey-7">
+                    {{ formatItemUnitCost(row) }}
+                  </td>
+                  <td class="text-right">
+                    <span
+                      :class="{
+                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
+                      }"
+                    >
+                      {{ formatAmount(row.sell_price_amount) }}
+                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.sell_price_amount"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'sell_price_amount', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="0"
+                        step="0.01"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td v-if="isDropship" class="text-right">
+                    <span
+                      :class="{
+                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
+                      }"
+                    >
+                      {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
+                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                    </span>
+                    <q-popup-edit
+                      v-if="invoice.invoice_status === 'draft'"
+                      :model-value="row.recipient_price_amount ?? row.sell_price_amount"
+                      buttons
+                      persistent
+                      label-set="Save"
+                      label-cancel="Cancel"
+                      v-slot="scope"
+                      @save="(val) => onUpdateItemField(row, 'recipient_price_amount', val)"
+                    >
+                      <q-input
+                        :model-value="scope.value ?? ''"
+                        type="number"
+                        dense
+                        outlined
+                        autofocus
+                        min="0"
+                        step="0.01"
+                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                        @keyup.enter="scope.set"
+                      />
+                    </q-popup-edit>
+                  </td>
+                  <td class="text-right text-weight-bold">
+                    {{ formatAmount(row.line_total_amount) }}
+                  </td>
+                  <td v-if="invoice.invoice_status === 'posted'" class="text-right text-positive">
+                    {{ formatAmount(lineMarginForRow(row)) }}
+                  </td>
+                  <td v-if="invoice.invoice_status === 'draft'" class="text-right">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      icon="delete"
+                      size="sm"
+                      @click="onRemoveItem(row.id)"
+                    >
+                      <q-tooltip>Remove Item</q-tooltip>
+                    </q-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
+
+          <!-- Internal Notes Card -->
+          <q-card flat class="floating-surface shadow-1 q-pa-md">
+            <div class="row items-center justify-between no-wrap q-mb-sm">
+              <div class="text-subtitle2 text-weight-bold">Internal Notes</div>
+              <q-btn
+                v-if="invoice.invoice_status === 'draft'"
+                flat
+                round
+                dense
+                color="primary"
+                icon="edit"
+                size="sm"
+                @click="openEditNoteDialog"
+              >
+                <q-tooltip>Edit Note</q-tooltip>
+              </q-btn>
+            </div>
+            <div
+              v-if="invoice.note"
+              ref="notePreviewRef"
+              class="text-body2 text-grey-8 invoice-note-preview invoice-note-preview--clamped"
+              :class="{ 'invoice-note-preview--overflow cursor-pointer': noteOverflows }"
+              v-html="invoice.note"
+              @click="noteOverflows && (viewNoteDialog = true)"
+            />
+            <div v-else class="text-body2 text-grey-4 italic">No private notes added.</div>
+            <div
+              v-if="noteOverflows"
+              class="text-caption text-primary q-mt-xs cursor-pointer"
+              @click="viewNoteDialog = true"
+            >
+              View full note
+            </div>
+          </q-card>
+        </div>
+
+        <!-- Right Side: Sidebar Meta details -->
+        <div v-if="showSidebar" class="col-12 col-md-4 q-gutter-y-md scroll-col">
+          
+          <!-- Primary CTA Action Card -->
+          <q-card flat class="floating-surface shadow-2 q-pa-md bg-grey-1" style="border: 1px solid var(--bw-theme-border)">
+            <div class="column q-gutter-y-sm">
+              <!-- CTA Button based on state -->
+              <template v-if="invoice.invoice_status === 'draft'">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
+                  icon="send"
+                  label="POST INVOICE"
+                  :loading="postingInvoice"
+                  @click="changeInvoiceStatus('posted')"
+                />
+                <div class="text-caption text-grey-7 text-center q-px-xs">
+                  Note: Once posted, this invoice will be committed to the stock ledger and marked as current.
+                </div>
+              </template>
+              
+              <template v-else-if="invoice.invoice_status === 'posted'">
+                <template v-if="invoice.due_amount > 0">
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
+                    icon="payment"
+                    :label="isDropship ? 'RECORD COD' : 'RECORD PAYMENT'"
+                    @click="isDropship ? openCodDialog() : openPaymentDialog()"
+                  />
+                  <div class="text-caption text-grey-7 text-center q-px-xs">
+                    Note: Record customer payments/COD collections to settle the outstanding balance.
+                  </div>
+                </template>
+                <template v-else>
+                  <q-btn
+                    color="positive"
+                    unelevated
+                    disable
+                    class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
+                    icon="check_circle"
+                    label="INVOICE SETTLED"
+                  />
+                  <div class="text-caption text-positive text-center q-px-xs">
+                    Note: This invoice has been fully paid and settled.
+                  </div>
+                </template>
+              </template>
+              
+              <template v-else-if="invoice.invoice_status === 'voided'">
+                <q-btn
+                  color="grey-6"
+                  unelevated
+                  disable
+                  class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
+                  icon="cancel"
+                  label="INVOICE VOIDED"
+                />
+                <div class="text-caption text-grey-6 text-center q-px-xs">
+                  Note: This invoice is voided and cannot be modified.
+                </div>
+              </template>
+            </div>
+          </q-card>
+
+          <!-- Invoice Information (Draft Only) -->
+          <q-card v-if="invoice.invoice_status === 'draft'" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Invoice Information</div>
+            <div class="q-gutter-y-sm">
+              <q-input
+                v-model="form.invoice_no"
+                label="Invoice Name / Number *"
+                dense
+                outlined
+                class="soft-input text-subtitle2 text-weight-bold"
+                @blur="onHeaderUpdate"
+              />
+              <q-input
+                v-model="form.invoice_date"
+                label="Invoice Date *"
+                dense
+                outlined
+                readonly
+                class="soft-input text-caption"
+              >
+                <template #append>
+                  <q-icon name="event" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-date
+                        v-model="form.invoice_date"
+                        mask="YYYY-MM-DD"
+                        @update:model-value="onDateChange"
+                      >
+                        <div class="row items-center justify-end">
+                          <q-btn v-close-popup label="Close" color="primary" flat />
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
+          </q-card>
+
+          <!-- Billing & Delivery Card -->
+          <q-card flat class="floating-surface shadow-1 q-pa-md">
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle2 text-weight-bold">Billing & Delivery</div>
+              <q-btn
+                v-if="invoice.invoice_status === 'draft'"
+                flat
+                dense
+                no-caps
+                color="primary"
+                :label="editingRecipient ? 'DONE' : 'CHANGE'"
+                class="text-weight-bold font-size-12"
+                @click="editingRecipient ? (onHeaderUpdate(), editingRecipient = false) : editingRecipient = true"
+              />
+            </div>
+            
+            <div class="q-gutter-y-sm">
+              <div>
+                <div class="text-overline text-grey-6 text-weight-bold" style="line-height: 1.2">Customer</div>
+                <div class="text-body2 text-weight-medium">{{ invoice.billing_profiles?.name || '—' }}</div>
+                <div v-if="invoice.billing_profiles?.email" class="text-caption text-grey-7">
+                  {{ invoice.billing_profiles.email }}
+                </div>
+              </div>
+              
+              <q-separator class="q-my-xs" />
+              
+              <div>
+                <div class="text-overline text-grey-6 text-weight-bold" style="line-height: 1.2">Shipping Address</div>
+                
+                <!-- Edit mode (Draft state only) -->
+                <div v-if="editingRecipient" class="q-gutter-y-xs q-mt-xs">
+                  <q-input
+                    v-model="form.recipient_name"
+                    label="Name *"
+                    dense
+                    outlined
+                    class="soft-input"
+                    @blur="onHeaderUpdate"
+                  />
+                  <q-input
+                    v-model="form.recipient_phone"
+                    label="Phone"
+                    dense
+                    outlined
+                    class="soft-input"
+                    @blur="onHeaderUpdate"
+                  />
+                  <q-input
+                    v-model="form.recipient_address"
+                    label="Address"
+                    type="textarea"
+                    rows="2"
+                    dense
+                    outlined
+                    class="soft-input"
+                    @blur="onHeaderUpdate"
+                  />
+                </div>
+                
+                <!-- View mode -->
+                <div v-else>
+                  <div class="text-body2 text-weight-medium">{{ invoice.recipient_name || '—' }}</div>
+                  <div v-if="invoice.recipient_phone" class="text-caption text-grey-7">
+                    {{ invoice.recipient_phone }}
+                  </div>
+                  <div v-if="invoice.recipient_address" class="text-caption text-grey-7">
+                    {{ invoice.recipient_address }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </q-card>
+
+          <!-- Charges & Discounts Card -->
           <q-card flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Charges & Discounts</div>
             <div class="row items-center q-mb-sm q-gutter-sm">
@@ -356,7 +719,7 @@
                   min="0"
                   @blur="onHeaderUpdate"
                 />
-                <div v-else class="text-body2 text-right">
+                <div v-else class="text-body2 text-right text-red text-weight-bold">
                   {{ formatAmount(invoice.discount_amount) }}
                 </div>
               </div>
@@ -486,28 +849,25 @@
             <div v-else-if="targetPreview" class="q-mt-sm">
               <q-separator class="q-mb-sm" />
               <div class="row justify-between text-caption text-grey-8">
-                <span>Current total</span
-                ><span>{{ formatAmount(targetPreview.current_total) }}</span>
+                <span>Current total</span><span>{{ formatAmount(targetPreview.current_total) }}</span>
               </div>
               <div class="row justify-between text-caption text-grey-8">
-                <span>Desired total</span
-                ><span>{{ formatAmount(targetPreview.target_total) }}</span>
+                <span>Desired total</span><span>{{ formatAmount(targetPreview.target_total) }}</span>
               </div>
               <div class="row justify-between text-body2 text-weight-medium">
                 <span>Adjustment</span>
                 <span :class="targetPreview.adjustment >= 0 ? 'text-positive' : 'text-negative'">
-                  {{ targetPreview.adjustment >= 0 ? '+' : ''
-                  }}{{ formatAmount(targetPreview.adjustment) }}
+                  {{ targetPreview.adjustment >= 0 ? '+' : '' }}{{ formatAmount(targetPreview.adjustment) }}
                 </span>
               </div>
               <q-separator class="q-my-sm" />
               <div v-for="line in targetPreview.lines" :key="line.item_id" class="q-mb-xs">
                 <div class="text-caption text-weight-medium ellipsis">{{ line.name }}</div>
                 <div class="row justify-between text-caption text-grey-8">
-                  <span
-                    >{{ line.quantity }} &times; {{ formatAmount(line.old_price) }} &rarr;
-                    {{ formatAmount(line.new_price) }}</span
-                  >
+                  <span>
+                    {{ line.quantity }} &times; {{ formatAmount(line.old_price) }} &rarr;
+                    {{ formatAmount(line.new_price) }}
+                  </span>
                   <span :class="line.unit_delta >= 0 ? 'text-positive' : 'text-negative'">
                     {{ line.unit_delta >= 0 ? '+' : '' }}{{ formatAmount(line.unit_delta) }}/unit
                   </span>
@@ -522,60 +882,45 @@
               <span>Subtotal</span><span>{{ formatAmount(invoice.subtotal_amount) }}</span>
             </div>
             <div v-if="isDropship" class="row justify-between text-caption text-grey-7">
-              <span>Face subtotal</span
-              ><span>{{ formatAmount(invoice.face_subtotal_amount ?? 0) }}</span>
+              <span>Face subtotal</span><span>{{ formatAmount(invoice.face_subtotal_amount ?? 0) }}</span>
             </div>
-            <div class="row justify-between text-body2 text-grey-9">
-              <span>Total Cost</span>
-              <span>{{ formatAmount(totalCost) }}</span>
+            <div class="row justify-between text-body2 text-grey-8">
+              <span>Total Cost</span><span>{{ formatAmount(totalCost) }}</span>
             </div>
-            <div class="row justify-between text-body2 text-grey-9">
-              <span>Total Qty</span>
-              <span>{{ totalQuantity }}</span>
+            <div class="row justify-between text-body2 text-grey-8">
+              <span>Total Qty</span><span>{{ totalQuantity }}</span>
             </div>
             <q-separator class="q-my-xs" />
             <div
               v-if="(invoice.settlement_discount_amount ?? 0) > 0"
               class="row justify-between text-body2 text-orange-9"
             >
-              <span>Settlement discount</span
-              ><span>-{{ formatAmount(invoice.settlement_discount_amount ?? 0) }}</span>
+              <span>Settlement discount</span><span>-{{ formatAmount(invoice.settlement_discount_amount ?? 0) }}</span>
             </div>
             <div class="row justify-between text-subtitle1 text-weight-bold text-primary">
-              <span>Total</span><span>{{ formatAmount(invoice.total_amount) }}</span>
+              <span>Total Amount</span><span>{{ formatAmount(invoice.total_amount) }}</span>
             </div>
+            <q-separator class="q-my-xs" />
             <div class="row justify-between text-body2 text-weight-medium">
-              <span>{{
-                invoice.invoice_status === 'posted' ? 'Gross Profit' : 'Est. Gross Profit'
-              }}</span>
-              <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">{{
-                formatAmount(estimatedProfit)
-              }}</span>
+              <span>{{ invoice.invoice_status === 'posted' ? 'Gross Profit' : 'Est. Gross Profit' }}</span>
+              <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
+                {{ formatAmount(estimatedProfit) }}
+              </span>
             </div>
-            <div class="row justify-between text-body2 text-grey-9">
-              <span>Avg Profit Rate</span>
-              <span class="text-weight-medium text-grey-8">{{ averageProfitRate }}</span>
-            </div>
-            <div class="row justify-between text-body2 text-grey-9">
-              <span>Paid</span><span>{{ formatAmount(invoice.paid_amount) }}</span>
-            </div>
-            <div class="row justify-between text-subtitle1 text-weight-bold">
-              <span>Due</span>
-              <span :class="invoice.due_amount > 0 ? 'text-negative' : 'text-positive'">{{
-                formatAmount(invoice.due_amount)
-              }}</span>
+            <div class="row justify-between text-body2 text-grey-8">
+              <span>Avg Profit Rate</span><span>{{ averageProfitRate }}</span>
             </div>
           </q-card>
 
-          <!-- Dropship Settlement / Courier Remittance Stub -->
+          <!-- Dropship Settlement / Courier Remittance -->
           <q-card v-if="isDropship" flat class="floating-surface shadow-1 q-pa-md">
-            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Courier Remittance Ref (Stub)</div>
+            <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs">Courier Remittance</div>
             <div class="q-gutter-y-xs">
               <q-input
                 dense
                 outlined
                 readonly
-                model-value="REMIT-2026-892"
+                :model-value="linkedOrderRemittance?.courier_remittance_ref || '—'"
                 label="Remittance Batch ID"
                 class="soft-input text-caption"
               />
@@ -583,12 +928,34 @@
                 dense
                 outlined
                 readonly
-                model-value="BANK-TRX-99410"
+                :model-value="linkedOrderRemittance?.courier_bank_trx_id || '—'"
                 label="Bank / MFS Trx Ref"
                 class="soft-input text-caption"
               />
-              <q-badge color="grey-3" text-color="grey-8" class="q-mt-xs full-width text-center justify-center">
-                Remittance Posting (Available in I1)
+              <div v-if="linkedOrderRemittance" class="text-caption text-grey-7 q-mt-xs">
+                Order
+                <router-link
+                  class="text-primary text-weight-medium"
+                  :to="{
+                    name: 'app-shop-dropship-order-detail-page',
+                    params: {
+                      tenantSlug: route.params.tenantSlug,
+                      id: linkedOrderRemittance.id,
+                    },
+                  }"
+                >
+                  {{ linkedOrderRemittance.order_no }}
+                </router-link>
+                · {{ linkedOrderRemittance.status.replace(/_/g, ' ') }}
+              </div>
+              <q-badge
+                v-else
+                color="grey-3"
+                text-color="grey-8"
+                class="q-mt-xs"
+                style="display: block; text-align: center"
+              >
+                No linked dropship order
               </q-badge>
             </div>
           </q-card>
@@ -604,239 +971,10 @@
               color="orange"
               no-caps
               outline
-              class="pill-btn slim-btn"
+              class="pill-btn slim-btn full-width"
               label="Add Return"
               @click="returnDialog = true"
             />
-          </q-card>
-
-          <!-- Note Area -->
-          <q-card flat class="floating-surface shadow-1 q-pa-md">
-            <div class="row items-center justify-between no-wrap q-mb-xs">
-              <div class="text-subtitle2 text-weight-bold">Invoice Note</div>
-              <q-btn
-                v-if="invoice.invoice_status === 'draft'"
-                flat
-                round
-                dense
-                color="primary"
-                icon="edit"
-                size="sm"
-                @click="openEditNoteDialog"
-              >
-                <q-tooltip>Edit Note</q-tooltip>
-              </q-btn>
-            </div>
-            <div
-              v-if="invoice.note"
-              ref="notePreviewRef"
-              class="text-body2 text-grey-8 invoice-note-preview invoice-note-preview--clamped"
-              :class="{ 'invoice-note-preview--overflow cursor-pointer': noteOverflows }"
-              v-html="invoice.note"
-              @click="noteOverflows && (viewNoteDialog = true)"
-            />
-            <div v-else class="text-body2 text-grey-8">—</div>
-            <div
-              v-if="noteOverflows"
-              class="text-caption text-primary q-mt-xs cursor-pointer"
-              @click="viewNoteDialog = true"
-            >
-              View full note
-            </div>
-          </q-card>
-        </div>
-
-        <!-- Lines Table -->
-        <div :class="showSidebar ? 'col-12 col-md-8 transition-width' : 'col-12 transition-width'">
-          <q-card flat class="floating-surface shadow-1">
-            <q-card-section class="row items-center q-py-sm">
-              <q-btn
-                flat
-                round
-                dense
-                color="primary"
-                :icon="showSidebar ? 'keyboard_double_arrow_left' : 'keyboard_double_arrow_right'"
-                @click="showSidebar = !showSidebar"
-                class="q-mr-sm"
-              >
-                <q-tooltip>{{ showSidebar ? 'Hide Sidebar' : 'Show Sidebar' }}</q-tooltip>
-              </q-btn>
-              <div class="text-subtitle1 text-weight-bold">Items ({{ items.length }})</div>
-              <q-space />
-              <q-btn
-                v-if="invoice.invoice_status === 'draft' && items.length > 0"
-                color="secondary"
-                icon="content_paste"
-                label="Bulk Paste"
-                unelevated
-                dense
-                no-caps
-                class="q-ml-sm"
-                @click="openBulkPaste"
-              />
-            </q-card-section>
-            <q-separator />
-            <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-lg">
-              No items yet. Add from global stock.
-            </q-card-section>
-            <q-markup-table v-else flat dense wrap-cells class="invoice-items-table">
-              <thead>
-                <tr>
-                  <th class="text-left" style="width: 40px">SL</th>
-                  <th style="width: 60px"></th>
-                  <th class="text-left">Product</th>
-                  <th class="text-right">Qty</th>
-                  <th class="text-right">Cost</th>
-                  <th class="text-right">Sell</th>
-                  <th v-if="isDropship" class="text-right">Recipient</th>
-                  <th class="text-right">Total</th>
-                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
-                  <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, idx) in items" :key="row.id" class="invoice-item-row">
-                  <td class="text-left">{{ idx + 1 }}</td>
-                  <td>
-                    <div class="invoice-item-image-box shadow-1">
-                      <SmartImage
-                        :src="row.image_url"
-                        alt="item snapshot"
-                        img-class="invoice-item-image"
-                        fallback-class="invoice-item-image-fallback"
-                        :enable-edit="false"
-                      />
-                    </div>
-                  </td>
-                  <td class="text-weight-medium">{{ row.name_snapshot }}</td>
-                  <td class="text-right">
-                    <span
-                      class="text-weight-bold"
-                      :class="{
-                        'cursor-pointer': invoice.invoice_status === 'draft',
-                        'text-underline-dashed': invoice.invoice_status === 'draft',
-                      }"
-                    >
-                      {{ row.quantity }}
-                    </span>
-                    <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
-                      :model-value="row.quantity"
-                      buttons
-                      persistent
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      v-slot="scope"
-                      @save="(val) => onUpdateItemField(row, 'quantity', val)"
-                    >
-                      <q-input
-                        :model-value="scope.value ?? ''"
-                        type="number"
-                        dense
-                        outlined
-                        autofocus
-                        min="1"
-                        step="1"
-                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                        @keyup.enter="scope.set"
-                      />
-                    </q-popup-edit>
-                    <div
-                      v-if="row.return_quantity > 0"
-                      class="text-caption text-orange text-weight-bold"
-                    >
-                      Returned: {{ row.return_quantity }}
-                    </div>
-                  </td>
-                  <td class="text-right text-grey-8">
-                    {{ formatItemUnitCost(row) }}
-                  </td>
-                  <td class="text-right">
-                    <span
-                      :class="{
-                        'cursor-pointer': invoice.invoice_status === 'draft',
-                        'text-underline-dashed': invoice.invoice_status === 'draft',
-                      }"
-                    >
-                      {{ formatAmount(row.sell_price_amount) }}
-                    </span>
-                    <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
-                      :model-value="row.sell_price_amount"
-                      buttons
-                      persistent
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      v-slot="scope"
-                      @save="(val) => onUpdateItemField(row, 'sell_price_amount', val)"
-                    >
-                      <q-input
-                        :model-value="scope.value ?? ''"
-                        type="number"
-                        dense
-                        outlined
-                        autofocus
-                        min="0"
-                        step="0.01"
-                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                        @keyup.enter="scope.set"
-                      />
-                    </q-popup-edit>
-                  </td>
-                  <td v-if="isDropship" class="text-right">
-                    <span
-                      :class="{
-                        'cursor-pointer': invoice.invoice_status === 'draft',
-                        'text-underline-dashed': invoice.invoice_status === 'draft',
-                      }"
-                    >
-                      {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
-                    </span>
-                    <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
-                      :model-value="row.recipient_price_amount ?? row.sell_price_amount"
-                      buttons
-                      persistent
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      v-slot="scope"
-                      @save="(val) => onUpdateItemField(row, 'recipient_price_amount', val)"
-                    >
-                      <q-input
-                        :model-value="scope.value ?? ''"
-                        type="number"
-                        dense
-                        outlined
-                        autofocus
-                        min="0"
-                        step="0.01"
-                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                        @keyup.enter="scope.set"
-                      />
-                    </q-popup-edit>
-                  </td>
-                  <td class="text-right text-weight-bold">
-                    {{ formatAmount(row.line_total_amount) }}
-                  </td>
-                  <td v-if="invoice.invoice_status === 'posted'" class="text-right">
-                    {{ formatAmount(lineMarginForRow(row)) }}
-                  </td>
-                  <td v-if="invoice.invoice_status === 'draft'" class="text-right">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      color="negative"
-                      icon="delete"
-                      size="sm"
-                      @click="onRemoveItem(row.id)"
-                    >
-                      <q-tooltip>Remove Item</q-tooltip>
-                    </q-btn>
-                  </td>
-                </tr>
-              </tbody>
-            </q-markup-table>
           </q-card>
         </div>
       </div>
@@ -1317,6 +1455,7 @@ import {
 import { cleanEditorHtml } from 'src/utils/editor';
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import type { TargetTotalSummary } from '../repositories/invoiceRepository';
+import { dropshipLedgerRepository } from 'src/modules/shop_order/repositories/dropshipLedgerRepository';
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
@@ -1329,13 +1468,99 @@ const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
+const goBack = () => {
+  void router.push({
+    name: 'app-global-invoices-page',
+    params: { tenantSlug: route.params.tenantSlug },
+  });
+};
+
 const invoiceViewMode = ref<'accounting' | 'recipient'>('accounting');
 const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
+const linkedOrderRemittance = ref<{
+  id: number;
+  order_no: string;
+  status: string;
+  courier_remittance_ref: string | null;
+  courier_bank_trx_id: string | null;
+} | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
 const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
 const showSidebar = ref(true);
+const editingRecipient = ref(false);
+
+const progressLineStyle = computed(() => {
+  if (!invoice.value) return 'width: 0%';
+  const status = invoice.value.invoice_status;
+  if (status === 'draft') {
+    return 'width: 0%';
+  }
+  if (status === 'posted') {
+    if (invoice.value.due_amount <= 0) {
+      return 'width: 100%';
+    }
+    return 'width: 50%';
+  }
+  if (status === 'voided') {
+    return 'width: 50%';
+  }
+  return 'width: 0%';
+});
+
+const getStepStatusClass = (step: 'draft' | 'posted' | 'settled') => {
+  if (!invoice.value) return 'stepper-circle--pending';
+  const status = invoice.value.invoice_status;
+  if (step === 'draft') {
+    return status === 'draft' ? 'stepper-circle--active' : 'stepper-circle--done';
+  }
+  if (step === 'posted') {
+    if (status === 'draft') return 'stepper-circle--pending';
+    if (status === 'voided') return 'stepper-circle--voided';
+    return invoice.value.due_amount <= 0 ? 'stepper-circle--done' : 'stepper-circle--active';
+  }
+  if (step === 'settled') {
+    if (status === 'draft' || status === 'voided') return 'stepper-circle--pending';
+    return invoice.value.due_amount <= 0 ? 'stepper-circle--done' : 'stepper-circle--pending';
+  }
+  return 'stepper-circle--pending';
+};
+
+const getStepTextStatusClass = (step: 'draft' | 'posted' | 'settled') => {
+  if (!invoice.value) return 'text-grey-5';
+  const status = invoice.value.invoice_status;
+  if (step === 'draft') {
+    return status === 'draft' ? 'text-primary' : 'text-grey-7';
+  }
+  if (step === 'posted') {
+    if (status === 'draft') return 'text-grey-5';
+    if (status === 'voided') return 'text-negative';
+    return invoice.value.due_amount <= 0 ? 'text-grey-7' : 'text-primary';
+  }
+  if (step === 'settled') {
+    if (status === 'draft' || status === 'voided') return 'text-grey-5';
+    return invoice.value.due_amount <= 0 ? 'text-primary' : 'text-grey-5';
+  }
+  return 'text-grey-5';
+};
+
+const getStepIcon = (step: 'draft' | 'posted' | 'settled') => {
+  if (!invoice.value) return 'radio_button_unchecked';
+  const status = invoice.value.invoice_status;
+  if (step === 'draft') {
+    return status === 'draft' ? 'edit' : 'check';
+  }
+  if (step === 'posted') {
+    if (status === 'draft') return 'arrow_forward';
+    if (status === 'voided') return 'cancel';
+    return invoice.value.due_amount <= 0 ? 'check' : 'pending';
+  }
+  if (step === 'settled') {
+    return status === 'posted' && invoice.value.due_amount <= 0 ? 'check' : 'radio_button_unchecked';
+  }
+  return 'radio_button_unchecked';
+};
 
 const noteEditValue = ref('');
 const editNoteDialog = ref(false);
@@ -1455,6 +1680,19 @@ const form = reactive({
 const invoiceId = computed(() => Number(route.params.id));
 
 const isDropship = computed(() => invoice.value?.invoice_type === 'dropship');
+
+const loadLinkedOrderRemittance = async (inv: GlobalInvoiceDetail | null) => {
+  if (!inv || inv.invoice_type !== 'dropship') {
+    linkedOrderRemittance.value = null;
+    return;
+  }
+  try {
+    linkedOrderRemittance.value =
+      await dropshipLedgerRepository.getShopOrderRemittanceByInvoiceId(inv.id);
+  } catch {
+    linkedOrderRemittance.value = null;
+  }
+};
 const isWholesale = computed(() => invoice.value?.invoice_type === 'wholesale');
 const showCharges = computed(() => !isWholesale.value);
 
@@ -1523,6 +1761,7 @@ const loadInvoice = async () => {
     invoice.value = inv;
     items.value = invItems;
     await resolveItemUnitCosts(invItems);
+    await loadLinkedOrderRemittance(inv);
 
     // Sync form values
     form.discount_amount = inv.discount_amount;
@@ -1547,6 +1786,7 @@ const refreshInvoiceHeader = async () => {
   try {
     const inv = await invoiceRepository.getGlobalInvoiceById(invoiceId.value);
     invoice.value = inv;
+    await loadLinkedOrderRemittance(inv);
 
     // Sync form values
     form.discount_amount = inv.discount_amount;
@@ -2189,7 +2429,7 @@ onMounted(() => {
   border-radius: 16px;
 }
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 .slim-btn {
   min-height: 32px;
@@ -2270,5 +2510,115 @@ onMounted(() => {
 .invoice-note-preview :deep(th) {
   background-color: rgba(0, 0, 0, 0.04);
   font-weight: bold;
+}
+
+/* Redesigned UI styling rules */
+.stepper-container {
+  border-radius: 12px;
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+}
+.stepper-track-wrapper {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.stepper-track-line {
+  position: absolute;
+  top: 24px;
+  left: 40px;
+  right: 40px;
+  height: 2px;
+  background-color: var(--bw-theme-border, #e2e8f0);
+  z-index: 0;
+}
+.stepper-track-progress {
+  position: absolute;
+  top: 24px;
+  left: 40px;
+  height: 2px;
+  background-color: var(--bw-theme-primary, #0252df);
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+.stepper-step {
+  z-index: 2;
+  position: relative;
+  width: 80px;
+}
+.stepper-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bw-theme-border, #e2e8f0);
+  transition: all 0.3s ease;
+  background-color: white;
+}
+.stepper-circle--done {
+  background-color: var(--bw-theme-primary, #0252df);
+  border-color: var(--bw-theme-primary, #0252df);
+  color: white;
+}
+.stepper-circle--active {
+  background-color: white;
+  border-color: var(--bw-theme-primary, #0252df);
+  color: var(--bw-theme-primary, #0252df);
+  box-shadow: 0 0 0 4px rgba(2, 82, 223, 0.15);
+}
+.stepper-circle--pending {
+  background-color: white;
+  border-color: var(--bw-theme-border, #cbd5e1);
+  color: var(--bw-theme-muted, #94a3b8);
+}
+.stepper-circle--voided {
+  background-color: var(--q-negative, #ea3838);
+  border-color: var(--q-negative, #ea3838);
+  color: white;
+}
+.stepper-text {
+  font-size: 13px;
+  transition: color 0.3s ease;
+}
+.hero-stats-card {
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0252df 0%, #003db3 100%);
+  box-shadow: var(--bw-theme-shadow);
+}
+.font-size-11 {
+  font-size: 11px;
+}
+.font-size-12 {
+  font-size: 12px;
+}
+@media (max-width: 599px) {
+  .mt-mobile {
+    margin-top: 16px;
+  }
+}
+@media (min-width: 1024px) {
+  .invoice-details-page-container {
+    height: calc(100vh - 210px);
+    overflow: hidden;
+  }
+  .scroll-col {
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 24px;
+  }
+  .scroll-col::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-col::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-col::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+  }
+  .scroll-col::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.16);
+  }
 }
 </style>

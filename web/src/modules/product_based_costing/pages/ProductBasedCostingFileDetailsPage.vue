@@ -954,7 +954,7 @@ const onDefaultShipmentChange = async (shipmentId: number | null) => {
 };
 
 const goBack = () => {
-  router.push({ name: 'product-based-costing-page' });
+  void router.push({ name: 'product-based-costing-page' });
 };
 </script>
 

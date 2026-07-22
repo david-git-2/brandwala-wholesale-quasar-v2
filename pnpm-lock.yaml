@@ -29,6 +29,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.101.0
         version: 2.110.2
+      '@tanstack/vue-query':
+        specifier: ^5.101.4
+        version: 5.101.4(vue@3.5.39(typescript@5.9.3))
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1050,6 +1053,22 @@ packages:
   '@supabase/supabase-js@2.110.2':
     resolution: {integrity: sha512-r9q9w4ZQ6mOjh36aqUNFSisBF611vzpO8JphBESr2Q1SWvmGFQeI7Jq7Y+PaNMZ6Zszz+S2yTlJStCpnaMSnQg==}
     engines: {node: '>=22.0.0'}
+
+  '@tanstack/match-sorter-utils@8.19.4':
+    resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
+    engines: {node: '>=12'}
+
+  '@tanstack/query-core@5.101.4':
+    resolution: {integrity: sha512-gNwcvOJcRbLWPOLG/2OBm+zM+Yv+MKsXKEOWC57USuZDEsI71hEErQsiEGx5wX9rzWWkfwM0fVSPoiIFSsxfiw==}
+
+  '@tanstack/vue-query@5.101.4':
+    resolution: {integrity: sha512-UYjkUZhnWQIFGNb7SdgjCitAftNyYQfOIVUh6vBUQAG4SQKNMSBKeQERFDubpxLAMpIBJTaOrE8fM4c1kZcIGQ==}
+    peerDependencies:
+      '@vue/composition-api': ^1.1.2
+      vue: ^2.6.0 || ^3.3.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -2434,6 +2453,9 @@ packages:
     resolution: {integrity: sha512-G08Dxvm4iDN3MLM0EsP62EDV9IuhXPR6blNz6Utcp7zyV3tr4HVNINt6MpaRWbxoOHT3Q7YN2P+jaHX8vUbgog==}
     engines: {node: '>= 0.10'}
 
+  remove-accents@0.5.0:
+    resolution: {integrity: sha512-8g3/Otx1eJaVD12e31UbJj1YzdtVvzH85HV7t+9MJYk/u3XmkOUJ5Ys9wQrf9PCPK8+xn4ymzqYCiZl6QWKn+A==}
+
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -3017,6 +3039,17 @@ packages:
 
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
+
+  vue-demi@0.14.10:
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   vue-eslint-parser@10.4.1:
     resolution: {integrity: sha512-Gk6gRDj0n/fkRa3C3l0bBheoBckUq/Rs0F/TvMWIS6nzzx67amAViMe9CkNgsP2tXyQONvGiHQESHwFtZ3aYDA==}
@@ -3941,6 +3974,20 @@ snapshots:
       '@supabase/postgrest-js': 2.110.2
       '@supabase/realtime-js': 2.110.2
       '@supabase/storage-js': 2.110.2
+
+  '@tanstack/match-sorter-utils@8.19.4':
+    dependencies:
+      remove-accents: 0.5.0
+
+  '@tanstack/query-core@5.101.4': {}
+
+  '@tanstack/vue-query@5.101.4(vue@3.5.39(typescript@5.9.3))':
+    dependencies:
+      '@tanstack/match-sorter-utils': 8.19.4
+      '@tanstack/query-core': 5.101.4
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.39(typescript@5.9.3)
+      vue-demi: 0.14.10(vue@3.5.39(typescript@5.9.3))
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -5360,6 +5407,8 @@ snapshots:
 
   relateurl@0.2.7: {}
 
+  remove-accents@0.5.0: {}
+
   resolve-from@4.0.0: {}
 
   reusify@1.1.0: {}
@@ -5856,6 +5905,10 @@ snapshots:
       - msw
 
   vscode-uri@3.1.0: {}
+
+  vue-demi@0.14.10(vue@3.5.39(typescript@5.9.3)):
+    dependencies:
+      vue: 3.5.39(typescript@5.9.3)
 
   vue-eslint-parser@10.4.1(eslint@9.39.5(jiti@2.7.0)):
     dependencies:

@@ -1,21 +1,26 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
             <div>
-              <div class="text-overline">
-                {{ $t('shop.title') }} &amp; {{ $t('navigation.orders') }}
-              </div>
-              <h1 class="text-h5 q-my-none">{{ $t('shop.checkout') }}</h1>
-              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                {{ $t('shop.checkout_subtitle') }}
-              </p>
+              <div class="text-overline">Checkout</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">Complete Wholesale Order</h1>
             </div>
           </div>
+        </div>
+        <div class="col-auto">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            label="Submit Order"
+            :loading="orderStore.saving"
+            @click="submitOrder"
+          />
         </div>
       </section>
 
@@ -364,7 +369,7 @@
           </q-card>
         </div>
       </div>
-    </section>
+    </div>
   </q-page>
 </template>
 

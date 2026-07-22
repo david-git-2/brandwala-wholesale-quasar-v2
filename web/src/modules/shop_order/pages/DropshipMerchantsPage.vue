@@ -329,7 +329,7 @@ const filteredMerchants = computed(() => {
 
 async function loadMerchants() {
   loading.value = true;
-  const res = await dropshipMerchantService.fetchMerchants();
+  const res = await dropshipMerchantService.fetchMerchants({ forceRefresh: true });
   loading.value = false;
 
   if (res.success && res.data) {

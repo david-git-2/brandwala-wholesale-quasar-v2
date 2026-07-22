@@ -157,11 +157,51 @@
                     v-if="isColumnVisible('barcodeText')"
                     class="card-barcode-lines text-caption text-grey-7 q-mt-xs"
                   >
-                    <div v-if="slotProps.row.barcode">Barcode: {{ slotProps.row.barcode }}</div>
-                    <div v-if="slotProps.row.productCode">
-                      Code: {{ slotProps.row.productCode }}
+                    <div v-if="slotProps.row.barcode" class="row items-center no-wrap">
+                      <span>Barcode: {{ slotProps.row.barcode }}</span>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="xs"
+                        icon="content_copy"
+                        color="grey-6"
+                        class="q-ml-xs"
+                        @click="handleCopy(slotProps.row.barcode, 'Barcode')"
+                      >
+                        <q-tooltip>Copy Barcode</q-tooltip>
+                      </q-btn>
                     </div>
-                    <div v-if="slotProps.row.productId">ID: {{ slotProps.row.productId }}</div>
+                    <div v-if="slotProps.row.productCode" class="row items-center no-wrap">
+                      <span>Code: {{ slotProps.row.productCode }}</span>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="xs"
+                        icon="content_copy"
+                        color="grey-6"
+                        class="q-ml-xs"
+                        @click="handleCopy(slotProps.row.productCode, 'Code')"
+                      >
+                        <q-tooltip>Copy Code</q-tooltip>
+                      </q-btn>
+                    </div>
+                    <div v-if="slotProps.row.productId" class="row items-center no-wrap">
+                      <span>ID: {{ slotProps.row.productId }}</span>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="xs"
+                        icon="content_copy"
+                        color="grey-6"
+                        class="q-ml-xs"
+                        @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
+                      >
+                        <q-tooltip>Copy Product ID</q-tooltip>
+                      </q-btn>
+                    </div>
                   </div>
 
                   <div v-if="isColumnVisible('website') && slotProps.row.website" class="q-mt-xs">
@@ -582,10 +622,58 @@
             :props="slotProps"
             class="col-barcode"
           >
-            <div class="barcode-lines">
-              <div><strong>Barcode:</strong> {{ slotProps.row.barcode || '-' }}</div>
-              <div><strong>Code:</strong> {{ slotProps.row.productCode || '-' }}</div>
-              <div><strong>Product ID:</strong> {{ slotProps.row.productId || '-' }}</div>
+            <div class="barcode-lines text-caption">
+              <div class="row items-center no-wrap">
+                <span class="text-weight-bold">Barcode:</span>
+                <span class="q-ml-xs font-mono">{{ slotProps.row.barcode || '-' }}</span>
+                <q-btn
+                  v-if="slotProps.row.barcode"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="content_copy"
+                  color="grey-6"
+                  class="q-ml-xs"
+                  @click="handleCopy(slotProps.row.barcode, 'Barcode')"
+                >
+                  <q-tooltip>Copy Barcode</q-tooltip>
+                </q-btn>
+              </div>
+              <div class="row items-center no-wrap">
+                <span class="text-weight-bold">Code:</span>
+                <span class="q-ml-xs font-mono">{{ slotProps.row.productCode || '-' }}</span>
+                <q-btn
+                  v-if="slotProps.row.productCode"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="content_copy"
+                  color="grey-6"
+                  class="q-ml-xs"
+                  @click="handleCopy(slotProps.row.productCode, 'Code')"
+                >
+                  <q-tooltip>Copy Code</q-tooltip>
+                </q-btn>
+              </div>
+              <div class="row items-center no-wrap">
+                <span class="text-weight-bold">Product ID:</span>
+                <span class="q-ml-xs font-mono">{{ slotProps.row.productId || '-' }}</span>
+                <q-btn
+                  v-if="slotProps.row.productId"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="content_copy"
+                  color="grey-6"
+                  class="q-ml-xs"
+                  @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
+                >
+                  <q-tooltip>Copy Product ID</q-tooltip>
+                </q-btn>
+              </div>
             </div>
           </q-td>
 
@@ -1053,7 +1141,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import {
   calculateOfferPriceBdt,
@@ -1161,6 +1249,24 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
+
+const handleCopy = (text: string, label: string) => {
+  copyToClipboard(text)
+    .then(() => {
+      $q.notify({
+        type: 'positive',
+        message: `${label} copied to clipboard!`,
+        timeout: 1000,
+      });
+    })
+    .catch(() => {
+      $q.notify({
+        type: 'negative',
+        message: `Failed to copy ${label}`,
+        timeout: 1000,
+      });
+    });
+};
 
 const statusOptions = [
   { label: 'Pending', value: 'pending' },
@@ -2073,9 +2179,9 @@ const totals = computed(() => {
 }
 
 .col-barcode {
-  min-width: 180px;
-  width: 180px;
-  max-width: 180px;
+  min-width: 240px;
+  width: 240px;
+  max-width: 240px;
   background: #ffffff;
 }
 

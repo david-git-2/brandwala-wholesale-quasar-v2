@@ -9,11 +9,15 @@ export type GlobalInvoiceRow = {
   invoice_status: string;
   payment_status: string;
   invoice_date: string;
+  due_date?: string | null;
   total_amount: number;
   due_amount: number;
   paid_amount: number;
   billing_profile_id?: number | null;
   billing_profile_name?: string | null;
+  billing_profile_email?: string | null;
+  billing_profile_color?: string | null;
+  billing_profile_customer_group_id?: number | null;
   recipient_name?: string | null;
   settlement_discount_amount?: number;
 };

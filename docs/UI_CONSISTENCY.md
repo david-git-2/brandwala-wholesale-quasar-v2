@@ -208,3 +208,32 @@ Flow: `TreasuryPageShell` → header/filters → `TreasuryStatGrid` → `Treasur
 ## When to add shared components
 
 Only when pattern appears on 2+ pages and solves a real consistency problem. Location: `web/src/components/ui/`.
+
+## User Info / Avatar Pattern
+
+For tables or list grids displaying users, customers, or billing profiles, render a colored avatar using their name initials:
+- **Component**: `<q-avatar size="36px" :color="getAvatarColor(name)" text-color="white" class="q-mr-sm text-weight-bold">`
+- **Initial Picker**:
+  ```ts
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0] || '';
+    const last = parts[parts.length - 1] || '';
+    if (parts.length === 1) return first.charAt(0).toUpperCase() || 'U';
+    return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'U';
+  };
+  ```
+- **Consistent Color Hash Picker**:
+  ```ts
+  const getAvatarColor = (name?: string | null) => {
+    if (!name) return 'grey-6';
+    const colors = ['purple-5', 'teal-5', 'blue-5', 'orange-5', 'cyan-5', 'indigo-5', 'green-5'];
+    let sum = 0;
+    for (let i = 0; i < name.length; i++) {
+      sum += name.charCodeAt(i);
+    }
+    return colors[sum % colors.length];
+  };
+  ```
+- **Text Layout**: Wrap the name (bold) and secondary subtitle (such as email or phone number in `.text-caption.text-grey-7.text-xs`) next to the avatar inside a flex row container.

@@ -178,6 +178,18 @@ const adminRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/shop/dropship/:id/recipient-invoice-preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: guard('shop_dropship'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-dropship-recipient-invoice-preview',
+        component: () => import('src/modules/shop_order/pages/DropshipOrderRecipientInvoicePreviewPage.vue'),
+      },
+    ],
+  },
 
   // Legacy redirects (Phase 9)
   {

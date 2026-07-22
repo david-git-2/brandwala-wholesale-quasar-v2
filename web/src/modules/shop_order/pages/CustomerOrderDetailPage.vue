@@ -12,27 +12,53 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goOrders" />
             <div>
-              <div class="text-overline text-primary">{{ $t('shop_admin.order_portal') }}</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.order_details') }}</h1>
-              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Details for Order
-                <span class="text-weight-bold">{{ orderStore.currentOrder.order_no }}</span>
-              </p>
+              <div class="text-overline text-primary">Customer Order</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">Order #{{ order.order_no }}</h1>
+              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Placed on {{ formatDate(order.created_at) }} • {{ order.shop_name || 'Wholesale Shop' }}</p>
             </div>
           </div>
         </div>
         <div class="col-auto">
-          <q-badge
-            :color="getStatusColor(orderStore.currentOrder.status)"
-            text-color="white"
-            class="status-badge text-weight-bold q-py-xs q-px-md text-subtitle2"
-          >
-            {{ orderStore.currentOrder.status.toUpperCase() }}
-          </q-badge>
+          <q-btn color="primary" unelevated no-caps label="Download Invoice" @click="downloadInvoice" />
         </div>
       </section>
+
+      <!-- Status Workflow Button Strip (LOCKED) -->
+      <q-card flat bordered class="q-pa-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+            <template v-for="(st, idx) in ['pending', 'negotiating', 'approved', 'shipped', 'delivered']" :key="st">
+              <q-btn
+                :color="order.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
+                :text-color="order.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
+                :outline="order.status !== st"
+                :unelevated="order.status === st"
+                dense
+                no-caps
+                class="q-px-md text-caption text-weight-bold"
+              >
+                <q-icon v-if="order.status === st" name="check_circle" size="14px" class="q-mr-xs" />
+                {{ formatStatusLabel(st) }}
+              </q-btn>
+              <q-icon v-if="idx < 4" name="chevron_right" color="grey-5" size="18px" />
+            </template>
+            <q-separator vertical class="q-mx-sm" />
+            <q-btn
+              :color="order.status === 'cancelled' ? 'negative' : 'grey-3'"
+              :text-color="order.status === 'cancelled' ? 'white' : 'grey-7'"
+              :outline="order.status !== 'cancelled'"
+              :unelevated="order.status === 'cancelled'"
+              dense
+              no-caps
+              class="q-px-md text-caption text-weight-bold"
+            >
+              Cancelled
+            </q-btn>
+          </div>
+        </div>
+      </q-card>
 
       <!-- Order Info Cards -->
       <div class="row q-col-gutter-lg">
@@ -420,7 +446,35 @@ const submitCounterOffer = async () => {
   }
 };
 
-const goBack = () => {
+const order = computed(() => orderStore.currentOrder || ({} as any));
+
+const statusSequence = ['pending', 'negotiating', 'approved', 'shipped', 'delivered'];
+
+const isPassedStatus = (st: string) => {
+  const currentStatus = order.value.status || '';
+  const currentIndex = statusSequence.indexOf(currentStatus);
+  const targetIndex = statusSequence.indexOf(st);
+  if (currentIndex === -1 || targetIndex === -1) return false;
+  return targetIndex < currentIndex;
+};
+
+const formatStatusLabel = (st: string) => {
+  switch (st) {
+    case 'pending': return 'Pending';
+    case 'negotiating': return 'Negotiating';
+    case 'approved': return 'Approved';
+    case 'shipped': return 'Shipped';
+    case 'delivered': return 'Delivered';
+    case 'cancelled': return 'Cancelled';
+    default: return st;
+  }
+};
+
+const downloadInvoice = () => {
+  window.print();
+};
+
+const goOrders = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   void router.push(`${tenantSlug}/shop/orders`);
 };

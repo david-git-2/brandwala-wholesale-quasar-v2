@@ -15,23 +15,109 @@ const localToday = (): string => {
   return `${d.getFullYear()}-${m}-${day}`;
 };
 
-const listGlobalInvoices = async (parentTenantId: number): Promise<GlobalInvoiceRow[]> => {
-  const { data, error } = await supabase
+export type ListGlobalInvoicesParams = {
+  parentTenantId: number;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  paymentStatus?: string | null;
+  invoiceStatus?: string | null;
+  invoiceType?: string | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  quickFilter?: 'all' | 'paid' | 'unpaid';
+};
+
+export type PaginatedGlobalInvoices = {
+  data: GlobalInvoiceRow[];
+  total: number;
+};
+
+const listGlobalInvoices = async (
+  params: ListGlobalInvoicesParams,
+): Promise<PaginatedGlobalInvoices> => {
+  const {
+    parentTenantId,
+    page = 1,
+    pageSize = 10,
+    search,
+    paymentStatus,
+    invoiceStatus,
+    invoiceType,
+    fromDate,
+    toDate,
+    quickFilter,
+  } = params;
+
+  const offset = (page - 1) * pageSize;
+
+  let query = supabase
     .from('global_invoices')
     .select(
-      'id, tenant_id, parent_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name)',
+      'id, tenant_id, parent_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name, email, color, customer_group_id)',
+      { count: 'exact' },
     )
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('parent_tenant_id', parentTenantId);
+
+  if (paymentStatus) {
+    query = query.eq('payment_status', paymentStatus);
+  }
+  if (invoiceStatus) {
+    query = query.eq('invoice_status', invoiceStatus);
+  }
+  if (invoiceType) {
+    query = query.eq('invoice_type', invoiceType);
+  }
+
+  if (quickFilter === 'paid') {
+    query = query.eq('payment_status', 'paid');
+  } else if (quickFilter === 'unpaid') {
+    query = query.neq('payment_status', 'paid');
+  }
+
+  if (fromDate) {
+    query = query.gte('invoice_date', fromDate);
+  }
+  if (toDate) {
+    query = query.lte('invoice_date', toDate);
+  }
+
+  if (search && search.trim()) {
+    const cleanSearch = search.trim();
+    let billingProfileIds: number[] = [];
+    const { data: profiles } = await supabase
+      .from('billing_profiles')
+      .select('id')
+      .ilike('name', `%${cleanSearch}%`);
+    if (profiles) {
+      billingProfileIds = profiles.map((p) => p.id);
+    }
+
+    const conditions = [
+      `invoice_no.ilike.%${cleanSearch}%`,
+      `recipient_name.ilike.%${cleanSearch}%`,
+    ];
+    const maybeId = Number(cleanSearch);
+    if (!Number.isNaN(maybeId) && Number.isFinite(maybeId)) {
+      conditions.push(`id.eq.${maybeId}`);
+    }
+    if (billingProfileIds.length > 0) {
+      conditions.push(`billing_profile_id.in.(${billingProfileIds.join(',')})`);
+    }
+    query = query.or(conditions.join(','));
+  }
+
+  const { data, error, count } = await query
     .order('id', { ascending: false })
-    .limit(200);
+    .range(offset, offset + pageSize - 1);
 
   if (error) throw error;
 
   type GlobalInvoiceListRow = GlobalInvoiceRow & {
-    billing_profiles?: { name: string } | { name: string }[] | null;
+    billing_profiles?: { name: string; email: string | null; color: string | null; customer_group_id: number | null } | { name: string; email: string | null; color: string | null; customer_group_id: number | null }[] | null;
   };
 
-  return ((data as GlobalInvoiceListRow[] | null) ?? []).map((row) => {
+  const rows = ((data as GlobalInvoiceListRow[] | null) ?? []).map((row) => {
     const billingProfile = Array.isArray(row.billing_profiles)
       ? (row.billing_profiles[0] ?? null)
       : (row.billing_profiles ?? null);
@@ -39,8 +125,16 @@ const listGlobalInvoices = async (parentTenantId: number): Promise<GlobalInvoice
     return {
       ...row,
       billing_profile_name: billingProfile?.name ?? null,
+      billing_profile_email: billingProfile?.email ?? null,
+      billing_profile_color: billingProfile?.color ?? null,
+      billing_profile_customer_group_id: billingProfile?.customer_group_id ?? null,
     };
   });
+
+  return {
+    data: rows,
+    total: count ?? 0,
+  };
 };
 
 const createGlobalInvoice = async (

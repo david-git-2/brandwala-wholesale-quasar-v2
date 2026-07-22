@@ -1,16 +1,56 @@
 <template>
   <q-page class="q-pa-md customer-orders-page">
-    <div class="bw-page__stack">
+    <div class="q-gutter-y-md">
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">{{ $t('shop_admin.customer_portal') }}</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.my_orders') }}</h1>
+          <h1 class="text-h5 text-weight-bold q-my-none">My Orders</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
             {{ $t('shop_admin.my_orders_subtitle') }}
           </p>
         </div>
+        <div class="col-auto">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            class="pill-btn"
+            label="Browse Wholesale Shops"
+            @click="goBrowse"
+          />
+        </div>
       </section>
+
+      <!-- Toolbar Card -->
+      <q-card flat bordered class="q-pa-sm">
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-xs-12 col-sm-6 col-md-4">
+            <q-input
+              v-model="searchQuery"
+              dense
+              outlined
+              clearable
+              placeholder="Search order no..."
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-xs-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="statusFilter"
+              dense
+              outlined
+              emit-value
+              map-options
+              :options="statusOptions"
+              label="Filter Status"
+            />
+          </div>
+        </div>
+      </q-card>
 
       <!-- Content -->
       <div v-if="orderStore.loading" class="column items-center justify-center q-pa-xl">
@@ -19,7 +59,7 @@
       </div>
 
       <div
-        v-else-if="orderStore.orders.length === 0"
+        v-else-if="filteredOrders.length === 0"
         class="column items-center justify-center empty-state q-pa-xl text-center"
       >
         <q-icon name="receipt_long" size="80px" color="grey-4" class="q-mb-md" />
@@ -29,17 +69,18 @@
         </p>
         <q-btn
           color="primary"
+          unelevated
           no-caps
-          :label="$t('shop_admin.go_browse_catalog')"
+          label="Browse Wholesale Shops"
           class="pill-btn"
-          @click="goToStorefront"
+          @click="goBrowse"
         />
       </div>
 
       <div v-else class="column q-gutter-md">
         <q-card flat bordered class="order-table-card">
           <q-list separator>
-            <q-item v-for="order in orderStore.orders" :key="order.id" class="q-py-md">
+            <q-item v-for="order in filteredOrders" :key="order.id" class="q-py-md">
               <q-item-section>
                 <div class="row items-center justify-between q-col-gutter-sm">
                   <!-- Order Identifier -->
@@ -98,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
@@ -108,6 +149,41 @@ const route = useRoute();
 const router = useRouter();
 const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
+
+const searchQuery = ref('');
+const statusFilter = ref('all');
+
+const statusOptions = [
+  { label: 'All Statuses', value: 'all' },
+  { label: 'Pending / Draft', value: 'pending' },
+  { label: 'Submitted', value: 'submitted' },
+  { label: 'Negotiating', value: 'negotiating' },
+  { label: 'Approved / Confirmed', value: 'approved' },
+  { label: 'Shipped', value: 'shipped' },
+  { label: 'Delivered', value: 'delivered' },
+  { label: 'Cancelled', value: 'cancelled' },
+];
+
+const filteredOrders = computed(() => {
+  let list = orderStore.orders || [];
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((o: any) => o.order_no?.toLowerCase().includes(q));
+  }
+
+  if (statusFilter.value !== 'all') {
+    if (statusFilter.value === 'pending') {
+      list = list.filter((o: any) => o.status === 'pending' || o.status === 'draft');
+    } else if (statusFilter.value === 'approved') {
+      list = list.filter((o: any) => o.status === 'approved' || o.status === 'confirmed' || o.status === 'priced');
+    } else {
+      list = list.filter((o: any) => o.status === statusFilter.value);
+    }
+  }
+
+  return list;
+});
 
 const getShopId = (): number => {
   return storefrontStore.shopDetails?.id ?? Number(localStorage.getItem('last_visited_shop_id'));
@@ -120,7 +196,7 @@ onMounted(async () => {
   }
 });
 
-const goToStorefront = () => {
+const goBrowse = () => {
   const slug = storefrontStore.shopDetails?.slug ?? localStorage.getItem('last_visited_shop_slug');
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   if (slug) {
@@ -142,6 +218,7 @@ const formatDate = (dateStr: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'draft':
+    case 'pending':
       return 'grey-7';
     case 'submitted':
       return 'blue-7';
@@ -149,6 +226,7 @@ const getStatusColor = (status: string) => {
       return 'amber-9';
     case 'priced':
       return 'cyan-8';
+    case 'approved':
     case 'confirmed':
       return 'green-7';
     case 'placed':

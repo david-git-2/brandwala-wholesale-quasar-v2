@@ -51,92 +51,82 @@
     <!-- STOREFRONT MAIN CONTENT -->
     <div v-else class="bw-page__stack">
       <!-- Shop Header Hero -->
-      <q-card flat bordered class="q-mb-lg">
-        <q-card-section class="q-py-md q-px-lg">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col">
-              <div>
-                <h1 class="text-h6 text-weight-bold q-my-none">
-                  {{ shopStorefrontStore.shopDetails?.name }}
-                </h1>
-                <div class="row items-center q-gutter-xs text-caption text-grey-7 q-mt-xs">
-                  <q-badge
-                    :color="getShopTypeColor(shopStorefrontStore.shopDetails?.shop_type)"
-                    text-color="white"
-                    class="q-mr-xs"
-                  >
-                    {{ getShopTypeLabel(shopStorefrontStore.shopDetails?.shop_type) }}
-                  </q-badge>
-                </div>
-              </div>
-            </div>
-            <!-- Back to App Link / Indicator -->
-            <div class="col-auto row items-center q-gutter-sm">
-              <q-btn
-                v-if="shopStorefrontStore.permissions?.can_add_to_cart"
-                flat
-                round
-                dense
-                icon="shopping_cart"
-                color="primary"
-                @click="goToCart"
-              >
-                <q-badge color="negative" floating v-if="shopCartStore.itemCount > 0">
-                  {{ shopCartStore.itemCount }}
-                </q-badge>
-                <q-tooltip>{{ $t('shop.cart') }}</q-tooltip>
-              </q-btn>
-            </div>
+      <section class="row items-center justify-between q-col-gutter-md q-mb-md">
+        <div class="col">
+          <div class="row items-center q-gutter-xs">
+            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goDashboard" />
+            <div class="text-overline text-primary">Wholesale Storefront</div>
           </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- Toolbar & Search -->
-      <div class="row items-center justify-between q-col-gutter-md q-mb-md">
-        <!-- Search bar -->
-        <div class="col-xs-12 col-sm-8 col-md-6 row no-wrap q-gutter-sm">
-          <q-input
-            v-model="search"
-            filled
-            dense
-            type="text"
-            class="soft-input col"
-            :placeholder="$t('shop.search_placeholder')"
-            clearable
-            @keydown.enter="onSearchClick"
-            @clear="onSearchClick"
-          >
-            <template #prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            :label="$t('shop.search')"
-            class="pill-btn"
-            @click="onSearchClick"
-          />
+          <h1 class="text-h5 text-weight-bold q-my-none">{{ shopName }}</h1>
         </div>
-
-        <!-- Filter toggles -->
-        <div class="col-xs-12 col-sm-4 col-md-6 text-right row justify-end q-gutter-sm">
+        <div class="col-auto row items-center q-gutter-sm">
           <q-btn
+            v-if="shopStorefrontStore.permissions?.can_add_to_cart"
+            color="primary"
             flat
             round
-            dense
-            color="primary"
-            icon="filter_list"
-            @click="filterDrawerOpen = true"
+            icon="shopping_cart"
+            @click="goToCart"
           >
-            <q-badge v-if="activeFilterCount > 0" color="primary" floating rounded>
-              {{ activeFilterCount }}
+            <q-badge v-if="shopCartStore.itemCount > 0" color="negative" floating rounded>
+              {{ shopCartStore.itemCount }}
             </q-badge>
-            <q-tooltip>{{ $t('shop.filters') }}</q-tooltip>
+            <q-tooltip>{{ $t('shop.cart') }}</q-tooltip>
           </q-btn>
         </div>
-      </div>
+      </section>
+
+      <!-- Toolbar & Search Card -->
+      <q-card flat bordered class="q-pa-sm q-mb-md">
+        <div class="row items-center justify-between q-col-gutter-md">
+          <!-- Search bar -->
+          <div class="col-xs-12 col-sm-8 col-md-6 row no-wrap q-gutter-sm">
+            <q-input
+              v-model="search"
+              filled
+              dense
+              type="text"
+              class="soft-input col"
+              :placeholder="$t('shop.search_placeholder')"
+              clearable
+              @keydown.enter="onSearchClick"
+              @clear="onSearchClick"
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              :label="$t('shop.search')"
+              class="pill-btn"
+              @click="onSearchClick"
+            />
+          </div>
+
+          <!-- Filter toggles & Active category indicator badge -->
+          <div class="col-xs-12 col-sm-4 col-md-6 text-right row items-center justify-end q-gutter-sm">
+            <q-badge v-if="category" color="primary" outline class="q-pa-xs">
+              Category: {{ category }}
+            </q-badge>
+            <q-btn
+              flat
+              round
+              dense
+              color="primary"
+              icon="filter_list"
+              @click="filterDrawerOpen = true"
+            >
+              <q-badge v-if="activeFilterCount > 0" color="primary" floating rounded>
+                {{ activeFilterCount }}
+              </q-badge>
+              <q-tooltip>{{ $t('shop.filters') }}</q-tooltip>
+            </q-btn>
+          </div>
+        </div>
+      </q-card>
 
       <!-- Active Filters Chips -->
       <div
@@ -451,6 +441,9 @@ const shopCartStore = useShopCartStore();
 const authStore = useAuthStore();
 
 const shopSlug = computed(() => (route.params.shopSlug as string) || '');
+const shopName = computed(
+  () => shopStorefrontStore.shopDetails?.name || 'Wholesale Storefront',
+);
 
 const initialLoading = ref(true);
 const accessDenied = ref(false);
@@ -494,8 +487,21 @@ const hasActiveFilters = computed(() => {
   return Boolean(search.value || brand.value || category.value);
 });
 
+const goDashboard = () => {
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
+  void router.push(`${tenantSlug}/shop`);
+};
+
 const goBack = () => {
   router.back();
+};
+
+const syncUrlQuery = () => {
+  const query: Record<string, string> = {};
+  if (search.value) query.search = search.value;
+  if (category.value) query.category = category.value;
+  if (brand.value) query.brand = brand.value;
+  void router.replace({ query });
 };
 
 const formatMoney = (amount: unknown, symbol?: string | null) => {
@@ -617,6 +623,7 @@ const onResetFilters = () => {
     filteredBrandNames.value = [...brandNames.value];
     filteredCategoryNames.value = [...categoryNames.value];
     shopStorefrontStore.catalogItems = [];
+    syncUrlQuery();
     resetInfiniteScroll();
   } finally {
     suppressFilterWatch.value = false;
@@ -688,18 +695,45 @@ const onRemoveFromCart = async (catalogItem: any) => {
 
 const onSearchClick = () => {
   shopStorefrontStore.catalogItems = [];
+  syncUrlQuery();
   resetInfiniteScroll();
 };
 
 watch([category, brand], () => {
   if (suppressFilterWatch.value) return;
   shopStorefrontStore.catalogItems = [];
+  syncUrlQuery();
   resetInfiniteScroll();
 });
 
+const applyRouteQueryParams = () => {
+  const qVal = (route.query.q || route.query.search) as string | undefined;
+  if (qVal) {
+    search.value = String(qVal);
+  }
+  if (route.query.category) {
+    category.value = String(route.query.category);
+  }
+  if (route.query.brand) {
+    brand.value = String(route.query.brand);
+  }
+};
+
+watch(
+  () => route.query,
+  () => {
+    if (suppressFilterWatch.value) return;
+    applyRouteQueryParams();
+  },
+);
+
 onMounted(async () => {
+  applyRouteQueryParams();
   try {
     const result = await shopStorefrontStore.fetchCatalog(shopSlug.value, {
+      search: search.value || null,
+      category: category.value || null,
+      brand: brand.value || null,
       limit: shopStorefrontStore.pageSize,
       offset: 0,
     });

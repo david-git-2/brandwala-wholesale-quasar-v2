@@ -358,7 +358,7 @@ const form = reactive<CreateCourierServicePayload>({
 
 const loadCouriers = async () => {
   loading.value = true;
-  const res = await dropshipCourierService.fetchCouriers();
+  const res = await dropshipCourierService.fetchCouriers({ forceRefresh: true });
   loading.value = false;
   if (res.success) {
     couriers.value = res.data;

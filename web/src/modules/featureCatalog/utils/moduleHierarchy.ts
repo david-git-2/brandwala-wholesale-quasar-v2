@@ -52,6 +52,58 @@ export const getRegistryParentKey = (
 ): ModuleKey | undefined =>
   registry.find((definition) => definition.key === moduleKey)?.parentModuleKey;
 
+const getSubmoduleSectionAndWeight = (
+  parentKey: string,
+  moduleKey: string,
+): { section: string; weight: number } => {
+  if (parentKey === 'shop_order') {
+    switch (moduleKey) {
+      case 'shop_config':
+      case 'shop_permissions':
+      case 'shop_pricing':
+        return { section: 'Shop Setup', weight: 10 };
+      case 'shop_order_mgmt':
+      case 'shop_fulfillment':
+        return { section: 'Operations', weight: 20 };
+      case 'shop_dropship':
+        return { section: 'Dropship Desk', weight: 30 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
+  if (parentKey === 'reporting_treasury') {
+    switch (moduleKey) {
+      case 'parent_dashboard':
+      case 'billing_balances':
+        return { section: 'Overview', weight: 10 };
+      case 'payments':
+        return { section: 'Transactions', weight: 20 };
+      case 'invoice_reports':
+      case 'shipment_reports':
+      case 'investor_reports':
+        return { section: 'Reports', weight: 30 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
+  if (parentKey === 'sales_invoice') {
+    switch (moduleKey) {
+      case 'global_invoice':
+        return { section: 'Invoicing', weight: 10 };
+      case 'billing_profile':
+      case 'recipient_profile':
+      case 'invoice_brand':
+        return { section: 'Profiles & Brands', weight: 20 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
+  return { section: '', weight: 99 };
+};
+
 export const buildNavLinksFromModuleHierarchy = (
   accessibleRoutes: AccessibleModuleRoute[],
   registry: readonly ModuleDefinition[],
@@ -77,15 +129,35 @@ export const buildNavLinksFromModuleHierarchy = (
 
     childRoutes.forEach((route) => routesInHierarchy.add(route.moduleKey));
 
+    const mappedChildren = childRoutes
+      .map((route) => {
+        const { section, weight } = getSubmoduleSectionAndWeight(parentKey, route.moduleKey);
+        return {
+          title: route.title,
+          caption: route.caption,
+          icon: route.icon || 'fiber_manual_record',
+          to: route.to,
+          section: section || undefined,
+          weight,
+        };
+      })
+      .sort((a, b) => {
+        if (a.weight !== b.weight) {
+          return a.weight - b.weight;
+        }
+        return a.title.localeCompare(b.title);
+      });
+
     hierarchyLinks.push({
       title: parentDefinition.name,
       caption: parentDefinition.description,
       icon: parentDefinition.navIcon ?? 'folder',
-      children: childRoutes.map((route) => ({
-        title: route.title,
-        caption: route.caption,
-        icon: 'chevron_right',
-        to: route.to,
+      children: mappedChildren.map(({ title, caption, icon, to, section }) => ({
+        title,
+        caption,
+        icon,
+        to,
+        section,
       })),
     });
   }

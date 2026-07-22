@@ -26,6 +26,12 @@
           placeholder="#B45F34"
           clearable
         >
+          <template #prepend>
+            <div
+              class="color-preview"
+              :style="{ backgroundColor: form.color || '#cccccc' }"
+            />
+          </template>
           <template #append>
             <q-icon
               name="palette"
@@ -182,6 +188,15 @@ const onSubmit = () => {
 </script>
 
 <style scoped>
+.color-preview {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+  display: inline-block;
+  vertical-align: middle;
+}
 .swatch-btn {
   width: 24px;
   height: 24px;

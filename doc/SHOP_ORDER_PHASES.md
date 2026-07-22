@@ -2,10 +2,11 @@
 
 **Agent index (archived):** [docs/archive/shop_order_phased_build_0010b204.plan.md](../docs/archive/shop_order_phased_build_0010b204.plan.md) — canonical tracker is this file.  
 **Canon:** [SHOP_ORDER.md](SHOP_ORDER.md)
+**State management canon:** [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md)
 
 Update this file when a phase completes. Agent: set status to `done` and stop.
  
-**Next phase:** P11 (Implement Shop Settings Schema & Dual Currencies)
+**Next phase:** P15 (shop_order Server-State Orchestration)
  
 ---
  
@@ -28,6 +29,7 @@ Update this file when a phase completes. Agent: set status to `done` and stop.
 | P12 | pending | `20260716000100_shop_order_p12_calculation_rpcs.sql` | `shop_pricing` |
 | P13 | pending | — (web only) | `shop_config` (UI) |
 | P14 | pending | — (web only) | `shop_storefront` / `shop_cart` (UI) |
+| P15 | pending | — (web only) | `shop_order` (server-state orchestration) |
 
 ---
 
@@ -353,3 +355,40 @@ Retire the legacy `/app/commerce-shop` and `/shop/commerce-shop/*` paths. Ensure
 
 - [ ] Storefront properly shows dropship pricing constraints.
 - [ ] Checkout constraints are verified on the client.
+
+---
+
+## P15 — shop_order Server-State Orchestration (`shop_order`)
+
+**Read:** [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md), SHOP_ORDER §8
+
+### Web
+
+*   Apply shared query key naming consistently across `shop_order` list/detail queries.
+*   Replace blanket reload patterns with targeted invalidation on writes.
+*   Reduce redundant refetch behavior on shop_order list/detail screens.
+*   Primary implementation targets:
+    *   `web/src/modules/shop_order/pages/DropshipOrderDetailPage.vue`
+    *   `web/src/modules/shop_order/stores/shopOrderStore.ts`
+    *   `web/src/modules/shop_order/services/shopOrderService.ts`
+
+### Migration Plan
+
+*   **Phase A: Foundation**
+    *   Install/query client bootstrapping and module-local query key factory.
+    *   Keep existing pages functional; no behavior changes yet.
+*   **Phase B: Read queries**
+    *   Move order detail + supporting lookups (couriers, merchants) to queries with explicit stale times.
+    *   Enable in-flight dedupe and keep-previous-data behavior for smoother transitions.
+*   **Phase C: Mutations**
+    *   Convert status/charge/consignment/invoice actions to mutations.
+    *   Replace blanket reloads with targeted cache updates + invalidation.
+*   **Phase D: Store boundary cleanup**
+    *   Retain Pinia for UI/form state and permission-driven view logic.
+    *   Remove duplicated server-state fields from store where query cache is authoritative.
+
+### Exit
+
+- [ ] Redundant refetches reduced on shop_order detail/list flows.
+- [ ] Targeted invalidation replaces blanket reload calls.
+- [ ] Shared query key naming is applied consistently.

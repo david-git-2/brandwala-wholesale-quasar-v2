@@ -275,6 +275,59 @@ const processDropshipOrder = async (
   }
 };
 
+const resolveCategoryStyle = (
+  categoryName: string,
+): { icon: string; color: string; bgColor: string } => {
+  const name = (categoryName || '').toLowerCase();
+
+  if (/t-shirt|apparel|shirt/.test(name)) {
+    return { icon: 'checkroom', color: 'blue-7', bgColor: 'blue-1' };
+  }
+  if (/hoodie|jacket|outerwear/.test(name)) {
+    return { icon: 'sports_outdoor', color: 'deep-orange-7', bgColor: 'deep-orange-1' };
+  }
+  if (/activewear|sport/.test(name)) {
+    return { icon: 'directions_run', color: 'green-7', bgColor: 'green-1' };
+  }
+  if (/accessory|watch|jewel/.test(name)) {
+    return { icon: 'watch', color: 'purple-7', bgColor: 'purple-1' };
+  }
+  if (/footwear|shoe/.test(name)) {
+    return { icon: 'roller_skating', color: 'indigo-7', bgColor: 'indigo-1' };
+  }
+  if (/pant|trouser|bottom/.test(name)) {
+    return { icon: 'layers', color: 'teal-7', bgColor: 'teal-1' };
+  }
+
+  return { icon: 'category', color: 'grey-7', bgColor: 'grey-2' };
+};
+
+const listCustomerShopCategories = async (
+  tenantId: number,
+): Promise<
+  ShopServiceResult<
+    { name: string; icon: string; bgColor: string; color: string; count: number }[]
+  >
+> => {
+  try {
+    const rawCategories = await shopOrderRepository.fetchCustomerShopCategories(tenantId);
+    const data = rawCategories.map((cat) => {
+      const style = resolveCategoryStyle(cat.name);
+      return {
+        name: cat.name,
+        count: Number(cat.count || 0),
+        ...style,
+      };
+    });
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch customer shop categories.',
+    };
+  }
+};
+
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
@@ -290,6 +343,7 @@ export const shopOrderService = {
   deleteOrder,
   browseShopCatalog,
   listShopsForCustomer,
+  listCustomerShopCategories,
   updateOrderCharges,
   processDropshipOrder,
 };

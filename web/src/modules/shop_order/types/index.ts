@@ -163,6 +163,11 @@ export interface ShopOrder {
   deduct_packing_from_margin?: boolean;
   item_count?: number;
   total_amount?: number;
+  cod_collect_amount?: number | null;
+  courier_name?: string | null;
+  courier_awb_number?: string | null;
+  courier_remittance_ref?: string | null;
+  courier_bank_trx_id?: string | null;
 }
 
 export interface ShopOrderItem {

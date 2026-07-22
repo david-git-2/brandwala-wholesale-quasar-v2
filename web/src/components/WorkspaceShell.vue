@@ -398,7 +398,7 @@
                     :offset="[8, 0]"
                     class="workspace-shell__flyout-menu"
                   >
-                    <q-list dense class="q-py-xs" style="min-width: 180px">
+                    <q-list dense class="q-py-xs" style="min-width: 190px">
                       <q-item-label
                         header
                         class="text-uppercase text-weight-bold text-grey-7 q-py-xs"
@@ -407,20 +407,31 @@
                         {{ translateTitle(link.title) }}
                       </q-item-label>
                       <q-separator class="q-mb-xs" />
-                      <q-item
-                        v-for="child in link.children"
-                        :key="child.to ?? child.title"
-                        clickable
-                        :to="child.to!"
-                        exact
-                        v-close-popup
-                        class="workspace-shell__flyout-sub-item q-mx-xs q-my-xs rounded-borders"
-                        active-class="workspace-shell__nav-item--active"
-                      >
-                        <q-item-section>
-                          <q-item-label>{{ translateTitle(child.title) }}</q-item-label>
-                        </q-item-section>
-                      </q-item>
+                      
+                      <template v-for="(child, idx) in link.children" :key="child.to ?? child.title">
+                        <div
+                          v-if="shouldShowSectionHeader(link, child, idx)"
+                          class="workspace-shell__nav-sub-header q-px-sm q-pt-sm q-pb-xs text-uppercase"
+                          style="font-size: 9px; font-weight: 700; letter-spacing: 0.05em; color: var(--shell-muted);"
+                        >
+                          {{ child.section }}
+                        </div>
+                        <q-item
+                          clickable
+                          :to="child.to!"
+                          exact
+                          v-close-popup
+                          class="workspace-shell__flyout-sub-item q-mx-xs q-my-xs rounded-borders"
+                          active-class="workspace-shell__nav-item--active"
+                        >
+                          <q-item-section v-if="child.icon" avatar class="q-pr-none" style="min-width: 24px">
+                            <q-icon :name="child.icon" size="14px" color="grey-6" />
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-weight-medium">{{ translateTitle(child.title) }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
                     </q-list>
                   </q-menu>
                 </q-item>
@@ -428,25 +439,37 @@
                 <!-- Group with children in standard mode (expansion item) -->
                 <q-expansion-item
                   v-else-if="link.children?.length"
+                  :model-value="expandedGroups[link.title] ?? false"
+                  @update:model-value="(val) => expandedGroups[link.title] = !!val"
                   :icon="link.icon"
                   :label="translateTitle(link.title)"
                   class="workspace-shell__nav-item workspace-shell__nav-group"
                   expand-separator
                 >
                   <div class="workspace-shell__nav-sub-list">
-                    <q-item
-                      v-for="child in link.children"
-                      :key="child.to ?? child.title"
-                      clickable
-                      :to="child.to!"
-                      exact
-                      class="workspace-shell__nav-sub-item"
-                      active-class="workspace-shell__nav-item--active"
-                    >
-                      <q-item-section>
-                        <q-item-label>{{ translateTitle(child.title) }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
+                    <template v-for="(child, idx) in link.children" :key="child.to ?? child.title">
+                      <div
+                        v-if="shouldShowSectionHeader(link, child, idx)"
+                        class="workspace-shell__nav-sub-header"
+                      >
+                        {{ child.section }}
+                      </div>
+                      
+                      <q-item
+                        clickable
+                        :to="child.to!"
+                        exact
+                        class="workspace-shell__nav-sub-item"
+                        active-class="workspace-shell__nav-item--active"
+                      >
+                        <q-item-section v-slot:default v-if="child.icon" avatar class="q-pr-none" style="min-width: 28px">
+                          <q-icon :name="child.icon" size="18px" color="grey-6" class="sub-item-icon" />
+                        </q-item-section>
+                        <q-item-section>
+                          <q-item-label class="text-weight-medium">{{ translateTitle(child.title) }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
                   </div>
                 </q-expansion-item>
 
@@ -711,6 +734,7 @@ export interface WorkspaceLink {
   icon: string;
   to?: string;
   target?: string;
+  section?: string | undefined;
   children?: WorkspaceLink[];
 }
 
@@ -769,6 +793,34 @@ const isBottomNavLinkActive = (link: WorkspaceLink) => {
 
 const isBottomNavGroupActive = (link: WorkspaceLink) =>
   !!link.children?.some((child) => isBottomNavLinkActive(child));
+
+const shouldShowSectionHeader = (link: WorkspaceLink, child: WorkspaceLink, idx: number): boolean => {
+  if (!child.section) return false;
+  if (idx === 0) return true;
+  if (!link.children) return false;
+  return link.children[idx - 1]?.section !== child.section;
+};
+
+const expandedGroups = ref<Record<string, boolean>>({});
+
+const autoExpandActiveGroup = () => {
+  for (const link of props.links) {
+    if (link.children?.length) {
+      const hasActiveChild = link.children.some(
+        (child) => child.to && (route.path === child.to || route.path.startsWith(`${child.to}/`))
+      );
+      expandedGroups.value[link.title] = hasActiveChild;
+    }
+  }
+};
+
+watch(
+  () => route.path,
+  () => {
+    autoExpandActiveGroup();
+  },
+  { immediate: true }
+);
 
 const togglePin = () => {
   void setNavPinned(!navPinned.value, authStore.membershipId);
@@ -1325,6 +1377,17 @@ const confirmLogout = async () => {
   margin-left: 0.15rem;
 }
 
+.workspace-shell__nav-sub-header {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--shell-muted);
+  text-transform: uppercase;
+  padding: 0.75rem 0.5rem 0.25rem 0.55rem;
+  display: flex;
+  align-items: center;
+}
+
 .workspace-shell__drawer-search {
   cursor: pointer;
 }
@@ -1354,7 +1417,7 @@ const confirmLogout = async () => {
   --shell-border: var(--bw-brand-border);
   border: 1px solid var(--shell-border);
   background: var(--shell-surface);
-  border-radius: 12px;
+  border-radius: 12px !important;
 }
 
 .command-palette-item {
@@ -1366,9 +1429,9 @@ const confirmLogout = async () => {
   color: var(--shell-ink) !important;
 }
 
-.command-palette-match {
-  background: color-mix(in srgb, var(--q-primary) 28%, transparent);
-  color: inherit;
+:deep(.command-palette-match) {
+  background: transparent;
+  color: var(--q-primary) !important;
   border-radius: 2px;
   padding: 0 1px;
   font-weight: 700;

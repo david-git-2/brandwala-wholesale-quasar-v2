@@ -318,11 +318,26 @@ const processDropshipShopOrder = async (orderId: number): Promise<{ success: boo
   return data as { success: boolean; order_id?: number; new_status?: string; error?: string };
 };
 
+const fetchCustomerShopCategories = async (
+  tenantId: number,
+): Promise<{ name: string; count: number }[]> => {
+  const { data, error } = await supabase.rpc('fetch_customer_shop_categories', {
+    p_tenant_id: tenantId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as { name: string; count: number }[] | null) ?? [];
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
   browseShopCatalog,
   listShopsForCustomer,
+  fetchCustomerShopCategories,
   submitShopOrderFromCart,
   staffPriceShopOrder,
   customerCounterOffer,

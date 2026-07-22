@@ -1,26 +1,20 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
-      <!-- Compact Header Design -->
-      <q-card flat class="q-mb-sm floating-surface hero-surface shadow-1">
-        <q-card-section class="q-py-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col-12 col-sm">
-              <div class="row items-center q-gutter-x-sm no-wrap">
-                <q-btn flat round dense icon="arrow_back" color="grey-7" @click="goBack" />
-                <div>
-                  <div class="text-subtitle1 text-weight-bold text-grey-9">
-                    {{ $t('shop.cart_title') }}
-                  </div>
-                  <div class="text-caption text-grey-7">
-                    {{ $t('shop.cart_subtitle') }}
-                  </div>
-                </div>
-              </div>
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <!-- Standard Page Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <div>
+              <div class="text-overline">Shop Cart</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">
+                Your Cart ({{ cartStore.itemCount }} items)
+              </h1>
             </div>
           </div>
-        </q-card-section>
-      </q-card>
+        </div>
+      </section>
 
       <!-- Loading State -->
       <div v-if="cartStore.loading" class="text-center q-pa-xl">
@@ -298,12 +292,8 @@
                 color="primary"
                 unelevated
                 no-caps
-                :label="
-                  cartStore.cart?.shop_type === 'vendor_catalog'
-                    ? $t('shop.place_order')
-                    : $t('shop.proceed_to_checkout')
-                "
-                class="full-width pill-btn text-weight-bold q-py-sm"
+                class="pill-btn full-width"
+                label="Proceed to Checkout"
                 :loading="cartStore.saving || placingOrder"
                 @click="handleButtonClick"
               />
@@ -311,7 +301,7 @@
           </q-card>
         </div>
       </div>
-    </section>
+    </div>
   </q-page>
 </template>
 

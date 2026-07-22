@@ -65,6 +65,9 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         path: 'billing-profiles',
         name: 'app-global-billing-profiles',
         component: () => import('../pages/BillingProfilesPage.vue'),
+        meta: {
+          hasPageToolbar: true,
+        },
         beforeEnter: guard('billing_profile'),
       },
       {

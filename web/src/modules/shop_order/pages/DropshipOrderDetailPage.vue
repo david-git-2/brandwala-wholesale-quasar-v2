@@ -46,10 +46,26 @@
             </div>
           </div>
           <div class="col-auto row q-gutter-sm">
-            <q-btn outline color="primary" icon="print" label="Print Packing Slip" no-caps @click="printPackingSlip" />
-            <q-btn outline color="secondary" icon="qr_code" label="Print Label" no-caps @click="printLabel" />
             <q-btn
-              v-if="order?.status === 'delivered'"
+              v-if="order?.status !== 'confirmed' && order?.status !== 'submitted'"
+              outline
+              color="accent"
+              icon="receipt"
+              label="Print Recipient Invoice"
+              no-caps
+              @click="openRecipientInvoicePreview"
+            />
+
+            <q-btn
+              v-if="order?.global_invoice_id"
+              color="positive"
+              icon="receipt"
+              label="View Accounting Invoice"
+              no-caps
+              :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
+            />
+            <q-btn
+              v-else-if="['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(order?.status ?? '')"
               color="positive"
               icon="receipt_long"
               label="Create Dual Invoice"
@@ -519,10 +535,135 @@
                   />
                 </q-card-section>
               </q-card>
+
+              <!-- Settlement (after delivered + accounting invoice) -->
+              <q-card
+                v-if="showSettlementCard"
+                flat
+                bordered
+                class="form-card"
+              >
+                <q-card-section class="border-bottom">
+                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
+                    <q-icon name="payments" size="18px" class="q-mr-xs text-primary" />
+                    Settlement
+                  </div>
+                </q-card-section>
+                <q-card-section class="q-gutter-y-sm">
+                  <div class="text-caption text-grey-7">
+                    Status:
+                    <span class="text-weight-bold text-grey-9">
+                      {{ order?.status?.toUpperCase().replace(/_/g, ' ') }}
+                    </span>
+                  </div>
+                  <div v-if="order?.courier_remittance_ref" class="text-body2">
+                    <div class="text-caption text-grey-7">Remittance Ref</div>
+                    <div class="text-weight-medium">{{ order.courier_remittance_ref }}</div>
+                  </div>
+                  <div v-if="order?.courier_bank_trx_id" class="text-body2">
+                    <div class="text-caption text-grey-7">Bank / MFS Trx</div>
+                    <div class="text-weight-medium">{{ order.courier_bank_trx_id }}</div>
+                  </div>
+                  <div v-if="invoicePayout" class="text-body2">
+                    <div class="text-caption text-grey-7">Middle-man payout</div>
+                    <div class="text-weight-medium">
+                      {{ formatBdt(invoicePayout.middle_man_payout_amount) }}
+                      ·
+                      <span
+                        :class="invoicePayout.middle_man_payout_status === 'paid' ? 'text-positive' : 'text-grey-7'"
+                      >
+                        {{ (invoicePayout.middle_man_payout_status || 'pending').toUpperCase() }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <q-btn
+                    v-if="canRecordRemittance"
+                    color="primary"
+                    unelevated
+                    no-caps
+                    class="full-width pill-btn"
+                    icon="account_balance"
+                    label="Record Courier Remittance"
+                    @click="openOrderRemittanceDialog"
+                  />
+                  <q-btn
+                    v-if="canSettlePayout"
+                    color="positive"
+                    outline
+                    no-caps
+                    class="full-width pill-btn"
+                    icon="payments"
+                    label="Settle Middle-Man Payout"
+                    :loading="settlingPayout"
+                    @click="settleOrderPayout"
+                  />
+                  <q-btn
+                    outline
+                    color="grey-8"
+                    no-caps
+                    class="full-width pill-btn"
+                    icon="receipt_long"
+                    label="Open Payout Ledger"
+                    :to="{ name: 'app-shop-dropship-ledger-page', params: { tenantSlug: route.params.tenantSlug } }"
+                  />
+                </q-card-section>
+              </q-card>
             </div>
           </div>
         </div>
       </template>
+
+      <q-dialog v-model="remittanceDialogOpen" persistent>
+        <q-card style="min-width: 440px; border-radius: 12px">
+          <q-card-section class="row items-center justify-between">
+            <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
+            <q-btn flat round dense icon="close" v-close-popup />
+          </q-card-section>
+          <q-card-section class="q-gutter-sm">
+            <div class="text-body2 text-grey-8">
+              Order <strong>{{ order?.order_no }}</strong> — net COD collection from courier.
+            </div>
+            <q-input
+              v-model="remittanceForm.remittance_ref"
+              label="Remittance Batch / Statement ID *"
+              outlined
+              dense
+            />
+            <q-input
+              v-model.number="remittanceForm.net_amount"
+              type="number"
+              label="Net Remitted Amount (BDT) *"
+              outlined
+              dense
+            />
+            <q-input
+              v-model="remittanceForm.bank_trx_id"
+              label="Bank / MFS Transaction ID"
+              outlined
+              dense
+            />
+            <q-input
+              v-model="remittanceForm.note"
+              label="Notes"
+              outlined
+              dense
+              type="textarea"
+              rows="2"
+            />
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn
+              color="primary"
+              label="Save Remittance"
+              :loading="savingRemittance"
+              :disable="!canSaveOrderRemittance"
+              @click="saveOrderRemittance"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
       <!-- Create Dual Invoice Dialog Handoff -->
       <q-dialog v-model="dualInvoiceDialogOpen">
@@ -591,12 +732,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, reactive, computed, watch } from 'vue';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
+import { dropshipLedgerService } from '../services/dropshipLedgerService';
+import { dropshipLedgerRepository } from '../repositories/dropshipLedgerRepository';
+import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
@@ -618,11 +763,16 @@ import {
 } from 'src/utils/bdAddressService';
 
 const route = useRoute();
+const router = useRouter();
 const orderStore = useShopOrderStore();
 const recipientProfileStore = useRecipientProfileStore();
+const queryClient = useQueryClient();
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
+);
+const orderId = computed(() => Number(route.params.id || 0));
 const lastLookupPhone = ref('');
-
-const loading = ref(false);
+const hydratingForm = ref(false);
 const saving = ref(false);
 const handingOff = ref(false);
 const updatingStatus = ref(false);
@@ -632,6 +782,194 @@ const couriers = ref<CourierServiceRow[]>([]);
 const merchants = ref<MerchantProfileRow[]>([]);
 const selectedMerchantId = ref<string | null>(null);
 const dualInvoiceDialogOpen = ref(false);
+const remittanceDialogOpen = ref(false);
+const savingRemittance = ref(false);
+const settlingPayout = ref(false);
+const invoicePayout = ref<{
+  id: number;
+  billing_profile_id: number | null;
+  middle_man_payout_amount: number;
+  middle_man_payout_status: string | null;
+} | null>(null);
+const remittanceForm = reactive({
+  remittance_ref: '',
+  net_amount: 0,
+  bank_trx_id: '',
+  note: '',
+});
+
+const orderDetailQuery = useQuery({
+  queryKey: computed(() => shopOrderQueryKeys.detail(tenantSlug.value, orderId.value)),
+  enabled: computed(() => orderId.value > 0),
+  staleTime: 15_000,
+  queryFn: async () => {
+    return await shopOrderRepository.getShopOrderById(orderId.value);
+  },
+});
+
+const couriersQuery = useQuery({
+  queryKey: computed(() => shopOrderQueryKeys.couriers(tenantSlug.value)),
+  staleTime: 10 * 60_000,
+  queryFn: async () => {
+    const res = await dropshipCourierService.fetchCouriers();
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to load courier services');
+    }
+    return res.data;
+  },
+});
+
+const merchantsQuery = useQuery({
+  queryKey: computed(() => shopOrderQueryKeys.merchants(tenantSlug.value)),
+  staleTime: 10 * 60_000,
+  queryFn: async () => {
+    const res = await dropshipMerchantService.fetchMerchants();
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to load merchant profiles');
+    }
+    return res.data;
+  },
+});
+
+const loading = computed(() =>
+  orderDetailQuery.isLoading.value ||
+  couriersQuery.isLoading.value ||
+  merchantsQuery.isLoading.value ||
+  hydratingForm.value,
+);
+
+const refetchOrderDetail = async () => {
+  if (orderId.value <= 0) return;
+  await queryClient.invalidateQueries({
+    queryKey: shopOrderQueryKeys.detail(tenantSlug.value, orderId.value),
+  });
+  await orderDetailQuery.refetch();
+};
+
+const showSettlementCard = computed(
+  () =>
+    !!order.value?.global_invoice_id &&
+    ['delivered', 'payment_received'].includes(order.value?.status ?? ''),
+);
+
+const canRecordRemittance = computed(
+  () =>
+    order.value?.status === 'delivered' &&
+    !!order.value?.global_invoice_id &&
+    !order.value?.courier_remittance_ref,
+);
+
+const canSettlePayout = computed(
+  () =>
+    !!order.value?.global_invoice_id &&
+    !!invoicePayout.value?.billing_profile_id &&
+    invoicePayout.value.middle_man_payout_status !== 'paid' &&
+    Number(invoicePayout.value.middle_man_payout_amount ?? 0) > 0,
+);
+
+const canSaveOrderRemittance = computed(
+  () =>
+    remittanceForm.remittance_ref.trim().length > 0 &&
+    Number(remittanceForm.net_amount) > 0,
+);
+
+const loadInvoicePayoutContext = async () => {
+  const invoiceId = order.value?.global_invoice_id;
+  if (!invoiceId) {
+    invoicePayout.value = null;
+    return;
+  }
+  try {
+    invoicePayout.value = await dropshipLedgerRepository.getInvoicePayoutContext(invoiceId);
+  } catch {
+    invoicePayout.value = null;
+  }
+};
+
+watch(
+  () => [order.value?.global_invoice_id, order.value?.status] as const,
+  () => {
+    void loadInvoicePayoutContext();
+  },
+  { immediate: true },
+);
+
+const openOrderRemittanceDialog = () => {
+  remittanceForm.remittance_ref = '';
+  remittanceForm.net_amount = Number(
+    order.value?.cod_collect_amount ?? form.cod_collect_amount ?? 0,
+  );
+  remittanceForm.bank_trx_id = '';
+  remittanceForm.note = '';
+  remittanceDialogOpen.value = true;
+};
+
+const saveOrderRemittance = async () => {
+  if (!order.value || !canSaveOrderRemittance.value) return;
+  savingRemittance.value = true;
+  try {
+    const res = await dropshipLedgerService.recordRemittance({
+      order_id: order.value.id,
+      net_amount: Number(remittanceForm.net_amount),
+      remittance_ref: remittanceForm.remittance_ref.trim(),
+      bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
+      note: remittanceForm.note.trim() || null,
+    });
+    if (!res.success) {
+      showErrorNotification(res.error || 'Failed to record remittance');
+      return;
+    }
+    showSuccessNotification('Courier remittance recorded.');
+    remittanceDialogOpen.value = false;
+    await refetchOrderDetail();
+    await loadInvoicePayoutContext();
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.ledger(tenantSlug.value),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.ledgerPendingCod(tenantSlug.value),
+    });
+  } finally {
+    savingRemittance.value = false;
+  }
+};
+
+const settleOrderPayout = async () => {
+  if (!order.value?.global_invoice_id || !invoicePayout.value?.billing_profile_id) return;
+  settlingPayout.value = true;
+  try {
+    const res = await dropshipLedgerService.settlePayout({
+      tenant_id: order.value.tenant_id,
+      billing_profile_id: invoicePayout.value.billing_profile_id,
+      global_invoice_id: order.value.global_invoice_id,
+      amount: Number(invoicePayout.value.middle_man_payout_amount),
+      note: `Payout settled for order #${order.value.order_no}`,
+    });
+    if (!res.success) {
+      showErrorNotification(res.error || 'Failed to settle payout');
+      return;
+    }
+    showSuccessNotification('Middle-man payout settled.');
+    await loadInvoicePayoutContext();
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.ledger(tenantSlug.value),
+    });
+  } finally {
+    settlingPayout.value = false;
+  }
+};
+
+const openRecipientInvoicePreview = () => {
+  if (!order.value) return;
+  const routeData = router.resolve({
+    name: 'app-shop-dropship-recipient-invoice-preview',
+    params: {
+      id: order.value.id,
+      tenantSlug: route.params.tenantSlug || undefined,
+    },
+  });
+  window.open(routeData.href, '_blank');
+};
 
 // District, Thana/Upazila & Postcode Options
 const rawDistricts = ref<BDLocationOption[]>([]);
@@ -647,7 +985,7 @@ const performHandoff = async () => {
   try {
     const res = await orderStore.processDropshipOrder(order.value.id);
     if (res.success) {
-      await loadData();
+      await refetchOrderDetail();
     }
   } finally {
     handingOff.value = false;
@@ -1059,28 +1397,9 @@ const onMerchantSelect = (merchantId: string | null) => {
   }
 };
 
-const loadData = async () => {
-  const id = Number(route.params.id);
-  if (!id) return;
-
-  loading.value = true;
+const hydrateFormFromOrder = async (o: any) => {
+  hydratingForm.value = true;
   try {
-    const [orderRes, courierRes, merchantRes] = await Promise.all([
-      shopOrderRepository.getShopOrderById(id),
-      dropshipCourierService.fetchCouriers(),
-      dropshipMerchantService.fetchMerchants(),
-    ]);
-
-    order.value = orderRes.order;
-    orderItems.value = orderRes.items;
-    if (courierRes.success) {
-      couriers.value = courierRes.data;
-    }
-    if (merchantRes.success) {
-      merchants.value = merchantRes.data;
-    }
-
-    const o = orderRes.order as any;
     form.recipient_name = o.recipient_name || '';
     form.recipient_phone = o.recipient_phone || '';
     form.secondary_phone = o.recipient_phone_secondary || '';
@@ -1104,7 +1423,7 @@ const loadData = async () => {
     form.cod_charge = o.cod_charge_amount ?? 0;
     form.package_weight_band = o.package_weight_band || 'under_1kg';
 
-    const activeCourier = courierRes.success ? courierRes.data.find((c: any) => c.id === o.courier_service_id) : null;
+    const activeCourier = couriers.value.find((c: any) => c.id === o.courier_service_id) || null;
     form.cod_fee_percent = activeCourier ? Number(activeCourier.cod_fee_percent || 0) : 0;
 
     form.deduct_delivery_from_margin = !!o.deduct_delivery_from_margin;
@@ -1159,16 +1478,61 @@ const loadData = async () => {
     originalBlockE.courier_service_id = form.courier_service_id;
     originalBlockE.courier_awb_number = form.courier_awb_number;
     originalBlockE.tracking_url = form.tracking_url;
-  } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to load order details');
   } finally {
-    loading.value = false;
+    hydratingForm.value = false;
   }
 };
 
-onMounted(() => {
-  void loadData();
-});
+watch(
+  () => couriersQuery.data.value,
+  (data) => {
+    if (data) couriers.value = data;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => merchantsQuery.data.value,
+  (data) => {
+    if (data) merchants.value = data;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => orderDetailQuery.data.value,
+  async (data) => {
+    if (!data) return;
+    order.value = data.order;
+    orderItems.value = data.items;
+    await hydrateFormFromOrder(data.order as any);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => orderDetailQuery.error.value,
+  (err) => {
+    if (!err) return;
+    showErrorNotification((err as Error).message || 'Failed to load order details');
+  },
+);
+
+watch(
+  () => couriersQuery.error.value,
+  (err) => {
+    if (!err) return;
+    showErrorNotification((err as Error).message || 'Failed to load courier services');
+  },
+);
+
+watch(
+  () => merchantsQuery.error.value,
+  (err) => {
+    if (!err) return;
+    showErrorNotification((err as Error).message || 'Failed to load merchant profiles');
+  },
+);
 
 const onRecipientPhoneBlur = async () => {
   const phone = form.recipient_phone.replace(/\D/g, '');
@@ -1271,7 +1635,7 @@ const saveChanges = async () => {
     if (chargesError) throw chargesError;
 
     showSuccessNotification('Consignment details saved successfully!');
-    await loadData();
+    await refetchOrderDetail();
   } catch (err: any) {
     showErrorNotification(err.message || 'Failed to save consignment');
   } finally {
@@ -1319,7 +1683,7 @@ const onUpdateStatus = async (status: string) => {
     }
 
     showSuccessNotification(`Status updated to ${status.replace(/_/g, ' ')}`);
-    await loadData();
+    await refetchOrderDetail();
   } catch (err: any) {
     showErrorNotification(err.message || 'Failed to update status');
   } finally {
@@ -1337,14 +1701,6 @@ const getStatusColor = (status: string) => {
     case 'returned': return 'negative';
     default: return 'grey';
   }
-};
-
-const printPackingSlip = () => {
-  window.print();
-};
-
-const printLabel = () => {
-  window.print();
 };
 
 const creatingInvoice = ref(false);
@@ -1370,7 +1726,7 @@ const confirmDualInvoice = async () => {
     const res = data as any;
     showSuccessNotification(`Dual invoice #${res.invoice_no || ''} created successfully!`);
     dualInvoiceDialogOpen.value = false;
-    await loadData();
+    await refetchOrderDetail();
   } catch (err: any) {
     showErrorNotification(err.message || 'Failed to create dual invoice');
   } finally {

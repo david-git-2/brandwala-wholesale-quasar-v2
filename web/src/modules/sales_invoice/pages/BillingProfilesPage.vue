@@ -1,74 +1,79 @@
 <template>
-  <q-page class="q-pa-md billing-profiles-page">
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col">
-            <div class="text-h6 text-weight-bold">Billing Profiles</div>
-            <div class="text-caption text-grey-8">
-              Manage customer billing profiles used for sales invoicing
-            </div>
-          </div>
-          <div class="col-auto">
-            <q-btn
-              color="primary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn"
-              label="Create Billing Profile"
-              @click="createOpen = true"
-            />
-          </div>
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Invoices</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Billing Profiles</h1>
         </div>
-      </q-card-section>
-    </q-card>
+        <div class="col-auto">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            class="pill-btn"
+            label="Create Billing Profile"
+            @click="createOpen = true"
+          />
+        </div>
+      </section>
 
-    <div class="row items-center justify-between q-mb-md">
-      <div class="row items-center q-gutter-sm toolbar-left">
-        <q-btn
-          v-if="!showSearchInput"
-          flat
-          round
-          dense
-          icon="search"
-          aria-label="Show search"
-          @click="showSearchInput = true"
-        />
-        <q-input
-          v-else
-          v-model="searchText"
-          filled
-          dense
-          clearable
-          class="soft-input toolbar-search"
-          label="Search Billing Profile"
-          @clear="onSearchChange"
-          @keyup.enter="onSearchChange"
-        >
-          <template #prepend>
-            <q-icon name="search" />
-          </template>
-          <template #append>
-            <q-btn flat round dense icon="close" aria-label="Hide search" @click="onCloseSearch" />
-          </template>
-        </q-input>
+      <q-card flat bordered class="q-pa-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col-auto row items-center q-gutter-sm">
+            <q-btn
+              v-if="!showSearchInput"
+              flat
+              round
+              dense
+              icon="search"
+              aria-label="Show search"
+              @click="showSearchInput = true"
+            />
+            <q-input
+              v-else
+              v-model="searchText"
+              outlined
+              dense
+              clearable
+              class="soft-input toolbar-search"
+              label="Search Billing Profile"
+              @clear="onSearchChange"
+              @keyup.enter="onSearchChange"
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+              <template #append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="close"
+                  aria-label="Hide search"
+                  @click="onCloseSearch"
+                />
+              </template>
+            </q-input>
 
-        <q-btn
-          flat
-          round
-          dense
-          icon="filter_alt"
-          aria-label="Filters"
-          @click="filterDrawerOpen = true"
-        >
-          <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-            {{ activeFilterCount }}
-          </q-badge>
-        </q-btn>
-      </div>
-    </div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="filter_alt"
+              aria-label="Filters"
+              @click="filterDrawerOpen = true"
+            >
+              <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+                {{ activeFilterCount }}
+              </q-badge>
+            </q-btn>
+          </div>
+          <div class="col-auto"></div>
+        </div>
+      </q-card>
 
-    <q-card flat class="floating-surface shadow-1">
+      <q-card flat class="floating-surface shadow-1">
       <q-markup-table flat wrap-cells class="billing-profiles-table">
         <thead>
           <tr>
@@ -86,8 +91,23 @@
           </tr>
           <tr v-for="row in filteredItems" :key="row.id">
             <td>
-              <span v-if="row.color" class="color-dot" :style="{ backgroundColor: row.color }" />
-              {{ row.name }}
+              <div class="row items-center no-wrap">
+                <q-avatar
+                  size="36px"
+                  :color="getAvatarStyleAndColor(row).color"
+                  :style="getAvatarStyleAndColor(row).style"
+                  text-color="white"
+                  class="q-mr-sm text-weight-bold"
+                >
+                  {{ getInitials(row.name) }}
+                </q-avatar>
+                <div>
+                  <div class="text-weight-bold text-black">{{ row.name }}</div>
+                  <div class="text-caption text-grey-7 text-xs">
+                    {{ row.email || row.phone || '' }}
+                  </div>
+                </div>
+              </div>
             </td>
             <td>
               <q-chip v-if="row.customer_group_id" dense outline size="sm">
@@ -171,7 +191,8 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </q-page>
+  </div>
+</q-page>
 </template>
 
 <script setup lang="ts">
@@ -231,6 +252,13 @@ const activeFilterCount = computed(() => {
 const customerGroupNameMap = computed<Record<number, string>>(() =>
   customerGroupStore.groups.reduce<Record<number, string>>((acc, g) => {
     acc[g.id] = g.name;
+    return acc;
+  }, {}),
+);
+
+const customerGroupColorMap = computed<Record<number, string | null>>(() =>
+  customerGroupStore.groups.reduce<Record<number, string | null>>((acc, g) => {
+    acc[g.id] = g.accent_color;
     return acc;
   }, {}),
 );
@@ -297,6 +325,50 @@ const onCloseSearch = () => {
   showSearchInput.value = false;
   searchText.value = '';
 };
+const getInitials = (name?: string | null) => {
+  if (!name) return 'U';
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] || '';
+  const last = parts[parts.length - 1] || '';
+  if (parts.length === 1) return first.charAt(0).toUpperCase() || 'U';
+  return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'U';
+};
+
+const getAvatarColor = (name?: string | null) => {
+  if (!name) return 'grey-6';
+  const colors = ['purple-5', 'teal-5', 'blue-5', 'orange-5', 'cyan-5', 'indigo-5', 'green-5'];
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) {
+    sum += name.charCodeAt(i);
+  }
+  return colors[sum % colors.length];
+};
+
+const getAvatarStyleAndColor = (row: BillingProfile) => {
+  if (row.color) {
+    if (row.color.startsWith('#')) {
+      return { style: { backgroundColor: row.color }, color: undefined };
+    }
+    return { style: {}, color: row.color };
+  }
+
+  if (row.customer_group_id) {
+    const groupColor = customerGroupColorMap.value[row.customer_group_id];
+    if (groupColor) {
+      if (groupColor.startsWith('#')) {
+        return { style: { backgroundColor: groupColor }, color: undefined };
+      }
+      return { style: {}, color: groupColor };
+    }
+  }
+
+  const fallbackColor = getAvatarColor(row.name) || 'grey-6';
+  if (fallbackColor.startsWith('#')) {
+    return { style: { backgroundColor: fallbackColor }, color: undefined };
+  }
+  return { style: {}, color: fallbackColor };
+};
+
 const onResetFilters = () => {
   emailFilter.value = '';
   phoneFilter.value = '';

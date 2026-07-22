@@ -21,10 +21,13 @@ const toInvoiceRow = (invoice: GlobalInvoiceCreated): GlobalInvoiceRow => ({
   invoice_status: invoice.invoice_status,
   payment_status: invoice.payment_status,
   invoice_date: invoice.invoice_date,
+  due_date: invoice.due_date ?? null,
   total_amount: invoice.total_amount,
   due_amount: invoice.due_amount,
   paid_amount: invoice.paid_amount,
   billing_profile_id: invoice.billing_profile_id,
+  billing_profile_name: invoice.billing_profile_name ?? null,
+  billing_profile_email: invoice.billing_profile_email ?? null,
   recipient_name: invoice.recipient_name,
 });
 
@@ -42,7 +45,12 @@ export const useInvoiceStore = defineStore('salesInvoice', {
       this.loading = true;
       this.error = null;
       try {
-        this.rows = await invoiceRepository.listGlobalInvoices(parentTenantId);
+        const result = await invoiceRepository.listGlobalInvoices({
+          parentTenantId,
+          page: 1,
+          pageSize: 200,
+        });
+        this.rows = result.data;
         return { success: true as const };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load invoices.';
