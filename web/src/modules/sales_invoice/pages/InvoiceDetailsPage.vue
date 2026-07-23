@@ -1475,92 +1475,14 @@ const goBack = () => {
   });
 };
 
-const invoiceViewMode = ref<'accounting' | 'recipient'>('accounting');
 const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
-const linkedOrderRemittance = ref<{
-  id: number;
-  order_no: string;
-  status: string;
-  courier_remittance_ref: string | null;
-  courier_bank_trx_id: string | null;
-} | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
+const linkedOrderRemittance = ref<Awaited<
+  ReturnType<typeof dropshipLedgerRepository.getShopOrderRemittanceByInvoiceId>
+>>(null);
 const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
-const showSidebar = ref(true);
-const editingRecipient = ref(false);
-
-const progressLineStyle = computed(() => {
-  if (!invoice.value) return 'width: 0%';
-  const status = invoice.value.invoice_status;
-  if (status === 'draft') {
-    return 'width: 0%';
-  }
-  if (status === 'posted') {
-    if (invoice.value.due_amount <= 0) {
-      return 'width: 100%';
-    }
-    return 'width: 50%';
-  }
-  if (status === 'voided') {
-    return 'width: 50%';
-  }
-  return 'width: 0%';
-});
-
-const getStepStatusClass = (step: 'draft' | 'posted' | 'settled') => {
-  if (!invoice.value) return 'stepper-circle--pending';
-  const status = invoice.value.invoice_status;
-  if (step === 'draft') {
-    return status === 'draft' ? 'stepper-circle--active' : 'stepper-circle--done';
-  }
-  if (step === 'posted') {
-    if (status === 'draft') return 'stepper-circle--pending';
-    if (status === 'voided') return 'stepper-circle--voided';
-    return invoice.value.due_amount <= 0 ? 'stepper-circle--done' : 'stepper-circle--active';
-  }
-  if (step === 'settled') {
-    if (status === 'draft' || status === 'voided') return 'stepper-circle--pending';
-    return invoice.value.due_amount <= 0 ? 'stepper-circle--done' : 'stepper-circle--pending';
-  }
-  return 'stepper-circle--pending';
-};
-
-const getStepTextStatusClass = (step: 'draft' | 'posted' | 'settled') => {
-  if (!invoice.value) return 'text-grey-5';
-  const status = invoice.value.invoice_status;
-  if (step === 'draft') {
-    return status === 'draft' ? 'text-primary' : 'text-grey-7';
-  }
-  if (step === 'posted') {
-    if (status === 'draft') return 'text-grey-5';
-    if (status === 'voided') return 'text-negative';
-    return invoice.value.due_amount <= 0 ? 'text-grey-7' : 'text-primary';
-  }
-  if (step === 'settled') {
-    if (status === 'draft' || status === 'voided') return 'text-grey-5';
-    return invoice.value.due_amount <= 0 ? 'text-primary' : 'text-grey-5';
-  }
-  return 'text-grey-5';
-};
-
-const getStepIcon = (step: 'draft' | 'posted' | 'settled') => {
-  if (!invoice.value) return 'radio_button_unchecked';
-  const status = invoice.value.invoice_status;
-  if (step === 'draft') {
-    return status === 'draft' ? 'edit' : 'check';
-  }
-  if (step === 'posted') {
-    if (status === 'draft') return 'arrow_forward';
-    if (status === 'voided') return 'cancel';
-    return invoice.value.due_amount <= 0 ? 'check' : 'pending';
-  }
-  if (step === 'settled') {
-    return status === 'posted' && invoice.value.due_amount <= 0 ? 'check' : 'radio_button_unchecked';
-  }
-  return 'radio_button_unchecked';
-};
 
 const noteEditValue = ref('');
 const editNoteDialog = ref(false);
@@ -1661,6 +1583,8 @@ let targetDebounce: ReturnType<typeof setTimeout> | null = null;
 const showPreview = true;
 const showPayments = true;
 const showReturns = true;
+const showSidebar = ref(true);
+const editingRecipient = ref(false);
 
 // Reactive form representing currently saved values on header
 const form = reactive({
@@ -2184,54 +2108,6 @@ const changeInvoiceStatus = (newStatus: string) => {
     }).onOk(() => {
       void onVoidInvoice();
     });
-  }
-};
-
-const statusChipStyle = (status: string) => {
-  const value = (status ?? '').toLowerCase();
-  switch (value) {
-    case 'draft':
-      return {
-        backgroundColor: '#fff7ed',
-        color: '#c2410c',
-        border: '1px solid #ffedd5',
-        borderRadius: '6px',
-      };
-    case 'posted':
-      return {
-        backgroundColor: '#f0fdf4',
-        color: '#166534',
-        border: '1px solid #bbf7d0',
-        borderRadius: '6px',
-      };
-    case 'voided':
-      return {
-        backgroundColor: '#fef2f2',
-        color: '#991b1b',
-        border: '1px solid #fee2e2',
-        borderRadius: '6px',
-      };
-    default:
-      return {
-        backgroundColor: '#f9fafb',
-        color: '#1f2937',
-        border: '1px solid #e5e7eb',
-        borderRadius: '6px',
-      };
-  }
-};
-
-const statusDotColor = (status: string) => {
-  const value = (status ?? '').toLowerCase();
-  switch (value) {
-    case 'draft':
-      return '#ea580c';
-    case 'posted':
-      return '#15803d';
-    case 'voided':
-      return '#dc2626';
-    default:
-      return '#9ca3af';
   }
 };
 

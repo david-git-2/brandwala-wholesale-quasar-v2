@@ -1473,7 +1473,7 @@
 
 <script setup lang="ts">
 
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftStockStore } from '../stores/thriftStockStore';
@@ -1484,9 +1484,7 @@ import {
   useAttachStockImageMutation,
   useUpdateStockStatusMutation,
   useDeleteStockMutation,
-  useDeleteStocksMutation,
 } from '../composables/useThriftStockMutations';
-import { useThriftStore } from 'src/modules/thrift/shared/stores/thriftStore';
 import {
   useThriftCategoriesQuery,
   useThriftTypesQuery,
@@ -1544,7 +1542,6 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const store = useThriftStockStore();
-const thriftStore = useThriftStore();
 
 const tenantIdRef = computed(() => authStore.tenantId ?? 0);
 const { data: settingsData } = useThriftSettingsQuery(tenantIdRef);
@@ -1557,7 +1554,6 @@ const updateStockMutation = useUpdateStockMutation();
 const attachStockImageMutation = useAttachStockImageMutation();
 const updateStockStatusMutation = useUpdateStockStatusMutation();
 const deleteStockMutation = useDeleteStockMutation();
-const deleteStocksMutation = useDeleteStocksMutation();
 
 const queryParams = computed<ThriftStockQueryParams>(() => ({
   tenantId: authStore.tenantId ?? 0,
@@ -2502,7 +2498,7 @@ async function cleanupAndDeleteStockTargets(targets: ThriftStockDeleteTarget[]) 
   }
 }
 
-async function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   store.setPage(props.pagination.page);
   store.setPageSize(props.pagination.rowsPerPage);
 }
@@ -2634,7 +2630,7 @@ async function downloadStockCsv() {
   }
 }
 
-async function openAddDialog() {
+function openAddDialog() {
   quickAddForm.value = {
     shipment_id: null,
     box_id: null,
@@ -3063,10 +3059,6 @@ async function onSubmit() {
     if (!finalPricing.is_listed_price_manual) {
       const shipment = shipmentById.value.get(form.value.shipment_id!);
       if (shipment) {
-        const opsCostSettings = {
-          hand_tag_unit_cost: settings.value?.hand_tag_unit_cost ?? 0,
-          sticker_unit_cost: settings.value?.sticker_unit_cost ?? 0,
-        };
         const stockInput: ThriftStockCostInput = {
           quantity: form.value.quantity || 0,
           product_weight: form.value.product_weight || 0,

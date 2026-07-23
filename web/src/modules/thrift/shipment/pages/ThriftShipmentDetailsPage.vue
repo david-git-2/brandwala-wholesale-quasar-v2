@@ -472,7 +472,6 @@ import { useThriftShipmentDetailQuery } from '../composables/useThriftShipmentQu
 import { useUpdateShipmentMutation } from '../composables/useThriftShipmentMutations';
 import { useThriftStocksByShipmentQuery } from '../../stock/composables/useThriftStocksQuery';
 import { thriftStockRepository } from '../../stock/repositories/thriftStockRepository';
-import type { ThriftShipment } from '../types';
 import type { ThriftStock, ThriftStockMeasurements } from '../../stock/types';
 import type { ThriftCurrency } from '../../currency/types';
 import { useThriftShipmentCosting } from '../../shared/composables/useThriftShipmentCosting';

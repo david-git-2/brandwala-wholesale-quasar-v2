@@ -11,7 +11,7 @@ export function useCreateShipmentMutation(tenantId: Ref<number | null | undefine
     mutationFn: (input: Partial<ThriftShipment>) => thriftShipmentRepository.createShipment(input),
     onSuccess: () => {
       if (tenantId.value) {
-        queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
+        return queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
       }
     },
   });
@@ -26,7 +26,7 @@ export function useUpdateShipmentMutation(tenantId: Ref<number | null | undefine
     onSuccess: (data, variables) => {
       queryClient.setQueryData(thriftQueryKeys.shipmentDetail(String(variables.id)), data);
       if (tenantId.value) {
-        queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
+        return queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
       }
     },
   });
@@ -39,7 +39,7 @@ export function useDeleteShipmentMutation(tenantId: Ref<number | null | undefine
     mutationFn: (id: number) => thriftShipmentRepository.deleteShipment(id),
     onSuccess: () => {
       if (tenantId.value) {
-        queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
+        return queryClient.invalidateQueries({ queryKey: thriftQueryKeys.shipments(tenantId.value) });
       }
     },
   });

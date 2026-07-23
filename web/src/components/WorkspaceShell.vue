@@ -462,7 +462,7 @@
                         class="workspace-shell__nav-sub-item"
                         active-class="workspace-shell__nav-item--active"
                       >
-                        <q-item-section v-slot:default v-if="child.icon" avatar class="q-pr-none" style="min-width: 28px">
+                        <q-item-section v-if="child.icon" avatar class="q-pr-none" style="min-width: 28px">
                           <q-icon :name="child.icon" size="18px" color="grey-6" class="sub-item-icon" />
                         </q-item-section>
                         <q-item-section>

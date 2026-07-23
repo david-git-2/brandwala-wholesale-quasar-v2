@@ -354,7 +354,6 @@ import { useQuery } from '@tanstack/vue-query';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderService } from 'src/modules/shop_order/services/shopOrderService';
-import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -449,9 +448,9 @@ onMounted(() => {
 const goBrowse = () => {
   const activeShopSlug = shops.value[0]?.slug || localStorage.getItem('last_visited_shop_slug');
   if (activeShopSlug) {
-    router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}` });
+    void router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}` });
   } else {
-    router.push({ path: `${tenantBase.value}/browse` });
+    void router.push({ path: `${tenantBase.value}/browse` });
   }
 };
 
@@ -459,18 +458,18 @@ const triggerSearch = () => {
   if (!searchQuery.value.trim()) return;
   const activeShopSlug = shops.value[0]?.slug || localStorage.getItem('last_visited_shop_slug');
   if (activeShopSlug) {
-    router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}`, query: { q: searchQuery.value } });
+    void router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}`, query: { q: searchQuery.value } });
   } else {
-    router.push({ path: `${tenantBase.value}/browse`, query: { q: searchQuery.value } });
+    void router.push({ path: `${tenantBase.value}/browse`, query: { q: searchQuery.value } });
   }
 };
 
 const filterByCategory = (categoryName: string) => {
   const activeShopSlug = shops.value[0]?.slug || localStorage.getItem('last_visited_shop_slug');
   if (activeShopSlug) {
-    router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}`, query: { category: categoryName } });
+    void router.push({ path: `${tenantBase.value}/browse/${activeShopSlug}`, query: { category: categoryName } });
   } else {
-    router.push({ path: `${tenantBase.value}/browse`, query: { category: categoryName } });
+    void router.push({ path: `${tenantBase.value}/browse`, query: { category: categoryName } });
   }
 };
 

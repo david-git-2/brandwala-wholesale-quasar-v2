@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -91,8 +91,6 @@ import { useThriftCurrenciesQuery } from '../../currency/composables/useThriftCu
 import { useThriftShipmentDetailQuery } from '../../shipment/composables/useThriftShipmentQuery';
 import { useThriftStocksByShipmentQuery } from '../composables/useThriftStocksQuery';
 
-import { thriftShipmentRepository } from '../../shipment/repositories/thriftShipmentRepository';
-import { thriftStockRepository } from '../repositories/thriftStockRepository';
 import { expandStocksForTagPrint } from '../utils/expandStocksForTagPrint';
 import { formatThriftAmount } from '../../currency/utils/formatMoney';
 import { buildThriftCostBreakdownByStockId } from '../../shared/utils/computeThriftUnitCosts';
@@ -100,8 +98,6 @@ import { resolveListedSellPrice } from '../../shared/utils/resolveListedSellPric
 import { resolveMarketingTagConfig } from '../../shipment/utils/defaultMarketingTagConfig';
 import StockMarketingTag from '../components/StockMarketingTag.vue';
 import ShipmentMarketingTagConfigDialog from '../../shipment/components/ShipmentMarketingTagConfigDialog.vue';
-import type { ThriftShipment } from '../../shipment/types';
-import type { ThriftStock } from '../types';
 import type { StockTagPrintSticker } from '../types/marketingTag';
 
 const route = useRoute();
@@ -227,9 +223,9 @@ function openConfigDialog() {
       shipmentName: sh.name,
       initialConfig: sh.marketing_tag_config,
     },
-  }).onOk(async () => {
+  }).onOk(() => {
     if (shipmentId.value) {
-      await queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: thriftQueryKeys.shipmentDetail(String(shipmentId.value)),
       });
     }

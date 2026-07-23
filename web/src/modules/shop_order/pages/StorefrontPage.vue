@@ -514,20 +514,6 @@ const brokenImages = reactive<Record<string, boolean>>({});
 const itemKey = (item: { product_id: number; global_stock_allocation_id?: number | null }) =>
   `${item.product_id}-${item.global_stock_allocation_id || ''}`;
 
-const getShopTypeLabel = (type?: string) => {
-  if (type === 'vendor_catalog') return 'Vendor Catalog';
-  if (type === 'fixed_price') return 'Fixed Price';
-  if (type === 'dropship') return 'Dropship Portal';
-  return type || 'Shop';
-};
-
-const getShopTypeColor = (type?: string) => {
-  if (type === 'vendor_catalog') return 'indigo';
-  if (type === 'fixed_price') return 'teal';
-  if (type === 'dropship') return 'orange-8';
-  return 'grey';
-};
-
 const loadBrands = async (vendorCode?: string | null, tenantId?: number | null) => {
   const result = await productStore.fetchBrandOptions({
     vendorCode: vendorCode ?? null,

@@ -9,6 +9,7 @@ import { useMembershipPreference } from './useMembershipPreference';
 
 type LegacyPreferenceKey =
   | 'ui.productBasedCosting.fileDetailsVisibleColumns'
+  | 'ui.productBasedCosting.previewPrintVisibleColumns'
   | 'ui.thriftShipment.detailsVisibleColumns'
   | 'ui.procurementShipment.detailsVisibleColumns';
 

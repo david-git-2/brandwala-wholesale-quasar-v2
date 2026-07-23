@@ -13,9 +13,7 @@ export function useGenerateBarcodesMutation() {
   return useMutation({
     mutationFn: (input: GenerateBarcodesInput) =>
       thriftBarcodeRepository.generateBarcodes(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] }),
   });
 }
 
@@ -27,9 +25,7 @@ export function useMarkBarcodesPrintedMutation() {
 
   return useMutation({
     mutationFn: (ids: number[]) => thriftBarcodeRepository.markBarcodesPrinted(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] }),
   });
 }
 
@@ -38,9 +34,7 @@ export function useDeleteBarcodeMutation() {
 
   return useMutation({
     mutationFn: (id: number) => thriftBarcodeRepository.deleteBarcode(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] }),
   });
 }
 
@@ -49,8 +43,6 @@ export function useDeleteBarcodesMutation() {
 
   return useMutation({
     mutationFn: (ids: number[]) => thriftBarcodeRepository.deleteBarcodes(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'barcodes'] }),
   });
 }

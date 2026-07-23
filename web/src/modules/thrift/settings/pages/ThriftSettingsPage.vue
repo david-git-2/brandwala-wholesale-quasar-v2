@@ -141,7 +141,7 @@ const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
 const preferenceStore = useTenantPreferenceStore();
 
-const { data: settings, isPending: isSettingsPending } = useThriftSettingsQuery(tenantId);
+const { data: settings } = useThriftSettingsQuery(tenantId);
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
 const updateSettingsMutation = useUpdateThriftSettingsMutation(tenantId);
@@ -156,7 +156,7 @@ const form = ref({
 
 watchEffect(() => {
   if (tenantId.value) {
-    preferenceStore.ensureLoaded(tenantId.value);
+    void preferenceStore.ensureLoaded(tenantId.value);
   }
   if (settings.value) {
     form.value.defaultOriginUnitPrice = settings.value.default_origin_unit_price ?? 0;

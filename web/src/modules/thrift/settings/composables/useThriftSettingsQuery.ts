@@ -22,7 +22,7 @@ export function useUpdateThriftSettingsMutation(tenantId: Ref<number | null | un
     onSuccess: (data) => {
       if (tenantId.value) {
         queryClient.setQueryData(thriftQueryKeys.settings(tenantId.value), data);
-        queryClient.invalidateQueries({ queryKey: thriftQueryKeys.settings(tenantId.value) });
+        return queryClient.invalidateQueries({ queryKey: thriftQueryKeys.settings(tenantId.value) });
       }
     },
   });

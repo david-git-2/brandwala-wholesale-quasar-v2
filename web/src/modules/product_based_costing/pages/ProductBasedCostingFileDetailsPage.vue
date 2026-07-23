@@ -77,22 +77,11 @@
                     </q-menu>
                   </q-item>
                   <q-separator />
-                  <q-item
-                    clickable
-                    v-close-popup
-                    :disable="status === 'pending'"
-                    @click="openPreview"
-                  >
+                  <q-item clickable v-close-popup @click="openPreviewAndPrint">
                     <q-item-section avatar>
-                      <q-icon name="visibility" />
+                      <q-icon name="preview" />
                     </q-item-section>
-                    <q-item-section>Preview</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="openPrintPage">
-                    <q-item-section avatar>
-                      <q-icon name="picture_as_pdf" />
-                    </q-item-section>
-                    <q-item-section>PDF</q-item-section>
+                    <q-item-section>Preview & Print</q-item-section>
                   </q-item>
                   <q-item clickable v-close-popup @click="downloadExcel">
                     <q-item-section avatar>
@@ -296,6 +285,7 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import BulkPasteCostingItemsDialog from '../components/BulkPasteCostingItemsDialog.vue';
+import ProductBasedCostingPreviewColumnSelectorDialog from '../components/ProductBasedCostingPreviewColumnSelectorDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
@@ -656,28 +646,26 @@ const openBulkPaste = () => {
   });
 };
 
-const openPreview = () => {
+const openPreviewAndPrint = () => {
   if (!fileId.value) {
     return;
   }
 
-  const previewRoute = router.resolve({
-    name: 'product-based-costing-file-preview-page',
-    params: { id: fileId.value },
-  });
+  $q.dialog({
+    component: ProductBasedCostingPreviewColumnSelectorDialog,
+  }).onOk((res: { visibleColumns?: string[] }) => {
+    if (!fileId.value) {
+      return;
+    }
+    const cols = res?.visibleColumns ?? [];
+    const previewRoute = router.resolve({
+      name: 'product-based-costing-file-preview-page',
+      params: { id: fileId.value },
+      ...(cols.length ? { query: { cols: cols.join(',') } } : {}),
+    });
 
-  window.open(previewRoute.href, '_blank', 'noopener');
-};
-
-const openPrintPage = () => {
-  if (!fileId.value) {
-    return;
-  }
-  const printRoute = router.resolve({
-    name: 'product-based-costing-file-print-page',
-    params: { id: fileId.value },
+    window.open(previewRoute.href, '_blank', 'noopener');
   });
-  window.open(printRoute.href, '_blank', 'noopener');
 };
 
 const safeNamePart = (value: string) =>

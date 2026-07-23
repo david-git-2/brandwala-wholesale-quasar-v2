@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 import {
   thriftStockRepository,
   type ThriftStockPricingInput,
@@ -92,9 +91,7 @@ export function useCreateStockMutation() {
         input.pricing,
         input.imageUrl,
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
@@ -104,9 +101,7 @@ export function useUpdateStockMutation() {
   return useMutation({
     mutationFn: ({ id, stock, pricing, imageUrl, driveFileId }: UpdateStockInput) =>
       thriftStockRepository.updateStock(id, stock, pricing, imageUrl, driveFileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
@@ -116,9 +111,7 @@ export function useAttachStockImageMutation() {
   return useMutation({
     mutationFn: ({ id, imageUrl, insertedBy, driveFileId }: AttachStockImageInput) =>
       thriftStockRepository.upsertPrimaryStockImage(id, imageUrl, insertedBy, driveFileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
@@ -128,9 +121,7 @@ export function useUpdateStockStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: UpdateStockStatusInput) =>
       thriftStockRepository.updateStockStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
@@ -139,9 +130,7 @@ export function useDeleteStockMutation() {
 
   return useMutation({
     mutationFn: (id: number) => thriftStockRepository.deleteStock(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
@@ -150,8 +139,6 @@ export function useDeleteStocksMutation() {
 
   return useMutation({
     mutationFn: (ids: number[]) => thriftStockRepository.deleteStocks(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }

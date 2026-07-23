@@ -7659,6 +7659,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      bulk_update_thrift_stock_locations: {
+        Args: {
+          p_box_id?: number
+          p_shelf_id?: number
+          p_stock_ids: number[]
+          p_tenant_id: number
+        }
+        Returns: undefined
+      }
+      bulk_update_thrift_stock_statuses: {
+        Args: { p_status: string; p_stock_ids: number[]; p_tenant_id: number }
+        Returns: undefined
+      }
       bump_tenant_permission_version: {
         Args: { p_tenant_id: number }
         Returns: undefined
@@ -8774,6 +8787,10 @@ export type Database = {
         Returns: number
       }
       get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
+      get_thrift_dashboard_metrics: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_vendor_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
         Returns: {
