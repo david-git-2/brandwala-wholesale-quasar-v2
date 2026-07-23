@@ -235,6 +235,98 @@
           />
         </q-card>
 
+        <!-- Summary Metrics Section -->
+        <div v-if="store.costingItems.length" class="q-mt-lg">
+          <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
+            <q-icon name="analytics" class="q-mr-xs text-primary" size="20px" />
+            Summary Metrics & Cost Breakdown
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <!-- Goods Cost Card -->
+            <div class="col-12 col-md-6">
+              <q-card flat bordered class="q-pa-md fill-height bg-grey-1">
+                <div class="row items-center q-mb-md">
+                  <q-icon name="inventory_2" color="primary" size="22px" class="q-mr-sm" />
+                  <div class="text-subtitle2 text-weight-bold text-primary">Goods Cost Summary</div>
+                </div>
+                <div class="q-gutter-y-sm">
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Total Quantity</span>
+                    <span class="text-body2 text-weight-bold">{{ summaryMetrics.totalQuantity.toLocaleString() }} pcs</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Total Purchase Price (GBP)</span>
+                    <span class="text-body2 text-weight-bold">£ {{ formatMoney(summaryMetrics.goodsCostGbp) }}</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Conversion Rate</span>
+                    <span class="text-body2 text-weight-medium">{{ conversionRateValue }}</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-weight-medium text-grey-9">Goods Cost (BDT)</span>
+                    <span class="text-subtitle2 text-weight-bold text-primary">৳ {{ formatMoney(summaryMetrics.goodsCostBdt) }}</span>
+                  </div>
+                </div>
+              </q-card>
+            </div>
+
+            <!-- Cargo Cost Card -->
+            <div class="col-12 col-md-6">
+              <q-card flat bordered class="q-pa-md fill-height bg-grey-1">
+                <div class="row items-center q-mb-md">
+                  <q-icon name="local_shipping" color="teal-8" size="22px" class="q-mr-sm" />
+                  <div class="text-subtitle2 text-weight-bold text-teal-9">Cargo Cost Summary</div>
+                </div>
+                <div class="q-gutter-y-sm">
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Cargo Weight (KG)</span>
+                    <span class="text-body2 text-weight-bold">{{ summaryMetrics.cargoWeightKg.toFixed(2) }} kg</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Cargo Cost (GBP)</span>
+                    <span class="text-body2 text-weight-bold">£ {{ formatMoney(summaryMetrics.cargoCostGbp) }}</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-grey-8">Cargo Conversion Rate</span>
+                    <span class="text-body2 text-weight-medium">{{ conversionRateValue }}</span>
+                  </div>
+                  <q-separator light />
+                  <div class="row justify-between items-center">
+                    <span class="text-caption text-weight-medium text-grey-9">Cargo Cost (BDT)</span>
+                    <span class="text-subtitle2 text-weight-bold text-teal-9">৳ {{ formatMoney(summaryMetrics.cargoCostBdt) }}</span>
+                  </div>
+                </div>
+              </q-card>
+            </div>
+
+            <!-- Total Cost Summary Card -->
+            <div class="col-12">
+              <q-card flat bordered class="q-pa-md bg-blue-1 text-blue-10">
+                <div class="row items-center justify-between q-col-gutter-sm">
+                  <div class="col-12 col-sm-auto row items-center">
+                    <q-icon name="payments" size="24px" class="q-mr-sm text-primary" />
+                    <div>
+                      <div class="text-caption text-uppercase text-weight-bold text-grey-7">Total Landed Cost</div>
+                      <div class="text-subtitle2 text-weight-bold">Goods Cost (BDT) + Cargo Cost (BDT)</div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-sm-auto text-right">
+                    <div class="text-h6 text-weight-bolder text-primary">
+                      ৳ {{ formatMoney(summaryMetrics.totalCostBdt) }}
+                    </div>
+                  </div>
+                </div>
+              </q-card>
+            </div>
+          </div>
+        </div>
+
         <ProductBasedCostingItemAddDialog
           v-model="showItemDialog"
           :product-based-costing-file-id="fileId"
@@ -403,6 +495,46 @@ const ratesSummary = computed(
   () =>
     `Conv ${conversionRateValue.value} · Cargo ${cargoRateValue.value} · Profit ${profitRateValue.value}%`,
 );
+
+const formatMoney = (val: number) =>
+  val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const summaryMetrics = computed(() => {
+  const items = store.costingItems ?? [];
+  let totalQuantity = 0;
+  let goodsCostGbp = 0;
+  let cargoWeightGrams = 0;
+  let cargoCostGbp = 0;
+
+  for (const item of items) {
+    const qty = toNumberSafe(item.quantity);
+    const priceGbp = toNumberSafe(item.price_gbp);
+    const prodWt = toNumberSafe(item.product_weight);
+    const pkgWt = toNumberSafe(item.package_weight);
+    const totalWtPerUnit = prodWt + pkgWt;
+
+    totalQuantity += qty;
+    goodsCostGbp += priceGbp * qty;
+    cargoWeightGrams += totalWtPerUnit * qty;
+    cargoCostGbp += ((totalWtPerUnit / 1000) * cargoRateValue.value) * qty;
+  }
+
+  const cargoWeightKg = cargoWeightGrams / 1000;
+  const rate = conversionRateValue.value;
+  const goodsCostBdt = goodsCostGbp * rate;
+  const cargoCostBdt = cargoCostGbp * rate;
+  const totalCostBdt = goodsCostBdt + cargoCostBdt;
+
+  return {
+    totalQuantity,
+    goodsCostGbp,
+    goodsCostBdt,
+    cargoWeightKg,
+    cargoCostGbp,
+    cargoCostBdt,
+    totalCostBdt,
+  };
+});
 const fileId = computed(() => {
   const parsed = Number(route.params.id);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
